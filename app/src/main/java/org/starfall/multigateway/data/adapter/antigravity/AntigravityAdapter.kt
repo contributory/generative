@@ -145,8 +145,14 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
         if (model.contains("claude") && modelConfig?.supportsThinking != false &&
             modelConfig?.reasoningDisabled != true && modelConfig?.reasoningEffort != null) {
             val maxTokens = (config["maxOutputTokens"] as? JsonPrimitive)?.intOrNull ?: sourceProvider.config.maxTokens
-            if (maxTokens > 1024) request["generationConfig"] = JsonObject(config + ("thinkingConfig" to obj(
-                "includeThoughts" to JsonPrimitive(true), "thinkingBudget" to JsonPrimitive(modelConfig.reasoningBudget(maxTokens)))))
+            if (maxTokens > 1024) {
+                val thinkingConfig = if (modelConfig.reasoningEffortDisabled) obj(
+                    "includeThoughts" to JsonPrimitive(false), "thinkingBudget" to JsonPrimitive(0)
+                ) else obj(
+                    "includeThoughts" to JsonPrimitive(true), "thinkingBudget" to JsonPrimitive(modelConfig.reasoningBudget(maxTokens))
+                )
+                request["generationConfig"] = JsonObject(config + ("thinkingConfig" to thinkingConfig))
+            }
         }
         return obj("project" to str(project), "model" to str((modelConfig?.modelJson?.get("model") as? JsonPrimitive)?.contentOrNull?.takeIf(String::isNotBlank)
                 ?: if (modelConfig?.modelJson?.isNotEmpty() == true) model else AntigravityModels.resolve(model, modelConfig?.reasoningEffort)), "requestId" to str("agent-${UUID.randomUUID()}"),

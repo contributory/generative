@@ -21,29 +21,33 @@ import org.starfall.multigateway.ui.chat.*
 class ReasoningEffectsLifecycleTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun redEffectContinuesAfterSheetDismissalWithoutBlockingClicks() {
+    @Test fun maxStarsAreHiddenOnDismissalAndRestoredWhenTheSheetReopens() {
         var clicks = 0
         lateinit var burst: ThinkingColorBurst
+        lateinit var reopenSheet: () -> Unit
         val provider = LlmProviderInfo("p", "Provider", ProviderType.OPENAI, baseUrl = "")
         compose.setContent {
             MaterialTheme {
                 val screenBurst = rememberThinkingColorBurst()
                 burst = screenBurst
-                ThinkingScreenBurstLayer(screenBurst)
                 var sheetVisible by remember { mutableStateOf(true) }
                 var effort by remember { mutableStateOf<String?>(null) }
+                reopenSheet = { sheetVisible = true }
                 CompositionLocalProvider(LocalThinkingScreenBurst provides screenBurst) {
                     Button(onClick = { clicks++ }) { Text("Underlying action") }
-                    if (sheetVisible) SelectedModelOverviewSheet(
-                        provider = provider,
-                        folderName = null,
-                        modelId = "Effect model",
-                        config = ModelConfiguration(),
-                        conversationReasoningEffort = effort,
-                        onSetReasoningEffort = { effort = it },
-                        onOpenModelPicker = { sheetVisible = false },
-                        onDismiss = { sheetVisible = false }
-                    )
+                    if (sheetVisible) {
+                        ThinkingScreenBurstLayer(screenBurst)
+                        SelectedModelOverviewSheet(
+                            provider = provider,
+                            folderName = null,
+                            modelId = "Effect model",
+                            config = ModelConfiguration(),
+                            conversationReasoningEffort = effort,
+                            onSetReasoningEffort = { effort = it },
+                            onOpenModelPicker = { sheetVisible = false },
+                            onDismiss = { sheetVisible = false }
+                        )
+                    }
                 }
             }
         }
@@ -57,10 +61,17 @@ class ReasoningEffectsLifecycleTest {
         compose.onNodeWithText("Effect model").performClick()
         compose.mainClock.advanceTimeBy(800)
         compose.onNodeWithTag("reasoning-slider").assertDoesNotExist()
-        compose.runOnIdle { assertTrue("Dismissing the sheet must not cancel the screen effect", burst.progress.value < 1f) }
-        compose.onNodeWithText("Underlying action").performClick()
-        compose.runOnIdle { assertEquals(1, clicks) }
-        compose.mainClock.advanceTimeBy(7000)
+         compose.runOnIdle {
+             assertEquals(1f, burst.progress.value, 0.001f)
+             assertFalse("Dismissing the sheet must hide its settled stars", burst.keepAfterCompletion)
+         }
+         compose.onNodeWithText("Underlying action").performClick()
+         compose.runOnIdle { assertEquals(1, clicks) }
+         compose.runOnIdle { reopenSheet() }
+         compose.waitForIdle()
+         compose.mainClock.advanceTimeBy(1000)
+         compose.runOnIdle { assertTrue("Max effort should restore the settled stars", burst.keepAfterCompletion) }
+         compose.mainClock.advanceTimeBy(7000)
         compose.runOnIdle { assertEquals(1f, burst.progress.value, 0.001f) }
     }
 }

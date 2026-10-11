@@ -273,6 +273,56 @@ class LlmRepository(private val db: AppDatabase, private val service: LlmService
         }
     }
 
+    /** Restore the exported layout directly; editor saves append providers when their group changes. */
+    suspend fun importProviders(providers: List<LlmProviderInfo>, groups: List<ProviderGroup>?) {
+        val importedProviders = providers.map { it.copy(config = it.config.normalizedForStorage()) }
+        val importedGroups = groups?.map { it.copy(name = it.name.trim()) }
+        val importedIds = importedProviders.mapTo(hashSetOf()) { it.id }
+        state.mutate({ it.mergeImport(importedProviders, importedGroups) }) {
+            val changes = db.withTransaction {
+                val previous = readCatalog()
+                val updated = previous.mergeImport(importedProviders, importedGroups)
+                importedGroups.orEmpty().forEach {
+                    groupDao.insertOrUpdate(ProviderGroupEntity(it.id, it.name, it.sortOrder, it.icon))
+                }
+                val previousById = previous.providers.associateBy { it.id }
+                updated.providers.filter { it.id in importedIds }.map { provider ->
+                    providerDao.insertOrUpdate(providerModelToEntity(provider))
+                    previousById[provider.id] to provider
+                }
+            }
+            changes.forEach { (previous, provider) ->
+                if (previous != null && (previous.type != provider.type ||
+                        (previous.auth.method == AuthMethod.OAUTH && provider.auth.method != AuthMethod.OAUTH))) {
+                    clearAllOAuthCredentials(previous)
+                }
+                provider.config.modelConfigs.forEach { (id, config) ->
+                    if (previous?.config?.modelConfigs?.get(id) != config) service.modelConfigurationMemory.remember(id, config)
+                }
+            }
+        }
+    }
+
+    private fun Catalog.mergeImport(importedProviders: List<LlmProviderInfo>, importedGroups: List<ProviderGroup>?): Catalog {
+        val mergedGroups = (groups + importedGroups.orEmpty()).associateBy { it.id }.values.toList()
+        val groupIds = mergedGroups.mapTo(hashSetOf()) { it.id }
+        val previousById = providers.associateBy { it.id }
+        val restored = importedProviders.map { provider ->
+            val previous = previousById[provider.id]
+            when {
+                // Old backups cannot restore a complete layout. Preserve the local organization
+                // for existing providers rather than overwriting it with missing/stale group IDs.
+                importedGroups == null && previous != null -> provider.copy(groupId = previous.groupId, sortOrder = previous.sortOrder)
+                provider.groupId != null && provider.groupId !in groupIds -> provider.copy(groupId = null)
+                else -> provider
+            }
+        }
+        return Catalog(
+            providers = (providers + restored).associateBy { it.id }.values.sortedWith(providerOrder),
+            groups = mergedGroups.sortedWith(compareBy<ProviderGroup> { it.sortOrder }.thenBy { it.id })
+        )
+    }
+
     suspend fun reorderProviderModels(providerId: String, modelIds: List<String>) {
         state.mutate({ catalog -> catalog.copy(providers = catalog.providers.map { if (it.id == providerId) it.copy(config = it.config.reorderedModels(modelIds)) else it }) }) {
             db.withTransaction {

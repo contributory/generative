@@ -48,6 +48,7 @@ import org.starfall.multigateway.data.model.GenerationEvent
 import org.starfall.multigateway.data.model.LlmProviderInfo
 import org.starfall.multigateway.data.model.ProviderType
 import org.starfall.multigateway.data.model.StoredMessage
+import org.starfall.multigateway.data.model.requestReasoningEffort
 import org.starfall.multigateway.data.service.AttachmentResolver
 
 /**
@@ -211,7 +212,7 @@ internal class OpenAICodexAdapter(
             modelName = modelName,
             messages = messages,
             systemPrompt = systemPrompt,
-            reasoningEffort = modelConfig?.reasoningEffort,
+            reasoningEffort = modelConfig?.requestReasoningEffort,
             stream = provider.config.supportStream,
             sessionId = sessionId
         )

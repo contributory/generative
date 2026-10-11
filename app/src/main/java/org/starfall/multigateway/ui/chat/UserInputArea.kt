@@ -179,6 +179,10 @@ fun UserInputArea(
     var showConversationSummary by remember { mutableStateOf(false) }
     var showAddMenu by remember { mutableStateOf(false) }
     var showFilesSheet by remember { mutableStateOf(false) }
+    val selectedModelScreenBurst = rememberThinkingColorBurst()
+    LaunchedEffect(showSelectedModelOverview) {
+        if (!showSelectedModelOverview) selectedModelScreenBurst.hide()
+    }
 
     val dynamicModelsMap = remember { mutableStateMapOf<String, List<String>>() }
     val dynamicModelEndpoints = remember { mutableMapOf<String, String>() }
@@ -557,29 +561,32 @@ fun UserInputArea(
         val selectedFolderName = selectedProvider?.groupId?.let { groupId ->
             providerGroups.firstOrNull { it.id == groupId }?.name
         }
-        SelectedModelOverviewSheet(
-            provider = selectedProvider,
-            folderName = selectedFolderName,
-            modelId = selectedModelName.ifBlank { selectedConfig.displayName },
-            config = selectedConfig,
-            // A conversation override wins; otherwise show the level saved for this model.
-            conversationReasoningEffort = conversationReasoningEffort ?: selectedConfig.reasoningEffort,
-            onSetReasoningEffort = { effort ->
-                onSetReasoningEffort(effort)
-                if (selectedProvider != null && selectedConfigEntry != null) {
-                    onSetModelReasoningEffort(selectedProvider.id, selectedConfigEntry.key, effort)
-                }
-            },
-            // Only models with a saved configuration can persist the toggle.
-            onSetSendThinkingContent = if (selectedProvider != null && selectedConfigEntry != null) {
-                val providerId = selectedProvider.id
-                val configKey = selectedConfigEntry.key
-                val setPassback: (Boolean) -> Unit = { enabled -> onSetSendThinkingContent(providerId, configKey, enabled) }
-                setPassback
-            } else null,
-            onOpenModelPicker = { showModelPicker = true },
-            onDismiss = { showSelectedModelOverview = false }
-        )
+        CompositionLocalProvider(LocalThinkingScreenBurst provides selectedModelScreenBurst) {
+            ThinkingScreenBurstLayer(selectedModelScreenBurst)
+            SelectedModelOverviewSheet(
+                provider = selectedProvider,
+                folderName = selectedFolderName,
+                modelId = selectedModelName.ifBlank { selectedConfig.displayName },
+                config = selectedConfig,
+                // A conversation override wins; otherwise show the level saved for this model.
+                conversationReasoningEffort = conversationReasoningEffort ?: selectedConfig.reasoningEffort,
+                onSetReasoningEffort = { effort ->
+                    onSetReasoningEffort(effort)
+                    if (selectedProvider != null && selectedConfigEntry != null) {
+                        onSetModelReasoningEffort(selectedProvider.id, selectedConfigEntry.key, effort)
+                    }
+                },
+                // Only models with a saved configuration can persist the toggle.
+                onSetSendThinkingContent = if (selectedProvider != null && selectedConfigEntry != null) {
+                    val providerId = selectedProvider.id
+                    val configKey = selectedConfigEntry.key
+                    val setPassback: (Boolean) -> Unit = { enabled -> onSetSendThinkingContent(providerId, configKey, enabled) }
+                    setPassback
+                } else null,
+                onOpenModelPicker = { showModelPicker = true },
+                onDismiss = { showSelectedModelOverview = false }
+            )
+        }
     }
 
     if (showModelPicker) {

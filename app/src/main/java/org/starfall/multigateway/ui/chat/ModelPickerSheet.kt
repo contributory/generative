@@ -584,6 +584,20 @@ internal fun SelectedModelOverviewSheet(
     var previewTier by remember(conversationReasoningEffort, effortOptions) {
         mutableIntStateOf(reasoningEffortTier(reasoningEffortIndex(conversationReasoningEffort, effortOptions), effortOptions))
     }
+    val screenBurst = LocalThinkingScreenBurst.current
+    LaunchedEffect(previewTier, screenBurst) {
+        if (previewTier == 6) {
+            screenBurst?.start(
+                origin = Offset.Zero,
+                color = Color(0xFFDC2626),
+                durationMillis = 900,
+                keepAfterCompletion = true,
+                starCount = 180
+            )
+        } else {
+            screenBurst?.hide()
+        }
+    }
     val sheetColor by animateColorAsState(
         if (previewTier == 6 && config.supportsThinking && !config.reasoningDisabled)
             lerp(MaterialTheme.colorScheme.surface, Color(0xFFF97316), 0.16f)
@@ -592,9 +606,10 @@ internal fun SelectedModelOverviewSheet(
         else MaterialTheme.colorScheme.surface,
         tween(1800), label = "thinking-sheet-color"
     )
-    val screenBurst = LocalThinkingScreenBurst.current
-    AppBottomSheet(onDismissRequest = onDismiss, containerColor = sheetColor) {
-        screenBurst?.let { ThinkingScreenBurstLayer(it) }
+    AppBottomSheet(onDismissRequest = {
+        screenBurst?.hide()
+        onDismiss()
+    }, containerColor = sheetColor) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -612,7 +627,10 @@ internal fun SelectedModelOverviewSheet(
                 conversationReasoningEffort = conversationReasoningEffort,
                 onSetReasoningEffort = onSetReasoningEffort,
                 showReasoningEffort = true,
-                onClick = onOpenModelPicker,
+                 onClick = {
+                     screenBurst?.hide()
+                     onOpenModelPicker()
+                 },
                 onPreviewTierChange = { previewTier = it }
             )
             if (config.supportsThinking && !config.reasoningDisabled && onSetSendThinkingContent != null) {
@@ -777,8 +795,17 @@ private fun ModelPickerCard(
     )
     val cardBase = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
         else MaterialTheme.colorScheme.surfaceContainerLow
-    val settledCardColor = if (tier == 6 && enhancedThinking) Color(0xFFC2410C) else cardBase
-    val cardBrush = if (tier == 6) Brush.horizontalGradient(listOf(Color(0xFFC2410C), Color(0xFF7C2D12)))
+    val settledCardColor = cardBase
+    val cardBrush = if (tier == 6) Brush.horizontalGradient(
+        colorStops = arrayOf(
+            0.00f to Color(0xFF1E1B4B),
+            0.22f to Color(0xFF4C1D95),
+            0.45f to Color(0xFF9D174D),
+            0.63f to Color(0xFF6D28D9),
+            0.82f to Color(0xFF2563EB),
+            1.00f to Color(0xFF164E63)
+        )
+    )
         else maximumThinkingCardBrush(MaterialTheme.colorScheme.surfaceContainerLow)
     val cardBurst = rememberThinkingColorBurst()
     val screenBurst = LocalThinkingScreenBurst.current
@@ -935,13 +962,25 @@ private fun ModelPickerCard(
                     onColorBurst = { origin, selectedTier ->
                          if (selectedTier >= 5) cardBurst.start(origin - cardOrigin, Color(0xFFA78BFA),
                              reasoningEffortBurstDuration(selectedTier))
-                         if (selectedTier >= 5) screenBurst?.start(
-                             origin = origin,
-                             color = if (selectedTier == 6) Color(0xFFDC2626) else Color(0xFFA78BFA),
-                             durationMillis = if (selectedTier == 6) 6500 else 2600,
-                             keepAfterCompletion = false,
-                              starCount = if (selectedTier == 6) 180 else 32
-                          )
+                         screenBurst?.let { burst ->
+                             when (selectedTier) {
+                                 6 -> burst.start(
+                                     origin = origin,
+                                     color = Color(0xFFA78BFA),
+                                     durationMillis = 6500,
+                                     keepAfterCompletion = true,
+                                     starCount = 180
+                                 )
+                                 5 -> burst.start(
+                                     origin = origin,
+                                     color = Color(0xFFA78BFA),
+                                     durationMillis = 2600,
+                                     keepAfterCompletion = false,
+                                     starCount = 32
+                                 )
+                                 else -> burst.hide()
+                             }
+                         }
                     },
                     trackBackground = settledCardColor
                 )

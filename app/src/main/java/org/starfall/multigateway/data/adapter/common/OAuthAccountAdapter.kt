@@ -173,6 +173,7 @@ internal abstract class OAuthAccountAdapter(
                 }
             }
         }
+        val requestEffort = config.requestReasoningEffort
         val body = buildJsonObject {
             if (type == ProviderType.GOOGLE) {
                 put("model", model)
@@ -195,7 +196,7 @@ internal abstract class OAuthAccountAdapter(
                     config.claudeThinkingParameters(model, maxTokens).forEach { (key, value) -> put(key, value) }
                 }
                 if (type == ProviderType.OPENAI && config.supportsThinking)
-                    config.reasoningEffort?.let { put("reasoning_effort", it) }
+                    requestEffort?.let { put("reasoning_effort", it) }
                 val native = messages.filter { it.role != ChatRole.SYSTEM }.map {
                     val content = if (type == ProviderType.ANTHROPIC) JsonArray(
                         (if (it.role == ChatRole.MODEL && config.sendThinkingContent &&
@@ -220,8 +221,8 @@ internal abstract class OAuthAccountAdapter(
                     else obj("type" to str(if (item.text("role") == "assistant") "output_text" else "input_text"), "text" to value.getValue("text"))
                 }) else content!!))
             }), "max_output_tokens" to JsonPrimitive(maxTokens)) +
-            (if (config.supportsThinking && config.reasoningEffort != null)
-                mapOf("reasoning" to obj("effort" to str(config.reasoningEffort))) else emptyMap())) else body
+            (if (config.supportsThinking && requestEffort != null)
+                mapOf("reasoning" to obj("effort" to str(requestEffort))) else emptyMap())) else body
     }
 
 

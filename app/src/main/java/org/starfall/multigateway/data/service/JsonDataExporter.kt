@@ -15,6 +15,7 @@ import kotlinx.serialization.json.put
 import org.starfall.multigateway.data.model.Conversation
 import org.starfall.multigateway.data.model.LlmProviderInfo
 import org.starfall.multigateway.data.model.McpInfo
+import org.starfall.multigateway.data.model.ProviderGroup
 import org.starfall.multigateway.data.model.SpeechService
 
 enum class JsonExportKind(val fileName: String) {
@@ -23,6 +24,12 @@ enum class JsonExportKind(val fileName: String) {
     SPEECH_SERVICES("multigateway-speech-services.json"),
     CONVERSATIONS("multigateway-chats.json")
 }
+
+data class ProvidersExport(
+    val providers: List<LlmProviderInfo>,
+    // null identifies legacy exports that did not include group records.
+    val groups: List<ProviderGroup>?
+)
 
 private val exportJson = Json {
     prettyPrint = true
@@ -35,7 +42,8 @@ fun buildJsonExport(
     providers: List<LlmProviderInfo>,
     mcpServers: List<McpInfo>,
     speechServices: List<SpeechService>,
-    conversations: List<Conversation>
+    conversations: List<Conversation>,
+    providerGroups: List<ProviderGroup> = emptyList()
 ): String {
     val items: JsonElement = when (kind) {
         JsonExportKind.PROVIDERS -> exportJson.parseToJsonElement(exportJson.encodeToString(providers))
@@ -48,22 +56,32 @@ fun buildJsonExport(
         put("exportedAt", SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(Date()))
         put("type", kind.name.lowercase(Locale.US))
         put("items", items)
+        if (kind == JsonExportKind.PROVIDERS) {
+            put("groups", exportJson.parseToJsonElement(exportJson.encodeToString(providerGroups)))
+        }
     })
 }
 
-private fun importedItems(raw: String, kind: JsonExportKind): JsonElement {
-    val root = exportJson.parseToJsonElement(raw).jsonObject
+private fun importedRoot(raw: String, kind: JsonExportKind) = exportJson.parseToJsonElement(raw).jsonObject.also { root ->
     require(root["formatVersion"]?.jsonPrimitive?.int == 1) {
         "Unsupported JSON export version."
     }
     require(root["type"]?.jsonPrimitive?.content == kind.name.lowercase(Locale.US)) {
         "This file is not a ${kind.name.lowercase(Locale.US)} export."
     }
-    return root["items"] ?: error("The JSON export has no items.")
+    require("items" in root) { "The JSON export has no items." }
 }
 
-fun parseProvidersExport(raw: String): List<LlmProviderInfo> =
-    exportJson.decodeFromString(importedItems(raw, JsonExportKind.PROVIDERS).toString())
+private fun importedItems(raw: String, kind: JsonExportKind): JsonElement =
+    importedRoot(raw, kind).getValue("items")
+
+fun parseProvidersExport(raw: String): ProvidersExport {
+    val root = importedRoot(raw, JsonExportKind.PROVIDERS)
+    return ProvidersExport(
+        providers = exportJson.decodeFromString(root.getValue("items").toString()),
+        groups = root["groups"]?.let { exportJson.decodeFromString<List<ProviderGroup>>(it.toString()) }
+    )
+}
 
 fun parseMcpExport(raw: String): List<McpInfo> =
     exportJson.decodeFromString(importedItems(raw, JsonExportKind.MCP_SERVERS).toString())

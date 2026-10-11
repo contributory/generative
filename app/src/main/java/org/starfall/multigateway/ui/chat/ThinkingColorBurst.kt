@@ -68,6 +68,15 @@ internal class ThinkingColorBurst(private val scope: CoroutineScope) {
             this@ThinkingColorBurst.keepAfterCompletion = keepAfterCompletion
         }
     }
+
+    /** Hide a settled screen effect immediately when its owning sheet is dismissed or leaves max. */
+    fun hide() {
+        job?.cancel()
+        job = null
+        keepAfterCompletion = false
+        starCount = 0
+        scope.launch { progress.snapTo(1f) }
+    }
 }
 
 @Composable
@@ -130,7 +139,8 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
             private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
             override fun draw(canvas: android.graphics.Canvas) {
                 val progress = burst.progress.value
-                if (progress >= 1f) return
+                val settled = progress >= 1f && burst.keepAfterCompletion
+                if (progress >= 1f && !settled) return
                 val width = root.width.toFloat()
                 val height = root.height.toFloat()
                 if (width <= 0f || height <= 0f) return
@@ -138,7 +148,7 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
                 root.getLocationOnScreen(location)
                 val x = burst.origin.x - location[0]
                 val y = burst.origin.y - location[1]
-                val bloom = burst.bloomProgress
+                val bloom = if (settled) 1f else burst.bloomProgress
                 val fade = bloom
                 val radius = (hypot(width, height) * (0.1f + bloom * 1.55f)).coerceAtLeast(1f)
                 val isRed = burst.color.red > burst.color.blue

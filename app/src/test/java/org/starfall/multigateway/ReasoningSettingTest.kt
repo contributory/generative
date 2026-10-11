@@ -31,6 +31,30 @@ class ReasoningSettingTest {
         assertTrue(Json.decodeFromString<ModelConfiguration>(saved).reasoningDisabled)
     }
 
+    @Test fun selectedModelOffIsPersistedWithoutDisablingTheModel() {
+        val config = ModelConfiguration(reasoningEffort = "high", thinkingLevel = "high")
+        val off = config.withSelectedReasoningEffort("none")
+
+        assertEquals("none", off.reasoningEffort)
+        assertFalse(off.reasoningDisabled)
+        assertTrue(off.reasoningEffortDisabled)
+        assertEquals("none", off.requestReasoningEffort)
+        assertEquals("high", off.thinkingLevel)
+        assertEquals(off, Json.decodeFromString<ModelConfiguration>(Json.encodeToString(off)))
+    }
+
+    @Test fun modelReasoningSwitchStillRemembersLegacyDisabledConfigs() {
+        val disabled = ModelConfiguration(reasoningEffort = "none", thinkingLevel = "medium")
+        assertTrue(disabled.reasoningDisabled)
+        val enabled = disabled.copy(
+            reasoningEnabled = true,
+            reasoningEffort = disabled.thinkingLevel
+        )
+        assertFalse(enabled.reasoningDisabled)
+        assertEquals("medium", enabled.reasoningEffort)
+        assertEquals("medium", enabled.requestReasoningEffort)
+    }
+
     @Test fun offReachesNativeProviderRequests() = runBlocking {
         val context: Context = ApplicationProvider.getApplicationContext()
         val sdk = OfficialLlmSdk(AttachmentResolver(context))
@@ -45,7 +69,9 @@ class ReasoningSettingTest {
                 server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody(event))
                 val provider = LlmProviderInfo("p", "P", type, Authorization(value = "key"),
                     baseUrl = server.url(if (type == ProviderType.GOOGLE) "/v1beta" else "/v1").toString(),
-                    config = ProviderConfiguration(modelConfigs = mapOf("custom" to ModelConfiguration(reasoningEffort = "none"))))
+                    config = ProviderConfiguration(modelConfigs = mapOf("custom" to ModelConfiguration(
+                        reasoningEffort = "none", reasoningEnabled = true
+                    ))))
                 when (type) {
                     ProviderType.ANTHROPIC -> sdk.streamAnthropic(provider, "custom", messages, "", null, null, 2048).toList()
                     ProviderType.GOOGLE -> sdk.streamGoogle(provider, "custom", messages, "", null, null, 2048).toList()

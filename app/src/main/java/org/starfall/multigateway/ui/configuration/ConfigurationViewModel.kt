@@ -42,8 +42,8 @@ class ConfigurationViewModel(
         }
     }
 
-    suspend fun importProviders(providers: List<LlmProviderInfo>) {
-        providers.forEach { llmRepo.saveProvider(it) }
+    suspend fun importProviders(providers: List<LlmProviderInfo>, groups: List<ProviderGroup>?) {
+        llmRepo.importProviders(providers, groups)
     }
 
     fun providerImportOpened(id: String) { _importedProviderId.compareAndSet(id, null) }
@@ -119,10 +119,7 @@ class ConfigurationViewModel(
         viewModelScope.launch(LocalWriteErrors.handler) {
             val provider = llmRepo.getProviderById(providerId) ?: return@launch
             val config = provider.config.modelConfigs[modelId] ?: return@launch
-            val applied = if (effort.isNullOrBlank()) config.copy(reasoningEffort = null)
-            else config.withConversationReasoning(effort, provider.type)
-            if (applied.reasoningDisabled) return@launch
-            val updated = applied.copy(thinkingLevel = applied.reasoningEffort)
+            val updated = config.withSelectedReasoningEffort(effort, provider.type)
             if (updated == config) return@launch
             llmRepo.saveProvider(provider.copy(config = provider.config.copy(
                 modelConfigs = provider.config.modelConfigs + (modelId to updated)

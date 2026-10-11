@@ -41,7 +41,7 @@ fun claudeThinkingCapabilities(modelId: String): ClaudeThinkingCapabilities {
 
 /** Shared by the SDK and native Messages API requests, including every tool round. */
 fun ModelConfiguration.claudeThinkingParameters(modelId: String, maxTokens: Int): JsonObject = buildJsonObject {
-    if (!supportsThinking) return@buildJsonObject
+    if (!supportsThinking || reasoningDisabled) return@buildJsonObject
     val capabilities = claudeThinkingCapabilities(modelId)
     val requested = reasoningEffort?.trim()?.lowercase() ?: return@buildJsonObject
     if (requested in listOf("none", "off")) {
@@ -82,4 +82,4 @@ fun ModelConfiguration.claudeThinkingParameters(modelId: String, maxTokens: Int)
 /** Keep sampling options out of adaptive and manual thinking requests. */
 fun ModelConfiguration.claudeAllowsSampling(modelId: String, maxTokens: Int): Boolean =
     !claudeThinkingCapabilities(modelId).adaptive &&
-        (!supportsThinking || reasoningEffort == null || reasoningDisabled || maxTokens <= 1024)
+        (!supportsThinking || reasoningEffort == null || reasoningDisabled || reasoningEffortDisabled || maxTokens <= 1024)

@@ -2,9 +2,11 @@ package org.starfall.multigateway
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.int
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.starfall.multigateway.data.model.Authorization
@@ -14,6 +16,7 @@ import org.starfall.multigateway.data.model.LlmProviderInfo
 import org.starfall.multigateway.data.model.McpInfo
 import org.starfall.multigateway.data.model.SpeechService
 import org.starfall.multigateway.data.model.ProviderType
+import org.starfall.multigateway.data.model.ProviderGroup
 import org.starfall.multigateway.data.service.JsonExportKind
 import org.starfall.multigateway.data.service.buildJsonExport
 import org.starfall.multigateway.data.service.parseConversationsExport
@@ -36,7 +39,7 @@ class JsonDataExporterTest {
 
         val outputs = JsonExportKind.entries.map { kind ->
             Json.parseToJsonElement(
-                buildJsonExport(kind, listOf(provider), listOf(mcp), listOf(speech), listOf(chat))
+                buildJsonExport(kind, listOf(provider), listOf(mcp), listOf(speech), listOf(chat), listOf())
             ).jsonObject
         }
 
@@ -53,14 +56,17 @@ class JsonDataExporterTest {
     }
 
     @Test fun exportedCollectionsCanBeParsedBackIntoTheirOriginalModels() {
-        val provider = LlmProviderInfo("p", "Provider", ProviderType.OPENAI, baseUrl = "https://example.com")
+        val provider = LlmProviderInfo("p", "Provider", ProviderType.OPENAI, baseUrl = "https://example.com", groupId = "g", sortOrder = 2)
+        val groups = listOf(ProviderGroup("g", "Work", 1, "folder.png"), ProviderGroup("empty", "Empty folder", 3))
         val mcp = McpInfo("m", "MCP", url = "https://example.com/mcp")
         val speech = SpeechService("s", "Speech")
         val chat = Conversation("c", "Chat", createdAt = 10, updatedAt = 20)
 
-        assertEquals(provider, parseProvidersExport(buildJsonExport(
-            JsonExportKind.PROVIDERS, listOf(provider), listOf(), listOf(), listOf()
-        )).single())
+        val imported = parseProvidersExport(buildJsonExport(
+            JsonExportKind.PROVIDERS, listOf(provider), listOf(), listOf(), listOf(), groups
+        ))
+        assertEquals(provider, imported.providers.single())
+        assertEquals(groups, imported.groups)
         assertEquals(mcp, parseMcpExport(buildJsonExport(
             JsonExportKind.MCP_SERVERS, listOf(), listOf(mcp), listOf(), listOf()
         )).single())
@@ -70,5 +76,25 @@ class JsonDataExporterTest {
         assertEquals(chat, parseConversationsExport(buildJsonExport(
             JsonExportKind.CONVERSATIONS, listOf(), listOf(), listOf(), listOf(chat)
         )).single())
+    }
+
+    @Test fun legacyProviderExportsCanBeReadWithoutGroupRecords() {
+        val imported = parseProvidersExport("""{
+            "formatVersion": 1,
+            "type": "providers",
+            "items": [{"id":"p","name":"Provider","type":"openai","baseUrl":"https://example.com","groupId":"g"}]
+        }""")
+
+        assertEquals("g", imported.providers.single().groupId)
+        assertNull(imported.groups)
+        val current = parseProvidersExport(buildJsonExport(
+            JsonExportKind.PROVIDERS, emptyList(), emptyList(), emptyList(), emptyList()
+        ))
+        assertEquals(emptyList<ProviderGroup>(), current.groups)
+    }
+
+    @Test(expected = kotlinx.serialization.SerializationException::class)
+    fun invalidGroupRecordsFailParsingRatherThanSilentlyDroppingGroups() {
+        parseProvidersExport("""{"formatVersion":1,"type":"providers","items":[],"groups":[{"id":"g"}]}""")
     }
 }

@@ -206,11 +206,17 @@ fun ModelEditScreen(
                     // The level (low/medium/high/...) is chosen in the chat's selected-model sheet and
                     // remembered in thinkingLevel; this switch only turns reasoning on or off.
                     ModelCapabilitySwitch(stringResource(R.string.reasoning_enabled), !config.reasoningDisabled) { enabled ->
-                        config = if (enabled) config.copy(reasoningEffort = config.thinkingLevel)
+                        config = if (enabled) config.copy(
+                            reasoningEnabled = true,
+                            reasoningEffort = config.thinkingLevel?.takeUnless { it in listOf("none", "off") }
+                                ?: config.reasoningEffort?.takeUnless { it in listOf("none", "off") }
+                        )
                         else config.copy(
+                            reasoningEnabled = false,
                             reasoningEffort = "none",
                             thinkingLevel = config.thinkingLevel
-                                ?: config.reasoningEffort?.trim()?.takeIf { it.isNotEmpty() }
+                                ?.takeUnless { it in listOf("none", "off") }
+                                ?: config.reasoningEffort?.trim()?.takeIf { it.isNotEmpty() && it !in listOf("none", "off") }
                         )
                     }
                     if (!config.reasoningDisabled) {
