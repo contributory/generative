@@ -7,6 +7,8 @@ import org.junit.Test
 import org.starfall.multigateway.ui.chat.reasoningEffortEnabled
 import org.starfall.multigateway.ui.chat.reasoningEffortIndex
 import org.starfall.multigateway.ui.chat.reasoningEffortOptions
+import org.starfall.multigateway.ui.chat.reasoningEffortTier
+import org.starfall.multigateway.ui.chat.reasoningEffortBurstDuration
 import org.starfall.multigateway.data.model.ProviderType
 
 class ReasoningEffortControlTest {
@@ -69,5 +71,23 @@ class ReasoningEffortControlTest {
         assertEquals(1, reasoningEffortIndex("none", options))
         val sonnet = reasoningEffortOptions(ProviderType.ANTHROPIC, "claude-sonnet-5-5")
         assertEquals("Between tools", sonnet.first().label)
+    }
+
+    @Test fun paletteKeepsDefaultDistinctEvenWhenModelDoesNotSupportOff() {
+        val options = reasoningEffortOptions(ProviderType.ANTHROPIC, "claude-opus-5-5")
+        assertEquals(1, reasoningEffortTier(reasoningEffortIndex(null, options), options))
+        assertEquals(6, reasoningEffortTier(options.lastIndex, options))
+        val gemini = reasoningEffortOptions(ProviderType.GOOGLE)
+        assertEquals(0, reasoningEffortTier(reasoningEffortIndex("none", gemini), gemini))
+        assertEquals(5, reasoningEffortTier(reasoningEffortIndex("medium", gemini), gemini))
+        assertEquals(6, reasoningEffortTier(reasoningEffortIndex("high", gemini), gemini))
+        assertTrue(reasoningEffortBurstDuration(6) > reasoningEffortBurstDuration(5))
+    }
+
+    @Test fun allFiveEffortColorsAreAvailableOnlyWhenModelSupportsFiveLevels() {
+        val options = reasoningEffortOptions(ProviderType.CLAUDE_CODE, "claude-opus-4-7")
+        assertEquals(listOf(0, 1, 2, 3, 4, 5, 6), options.indices.map { reasoningEffortTier(it, options) })
+        val generic = reasoningEffortOptions(ProviderType.OPENAI)
+        assertEquals(listOf(0, 1, 2, 3, 5, 6), generic.indices.map { reasoningEffortTier(it, generic) })
     }
 }

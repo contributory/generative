@@ -27,7 +27,6 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -177,6 +176,7 @@ internal fun ReasoningEffortControl(
     val accent = accentFor(band)
     val thumbColor by animateColorAsState(accent, tween(500), label = "thinking-thumb-color")
     val sliderColors = SliderDefaults.colors(thumbColor = thumbColor)
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Slider(
@@ -204,12 +204,13 @@ internal fun ReasoningEffortControl(
                 interactionSource = interactionSource,
                 thumb = {
                     Canvas(
-                        modifier = Modifier.size(28.dp).graphicsLayer {
+                         modifier = Modifier.size(28.dp).graphicsLayer {
                             val pulse = burst.progress.value
                             val scale = thumbScale + 0.12f * (1f - pulse)
-                            scaleX = scale
-                            scaleY = scale
-                        }.shadow(3.dp, CircleShape)
+                             scaleX = scale
+                             scaleY = scale
+                             alpha = if (band == 0) 0.25f else 1f
+                         }.shadow(if (band == 0) 0.dp else 3.dp, CircleShape)
                     ) {
                         drawCircle(
                             Brush.radialGradient(
@@ -243,9 +244,11 @@ internal fun ReasoningEffortControl(
                                      ), cornerRadius = radius)
                                  }
                              }
-                             paintTrack(if (burst.progress.value < 1f) previousColorBand else band)
-                             // A physical right-to-left wash, independent of the thumb's position.
-                             clipRect(left = size.width * (1f - burst.progress.value)) { paintTrack(band) }
+                             if (band != 0) {
+                                 paintTrack(if (burst.progress.value < 1f) previousColorBand else band)
+                                 // A physical right-to-left wash, independent of the thumb's position.
+                                 clipRect(left = size.width * (1f - burst.progress.value)) { paintTrack(band) }
+                             }
                             // Subtle detents remain visible beneath the settling color.
                             repeat(options.size) { index ->
                                 val x = size.width * index / options.lastIndex
@@ -257,9 +260,14 @@ internal fun ReasoningEffortControl(
                 modifier = Modifier.fillMaxWidth().testTag("reasoning-slider")
             )
             Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                options.forEach { option ->
+                options.forEachIndexed { index, option ->
                     Text(option.label, style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        color = when {
+                            index != sliderValue.roundToInt() -> labelColor.copy(alpha = 0.65f)
+                            band == 0 -> labelColor.copy(alpha = 0.4f)
+                            band == 1 -> labelColor
+                            else -> lerp(labelColor, accent, 0.45f)
+                        })
                 }
             }
         }
