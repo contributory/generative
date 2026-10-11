@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -165,57 +166,64 @@ internal fun ProcessingDropdown(
             Column(
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                visibleItems.forEachIndexed { index, item ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Box(
-                            modifier = Modifier.width(28.dp),
-                            contentAlignment = Alignment.TopCenter
-                        ) {
-                            Surface(
-                                modifier = Modifier.size(24.dp),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = (startNumber + index).toString(),
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
-                                }
-                            }
-                        }
-
-                        Box(modifier = Modifier.weight(1f)) {
-                            when (item) {
-                                is ProcessingDropdownItem.Thinking -> {
-                                    var thinkingExpanded by remember(item.reasoning) { mutableStateOf(false) }
-                                    CollapsibleThinkingText(
-                                        reasoning = item.reasoning,
-                                        expanded = thinkingExpanded,
-                                        onToggle = { thinkingExpanded = !thinkingExpanded },
-                                        modifier = Modifier.padding(end = 8.dp, bottom = 2.dp)
-                                    )
-                                }
-                                is ProcessingDropdownItem.Tool -> {
-                                    ToolActivityCards(listOf(item.activity))
-                                }
-                            }
-                        }
-                    }
-                    if (index < visibleItems.lastIndex) {
-                        Box(
-                            modifier = Modifier
-                                // The parent already starts at 8.dp and the numbered circle is
-                                // 28.dp wide; align the connector with its 14.dp center.
-                                .padding(start = 13.5.dp)
-                                .width(1.dp)
-                                .height(8.dp)
-                                .background(MaterialTheme.colorScheme.outlineVariant)
+                Box(Modifier.fillMaxWidth()) {
+                    // Draw one continuous connector behind every numbered action. Individual
+                    // short segments were laid out between rows, so row padding made them look
+                    // like small marks protruding from the start of each block.
+                    val connectorColor = MaterialTheme.colorScheme.outlineVariant
+                    Canvas(Modifier.matchParentSize()) {
+                        val x = 14.dp.toPx()
+                        val inset = 12.dp.toPx()
+                        drawLine(
+                            color = connectorColor,
+                            start = androidx.compose.ui.geometry.Offset(x, inset),
+                            end = androidx.compose.ui.geometry.Offset(x, size.height - inset),
+                            strokeWidth = 1.dp.toPx()
                         )
+                    }
+                    Column {
+                        visibleItems.forEachIndexed { index, item ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Box(
+                                    modifier = Modifier.width(28.dp),
+                                    contentAlignment = Alignment.TopCenter
+                                ) {
+                                    Surface(
+                                        modifier = Modifier.size(24.dp),
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = (startNumber + index).toString(),
+                                                style = MaterialTheme.typography.labelSmall
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Box(modifier = Modifier.weight(1f)) {
+                                    when (item) {
+                                        is ProcessingDropdownItem.Thinking -> {
+                                            var thinkingExpanded by remember(item.reasoning) { mutableStateOf(false) }
+                                            CollapsibleThinkingText(
+                                                reasoning = item.reasoning,
+                                                expanded = thinkingExpanded,
+                                                onToggle = { thinkingExpanded = !thinkingExpanded },
+                                                modifier = Modifier.padding(end = 8.dp, bottom = 2.dp)
+                                            )
+                                        }
+                                        is ProcessingDropdownItem.Tool -> {
+                                            ToolActivityCards(listOf(item.activity))
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
