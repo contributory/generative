@@ -49,11 +49,17 @@ class ChatViewModel(
             }
         }
     }
-    private fun toolEvents(provider: LlmProviderInfo, model: String, messages: List<StoredMessage>, prompt: String) =
+    private fun toolEvents(
+        provider: LlmProviderInfo,
+        model: String,
+        messages: List<StoredMessage>,
+        prompt: String,
+        conversationId: String
+    ) =
         toolChat.generate(provider, model, messages, prompt, mcpServers.value, providers.value,
             settings = { toolSettings.value },
             maxToolRounds = { appPreferences.value.effectiveToolRoundLimit },
-            takePendingMessage = ::takePendingMessage)
+            takePendingMessage = { takePendingMessage(conversationId) })
 
     private val deletingAllConversations = MutableStateFlow(false)
     private val deletingConversations = MutableStateFlow<Set<String>>(emptySet())
@@ -81,6 +87,66 @@ class ChatViewModel(
 
     private val _currentConversation = MutableStateFlow<Conversation?>(null)
     val currentConversation: StateFlow<Conversation?> = _currentConversation.asStateFlow()
+
+    private data class GenerationUiState(
+        val busy: Boolean = false,
+        val error: String? = null
+    )
+
+    /** Each conversation owns its stream so changing chats never changes another chat's controls. */
+    private val generations = mutableMapOf<String, ChatGeneration>()
+    private val generationObservers = mutableMapOf<String, Job>()
+    private val generationLock = Any()
+    private val _generationStates = MutableStateFlow<Map<String, GenerationUiState>>(emptyMap())
+
+    private fun generationFor(conversationId: String): ChatGeneration = synchronized(generationLock) {
+        generations.getOrPut(conversationId) {
+            ChatGeneration(viewModelScope, conversationRepo::saveConversation) { updated ->
+                if (_currentConversation.value?.id == updated.id) {
+                    _currentConversation.value = renamingConversations.value[updated.id]?.let {
+                        updated.copy(title = it)
+                    } ?: updated
+                }
+            }.also { generation ->
+                generationObservers[conversationId] = viewModelScope.launch {
+                    combine(generation.busy, generation.error) { busy, error ->
+                        GenerationUiState(busy, error)
+                    }.collect { state ->
+                        _generationStates.update { it + (conversationId to state) }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun existingGeneration(conversationId: String): ChatGeneration? =
+        synchronized(generationLock) { generations[conversationId] }
+
+    private fun generationForCurrent(): ChatGeneration? =
+        _currentConversation.value?.id?.let(::existingGeneration)
+
+    /** Busy state for the selected chat only; this controls its stop/send button. */
+    val isGenerating: StateFlow<Boolean> = combine(_currentConversation, _generationStates) { conversation, states ->
+        conversation?.id?.let { states[it]?.busy } == true
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** Global state used only by the background-generation service. */
+    val isAnyGenerating: StateFlow<Boolean> = _generationStates
+        .map { states -> states.values.any { it.busy } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val generatingConversationIds: StateFlow<Set<String>> = _generationStates
+        .map { states -> states.filterValues { it.busy }.keys }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    /** Compatibility value for the current chat screen; the drawer uses the complete id set. */
+    val generatingConversationId: StateFlow<String?> = combine(_currentConversation, isGenerating) { conversation, busy ->
+        conversation?.id?.takeIf { busy }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val chatError: StateFlow<String?> = combine(_currentConversation, _generationStates) { conversation, states ->
+        conversation?.id?.let { states[it]?.error }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val summaries = ConversationSummaryCoordinator(conversationRepo, toolChat, { _currentConversation.value }) { updated ->
         if (_currentConversation.value?.id == updated.id) {
@@ -155,13 +221,6 @@ class ChatViewModel(
         return provider to config
     }
 
-    private val generation = ChatGeneration(viewModelScope, conversationRepo::saveConversation) { updated ->
-        if (_currentConversation.value?.id == updated.id) {
-            _currentConversation.value = renamingConversations.value[updated.id]?.let { updated.copy(title = it) } ?: updated
-        }
-    }
-    val isGenerating = generation.busy
-
     private data class ContextEstimate(
         val conversation: Conversation?,
         val preferences: AppPreferences,
@@ -170,7 +229,24 @@ class ChatViewModel(
     )
 
     private val contextEstimate: StateFlow<ContextEstimate?> = combine(_currentConversation, appPreferences, providers) { conversation, prefs, available ->
-        val config = available.find { it.id == prefs.selectedProviderId }?.config?.modelConfigs?.get(prefs.selectedModelId)
+        val conversationProvider = conversation?.takeIf {
+            prefs.persistSelectedModel && it.messages.isNotEmpty()
+        }?.let { selected ->
+            available.firstOrNull { provider ->
+                provider.id == selected.providerId &&
+                    provider.config.modelIds?.contains(selected.modelId) != false &&
+                    (provider.config.modelConfigs[selected.modelId]?.modelType
+                        ?: ModelType.TEXT_GENERATION) == ModelType.TEXT_GENERATION
+            }
+        }
+        val provider = conversationProvider ?: available.find { it.id == prefs.selectedProviderId }
+        val modelId = conversationProvider?.let { conversation?.modelId } ?: prefs.selectedModelId
+        val config = provider?.config?.modelConfigs?.get(modelId)
+            ?: provider?.takeIf { modelId.isNotBlank() }?.let {
+                // Discovered/custom models may not have a persisted configuration yet. Keep the
+                // context indicator useful by using the conservative app default in that case.
+                ModelConfiguration(displayName = modelId)
+            }
         ContextEstimate(conversation, prefs, config,
             if (conversation == null || config == null || config.modelType != ModelType.TEXT_GENERATION) null
             else org.starfall.multigateway.ui.chat.contextWindowStatus(conversation, prefs.effectiveSystemPrompt, config, prefs.promptRoleMessages()))
@@ -215,8 +291,10 @@ class ChatViewModel(
         ))
     }
 
-    private val _queuedMessages = MutableStateFlow<List<StoredMessage>>(emptyList())
-    val queuedMessages: StateFlow<List<StoredMessage>> = _queuedMessages.asStateFlow()
+    private val _queuedMessages = MutableStateFlow<Map<String, List<StoredMessage>>>(emptyMap())
+    val queuedMessages: StateFlow<List<StoredMessage>> = combine(_currentConversation, _queuedMessages) { conversation, queued ->
+        conversation?.id?.let { queued[it].orEmpty() }.orEmpty()
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     private var replacingGeneration = false
 
     init {
@@ -256,52 +334,58 @@ class ChatViewModel(
     }
 
     private fun drainQueuedMessages() {
-        if (isGenerating.value || replacingGeneration || summaryJob?.isActive == true || pendingConversationWrites > 0) return
+        val conversationId = _currentConversation.value?.id ?: return
+        if (existingGeneration(conversationId)?.busy?.value == true ||
+            replacingGeneration || summaryJob?.isActive == true || pendingConversationWrites > 0) return
         if (maybeStartAutomaticSummary()) return
         var next: StoredMessage? = null
-        _queuedMessages.update { queued ->
+        _queuedMessages.update { queuedByConversation ->
+            val queued = queuedByConversation[conversationId].orEmpty()
             next = queued.firstOrNull()
-            queued.drop(1)
+            queuedByConversation + (conversationId to queued.drop(1))
         }
         val message = next ?: return
         sendMessage(message.content, message.files)
     }
 
-    /** Atomically hands one queued message to the active tool loop. */
-    private fun takePendingMessage(): StoredMessage? {
+    /** Atomically hands one queued message to this conversation's active tool loop. */
+    private fun takePendingMessage(conversationId: String): StoredMessage? {
         var next: StoredMessage? = null
-        _queuedMessages.update { queued ->
+        _queuedMessages.update { queuedByConversation ->
+            val queued = queuedByConversation[conversationId].orEmpty()
             next = queued.firstOrNull()
-            queued.drop(1)
+            queued.drop(1).let { queuedByConversation + (conversationId to it) }
         }
         return next
     }
 
     fun editQueuedMessage(id: String, newContent: String, files: List<String>): Boolean {
-        if ((newContent.isBlank() && files.isEmpty()) || _queuedMessages.value.none { it.id == id }) return false
-        _queuedMessages.update { queued -> queued.map { msg ->
-            if (msg.id == id) {
-                msg.copy(
-                    versions = listOf(
-                        MessageVersion(
-                            content = newContent,
-                            timestamp = System.currentTimeMillis().toString(),
-                            files = files
+        if ((newContent.isBlank() && files.isEmpty()) || _queuedMessages.value.values.none { queued ->
+                queued.any { it.id == id }
+            }) return false
+        _queuedMessages.update { queuedByConversation ->
+            queuedByConversation.mapValues { (_, queued) -> queued.map { msg ->
+                if (msg.id == id) {
+                    msg.copy(
+                        versions = listOf(
+                            MessageVersion(
+                                content = newContent,
+                                timestamp = System.currentTimeMillis().toString(),
+                                files = files
+                            )
                         )
                     )
-                )
-            } else {
-                msg
-            }
-        } }
+                } else msg
+            } }
+        }
         return true
     }
 
     fun deleteQueuedMessage(id: String) {
-        _queuedMessages.update { queued -> queued.filter { it.id != id } }
+        _queuedMessages.update { queuedByConversation ->
+            queuedByConversation.mapValues { (_, queued) -> queued.filterNot { it.id == id } }
+        }
     }
-    val chatError = generation.error
-    val generatingConversationId = generation.conversationId
     private var pendingConversationWrites = 0
     private val conversationWrites = Mutex()
 
@@ -332,9 +416,9 @@ class ChatViewModel(
 
     fun selectConversation(conversation: Conversation) {
         if (deletingAllConversations.value || conversation.id in deletingConversations.value) return
-        _queuedMessages.value = emptyList()
-        val selected = generation.snapshot?.takeIf { it.id == conversation.id } ?: conversation
+        val selected = existingGeneration(conversation.id)?.snapshot ?: conversation
         _currentConversation.value = selected
+        drainQueuedMessages()
         if (!appPreferences.value.persistSelectedModel) return
         conversationModelProvider(selected)?.let { provider ->
             viewModelScope.launch(LocalWriteErrors.handler) {
@@ -344,7 +428,6 @@ class ChatViewModel(
     }
 
     fun startNewChat() {
-        _queuedMessages.value = emptyList()
         val now = System.currentTimeMillis()
         _currentConversation.value = Conversation(
             id = UUID.randomUUID().toString(),
@@ -363,13 +446,15 @@ class ChatViewModel(
         deletingConversations.update { it + targets }
         if (previous != null) {
             _currentConversation.value = null
-            _queuedMessages.value = emptyList()
+            _queuedMessages.update { queued -> queued - targets }
         }
         writeConversation(serialize = true) {
             var deleted = false
             try {
                 if (summaryProgress.value?.conversationId in targets) summaryJob?.cancelAndJoin()
-                if (generation.snapshot?.id in targets) generation.stopAndJoin()
+                synchronized(generationLock) {
+                    generations.filterKeys { it in targets }.values.toList()
+                }.forEach { it.stopAndJoin() }
                 conversationRepo.deleteConversations(targets.toList())
                 deleted = true
                 prefsRepo.updateSidebar { it.removeChats(targets) }
@@ -390,7 +475,7 @@ class ChatViewModel(
         previous?.let { _currentConversation.value = it.copy(title = newTitle) }
         writeConversation(serialize = true) {
             try {
-                if (generation.snapshot?.id == id) generation.stopAndJoin()
+                existingGeneration(id)?.stopAndJoin()
                 conversationRepo.renameConversation(id, newTitle)
             } catch (error: Exception) {
                 if (_currentConversation.value?.id == id && _currentConversation.value?.title == newTitle) {
@@ -408,12 +493,12 @@ class ChatViewModel(
         val previous = _currentConversation.value
         deletingAllConversations.value = true
         _currentConversation.value = null
-        _queuedMessages.value = emptyList()
+        _queuedMessages.value = emptyMap()
         writeConversation(serialize = true) {
             var deleted = false
             try {
                 summaryJob?.cancelAndJoin()
-                generation.stopAndJoin()
+                synchronized(generationLock) { generations.values.toList() }.forEach { it.stopAndJoin() }
                 conversationRepo.deleteAll()
                 deleted = true
                 prefsRepo.updateSidebar { SidebarOrganization() }
@@ -467,14 +552,14 @@ class ChatViewModel(
                     modelId = modelId,
                     updatedAt = System.currentTimeMillis()
                 )
-                if (generation.snapshot?.id == current.id) {
-                    generation.updateConversation {
+                if (existingGeneration(current.id)?.snapshot?.id == current.id) {
+                    generationFor(current.id).updateConversation {
                         it.copy(providerId = providerId, modelId = modelId, updatedAt = updated.updatedAt)
                     }
                 } else {
                     _currentConversation.value = updated
                 }
-                if (updated.messages.isNotEmpty() && generation.snapshot?.id != current.id) {
+                if (updated.messages.isNotEmpty() && existingGeneration(current.id)?.snapshot?.id != current.id) {
                     writeConversation { conversationRepo.saveConversation(updated) }
                 }
             }
@@ -578,8 +663,8 @@ class ChatViewModel(
                 .trim().trim('"', '\'', '`').take(80)
             if (title.isBlank()) return@launch
 
-            if (generation.snapshot?.id == conversationId) {
-                generation.updateConversation { current ->
+            if (existingGeneration(conversationId)?.snapshot?.id == conversationId) {
+                generationFor(conversationId).updateConversation { current ->
                     if (current.id == conversationId && current.title == expectedFallbackTitle) {
                         current.copy(title = title, updatedAt = System.currentTimeMillis())
                     } else {
@@ -608,7 +693,9 @@ class ChatViewModel(
     fun sendMessage(userText: String, fileAttachments: List<String> = emptyList()): Boolean {
         if (userText.isBlank() && fileAttachments.isEmpty()) return false
 
+        val existing = _currentConversation.value
         if (isGenerating.value || summaryJob?.isActive == true || pendingConversationWrites > 0) {
+            val conversationId = existing?.id ?: return false
             val queued = StoredMessage(
                 id = UUID.randomUUID().toString(),
                 role = ChatRole.USER,
@@ -621,7 +708,9 @@ class ChatViewModel(
                 ),
                 isQueued = true
             )
-            _queuedMessages.update { it + queued }
+            _queuedMessages.update { queuedByConversation ->
+                queuedByConversation + (conversationId to (queuedByConversation[conversationId].orEmpty() + queued))
+            }
             return true
         }
 
@@ -629,11 +718,13 @@ class ChatViewModel(
             listOf(MessageVersion(content = userText, files = fileAttachments, timestamp = System.currentTimeMillis().toString())),
             isQueued = true)
         if (maybeStartAutomaticSummary(incoming)) {
-            _queuedMessages.update { it + incoming }
+            val conversationId = existing?.id ?: return false
+            _queuedMessages.update { queuedByConversation ->
+                queuedByConversation + (conversationId to (queuedByConversation[conversationId].orEmpty() + incoming))
+            }
             return true
         }
         val prefs = appPreferences.value
-        val existing = _currentConversation.value
         val (baseProvider, modelId) = selectedChatModel(existing, prefs)
         val canGenerate = baseProvider != null && modelId.isNotBlank()
         val now = System.currentTimeMillis()
@@ -683,10 +774,10 @@ class ChatViewModel(
             conv.messages.dropLast(1),
             prefs.effectiveSystemPrompt
         ).let { it.copy(messages = prefs.promptRoleMessages() + it.messages) }
-        val started = generation.startEvents(
+        val started = generationFor(conv.id).startEvents(
             conv,
             assistant.id,
-            toolEvents(provider, modelId, context.messages, context.systemPrompt)
+            toolEvents(provider, modelId, context.messages, context.systemPrompt, conv.id)
         )
         if (started && !conv.startedWithDirectMedia() && shouldGenerateConversationTitle(
                 userText,
@@ -728,13 +819,13 @@ class ChatViewModel(
             it.providerId == provider.id && it.modelId == request.modelId
         }
         _currentConversation.value = conversation
-        return generation.startEvents(conversation, assistant.id,
+        return generationFor(conversation.id).startEvents(conversation, assistant.id,
             toolChat.generateMedia(provider, request.modelId, request.kind, request.prompt,
                 config?.imageOptions ?: obj(), request.attachments,
                 videoOptions = config?.videoOptions ?: obj()))
     }
 
-    fun stopGeneration() { generation.stop() }
+    fun stopGeneration() { generationForCurrent()?.stop() }
 
     fun editMessage(messageId: String, newContent: String, files: List<String>): Boolean {
         if (summaryJob?.isActive == true || (newContent.isBlank() && files.isEmpty())) return false
@@ -749,7 +840,7 @@ class ChatViewModel(
             replacingGeneration = true
             viewModelScope.launch {
                 try {
-                    generation.stopAndJoin()
+                    generationFor(conversation.id).stopAndJoin()
                     editMessageNow(messageId, newContent, files)
                 } finally {
                     replacingGeneration = false
@@ -836,19 +927,19 @@ class ChatViewModel(
             preferences.effectiveSystemPrompt
         ).let { it.copy(messages = preferences.promptRoleMessages() + it.messages + contextMessages.last()) }
         val configuredProvider = providerWithReasoning(provider, modelId, conversation)
-        return generation.startEvents(
+        return generationFor(conversation.id).startEvents(
             conversation,
             responseId,
-            toolEvents(configuredProvider, modelId, context.messages, context.systemPrompt)
+            toolEvents(configuredProvider, modelId, context.messages, context.systemPrompt, conversation.id)
         )
     }
 
     fun deleteMessage(messageId: String) {
         if (summaryJob?.isActive == true) return
         val current = _currentConversation.value ?: return
-        if (isGenerating.value && generation.snapshot?.id == current.id) {
+        if (isGenerating.value && existingGeneration(current.id)?.snapshot?.id == current.id) {
             viewModelScope.launch {
-                generation.stopAndJoin()
+                generationFor(current.id).stopAndJoin()
                 deleteMessageNow(messageId)
             }
             return
@@ -873,9 +964,9 @@ class ChatViewModel(
     fun deleteMessageVersion(messageId: String) {
         if (summaryJob?.isActive == true) return
         val current = _currentConversation.value ?: return
-        if (isGenerating.value && generation.snapshot?.id == current.id) {
+        if (isGenerating.value && existingGeneration(current.id)?.snapshot?.id == current.id) {
             viewModelScope.launch {
-                generation.stopAndJoin()
+                generationFor(current.id).stopAndJoin()
                 deleteMessageVersionNow(messageId)
             }
             return

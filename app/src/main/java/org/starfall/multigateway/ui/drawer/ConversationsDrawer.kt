@@ -42,7 +42,7 @@ fun ConversationsDrawer(
     conversations: List<Conversation>,
     currentConversationId: String?,
     isOpen: Boolean,
-    generatingConversationId: String? = null,
+    generatingConversationIds: Set<String> = emptySet(),
     organization: SidebarOrganization,
     onUpdateOrganization: ((SidebarOrganization) -> SidebarOrganization) -> Unit,
     onDeleteConversations: (Set<String>) -> Unit,
@@ -156,7 +156,7 @@ fun ConversationsDrawer(
                         }
                         if (folder.expanded || search.isNotBlank()) {
                             items(chats, key = { "chat:${it.id}" }) { chat ->
-                                DrawerChatRow(chat, currentConversationId, generatingConversationId, selecting, chat.id in selected, chat.id in organization.pinnedChatIds,
+                                DrawerChatRow(chat, currentConversationId, generatingConversationIds, selecting, chat.id in selected, chat.id in organization.pinnedChatIds,
                                     modelIcon = chat.lastModelIcon(providersById),
                                     onClick = { if (selecting) toggle(chat.id) else { onSelectConversation(chat); onCloseDrawer() } },
                                     onLongClick = { selecting = true; toggle(chat.id) },
@@ -171,7 +171,7 @@ fun ConversationsDrawer(
                 val history = matches.filter { organization.chatFolders[it.id] !in folderIds }
                     .sortedWith(compareByDescending<Conversation> { it.id in organization.pinnedChatIds }.thenByDescending { it.updatedAt })
                 items(history, key = { "chat:${it.id}" }) { chat ->
-                    DrawerChatRow(chat, currentConversationId, generatingConversationId, selecting, chat.id in selected, chat.id in organization.pinnedChatIds,
+                    DrawerChatRow(chat, currentConversationId, generatingConversationIds, selecting, chat.id in selected, chat.id in organization.pinnedChatIds,
                         modelIcon = chat.lastModelIcon(providersById),
                         onClick = { if (selecting) toggle(chat.id) else { onSelectConversation(chat); onCloseDrawer() } },
                         onLongClick = { selecting = true; toggle(chat.id) },
@@ -229,7 +229,7 @@ private fun SidebarLabel(text: String) { Text(text, Modifier.padding(start = 8.d
 
 @Composable
 private fun DrawerChatRow(
-    chat: Conversation, currentId: String?, generatingId: String?, selecting: Boolean, checked: Boolean, pinned: Boolean,
+    chat: Conversation, currentId: String?, generatingIds: Set<String>, selecting: Boolean, checked: Boolean, pinned: Boolean,
     onClick: () -> Unit, onLongClick: () -> Unit, onPin: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit, onMove: () -> Unit,
     modifier: Modifier = Modifier,
     modelIcon: ConversationModelIcon? = null
@@ -252,7 +252,7 @@ private fun DrawerChatRow(
                 Text(formatTimestamp(chat.updatedAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             }
             if (pinned) Icon(Icons.Default.PushPin, "Pinned chat", Modifier.size(14.dp))
-            if (chat.id == generatingId) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 1.5.dp)
+            if (chat.id in generatingIds) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 1.5.dp)
             if (!selecting) Box {
                 IconButton(onClick = { menu = true }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.MoreVert, "Chat options", Modifier.size(18.dp)) }
                 DropdownMenu(menu, { menu = false }) {

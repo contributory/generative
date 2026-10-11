@@ -21,7 +21,8 @@ data class MessageVersion(
     @SerialName("provider_id") val providerId: String = "",
     @SerialName("model_id") val modelId: String = "",
     @SerialName("model_display_name") val modelDisplayName: String = "",
-    @SerialName("generation_interrupted") val generationInterrupted: Boolean = false
+    @SerialName("generation_interrupted") val generationInterrupted: Boolean = false,
+    @SerialName("generation_error") val generationError: String? = null
 )
 
 @Serializable

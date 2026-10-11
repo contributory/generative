@@ -44,6 +44,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import org.starfall.multigateway.data.local.preferences.WordWrapMode
 import org.starfall.multigateway.data.local.preferences.MessageFontFamily
+import org.starfall.multigateway.data.local.preferences.CodeBlockDisplayMode
 import org.starfall.multigateway.data.local.preferences.AppPreferences
 import org.starfall.multigateway.data.local.preferences.DEFAULT_TOOL_ROUND_LIMIT
 import org.starfall.multigateway.data.local.preferences.MAX_TOOL_ROUND_LIMIT
@@ -94,6 +95,9 @@ fun SettingsScreen(
     onWordWrapModeChange: (WordWrapMode) -> Unit = {},
     onWordWrapColumnChange: (Int) -> Unit = {},
     onCodePreviewEnabledChange: (Boolean) -> Unit = {},
+    onCodeBlockDisplayModeChange: (CodeBlockDisplayMode) -> Unit = {},
+    onCodeBlockMaxLinesChange: (Int) -> Unit = {},
+    onCodeBlockIncludeUndefinedChange: (Boolean) -> Unit = {},
     onMessageFontSizeChange: (Int) -> Unit = {},
     onMessageFontFamilyChange: (MessageFontFamily) -> Unit = {},
     onToolRoundLimitEnabledChange: (Boolean) -> Unit = {},
@@ -178,6 +182,9 @@ fun SettingsScreen(
                             onWordWrapModeChange = onWordWrapModeChange,
                             onWordWrapColumnChange = onWordWrapColumnChange,
                             onCodePreviewEnabledChange = onCodePreviewEnabledChange,
+                            onCodeBlockDisplayModeChange = onCodeBlockDisplayModeChange,
+                            onCodeBlockMaxLinesChange = onCodeBlockMaxLinesChange,
+                            onCodeBlockIncludeUndefinedChange = onCodeBlockIncludeUndefinedChange,
                             onMessageFontSizeChange = onMessageFontSizeChange,
                             onMessageFontFamilyChange = onMessageFontFamilyChange
                         )
@@ -239,6 +246,9 @@ fun AppearanceSettingsView(
     onWordWrapModeChange: (WordWrapMode) -> Unit = {},
     onWordWrapColumnChange: (Int) -> Unit = {},
     onCodePreviewEnabledChange: (Boolean) -> Unit = {},
+    onCodeBlockDisplayModeChange: (CodeBlockDisplayMode) -> Unit = {},
+    onCodeBlockMaxLinesChange: (Int) -> Unit = {},
+    onCodeBlockIncludeUndefinedChange: (Boolean) -> Unit = {},
     onMessageFontSizeChange: (Int) -> Unit = {},
     onMessageFontFamilyChange: (MessageFontFamily) -> Unit = {}
 ) {
@@ -290,10 +300,20 @@ fun AppearanceSettingsView(
             }
         }
         item {
-            SettingsSection("Message display") {
+            SettingsSection("Code blocks") {
                 CodeRenderingPreferences(appPreferences, onWordWrapModeChange, onWordWrapColumnChange,
-                    onCodePreviewEnabledChange, onMessageFontSizeChange, onMessageFontFamilyChange)
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    onCodePreviewEnabledChange, onMessageFontSizeChange, onMessageFontFamilyChange,
+                    onCodeBlockDisplayModeChange, onCodeBlockMaxLinesChange, onCodeBlockIncludeUndefinedChange,
+                    includeTextAppearance = false)
+            }
+        }
+        item {
+            SettingsSection("Text appearance") {
+                TextAppearancePreferences(appPreferences, onMessageFontSizeChange, onMessageFontFamilyChange)
+            }
+        }
+        item {
+            SettingsSection("System bars") {
                 PreferenceToggle("Immersive Mode", "Hide the status bar while chatting",
                     appPreferences.hideStatusBar, onHideStatusBarChange)
             }

@@ -209,7 +209,9 @@ internal fun ProcessingDropdown(
                     if (index < visibleItems.lastIndex) {
                         Box(
                             modifier = Modifier
-                                .padding(start = 11.5.dp)
+                                // The parent already starts at 8.dp and the numbered circle is
+                                // 28.dp wide; align the connector with its 14.dp center.
+                                .padding(start = 13.5.dp)
                                 .width(1.dp)
                                 .height(8.dp)
                                 .background(MaterialTheme.colorScheme.outlineVariant)

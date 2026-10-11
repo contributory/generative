@@ -331,24 +331,25 @@ fun ChatScreen(
     var inputAreaHeightPx by remember { mutableIntStateOf(0) }
     val appBarHeight = if (appBarHeightPx > 0) with(density) { appBarHeightPx.toDp() }
         else 72.dp
+    val navigationBarHeight = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
 
     PlatformTextSelection {
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .safeDrawingPadding()
     ) {
-        // Reserve the app bar's actual bounds rather than scrollable list padding.
+        // Let the list occupy the whole edge-to-edge surface. Its top padding keeps the newest
+        // content readable initially, while later scrolls visibly pass behind the translucent app bar.
         BoxWithConstraints(
-            Modifier.fillMaxSize().padding(top = appBarHeight).clipToBounds()
+            Modifier.fillMaxSize().clipToBounds()
         ) {
-        val bottomClearance = with(density) { inputAreaHeightPx.toDp() } + maxHeight * 0.015f
+        val bottomClearance = with(density) { inputAreaHeightPx.toDp() } + navigationBarHeight + maxHeight * 0.015f
         if (messages.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 8.dp, bottom = 88.dp),
+                    .padding(top = appBarHeight + 8.dp, bottom = 88.dp + navigationBarHeight),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
@@ -387,7 +388,7 @@ fun ChatScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .nestedScroll(scrollConnection),
-                contentPadding = PaddingValues(top = 8.dp, bottom = bottomClearance)
+                contentPadding = PaddingValues(top = appBarHeight + 8.dp, bottom = bottomClearance)
             ) {
                 if (isGenerating && !streamingHere) {
                     item(key = "generation-warning") {
@@ -509,6 +510,7 @@ fun ChatScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .navigationBarsPadding()
         ) {
             inlineChatError?.let { error ->
                 Surface(
@@ -617,6 +619,7 @@ fun ChatScreen(
         ChatAppBar(
             modelName = selectedModelDisplayName,
             providerName = selectedProvider?.name.orEmpty(),
+            contextWindowStatus = contextWindowStatus,
             onOpenDrawer = onOpenDrawer,
             onOpenSettings = onOpenSettings,
             modifier = Modifier.align(Alignment.TopCenter)

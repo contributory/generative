@@ -25,8 +25,7 @@ data class StoredIcon(val image: String, val filename: String, val patterns: Lis
 /** Try each model family first, then progressively restore hyphen suffixes, before the vendor. */
 internal fun iconMatchNames(name: String, model: Boolean): List<String> {
     val clean = name.trim()
-    return (if (model && '/' in clean) listOf(clean.substringAfterLast('/'), clean.substringBefore('/'))
-        else listOf(clean)).flatMap { part ->
+    return (if (model) listOf(clean.substringAfterLast('/')) else listOf(clean)).flatMap { part ->
             if (!model) {
                 // Exact names win. Then try complete word groups, longest first,
                 // so descriptive prefixes/suffixes work for every brand, including
@@ -43,7 +42,16 @@ internal fun iconMatchNames(name: String, model: Boolean): List<String> {
                 }
             } else {
                 val segments = part.trim().split('-')
-                segments.indices.map { segments.take(it + 1).joinToString("-") }
+                buildList {
+                    val first = segments.firstOrNull().orEmpty()
+                    val leadingLetters = first.takeWhile(Char::isLetter)
+                    if (leadingLetters.isNotEmpty() && leadingLetters.length < first.length) {
+                        add(leadingLetters)
+                    }
+                    segments.indices.forEach { index ->
+                        add(segments.take(index + 1).joinToString("-"))
+                    }
+                }
             }
         }
         .filter { it.isNotEmpty() }.distinct()
@@ -149,7 +157,7 @@ class IconStore(private val context: Context) {
                     }
                 }
                 try {
-                    val filename = iconSource.find(candidate) ?: continue
+                    val filename = iconSource.find(candidate, model = model) ?: continue
                     val id = "lobe-$filename"
                     attemptedId = id
                     if ((failedDownloads[id] ?: 0L) > System.currentTimeMillis()) continue

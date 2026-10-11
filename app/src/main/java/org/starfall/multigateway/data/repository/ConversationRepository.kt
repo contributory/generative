@@ -74,7 +74,10 @@ class ConversationRepository(private val db: AppDatabase) {
             createdAt = entity.createdAt,
             updatedAt = entity.updatedAt,
             messages = messages.map { message -> message.copy(versions = message.versions.map { version ->
-                version.copy(toolActivity = version.toolActivity.map { activity ->
+                val recoveredVersion = if (message.role == ChatRole.MODEL) {
+                    recoverLegacyGenerationError(version)
+                } else version
+                recoveredVersion.copy(toolActivity = recoveredVersion.toolActivity.map { activity ->
                     if(activity.status == "running") activity.copy(status = "interrupted", summary = "The previous run did not finish.") else activity
                 })
             }) },
@@ -86,6 +89,22 @@ class ConversationRepository(private val db: AppDatabase) {
                 runCatching { json.decodeFromString<ConversationSummary>(raw) }.getOrNull()
             },
             reasoningEffort = entity.reasoningEffort
+        )
+    }
+
+    /** Older conversations stored generation failures as a trailing line in assistant content. */
+    private fun recoverLegacyGenerationError(version: MessageVersion): MessageVersion {
+        if (version.generationError != null) return version
+        val marker = "[Error: "
+        val markerIndex = when {
+            version.content.startsWith(marker) -> 0
+            else -> version.content.lastIndexOf("\n$marker").takeIf { it >= 0 }?.plus(1) ?: -1
+        }
+        if (markerIndex < 0 || !version.content.endsWith(']')) return version
+
+        return version.copy(
+            content = version.content.substring(0, markerIndex).removeSuffix("\n"),
+            generationError = version.content.substring(markerIndex + marker.length, version.content.length - 1)
         )
     }
 

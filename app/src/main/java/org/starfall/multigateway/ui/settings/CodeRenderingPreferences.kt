@@ -12,6 +12,7 @@ import org.starfall.multigateway.R
 import org.starfall.multigateway.data.local.preferences.AppPreferences
 import org.starfall.multigateway.data.local.preferences.WordWrapMode
 import org.starfall.multigateway.data.local.preferences.MessageFontFamily
+import org.starfall.multigateway.data.local.preferences.CodeBlockDisplayMode
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 import kotlin.math.roundToInt
 
@@ -23,7 +24,11 @@ internal fun CodeRenderingPreferences(
     onColumnChange: (Int) -> Unit,
     onPreviewChange: (Boolean) -> Unit,
     onFontSizeChange: (Int) -> Unit,
-    onFontFamilyChange: (MessageFontFamily) -> Unit
+    onFontFamilyChange: (MessageFontFamily) -> Unit,
+    onCodeBlockDisplayModeChange: (CodeBlockDisplayMode) -> Unit = {},
+    onCodeBlockMaxLinesChange: (Int) -> Unit = {},
+    onCodeBlockIncludeUndefinedChange: (Boolean) -> Unit = {},
+    includeTextAppearance: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
     val labels = mapOf(
@@ -65,6 +70,72 @@ internal fun CodeRenderingPreferences(
     }
     PreferenceToggle(stringResource(R.string.code_preview), stringResource(R.string.code_preview_hint),
         preferences.codePreviewEnabled, onPreviewChange)
+    var codeBlockExpanded by remember { mutableStateOf(false) }
+    val codeBlockLabels = mapOf(
+        CodeBlockDisplayMode.SHOW_ALL to stringResource(R.string.code_block_show_all),
+        CodeBlockDisplayMode.EXTENDABLE to stringResource(R.string.code_block_extendable),
+        CodeBlockDisplayMode.SHOW_IN_DRAWER to stringResource(R.string.code_block_show_in_drawer)
+    )
+    ExposedDropdownMenuBox(codeBlockExpanded, { codeBlockExpanded = !codeBlockExpanded }) {
+        SelectableOutlinedTextField(
+            value = codeBlockLabels.getValue(preferences.codeBlockDisplayMode),
+            onValueChange = {}, readOnly = true,
+            label = { Text(stringResource(R.string.code_block_display)) },
+            supportingText = { Text(stringResource(R.string.code_block_display_hint)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(codeBlockExpanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor().testTag("code-block-display-mode")
+        )
+        ExposedDropdownMenu(codeBlockExpanded, { codeBlockExpanded = false }) {
+            codeBlockLabels.forEach { (mode, label) ->
+                DropdownMenuItem(text = { Text(label) }, onClick = {
+                    onCodeBlockDisplayModeChange(mode)
+                    codeBlockExpanded = false
+                })
+            }
+        }
+    }
+    if (preferences.codeBlockDisplayMode != CodeBlockDisplayMode.SHOW_ALL) {
+        var maxLines by remember(preferences.codeBlockMaxLines) {
+            mutableStateOf(preferences.codeBlockMaxLines.toString())
+        }
+        val parsedMaxLines = maxLines.toIntOrNull()?.takeIf { it > 0 }
+        SelectableOutlinedTextField(
+            value = maxLines,
+            onValueChange = { value ->
+                if (value.all(Char::isDigit)) {
+                    maxLines = value
+                    value.toIntOrNull()?.takeIf { it in 1..10_000 }?.let(onCodeBlockMaxLinesChange)
+                }
+            },
+            label = { Text(stringResource(R.string.code_block_max_lines)) },
+            supportingText = {
+                Text(stringResource(if (parsedMaxLines == null) R.string.code_block_max_lines_invalid
+                    else R.string.code_block_max_lines_hint))
+            },
+            isError = parsedMaxLines == null,
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth().testTag("code-block-max-lines")
+        )
+        PreferenceToggle(
+            stringResource(R.string.code_block_include_undefined),
+            stringResource(R.string.code_block_include_undefined_hint),
+            preferences.codeBlockIncludeUndefined,
+            onCodeBlockIncludeUndefinedChange
+        )
+    }
+    if (includeTextAppearance) {
+        TextAppearancePreferences(preferences, onFontSizeChange, onFontFamilyChange)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun TextAppearancePreferences(
+    preferences: AppPreferences,
+    onFontSizeChange: (Int) -> Unit,
+    onFontFamilyChange: (MessageFontFamily) -> Unit
+) {
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     Text(stringResource(R.string.message_text_size), style = MaterialTheme.typography.titleMedium)
     Text(stringResource(R.string.message_text_size_hint, preferences.messageFontSize),

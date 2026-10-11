@@ -18,6 +18,7 @@ import androidx.activity.viewModels
 import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -56,7 +57,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         lifecycleScope.launch {
-            viewModel.isGenerating.collect { busy ->
+            viewModel.isAnyGenerating.collect { busy ->
                 updateGenerationService(busy)
             }
         }
@@ -65,7 +66,7 @@ class MainActivity : ComponentActivity() {
         // first. At the root, retain the generation's ViewModel instead of finishing
         // the activity (Android versions before 12 finish root activities on Back).
         onBackPressedDispatcher.addCallback(this) {
-            if (viewModel.isGenerating.value) {
+            if (viewModel.isAnyGenerating.value) {
                 moveTaskToBack(true)
             } else {
                 isEnabled = false
@@ -92,6 +93,10 @@ class MainActivity : ComponentActivity() {
                     if (android.os.Build.VERSION.SDK_INT >= 29) {
                         window.isNavigationBarContrastEnforced = false
                         window.isStatusBarContrastEnforced = false
+                    }
+                    WindowCompat.getInsetsController(window, window.decorView).apply {
+                        isAppearanceLightStatusBars = !darkBars
+                        isAppearanceLightNavigationBars = !darkBars
                     }
                 }
                 Surface(
@@ -122,7 +127,7 @@ class MainActivity : ComponentActivity() {
         // Flush the current generation state before leaving the visible activity.
         // This includes Home, switching apps, and turning the screen off, even if
         // the StateFlow collector has not yet processed a newly started response.
-        updateGenerationService(viewModel.isGenerating.value)
+        updateGenerationService(viewModel.isAnyGenerating.value)
         super.onPause()
     }
 

@@ -10,9 +10,11 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.WrapText
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.ui.platform.LocalDensity
@@ -38,6 +40,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import org.starfall.multigateway.data.local.preferences.CodeBlockDisplayMode
 
 internal val LocalCodeRenderingPreferences = staticCompositionLocalOf { AppPreferences() }
 
@@ -53,7 +58,105 @@ internal fun codeWrapWidth(mode: WordWrapMode, viewport: Float, column: Float): 
 internal fun RenderCodeBlock(language: String, code: String, isStreaming: Boolean) {
     val context = LocalContext.current
     val preferences = LocalCodeRenderingPreferences.current
-    var sessionWrap by remember(language) { mutableStateOf(false) }
+    val lineCount = code.lineSequence().count()
+    val managesUndefined = preferences.codeBlockIncludeUndefined || language.isNotBlank()
+    val isLong = !isStreaming && managesUndefined && lineCount > preferences.codeBlockMaxLines
+    val displayMode = preferences.codeBlockDisplayMode
+    var expanded by remember(language, code) { mutableStateOf(false) }
+    var drawerVisible by remember(language, code) { mutableStateOf(false) }
+
+    if (displayMode == CodeBlockDisplayMode.SHOW_IN_DRAWER && isLong) {
+        Surface(
+            shape = RoundedCornerShape(10.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            tonalElevation = 2.dp,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+        ) {
+            TextButton(
+                onClick = { drawerVisible = true },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
+            ) {
+                Text("${language.ifBlank { "code" }} | $lineCount lines", fontFamily = FontFamily.Monospace)
+            }
+        }
+        if (drawerVisible) {
+            CodeBlockDrawer(
+                language = language,
+                code = code,
+                isStreaming = isStreaming,
+                onDismiss = { drawerVisible = false }
+            )
+        }
+        return
+    }
+
+    val visibleCode = if (displayMode == CodeBlockDisplayMode.EXTENDABLE && isLong && !expanded) {
+        code.lineSequence().take(preferences.codeBlockMaxLines).joinToString("\n")
+    } else code
+    CodeBlockSurface(
+        language = language,
+        code = visibleCode,
+        originalCode = code,
+        isStreaming = isStreaming,
+        onExpansionChange = if (displayMode == CodeBlockDisplayMode.EXTENDABLE && isLong) {
+            { expanded = !expanded }
+        } else null,
+        expanded = expanded
+    )
+}
+
+@Composable
+private fun CodeBlockDrawer(
+    language: String,
+    code: String,
+    isStreaming: Boolean,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(Modifier.fillMaxSize()) {
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(language.ifBlank { "code" }, Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace))
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Outlined.Close, stringResource(R.string.code_block_close))
+                    }
+                }
+                Box(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
+                    CodeBlockSurface(
+                        language = language,
+                        code = code,
+                        originalCode = code,
+                        isStreaming = isStreaming,
+                        onExpansionChange = null,
+                        expanded = true
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CodeBlockSurface(
+    language: String,
+    code: String,
+    originalCode: String,
+    isStreaming: Boolean,
+    onExpansionChange: (() -> Unit)?,
+    expanded: Boolean
+) {
+    val context = LocalContext.current
+    val preferences = LocalCodeRenderingPreferences.current
+    var sessionWrap by remember(language, originalCode) { mutableStateOf(false) }
     val mode = if (preferences.wordWrapMode == WordWrapMode.OFF && sessionWrap) WordWrapMode.VIEWPORT else preferences.wordWrapMode
     val wrapCode = mode != WordWrapMode.OFF
     val codeSize = (preferences.messageFontSize * 0.78f).sp
@@ -66,7 +169,7 @@ internal fun RenderCodeBlock(language: String, code: String, isStreaming: Boolea
     val highlighted by produceState(AnnotatedString(code), code, language, dark) {
         value = withContext(Dispatchers.Default) { highlightedCode(language, code, dark) }
     }
-    var copied by remember { mutableStateOf(false) }
+    var copied by remember(language, originalCode) { mutableStateOf(false) }
     val codeScrollState = rememberScrollState()
     val codePresentation = rememberStreamingTextPresentation(code)
     LaunchedEffect(copied) { if (copied) { delay(2000); copied = false } }
@@ -96,14 +199,14 @@ internal fun RenderCodeBlock(language: String, code: String, isStreaming: Boolea
                         }
                     }
                     if (preferences.codePreviewEnabled && canPreviewCode(language)) {
-                        IconButton(onClick = { CodePreviewActivity.open(context, language, code) }, modifier = Modifier.size(28.dp)) {
+                        IconButton(onClick = { CodePreviewActivity.open(context, language, originalCode) }, modifier = Modifier.size(28.dp)) {
                             Icon(Icons.Outlined.Visibility, stringResource(R.string.preview_code),
                                 tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
                         }
                     }
                     IconButton(onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("Code", code))
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Code", originalCode))
                         copied = true
                         Toast.makeText(context, "Code copied", Toast.LENGTH_SHORT).show()
                     }, modifier = Modifier.size(28.dp)) {
@@ -120,6 +223,11 @@ internal fun RenderCodeBlock(language: String, code: String, isStreaming: Boolea
                     Text(highlighted, style = textStyle,
                         softWrap = wrapCode, modifier = bodyModifier.padding(12.dp).then(codePresentation.modifier),
                         onTextLayout = codePresentation.onTextLayout, color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+            onExpansionChange?.let { toggle ->
+                TextButton(onClick = toggle, modifier = Modifier.align(Alignment.End).padding(end = 8.dp, bottom = 4.dp)) {
+                    Text(stringResource(if (expanded) R.string.code_block_collapse else R.string.code_block_extend))
                 }
             }
         }

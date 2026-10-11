@@ -80,7 +80,8 @@ fun MainScreen(
     val chatAttachments = remember { ChatAttachmentSelection() }
     LaunchedEffect(currentConv?.id) { chatAttachments.clear() }
     val isGenerating: Boolean by viewModel.isGenerating.collectAsStateWithLifecycle()
-    val generatingConversationId by viewModel.generatingConversationId.collectAsStateWithLifecycle()
+    val generatingConversationIds by viewModel.generatingConversationIds.collectAsStateWithLifecycle()
+    val generatingConversationId = currentConv?.id.takeIf { isGenerating }
     val chatError by viewModel.chatError.collectAsStateWithLifecycle()
     val speakingMessageId by viewModel.speakingMessageId.collectAsStateWithLifecycle()
     val activeTestSpeechServiceId by viewModel.activeTestSpeechServiceId.collectAsStateWithLifecycle()
@@ -217,7 +218,7 @@ fun MainScreen(
                     providers = providers,
                     currentConversationId = currentConv?.id,
                     isOpen = drawerState.isOpen,
-                    generatingConversationId = generatingConversationId,
+                    generatingConversationIds = generatingConversationIds,
                     organization = appPrefs.sidebar,
                     onUpdateOrganization = settingsViewModel::updateSidebar,
                     onDeleteConversations = viewModel::deleteConversations,
@@ -502,6 +503,9 @@ fun MainScreen(
                             onWordWrapModeChange = settingsViewModel::setWordWrapMode,
                             onWordWrapColumnChange = settingsViewModel::setWordWrapColumn,
                              onCodePreviewEnabledChange = settingsViewModel::setCodePreviewEnabled,
+                             onCodeBlockDisplayModeChange = settingsViewModel::setCodeBlockDisplayMode,
+                             onCodeBlockMaxLinesChange = settingsViewModel::setCodeBlockMaxLines,
+                             onCodeBlockIncludeUndefinedChange = settingsViewModel::setCodeBlockIncludeUndefined,
                              onMessageFontSizeChange = settingsViewModel::setMessageFontSize,
                              onMessageFontFamilyChange = settingsViewModel::setMessageFontFamily,
                             onTtsReadCodeBlocksChange = settingsViewModel::setTtsReadCodeBlocks,

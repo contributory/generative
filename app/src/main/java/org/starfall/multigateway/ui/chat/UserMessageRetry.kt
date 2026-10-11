@@ -23,7 +23,9 @@ internal fun unansweredUserMessageIds(messages: List<StoredMessage>): Set<String
         .apply {
             if (messages.lastOrNull()?.let {
                     it.role == ChatRole.MODEL &&
-                        (it.activeVersion.generationInterrupted || isErrorOnlyResponse(it.content))
+                        (it.activeVersion.generationInterrupted ||
+                            it.activeVersion.generationError != null ||
+                            isErrorOnlyResponse(it.content))
                 } != true) return@apply
             messages.dropLast(1).lastOrNull { it.role == ChatRole.USER && !it.isQueued }
                 ?.let { add(it.id) }
@@ -40,10 +42,15 @@ internal fun prepareUserMessageRetry(
     val index = conversation.messages.indexOfFirst { it.id == messageId }
     val stoppedResponse = conversation.messages.getOrNull(index + 1)?.takeIf {
         it.role == ChatRole.MODEL &&
-            (it.activeVersion.generationInterrupted || isErrorOnlyResponse(it.content))
+            (it.activeVersion.generationInterrupted ||
+                it.activeVersion.generationError != null ||
+                isErrorOnlyResponse(it.content))
     }
     if (stoppedResponse != null) {
-        val retriedResponse = if (isErrorOnlyResponse(stoppedResponse.content)) {
+        val activeVersion = stoppedResponse.activeVersion
+        val errorOnlyResponse = (activeVersion.content.isBlank() && activeVersion.generationError != null) ||
+            isErrorOnlyResponse(stoppedResponse.content)
+        val retriedResponse = if (errorOnlyResponse) {
             val versions = stoppedResponse.versions.toMutableList()
             if (versions.isEmpty()) {
                 stoppedResponse.copy(versions = listOf(version), activeVersionIndex = 0)

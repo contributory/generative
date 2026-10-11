@@ -8,6 +8,7 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -15,6 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -22,10 +25,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import org.starfall.multigateway.data.model.MessageVersion
 import org.starfall.multigateway.data.model.StoredMessage
 import org.starfall.multigateway.data.model.ToolActivity
@@ -71,6 +76,17 @@ fun AssistantMessageCard(
                 animateStreamingContent = isStreaming,
                 selectedImageAttachments = selectedImageAttachments,
                 onToggleChatImage = onToggleChatImage
+            )
+        }
+        activeVersion.generationError?.let { error ->
+            GenerationErrorBlock(
+                error = error,
+                onCopy = {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Error", error))
+                    Toast.makeText(context, "Error copied to clipboard", Toast.LENGTH_SHORT).show()
+                },
+                modifier = Modifier.padding(top = 8.dp)
             )
         }
         if (activeVersion.files.isNotEmpty()) {
@@ -214,6 +230,67 @@ fun AssistantMessageCard(
                         tint = if (isReading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun GenerationErrorBlock(error: String, onCopy: () -> Unit, modifier: Modifier = Modifier) {
+    var expanded by remember(error) { mutableStateOf(false) }
+    val errorFontSize = (LocalCodeRenderingPreferences.current.messageFontSize * 0.78f).sp
+
+    Surface(
+        modifier = modifier.fillMaxWidth().clickable { expanded = !expanded },
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.errorContainer
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize()
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Outlined.ErrorOutline,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Generation error",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onCopy, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        Icons.Outlined.ContentCopy,
+                        contentDescription = "Copy error",
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Icon(
+                    imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = if (expanded) "Collapse error" else "Expand error",
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Text(
+                text = error,
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = errorFontSize,
+                    lineHeight = errorFontSize * 1.44f
+                ),
+                maxLines = if (expanded) Int.MAX_VALUE else 3,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

@@ -147,10 +147,10 @@ class EntityIconTest {
             IconRule(pattern = "claude", image = "icon-b.png"),
             IconRule(pattern = "gemini|google", image = "icon-c.png")))
         assertEquals("icon-b.png", store.find("vendor/claude-sonnet-4", model = true))
-        assertEquals("icon-a.png", store.find("vendor/unknown-v2", model = true))
+        assertNull(store.find("vendor/unknown-v2", model = true))
         assertEquals("icon-c.png", store.find("GEMINI-3-flash", model = true))
         assertEquals("icon-c.png", store.find(" Google "))
-        assertEquals(listOf("claude", "claude-sonnet", "vendor"), iconMatchNames("vendor/claude-sonnet", true))
+        assertEquals(listOf("claude", "claude-sonnet"), iconMatchNames("vendor/claude-sonnet", true))
         assertNull(store.find("somethingelse", model = true))
         store.saveRules(store.rules() + IconRule(pattern = "ollama", image = "ollama.png"))
         assertEquals("ollama.png", store.find("Ollama"))
@@ -167,7 +167,7 @@ class EntityIconTest {
         assertNull(store.find("claude-haiku", true))
     }
 
-    @Test fun modelMatchingRestoresHyphenSuffixesBeforeTryingVendor() {
+    @Test fun modelMatchingRestoresHyphenSuffixesWithoutUsingVendorPrefix() {
         val store = IconStore(context)
         store.saveRules(listOf(
             IconRule(pattern = "vendor", image = "vendor.png"),
@@ -176,7 +176,7 @@ class EntityIconTest {
         assertEquals("family.png", store.find("vendor/CLAUDE-sonnet-4", true))
         store.saveRules(store.rules().filterNot { it.pattern == "claude-sonnet" })
         assertEquals("specific.png", store.find("vendor/claude-sonnet-4", true))
-        assertEquals("vendor.png", store.find("vendor/unknown-v2", true))
+        assertNull(store.find("vendor/unknown-v2", true))
         assertNull(store.find("claude-sonnet", false))
         assertEquals("vendor/claude-sonnet", iconMatchNames("vendor/claude-sonnet", false).first())
     }
@@ -184,6 +184,9 @@ class EntityIconTest {
     @Test fun catalogMatchingUsesRealFilesAndPrefersColorWithoutPartialBrandMatches() {
         val files = setOf("openai.png", "claude.png", "claude-color.png", "claudecode.png")
         assertEquals("claude-color.png", LobeIconSource.match("Claude", files))
+        assertEquals("qwen-color.png", LobeIconSource.match("Qwen", setOf("qwen-color.png")))
+        assertEquals("qwen-dark.png", LobeIconSource.match("Qwen", setOf("qwen-dark.png")))
+        assertEquals("qwen-light.png", LobeIconSource.match("Qwen", setOf("qwen-light.png")))
         assertEquals("openai.png", LobeIconSource.match("Open AI", files))
         assertEquals("openai.png", LobeIconSource.match("My OpenAI Provider", files))
         assertEquals("claudecode.png", LobeIconSource.match("Claude Code Cloud", files))
@@ -194,6 +197,16 @@ class EntityIconTest {
         assertNull(LobeIconSource.match("Ollamaish Cloud", ollamaFiles))
         assertEquals("ollama.png", iconMatchNames("Ollama Cloud", false).firstNotNullOfOrNull { LobeIconSource.match(it, ollamaFiles) })
         assertNull(LobeIconSource.match("claud", files))
+    }
+
+    @Test fun modelCatalogMatchingDoesNotSplitHyphenatedFamiliesIntoSuffixBrands() {
+        val files = setOf("spark-color.png", "muse-spark-color.png")
+
+        assertEquals(listOf("muse", "muse-spark", "muse-spark-1.3"),
+            iconMatchNames("abc/muse-spark-1.3", model = true))
+        assertEquals(listOf("abc", "abc123"), iconMatchNames("abc123", model = true))
+        assertEquals("muse-spark-color.png", LobeIconSource.match("muse-spark", files, model = true))
+        assertNull(LobeIconSource.match("muse-spark", setOf("spark-color.png"), model = true))
     }
 
     @Test fun allProviderBrandsMatchCompleteWordsWithDescriptionsAndPreferSpecificNames() {
@@ -231,6 +244,8 @@ class EntityIconTest {
         val files = setOf("deepseek.png", "deepseek-color.png", "perplexity-color.png")
         val deepSeekBrand = requireNotNull(LobeModelIconResolver.resolve("DeepSeek-v4-Flash"))
         assertEquals("deepseek-color.png", LobeIconSource.match(deepSeekBrand, files))
+        assertEquals("meta", LobeModelIconResolver.resolve("abc/muse-spark-1.3"))
+        assertNull(LobeModelIconResolver.resolve("spark"))
     }
 
     @GraphicsMode(GraphicsMode.Mode.NATIVE)

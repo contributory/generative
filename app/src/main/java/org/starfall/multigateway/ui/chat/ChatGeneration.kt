@@ -53,12 +53,7 @@ internal class ChatGeneration(
                 target.append(text)
             }
 
-            fun appendError(text: String) {
-                if (output.length >= MAX_GENERATION_TEXT_CHARS) return
-                output.append(text.take(MAX_GENERATION_TEXT_CHARS - output.length))
-            }
-
-            fun update() {
+            fun update(generationErrorMessage: String? = null) {
                 snapshot = updateResponse(
                     snapshot!!,
                     activeMessageId,
@@ -66,6 +61,17 @@ internal class ChatGeneration(
                     reasoningOutput.toString().takeIf { it.isNotBlank() },
                     reasoningSignatureOutput.toString().takeIf { it.isNotBlank() }
                 )
+                if (generationErrorMessage != null) {
+                    snapshot = snapshot!!.copy(messages = snapshot!!.messages.map { message ->
+                        if (message.id != activeMessageId) message else message.copy(
+                            versions = message.versions.mapIndexed { index, version ->
+                                if (index == message.activeVersionIndex) {
+                                    version.copy(generationError = generationErrorMessage)
+                                } else version
+                            }
+                        )
+                    })
+                }
                 publish(snapshot!!)
                 lastRenderAt = System.currentTimeMillis()
             }
@@ -190,8 +196,7 @@ internal class ChatGeneration(
                 renderJob?.cancel()
                 renderJob = null
                 _error.value = e.localizedMessage ?: "Generation failed"
-                appendError("\n[Error: ${_error.value}]")
-                update()
+                update(generationErrorMessage = _error.value)
             } finally {
                 renderJob?.cancel()
                 try {

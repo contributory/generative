@@ -29,8 +29,17 @@ enum class MessageFontFamily(val value: String) {
     }
 }
 
+enum class CodeBlockDisplayMode(val value: String) {
+    SHOW_ALL("show_all"), EXTENDABLE("extendable"), SHOW_IN_DRAWER("show_in_drawer");
+
+    companion object {
+        fun fromValue(value: String?) = entries.firstOrNull { it.value == value } ?: EXTENDABLE
+    }
+}
+
 const val DEFAULT_WORD_WRAP_COLUMN = 80
 const val DEFAULT_MESSAGE_FONT_SIZE = 16
+const val DEFAULT_CODE_BLOCK_MAX_LINES = 15
 const val DEFAULT_TOOL_ROUND_LIMIT = 12
 const val MAX_TOOL_ROUND_LIMIT = 1000
 
@@ -68,6 +77,9 @@ data class AppPreferences(
     val wordWrapMode: WordWrapMode = WordWrapMode.OFF,
     val wordWrapColumn: Int = DEFAULT_WORD_WRAP_COLUMN,
     val codePreviewEnabled: Boolean = true,
+    val codeBlockDisplayMode: CodeBlockDisplayMode = CodeBlockDisplayMode.EXTENDABLE,
+    val codeBlockMaxLines: Int = DEFAULT_CODE_BLOCK_MAX_LINES,
+    val codeBlockIncludeUndefined: Boolean = false,
     val messageFontSize: Int = DEFAULT_MESSAGE_FONT_SIZE,
     val messageFontFamily: MessageFontFamily = MessageFontFamily.DEFAULT,
     val toolRoundLimitEnabled: Boolean = false,
@@ -115,6 +127,9 @@ class AppPreferencesRepository(private val context: Context) {
         val WORD_WRAP_MODE = stringPreferencesKey("word_wrap_mode")
         val WORD_WRAP_COLUMN = intPreferencesKey("word_wrap_column")
         val CODE_PREVIEW_ENABLED = booleanPreferencesKey("code_preview_enabled")
+        val CODE_BLOCK_DISPLAY_MODE = stringPreferencesKey("code_block_display_mode")
+        val CODE_BLOCK_MAX_LINES = intPreferencesKey("code_block_max_lines")
+        val CODE_BLOCK_INCLUDE_UNDEFINED = booleanPreferencesKey("code_block_include_undefined")
         val MESSAGE_FONT_SIZE = intPreferencesKey("message_font_size")
         val MESSAGE_FONT_FAMILY = stringPreferencesKey("message_font_family")
         val TOOL_ROUND_LIMIT_ENABLED = booleanPreferencesKey("tool_round_limit_enabled")
@@ -162,6 +177,10 @@ class AppPreferencesRepository(private val context: Context) {
                 wordWrapMode = WordWrapMode.fromValue(preferences[PreferenceKeys.WORD_WRAP_MODE]),
                 wordWrapColumn = preferences[PreferenceKeys.WORD_WRAP_COLUMN]?.takeIf { it > 0 } ?: DEFAULT_WORD_WRAP_COLUMN,
                 codePreviewEnabled = preferences[PreferenceKeys.CODE_PREVIEW_ENABLED] ?: true,
+                codeBlockDisplayMode = CodeBlockDisplayMode.fromValue(preferences[PreferenceKeys.CODE_BLOCK_DISPLAY_MODE]),
+                codeBlockMaxLines = preferences[PreferenceKeys.CODE_BLOCK_MAX_LINES]?.coerceIn(1, 10_000)
+                    ?: DEFAULT_CODE_BLOCK_MAX_LINES,
+                codeBlockIncludeUndefined = preferences[PreferenceKeys.CODE_BLOCK_INCLUDE_UNDEFINED] ?: false,
                 messageFontSize = preferences[PreferenceKeys.MESSAGE_FONT_SIZE]?.coerceIn(12, 24) ?: DEFAULT_MESSAGE_FONT_SIZE,
                 messageFontFamily = MessageFontFamily.fromValue(preferences[PreferenceKeys.MESSAGE_FONT_FAMILY]),
                 toolRoundLimitEnabled = preferences[PreferenceKeys.TOOL_ROUND_LIMIT_ENABLED] ?: false,
@@ -432,6 +451,25 @@ class AppPreferencesRepository(private val context: Context) {
     suspend fun setCodePreviewEnabled(enabled: Boolean) {
         state.mutate({ it.copy(codePreviewEnabled = enabled) }) {
             context.dataStore.edit { it[PreferenceKeys.CODE_PREVIEW_ENABLED] = enabled }
+        }
+    }
+
+    suspend fun setCodeBlockDisplayMode(mode: CodeBlockDisplayMode) {
+        state.mutate({ it.copy(codeBlockDisplayMode = mode) }) {
+            context.dataStore.edit { it[PreferenceKeys.CODE_BLOCK_DISPLAY_MODE] = mode.value }
+        }
+    }
+
+    suspend fun setCodeBlockMaxLines(lines: Int) {
+        require(lines in 1..10_000)
+        state.mutate({ it.copy(codeBlockMaxLines = lines) }) {
+            context.dataStore.edit { it[PreferenceKeys.CODE_BLOCK_MAX_LINES] = lines }
+        }
+    }
+
+    suspend fun setCodeBlockIncludeUndefined(enabled: Boolean) {
+        state.mutate({ it.copy(codeBlockIncludeUndefined = enabled) }) {
+            context.dataStore.edit { it[PreferenceKeys.CODE_BLOCK_INCLUDE_UNDEFINED] = enabled }
         }
     }
 
