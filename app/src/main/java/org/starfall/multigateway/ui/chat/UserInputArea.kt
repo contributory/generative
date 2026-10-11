@@ -133,13 +133,13 @@ fun UserInputArea(
     val thinkingProvider = providers.firstOrNull { it.id == selectedProviderId }
     val thinkingConfig = thinkingProvider?.config?.modelConfigs?.get(selectedModelName)
     val thinkingOptions = remember(thinkingProvider?.type, selectedModelName, thinkingProvider?.config?.maxTokens) {
-        reasoningEffortOptions(thinkingProvider?.type, selectedModelName, thinkingProvider?.config?.maxTokens ?: Int.MAX_VALUE)
+        reasoningEffortSliderOptions(thinkingProvider?.type, selectedModelName, thinkingProvider?.config?.maxTokens ?: Int.MAX_VALUE)
     }
     val currentEffort = conversationReasoningEffort ?: thinkingConfig?.reasoningEffort
     val maximumThinking = thinkingConfig?.supportsThinking == true && !thinkingConfig.reasoningDisabled &&
         reasoningEffortTier(reasoningEffortIndex(currentEffort, thinkingOptions), thinkingOptions) == 6
     val inputColor by animateColorAsState(
-        if (maximumThinking) lerp(MaterialTheme.colorScheme.surfaceContainer, Color(0xFFA78BFA), 0.12f)
+        if (maximumThinking) lerp(MaterialTheme.colorScheme.surfaceContainer, Color(0xFFF97316), 0.12f)
         else MaterialTheme.colorScheme.surfaceContainer,
         tween(1400), label = "thinking-input-color"
     )

@@ -27,7 +27,7 @@ fun ReasoningEffortSheet(
 ) {
     var effort by remember(currentEffort) { mutableStateOf(currentEffort) }
     val options = remember(providerType, modelId, maxTokens) {
-        reasoningEffortOptions(providerType, modelId, maxTokens)
+        reasoningEffortSliderOptions(providerType, modelId, maxTokens)
     }
 
     AppBottomSheet(

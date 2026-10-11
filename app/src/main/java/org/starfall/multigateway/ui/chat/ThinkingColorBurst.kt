@@ -29,14 +29,31 @@ internal class ThinkingColorBurst(private val scope: CoroutineScope) {
     var color by mutableStateOf(Color.Transparent)
         private set
     private var job: Job? = null
+    var keepAfterCompletion by mutableStateOf(false)
+        private set
 
-    fun start(origin: Offset, color: Color, durationMillis: Int = 1100) {
+    /** A pronounced bloom: expand quickly, then contract before settling. */
+    val bloomProgress: Float
+        get() = if (progress.value < 0.52f) {
+            (progress.value / 0.52f).coerceIn(0f, 1f)
+        } else {
+            ((1f - progress.value) / 0.48f).coerceIn(0f, 1f)
+        }
+
+    fun start(
+        origin: Offset,
+        color: Color,
+        durationMillis: Int = 1100,
+        keepAfterCompletion: Boolean = false
+    ) {
         job?.cancel()
         this.origin = origin
         this.color = color
+        this.keepAfterCompletion = false
         job = scope.launch {
             progress.snapTo(0f)
             progress.animateTo(1f, tween(durationMillis.coerceIn(700, 7000), easing = FastOutSlowInEasing))
+            this@ThinkingColorBurst.keepAfterCompletion = keepAfterCompletion
         }
     }
 }
@@ -50,19 +67,20 @@ internal fun rememberThinkingColorBurst(): ThinkingColorBurst {
 /** Reveal the new gradient outward from the thumb before leaving its settled fill. */
 internal fun DrawScope.revealThinkingColor(burst: ThinkingColorBurst, draw: DrawScope.() -> Unit) {
     val progress = burst.progress.value
-    if (progress >= 1f) {
+    if (progress >= 0.52f) {
         draw()
         return
     }
-    val radius = 14.dp.toPx() + hypot(size.width, size.height) * progress
+    val radius = 14.dp.toPx() + hypot(size.width, size.height) * burst.bloomProgress
     clipPath(Path().apply { addOval(Rect(burst.origin, radius)) }) { draw() }
 }
 
 internal fun DrawScope.drawThinkingColorBurst(burst: ThinkingColorBurst) {
     val progress = burst.progress.value
     if (progress >= 1f) return
-    val radius = 14.dp.toPx() + hypot(size.width, size.height) * progress
-    val opacity = (1f - progress) * (1f - progress)
+    val bloom = burst.bloomProgress
+    val radius = 14.dp.toPx() + hypot(size.width, size.height) * (0.15f + bloom * 1.35f)
+    val opacity = bloom * bloom
     drawCircle(
         brush = Brush.radialGradient(
             listOf(Color.White.copy(alpha = 0.42f * opacity),
@@ -75,7 +93,7 @@ internal fun DrawScope.drawThinkingColorBurst(burst: ThinkingColorBurst) {
     )
     // Several diminishing wave fronts rather than a single expanding disc.
     repeat(3) { index ->
-        val wave = (progress - index * 0.12f).coerceAtLeast(0f)
+        val wave = (bloom - index * 0.12f).coerceAtLeast(0f)
         if (wave > 0f) drawCircle(
             burst.color.copy(alpha = 0.2f * opacity),
             radius = 14.dp.toPx() + hypot(size.width, size.height) * wave,
@@ -100,7 +118,7 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
             private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
             override fun draw(canvas: android.graphics.Canvas) {
                 val progress = burst.progress.value
-                if (progress >= 1f) return
+                if (progress >= 1f && !burst.keepAfterCompletion) return
                 val width = root.width.toFloat()
                 val height = root.height.toFloat()
                 if (width <= 0f || height <= 0f) return
@@ -108,19 +126,31 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
                 root.getLocationOnScreen(location)
                 val x = burst.origin.x - location[0]
                 val y = burst.origin.y - location[1]
-                val fade = sin(PI * progress).toFloat().coerceAtLeast(0f)
-                val radius = (hypot(width, height) * (0.1f + progress * 1.4f)).coerceAtLeast(1f)
+                val settled = progress >= 1f && burst.keepAfterCompletion
+                val bloom = burst.bloomProgress
+                val fade = if (settled) 1f else bloom
+                val radius = (hypot(width, height) * (0.1f + bloom * 1.55f)).coerceAtLeast(1f)
+                if (settled) {
+                    paint.color = android.graphics.Color.argb(38, 124, 58, 237)
+                    canvas.drawRect(0f, 0f, width, height, paint)
+                }
                 paint.shader = android.graphics.RadialGradient(x, y, radius,
-                    intArrayOf(android.graphics.Color.argb((55 * fade).toInt(), 167, 139, 250),
-                        android.graphics.Color.argb((24 * fade).toInt(), 124, 58, 237), android.graphics.Color.TRANSPARENT),
+                    intArrayOf(android.graphics.Color.argb(((if (settled) 72 else 55) * fade).toInt(), 167, 139, 250),
+                        android.graphics.Color.argb(((if (settled) 36 else 24) * fade).toInt(), 124, 58, 237), android.graphics.Color.TRANSPARENT),
                     null, android.graphics.Shader.TileMode.CLAMP)
                 canvas.drawRect(0f, 0f, width, height, paint)
                 paint.shader = null
                 repeat(32) { index ->
                     val sx = width * ((index * 0.618034f + 0.13f) % 1f)
-                    val sy = height * ((index * 0.381966f + 0.27f) % 1f) - progress * 20f
-                    val sparkle = (sin(progress * PI * 6 + index).toFloat() * 0.5f + 0.5f) * fade
-                    paint.color = android.graphics.Color.argb((175 * sparkle).toInt(), 233, 213, 255)
+                    val sy = height * ((index * 0.381966f + 0.27f) % 1f) - if (settled) 20f else bloom * 20f
+                    val sparkle = if (settled) {
+                        0.72f + sin(index.toDouble() * 1.7).toFloat() * 0.28f
+                    } else {
+                        (sin(progress * PI * 6 + index).toFloat() * 0.5f + 0.5f) * fade
+                    }
+                    paint.color = android.graphics.Color.argb(
+                        if (settled) 235 else (175 * sparkle).toInt(), 233, 213, 255
+                    )
                     val ray = (2f + index % 3) * root.resources.displayMetrics.density
                     paint.strokeWidth = root.resources.displayMetrics.density
                     canvas.drawLine(sx - ray, sy, sx + ray, sy, paint)
@@ -139,7 +169,7 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
         onDispose { root.overlay.remove(overlay) }
     }
     LaunchedEffect(root, overlay, burst) {
-        snapshotFlow { burst.progress.value }.collect {
+        snapshotFlow { burst.progress.value to burst.keepAfterCompletion }.collect {
             overlay.setBounds(0, 0, root.width, root.height)
             overlay.invalidateSelf()
         }

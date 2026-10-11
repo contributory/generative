@@ -25,13 +25,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.LayoutDirection
+import kotlin.math.hypot
 import kotlin.math.roundToInt
 import org.starfall.multigateway.data.model.ModelConfiguration
 import org.starfall.multigateway.data.model.ProviderType
@@ -117,6 +118,19 @@ internal fun reasoningEffortOptions(
         }
         ReasoningEffortOption(effort, label)
     }
+}
+
+/** The picker exposes only the two strongest choices: the purple and red tiers. */
+internal fun reasoningEffortSliderOptions(
+    providerType: ProviderType? = null,
+    modelId: String = "",
+    maxTokens: Int = Int.MAX_VALUE
+): List<ReasoningEffortOption> {
+    val options = reasoningEffortOptions(providerType, modelId, maxTokens)
+    return options
+        .filter { it.effort != null && reasoningEffortEnabled(it.effort) }
+        .takeLast(2)
+        .ifEmpty { options.takeLast(2) }
 }
 
 internal fun reasoningEffortEnabled(effort: String?): Boolean =
@@ -246,8 +260,15 @@ internal fun ReasoningEffortControl(
                              }
                              if (band != 0) {
                                  paintTrack(if (burst.progress.value < 1f) previousColorBand else band)
-                                 // A physical right-to-left wash, independent of the thumb's position.
-                                 clipRect(left = size.width * (1f - burst.progress.value)) { paintTrack(band) }
+                                  // Reveal the new color from the thumb instead of sweeping from an edge.
+                                  if (burst.progress.value >= 0.52f) {
+                                      paintTrack(band)
+                                  } else {
+                                      val radius = 14.dp.toPx() + hypot(size.width, size.height) * burst.bloomProgress
+                                      clipPath(androidx.compose.ui.graphics.Path().apply {
+                                          addOval(Rect(burst.origin, radius))
+                                      }) { paintTrack(band) }
+                                  }
                              }
                             // Subtle detents remain visible beneath the settling color.
                             repeat(options.size) { index ->
