@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -40,6 +41,40 @@ import org.starfall.multigateway.data.model.claudeThinkingCapabilities
 
 internal val reasoningEfforts = listOf<String?>("none", null, "low", "medium", "high", "xhigh")
 internal val reasoningEffortLabels = listOf("Off", "Default", "Low", "Medium", "High", "X-High")
+
+internal fun reasoningEffortTier(index: Int, options: List<ReasoningEffortOption>): Int {
+    val option = options.getOrNull(index) ?: return 1
+    if (!reasoningEffortEnabled(option.effort)) return 0
+    if (option.effort == null) return 1
+    val enabled = options.filter { it.effort != null && reasoningEffortEnabled(it.effort) }
+    val palette = when (enabled.size) {
+        1 -> listOf(6)
+        2 -> listOf(5, 6)
+        3 -> listOf(2, 5, 6)
+        4 -> listOf(2, 3, 5, 6)
+        else -> listOf(2, 3, 4, 5, 6)
+    }
+    return palette[enabled.indexOf(option).coerceIn(palette.indices)]
+}
+
+internal fun reasoningEffortAccent(tier: Int, default: Color, background: Color): Color = when (tier) {
+    0 -> background
+    1 -> default
+    2 -> Color(0xFF86EFAC)
+    3 -> Color(0xFF93C5FD)
+    4 -> Color(0xFF2563EB)
+    5 -> Color(0xFF8B5CF6)
+    else -> Color(0xFFB91C1C)
+}
+
+internal fun reasoningEffortBurstDuration(tier: Int): Int = when (tier) {
+    0, 1 -> 850
+    2 -> 1050
+    3 -> 1250
+    4 -> 1500
+    5 -> 2600
+    else -> 4200
+}
 
 internal data class ReasoningEffortOption(val effort: String?, val label: String)
 
@@ -118,13 +153,13 @@ internal fun ReasoningEffortControl(
     onEffortChange: (String?) -> Unit,
     onPreviewValueChange: (Float) -> Unit = {},
     options: List<ReasoningEffortOption> = reasoningEffortOptions(),
-    onColorBurst: (Offset, Boolean) -> Unit = { _, _ -> }
+    onColorBurst: (Offset, Int) -> Unit = { _, _ -> },
+    trackBackground: Color = MaterialTheme.colorScheme.surface
 ) {
     var sliderValue by remember(effort, options) {
         mutableFloatStateOf(reasoningEffortIndex(effort, options).toFloat())
     }
     val maximumValue = options.lastIndex.toFloat()
-    val highValue = options.indexOfFirst { it.effort == "high" }
     val layoutDirection = LocalLayoutDirection.current
     val interactionSource = remember { MutableInteractionSource() }
     val dragged by interactionSource.collectIsDraggedAsState()
@@ -133,26 +168,14 @@ internal fun ReasoningEffortControl(
         tween(160), label = "thinking-thumb-scale")
     val burst = rememberThinkingColorBurst()
     var trackBounds by remember { mutableStateOf(Rect.Zero) }
-    fun colorBand(value: Float) = when {
-        value.roundToInt() >= options.lastIndex -> 2
-        value.roundToInt() >= highValue -> 1
-        else -> 0
-    }
+    fun colorBand(value: Float) = reasoningEffortTier(value.roundToInt(), options)
     val band = colorBand(sliderValue)
     var previousColorBand by remember { mutableIntStateOf(band) }
-    val tint by animateFloatAsState(if (band > 0) 1f else 0f,
-        tween(750, easing = FastOutSlowInEasing), label = "thinking-track-tint")
-    val leftColor by animateColorAsState(if (band == 2) Color(0xFF4A1018) else Color(0xFFE9D5FF),
-        tween(750), label = "thinking-track-left")
-    val rightColor by animateColorAsState(if (band == 2) Color(0xFF160406) else Color(0xFF7C3AED),
-        tween(750), label = "thinking-track-right")
-    val thumbColor by animateColorAsState(when (band) {
-        2 -> Color(0xFFB91C1C)
-        1 -> Color(0xFF7C3AED)
-        else -> MaterialTheme.colorScheme.primary
-    }, tween(500), label = "thinking-thumb-color")
-    val trackColor = MaterialTheme.colorScheme.primary
-    val inactiveColor = MaterialTheme.colorScheme.primaryContainer
+    val defaultColor = MaterialTheme.colorScheme.primary
+    val defaultInactive = MaterialTheme.colorScheme.primaryContainer
+    fun accentFor(tier: Int) = reasoningEffortAccent(tier, defaultColor, trackBackground)
+    val accent = accentFor(band)
+    val thumbColor by animateColorAsState(accent, tween(500), label = "thinking-thumb-color")
     val sliderColors = SliderDefaults.colors(thumbColor = thumbColor)
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
@@ -163,13 +186,13 @@ internal fun ReasoningEffortControl(
                     sliderValue = it
                     onPreviewValueChange(it)
                     val nextBand = colorBand(it)
-                    if (nextBand > 0 && nextBand != previousBand && trackBounds.width > 0f) {
+                    if (nextBand != previousBand && trackBounds.width > 0f) {
                         previousColorBand = previousBand
                         val fraction = (it / maximumValue).coerceIn(0f, 1f)
                         val physicalFraction = if (layoutDirection == LayoutDirection.Rtl) 1f - fraction else fraction
                         val origin = Offset(trackBounds.width * physicalFraction, trackBounds.height / 2f)
-                        burst.start(origin, if (nextBand == 2) Color(0xFFF43F5E) else Color(0xFFA78BFA))
-                        onColorBurst(trackBounds.topLeft + origin, nextBand == 2)
+                        burst.start(origin, accentFor(nextBand), reasoningEffortBurstDuration(nextBand))
+                        onColorBurst(trackBounds.topLeft + origin, nextBand)
                     }
                 },
                 onValueChangeFinished = {
@@ -200,33 +223,35 @@ internal fun ReasoningEffortControl(
                 track = {
                     Box(Modifier.fillMaxWidth().height(12.dp)
                         .onGloballyPositioned {
-                            trackBounds = Rect(it.positionInRoot(), Size(it.size.width.toFloat(), it.size.height.toFloat()))
+                             trackBounds = Rect(it.localToScreen(Offset.Zero), Size(it.size.width.toFloat(), it.size.height.toFloat()))
                         }
                         .clip(CircleShape).drawBehind {
-                            val fraction = (sliderValue / maximumValue).coerceIn(0f, 1f)
-                            val width = size.width * fraction
-                            val radius = CornerRadius(size.height / 2f)
-                            drawRoundRect(inactiveColor, cornerRadius = radius)
-                            drawRoundRect(trackColor,
-                                topLeft = Offset(if (layoutDirection == LayoutDirection.Rtl) size.width - width else 0f, 0f),
-                                size = Size(width, size.height), cornerRadius = radius)
-                            if (burst.progress.value < 1f && previousColorBand > 0) {
-                                val previousColors = if (previousColorBand == 2)
-                                    listOf(Color(0xFF4A1018), Color(0xFF160406))
-                                else listOf(Color(0xFFE9D5FF), Color(0xFF7C3AED))
-                                drawRoundRect(Brush.horizontalGradient(previousColors),
-                                    cornerRadius = radius, alpha = tint)
-                            }
-                            revealThinkingColor(burst) {
-                                drawRoundRect(Brush.horizontalGradient(listOf(leftColor, rightColor)),
-                                    cornerRadius = radius, alpha = tint)
-                            }
+                             val radius = CornerRadius(size.height / 2f)
+                             fun paintTrack(tier: Int) {
+                                 when (tier) {
+                                     0 -> drawRoundRect(trackBackground, cornerRadius = radius)
+                                     1 -> {
+                                         drawRoundRect(defaultInactive, cornerRadius = radius)
+                                         val width = size.width * (sliderValue / maximumValue).coerceIn(0f, 1f)
+                                         drawRoundRect(defaultColor,
+                                             topLeft = Offset(if (layoutDirection == LayoutDirection.Rtl) size.width - width else 0f, 0f),
+                                             size = Size(width, size.height), cornerRadius = radius)
+                                     }
+                                     else -> drawRoundRect(Brush.horizontalGradient(
+                                         if (tier == 6) listOf(Color(0xFF991B1B), Color(0xFF160406))
+                                         else listOf(lerp(trackBackground, accentFor(tier), 0.5f), accentFor(tier))
+                                     ), cornerRadius = radius)
+                                 }
+                             }
+                             paintTrack(if (burst.progress.value < 1f) previousColorBand else band)
+                             // A physical right-to-left wash, independent of the thumb's position.
+                             clipRect(left = size.width * (1f - burst.progress.value)) { paintTrack(band) }
                             // Subtle detents remain visible beneath the settling color.
                             repeat(options.size) { index ->
                                 val x = size.width * index / options.lastIndex
-                                drawCircle(Color.White.copy(alpha = 0.32f), 1.25.dp.toPx(), Offset(x, size.height / 2f))
-                            }
-                            drawThinkingColorBurst(burst)
+                                 if (band != 0) drawCircle(Color.White.copy(alpha = 0.32f), 1.25.dp.toPx(), Offset(x, size.height / 2f))
+                             }
+                             if (band >= 2) drawThinkingColorBurst(burst)
                         })
                 },
                 modifier = Modifier.fillMaxWidth().testTag("reasoning-slider")

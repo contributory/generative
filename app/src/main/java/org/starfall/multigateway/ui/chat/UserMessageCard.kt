@@ -38,6 +38,7 @@ fun UserMessageCard(
     selectedImageAttachments: List<String> = emptyList(),
     onToggleChatImage: ((String) -> Unit)? = null,
     onResend: (() -> Unit)? = null,
+    onResendFromMenu: (() -> Unit)? = null,
     resendEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -137,6 +138,15 @@ fun UserMessageCard(
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 clipboard.setPrimaryClip(ClipData.newPlainText("Copied", message.content))
                                 Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                        if (onResendFromMenu != null) DropdownMenuItem(
+                            text = { Text(stringResource(org.starfall.multigateway.R.string.resend_message)) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) },
+                            enabled = resendEnabled,
+                            onClick = {
+                                showMenu = false
+                                onResendFromMenu()
                             }
                         )
                         DropdownMenuItem(

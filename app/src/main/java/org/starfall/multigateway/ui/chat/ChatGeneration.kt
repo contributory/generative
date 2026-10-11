@@ -27,10 +27,20 @@ internal class ChatGeneration(
         private set
     private var job: Job? = null
 
-    fun start(conversation: Conversation, messageId: String, chunks: Flow<String>): Boolean =
-        startEvents(conversation, messageId, chunks.map { GenerationEvent.Text(it) })
+    fun start(
+        conversation: Conversation,
+        messageId: String,
+        chunks: Flow<String>,
+        rollbackConversation: Conversation? = null
+    ): Boolean =
+        startEvents(conversation, messageId, chunks.map { GenerationEvent.Text(it) }, rollbackConversation)
 
-    fun startEvents(conversation: Conversation, messageId: String, chunks: Flow<GenerationEvent>): Boolean {
+    fun startEvents(
+        conversation: Conversation,
+        messageId: String,
+        chunks: Flow<GenerationEvent>,
+        rollbackConversation: Conversation? = null
+    ): Boolean {
         if (_busy.value) return false
         _busy.value = true
         _error.value = null
@@ -202,24 +212,34 @@ internal class ChatGeneration(
                 try {
                     // A stopped stream must retain its partial response before allowing another send.
                     withContext(NonCancellable) {
-                        snapshot = updateResponse(
-                            snapshot!!,
-                            activeMessageId,
-                            output.toString(),
-                            reasoningOutput.toString().takeIf { it.isNotBlank() },
-                            reasoningSignatureOutput.toString().takeIf { it.isNotBlank() }
-                        )
-                        snapshot = snapshot!!.copy(messages = snapshot!!.messages.map { message ->
-                            if (message.id != activeMessageId) message else message.copy(versions = message.versions.mapIndexed { index, version ->
-                                if (index != message.activeVersionIndex) version else version.copy(
-                                    generationInterrupted = generationInterrupted,
-                                    toolActivity = version.toolActivity.map {
-                                        if (it.status == "running") it.copy(status = "cancelled", summary = "Stopped") else it
-                                    },
-                                    processingFinishedAt = System.currentTimeMillis()
-                                )
+                        val hasGeneratedResponse = output.isNotBlank() || reasoningOutput.isNotBlank() ||
+                            snapshot!!.messages.firstOrNull { it.id == activeMessageId }
+                                ?.activeVersion?.toolActivity
+                                ?.any { !it.name.endsWith(": connect") } == true
+                        snapshot = if (generationInterrupted && rollbackConversation != null && !hasGeneratedResponse) {
+                            // Regeneration created a provisional version. If the user stops before
+                            // any response exists, restore the original conversation instead of
+                            // persisting an empty extra version.
+                            rollbackConversation
+                        } else {
+                            updateResponse(
+                                snapshot!!,
+                                activeMessageId,
+                                output.toString(),
+                                reasoningOutput.toString().takeIf { it.isNotBlank() },
+                                reasoningSignatureOutput.toString().takeIf { it.isNotBlank() }
+                            ).copy(messages = snapshot!!.messages.map { message ->
+                                if (message.id != activeMessageId) message else message.copy(versions = message.versions.mapIndexed { index, version ->
+                                    if (index != message.activeVersionIndex) version else version.copy(
+                                        generationInterrupted = generationInterrupted,
+                                        toolActivity = version.toolActivity.map {
+                                            if (it.status == "running") it.copy(status = "cancelled", summary = "Stopped") else it
+                                        },
+                                        processingFinishedAt = System.currentTimeMillis()
+                                    )
+                                })
                             })
-                        })
+                        }
                         publish(snapshot!!)
                         save(snapshot!!)
                     }

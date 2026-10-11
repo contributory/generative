@@ -141,7 +141,10 @@ class ToolChat(private val http: ToolHttp, private val mcp: McpService, private 
             val importedAttachments = mutableMapOf<String, String>()
             messages.forEach { message ->
                 val toolSummary = message.activeVersion.toolActivity
-                    .filter { it.status != "running" }
+                    // Connection handshakes are transport state, not part of the assistant's
+                    // conversational content. Including them here makes providers echo lines
+                    // such as "Tool Context7: connect: success" into the answer.
+                    .filter { it.status != "running" && !it.name.endsWith(": connect") }
                     .joinToString("\n", prefix = "\n") {
                         val references = it.files.filter { name -> http.requireFiles().resolve(name) != null }
                             .joinToString(", ") { name -> "tool-file:$name" }

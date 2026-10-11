@@ -411,6 +411,9 @@ fun ChatScreen(
                             onResend = if (msg.id in unansweredMessages) ({
                                 if (onResendUserMessage(msg.id)) followBottom = true
                             }) else null,
+                            onResendFromMenu = if (!msg.isQueued) ({
+                                if (onResendUserMessage(msg.id)) followBottom = true
+                            }) else null,
                             resendEnabled = !isGenerating && summaryProgress == null &&
                                 selectedModelName.isNotBlank() && providers.any { it.id == selectedProviderId },
                             onEdit = {

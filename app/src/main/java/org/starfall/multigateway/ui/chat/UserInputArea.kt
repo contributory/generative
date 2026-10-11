@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -38,6 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
@@ -62,6 +65,7 @@ import org.starfall.multigateway.data.model.ProviderGroup
 import org.starfall.multigateway.data.model.ConversationSummaryRequest
 import org.starfall.multigateway.data.model.ModelType
 import org.starfall.multigateway.data.model.ProviderType
+import org.starfall.multigateway.data.model.reasoningDisabled
 
 data class DirectMediaRequest(
     val prompt: String,
@@ -126,6 +130,19 @@ fun UserInputArea(
         maxLines = 6
     ).lineCount else 1
     val stackInputActions = attachments.isNotEmpty() || inputLineCount >= 3
+    val thinkingProvider = providers.firstOrNull { it.id == selectedProviderId }
+    val thinkingConfig = thinkingProvider?.config?.modelConfigs?.get(selectedModelName)
+    val thinkingOptions = remember(thinkingProvider?.type, selectedModelName, thinkingProvider?.config?.maxTokens) {
+        reasoningEffortOptions(thinkingProvider?.type, selectedModelName, thinkingProvider?.config?.maxTokens ?: Int.MAX_VALUE)
+    }
+    val currentEffort = conversationReasoningEffort ?: thinkingConfig?.reasoningEffort
+    val maximumThinking = thinkingConfig?.supportsThinking == true && !thinkingConfig.reasoningDisabled &&
+        reasoningEffortTier(reasoningEffortIndex(currentEffort, thinkingOptions), thinkingOptions) == 6
+    val inputColor by animateColorAsState(
+        if (maximumThinking) lerp(MaterialTheme.colorScheme.surfaceContainer, Color(0xFFA78BFA), 0.12f)
+        else MaterialTheme.colorScheme.surfaceContainer,
+        tween(1400), label = "thinking-input-color"
+    )
     var mediaKind by rememberSaveable { mutableStateOf<ModelType?>(null) }
     LaunchedEffect(chatModeRequest) {
         if (chatModeRequest > 0) mediaKind = null
@@ -295,7 +312,7 @@ fun UserInputArea(
                 .fillMaxWidth()
                 .testTag("chat-input"),
             shape = RoundedCornerShape(36.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            color = inputColor,
             border = BorderStroke(1.dp, if (mediaKind != null) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                 else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
             tonalElevation = 2.dp,

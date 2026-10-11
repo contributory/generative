@@ -58,6 +58,8 @@ fun AssistantMessageCard(
     var showMoreMenu by remember { mutableStateOf(false) }
     val activeVersion = message.activeVersion
     val generatedModelName = activeVersion.modelDisplayName.ifBlank { activeVersion.modelId.ifBlank { fallbackModelName } }
+    val generationError = activeVersion.generationError.orEmpty()
+    val toolbarText = message.content.ifBlank { generationError }
     val processingDurationMillis = activeVersion.processingFinishedAt?.let { finishedAt ->
         activeVersion.timestamp.toLongOrNull()?.let { startedAt -> (finishedAt - startedAt).coerceAtLeast(0L) }
     }
@@ -157,7 +159,10 @@ fun AssistantMessageCard(
             }
         }
 
-        if (!isStreaming && message.content.isNotBlank()) {
+        // A failed response can have no normal assistant content and therefore is not treated as
+        // a response version by the message actions. It still needs the same toolbar so users can
+        // copy/share/delete/edit the error instead of being left with only the error card.
+        if (!isStreaming && toolbarText.isNotBlank()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -174,7 +179,7 @@ fun AssistantMessageCard(
                     onClick = {
                         val share = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, message.content)
+                         putExtra(Intent.EXTRA_TEXT, toolbarText)
                         }
                         context.startActivity(Intent.createChooser(share, "Share response"))
                     },
@@ -182,7 +187,15 @@ fun AssistantMessageCard(
                 ) {
                     Icon(Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
-                MessageActionButton(onClick = onCopy, contentDescription = "Copy") {
+                MessageActionButton(onClick = {
+                    if (message.content.isNotBlank()) {
+                        onCopy()
+                    } else {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Error", toolbarText))
+                        Toast.makeText(context, "Error copied to clipboard", Toast.LENGTH_SHORT).show()
+                    }
+                }, contentDescription = "Copy") {
                     Icon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
 

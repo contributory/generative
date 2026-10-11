@@ -6,6 +6,7 @@ import kotlin.math.roundToInt
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -43,6 +44,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -575,7 +578,21 @@ internal fun SelectedModelOverviewSheet(
     onOpenModelPicker: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AppBottomSheet(onDismissRequest = onDismiss) {
+    val effortOptions = remember(provider?.type, modelId, provider?.config?.maxTokens) {
+        reasoningEffortOptions(provider?.type, modelId, provider?.config?.maxTokens ?: Int.MAX_VALUE)
+    }
+    var previewTier by remember(conversationReasoningEffort, effortOptions) {
+        mutableIntStateOf(reasoningEffortTier(reasoningEffortIndex(conversationReasoningEffort, effortOptions), effortOptions))
+    }
+    val sheetColor by animateColorAsState(
+        if (previewTier == 6 && config.supportsThinking && !config.reasoningDisabled)
+            lerp(MaterialTheme.colorScheme.surface, Color(0xFFA78BFA), 0.22f)
+        else MaterialTheme.colorScheme.surface,
+        tween(1800), label = "thinking-sheet-color"
+    )
+    val screenBurst = LocalThinkingScreenBurst.current
+    AppBottomSheet(onDismissRequest = onDismiss, containerColor = sheetColor) {
+        screenBurst?.let { ThinkingScreenBurstLayer(it) }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -593,7 +610,8 @@ internal fun SelectedModelOverviewSheet(
                 conversationReasoningEffort = conversationReasoningEffort,
                 onSetReasoningEffort = onSetReasoningEffort,
                 showReasoningEffort = true,
-                onClick = onOpenModelPicker
+                onClick = onOpenModelPicker,
+                onPreviewTierChange = { previewTier = it }
             )
             if (config.supportsThinking && !config.reasoningDisabled && onSetSendThinkingContent != null) {
                 Surface(
@@ -739,7 +757,8 @@ private fun ModelPickerCard(
     conversationReasoningEffort: String?,
     onSetReasoningEffort: (String?) -> Unit,
     showReasoningEffort: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onPreviewTierChange: (Int) -> Unit = {}
 ) {
     val effortOptions = remember(providerType, modelId, maxTokens) {
         reasoningEffortOptions(providerType, modelId, maxTokens)
@@ -747,26 +766,28 @@ private fun ModelPickerCard(
     var previewReasoningValue by remember(conversationReasoningEffort, isSelected, effortOptions) {
         mutableFloatStateOf(reasoningEffortIndex(conversationReasoningEffort, effortOptions).toFloat())
     }
-    val maximumThinking = isSelected && showReasoningEffort && config.supportsThinking && !config.reasoningDisabled &&
-        previewReasoningValue.roundToInt() >= effortOptions.lastIndex
+    val tier = reasoningEffortTier(previewReasoningValue.roundToInt(), effortOptions)
+    val enhancedThinking = isSelected && showReasoningEffort && config.supportsThinking && !config.reasoningDisabled && tier >= 5
     val cardTint by animateFloatAsState(
-        if (maximumThinking) 1f else 0f,
-        tween(900, easing = FastOutSlowInEasing),
+        if (enhancedThinking) 1f else 0f,
+        tween(if (tier == 6) 1800 else 2600, easing = FastOutSlowInEasing),
         label = "thinkingCardTint"
     )
-    val cardBrush = maximumThinkingCardBrush(MaterialTheme.colorScheme.surfaceContainerLow)
+    val cardBase = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
+        else MaterialTheme.colorScheme.surfaceContainerLow
+    val settledCardColor = if (tier == 6 && enhancedThinking) Color(0xFF6D28D9) else cardBase
+    val cardBrush = if (tier == 6) Brush.horizontalGradient(listOf(Color(0xFF7C3AED), Color(0xFF5B21B6)))
+        else maximumThinkingCardBrush(MaterialTheme.colorScheme.surfaceContainerLow)
     val cardBurst = rememberThinkingColorBurst()
+    val screenBurst = LocalThinkingScreenBurst.current
     var cardOrigin by remember { mutableStateOf(Offset.Zero) }
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        color = if (isSelected) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
-        },
+        color = cardBase,
+        contentColor = if (enhancedThinking && tier == 6) Color.White else MaterialTheme.colorScheme.onSurface,
         border = if (isSelected) {
             BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f))
         } else null
@@ -774,7 +795,7 @@ private fun ModelPickerCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .onGloballyPositioned { cardOrigin = it.positionInRoot() }
+                .onGloballyPositioned { cardOrigin = it.localToScreen(Offset.Zero) }
                 .drawBehind {
                     revealThinkingColor(cardBurst) { drawRect(cardBrush, alpha = cardTint) }
                     drawThinkingColorBurst(cardBurst)
@@ -803,7 +824,7 @@ private fun ModelPickerCard(
                         Text(
                             text = modelId,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (enhancedThinking && tier == 6) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -882,7 +903,7 @@ private fun ModelPickerCard(
                             text = if (usesThinkingBudget(providerType, modelId))
                                 "Thinking Budget (tokens)" else "Reasoning Effort",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = if (enhancedThinking && tier == 6) Color.White else MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -904,11 +925,17 @@ private fun ModelPickerCard(
                 ReasoningEffortControl(
                     effort = conversationReasoningEffort,
                     onEffortChange = onSetReasoningEffort,
-                    onPreviewValueChange = { previewReasoningValue = it },
+                    onPreviewValueChange = {
+                        previewReasoningValue = it
+                        onPreviewTierChange(reasoningEffortTier(it.roundToInt(), effortOptions))
+                    },
                     options = effortOptions,
-                    onColorBurst = { origin, maximum ->
-                        if (maximum) cardBurst.start(origin - cardOrigin, Color(0xFFA78BFA))
-                    }
+                    onColorBurst = { origin, selectedTier ->
+                        if (selectedTier >= 5) cardBurst.start(origin - cardOrigin, Color(0xFFA78BFA),
+                            reasoningEffortBurstDuration(selectedTier))
+                        if (selectedTier == 6) screenBurst?.start(origin, Color(0xFFA78BFA), 6500)
+                    },
+                    trackBackground = settledCardColor
                 )
             }
         }

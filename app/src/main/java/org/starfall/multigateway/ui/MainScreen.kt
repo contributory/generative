@@ -16,6 +16,9 @@ import kotlinx.coroutines.launch
 import org.starfall.multigateway.data.local.preferences.AppPreferences
 import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.ui.chat.ChatScreen
+import org.starfall.multigateway.ui.chat.LocalThinkingScreenBurst
+import org.starfall.multigateway.ui.chat.rememberThinkingColorBurst
+import org.starfall.multigateway.ui.chat.ThinkingScreenBurstLayer
 import org.starfall.multigateway.ui.drawer.ConversationsDrawer
 import org.starfall.multigateway.ui.mcp.McpScreen
 import org.starfall.multigateway.ui.providers.ProviderScreen
@@ -178,6 +181,8 @@ fun MainScreen(
     }
     val chatProviderId = conversationModel?.providerId ?: appPrefs.selectedProviderId
     val chatModelId = conversationModel?.modelId ?: appPrefs.selectedModelId
+    val thinkingScreenBurst = rememberThinkingColorBurst()
+    ThinkingScreenBurstLayer(thinkingScreenBurst)
     LaunchedEffect(Unit) {
         org.starfall.multigateway.data.repository.LocalWriteErrors.errors.collect {
             Toast.makeText(context, "Could not save the change. Please try again.", Toast.LENGTH_LONG).show()
@@ -201,7 +206,7 @@ fun MainScreen(
     }
 
 
-    CompositionLocalProvider(org.starfall.multigateway.ui.chat.LocalCodeRenderingPreferences provides appPrefs, LocalChatAttachmentSelection provides chatAttachments, LocalToolControls provides ToolControls(
+    CompositionLocalProvider(LocalThinkingScreenBurst provides thinkingScreenBurst, org.starfall.multigateway.ui.chat.LocalCodeRenderingPreferences provides appPrefs, LocalChatAttachmentSelection provides chatAttachments, LocalToolControls provides ToolControls(
         servers = mcpServers,
         settings = toolSettings,
         providers = providers,

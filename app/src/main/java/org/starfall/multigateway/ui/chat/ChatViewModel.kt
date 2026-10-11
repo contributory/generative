@@ -916,7 +916,8 @@ class ChatViewModel(
         responseId: String,
         provider: LlmProviderInfo,
         modelId: String,
-        preferences: AppPreferences
+        preferences: AppPreferences,
+        rollbackConversation: Conversation? = null
     ): Boolean {
         val responseIndex = conversation.messages.indexOfFirst { it.id == responseId }
         if (responseIndex <= 0) return false
@@ -930,7 +931,8 @@ class ChatViewModel(
         return generationFor(conversation.id).startEvents(
             conversation,
             responseId,
-            toolEvents(configuredProvider, modelId, context.messages, context.systemPrompt, conversation.id)
+            toolEvents(configuredProvider, modelId, context.messages, context.systemPrompt, conversation.id),
+            rollbackConversation = rollbackConversation
         )
     }
 
@@ -1058,7 +1060,14 @@ class ChatViewModel(
         if (summaryBoundary != null && conv.messages.none { it.id == summaryBoundary }) {
             conv = conv.copy(summary = null)
         }
-        startUserMessageResponse(conv, messageId, baseProvider, model, prefs)
+        startUserMessageResponse(
+            conv,
+            messageId,
+            baseProvider,
+            model,
+            prefs,
+            rollbackConversation = current
+        )
     }
 
     override fun onCleared() {
