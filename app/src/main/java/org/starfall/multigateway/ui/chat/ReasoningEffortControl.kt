@@ -57,14 +57,10 @@ internal fun reasoningEffortTier(index: Int, options: List<ReasoningEffortOption
     return palette[enabled.indexOf(option).coerceIn(palette.indices)]
 }
 
-internal fun reasoningEffortAccent(tier: Int, default: Color, background: Color): Color = when (tier) {
-    0 -> background
-    1 -> default
-    2 -> Color(0xFF86EFAC)
-    3 -> Color(0xFF93C5FD)
-    4 -> Color(0xFF2563EB)
+internal fun reasoningEffortAccent(tier: Int, default: Color): Color = when (tier) {
     5 -> Color(0xFF8B5CF6)
-    else -> Color(0xFFB91C1C)
+    6 -> Color(0xFFB91C1C)
+    else -> default
 }
 
 internal fun reasoningEffortBurstDuration(tier: Int): Int = when (tier) {
@@ -173,7 +169,7 @@ internal fun ReasoningEffortControl(
     var previousColorBand by remember { mutableIntStateOf(band) }
     val defaultColor = MaterialTheme.colorScheme.primary
     val defaultInactive = MaterialTheme.colorScheme.primaryContainer
-    fun accentFor(tier: Int) = reasoningEffortAccent(tier, defaultColor, trackBackground)
+    fun accentFor(tier: Int) = reasoningEffortAccent(tier, defaultColor)
     val accent = accentFor(band)
     val thumbColor by animateColorAsState(accent, tween(500), label = "thinking-thumb-color")
     val sliderColors = SliderDefaults.colors(thumbColor = thumbColor)
@@ -214,8 +210,8 @@ internal fun ReasoningEffortControl(
                             val scale = thumbScale + 0.12f * (1f - pulse)
                              scaleX = scale
                              scaleY = scale
-                             alpha = if (band == 0) 0.25f else 1f
-                         }.shadow(if (band == 0) 0.dp else 3.dp, CircleShape)
+                              alpha = 1f
+                          }.shadow(3.dp, CircleShape)
                     ) {
                         drawCircle(
                             Brush.radialGradient(
@@ -233,41 +229,40 @@ internal fun ReasoningEffortControl(
                         }
                         .clip(CircleShape).drawBehind {
                              val radius = CornerRadius(size.height / 2f)
+                             fun paintDefaultTrack() {
+                                 drawRoundRect(defaultInactive, cornerRadius = radius)
+                                 val width = size.width * (sliderValue / maximumValue).coerceIn(0f, 1f)
+                                 drawRoundRect(defaultColor,
+                                     topLeft = Offset(if (layoutDirection == LayoutDirection.Rtl) size.width - width else 0f, 0f),
+                                     size = Size(width, size.height), cornerRadius = radius)
+                             }
                              fun paintTrack(tier: Int) {
-                                 when (tier) {
-                                     0 -> drawRoundRect(trackBackground, cornerRadius = radius)
-                                     1 -> {
-                                         drawRoundRect(defaultInactive, cornerRadius = radius)
-                                         val width = size.width * (sliderValue / maximumValue).coerceIn(0f, 1f)
-                                         drawRoundRect(defaultColor,
-                                             topLeft = Offset(if (layoutDirection == LayoutDirection.Rtl) size.width - width else 0f, 0f),
-                                             size = Size(width, size.height), cornerRadius = radius)
-                                     }
-                                     else -> drawRoundRect(Brush.horizontalGradient(
+                                 if (tier < 5) {
+                                     paintDefaultTrack()
+                                 } else {
+                                     drawRoundRect(Brush.horizontalGradient(
                                          if (tier == 6) listOf(Color(0xFF991B1B), Color(0xFF160406))
                                          else listOf(lerp(trackBackground, accentFor(tier), 0.5f), accentFor(tier))
                                      ), cornerRadius = radius)
                                  }
-                              }
-                              if (band != 0) {
-                                  val animatingStrongTier = band >= 5 && previousColorBand >= 5 && burst.progress.value < 1f
-                                  paintTrack(if (animatingStrongTier) previousColorBand else band)
-                                   // Reveal purple/red from the thumb instead of sweeping from an edge.
-                                   if (band >= 5 && burst.progress.value < 1f) {
-                                       if (burst.progress.value >= 0.52f) {
-                                           paintTrack(band)
-                                       } else {
-                                           val radius = 14.dp.toPx() + hypot(size.width, size.height) * burst.bloomProgress
-                                           clipPath(androidx.compose.ui.graphics.Path().apply {
-                                               addOval(Rect(burst.origin, radius))
-                                           }) { paintTrack(band) }
-                                       }
-                                   }
-                              }
+                             }
+                             val animatingStrongTier = band >= 5 && previousColorBand >= 5 && burst.progress.value < 1f
+                             paintTrack(if (animatingStrongTier) previousColorBand else band)
+                             // Reveal purple/red from the thumb instead of sweeping from an edge.
+                             if (band >= 5 && burst.progress.value < 1f) {
+                                 if (burst.progress.value >= 0.52f) {
+                                     paintTrack(band)
+                                 } else {
+                                     val radius = 14.dp.toPx() + hypot(size.width, size.height) * burst.bloomProgress
+                                     clipPath(androidx.compose.ui.graphics.Path().apply {
+                                         addOval(Rect(burst.origin, radius))
+                                     }) { paintTrack(band) }
+                                 }
+                             }
                             // Subtle detents remain visible beneath the settling color.
                             repeat(options.size) { index ->
                                 val x = size.width * index / options.lastIndex
-                                 if (band != 0) drawCircle(Color.White.copy(alpha = 0.32f), 1.25.dp.toPx(), Offset(x, size.height / 2f))
+                                  drawCircle(Color.White.copy(alpha = 0.32f), 1.25.dp.toPx(), Offset(x, size.height / 2f))
                              }
                               if (band >= 5) drawThinkingColorBurst(burst)
                         })
@@ -279,8 +274,7 @@ internal fun ReasoningEffortControl(
                     Text(option.label, style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                         color = when {
                             index != sliderValue.roundToInt() -> labelColor.copy(alpha = 0.65f)
-                            band == 0 -> labelColor.copy(alpha = 0.4f)
-                            band == 1 -> labelColor
+                            band < 5 -> labelColor
                             else -> lerp(labelColor, accent, 0.45f)
                         })
                 }

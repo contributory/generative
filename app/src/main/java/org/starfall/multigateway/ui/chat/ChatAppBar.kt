@@ -1,7 +1,6 @@
 package org.starfall.multigateway.ui.chat
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.*
@@ -16,8 +15,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -189,19 +186,15 @@ private fun ContextWindowRing(status: ContextWindowStatus, size: androidx.compos
         else -> MaterialTheme.colorScheme.primary
     }
     Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize().padding(2.dp)) {
-            drawCircle(
-                color = color.copy(alpha = 0.18f),
-                style = Stroke(width = 4.dp.toPx())
-            )
-            drawArc(
-                color = color,
-                startAngle = -90f,
-                sweepAngle = progress * 360f,
-                useCenter = false,
-                style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
-            )
-        }
+        CircularProgressIndicator(
+            progress = { progress },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(2.dp),
+            color = color,
+            trackColor = color.copy(alpha = 0.18f),
+            strokeWidth = 4.dp
+        )
         Text(
             text = "${status.percentage}%",
             style = if (size < 50.dp) MaterialTheme.typography.labelSmall else MaterialTheme.typography.titleMedium,

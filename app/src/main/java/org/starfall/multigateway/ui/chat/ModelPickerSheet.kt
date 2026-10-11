@@ -940,8 +940,8 @@ private fun ModelPickerCard(
                              color = if (selectedTier == 6) Color(0xFFDC2626) else Color(0xFFA78BFA),
                              durationMillis = if (selectedTier == 6) 6500 else 2600,
                              keepAfterCompletion = false,
-                             starCount = if (selectedTier == 6) 72 else 32
-                         )
+                              starCount = if (selectedTier == 6) 180 else 32
+                          )
                     },
                     trackBackground = settledCardColor
                 )

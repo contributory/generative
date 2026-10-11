@@ -20,6 +20,14 @@ import kotlin.math.hypot
 import kotlin.math.sin
 import kotlin.math.PI
 
+/** Stable per-star coordinates that do not line up into diagonal sequences. */
+private fun starCoordinate(index: Int, salt: Long): Float {
+    var hash = index.toLong() * 0x9E3779B9L + salt
+    hash = (hash xor (hash ushr 16)) * 0x45D9F3BL
+    hash = hash xor (hash ushr 16)
+    return (hash and 0x7FFFFFFFL).toFloat() / Int.MAX_VALUE.toFloat()
+}
+
 /** A short, interruptible bloom; idle controls never keep an animation running. */
 @Stable
 internal class ThinkingColorBurst(private val scope: CoroutineScope) {
@@ -52,7 +60,7 @@ internal class ThinkingColorBurst(private val scope: CoroutineScope) {
         job?.cancel()
         this.origin = origin
         this.color = color
-        this.starCount = starCount.coerceIn(0, 128)
+        this.starCount = starCount.coerceIn(0, 256)
         this.keepAfterCompletion = false
         job = scope.launch {
             progress.snapTo(0f)
@@ -147,11 +155,21 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
                 canvas.drawRect(0f, 0f, width, height, paint)
                 paint.shader = null
                 repeat(burst.starCount) { index ->
-                    val sx = width * ((index * 0.618034f + 0.13f) % 1f)
-                    val sy = height * ((index * 0.381966f + 0.27f) % 1f) - bloom * 20f
-                    val sparkle = (sin(progress * PI * 6 + index).toFloat() * 0.5f + 0.5f) * fade
+                    val sx = width * starCoordinate(index, 0x13579BDFL)
+                    val sy = height * starCoordinate(index, 0x2468ACE1L) - bloom * 20f
+                    val twinkle = (sin(progress * PI * 18 + index * 2.41).toFloat() * 0.5f + 0.5f)
+                    val secondaryTwinkle = (sin(progress * PI * 7 + index * 0.73).toFloat() * 0.5f + 0.5f)
+                    val sparkle = if (isRed) {
+                        // Red stars keep twinkling independently instead of sharing the
+                        // overlay's fade as a single on/off state.
+                        (0.08f + 0.92f * (twinkle * 0.72f + secondaryTwinkle * 0.28f)) *
+                            (0.38f + 0.62f * fade)
+                    } else {
+                        twinkle * fade
+                    }
                     paint.color = android.graphics.Color.argb(
-                        (if (isRed) 220 else 175 * sparkle).toInt(), 233, 213, 255
+                        ((if (isRed) 240 else 175) * sparkle).toInt().coerceIn(0, 255),
+                        233, 213, 255
                     )
                     val ray = (2f + index % 3) * root.resources.displayMetrics.density
                     paint.strokeWidth = root.resources.displayMetrics.density
