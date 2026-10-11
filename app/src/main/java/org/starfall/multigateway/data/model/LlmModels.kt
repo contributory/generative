@@ -240,11 +240,6 @@ data class ModelConfiguration(
     val supportsAudioInput: Boolean = false,
     val supportsThinking: Boolean = true,
     @SerialName("reasoning_effort") val reasoningEffort: String? = null,
-    // null keeps the legacy meaning of reasoningEffort="none"; true means the model remains
-    // enabled while the selected effort itself may be "none".
-    @SerialName("reasoning_enabled")
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val reasoningEnabled: Boolean? = null,
     // Last chosen thinking level (set from the chat's selected-model sheet). Kept while thinking
     // is switched off so turning it back on restores the level; null means the provider default.
     @SerialName("thinking_level")
@@ -269,17 +264,13 @@ fun ProviderConfiguration.normalizedForStorage(): ProviderConfiguration =
 fun LlmProviderInfo.streamEnabledFor(modelId: String): Boolean =
     config.modelConfigs[modelId]?.supportStream ?: config.supportStream
 
-/** Whether the model-level reasoning switch is disabled. */
-val ModelConfiguration.reasoningDisabled: Boolean
-    get() = reasoningEnabled == false || (reasoningEnabled == null && reasoningEffortDisabled)
-
-/** Whether this model request explicitly asks the endpoint not to use reasoning. */
+/** Off is just another reasoning level ("none"/"off"), not a separate flag. */
 val ModelConfiguration.reasoningEffortDisabled: Boolean
     get() = reasoningEffort?.trim()?.lowercase() in listOf("none", "off")
 
-/** Effort sent to the endpoint; a model-level disable omits reasoning options entirely. */
+/** Effort sent to the endpoint; Off is sent as "none". */
 val ModelConfiguration.requestReasoningEffort: String?
-    get() = reasoningEffort?.takeUnless { reasoningDisabled }
+    get() = reasoningEffort
 
 fun ModelConfiguration.withConversationReasoning(effort: String?, providerType: ProviderType? = null): ModelConfiguration {
     if (effort.isNullOrBlank()) return this
@@ -292,7 +283,7 @@ fun ModelConfiguration.withConversationReasoning(effort: String?, providerType: 
     return copy(reasoningEffort = normalized)
 }
 
-/** Persist a selected-model-sheet choice without conflating Off with the model capability switch. */
+/** Persist a selected-model-sheet choice; Off is stored as the "none" effort level. */
 fun ModelConfiguration.withSelectedReasoningEffort(effort: String?, providerType: ProviderType? = null): ModelConfiguration {
     val applied = if (effort.isNullOrBlank()) copy(reasoningEffort = null)
     else withConversationReasoning(effort.trim().lowercase(), providerType)
@@ -301,7 +292,6 @@ fun ModelConfiguration.withSelectedReasoningEffort(effort: String?, providerType
             ?: reasoningEffort?.takeUnless { it.trim().lowercase() in listOf("none", "off") }
     } else applied.reasoningEffort
     return applied.copy(
-        reasoningEnabled = true,
         thinkingLevel = if (applied.reasoningEffortDisabled) rememberedLevel else applied.reasoningEffort
     )
 }
@@ -313,7 +303,6 @@ fun ModelConfiguration.reasoningBudget(maxTokens: Int): Int =
 
 fun ModelConfiguration.googleThinkingConfig(): kotlinx.serialization.json.JsonObject? =
     when {
-        reasoningDisabled -> null
         reasoningEffortDisabled -> kotlinx.serialization.json.buildJsonObject {
             put("thinkingBudget", kotlinx.serialization.json.JsonPrimitive(0))
             put("includeThoughts", kotlinx.serialization.json.JsonPrimitive(false))

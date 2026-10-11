@@ -31,7 +31,7 @@ class ReasoningEffortControlTest {
     @Test fun claudeLabelsMatchTheBudgetsSentByTheApp() {
         for (provider in listOf(ProviderType.ANTHROPIC, ProviderType.CLAUDE_CODE)) {
             val options = reasoningEffortOptions(provider)
-            assertEquals(listOf("Off", "Default", "1024", "2048", "4096", "8192"), options.map { it.label })
+            assertEquals(listOf("None", "Default", "1024", "2048", "4096", "8192"), options.map { it.label })
             assertEquals(listOf("none", null, "low", "medium", "high", "xhigh"), options.map { it.effort })
         }
         assertEquals("2999", reasoningEffortOptions(ProviderType.ANTHROPIC, maxTokens = 3000).last().label)
@@ -39,7 +39,7 @@ class ReasoningEffortControlTest {
 
     @Test fun geminiOmitsDuplicateXHighAndRecognizesSavedOverrides() {
         val options = reasoningEffortOptions(ProviderType.GOOGLE)
-        assertEquals(listOf("Off", "Default", "Low", "Medium", "High"), options.map { it.label })
+        assertEquals(listOf("None", "Default", "Low", "Medium", "High"), options.map { it.label })
         assertEquals(4, reasoningEffortIndex("xhigh", options))
         assertEquals(4, reasoningEffortIndex(" HIGH ", options))
         assertEquals(0, reasoningEffortIndex("off", options))
@@ -56,7 +56,7 @@ class ReasoningEffortControlTest {
 
     @Test fun modernClaudeLabelsAndStoredMaximumOverridesMatchNativeEffort() {
         val options = reasoningEffortOptions(ProviderType.ANTHROPIC, "claude-opus-4-6")
-        assertEquals(listOf("Off", "Default", "Low", "Medium", "High", "Max"), options.map { it.label })
+        assertEquals(listOf("None", "Default", "Low", "Medium", "High", "Max"), options.map { it.label })
         assertEquals(options.lastIndex, reasoningEffortIndex("xhigh", options))
         val opus47 = reasoningEffortOptions(ProviderType.CLAUDE_CODE, "claude-opus-4-7")
         assertEquals(listOf("none", null, "low", "medium", "high", "xhigh", "max"), opus47.map { it.effort })

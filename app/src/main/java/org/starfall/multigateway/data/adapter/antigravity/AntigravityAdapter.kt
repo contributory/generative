@@ -143,7 +143,7 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
         val config = (request["generationConfig"] as? JsonObject) ?: obj()
         val modelConfig = sourceProvider.config.modelConfigs[model]
         if (model.contains("claude") && modelConfig?.supportsThinking != false &&
-            modelConfig?.reasoningDisabled != true && modelConfig?.reasoningEffort != null) {
+            modelConfig?.reasoningEffort != null) {
             val maxTokens = (config["maxOutputTokens"] as? JsonPrimitive)?.intOrNull ?: sourceProvider.config.maxTokens
             if (maxTokens > 1024) {
                 val thinkingConfig = if (modelConfig.reasoningEffortDisabled) obj(

@@ -56,7 +56,7 @@ class ModelPickerSelectionVisibilityTest {
         assertFalse(reasoningEffortEnabled(" OFF "))
         assertTrue(reasoningEffortEnabled(null))
         assertEquals("none", reasoningEfforts.first())
-        assertEquals("Off", reasoningEffortLabels.first())
+        assertEquals("None", reasoningEffortLabels.first())
         assertTrue(reasoningEfforts.contains(null))
         assertEquals(1, reasoningEffortIndex(null))
         val model = ModelConfiguration(supportsThinking = true, reasoningEffort = "high")

@@ -423,9 +423,7 @@ internal class OfficialLlmSdk(private val attachments: AttachmentResolver) {
             }
             val config = GenerateContentConfig.builder().maxOutputTokens(maxTokens)
             provider.config.modelConfigs[modelName]?.let { modelConfig ->
-                if (modelConfig.reasoningDisabled) {
-                    // A model-level disable omits thinkingConfig entirely.
-                } else if (modelConfig.reasoningEffortDisabled) {
+                if (modelConfig.reasoningEffortDisabled) {
                     config.thinkingConfig(com.google.genai.types.ThinkingConfig.builder().thinkingBudget(0).includeThoughts(false).build())
                 } else modelConfig.requestReasoningEffort?.let {
                     config.thinkingConfig(com.google.genai.types.ThinkingConfig.builder()

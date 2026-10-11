@@ -24,35 +24,32 @@ import java.util.concurrent.TimeUnit
 class ReasoningSettingTest {
     @Test fun conversationOffOverridesModelLevelAndAutoRestoresIt() {
         val config = ModelConfiguration(reasoningEffort = "high")
-        assertTrue(config.withConversationReasoning("none").reasoningDisabled)
+        assertTrue(config.withConversationReasoning("none").reasoningEffortDisabled)
         assertEquals(config, config.withConversationReasoning(null))
         assertEquals("low", config.withConversationReasoning("low").reasoningEffort)
         val saved = Json.encodeToString(config.withConversationReasoning("none"))
-        assertTrue(Json.decodeFromString<ModelConfiguration>(saved).reasoningDisabled)
+        assertTrue(Json.decodeFromString<ModelConfiguration>(saved).reasoningEffortDisabled)
     }
 
-    @Test fun selectedModelOffIsPersistedWithoutDisablingTheModel() {
+    @Test fun selectedModelOffIsStoredAsAReasoningLevel() {
         val config = ModelConfiguration(reasoningEffort = "high", thinkingLevel = "high")
         val off = config.withSelectedReasoningEffort("none")
 
         assertEquals("none", off.reasoningEffort)
-        assertFalse(off.reasoningDisabled)
         assertTrue(off.reasoningEffortDisabled)
         assertEquals("none", off.requestReasoningEffort)
         assertEquals("high", off.thinkingLevel)
         assertEquals(off, Json.decodeFromString<ModelConfiguration>(Json.encodeToString(off)))
     }
 
-    @Test fun modelReasoningSwitchStillRemembersLegacyDisabledConfigs() {
-        val disabled = ModelConfiguration(reasoningEffort = "none", thinkingLevel = "medium")
-        assertTrue(disabled.reasoningDisabled)
-        val enabled = disabled.copy(
-            reasoningEnabled = true,
-            reasoningEffort = disabled.thinkingLevel
-        )
-        assertFalse(enabled.reasoningDisabled)
-        assertEquals("medium", enabled.reasoningEffort)
-        assertEquals("medium", enabled.requestReasoningEffort)
+    @Test fun draggingBackUpFromOffRestoresARealLevelWithoutExtraFlags() {
+        val off = ModelConfiguration(reasoningEffort = "high").withSelectedReasoningEffort("none")
+        val back = off.withSelectedReasoningEffort("medium")
+        assertFalse(back.reasoningEffortDisabled)
+        assertEquals("medium", back.reasoningEffort)
+        assertEquals("medium", back.requestReasoningEffort)
+        assertEquals("medium", back.thinkingLevel)
+        assertFalse(Json.encodeToString(off).contains("reasoning_enabled"))
     }
 
     @Test fun offReachesNativeProviderRequests() = runBlocking {
@@ -70,7 +67,7 @@ class ReasoningSettingTest {
                 val provider = LlmProviderInfo("p", "P", type, Authorization(value = "key"),
                     baseUrl = server.url(if (type == ProviderType.GOOGLE) "/v1beta" else "/v1").toString(),
                     config = ProviderConfiguration(modelConfigs = mapOf("custom" to ModelConfiguration(
-                        reasoningEffort = "none", reasoningEnabled = true
+                        reasoningEffort = "none"
                     ))))
                 when (type) {
                     ProviderType.ANTHROPIC -> sdk.streamAnthropic(provider, "custom", messages, "", null, null, 2048).toList()

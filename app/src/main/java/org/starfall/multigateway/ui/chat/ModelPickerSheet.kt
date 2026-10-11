@@ -67,7 +67,6 @@ import org.starfall.multigateway.data.model.ModelConfiguration
 import org.starfall.multigateway.data.model.ModelType
 import org.starfall.multigateway.data.model.ProviderGroup
 import org.starfall.multigateway.data.model.ProviderType
-import org.starfall.multigateway.data.model.reasoningDisabled
 import org.starfall.multigateway.ui.components.AppBottomSheet
 import org.starfall.multigateway.ui.components.EntityIcon
 import org.starfall.multigateway.ui.components.providerInitials
@@ -599,9 +598,9 @@ internal fun SelectedModelOverviewSheet(
         }
     }
     val sheetColor by animateColorAsState(
-        if (previewTier == 6 && config.supportsThinking && !config.reasoningDisabled)
+        if (previewTier == 6 && config.supportsThinking)
             lerp(MaterialTheme.colorScheme.surface, Color(0xFFF97316), 0.16f)
-        else if (previewTier == 5 && config.supportsThinking && !config.reasoningDisabled)
+        else if (previewTier == 5 && config.supportsThinking)
             lerp(MaterialTheme.colorScheme.surface, Color(0xFFA78BFA), 0.22f)
         else MaterialTheme.colorScheme.surface,
         tween(1800), label = "thinking-sheet-color"
@@ -610,6 +609,9 @@ internal fun SelectedModelOverviewSheet(
         screenBurst?.hide()
         onDismiss()
     }, containerColor = sheetColor) {
+        // The sheet is its own window, so the screen-owned star overlay must also be attached to it;
+        // otherwise the stars are only drawn on the activity window, underneath the sheet and cards.
+        screenBurst?.let { ThinkingScreenBurstLayer(it) }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -633,7 +635,7 @@ internal fun SelectedModelOverviewSheet(
                  },
                 onPreviewTierChange = { previewTier = it }
             )
-            if (config.supportsThinking && !config.reasoningDisabled && onSetSendThinkingContent != null) {
+            if (config.supportsThinking && onSetSendThinkingContent != null) {
                 Surface(
                     shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -787,7 +789,7 @@ private fun ModelPickerCard(
         mutableFloatStateOf(reasoningEffortIndex(conversationReasoningEffort, effortOptions).toFloat())
     }
     val tier = reasoningEffortTier(previewReasoningValue.roundToInt(), effortOptions)
-    val enhancedThinking = isSelected && showReasoningEffort && config.supportsThinking && !config.reasoningDisabled && tier >= 5
+    val enhancedThinking = isSelected && showReasoningEffort && config.supportsThinking && tier >= 5
     val cardTint by animateFloatAsState(
         if (enhancedThinking) 1f else 0f,
         tween(if (tier == 6) 1800 else 2600, easing = FastOutSlowInEasing),
@@ -796,16 +798,7 @@ private fun ModelPickerCard(
     val cardBase = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
         else MaterialTheme.colorScheme.surfaceContainerLow
     val settledCardColor = cardBase
-    val cardBrush = if (tier == 6) Brush.horizontalGradient(
-        colorStops = arrayOf(
-            0.00f to Color(0xFF1E1B4B),
-            0.22f to Color(0xFF4C1D95),
-            0.45f to Color(0xFF9D174D),
-            0.63f to Color(0xFF6D28D9),
-            0.82f to Color(0xFF2563EB),
-            1.00f to Color(0xFF164E63)
-        )
-    )
+    val cardBrush = if (tier == 6) maximumEffortCardBrush()
         else maximumThinkingCardBrush(MaterialTheme.colorScheme.surfaceContainerLow)
     val cardBurst = rememberThinkingColorBurst()
     val screenBurst = LocalThinkingScreenBurst.current
@@ -826,7 +819,10 @@ private fun ModelPickerCard(
                 .fillMaxWidth()
                 .onGloballyPositioned { cardOrigin = it.localToScreen(Offset.Zero) }
                 .drawBehind {
-                    revealThinkingColor(cardBurst) { drawRect(cardBrush, alpha = cardTint) }
+                    revealThinkingColor(cardBurst) {
+                        drawRect(cardBrush, alpha = cardTint)
+                        if (tier == 6) drawMaximumEffortStreaks(cardTint)
+                    }
                     drawThinkingColorBurst(cardBurst)
                 }
                 .padding(10.dp)
@@ -904,9 +900,8 @@ private fun ModelPickerCard(
                 }
             }
 
-            // Shown only while reasoning is enabled in the model configuration. A conversation's own
-            // "Off" choice keeps the slider so it can be turned back up.
-            if (showReasoningEffort && isSelected && config.supportsThinking && !config.reasoningDisabled) {
+            // Off is the lowest slider level, so the slider stays visible whenever the model supports thinking.
+            if (showReasoningEffort && isSelected && config.supportsThinking) {
                 val activeLabel = effortOptions[previewReasoningValue.roundToInt().coerceIn(effortOptions.indices)].label
 
                 Spacer(modifier = Modifier.height(10.dp))

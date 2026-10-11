@@ -40,7 +40,7 @@ import org.starfall.multigateway.data.model.reasoningBudget
 import org.starfall.multigateway.data.model.claudeThinkingCapabilities
 
 internal val reasoningEfforts = listOf<String?>("none", null, "low", "medium", "high", "xhigh")
-internal val reasoningEffortLabels = listOf("Off", "Default", "Low", "Medium", "High", "X-High")
+internal val reasoningEffortLabels = listOf("None", "Default", "Low", "Medium", "High", "X-High")
 
 internal fun reasoningEffortTier(index: Int, options: List<ReasoningEffortOption>): Int {
     val option = options.getOrNull(index) ?: return 1
@@ -88,7 +88,7 @@ internal fun reasoningEffortOptions(
         val capabilities = claudeThinkingCapabilities(modelId)
         if (capabilities.efforts.isNotEmpty()) {
             val off = when {
-                capabilities.canDisable -> listOf(ReasoningEffortOption("none", "Off"))
+                capabilities.canDisable -> listOf(ReasoningEffortOption("none", "None"))
                 capabilities.betweenTools -> listOf(ReasoningEffortOption("none", "Between tools"))
                 else -> emptyList()
             }
@@ -282,6 +282,17 @@ internal fun ReasoningEffortControl(
         }
     }
 }
+
+/** Max-effort card: only black, purple, red and orange (light streaks are drawn on top of it). */
+internal fun maximumEffortCardBrush(): Brush = Brush.horizontalGradient(
+    colorStops = arrayOf(
+        0.00f to Color(0xFF0A0A0C),
+        0.26f to Color(0xFF3B1275),
+        0.52f to Color(0xFFB91C1C),
+        0.78f to Color(0xFFEA580C),
+        1.00f to Color(0xFF1A0A06)
+    )
+)
 
 /** Physical left-to-right colors: the strongest purple stays on the right. */
 internal fun maximumThinkingCardBrush(surface: Color): Brush = Brush.horizontalGradient(

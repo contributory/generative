@@ -305,27 +305,4 @@ class ProviderEditorBehaviorTest {
         compose.onNode(hasText("Renamed") and !hasSetTextAction()).assertIsDisplayed()
     }
 
-    @Test fun reasoningSwitchSavesOffAndOnRestoresRememberedLevel() {
-        var saved: ModelConfiguration? = null
-        compose.setContent {
-            MaterialTheme {
-                ModelEditScreen(
-                    provider.copy(config = ProviderConfiguration(modelConfigs = mapOf(
-                        "custom-model" to ModelConfiguration(reasoningEffort = "high")))),
-                    "custom-model", setOf("custom-model"),
-                    onSave = { _, config -> saved = config }, onBack = {})
-            }
-        }
-        compose.onNode(reasoningSwitch()).performScrollTo().performClick()
-        compose.onNodeWithText("Save").performClick()
-        compose.runOnIdle {
-            assertTrue(saved!!.reasoningDisabled)
-            assertEquals("high", saved!!.thinkingLevel)
-        }
-        compose.onNode(reasoningSwitch()).performScrollTo().performClick()
-        compose.onNodeWithText("Save").performClick()
-        compose.runOnIdle { assertEquals("high", saved!!.reasoningEffort) }
-    }
-
-    private fun reasoningSwitch() = isToggleable() and hasAnySibling(hasText("Enable reasoning"))
 }

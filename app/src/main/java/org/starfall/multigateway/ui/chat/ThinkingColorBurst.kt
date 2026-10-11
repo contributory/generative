@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -121,6 +122,36 @@ internal fun DrawScope.drawThinkingColorBurst(burst: ThinkingColorBurst) {
             center = burst.origin,
             style = androidx.compose.ui.graphics.drawscope.Stroke((3 - index).dp.toPx())
         )
+    }
+}
+
+/** Soft slanted light streaks over the max-effort card; white only, so they add no extra hue. */
+internal fun DrawScope.drawMaximumEffortStreaks(alpha: Float) {
+    if (alpha <= 0f) return
+    // (left edge as a fraction of the width, band width as a fraction, peak opacity)
+    val streaks = listOf(
+        Triple(0.06f, 0.05f, 0.10f),
+        Triple(0.22f, 0.018f, 0.24f),
+        Triple(0.34f, 0.07f, 0.12f),
+        Triple(0.52f, 0.022f, 0.28f),
+        Triple(0.66f, 0.05f, 0.14f),
+        Triple(0.82f, 0.016f, 0.22f),
+        Triple(0.92f, 0.04f, 0.10f)
+    )
+    rotate(degrees = 20f, pivot = center) {
+        streaks.forEach { (at, span, strength) ->
+            val left = size.width * at
+            val bandWidth = size.width * span
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    listOf(Color.Transparent, Color.White.copy(alpha = strength * alpha), Color.Transparent),
+                    startX = left,
+                    endX = left + bandWidth
+                ),
+                topLeft = Offset(left, -size.height),
+                size = androidx.compose.ui.geometry.Size(bandWidth, size.height * 3f)
+            )
+        }
     }
 }
 

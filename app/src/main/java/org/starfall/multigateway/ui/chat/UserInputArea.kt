@@ -65,7 +65,6 @@ import org.starfall.multigateway.data.model.ProviderGroup
 import org.starfall.multigateway.data.model.ConversationSummaryRequest
 import org.starfall.multigateway.data.model.ModelType
 import org.starfall.multigateway.data.model.ProviderType
-import org.starfall.multigateway.data.model.reasoningDisabled
 
 data class DirectMediaRequest(
     val prompt: String,
@@ -136,7 +135,7 @@ fun UserInputArea(
         reasoningEffortOptions(thinkingProvider?.type, selectedModelName, thinkingProvider?.config?.maxTokens ?: Int.MAX_VALUE)
     }
     val currentEffort = conversationReasoningEffort ?: thinkingConfig?.reasoningEffort
-    val maximumThinking = thinkingConfig?.supportsThinking == true && !thinkingConfig.reasoningDisabled &&
+    val maximumThinking = thinkingConfig?.supportsThinking == true &&
         reasoningEffortTier(reasoningEffortIndex(currentEffort, thinkingOptions), thinkingOptions) == 6
     val inputColor by animateColorAsState(
         if (maximumThinking) lerp(MaterialTheme.colorScheme.surfaceContainer, Color(0xFFF97316), 0.12f)
