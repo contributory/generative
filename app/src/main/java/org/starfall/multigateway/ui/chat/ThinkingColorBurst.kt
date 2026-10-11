@@ -28,6 +28,8 @@ internal class ThinkingColorBurst(private val scope: CoroutineScope) {
         private set
     var color by mutableStateOf(Color.Transparent)
         private set
+    var starCount by mutableIntStateOf(32)
+        private set
     private var job: Job? = null
     var keepAfterCompletion by mutableStateOf(false)
         private set
@@ -44,11 +46,13 @@ internal class ThinkingColorBurst(private val scope: CoroutineScope) {
         origin: Offset,
         color: Color,
         durationMillis: Int = 1100,
-        keepAfterCompletion: Boolean = false
+        keepAfterCompletion: Boolean = false,
+        starCount: Int = 32
     ) {
         job?.cancel()
         this.origin = origin
         this.color = color
+        this.starCount = starCount.coerceIn(0, 128)
         this.keepAfterCompletion = false
         job = scope.launch {
             progress.snapTo(0f)
@@ -118,7 +122,7 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
             private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
             override fun draw(canvas: android.graphics.Canvas) {
                 val progress = burst.progress.value
-                if (progress >= 1f && !burst.keepAfterCompletion) return
+                if (progress >= 1f) return
                 val width = root.width.toFloat()
                 val height = root.height.toFloat()
                 if (width <= 0f || height <= 0f) return
@@ -126,30 +130,28 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
                 root.getLocationOnScreen(location)
                 val x = burst.origin.x - location[0]
                 val y = burst.origin.y - location[1]
-                val settled = progress >= 1f && burst.keepAfterCompletion
                 val bloom = burst.bloomProgress
-                val fade = if (settled) 1f else bloom
+                val fade = bloom
                 val radius = (hypot(width, height) * (0.1f + bloom * 1.55f)).coerceAtLeast(1f)
-                if (settled) {
-                    paint.color = android.graphics.Color.argb(38, 124, 58, 237)
-                    canvas.drawRect(0f, 0f, width, height, paint)
-                }
+                val isRed = burst.color.red > burst.color.blue
+                val primaryRed = if (isRed) 220 else 167
+                val primaryGreen = if (isRed) 38 else 139
+                val primaryBlue = if (isRed) 38 else 250
+                val secondaryRed = if (isRed) 153 else 124
+                val secondaryGreen = if (isRed) 27 else 58
+                val secondaryBlue = if (isRed) 27 else 237
                 paint.shader = android.graphics.RadialGradient(x, y, radius,
-                    intArrayOf(android.graphics.Color.argb(((if (settled) 72 else 55) * fade).toInt(), 167, 139, 250),
-                        android.graphics.Color.argb(((if (settled) 36 else 24) * fade).toInt(), 124, 58, 237), android.graphics.Color.TRANSPARENT),
+                    intArrayOf(android.graphics.Color.argb((55 * fade).toInt(), primaryRed, primaryGreen, primaryBlue),
+                        android.graphics.Color.argb((24 * fade).toInt(), secondaryRed, secondaryGreen, secondaryBlue), android.graphics.Color.TRANSPARENT),
                     null, android.graphics.Shader.TileMode.CLAMP)
                 canvas.drawRect(0f, 0f, width, height, paint)
                 paint.shader = null
-                repeat(32) { index ->
+                repeat(burst.starCount) { index ->
                     val sx = width * ((index * 0.618034f + 0.13f) % 1f)
-                    val sy = height * ((index * 0.381966f + 0.27f) % 1f) - if (settled) 20f else bloom * 20f
-                    val sparkle = if (settled) {
-                        0.72f + sin(index.toDouble() * 1.7).toFloat() * 0.28f
-                    } else {
-                        (sin(progress * PI * 6 + index).toFloat() * 0.5f + 0.5f) * fade
-                    }
+                    val sy = height * ((index * 0.381966f + 0.27f) % 1f) - bloom * 20f
+                    val sparkle = (sin(progress * PI * 6 + index).toFloat() * 0.5f + 0.5f) * fade
                     paint.color = android.graphics.Color.argb(
-                        if (settled) 235 else (175 * sparkle).toInt(), 233, 213, 255
+                        (if (isRed) 220 else 175 * sparkle).toInt(), 233, 213, 255
                     )
                     val ray = (2f + index % 3) * root.resources.displayMetrics.density
                     paint.strokeWidth = root.resources.displayMetrics.density

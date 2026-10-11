@@ -579,13 +579,15 @@ internal fun SelectedModelOverviewSheet(
     onDismiss: () -> Unit
 ) {
     val effortOptions = remember(provider?.type, modelId, provider?.config?.maxTokens) {
-        reasoningEffortSliderOptions(provider?.type, modelId, provider?.config?.maxTokens ?: Int.MAX_VALUE)
+        reasoningEffortOptions(provider?.type, modelId, provider?.config?.maxTokens ?: Int.MAX_VALUE)
     }
     var previewTier by remember(conversationReasoningEffort, effortOptions) {
         mutableIntStateOf(reasoningEffortTier(reasoningEffortIndex(conversationReasoningEffort, effortOptions), effortOptions))
     }
     val sheetColor by animateColorAsState(
-        if (previewTier >= 5 && config.supportsThinking && !config.reasoningDisabled)
+        if (previewTier == 6 && config.supportsThinking && !config.reasoningDisabled)
+            lerp(MaterialTheme.colorScheme.surface, Color(0xFFF97316), 0.16f)
+        else if (previewTier == 5 && config.supportsThinking && !config.reasoningDisabled)
             lerp(MaterialTheme.colorScheme.surface, Color(0xFFA78BFA), 0.22f)
         else MaterialTheme.colorScheme.surface,
         tween(1800), label = "thinking-sheet-color"
@@ -761,7 +763,7 @@ private fun ModelPickerCard(
     onPreviewTierChange: (Int) -> Unit = {}
 ) {
     val effortOptions = remember(providerType, modelId, maxTokens) {
-        reasoningEffortSliderOptions(providerType, modelId, maxTokens)
+        reasoningEffortOptions(providerType, modelId, maxTokens)
     }
     var previewReasoningValue by remember(conversationReasoningEffort, isSelected, effortOptions) {
         mutableFloatStateOf(reasoningEffortIndex(conversationReasoningEffort, effortOptions).toFloat())
@@ -935,9 +937,10 @@ private fun ModelPickerCard(
                              reasoningEffortBurstDuration(selectedTier))
                          if (selectedTier >= 5) screenBurst?.start(
                              origin = origin,
-                             color = Color(0xFFA78BFA),
+                             color = if (selectedTier == 6) Color(0xFFDC2626) else Color(0xFFA78BFA),
                              durationMillis = if (selectedTier == 6) 6500 else 2600,
-                             keepAfterCompletion = selectedTier == 6
+                             keepAfterCompletion = false,
+                             starCount = if (selectedTier == 6) 72 else 32
                          )
                     },
                     trackBackground = settledCardColor

@@ -120,19 +120,6 @@ internal fun reasoningEffortOptions(
     }
 }
 
-/** The picker exposes only the two strongest choices: the purple and red tiers. */
-internal fun reasoningEffortSliderOptions(
-    providerType: ProviderType? = null,
-    modelId: String = "",
-    maxTokens: Int = Int.MAX_VALUE
-): List<ReasoningEffortOption> {
-    val options = reasoningEffortOptions(providerType, modelId, maxTokens)
-    return options
-        .filter { it.effort != null && reasoningEffortEnabled(it.effort) }
-        .takeLast(2)
-        .ifEmpty { options.takeLast(2) }
-}
-
 internal fun reasoningEffortEnabled(effort: String?): Boolean =
     effort?.trim()?.lowercase() !in listOf("none", "off")
 
@@ -205,8 +192,12 @@ internal fun ReasoningEffortControl(
                         val fraction = (it / maximumValue).coerceIn(0f, 1f)
                         val physicalFraction = if (layoutDirection == LayoutDirection.Rtl) 1f - fraction else fraction
                         val origin = Offset(trackBounds.width * physicalFraction, trackBounds.height / 2f)
-                        burst.start(origin, accentFor(nextBand), reasoningEffortBurstDuration(nextBand))
-                        onColorBurst(trackBounds.topLeft + origin, nextBand)
+                        // Lower tiers retain their normal static colors. Only purple/red transitions
+                        // get the bloom and screen effects.
+                        if (nextBand >= 5 || previousBand >= 5) {
+                            burst.start(origin, accentFor(nextBand), reasoningEffortBurstDuration(nextBand))
+                            onColorBurst(trackBounds.topLeft + origin, nextBand)
+                        }
                     }
                 },
                 onValueChangeFinished = {
@@ -257,25 +248,28 @@ internal fun ReasoningEffortControl(
                                          else listOf(lerp(trackBackground, accentFor(tier), 0.5f), accentFor(tier))
                                      ), cornerRadius = radius)
                                  }
-                             }
-                             if (band != 0) {
-                                 paintTrack(if (burst.progress.value < 1f) previousColorBand else band)
-                                  // Reveal the new color from the thumb instead of sweeping from an edge.
-                                  if (burst.progress.value >= 0.52f) {
-                                      paintTrack(band)
-                                  } else {
-                                      val radius = 14.dp.toPx() + hypot(size.width, size.height) * burst.bloomProgress
-                                      clipPath(androidx.compose.ui.graphics.Path().apply {
-                                          addOval(Rect(burst.origin, radius))
-                                      }) { paintTrack(band) }
-                                  }
-                             }
+                              }
+                              if (band != 0) {
+                                  val animatingStrongTier = band >= 5 && previousColorBand >= 5 && burst.progress.value < 1f
+                                  paintTrack(if (animatingStrongTier) previousColorBand else band)
+                                   // Reveal purple/red from the thumb instead of sweeping from an edge.
+                                   if (band >= 5 && burst.progress.value < 1f) {
+                                       if (burst.progress.value >= 0.52f) {
+                                           paintTrack(band)
+                                       } else {
+                                           val radius = 14.dp.toPx() + hypot(size.width, size.height) * burst.bloomProgress
+                                           clipPath(androidx.compose.ui.graphics.Path().apply {
+                                               addOval(Rect(burst.origin, radius))
+                                           }) { paintTrack(band) }
+                                       }
+                                   }
+                              }
                             // Subtle detents remain visible beneath the settling color.
                             repeat(options.size) { index ->
                                 val x = size.width * index / options.lastIndex
                                  if (band != 0) drawCircle(Color.White.copy(alpha = 0.32f), 1.25.dp.toPx(), Offset(x, size.height / 2f))
                              }
-                             if (band >= 2) drawThinkingColorBurst(burst)
+                              if (band >= 5) drawThinkingColorBurst(burst)
                         })
                 },
                 modifier = Modifier.fillMaxWidth().testTag("reasoning-slider")
