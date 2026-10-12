@@ -67,9 +67,9 @@ class ProviderEditorBehaviorTest {
                 onSave = { _, config -> saved = config }, onBack = {})
         } }
         compose.onNodeWithText("Passback Thinking").performScrollTo().assertIsDisplayed()
-        compose.onNode(reasoningSwitch()).performScrollTo().performClick()
+compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         compose.onNodeWithText("Passback Thinking").assertDoesNotExist()
-        compose.onNode(reasoningSwitch()).performScrollTo().performClick()
+        compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         compose.onNodeWithText("Passback Thinking").assertExists()
         listOf("On" to true, "Off" to false, "Default" to null).forEach { (label, value) ->
             compose.onNode(hasText(label) and hasAnyAncestor(hasTestTag("streaming-mode")))
