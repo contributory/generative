@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="thinking">생각 중</string>
+    <string name="thinking_streaming">생각 중...</string>
+    <string name="thought_process">사고 과정</string>
+    <string name="processed">처리됨</string>
+    <string name="processed_in">처리 시간 %1$s</string>
+    <string name="reasoning_completed">추론 완료</string>
+    <string name="reasoning_completed_in">추론 완료 (%1$s)</string>
+    <string name="tool_executed">도구 실행됨</string>
+    <string name="tool_executed_in">도구 실행 시간 %1$s</string>
     <!-- 설정 제목은 의도적으로 영어 기본값을 사용하며, 설명과 안내만 번역합니다. -->
     <string name="use_system_language_desc">기기의 언어를 따릅니다. 끄면 이 앱에서 사용할 언어를 선택할 수 있습니다.</string>
     <string name="settings_category_appearance_description">테마, 색상 및 메시지 표시</string>
@@ -91,7 +100,8 @@
     <string name="chat_input_placeholder">메시지를 입력하세요...</string>
     <string name="search_history">기록 검색...</string>
     <string name="no_conversations_yet">아직 대화가 없습니다</string>
-    <string name="connect_providers_description">여러 AI 제공업체와 에이전트에 원활하게 연결합니다.</string>
+    <string name="all_models">모든 모델</string>
+    <string name="connect_providers_description">여러 AI 제공업체와 에이전트에 원활하게 연결할 수 있습니다.</string>
     <string name="choose_another_model_hint">모델 카드를 탭하여 다른 모델 선택</string>
     <string name="screen_wakelock_description">응답을 생성하는 동안 화면을 켜 둡니다.</string>
 </resources>

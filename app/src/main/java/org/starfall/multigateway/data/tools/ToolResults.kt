@@ -15,16 +15,25 @@ internal class ToolBudget {
         if (systemTool == "generate_video") videos++
     }
 }
+private const val INLINE_TOOL_RESULT_LIMIT = 10_000
 internal data class ToolSummary(val content: JsonObject, val preview: String, val files: List<String>, val responseFile: String)
 internal suspend fun summarizeToolResult(result: JsonObject, files: ToolFiles): ToolSummary {
     val full = result.toString()
     val media = Regex("tool-file:([a-zA-Z0-9._-]+)").findAll(full).map { it.groupValues[1] }.distinct().take(32).toList()
-    val details = files.save(full.byteInputStream(), "application/json")
-    val truncated = full.length > 12000
+    val needsResponseFile = media.isNotEmpty() || full.length >= INLINE_TOOL_RESULT_LIMIT
+    val details = if (needsResponseFile) files.save(full.byteInputStream(), "application/json") else ""
+    val truncated = full.length >= INLINE_TOOL_RESULT_LIMIT
     val content = if (!truncated) result else obj(
         "truncated" to JsonPrimitive(true), "characters" to JsonPrimitive(full.length),
         "preview" to str(full.take(2000)),
-        "files" to JsonArray((media + details).map { str("tool-file:$it") }),
+        "files" to JsonArray((media + details).filter { it.isNotBlank() }.map { str("tool-file:$it") }),
         "isError" to (result["isError"] ?: JsonPrimitive(false)))
-    return ToolSummary(content, if ((result["isError"] as? JsonPrimitive)?.booleanOrNull == true) "Tool reported an error. Open the saved result for details." else if (media.isEmpty()) "Tool completed. Open the saved result for details." else "Saved ${media.size} file(s). Open Storage for details.", media + details, details)
+    val preview = when {
+        (result["isError"] as? JsonPrimitive)?.booleanOrNull == true && details.isNotBlank() ->
+            "Tool reported an error. Open the saved result for details."
+        details.isNotBlank() && media.isEmpty() -> "Tool completed. Open the saved result for details."
+        media.isNotEmpty() -> "Saved ${media.size} file(s). Open Storage for details."
+        else -> "Tool completed."
+    }
+    return ToolSummary(content, preview, (media + details).filter { it.isNotBlank() }, details)
 }

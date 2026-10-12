@@ -81,6 +81,7 @@ data class AppPreferences(
     val providersCollapsedSections: Set<String> = emptySet(),
     val modelPickerCollapsedGroups: Set<String> = emptySet(),
     val modelPickerCollapsedProviders: Set<String> = emptySet(),
+    val modelPickerSelectedTab: String = "default",
     val mcpPresetsInitialized: Boolean = false,
     val contentApiPresetInitialized: Boolean = false,
     val latexMode: String = "AUTO", // ON, OFF, AUTO
@@ -137,6 +138,7 @@ class AppPreferencesRepository(private val context: Context) {
         val PROVIDERS_COLLAPSED_SECTIONS = stringSetPreferencesKey("providers_collapsed_sections")
         val MODEL_PICKER_COLLAPSED_GROUPS = stringSetPreferencesKey("model_picker_collapsed_groups")
         val MODEL_PICKER_COLLAPSED_PROVIDERS = stringSetPreferencesKey("model_picker_collapsed_providers")
+        val MODEL_PICKER_SELECTED_TAB = stringPreferencesKey("model_picker_selected_tab")
         val MCP_PRESETS_INITIALIZED = booleanPreferencesKey("mcp_presets_initialized")
         val CONTENT_API_PRESET_INITIALIZED = booleanPreferencesKey("content_api_preset_initialized")
         val LATEX_MODE = stringPreferencesKey("latex_mode")
@@ -190,6 +192,7 @@ class AppPreferencesRepository(private val context: Context) {
                 providersCollapsedSections = preferences[PreferenceKeys.PROVIDERS_COLLAPSED_SECTIONS].orEmpty(),
                 modelPickerCollapsedGroups = preferences[PreferenceKeys.MODEL_PICKER_COLLAPSED_GROUPS].orEmpty(),
                 modelPickerCollapsedProviders = preferences[PreferenceKeys.MODEL_PICKER_COLLAPSED_PROVIDERS].orEmpty(),
+                modelPickerSelectedTab = preferences[PreferenceKeys.MODEL_PICKER_SELECTED_TAB] ?: "default",
                 mcpPresetsInitialized = preferences[PreferenceKeys.MCP_PRESETS_INITIALIZED] ?: false,
                 contentApiPresetInitialized = preferences[PreferenceKeys.CONTENT_API_PRESET_INITIALIZED] ?: false,
                 latexMode = preferences[PreferenceKeys.LATEX_MODE] ?: "AUTO",
@@ -443,6 +446,15 @@ class AppPreferencesRepository(private val context: Context) {
         state.mutate({ it.copy(modelPickerCollapsedProviders = ids) }) {
             context.dataStore.edit { preferences ->
                 preferences[PreferenceKeys.MODEL_PICKER_COLLAPSED_PROVIDERS] = ids
+            }
+        }
+    }
+
+    suspend fun setModelPickerSelectedTab(tabKey: String) {
+        val normalized = tabKey.ifBlank { "default" }
+        state.mutate({ it.copy(modelPickerSelectedTab = normalized) }) {
+            context.dataStore.edit { preferences ->
+                preferences[PreferenceKeys.MODEL_PICKER_SELECTED_TAB] = normalized
             }
         }
     }

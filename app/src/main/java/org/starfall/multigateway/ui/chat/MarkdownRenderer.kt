@@ -39,14 +39,20 @@ import org.starfall.multigateway.data.local.preferences.MessageFontFamily
 
 /** Library primitives with app-owned code toolbar, error/LaTeX UI and streaming fades. */
 @Composable
-fun MarkdownRenderer(content: String, modifier: Modifier = Modifier, isStreaming: Boolean = false, latexMode: String? = null) {
+fun MarkdownRenderer(
+    content: String,
+    modifier: Modifier = Modifier,
+    isStreaming: Boolean = false,
+    latexMode: String? = null,
+    fillMaxWidth: Boolean = true
+) {
     if (content.isBlank()) return
     if (content.length > MAX_MARKDOWN_RENDER_CHARS) {
         SelectionContainer {
             Text(
                 text = content.take(MAX_MARKDOWN_RENDER_CHARS) + "\n\n[Response preview truncated for performance]",
                 style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp),
-                modifier = modifier.fillMaxWidth()
+                modifier = modifier.then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)
             )
         }
         return
@@ -82,7 +88,9 @@ fun MarkdownRenderer(content: String, modifier: Modifier = Modifier, isStreaming
     val messageFont = preferences.messageFontFamily.toComposeFontFamily()
     Markdown(
         state = parsed,
-        modifier = modifier.fillMaxWidth().then(if (isStreaming) Modifier else Modifier.animateContentSize()),
+        modifier = modifier
+            .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)
+            .then(if (isStreaming) Modifier else Modifier.animateContentSize()),
         colors = markdownColor(),
         typography = markdownTypography(
             h1 = type.headlineSmall.copy(fontFamily = messageFont, fontWeight = FontWeight.Bold, fontSize = bodySize * 1.375f, color = MaterialTheme.colorScheme.primary),
@@ -102,7 +110,7 @@ fun MarkdownRenderer(content: String, modifier: Modifier = Modifier, isStreaming
                     isStreaming && !fence.closed && model.node.endOffset == model.content.length)
             },
             codeBlock = { model -> RenderCodeBlock("", model.node.getTextInNode(model.content).toString().trimEnd(), false) },
-            paragraph = { model -> RenderParagraph(model, effectiveLatexMode) },
+            paragraph = { model -> RenderParagraph(model, effectiveLatexMode, fillMaxWidth) },
             table = { model -> RenderMarkdownTable(model) }
         ),
         error = { Text(content, style = type.bodyLarge.copy(fontFamily = messageFont, fontSize = bodySize)) }
@@ -158,7 +166,7 @@ fun StreamingMarkdownRenderer(
 }
 
 @Composable
-private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String) {
+private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String, fillMaxWidth: Boolean) {
     val text = model.node.getTextInNode(model.content).toString()
     val context = LocalContext.current
     val presentation = rememberStreamingTextPresentation(text)
@@ -179,7 +187,7 @@ private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String) {
                 color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f),
                 border = androidx.compose.foundation.BorderStroke(1.dp, errorColor.copy(alpha = 0.4f)),
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)
                     .padding(vertical = 4.dp)
             ) {
                 Row(
@@ -229,7 +237,8 @@ private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String) {
                     fontSize = bodySize,
                     lineHeight = bodySize * 1.375f,
                     color = MaterialTheme.colorScheme.onSurface
-                )
+                ),
+                fillMaxWidth = fillMaxWidth
             )
         }
         else -> {
@@ -246,8 +255,8 @@ private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String) {
                         lineHeight = bodySize * 1.375f,
                         color = MaterialTheme.colorScheme.onSurface
                     ),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                     modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier
+                 )
             }
         }
     }

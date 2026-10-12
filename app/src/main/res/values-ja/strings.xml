@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="thinking">思考中</string>
+    <string name="thinking_streaming">思考中...</string>
+    <string name="thought_process">思考プロセス</string>
+    <string name="processed">処理済み</string>
+    <string name="processed_in">処理時間: %1$s</string>
+    <string name="reasoning_completed">推論完了</string>
+    <string name="reasoning_completed_in">推論完了（%1$s）</string>
+    <string name="tool_executed">ツールを実行しました</string>
+    <string name="tool_executed_in">ツールを実行（%1$s）</string>
     <!-- 設定のタイトルは意図的に英語のままにし、説明と手順のみ翻訳しています。 -->
     <string name="use_system_language_desc">端末の言語に従います。オフにすると、このアプリの言語を選択できます。</string>
     <string name="settings_category_appearance_description">テーマ、色、メッセージ表示</string>
@@ -91,7 +100,8 @@
     <string name="chat_input_placeholder">メッセージを入力...</string>
     <string name="search_history">履歴を検索...</string>
     <string name="no_conversations_yet">会話はまだありません</string>
-    <string name="connect_providers_description">複数の AI プロバイダーやエージェントにシームレスに接続します。</string>
+    <string name="all_models">すべてのモデル</string>
+    <string name="connect_providers_description">複数のAIプロバイダーやエージェントにシームレスに接続できます。</string>
     <string name="choose_another_model_hint">モデルカードをタップして別のモデルを選択</string>
     <string name="screen_wakelock_description">応答の生成中は画面をオンのままにします。</string>
 </resources>

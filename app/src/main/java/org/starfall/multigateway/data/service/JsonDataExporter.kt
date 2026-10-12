@@ -28,7 +28,9 @@ enum class JsonExportKind(val fileName: String) {
 data class ProvidersExport(
     val providers: List<LlmProviderInfo>,
     // null identifies legacy exports that did not include group records.
-    val groups: List<ProviderGroup>?
+    val groups: List<ProviderGroup>?,
+    // Speech services use provider-backed credentials and travel with provider data.
+    val speechServices: List<SpeechService> = emptyList()
 )
 
 private val exportJson = Json {
@@ -58,6 +60,7 @@ fun buildJsonExport(
         put("items", items)
         if (kind == JsonExportKind.PROVIDERS) {
             put("groups", exportJson.parseToJsonElement(exportJson.encodeToString(providerGroups)))
+            put("speechServices", exportJson.parseToJsonElement(exportJson.encodeToString(speechServices)))
         }
     })
 }
@@ -79,7 +82,11 @@ fun parseProvidersExport(raw: String): ProvidersExport {
     val root = importedRoot(raw, JsonExportKind.PROVIDERS)
     return ProvidersExport(
         providers = exportJson.decodeFromString(root.getValue("items").toString()),
-        groups = root["groups"]?.let { exportJson.decodeFromString<List<ProviderGroup>>(it.toString()) }
+        groups = root["groups"]?.let { exportJson.decodeFromString<List<ProviderGroup>>(it.toString()) },
+        // Older provider exports remain valid and simply contain no speech services.
+        speechServices = root["speechServices"]?.let {
+            exportJson.decodeFromString<List<SpeechService>>(it.toString())
+        }.orEmpty()
     )
 }
 

@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="thinking">Pensando</string>
+    <string name="thinking_streaming">Pensando...</string>
+    <string name="thought_process">Proceso de razonamiento</string>
+    <string name="processed">Procesado</string>
+    <string name="processed_in">Procesado en %1$s</string>
+    <string name="reasoning_completed">Razonamiento completado</string>
+    <string name="reasoning_completed_in">Razonamiento completado en %1$s</string>
+    <string name="tool_executed">Herramienta ejecutada</string>
+    <string name="tool_executed_in">Herramienta ejecutada en %1$s</string>
     <!-- Los títulos de configuración usan intencionadamente el inglés; aquí se traducen las descripciones y las instrucciones. -->
     <string name="use_system_language_desc">Seguir el idioma del dispositivo. Desactívalo para elegir un idioma para esta aplicación.</string>
     <string name="settings_category_appearance_description">Tema, colores y visualización de mensajes</string>
@@ -91,6 +100,7 @@
     <string name="chat_input_placeholder">Escribe un mensaje...</string>
     <string name="search_history">Buscar en el historial...</string>
     <string name="no_conversations_yet">Aún no hay conversaciones</string>
+    <string name="all_models">Todos los modelos</string>
     <string name="connect_providers_description">Conéctate sin complicaciones a varios proveedores de IA y agentes.</string>
     <string name="choose_another_model_hint">Toca la tarjeta del modelo para elegir otro modelo</string>
     <string name="screen_wakelock_description">Mantener la pantalla encendida mientras se genera una respuesta.</string>

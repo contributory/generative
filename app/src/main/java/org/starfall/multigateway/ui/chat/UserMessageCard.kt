@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -27,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.data.model.StoredMessage
+import org.starfall.multigateway.ui.theme.LocalAmoledMode
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -57,6 +59,9 @@ fun UserMessageCard(
             Surface(
                 shape = RoundedCornerShape(24.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                border = if (LocalAmoledMode.current) {
+                    BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f))
+                } else null,
                 modifier = Modifier
                     .clip(RoundedCornerShape(24.dp))
                     .combinedClickable(
@@ -79,7 +84,7 @@ fun UserMessageCard(
                     // Text Content
                     // Same renderer (markdown, LaTeX, code, tables, font and size) as AI messages.
                     val messageText: @Composable () -> Unit = {
-                        MarkdownRenderer(content = message.content)
+                        MarkdownRenderer(content = message.content, fillMaxWidth = false)
                     }
                     if (message.isQueued) messageText() else SelectionContainer { messageText() }
 

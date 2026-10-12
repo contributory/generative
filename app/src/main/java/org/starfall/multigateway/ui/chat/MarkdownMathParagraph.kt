@@ -38,20 +38,25 @@ import kotlinx.coroutines.withContext
  * select with it; display formulas (`$$…$$`, `\[…\]`) get their own block between the surrounding text.
  */
 @Composable
-internal fun RenderMathParagraph(pieces: List<MathPiece>, style: TextStyle, modifier: Modifier = Modifier) {
+internal fun RenderMathParagraph(
+    pieces: List<MathPiece>,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+    fillMaxWidth: Boolean = true
+) {
     val blocks = remember(pieces) { groupMathBlocks(pieces) }
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(modifier = modifier.then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)) {
         blocks.forEach { block ->
             when (block) {
                 is MathBlock.Display -> RenderLatexBlock(source = block.math.source, formula = block.math.formula)
-                is MathBlock.Flow -> InlineMathFlow(block.pieces, style)
+                is MathBlock.Flow -> InlineMathFlow(block.pieces, style, fillMaxWidth)
             }
         }
     }
 }
 
 @Composable
-private fun InlineMathFlow(pieces: List<MathPiece>, style: TextStyle) {
+private fun InlineMathFlow(pieces: List<MathPiece>, style: TextStyle, fillMaxWidth: Boolean) {
     val density = LocalDensity.current
     val colors = MaterialTheme.colorScheme
     val textColor = if (style.color.isSpecified) style.color else colors.onSurface
@@ -125,7 +130,7 @@ private fun InlineMathFlow(pieces: List<MathPiece>, style: TextStyle) {
         MarkdownClickableText(
             text = text,
             style = flowStyle,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
             inlineContent = inlineContent
         )
     }

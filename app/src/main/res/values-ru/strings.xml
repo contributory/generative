@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="thinking">Обдумывание</string>
+    <string name="thinking_streaming">Обдумывание...</string>
+    <string name="thought_process">Ход рассуждений</string>
+    <string name="processed">Обработано</string>
+    <string name="processed_in">Обработано за %1$s</string>
+    <string name="reasoning_completed">Рассуждение завершено</string>
+    <string name="reasoning_completed_in">Рассуждение завершено за %1$s</string>
+    <string name="tool_executed">Инструмент выполнен</string>
+    <string name="tool_executed_in">Инструмент выполнен за %1$s</string>
     <!-- Заголовки настроек намеренно остаются на английском; здесь переведены описания и инструкции. -->
     <string name="use_system_language_desc">Использовать язык устройства. Отключите этот параметр, чтобы выбрать язык приложения.</string>
     <string name="settings_category_appearance_description">Тема, цвета и отображение сообщений</string>
@@ -91,7 +100,8 @@
     <string name="chat_input_placeholder">Введите сообщение...</string>
     <string name="search_history">Поиск в истории...</string>
     <string name="no_conversations_yet">Разговоров пока нет</string>
-    <string name="connect_providers_description">Подключайтесь к нескольким поставщикам ИИ и агентам без лишних сложностей.</string>
+    <string name="all_models">Все модели</string>
+    <string name="connect_providers_description">Подключайтесь без лишних сложностей к нескольким провайдерам ИИ и агентам.</string>
     <string name="choose_another_model_hint">Нажмите на карточку модели, чтобы выбрать другую модель</string>
     <string name="screen_wakelock_description">Не выключать экран во время создания ответа.</string>
 </resources>

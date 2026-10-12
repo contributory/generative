@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="thinking">Denken</string>
+    <string name="thinking_streaming">Denken...</string>
+    <string name="thought_process">Denkprozess</string>
+    <string name="processed">Verarbeitet</string>
+    <string name="processed_in">Verarbeitet in %1$s</string>
+    <string name="reasoning_completed">Überlegung abgeschlossen</string>
+    <string name="reasoning_completed_in">Überlegung in %1$s abgeschlossen</string>
+    <string name="tool_executed">Tool ausgeführt</string>
+    <string name="tool_executed_in">Tool in %1$s ausgeführt</string>
     <!-- Setting titles intentionally use English defaults; descriptions and guidance are translated here. -->
     <string name="use_system_language_desc">Der Sprache deines Geräts folgen. Deaktiviere dies, um eine Sprache für diese App auszuwählen.</string>
     <string name="settings_category_appearance_description">Design, Farben und Nachrichtendarstellung</string>
@@ -91,7 +100,8 @@
     <string name="chat_input_placeholder">Text eingeben...</string>
     <string name="search_history">Verlauf durchsuchen...</string>
     <string name="no_conversations_yet">Noch keine Unterhaltungen</string>
-    <string name="connect_providers_description">Nahtlos mit mehreren KI-Anbietern und Agenten verbinden.</string>
+    <string name="all_models">Alle Modelle</string>
+    <string name="connect_providers_description">Nahtlos eine Verbindung zu mehreren KI-Anbietern und Agenten herstellen.</string>
     <string name="choose_another_model_hint">Tippe auf die Modellkarte, um ein anderes Modell auszuwählen</string>
     <string name="screen_wakelock_description">Den Bildschirm während der Antwortgenerierung eingeschaltet lassen.</string>
 </resources>

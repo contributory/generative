@@ -100,6 +100,8 @@ fun UserInputArea(
     modelPickerCollapsedProviders: Set<String> = emptySet(),
     onModelPickerCollapsedGroupsChange: (Set<String>) -> Unit = {},
     onModelPickerCollapsedProvidersChange: (Set<String>) -> Unit = {},
+    modelPickerSelectedTab: String = "default",
+    onModelPickerSelectedTabChange: (String) -> Unit = {},
     selectedProviderId: String,
     onSelectModel: (providerId: String, modelId: String) -> Unit,
     conversationReasoningEffort: String?,
@@ -606,7 +608,10 @@ fun UserInputArea(
                     val setPassback: (Boolean) -> Unit = { enabled -> onSetSendThinkingContent(providerId, configKey, enabled) }
                     setPassback
                 } else null,
-                onOpenModelPicker = { showModelPicker = true },
+                onOpenModelPicker = {
+                    showSelectedModelOverview = false
+                    showModelPicker = true
+                },
                 onDismiss = { showSelectedModelOverview = false }
             )
         }
@@ -620,6 +625,8 @@ fun UserInputArea(
             collapsedProviderIdsState = modelPickerCollapsedProviders,
             onCollapsedGroupIdsChange = onModelPickerCollapsedGroupsChange,
             onCollapsedProviderIdsChange = onModelPickerCollapsedProvidersChange,
+            selectedTabKeyState = modelPickerSelectedTab,
+            onSelectedTabKeyChange = onModelPickerSelectedTabChange,
             selectedProviderId = if (mediaKind != null) mediaProviderId else selectedProviderId,
             selectedModelId = if (mediaKind != null) mediaModelId else selectedModelName,
             conversationReasoningEffort = null,

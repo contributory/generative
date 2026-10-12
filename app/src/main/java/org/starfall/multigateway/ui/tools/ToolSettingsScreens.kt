@@ -59,6 +59,8 @@ fun SystemToolsScreen(
     collapsedProviderIds: Set<String> = emptySet(),
     onCollapsedGroupIdsChange: (Set<String>) -> Unit = {},
     onCollapsedProviderIdsChange: (Set<String>) -> Unit = {},
+    selectedTabKey: String = "default",
+    onSelectedTabKeyChange: (String) -> Unit = {},
     onBack: () -> Unit
 ) {
     var choosing by remember { mutableStateOf<String?>(null) }
@@ -200,6 +202,8 @@ fun SystemToolsScreen(
             collapsedProviderIdsState = collapsedProviderIds,
             onCollapsedGroupIdsChange = onCollapsedGroupIdsChange,
             onCollapsedProviderIdsChange = onCollapsedProviderIdsChange,
+            selectedTabKeyState = selectedTabKey,
+            onSelectedTabKeyChange = onSelectedTabKeyChange,
             selectedProviderId = current.providerId,
             selectedModelId = current.modelId,
             conversationReasoningEffort = null,

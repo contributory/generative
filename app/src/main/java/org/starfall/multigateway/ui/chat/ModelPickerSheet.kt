@@ -41,7 +41,6 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -260,6 +259,8 @@ fun ModelPickerSheet(
     collapsedProviderIdsState: Set<String> = emptySet(),
     onCollapsedGroupIdsChange: (Set<String>) -> Unit = {},
     onCollapsedProviderIdsChange: (Set<String>) -> Unit = {},
+    selectedTabKeyState: String = "default",
+    onSelectedTabKeyChange: (String) -> Unit = {},
     selectedProviderId: String,
     selectedModelId: String,
     conversationReasoningEffort: String?,
@@ -297,7 +298,7 @@ fun ModelPickerSheet(
             }
         }
     }
-    var selectedTabKey by rememberSaveable { mutableStateOf("default") }
+    var selectedTabKey by remember { mutableStateOf(selectedTabKeyState.ifBlank { "default" }) }
     // Keep a separate LazyListState for every tab. Reusing one state here makes
     // Compose restore the previous tab's position (or jump to its initial row)
     // whenever the tab content is replaced.
@@ -316,7 +317,15 @@ fun ModelPickerSheet(
     }
     LaunchedEffect(folderTabs) {
         if (folderTabs.none { it.key == selectedTabKey }) {
-            selectedTabKey = folderTabs.firstOrNull()?.key ?: "default"
+            val fallback = folderTabs.firstOrNull()?.key ?: "default"
+            selectedTabKey = fallback
+            onSelectedTabKeyChange(fallback)
+        }
+    }
+    LaunchedEffect(selectedTabKeyState) {
+        val requested = selectedTabKeyState.ifBlank { "default" }
+        if (requested != selectedTabKey && folderTabs.any { it.key == requested }) {
+            selectedTabKey = requested
         }
     }
     val selectedTab = folderTabs.getOrNull(selectedTabIndex)
@@ -408,7 +417,7 @@ fun ModelPickerSheet(
 
     AppBottomSheet(
         onDismissRequest = onDismiss,
-        fixedHeightFraction = 0.75f
+        fixedHeightFraction = 0.9f
     ) {
         Column(
             modifier = Modifier
@@ -463,6 +472,7 @@ fun ModelPickerSheet(
                             onClick = {
                                 if (selectedTabKey != tab.key) instantTabSwap = true
                                 selectedTabKey = tab.key
+                                onSelectedTabKeyChange(tab.key)
                             },
                             modifier = Modifier.testTag("model-picker-tab_${tab.key}"),
                             text = {
@@ -615,7 +625,7 @@ internal fun SelectedModelOverviewSheet(
             lerp(MaterialTheme.colorScheme.surface, Color(0xFFF97316), 0.16f)
         else if (previewTier == 5 && config.supportsThinking)
             lerp(MaterialTheme.colorScheme.surface, Color(0xFFA78BFA), 0.22f)
-        else MaterialTheme.colorScheme.surface
+        else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
     AppBottomSheet(onDismissRequest = {
         screenBurst?.hide()
         onDismiss()
@@ -629,6 +639,17 @@ internal fun SelectedModelOverviewSheet(
                 .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            OutlinedButton(
+                onClick = {
+                    screenBurst?.hide()
+                    onOpenModelPicker()
+                },
+                modifier = Modifier.fillMaxWidth(0.9f).align(Alignment.CenterHorizontally),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.Transparent),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Text(stringResource(R.string.all_models))
+            }
             ModelPickerCard(
                 modelId = modelId,
                 providerType = provider?.type,
@@ -640,11 +661,9 @@ internal fun SelectedModelOverviewSheet(
                 conversationReasoningEffort = conversationReasoningEffort,
                 onSetReasoningEffort = onSetReasoningEffort,
                 showReasoningEffort = true,
-                 onClick = {
-                     screenBurst?.hide()
-                     onOpenModelPicker()
-                 },
-                onPreviewTierChange = { previewTier = it }
+                 onClick = {},
+                 embedded = true,
+                 onPreviewTierChange = { previewTier = it }
             )
             if (config.supportsThinking && onSetSendThinkingContent != null) {
                 Surface(
@@ -803,7 +822,8 @@ private fun ModelPickerCard(
     onSetReasoningEffort: (String?) -> Unit,
     showReasoningEffort: Boolean,
     onClick: () -> Unit,
-    onPreviewTierChange: (Int) -> Unit = {}
+    onPreviewTierChange: (Int) -> Unit = {},
+    embedded: Boolean = false
 ) {
     val effortOptions = remember(providerType, modelId, maxTokens) {
         reasoningEffortOptions(providerType, modelId, maxTokens)
@@ -826,30 +846,19 @@ private fun ModelPickerCard(
     val cardBurst = rememberThinkingColorBurst()
     val screenBurst = LocalThinkingScreenBurst.current
     var cardOrigin by remember { mutableStateOf(Offset.Zero) }
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = cardBase,
-                 contentColor = if (enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface,
-        border = if (isSelected) {
-            BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f))
-        } else null
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .onGloballyPositioned { cardOrigin = it.localToScreen(Offset.Zero) }
-                .drawBehind {
-                    revealThinkingColor(cardBurst) {
-                        drawRect(cardBrush, alpha = cardTint)
-                        if (tier == 6) drawMaximumEffortStreaks(cardTint)
-                    }
-                    drawThinkingColorBurst(cardBurst)
-                }
-                .padding(10.dp)
-        ) {
+    val cardContentColor = if (enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
+    val cardModifier = Modifier.fillMaxWidth().then(if (embedded) Modifier else Modifier.clickable(onClick = onClick))
+    val cardContentModifier = Modifier
+        .fillMaxWidth()
+        .onGloballyPositioned { cardOrigin = it.localToScreen(Offset.Zero) }
+        .drawBehind {
+            revealThinkingColor(cardBurst) {
+                drawRect(cardBrush, alpha = cardTint)
+                if (tier == 6) drawMaximumEffortStreaks(cardTint)
+            }
+        }
+        .padding(10.dp)
+    val cardContent: @Composable ColumnScope.() -> Unit = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -1002,6 +1011,22 @@ private fun ModelPickerCard(
                     },
                     trackBackground = settledCardColor
                 )
+            }
+    }
+    CompositionLocalProvider(LocalContentColor provides cardContentColor) {
+        if (embedded) {
+            Column(modifier = cardContentModifier, content = cardContent)
+        } else {
+            Surface(
+                modifier = cardModifier,
+                shape = RoundedCornerShape(16.dp),
+                color = cardBase,
+                contentColor = cardContentColor,
+                border = if (isSelected) {
+                    BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f))
+                } else null
+            ) {
+                Column(modifier = cardContentModifier, content = cardContent)
             }
         }
     }

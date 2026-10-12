@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="thinking">思考中</string>
+    <string name="thinking_streaming">思考中...</string>
+    <string name="thought_process">思考過程</string>
+    <string name="processed">已處理</string>
+    <string name="processed_in">處理時間：%1$s</string>
+    <string name="reasoning_completed">推理完成</string>
+    <string name="reasoning_completed_in">推理完成（%1$s）</string>
+    <string name="tool_executed">工具已執行</string>
+    <string name="tool_executed_in">工具執行時間：%1$s</string>
     <!-- 設定標題有意使用英文預設值；這裡只翻譯描述與說明。 -->
     <string name="use_system_language_desc">遵循裝置語言。關閉後即可為此應用程式選擇語言。</string>
     <string name="settings_category_appearance_description">主題、色彩與訊息顯示</string>
@@ -91,7 +100,8 @@
     <string name="chat_input_placeholder">輸入訊息...</string>
     <string name="search_history">搜尋歷史記錄...</string>
     <string name="no_conversations_yet">尚無對話</string>
-    <string name="connect_providers_description">順暢連線至多個 AI 提供者與代理程式。</string>
+    <string name="all_models">所有模型</string>
+    <string name="connect_providers_description">無縫串接多個 AI 提供者與代理程式。</string>
     <string name="choose_another_model_hint">點選模型卡片以選擇其他模型</string>
     <string name="screen_wakelock_description">產生回覆時保持螢幕開啟。</string>
 </resources>

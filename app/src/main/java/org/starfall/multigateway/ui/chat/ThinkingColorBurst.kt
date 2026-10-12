@@ -174,29 +174,9 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
                 val width = root.width.toFloat()
                 val height = root.height.toFloat()
                 if (width <= 0f || height <= 0f) return
-                val location = IntArray(2)
-                root.getLocationOnScreen(location)
-                val x = burst.origin.x - location[0]
-                val y = burst.origin.y - location[1]
                 val bloom = if (settled) 1f else burst.bloomProgress
                 val fade = bloom
-                // The background tint only grows in and then stays; it must not follow the bloom's
-                // contraction, otherwise it fades out and pops back in as a flash.
-                val bgFade = if (settled) 1f else (progress / 0.52f).coerceIn(0f, 1f)
-                val radius = (hypot(width, height) * (0.1f + bgFade * 1.55f)).coerceAtLeast(1f)
                 val isRed = burst.color.red > burst.color.blue
-                val primaryRed = if (isRed) 220 else 167
-                val primaryGreen = if (isRed) 38 else 139
-                val primaryBlue = if (isRed) 38 else 250
-                val secondaryRed = if (isRed) 153 else 124
-                val secondaryGreen = if (isRed) 27 else 58
-                val secondaryBlue = if (isRed) 27 else 237
-                paint.shader = android.graphics.RadialGradient(x, y, radius,
-                    intArrayOf(android.graphics.Color.argb((55 * bgFade).toInt(), primaryRed, primaryGreen, primaryBlue),
-                        android.graphics.Color.argb((24 * bgFade).toInt(), secondaryRed, secondaryGreen, secondaryBlue), android.graphics.Color.TRANSPARENT),
-                    null, android.graphics.Shader.TileMode.CLAMP)
-                canvas.drawRect(0f, 0f, width, height, paint)
-                paint.shader = null
                 repeat(burst.starCount) { index ->
                     val sx = width * starCoordinate(index, 0x13579BDFL)
                     val sy = height * starCoordinate(index, 0x2468ACE1L) - bloom * 20f

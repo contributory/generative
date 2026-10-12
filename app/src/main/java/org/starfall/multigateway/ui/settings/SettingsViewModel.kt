@@ -52,6 +52,9 @@ class SettingsViewModel(private val repository: AppPreferencesRepository) : View
     fun setModelPickerCollapsedProviders(value: Set<String>) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setModelPickerCollapsedProviders(value) }
     }
+    fun setModelPickerSelectedTab(value: String) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setModelPickerSelectedTab(value) }
+    }
     fun setEnableVibration(value: Boolean) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setEnableVibration(value) }
     }

@@ -9,6 +9,8 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -35,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -268,52 +271,55 @@ private fun AppSettingsView(
     onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit,
     onAppLanguageChange: (Boolean, String) -> Unit
 ) {
-    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    val pager = rememberPagerState(pageCount = { 2 })
+    val coroutineScope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize()) {
-        TabRow(selectedTabIndex = selectedTab) {
+        TabRow(selectedTabIndex = pager.currentPage) {
             Tab(
-                selected = selectedTab == 0,
-                onClick = { selectedTab = 0 },
+                selected = pager.currentPage == 0,
+                onClick = { coroutineScope.launch { pager.animateScrollToPage(0) } },
                 text = { Text(stringResource(R.string.settings_tab_preferences)) }
             )
             Tab(
-                selected = selectedTab == 1,
-                onClick = { selectedTab = 1 },
+                selected = pager.currentPage == 1,
+                onClick = { coroutineScope.launch { pager.animateScrollToPage(1) } },
                 text = { Text(stringResource(R.string.settings_tab_appearances)) }
             )
         }
-        when (selectedTab) {
-            0 -> PreferencesSettingsView(
-                appPreferences = appPreferences,
-                onContinueLastConversationChange = onContinueLastConversationChange,
-                onPersistSelectedModelChange = onPersistSelectedModelChange,
-                onAutoScrollChange = onAutoScrollChange,
-                onEnableVibrationChange = onEnableVibrationChange,
-                onDebugModeChange = onDebugModeChange,
-                onLatexModeChange = onLatexModeChange,
-                onTtsReadCodeBlocksChange = onTtsReadCodeBlocksChange,
-                onToolRoundLimitEnabledChange = onToolRoundLimitEnabledChange,
-                onToolRoundLimitChange = onToolRoundLimitChange,
-                onScreenWakelockModeChange = onScreenWakelockModeChange,
-                onAppLanguageChange = onAppLanguageChange
-            )
-            else -> AppearanceSettingsView(
-                appPreferences = appPreferences,
-                onThemeChange = onThemeChange,
-                onAmoledChange = onAmoledChange,
-                onDynamicColorChange = onDynamicColorChange,
-                onColorSchemeChange = onColorSchemeChange,
-                onHideStatusBarChange = onHideStatusBarChange,
-                onWordWrapModeChange = onWordWrapModeChange,
-                onWordWrapColumnChange = onWordWrapColumnChange,
-                onCodePreviewEnabledChange = onCodePreviewEnabledChange,
-                onCodeBlockDisplayModeChange = onCodeBlockDisplayModeChange,
-                onCodeBlockMaxLinesChange = onCodeBlockMaxLinesChange,
-                onCodeBlockIncludeUndefinedChange = onCodeBlockIncludeUndefinedChange,
-                onMessageFontSizeChange = onMessageFontSizeChange,
-                onMessageFontSizeCustomChange = onMessageFontSizeCustomChange,
-                onMessageFontFamilyChange = onMessageFontFamilyChange
-            )
+        HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
+            when (page) {
+                0 -> PreferencesSettingsView(
+                    appPreferences = appPreferences,
+                    onContinueLastConversationChange = onContinueLastConversationChange,
+                    onPersistSelectedModelChange = onPersistSelectedModelChange,
+                    onAutoScrollChange = onAutoScrollChange,
+                    onEnableVibrationChange = onEnableVibrationChange,
+                    onDebugModeChange = onDebugModeChange,
+                    onLatexModeChange = onLatexModeChange,
+                    onTtsReadCodeBlocksChange = onTtsReadCodeBlocksChange,
+                    onToolRoundLimitEnabledChange = onToolRoundLimitEnabledChange,
+                    onToolRoundLimitChange = onToolRoundLimitChange,
+                    onScreenWakelockModeChange = onScreenWakelockModeChange,
+                    onAppLanguageChange = onAppLanguageChange
+                )
+                else -> AppearanceSettingsView(
+                    appPreferences = appPreferences,
+                    onThemeChange = onThemeChange,
+                    onAmoledChange = onAmoledChange,
+                    onDynamicColorChange = onDynamicColorChange,
+                    onColorSchemeChange = onColorSchemeChange,
+                    onHideStatusBarChange = onHideStatusBarChange,
+                    onWordWrapModeChange = onWordWrapModeChange,
+                    onWordWrapColumnChange = onWordWrapColumnChange,
+                    onCodePreviewEnabledChange = onCodePreviewEnabledChange,
+                    onCodeBlockDisplayModeChange = onCodeBlockDisplayModeChange,
+                    onCodeBlockMaxLinesChange = onCodeBlockMaxLinesChange,
+                    onCodeBlockIncludeUndefinedChange = onCodeBlockIncludeUndefinedChange,
+                    onMessageFontSizeChange = onMessageFontSizeChange,
+                    onMessageFontSizeCustomChange = onMessageFontSizeCustomChange,
+                    onMessageFontFamilyChange = onMessageFontFamilyChange
+                )
+            }
         }
     }
 }
@@ -630,9 +636,6 @@ fun UserDataSettingsView(
                 ExportDataButton(stringResource(R.string.settings_export_mcp_json), Icons.Outlined.Extension) {
                     onExportJson(JsonExportKind.MCP_SERVERS)
                 }
-                ExportDataButton(stringResource(R.string.settings_export_speech_services_json), Icons.Outlined.RecordVoiceOver) {
-                    onExportJson(JsonExportKind.SPEECH_SERVICES)
-                }
                 ExportDataButton(stringResource(R.string.settings_export_chats_json), Icons.Outlined.Chat) {
                     onExportJson(JsonExportKind.CONVERSATIONS)
                 }
@@ -642,9 +645,6 @@ fun UserDataSettingsView(
                 }
                 ExportDataButton(stringResource(R.string.settings_import_mcp_json), Icons.Outlined.FileOpen) {
                     onImportJson(JsonExportKind.MCP_SERVERS)
-                }
-                ExportDataButton(stringResource(R.string.settings_import_speech_services_json), Icons.Outlined.FileOpen) {
-                    onImportJson(JsonExportKind.SPEECH_SERVICES)
                 }
                 ExportDataButton(stringResource(R.string.settings_import_chats_json), Icons.Outlined.FileOpen) {
                     onImportJson(JsonExportKind.CONVERSATIONS)

@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="thinking">Đang suy nghĩ</string>
+    <string name="thinking_streaming">Đang suy nghĩ...</string>
+    <string name="thought_process">Quá trình suy luận</string>
+    <string name="processed">Đã xử lý</string>
+    <string name="processed_in">Đã xử lý trong %1$s</string>
+    <string name="reasoning_completed">Đã hoàn tất suy luận</string>
+    <string name="reasoning_completed_in">Đã hoàn tất suy luận trong %1$s</string>
+    <string name="tool_executed">Đã thực thi công cụ</string>
+    <string name="tool_executed_in">Đã thực thi công cụ trong %1$s</string>
     <!-- Chỉ dịch mô tả, hướng dẫn và nội dung giới thiệu; tiêu đề dùng bản tiếng Anh mặc định. -->
     <string name="use_system_language_desc">Theo ngôn ngữ của thiết bị. Tắt để tùy chỉnh ngôn ngữ ứng dụng.</string>
     <string name="settings_category_appearance_description">Chủ đề, màu sắc và cách hiển thị tin nhắn</string>
@@ -91,7 +100,8 @@
     <string name="chat_input_placeholder">Nhập tin nhắn...</string>
     <string name="search_history">Tìm trong lịch sử...</string>
     <string name="no_conversations_yet">Chưa có cuộc trò chuyện nào</string>
-    <string name="connect_providers_description">Kết nối nhiều provider LLM và agent một cách liền mạch.</string>
+    <string name="all_models">Tất cả model</string>
+    <string name="connect_providers_description">Kết nối liền mạch API của các nhà cung cấp AI khác nhau</string>
     <string name="choose_another_model_hint">Nhấn vào thẻ model để chọn model khác</string>
     <string name="screen_wakelock_description">Giữ màn hình luôn sáng khi đang tạo phản hồi.</string>
 </resources>

@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="thinking">Réflexion</string>
+    <string name="thinking_streaming">Réflexion...</string>
+    <string name="thought_process">Processus de réflexion</string>
+    <string name="processed">Traité</string>
+    <string name="processed_in">Traité en %1$s</string>
+    <string name="reasoning_completed">Raisonnement terminé</string>
+    <string name="reasoning_completed_in">Raisonnement terminé en %1$s</string>
+    <string name="tool_executed">Outil exécuté</string>
+    <string name="tool_executed_in">Outil exécuté en %1$s</string>
     <!-- Les titres des réglages utilisent volontairement l’anglais ; les descriptions et consignes sont traduites ici. -->
     <string name="use_system_language_desc">Suivre la langue de votre appareil. Désactivez cette option pour choisir une langue pour l’application.</string>
     <string name="settings_category_appearance_description">Thème, couleurs et affichage des messages</string>
@@ -91,7 +100,8 @@
     <string name="chat_input_placeholder">Saisissez un message...</string>
     <string name="search_history">Rechercher dans l’historique...</string>
     <string name="no_conversations_yet">Aucune conversation pour le moment</string>
-    <string name="connect_providers_description">Connectez-vous facilement à plusieurs fournisseurs IA et agents.</string>
+    <string name="all_models">Tous les modèles</string>
+    <string name="connect_providers_description">Connectez-vous facilement à plusieurs fournisseurs d’IA et agents.</string>
     <string name="choose_another_model_hint">Appuyez sur la carte du modèle pour en choisir un autre</string>
     <string name="screen_wakelock_description">Garder l’écran allumé pendant la génération d’une réponse.</string>
 </resources>

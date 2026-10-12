@@ -148,7 +148,14 @@ fun MainScreen(
                 }
                 val count = when (kind) {
                     JsonExportKind.PROVIDERS -> withContext(Dispatchers.Default) { parseProvidersExport(raw) }
-                        .also { withContext(Dispatchers.IO) { configurationViewModel.importProviders(it.providers, it.groups) } }.providers.size
+                        .also {
+                            withContext(Dispatchers.IO) {
+                                configurationViewModel.importProviders(it.providers, it.groups)
+                                if (it.speechServices.isNotEmpty()) {
+                                    configurationViewModel.importSpeechServices(it.speechServices)
+                                }
+                            }
+                        }.let { it.providers.size + it.speechServices.size }
                     JsonExportKind.MCP_SERVERS -> withContext(Dispatchers.Default) { parseMcpExport(raw) }
                         .also { withContext(Dispatchers.IO) { configurationViewModel.importMcpServers(it) } }.size
                     JsonExportKind.SPEECH_SERVICES -> withContext(Dispatchers.Default) { parseSpeechServicesExport(raw) }
@@ -285,6 +292,8 @@ fun MainScreen(
                                 modelPickerCollapsedProviders = appPrefs.modelPickerCollapsedProviders,
                                 onModelPickerCollapsedGroupsChange = settingsViewModel::setModelPickerCollapsedGroups,
                                 onModelPickerCollapsedProvidersChange = settingsViewModel::setModelPickerCollapsedProviders,
+                                modelPickerSelectedTab = appPrefs.modelPickerSelectedTab,
+                                onModelPickerSelectedTabChange = settingsViewModel::setModelPickerSelectedTab,
                                 selectedProviderId = chatProviderId,
                                 selectedModelName = chatModelId,
                                 autoScroll = appPrefs.autoScroll,
@@ -469,11 +478,13 @@ fun MainScreen(
                             settings = toolSettings,
                             onSave = viewModel::setSystemTool,
                             providerGroups = providerGroups,
-                            collapsedGroupIds = appPrefs.modelPickerCollapsedGroups,
-                            collapsedProviderIds = appPrefs.modelPickerCollapsedProviders,
-                            onCollapsedGroupIdsChange = settingsViewModel::setModelPickerCollapsedGroups,
-                            onCollapsedProviderIdsChange = settingsViewModel::setModelPickerCollapsedProviders,
-                            onBack = { navController.popBackStack() }
+                             collapsedGroupIds = appPrefs.modelPickerCollapsedGroups,
+                             collapsedProviderIds = appPrefs.modelPickerCollapsedProviders,
+                             onCollapsedGroupIdsChange = settingsViewModel::setModelPickerCollapsedGroups,
+                             onCollapsedProviderIdsChange = settingsViewModel::setModelPickerCollapsedProviders,
+                             selectedTabKey = appPrefs.modelPickerSelectedTab,
+                             onSelectedTabKeyChange = settingsViewModel::setModelPickerSelectedTab,
+                             onBack = { navController.popBackStack() }
                         )
                     }
                     composable(AppDestination.STORAGE.route) { StorageScreen(toolFiles) { navController.popBackStack() } }
