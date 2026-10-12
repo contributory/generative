@@ -91,7 +91,8 @@ class ChatViewModel(
 
     private data class GenerationUiState(
         val busy: Boolean = false,
-        val error: String? = null
+        val error: String? = null,
+        val waitingForTool: Boolean = false
     )
 
     /** Each conversation owns its stream so changing chats never changes another chat's controls. */
@@ -110,8 +111,8 @@ class ChatViewModel(
                 }
             }.also { generation ->
                 generationObservers[conversationId] = viewModelScope.launch {
-                    combine(generation.busy, generation.error) { busy, error ->
-                        GenerationUiState(busy, error)
+                    combine(generation.busy, generation.error, generation.waitingForTool) { busy, error, waitingForTool ->
+                        GenerationUiState(busy, error, waitingForTool)
                     }.collect { state ->
                         _generationStates.update { it + (conversationId to state) }
                     }
@@ -129,6 +130,10 @@ class ChatViewModel(
     /** Busy state for the selected chat only; this controls its stop/send button. */
     val isGenerating: StateFlow<Boolean> = combine(_currentConversation, _generationStates) { conversation, states ->
         conversation?.id?.let { states[it]?.busy } == true
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val isWaitingForTool: StateFlow<Boolean> = combine(_currentConversation, _generationStates) { conversation, states ->
+        conversation?.id?.let { states[it]?.waitingForTool } == true
     }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     /** Global state used only by the background-generation service. */

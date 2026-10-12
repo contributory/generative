@@ -360,6 +360,10 @@
     <string name="settings_category_appearance_description">Theme, colors &amp; message display</string>
     <string name="settings_category_preferences">Preferences</string>
     <string name="settings_category_preferences_description">Behavior, feedback &amp; integrations</string>
+    <string name="settings_category_app_settings">App Settings</string>
+    <string name="settings_category_app_settings_description">Appearance, preferences &amp; app behavior</string>
+    <string name="settings_tab_preferences">Preferences</string>
+    <string name="settings_tab_appearances">Appearances</string>
     <string name="settings_category_app_data">App Data</string>
     <string name="settings_category_app_data_description">Conversation history &amp; application reset</string>
     <string name="settings_category_about">About</string>
@@ -496,9 +500,23 @@
     <string name="model_temperature_invalid">Enter a number from 0 to %1$s, or leave blank.</string>
     <string name="model_top_p_invalid">Enter a number from 0 to 1, or leave blank.</string>
     <string name="model_top_k_invalid">Enter a positive whole number, or leave blank.</string>
+    <string name="provider_no_models_description">No models have been added to this provider yet.</string>
+    <string name="provider_no_models_returned">Provider returned no models</string>
+    <string name="provider_connection_ready">%1$s connection is ready.</string>
+    <string name="speech_services_description">Use Android TTS or TTS models from Providers</string>
+    <string name="select_model">Select a model</string>
+    <string name="search_history">Search history...</string>
+    <string name="no_conversations_yet">No conversations yet</string>
+    <string name="connect_providers_description">Connect to multiple LLM providers and agents seamlessly.</string>
+    <string name="choose_another_model_hint">Tap the model card to choose another model</string>
     <string name="settings_source_code">Source code</string>
     <string name="settings_license">License</string>
     <string name="settings_license_name">Starfall Org Contributor Commercial Copyleft License v1.0</string>
     <string name="settings_file_size_mb">%.1f MB</string>
     <string name="settings_update_error">Unable to check GitHub releases</string>
+    <string name="screen_wakelock_title">Wakelock screen during generation</string>
+    <string name="screen_wakelock_description">Keep the screen on while generating a response.</string>
+    <string name="screen_wakelock_none">None</string>
+    <string name="screen_wakelock_all">All</string>
+    <string name="screen_wakelock_except_tool_calls">Except ToolCalls</string>
 </resources>

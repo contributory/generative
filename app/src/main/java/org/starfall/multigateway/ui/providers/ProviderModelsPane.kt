@@ -34,7 +34,7 @@ internal fun ProviderModelsPane(models: List<String>, configurations: Map<String
         if (models.isEmpty()) item {
             Column(Modifier.fillMaxWidth().padding(vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("No models have been added to this provider yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.provider_no_models_description), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedButton(onClick = { onEdit("") }) { Icon(Icons.Outlined.Edit, stringResource(R.string.add_manually), Modifier.size(18.dp)) }
                     Button(onClick = onOpenCatalog) { Icon(Icons.Outlined.FormatListBulleted, stringResource(R.string.open_model_catalog), Modifier.size(18.dp)) }

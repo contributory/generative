@@ -3,6 +3,7 @@ package org.starfall.multigateway.ui.settings
 import org.starfall.multigateway.data.local.preferences.WordWrapMode
 import org.starfall.multigateway.data.local.preferences.CodeBlockDisplayMode
 import org.starfall.multigateway.data.local.preferences.MessageFontFamily
+import org.starfall.multigateway.data.local.preferences.ScreenWakelockMode
 import org.starfall.multigateway.data.model.SidebarOrganization
 import org.starfall.multigateway.data.repository.LocalWriteErrors
 import androidx.lifecycle.ViewModel
@@ -92,6 +93,9 @@ class SettingsViewModel(private val repository: AppPreferencesRepository) : View
     }
     fun setToolRoundLimit(value: Int) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setToolRoundLimit(value) }
+    }
+    fun setScreenWakelockMode(value: ScreenWakelockMode) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setScreenWakelockMode(value) }
     }
     fun setAppLanguage(useSystem: Boolean, tag: String) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setAppLanguage(useSystem, tag) }

@@ -8,6 +8,7 @@ import android.util.Log
 import android.net.Uri
 import android.widget.Toast
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
@@ -89,6 +90,8 @@ class MainActivity : ComponentActivity() {
             val crashReports = (application as MultiGatewayApplication).crashReports
             var pendingCrash by remember { mutableStateOf(crashReports.pending()) }
             val appPrefs by settingsViewModel.preferences.collectAsStateWithLifecycle()
+            val isGenerating by viewModel.isGenerating.collectAsStateWithLifecycle()
+            val isWaitingForTool by viewModel.isWaitingForTool.collectAsStateWithLifecycle()
             // Strings are resolved when the Activity is created, so a new language needs a fresh one.
             LaunchedEffect(appPrefs.useSystemLanguage, appPrefs.selectedLanguage) {
                 if (AppLocale.overrideTag(this@MainActivity) != createdLocaleTag) recreate()
@@ -112,6 +115,13 @@ class MainActivity : ComponentActivity() {
                         isAppearanceLightStatusBars = !darkBars
                         isAppearanceLightNavigationBars = !darkBars
                     }
+                    val keepScreenOn = isGenerating && when (appPrefs.screenWakelockMode) {
+                        org.starfall.multigateway.data.local.preferences.ScreenWakelockMode.NONE -> false
+                        org.starfall.multigateway.data.local.preferences.ScreenWakelockMode.ALL -> true
+                        org.starfall.multigateway.data.local.preferences.ScreenWakelockMode.EXCEPT_TOOL_CALLS -> !isWaitingForTool
+                    }
+                    if (keepScreenOn) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
                 Surface(
                     modifier = Modifier.fillMaxSize(),

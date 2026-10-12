@@ -33,6 +33,8 @@ import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.ui.components.EntityIcon
 import org.starfall.multigateway.ui.chat.modelInitial
 import org.starfall.multigateway.ui.components.AmoledBorderEdge
+import androidx.compose.ui.res.stringResource
+import org.starfall.multigateway.R
 import org.starfall.multigateway.ui.components.amoledEdgeBorder
 import org.starfall.multigateway.ui.theme.LocalAmoledMode
 import java.util.UUID
@@ -104,7 +106,7 @@ fun ConversationsDrawer(
         Column(Modifier.fillMaxSize()) {
             SelectableOutlinedTextField(
                 value = search, onValueChange = { search = it }, singleLine = true,
-                placeholder = { Text("Search history...") },
+                placeholder = { Text(stringResource(R.string.search_history)) },
                 leadingIcon = { Icon(Icons.Default.Search, "Search") },
                 trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { Icon(Icons.Default.Close, "Clear search") } },
                 shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(12.dp)
@@ -179,7 +181,7 @@ fun ConversationsDrawer(
                         onRename = { renaming = chat; title = chat.title }, onDelete = { deleting = setOf(chat.id) },
                         onMove = { selecting = true; selected = setOf(chat.id); folderName = ""; grouping = true })
                 }
-                if (matches.isEmpty()) item { Text(if (search.isBlank()) "No conversations yet" else "No matching conversations", Modifier.padding(12.dp), color = MaterialTheme.colorScheme.outline) }
+                if (matches.isEmpty()) item { Text(if (search.isBlank()) stringResource(R.string.no_conversations_yet) else "No matching conversations", Modifier.padding(12.dp), color = MaterialTheme.colorScheme.outline) }
             }
             HorizontalDivider()
             Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {

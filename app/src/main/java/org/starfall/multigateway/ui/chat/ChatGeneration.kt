@@ -19,6 +19,8 @@ internal class ChatGeneration(
 ) {
     private val _busy = MutableStateFlow(false)
     val busy = _busy.asStateFlow()
+    private val _waitingForTool = MutableStateFlow(false)
+    val waitingForTool = _waitingForTool.asStateFlow()
     private val _error = MutableStateFlow<String?>(null)
     val error = _error.asStateFlow()
     private val _conversationId = MutableStateFlow<String?>(null)
@@ -43,6 +45,7 @@ internal class ChatGeneration(
     ): Boolean {
         if (_busy.value) return false
         _busy.value = true
+        _waitingForTool.value = false
         _error.value = null
         _conversationId.value = conversation.id
         snapshot = conversation
@@ -128,6 +131,7 @@ internal class ChatGeneration(
                             scheduleUpdate()
                         }
                         is GenerationEvent.Tool -> {
+                            _waitingForTool.value = chunk.activity.status == "running"
                             // Flush pending text before inserting a tool block so its visual anchor is stable.
                             renderJob?.cancel()
                             renderJob = null
@@ -161,6 +165,7 @@ internal class ChatGeneration(
                             persist(snapshot!!)
                         }
                         is GenerationEvent.UserMessage -> {
+                            _waitingForTool.value = false
                             renderJob?.cancel()
                             renderJob = null
                             update()
@@ -254,6 +259,7 @@ internal class ChatGeneration(
                 } finally {
                     snapshot = null
                     _conversationId.value = null
+                    _waitingForTool.value = false
                     _busy.value = false
                 }
             }

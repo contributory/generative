@@ -87,4 +87,11 @@
     <string name="model_temperature_invalid">Introduce un número del 0 al %1$s o déjalo vacío.</string>
     <string name="model_top_p_invalid">Introduce un número del 0 al 1 o déjalo vacío.</string>
     <string name="model_top_k_invalid">Introduce un número entero positivo o déjalo vacío.</string>
+    <string name="select_model">Seleccionar modelo</string>
+    <string name="chat_input_placeholder">Escribe un mensaje...</string>
+    <string name="search_history">Buscar en el historial...</string>
+    <string name="no_conversations_yet">Aún no hay conversaciones</string>
+    <string name="connect_providers_description">Conéctate sin complicaciones a varios proveedores de IA y agentes.</string>
+    <string name="choose_another_model_hint">Toca la tarjeta del modelo para elegir otro modelo</string>
+    <string name="screen_wakelock_description">Mantener la pantalla encendida mientras se genera una respuesta.</string>
 </resources>

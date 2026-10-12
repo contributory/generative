@@ -580,7 +580,7 @@ fun UserInputArea(
         val selectedConfig = selectedConfigEntry?.value
             // Keep the same fallback as the model picker: discovered/custom models without
             // an explicit saved configuration still expose the reasoning control.
-            ?: ModelConfiguration(displayName = selectedModelName.ifBlank { "Select a model" })
+            ?: ModelConfiguration(displayName = selectedModelName.ifBlank { stringResource(R.string.select_model) })
         val selectedFolderName = selectedProvider?.groupId?.let { groupId ->
             providerGroups.firstOrNull { it.id == groupId }?.name
         }

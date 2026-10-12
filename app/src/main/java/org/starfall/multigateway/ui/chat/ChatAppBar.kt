@@ -22,6 +22,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import org.starfall.multigateway.R
 
 @Composable
 fun ChatAppBar(
@@ -79,7 +81,7 @@ fun ChatAppBar(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        text = modelName.ifBlank { "Select a model" },
+                        text = modelName.ifBlank { stringResource(R.string.select_model) },
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp

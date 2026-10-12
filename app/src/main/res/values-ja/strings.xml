@@ -87,4 +87,11 @@
     <string name="model_temperature_invalid">0 から %1$s までの数値を入力するか、空欄にしてください。</string>
     <string name="model_top_p_invalid">0 から 1 までの数値を入力するか、空欄にしてください。</string>
     <string name="model_top_k_invalid">正の整数を入力するか、空欄にしてください。</string>
+    <string name="select_model">モデルを選択</string>
+    <string name="chat_input_placeholder">メッセージを入力...</string>
+    <string name="search_history">履歴を検索...</string>
+    <string name="no_conversations_yet">会話はまだありません</string>
+    <string name="connect_providers_description">複数の AI プロバイダーやエージェントにシームレスに接続します。</string>
+    <string name="choose_another_model_hint">モデルカードをタップして別のモデルを選択</string>
+    <string name="screen_wakelock_description">応答の生成中は画面をオンのままにします。</string>
 </resources>

@@ -87,4 +87,11 @@
     <string name="model_temperature_invalid">請輸入 0 到 %1$s 之間的數字，或留白。</string>
     <string name="model_top_p_invalid">請輸入 0 到 1 之間的數字，或留白。</string>
     <string name="model_top_k_invalid">請輸入正整數，或留白。</string>
+    <string name="select_model">選擇模型</string>
+    <string name="chat_input_placeholder">輸入訊息...</string>
+    <string name="search_history">搜尋歷史記錄...</string>
+    <string name="no_conversations_yet">尚無對話</string>
+    <string name="connect_providers_description">順暢連線至多個 AI 提供者與代理程式。</string>
+    <string name="choose_another_model_hint">點選模型卡片以選擇其他模型</string>
+    <string name="screen_wakelock_description">產生回覆時保持螢幕開啟。</string>
 </resources>

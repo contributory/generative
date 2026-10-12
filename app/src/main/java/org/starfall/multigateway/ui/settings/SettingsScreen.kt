@@ -47,6 +47,7 @@ import org.starfall.multigateway.data.local.preferences.MessageFontFamily
 import org.starfall.multigateway.data.local.preferences.CodeBlockDisplayMode
 import org.starfall.multigateway.data.local.preferences.AppPreferences
 import org.starfall.multigateway.data.local.preferences.AppLanguage
+import org.starfall.multigateway.data.local.preferences.ScreenWakelockMode
 import org.starfall.multigateway.R
 import androidx.compose.ui.res.stringResource
 import android.content.res.Resources
@@ -61,8 +62,7 @@ import org.starfall.multigateway.ui.navigation.SlideScreenContent
 import org.starfall.multigateway.ui.theme.ThemePresets
 
 enum class SettingsCategory(val titleRes: Int, val subtitleRes: Int, val icon: ImageVector) {
-    APPEARANCE(R.string.settings_category_appearance, R.string.settings_category_appearance_description, Icons.Outlined.Palette),
-    PREFERENCES(R.string.settings_category_preferences, R.string.settings_category_preferences_description, Icons.Outlined.Tune),
+    APP_SETTINGS(R.string.settings_category_app_settings, R.string.settings_category_app_settings_description, Icons.Outlined.Tune),
     ICONS(R.string.icon_settings_title, R.string.icon_settings_description, Icons.Outlined.Image),
     USER_DATA(R.string.settings_category_app_data, R.string.settings_category_app_data_description, Icons.Outlined.ManageHistory),
     ABOUT(R.string.settings_category_about, R.string.settings_category_about_description, Icons.Outlined.Info)
@@ -107,6 +107,7 @@ fun SettingsScreen(
     onMessageFontFamilyChange: (MessageFontFamily) -> Unit = {},
     onToolRoundLimitEnabledChange: (Boolean) -> Unit = {},
     onToolRoundLimitChange: (Int) -> Unit = {},
+    onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit = {},
     onAppLanguageChange: (useSystem: Boolean, tag: String) -> Unit = { _, _ -> }
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf<SettingsCategory?>(null) }
@@ -177,8 +178,8 @@ fun SettingsScreen(
                         }
                     }
 
-                    SettingsCategory.APPEARANCE -> {
-                        AppearanceSettingsView(
+                    SettingsCategory.APP_SETTINGS -> {
+                        AppSettingsView(
                             appPreferences = appPreferences,
                             onThemeChange = onThemeChange,
                             onAmoledChange = onAmoledChange,
@@ -193,13 +194,7 @@ fun SettingsScreen(
                             onCodeBlockIncludeUndefinedChange = onCodeBlockIncludeUndefinedChange,
                             onMessageFontSizeChange = onMessageFontSizeChange,
                             onMessageFontSizeCustomChange = onMessageFontSizeCustomChange,
-                            onMessageFontFamilyChange = onMessageFontFamilyChange
-                        )
-                    }
-
-                    SettingsCategory.PREFERENCES -> {
-                        PreferencesSettingsView(
-                            appPreferences = appPreferences,
+                            onMessageFontFamilyChange = onMessageFontFamilyChange,
                             onContinueLastConversationChange = onContinueLastConversationChange,
                             onPersistSelectedModelChange = onPersistSelectedModelChange,
                             onAutoScrollChange = onAutoScrollChange,
@@ -209,6 +204,7 @@ fun SettingsScreen(
                             onTtsReadCodeBlocksChange = onTtsReadCodeBlocksChange,
                             onToolRoundLimitEnabledChange = onToolRoundLimitEnabledChange,
                             onToolRoundLimitChange = onToolRoundLimitChange,
+                            onScreenWakelockModeChange = onScreenWakelockModeChange,
                             onAppLanguageChange = onAppLanguageChange
                         )
                     }
@@ -240,6 +236,86 @@ private fun SettingsGroupHeading(title: String) {
     Text(title, modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
         style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.primary)
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun AppSettingsView(
+    appPreferences: AppPreferences,
+    onThemeChange: (String) -> Unit,
+    onAmoledChange: (Boolean) -> Unit,
+    onDynamicColorChange: (Boolean) -> Unit,
+    onColorSchemeChange: (String) -> Unit,
+    onHideStatusBarChange: (Boolean) -> Unit,
+    onWordWrapModeChange: (WordWrapMode) -> Unit,
+    onWordWrapColumnChange: (Int) -> Unit,
+    onCodePreviewEnabledChange: (Boolean) -> Unit,
+    onCodeBlockDisplayModeChange: (CodeBlockDisplayMode) -> Unit,
+    onCodeBlockMaxLinesChange: (Int) -> Unit,
+    onCodeBlockIncludeUndefinedChange: (Boolean) -> Unit,
+    onMessageFontSizeChange: (Int) -> Unit,
+    onMessageFontSizeCustomChange: (Boolean) -> Unit,
+    onMessageFontFamilyChange: (MessageFontFamily) -> Unit,
+    onContinueLastConversationChange: (Boolean) -> Unit,
+    onPersistSelectedModelChange: (Boolean) -> Unit,
+    onAutoScrollChange: (Boolean) -> Unit,
+    onEnableVibrationChange: (Boolean) -> Unit,
+    onDebugModeChange: (Boolean) -> Unit,
+    onLatexModeChange: (String) -> Unit,
+    onTtsReadCodeBlocksChange: (Boolean) -> Unit,
+    onToolRoundLimitEnabledChange: (Boolean) -> Unit,
+    onToolRoundLimitChange: (Int) -> Unit,
+    onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit,
+    onAppLanguageChange: (Boolean, String) -> Unit
+) {
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    Column(Modifier.fillMaxSize()) {
+        TabRow(selectedTabIndex = selectedTab) {
+            Tab(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                text = { Text(stringResource(R.string.settings_tab_preferences)) }
+            )
+            Tab(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                text = { Text(stringResource(R.string.settings_tab_appearances)) }
+            )
+        }
+        when (selectedTab) {
+            0 -> PreferencesSettingsView(
+                appPreferences = appPreferences,
+                onContinueLastConversationChange = onContinueLastConversationChange,
+                onPersistSelectedModelChange = onPersistSelectedModelChange,
+                onAutoScrollChange = onAutoScrollChange,
+                onEnableVibrationChange = onEnableVibrationChange,
+                onDebugModeChange = onDebugModeChange,
+                onLatexModeChange = onLatexModeChange,
+                onTtsReadCodeBlocksChange = onTtsReadCodeBlocksChange,
+                onToolRoundLimitEnabledChange = onToolRoundLimitEnabledChange,
+                onToolRoundLimitChange = onToolRoundLimitChange,
+                onScreenWakelockModeChange = onScreenWakelockModeChange,
+                onAppLanguageChange = onAppLanguageChange
+            )
+            else -> AppearanceSettingsView(
+                appPreferences = appPreferences,
+                onThemeChange = onThemeChange,
+                onAmoledChange = onAmoledChange,
+                onDynamicColorChange = onDynamicColorChange,
+                onColorSchemeChange = onColorSchemeChange,
+                onHideStatusBarChange = onHideStatusBarChange,
+                onWordWrapModeChange = onWordWrapModeChange,
+                onWordWrapColumnChange = onWordWrapColumnChange,
+                onCodePreviewEnabledChange = onCodePreviewEnabledChange,
+                onCodeBlockDisplayModeChange = onCodeBlockDisplayModeChange,
+                onCodeBlockMaxLinesChange = onCodeBlockMaxLinesChange,
+                onCodeBlockIncludeUndefinedChange = onCodeBlockIncludeUndefinedChange,
+                onMessageFontSizeChange = onMessageFontSizeChange,
+                onMessageFontSizeCustomChange = onMessageFontSizeCustomChange,
+                onMessageFontFamilyChange = onMessageFontFamilyChange
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -347,6 +423,7 @@ fun PreferencesSettingsView(
     onTtsReadCodeBlocksChange: (Boolean) -> Unit = {},
     onToolRoundLimitEnabledChange: (Boolean) -> Unit = {},
     onToolRoundLimitChange: (Int) -> Unit = {},
+    onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit = {},
     onAppLanguageChange: (useSystem: Boolean, tag: String) -> Unit = { _, _ -> }
 ) {
     LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -376,6 +453,35 @@ fun PreferencesSettingsView(
                                     expanded = false
                                 })
                             }
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            var wakelockExpanded by remember { mutableStateOf(false) }
+            val wakelockLabels = mapOf(
+                ScreenWakelockMode.NONE to stringResource(R.string.screen_wakelock_none),
+                ScreenWakelockMode.ALL to stringResource(R.string.screen_wakelock_all),
+                ScreenWakelockMode.EXCEPT_TOOL_CALLS to stringResource(R.string.screen_wakelock_except_tool_calls)
+            )
+            SettingsSection(stringResource(R.string.screen_wakelock_title)) {
+                Text(stringResource(R.string.screen_wakelock_description),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                ExposedDropdownMenuBox(wakelockExpanded, { wakelockExpanded = !wakelockExpanded }) {
+                    SelectableOutlinedTextField(
+                        value = wakelockLabels.getValue(appPreferences.screenWakelockMode),
+                        onValueChange = {}, readOnly = true,
+                        label = { Text(stringResource(R.string.screen_wakelock_title)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(wakelockExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(wakelockExpanded, { wakelockExpanded = false }) {
+                        wakelockLabels.forEach { (mode, label) ->
+                            DropdownMenuItem(text = { Text(label) }, onClick = {
+                                onScreenWakelockModeChange(mode)
+                                wakelockExpanded = false
+                            })
                         }
                     }
                 }

@@ -87,4 +87,11 @@
     <string name="model_temperature_invalid">Nhập số từ 0 đến %1$s hoặc để trống.</string>
     <string name="model_top_p_invalid">Nhập số từ 0 đến 1 hoặc để trống.</string>
     <string name="model_top_k_invalid">Nhập số nguyên dương hoặc để trống.</string>
+    <string name="select_model">Chọn model</string>
+    <string name="chat_input_placeholder">Nhập tin nhắn...</string>
+    <string name="search_history">Tìm trong lịch sử...</string>
+    <string name="no_conversations_yet">Chưa có cuộc trò chuyện nào</string>
+    <string name="connect_providers_description">Kết nối nhiều provider LLM và agent một cách liền mạch.</string>
+    <string name="choose_another_model_hint">Nhấn vào thẻ model để chọn model khác</string>
+    <string name="screen_wakelock_description">Giữ màn hình luôn sáng khi đang tạo phản hồi.</string>
 </resources>

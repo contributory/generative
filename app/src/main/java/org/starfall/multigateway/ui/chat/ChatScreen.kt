@@ -363,7 +363,7 @@ fun ChatScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Connect to multiple LLM providers and agents seamlessly.",
+                        text = androidx.compose.ui.res.stringResource(org.starfall.multigateway.R.string.connect_providers_description),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center

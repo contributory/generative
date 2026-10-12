@@ -11,6 +11,7 @@ import org.starfall.multigateway.data.adapter.AccountProviderAdapter
 import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.data.service.AttachmentResolver
 import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.R
 
 /** Shared PKCE and encrypted persistence; protocol details stay in each adapter. */
 internal abstract class OAuthAccountAdapter(
@@ -97,8 +98,8 @@ internal abstract class OAuthAccountAdapter(
         awaitLoopbackAuthorizationCode(redirectUri, url, state, ::openBrowser)
 
     override suspend fun testConnection(provider: LlmProviderInfo): Result<String> = result {
-        check(fetchModels(provider).isNotEmpty()) { "Provider returned no models" }
-        "${providerType.displayName} connection is ready."
+        check(fetchModels(provider).isNotEmpty()) { appContext.getString(R.string.provider_no_models_returned) }
+        appContext.getString(R.string.provider_connection_ready, providerType.displayName)
     }
     override fun clearCredentials(providerId: String) = store.delete(providerId)
 

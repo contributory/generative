@@ -12,6 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import org.starfall.multigateway.R
 
 @Composable
 fun InputBar(
@@ -49,7 +51,7 @@ fun InputBar(
             SelectableOutlinedTextField(
                 value = textState,
                 onValueChange = { textState = it },
-                placeholder = { Text("Type some text...") },
+                placeholder = { Text(stringResource(R.string.chat_input_placeholder)) },
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 4.dp),

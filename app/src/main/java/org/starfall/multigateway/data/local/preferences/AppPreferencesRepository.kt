@@ -37,6 +37,14 @@ enum class CodeBlockDisplayMode(val value: String) {
     }
 }
 
+enum class ScreenWakelockMode(val value: String) {
+    NONE("none"), ALL("all"), EXCEPT_TOOL_CALLS("except_tool_calls");
+
+    companion object {
+        fun fromValue(value: String?) = entries.firstOrNull { it.value == value } ?: NONE
+    }
+}
+
 const val DEFAULT_WORD_WRAP_COLUMN = 80
 const val DEFAULT_MESSAGE_FONT_SIZE = 16
 const val DEFAULT_CODE_BLOCK_MAX_LINES = 15
@@ -87,7 +95,8 @@ data class AppPreferences(
     val messageFontSizeCustom: Boolean = false,
     val messageFontFamily: MessageFontFamily = MessageFontFamily.DEFAULT,
     val toolRoundLimitEnabled: Boolean = false,
-    val toolRoundLimit: Int = DEFAULT_TOOL_ROUND_LIMIT
+    val toolRoundLimit: Int = DEFAULT_TOOL_ROUND_LIMIT,
+    val screenWakelockMode: ScreenWakelockMode = ScreenWakelockMode.NONE
 ) {
     /** Size in sp used for chat text. sp already follows the system font scale. */
     val effectiveMessageFontSize: Int get() = if (messageFontSizeCustom) messageFontSize else DEFAULT_MESSAGE_FONT_SIZE
@@ -142,6 +151,7 @@ class AppPreferencesRepository(private val context: Context) {
         val MESSAGE_FONT_FAMILY = stringPreferencesKey("message_font_family")
         val TOOL_ROUND_LIMIT_ENABLED = booleanPreferencesKey("tool_round_limit_enabled")
         val TOOL_ROUND_LIMIT = intPreferencesKey("tool_round_limit")
+        val SCREEN_WAKELOCK_MODE = stringPreferencesKey("screen_wakelock_mode")
     }
 
     private val storedPreferences: Flow<AppPreferences> = context.dataStore.data
@@ -196,7 +206,8 @@ class AppPreferencesRepository(private val context: Context) {
                     ?: (preferences[PreferenceKeys.MESSAGE_FONT_SIZE]?.let { it != DEFAULT_MESSAGE_FONT_SIZE } ?: false),
                 messageFontFamily = MessageFontFamily.fromValue(preferences[PreferenceKeys.MESSAGE_FONT_FAMILY]),
                 toolRoundLimitEnabled = preferences[PreferenceKeys.TOOL_ROUND_LIMIT_ENABLED] ?: false,
-                toolRoundLimit = preferences[PreferenceKeys.TOOL_ROUND_LIMIT]?.coerceIn(1, MAX_TOOL_ROUND_LIMIT) ?: DEFAULT_TOOL_ROUND_LIMIT
+                toolRoundLimit = preferences[PreferenceKeys.TOOL_ROUND_LIMIT]?.coerceIn(1, MAX_TOOL_ROUND_LIMIT) ?: DEFAULT_TOOL_ROUND_LIMIT,
+                screenWakelockMode = ScreenWakelockMode.fromValue(preferences[PreferenceKeys.SCREEN_WAKELOCK_MODE])
             )
         }
 
@@ -520,6 +531,12 @@ class AppPreferencesRepository(private val context: Context) {
         require(limit in 1..MAX_TOOL_ROUND_LIMIT)
         state.mutate({ it.copy(toolRoundLimit = limit) }) {
             context.dataStore.edit { it[PreferenceKeys.TOOL_ROUND_LIMIT] = limit }
+        }
+    }
+
+    suspend fun setScreenWakelockMode(mode: ScreenWakelockMode) {
+        state.mutate({ it.copy(screenWakelockMode = mode) }) {
+            context.dataStore.edit { it[PreferenceKeys.SCREEN_WAKELOCK_MODE] = mode.value }
         }
     }
 

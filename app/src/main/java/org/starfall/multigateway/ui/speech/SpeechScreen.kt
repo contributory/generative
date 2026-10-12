@@ -105,7 +105,7 @@ fun SpeechScreen(
                             )
                         )
                         Text(
-                            "Use Android TTS or TTS models from Providers",
+                            stringResource(R.string.speech_services_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline
                         )

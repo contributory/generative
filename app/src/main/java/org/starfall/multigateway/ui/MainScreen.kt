@@ -513,7 +513,8 @@ fun MainScreen(
                             onTtsReadCodeBlocksChange = settingsViewModel::setTtsReadCodeBlocks,
                             onToolRoundLimitEnabledChange = settingsViewModel::setToolRoundLimitEnabled,
                             onAppLanguageChange = settingsViewModel::setAppLanguage,
-                            onToolRoundLimitChange = settingsViewModel::setToolRoundLimit,
+                             onToolRoundLimitChange = settingsViewModel::setToolRoundLimit,
+                             onScreenWakelockModeChange = settingsViewModel::setScreenWakelockMode,
                             onEnableVibrationChange = { value ->
                                 settingsViewModel.setEnableVibration(value)
                             },

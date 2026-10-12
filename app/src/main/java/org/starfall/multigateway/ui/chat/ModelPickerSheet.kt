@@ -6,7 +6,6 @@ import kotlin.math.roundToInt
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -36,10 +35,13 @@ import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.UnfoldLess
 import androidx.compose.material.icons.outlined.UnfoldMore
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -80,7 +82,8 @@ sealed interface ModelPickerItem {
     data class Provider(
         val provider: LlmProviderInfo,
         val modelCount: Int,
-        val depth: Int
+        val depth: Int,
+        val hasSelectedModel: Boolean = false
     ) : ModelPickerItem
 
     data class Model(
@@ -234,10 +237,15 @@ fun computeModelPickerItems(
 
     return buildList {
         visibleProviders.forEach { node ->
-            add(ModelPickerItem.Provider(node.provider, node.models.size, depth = 0))
             val models = modelItems(node, depth = 1)
+            add(ModelPickerItem.Provider(
+                node.provider,
+                node.models.size,
+                depth = 0,
+                hasSelectedModel = models.any { it.isSelected }
+            ))
             addAll(if (!forceExpanded && node.provider.id in collapsedProviderIds) {
-                models.filter { it.isSelected }
+                emptyList()
             } else models)
         }
     }
@@ -289,7 +297,7 @@ fun ModelPickerSheet(
             }
         }
     }
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    var selectedTabKey by rememberSaveable { mutableStateOf("default") }
     // Keep a separate LazyListState for every tab. Reusing one state here makes
     // Compose restore the previous tab's position (or jump to its initial row)
     // whenever the tab content is replaced.
@@ -299,6 +307,7 @@ fun ModelPickerSheet(
     // Switching tabs replaces most rows at once while the list is also repositioned. Fading the old
     // rows out during that jump can leave them stuck on screen, so rows are swapped instantly.
     var instantTabSwap by remember { mutableStateOf(false) }
+    val selectedTabIndex = folderTabs.indexOfFirst { it.key == selectedTabKey }.coerceAtLeast(0)
     LaunchedEffect(selectedTabIndex) {
         if (instantTabSwap) {
             delay(400)
@@ -306,10 +315,11 @@ fun ModelPickerSheet(
         }
     }
     LaunchedEffect(folderTabs) {
-        selectedTabIndex = selectedTabIndex.coerceIn(0, (folderTabs.size - 1).coerceAtLeast(0))
+        if (folderTabs.none { it.key == selectedTabKey }) {
+            selectedTabKey = folderTabs.firstOrNull()?.key ?: "default"
+        }
     }
     val selectedTab = folderTabs.getOrNull(selectedTabIndex)
-    val selectedTabKey = selectedTab?.key ?: "default"
     val selectedFolderId = selectedTab?.folderId
     val ungroupedOnly = selectedTab?.ungroupedOnly == true
     LaunchedEffect(collapsedGroupIdsState) {
@@ -423,7 +433,7 @@ fun ModelPickerSheet(
                     modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
-                        if (allCollapsed) Icons.Outlined.UnfoldMore else Icons.Outlined.UnfoldLess,
+                        if (allCollapsed) Icons.Outlined.ExpandMore else Icons.Outlined.ExpandLess,
                         contentDescription = stringResource(
                             if (allCollapsed) R.string.expand_all_model_sections else R.string.collapse_all_model_sections
                         )
@@ -451,8 +461,8 @@ fun ModelPickerSheet(
                         Tab(
                             selected = selectedTabIndex == index,
                             onClick = {
-                                if (selectedTabIndex != index) instantTabSwap = true
-                                selectedTabIndex = index
+                                if (selectedTabKey != tab.key) instantTabSwap = true
+                                selectedTabKey = tab.key
                             },
                             modifier = Modifier.testTag("model-picker-tab_${tab.key}"),
                             text = {
@@ -525,10 +535,11 @@ fun ModelPickerSheet(
                                 is ModelPickerItem.Provider -> {
                                     val collapsed = item.provider.id in collapsedProviderIds &&
                                         !forceExpanded
-                                    ModelPickerProviderRow(
-                                        provider = item.provider,
-                                        collapsed = collapsed,
-                                        onToggle = {
+                                        ModelPickerProviderRow(
+                                            provider = item.provider,
+                                            collapsed = collapsed,
+                                            hasSelectedModel = item.hasSelectedModel,
+                                            onToggle = {
                                             expandSearchResults = false
                                             setCollapsedProviders(
                                                 if (collapsed) collapsedProviderIds - item.provider.id
@@ -597,14 +608,14 @@ internal fun SelectedModelOverviewSheet(
             screenBurst?.hide()
         }
     }
-    val sheetColor by animateColorAsState(
+    // Keep the max-effort tint settled while the stars continue twinkling.
+    // Animating this color made the whole sheet flash orange whenever the slider crossed max.
+    val sheetColor =
         if (previewTier == 6 && config.supportsThinking)
             lerp(MaterialTheme.colorScheme.surface, Color(0xFFF97316), 0.16f)
         else if (previewTier == 5 && config.supportsThinking)
             lerp(MaterialTheme.colorScheme.surface, Color(0xFFA78BFA), 0.22f)
-        else MaterialTheme.colorScheme.surface,
-        tween(1800), label = "thinking-sheet-color"
-    )
+        else MaterialTheme.colorScheme.surface
     AppBottomSheet(onDismissRequest = {
         screenBurst?.hide()
         onDismiss()
@@ -670,7 +681,7 @@ internal fun SelectedModelOverviewSheet(
                 }
             }
             Text(
-                "Tap the model card to choose another model",
+                stringResource(R.string.choose_another_model_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -725,12 +736,15 @@ private fun ModelPickerGroupRow(
 private fun ModelPickerProviderRow(
     provider: LlmProviderInfo,
     collapsed: Boolean,
+    hasSelectedModel: Boolean,
     onToggle: () -> Unit
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = if (hasSelectedModel) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
+            else Color.Transparent,
+        contentColor = if (hasSelectedModel) MaterialTheme.colorScheme.onPrimaryContainer
+            else MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(
@@ -760,9 +774,18 @@ private fun ModelPickerProviderRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                fontWeight = FontWeight.Medium
-            )
+                 color = if (hasSelectedModel) MaterialTheme.colorScheme.onPrimaryContainer
+                     else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                 fontWeight = FontWeight.Medium
+             )
+             if (hasSelectedModel) {
+                 Icon(
+                     Icons.Filled.Check,
+                     contentDescription = null,
+                     tint = MaterialTheme.colorScheme.primary,
+                     modifier = Modifier.size(18.dp)
+                 )
+             }
         }
     }
 }

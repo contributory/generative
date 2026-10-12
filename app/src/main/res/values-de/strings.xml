@@ -87,4 +87,11 @@
     <string name="model_temperature_invalid">Gib eine Zahl von 0 bis %1$s ein oder lasse das Feld leer.</string>
     <string name="model_top_p_invalid">Gib eine Zahl von 0 bis 1 ein oder lasse das Feld leer.</string>
     <string name="model_top_k_invalid">Gib eine positive ganze Zahl ein oder lasse das Feld leer.</string>
+    <string name="select_model">Modell auswählen</string>
+    <string name="chat_input_placeholder">Text eingeben...</string>
+    <string name="search_history">Verlauf durchsuchen...</string>
+    <string name="no_conversations_yet">Noch keine Unterhaltungen</string>
+    <string name="connect_providers_description">Nahtlos mit mehreren KI-Anbietern und Agenten verbinden.</string>
+    <string name="choose_another_model_hint">Tippe auf die Modellkarte, um ein anderes Modell auszuwählen</string>
+    <string name="screen_wakelock_description">Den Bildschirm während der Antwortgenerierung eingeschaltet lassen.</string>
 </resources>
