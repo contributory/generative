@@ -4,6 +4,7 @@ import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -44,6 +45,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.Offset
@@ -633,6 +635,7 @@ internal fun SelectedModelOverviewSheet(
     } else {
         MaterialTheme.colorScheme.surface
     }
+    val revealOrigin = screenBurst?.origin?.takeIf { it != Offset.Zero }
     AppBottomSheet(onDismissRequest = {
         screenBurst?.hide()
         onDismiss()
@@ -642,6 +645,8 @@ internal fun SelectedModelOverviewSheet(
             previewTier == 5 && config.supportsThinking -> MaterialTheme.colorScheme.surface
             else -> sheetColor
         },
+        containerBrushRevealOrigin = revealOrigin,
+        containerBrushRevealProgress = screenBurst?.progress?.value ?: 1f,
         containerOverlay = if (previewTier == 6 && config.supportsThinking) {
             { drawMaximumEffortStreaks(1f) }
         } else null
@@ -685,7 +690,7 @@ internal fun SelectedModelOverviewSheet(
             if (config.supportsThinking && onSetSendThinkingContent != null) {
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.1f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -875,9 +880,13 @@ private fun ModelPickerCard(
         .padding(10.dp)
     val cardContent: @Composable ColumnScope.() -> Unit = {
             Row(
-                modifier = Modifier.fillMaxWidth().then(
-                    if (embedded) Modifier.clickable(onClick = onClick) else Modifier
-                ),
+                modifier = Modifier.fillMaxWidth().then(if (embedded) {
+                    Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
+                        .clickable(onClick = onClick)
+                        .padding(10.dp)
+                } else Modifier),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 EntityIcon(config.icon, Modifier.size(40.dp), text = modelInitial(modelId), matchName = config.displayName.ifBlank { modelId }, model = true)
@@ -913,6 +922,7 @@ private fun ModelPickerCard(
                                 ModelContextChip(
                                     text = it,
                                     modifier = Modifier.weight(1f),
+                                    containerAlpha = if (embedded) 0.5f else 0.78f,
                                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
@@ -921,20 +931,28 @@ private fun ModelPickerCard(
                                 ModelContextChip(
                                     text = "Group: $it",
                                     modifier = Modifier.weight(1f),
+                                    containerAlpha = if (embedded) 0.5f else 0.78f,
                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                             }
                         }
                     }
-                    ModelCapabilityBadges(config)
+                    ModelCapabilityBadges(
+                        config,
+                        modifier = if (embedded) Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
+                            .padding(3.dp)
+                        else Modifier
+                    )
                 }
 
                 if (isSelected) {
                     Spacer(Modifier.width(6.dp))
                     Surface(
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary,
+                         color = MaterialTheme.colorScheme.primary.copy(alpha = if (embedded) 0.5f else 1f),
                         modifier = Modifier.size(22.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -1054,12 +1072,13 @@ private fun ModelContextChip(
     text: String,
     modifier: Modifier = Modifier,
     containerColor: Color,
-    contentColor: Color
+    contentColor: Color,
+    containerAlpha: Float = 0.78f
 ) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(7.dp),
-        color = containerColor.copy(alpha = 0.78f),
+        color = containerColor.copy(alpha = containerAlpha),
         contentColor = contentColor
     ) {
         Text(
@@ -1073,9 +1092,9 @@ private fun ModelContextChip(
 }
 
 @Composable
-internal fun ModelCapabilityBadges(config: ModelConfiguration) {
+internal fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp)

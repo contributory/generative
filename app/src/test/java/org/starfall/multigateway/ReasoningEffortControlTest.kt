@@ -39,10 +39,17 @@ class ReasoningEffortControlTest {
 
     @Test fun geminiOmitsDuplicateXHighAndRecognizesSavedOverrides() {
         val options = reasoningEffortOptions(ProviderType.GOOGLE)
-        assertEquals(listOf("None", "Default", "Low", "Medium", "High"), options.map { it.label })
-        assertEquals(4, reasoningEffortIndex("xhigh", options))
-        assertEquals(4, reasoningEffortIndex(" HIGH ", options))
+        assertEquals(listOf("None", "Default", "Minimal", "Low", "Medium", "High"), options.map { it.label })
+        assertEquals(5, reasoningEffortIndex("xhigh", options))
+        assertEquals(5, reasoningEffortIndex(" HIGH ", options))
         assertEquals(0, reasoningEffortIndex("off", options))
+    }
+
+    @Test fun openAiAddsNativeMaximumEffort() {
+        val options = reasoningEffortOptions(ProviderType.OPENAI)
+        assertEquals("Max", options.last().label)
+        assertEquals("max", options.last().effort)
+        assertEquals(options.lastIndex, reasoningEffortIndex("max", options))
     }
 
     @Test fun antigravityUsesTheUnderlyingModelFamily() {
@@ -88,6 +95,6 @@ class ReasoningEffortControlTest {
         val options = reasoningEffortOptions(ProviderType.CLAUDE_CODE, "claude-opus-4-7")
         assertEquals(listOf(0, 1, 2, 3, 4, 5, 6), options.indices.map { reasoningEffortTier(it, options) })
         val generic = reasoningEffortOptions(ProviderType.OPENAI)
-        assertEquals(listOf(0, 1, 2, 3, 5, 6), generic.indices.map { reasoningEffortTier(it, generic) })
+        assertEquals(listOf(0, 1, 2, 3, 4, 5, 6), generic.indices.map { reasoningEffortTier(it, generic) })
     }
 }

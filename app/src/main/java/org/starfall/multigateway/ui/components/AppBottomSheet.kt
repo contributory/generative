@@ -16,11 +16,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.nestedscroll.*
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -36,6 +39,7 @@ import org.starfall.multigateway.ui.theme.modalScrimColor
 import org.starfall.multigateway.ui.theme.LocalAmoledMode
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
+import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 /** Let downward motion at the list start reach Material; contain overscroll at the list end. */
@@ -56,6 +60,8 @@ fun AppBottomSheet(
     containerColor: Color = BottomSheetDefaults.ContainerColor,
     containerBrush: Brush? = null,
     containerOverlay: (androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit)? = null,
+    containerBrushRevealOrigin: Offset? = null,
+    containerBrushRevealProgress: Float = 1f,
     navigationBarColor: Color? = null,
     dragHandleHeight: Dp = 48.dp,
     dragHandleWidth: Dp = 32.dp,
@@ -68,6 +74,7 @@ fun AppBottomSheet(
     val windowHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.roundToPx() }
     var requestedHeight by remember { mutableStateOf<Float?>(null) }
     var measuredHeight by remember { mutableIntStateOf(0) }
+    var containerOriginOnScreen by remember { mutableStateOf(Offset.Zero) }
     val resizeLabel = stringResource(R.string.sheet_resize)
     val sheetModifier = if (LocalAmoledMode.current) {
         modifier.amoledSheetBorder(sheetState, shape, MaterialTheme.colorScheme.outlineVariant, 1.dp)
@@ -95,10 +102,26 @@ fun AppBottomSheet(
                     Modifier
                         .fillMaxWidth()
                         .onSizeChanged { measuredHeight = it.height }
+                        .onGloballyPositioned { containerOriginOnScreen = it.localToScreen(Offset.Zero) }
                         .then(
                             if (containerBrush == null) Modifier else Modifier.drawBehind {
-                                drawRect(containerBrush)
-                                containerOverlay?.invoke(this)
+                                fun drawTarget() {
+                                    drawRect(containerBrush)
+                                    containerOverlay?.invoke(this)
+                                }
+                                val localOrigin = containerBrushRevealOrigin?.let { it - containerOriginOnScreen }
+                                val progress = containerBrushRevealProgress.coerceIn(0f, 1f)
+                                if (localOrigin == null || progress >= 0.52f) {
+                                    drawTarget()
+                                } else {
+                                    val radius = 14.dp.toPx() + hypot(size.width, size.height) *
+                                        (progress / 0.52f).coerceIn(0f, 1f)
+                                    clipPath(
+                                        Path().apply { addOval(androidx.compose.ui.geometry.Rect(localOrigin, radius)) }
+                                    ) {
+                                        drawTarget()
+                                    }
+                                }
                             }
                         )
                 ) {

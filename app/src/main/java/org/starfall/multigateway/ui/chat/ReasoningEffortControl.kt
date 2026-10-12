@@ -104,7 +104,7 @@ internal fun reasoningEffortOptions(
     val budgetBased = usesThinkingBudget(providerType, modelId)
     val gemini = providerType == ProviderType.GOOGLE ||
         (providerType == ProviderType.ANTIGRAVITY && !budgetBased)
-    return reasoningEfforts.mapIndexedNotNull { index, effort ->
+    val options = reasoningEfforts.mapIndexedNotNull { index, effort ->
         if (gemini && effort == "xhigh") return@mapIndexedNotNull null
         val label = when {
             budgetBased && index >= 2 -> ModelConfiguration(reasoningEffort = effort)
@@ -114,6 +114,15 @@ internal fun reasoningEffortOptions(
         }
         ReasoningEffortOption(effort, label)
     }
+    val providerOptions = if (gemini) {
+        options.flatMap { option ->
+            if (option.effort == "low") listOf(ReasoningEffortOption("minimal", "Minimal"), option)
+            else listOf(option)
+        }
+    } else options
+    return if (providerType in listOf(ProviderType.OPENAI, ProviderType.OPENAI_RESPONSES)) {
+        providerOptions + ReasoningEffortOption("max", "Max")
+    } else providerOptions
 }
 
 internal fun reasoningEffortEnabled(effort: String?): Boolean =

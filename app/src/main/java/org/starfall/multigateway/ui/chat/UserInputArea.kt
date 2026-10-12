@@ -102,6 +102,7 @@ fun UserInputArea(
     onModelPickerCollapsedProvidersChange: (Set<String>) -> Unit = {},
     modelPickerSelectedTab: String = "default",
     onModelPickerSelectedTabChange: (String) -> Unit = {},
+    modelPickerOpenRequest: Int = 0,
     selectedProviderId: String,
     onSelectModel: (providerId: String, modelId: String) -> Unit,
     conversationReasoningEffort: String?,
@@ -187,6 +188,9 @@ fun UserInputArea(
     var showAddMenu by remember { mutableStateOf(false) }
     var showFilesSheet by remember { mutableStateOf(false) }
     val selectedModelScreenBurst = rememberThinkingColorBurst()
+    LaunchedEffect(modelPickerOpenRequest) {
+        if (modelPickerOpenRequest > 0) showModelPicker = true
+    }
     LaunchedEffect(showSelectedModelOverview) {
         if (!showSelectedModelOverview) selectedModelScreenBurst.hide()
     }
@@ -609,7 +613,6 @@ fun UserInputArea(
                     setPassback
                 } else null,
                 onOpenModelPicker = {
-                    showSelectedModelOverview = false
                     showModelPicker = true
                 },
                 onDismiss = { showSelectedModelOverview = false }

@@ -31,6 +31,7 @@ fun ChatAppBar(
     providerName: String,
     onOpenDrawer: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenModelPicker: () -> Unit = {},
     contextWindowStatus: ContextWindowStatus? = null,
     modifier: Modifier = Modifier
 ) {
@@ -72,7 +73,8 @@ fun ChatAppBar(
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .fillMaxWidth()
-                .padding(start = 68.dp, end = 56.dp),
+                .padding(start = 68.dp, end = 56.dp)
+                .clickable(onClick = onOpenModelPicker),
             verticalArrangement = Arrangement.Center
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {

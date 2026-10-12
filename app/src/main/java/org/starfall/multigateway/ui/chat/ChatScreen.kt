@@ -149,6 +149,7 @@ fun ChatScreen(
     var showContextSummarySheet by remember(conversation?.id) { mutableStateOf(false) }
     var showSummaryDialog by remember(conversation?.id) { mutableStateOf(false) }
     var inlineChatError by remember(conversation?.id) { mutableStateOf<String?>(null) }
+    var modelPickerOpenRequest by remember(conversation?.id) { mutableIntStateOf(0) }
     val streamingHere = isGenerating && generatingConversationId == conversation?.id
     val lastMessage = conversationMessages.lastOrNull()
     val streamingMessage = if (streamingHere) conversationMessages.lastOrNull { it.role == ChatRole.MODEL } else null
@@ -609,8 +610,9 @@ fun ChatScreen(
                 modelPickerCollapsedProviders = modelPickerCollapsedProviders,
                 onModelPickerCollapsedGroupsChange = onModelPickerCollapsedGroupsChange,
                 onModelPickerCollapsedProvidersChange = onModelPickerCollapsedProvidersChange,
-                modelPickerSelectedTab = modelPickerSelectedTab,
-                onModelPickerSelectedTabChange = onModelPickerSelectedTabChange,
+                 modelPickerSelectedTab = modelPickerSelectedTab,
+                 onModelPickerSelectedTabChange = onModelPickerSelectedTabChange,
+                 modelPickerOpenRequest = modelPickerOpenRequest,
                 selectedProviderId = selectedProviderId,
                 onSelectModel = onSelectModel,
                 conversationReasoningEffort = conversation?.reasoningEffort,
@@ -629,6 +631,7 @@ fun ChatScreen(
             contextWindowStatus = contextWindowStatus,
             onOpenDrawer = onOpenDrawer,
             onOpenSettings = onOpenSettings,
+            onOpenModelPicker = { modelPickerOpenRequest++ },
             modifier = Modifier.align(Alignment.TopCenter)
                 .onSizeChanged { appBarHeightPx = it.height }
         )
