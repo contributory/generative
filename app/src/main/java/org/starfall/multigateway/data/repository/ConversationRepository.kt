@@ -26,8 +26,9 @@ class ConversationRepository(private val db: AppDatabase) {
     }
 
     suspend fun saveConversation(conversation: Conversation) {
-        state.mutate({ it.upsert(conversation) { item -> item.id }.sortedByDescending { it.updatedAt } }) {
-            dao.insertOrUpdate(modelToEntity(conversation))
+        val persisted = conversation.pruningEmptyResponses()
+        state.mutate({ it.upsert(persisted) { item -> item.id }.sortedByDescending { it.updatedAt } }) {
+            dao.insertOrUpdate(modelToEntity(persisted))
         }
     }
 
@@ -124,4 +125,3 @@ class ConversationRepository(private val db: AppDatabase) {
         )
     }
 }
-

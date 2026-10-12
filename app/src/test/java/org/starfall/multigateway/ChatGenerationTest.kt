@@ -102,6 +102,36 @@ class ChatGenerationTest {
         assertNull(prepareRegeneration(original, "u1"))
     }
 
+    @Test fun regenerationReplacesAnErrorOnlyAnswerInsteadOfAddingAVersion() {
+        val original = conversation().copy(messages = listOf(
+            message("u1", ChatRole.USER, "First question"),
+            StoredMessage("a1", ChatRole.MODEL, listOf(MessageVersion(generationError = "offline")))
+        ))
+        val replacement = MessageVersion(content = "new", providerId = "provider", modelId = "model")
+
+        val regenerated = prepareRegeneration(original, "a1", replacement)!!
+
+        assertEquals(1, regenerated.messages.last().versions.size)
+        assertEquals(replacement, regenerated.messages.last().activeVersion)
+        assertEquals(0, regenerated.messages.last().activeVersionIndex)
+    }
+
+    @Test fun emptyAssistantResponsesAreNotPersistedButErrorOnlyResponsesAre() = runBlocking {
+        var saved: Conversation? = null
+        val runner = ChatGeneration(
+            CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            { saved = it },
+            {}
+        )
+
+        runner.start(conversation(), "a1", emptyFlow())
+        assertEquals(listOf("u1"), saved!!.messages.map { it.id })
+
+        runner.start(conversation(), "a1", flow { error("offline") })
+        assertEquals(listOf("u1", "a1"), saved!!.messages.map { it.id })
+        assertEquals("offline", saved!!.messages.last().activeVersion.generationError)
+    }
+
     @Test fun reasoningSurvivesStopAndCompletion() {
         val partial = updateResponse(conversation(), "a1", "<think>Working")
         assertEquals("Working", partial.messages.last().reasoningContent)
@@ -136,7 +166,7 @@ class ChatGenerationTest {
         val runner = ChatGeneration(CoroutineScope(coroutineContext + Dispatchers.Unconfined), { saved = it }, {})
         runner.start(conversation(), "a1", flow { emit("partial"); error("offline") })
         assertTrue(saved!!.messages.last().content.startsWith("partial"))
-        assertTrue(saved!!.messages.last().content.contains("offline"))
+        assertEquals("offline", saved!!.messages.last().activeVersion.generationError)
         assertEquals("offline", runner.error.value)
         assertFalse(runner.busy.value)
     }

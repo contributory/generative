@@ -1,6 +1,7 @@
 package org.starfall.multigateway
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.*
 import okhttp3.mockwebserver.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -43,5 +44,24 @@ class SendFileToolTest {
             assertEquals(1, server.requestCount)
             assertArrayEquals(bytes, files.resolve(first.text("uri").removePrefix("tool-file:"))!!.readBytes())
         } finally { server.shutdown(); directory.deleteRecursively() }
+    }
+
+    @Test fun sendsSeveralFilesInOneCall() = runBlocking {
+        val directory = Files.createTempDirectory("send-file-many").toFile()
+        try {
+            val files = ToolFiles(directory)
+            val image = files.save(ByteArray(16).inputStream(), "image/png")
+            val video = files.save(ByteArray(16).inputStream(), "video/mp4")
+            val result = SendFileTool(ToolHttp(files)).execute(obj(
+                "files" to JsonArray(listOf(
+                    obj("type" to str("image"), "uri" to str("tool-file:$image")),
+                    obj("type" to str("video"), "uri" to str("tool-file:$video"))
+                ))
+            ))
+
+            assertEquals(2, result["files"]!!.jsonArray.size)
+            assertEquals("tool-file:$image", result["files"]!!.jsonArray[0].jsonObject.text("uri"))
+            assertEquals("tool-file:$video", result["files"]!!.jsonArray[1].jsonObject.text("uri"))
+        } finally { directory.deleteRecursively() }
     }
 }

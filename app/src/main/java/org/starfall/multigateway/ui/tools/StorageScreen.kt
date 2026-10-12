@@ -263,7 +263,8 @@ fun MediaFileCard(
     name: String,
     imageOnly: Boolean = false,
     selectedForChat: Boolean = false,
-    onToggleChatImage: ((String) -> Unit)? = null
+    onToggleChatImage: ((String) -> Unit)? = null,
+    playVideoInline: Boolean = true
 ) {
     val context = LocalContext.current
     val revision by ToolFiles.revision.collectAsStateWithLifecycle()
@@ -278,7 +279,8 @@ fun MediaFileCard(
     }
     if (file != null) Column {
         ChatFilePreview(file.path, name, file.mime(), bitmap, !loaded,
-            selectedForChat = selectedForChat, onToggleAttachment = onToggleChatImage, onOpen = { view = true })
+            selectedForChat = selectedForChat, onToggleAttachment = onToggleChatImage,
+            playVideoInline = playVideoInline, onOpen = { view = true })
         if (!imageOnly) Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)

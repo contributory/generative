@@ -17,25 +17,43 @@ class UserMessageRetryTest {
         assertEquals(setOf("pending1", "pending2"), unansweredUserMessageIds(messages))
     }
 
-    @Test fun retryInsertsAnAnswerAndPreservesQuestionAttachmentsAndLaterMessages() {
+    @Test fun retryResetsVersionsAndMessagesAfterTheSelectedQuestion() {
         val original = conversation(listOf(user("first"), user("later")))
         val version = MessageVersion(providerId = "provider", modelId = "model")
         val retried = prepareUserMessageRetry(original, "first", "reply", version)!!
-        assertEquals(listOf("first", "reply", "later"), retried.messages.map { it.id })
+        assertEquals(listOf("first", "reply"), retried.messages.map { it.id })
         assertEquals(original.messages.first(), retried.messages.first())
-        assertEquals(original.messages.last(), retried.messages.last())
         assertEquals(ChatRole.MODEL, retried.messages[1].role)
         assertEquals(version, retried.messages[1].activeVersion)
-        assertEquals(setOf("later"), unansweredUserMessageIds(retried.messages))
-        assertNull(prepareUserMessageRetry(retried, "first", "duplicate", version))
+        assertTrue(unansweredUserMessageIds(retried.messages).isEmpty())
+
+        val secondRetry = prepareUserMessageRetry(retried, "first", "reply-2", version)!!
+        assertEquals(listOf("first", "reply-2"), secondRetry.messages.map { it.id })
     }
 
-    @Test fun answeredQueuedAndMissingMessagesCannotBeRetried() {
+    @Test fun queuedAndMissingMessagesCannotBeRetried() {
         val original = conversation(listOf(user("answered"), StoredMessage("answer", ChatRole.MODEL),
             user("queued").copy(isQueued = true)))
-        for (id in listOf("answered", "answer", "queued", "missing")) {
+        for (id in listOf("answer", "queued", "missing")) {
             assertNull(prepareUserMessageRetry(original, id, "reply", MessageVersion()))
         }
+    }
+
+    @Test fun answeredUserMessageCanBeResentAndDropsAllLaterTurns() {
+        val userVersions = listOf(MessageVersion(content = "old"), MessageVersion(content = "selected"))
+        val answerVersions = listOf(MessageVersion(content = "first answer"), MessageVersion(content = "other answer"))
+        val original = conversation(listOf(
+            StoredMessage("target", ChatRole.USER, userVersions, activeVersionIndex = 1),
+            StoredMessage("answer", ChatRole.MODEL, answerVersions, activeVersionIndex = 1),
+            user("later"),
+            StoredMessage("later-answer", ChatRole.MODEL, listOf(MessageVersion(content = "later answer")))
+        ))
+
+        val retried = prepareUserMessageRetry(original, "target", "new-answer", MessageVersion(content = "new response"))!!
+
+        assertEquals(listOf("target", "new-answer"), retried.messages.map { it.id })
+        assertEquals(listOf("selected"), retried.messages.first().versions.map { it.content })
+        assertEquals("new response", retried.messages.last().content)
     }
 
     @Test fun retryInvalidatesOnlySummariesCoveringTheInsertedResponse() {

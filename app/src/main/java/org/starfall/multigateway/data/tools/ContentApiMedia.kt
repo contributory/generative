@@ -56,8 +56,7 @@ internal fun prepareContentApiResult(result: JsonObject): PreparedContentApiResu
 internal suspend fun resolveContentApiMedia(
     result: JsonObject,
     http: ToolHttp,
-    onMediaReady: suspend (List<String>) -> Unit = {},
-    canSend: Boolean = true
+    onMediaReady: suspend (List<String>) -> Unit = {}
 ): ContentApiMediaResult {
     val prepared = prepareContentApiResult(result)
     val files = mutableListOf<String>()
@@ -76,17 +75,15 @@ internal suspend fun resolveContentApiMedia(
                 // Keep the extraction metadata useful even if one CDN URL expired or failed.
             }
         }
+        // Content-API media is displayed by the app from the ToolActivity. Keep local file names
+        // out of the model-visible result so this special MCP can never route them through
+        // send_file or expose a media URL to the model.
         displayed += obj("type" to str(media.type), "available" to JsonPrimitive(downloaded),
-            "displayed_in_chat" to JsonPrimitive(false)).let { entry ->
-            if (downloaded) JsonObject(entry + ("uri" to str("tool-file:${files.last()}"))) else entry
-        }
+            "displayed_in_chat" to JsonPrimitive(downloaded))
     }
     val content = if (prepared.media.isEmpty()) prepared.content else JsonObject(prepared.content + mapOf(
         "app_media" to JsonArray(displayed),
-        "app_media_note" to str(
-            if (canSend) "Media has been downloaded for you. Call send_file(type, uri) with an available media URI to send it to the user. Media URLs are hidden; do not output media links or local file references."
-            else "Media has been downloaded, but sending files to the user is turned off. Do not output media links or local file references."
-        )
+        "app_media_note" to str("Media has been downloaded and displayed in the chat. Media URLs and local file references are hidden; do not output them.")
     ))
     return ContentApiMediaResult(content, files)
 }

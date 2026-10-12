@@ -7,6 +7,18 @@ import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.data.service.*
 import java.util.UUID
 
+private fun sentFileNames(result: JsonObject): List<String> {
+    val listed = (result["files"] as? JsonArray).orEmpty().mapNotNull { value ->
+        when (value) {
+            is JsonObject -> value.text("uri")
+            is JsonPrimitive -> value.content
+            else -> null
+        }.orEmpty().removePrefix("tool-file:").takeIf { it.isNotBlank() }
+    }
+    val legacy = result.text("uri").removePrefix("tool-file:").takeIf { it.isNotBlank() }
+    return (listed + legacy.orEmpty()).distinct()
+}
+
 /** Native structured tool calls, bounded rounds, no executable text extracted from answers. */
 class ToolChat(private val http: ToolHttp, private val mcp: McpService, private val llm: LlmService) {
     fun generateMedia(
@@ -292,11 +304,11 @@ class ToolChat(private val http: ToolHttp, private val mcp: McpService, private 
 
                         val isError = (result["isError"] as? JsonPrimitive)?.booleanOrNull == true
                         val contentApi = servers.find { it.id == tool.serverId }?.isContentApiPreset() == true
-                        val contentApiMedia = if (contentApi) resolveContentApiMedia(result, http, canSend = settings().sendFileEnabled) else null
+                        val contentApiMedia = if (contentApi) resolveContentApiMedia(result, http) else null
                         if (contentApiMedia != null) result = contentApiMedia.content
                         val summary = summarizeToolResult(result, http.requireFiles())
                         result = summary.content
-                        if (tool.serverId != null) {
+                        if (tool.serverId != null && !contentApi) {
                             val availableFiles = (summary.files.filterNot { it == summary.responseFile } + contentApiMedia?.files.orEmpty()).distinct()
                             result = fileDeliveryResult(result, availableFiles, settings().sendFileEnabled)
                         }
@@ -306,16 +318,17 @@ class ToolChat(private val http: ToolHttp, private val mcp: McpService, private 
                                     status = if (isError) "error" else "success",
                                     summary = when {
                                         name == SEND_FILE_TOOL_NAME && tool.serverId == null -> "File sent to chat."
-                                        contentApiMedia?.files?.isNotEmpty() == true -> if (settings().sendFileEnabled) "Prepared ${contentApiMedia.files.size} media item(s). Use send_file to send them to chat."
-                                            else "Prepared ${contentApiMedia.files.size} media item(s)."
+                                        contentApiMedia?.files?.isNotEmpty() == true -> "Displayed ${contentApiMedia.files.size} media item(s) in chat."
                                         else -> summary.preview
                                     },
                                     files = when {
+                                        contentApiMedia?.files?.isNotEmpty() == true -> contentApiMedia.files
                                         tool.serverId != null -> listOf(summary.responseFile)
-                                        name == SEND_FILE_TOOL_NAME -> listOf(result.text("uri").removePrefix("tool-file:"))
+                                        name == SEND_FILE_TOOL_NAME -> sentFileNames(result)
                                         else -> summary.files
                                     },
-                                    inlineMedia = tool.serverId == null && name == SEND_FILE_TOOL_NAME,
+                                    inlineMedia = contentApiMedia?.files?.isNotEmpty() == true ||
+                                        tool.serverId == null && name == SEND_FILE_TOOL_NAME,
                                     responseFile = summary.responseFile,
                                     response = result.toString()
                                 )
@@ -341,7 +354,10 @@ class ToolChat(private val http: ToolHttp, private val mcp: McpService, private 
                         )
                     }
 
-                    if (tool?.serverId != null) {
+                    val contentApiTool = tool?.serverId?.let { serverId ->
+                        servers.find { it.id == serverId }?.isContentApiPreset()
+                    } == true
+                    if (tool?.serverId != null && !contentApiTool) {
                         if (!fileDeliveryAvailable) tools += sendFileDefinition
                         fileDeliveryAvailable = true
                     }

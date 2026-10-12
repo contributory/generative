@@ -72,9 +72,10 @@ class ContentApiMediaTest {
             assertFalse(prepared.content.toString().contains(audio))
             val media = prepared.content["app_media"]!!.jsonArray
             assertFalse(media[0].jsonObject["displayed_in_chat"]!!.jsonPrimitive.boolean)
-            assertFalse(media[1].jsonObject["displayed_in_chat"]!!.jsonPrimitive.boolean)
+            assertTrue(media[1].jsonObject["displayed_in_chat"]!!.jsonPrimitive.boolean)
             assertTrue(media[1].jsonObject["available"]!!.jsonPrimitive.boolean)
-            assertEquals("tool-file:${prepared.files.single()}", media[1].jsonObject.text("uri"))
+            assertFalse(media[1].jsonObject.containsKey("uri"))
+            assertFalse(prepared.content.toString().contains(prepared.files.single()))
         } finally { server.shutdown(); root.deleteRecursively() }
     }
 

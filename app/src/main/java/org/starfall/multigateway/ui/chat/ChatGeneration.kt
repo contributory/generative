@@ -48,6 +48,12 @@ internal class ChatGeneration(
         snapshot = conversation
         publish(conversation)
         job = scope.launch(start = CoroutineStart.LAZY) {
+            suspend fun persist(conversation: Conversation) {
+                // Keep the live placeholder for the streaming UI, but never write an AI message
+                // that still has no answer, reasoning, files, tools or error.
+                save(conversation.pruningEmptyResponses())
+            }
+
             val output = StringBuilder()
             val reasoningOutput = StringBuilder()
             val reasoningSignatureOutput = StringBuilder()
@@ -107,7 +113,7 @@ internal class ChatGeneration(
             }
 
             try {
-                save(snapshot!!)
+                persist(snapshot!!)
                 chunks.collect { chunk ->
                     when (chunk) {
                         is GenerationEvent.Text -> {
@@ -152,7 +158,7 @@ internal class ChatGeneration(
                                 })
                             })
                             publish(snapshot!!)
-                            save(snapshot!!)
+                            persist(snapshot!!)
                         }
                         is GenerationEvent.UserMessage -> {
                             renderJob?.cancel()
@@ -192,7 +198,7 @@ internal class ChatGeneration(
                                 } + chunk.message.copy(isQueued = false) + response
                             )
                             publish(snapshot!!)
-                            save(snapshot!!)
+                            persist(snapshot!!)
                         }
                     }
                 }
@@ -241,7 +247,7 @@ internal class ChatGeneration(
                             })
                         }
                         publish(snapshot!!)
-                        save(snapshot!!)
+                        persist(snapshot!!)
                     }
                 } catch (e: Exception) {
                     _error.value = "Could not save conversation: ${e.localizedMessage}"
@@ -313,9 +319,7 @@ internal fun prepareRegeneration(conversation: Conversation, messageId: String,
     val index = conversation.messages.indexOfFirst { it.id == messageId && it.role == ChatRole.MODEL }
     if (index < 1 || conversation.messages.take(index).none { it.role == ChatRole.USER }) return null
     val message = conversation.messages[index]
-    if (isErrorOnlyResponse(message.activeVersion.content)) return null
-    return conversation.copy(messages = conversation.messages.take(index) + message.copy(
-        versions = message.versions + version,
-        activeVersionIndex = message.versions.size
-    ))
+    val replaceActive = message.activeVersion.isErrorOnly()
+    return conversation.copy(messages = conversation.messages.take(index) +
+        message.withAttempt(version, replaceActive))
 }

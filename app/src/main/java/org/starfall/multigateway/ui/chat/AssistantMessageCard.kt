@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import org.starfall.multigateway.data.model.MessageVersion
 import org.starfall.multigateway.data.model.StoredMessage
 import org.starfall.multigateway.data.model.ToolActivity
+import org.starfall.multigateway.data.model.countedVersionIndices
 import org.starfall.multigateway.data.tools.ToolFiles
 import org.starfall.multigateway.ui.tools.MediaFileCard
 import org.starfall.multigateway.ui.components.mediaMimeType
@@ -60,6 +61,12 @@ fun AssistantMessageCard(
     val generatedModelName = activeVersion.modelDisplayName.ifBlank { activeVersion.modelId.ifBlank { fallbackModelName } }
     val generationError = activeVersion.generationError.orEmpty()
     val toolbarText = message.content.ifBlank { generationError }
+    val versionIndices = remember(message.versions, message.activeVersionIndex) {
+        val counted = message.countedVersionIndices()
+        if (message.activeVersionIndex in counted) counted
+        else listOf(message.activeVersionIndex) + counted
+    }
+    val displayedVersionIndex = versionIndices.indexOf(message.activeVersionIndex).coerceAtLeast(0)
     val processingDurationMillis = activeVersion.processingFinishedAt?.let { finishedAt ->
         activeVersion.timestamp.toLongOrNull()?.let { startedAt -> (finishedAt - startedAt).coerceAtLeast(0L) }
     }
@@ -116,18 +123,18 @@ fun AssistantMessageCard(
             }
         }
 
-        if (!isStreaming && message.versions.size > 1) {
+        if (!isStreaming && versionIndices.size > 1) {
             Row(
                 modifier = Modifier.padding(top = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
                     onClick = {
-                        if (message.activeVersionIndex > 0) {
-                            onSwitchVersion(message.activeVersionIndex - 1)
+                        if (displayedVersionIndex > 0) {
+                            onSwitchVersion(versionIndices[displayedVersionIndex - 1])
                         }
                     },
-                    enabled = message.activeVersionIndex > 0,
+                    enabled = displayedVersionIndex > 0,
                     modifier = Modifier.size(30.dp)
                 ) {
                     Icon(
@@ -137,17 +144,17 @@ fun AssistantMessageCard(
                     )
                 }
                 Text(
-                    text = "${message.activeVersionIndex + 1}/${message.versions.size}",
+                    text = "${displayedVersionIndex + 1}/${versionIndices.size}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 IconButton(
                     onClick = {
-                        if (message.activeVersionIndex < message.versions.size - 1) {
-                            onSwitchVersion(message.activeVersionIndex + 1)
+                        if (displayedVersionIndex < versionIndices.lastIndex) {
+                            onSwitchVersion(versionIndices[displayedVersionIndex + 1])
                         }
                     },
-                    enabled = message.activeVersionIndex < message.versions.size - 1,
+                    enabled = displayedVersionIndex < versionIndices.lastIndex,
                     modifier = Modifier.size(30.dp)
                 ) {
                     Icon(
@@ -170,10 +177,8 @@ fun AssistantMessageCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                if (!isErrorOnlyResponse(message.content)) {
-                    MessageActionButton(onClick = onRegenerate, contentDescription = "Regenerate") {
-                        Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                    }
+                MessageActionButton(onClick = onRegenerate, contentDescription = "Regenerate") {
+                    Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
                 MessageActionButton(
                     onClick = {
@@ -464,12 +469,27 @@ private fun CompletedAssistantContent(
                         }.map { it.removePrefix("tool-file:") }
                         .filter { shownFiles.add(it) }
                     if (files.isNotEmpty()) {
+                        val columns = when {
+                            files.size == 1 -> 1
+                            files.size <= 6 -> 2
+                            else -> 3
+                        }
                         Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            files.forEach { name -> key(name) {
-                                MediaFileCard(store, name, imageOnly = true,
-                                    selectedForChat = store.resolve(name)?.path in selectedImageAttachments,
-                                    onToggleChatImage = onToggleChatImage)
-                            } }
+                            files.chunked(columns).forEach { rowFiles ->
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    rowFiles.forEach { name ->
+                                        Box(Modifier.weight(1f)) {
+                                            key(name) {
+                                                MediaFileCard(store, name, imageOnly = true,
+                                                    selectedForChat = store.resolve(name)?.path in selectedImageAttachments,
+                                                    onToggleChatImage = onToggleChatImage,
+                                                    playVideoInline = columns == 1)
+                                            }
+                                        }
+                                    }
+                                    repeat(columns - rowFiles.size) { Spacer(Modifier.weight(1f)) }
+                                }
+                            }
                         }
                     }
                     nextItemNumber += block.items.count { it !is ProcessingDropdownItem.Tool || it.activity.name != "send_file" }

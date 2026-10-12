@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.InsertDriveFile
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,6 +60,7 @@ fun ChatFilePreview(
     modifier: Modifier = Modifier,
     selectedForChat: Boolean = false,
     onToggleAttachment: ((String) -> Unit)? = null,
+    playVideoInline: Boolean = true,
     onOpen: () -> Unit
 ) {
     val sharedSelection = LocalChatAttachmentSelection.current
@@ -76,7 +78,29 @@ fun ChatFilePreview(
             }
             actions()
         }
-        mime.startsWith("video/") -> InlineVideoPreview(reference, thumbnail, modifier, overlay = actions)
+        mime.startsWith("video/") && playVideoInline -> InlineVideoPreview(reference, thumbnail, modifier, overlay = actions)
+        mime.startsWith("video/") -> BoundedMediaFrame(
+            thumbnail?.let { it.width.toFloat() / it.height.coerceAtLeast(1) } ?: (16f / 9f), modifier
+        ) {
+            Box(Modifier.fillMaxSize().clickable(onClick = onOpen), contentAlignment = Alignment.Center) {
+                thumbnail?.let {
+                    Image(it, "Video thumbnail", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                }
+                Surface(
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    color = Color.Black.copy(alpha = 0.68f),
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.PlayArrow,
+                        contentDescription = "Open video",
+                        tint = Color.White,
+                        modifier = Modifier.padding(10.dp)
+                    )
+                }
+            }
+            actions()
+        }
         else -> Surface(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
             Box {
                 Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 48.dp, bottom = 10.dp)) {

@@ -21,10 +21,9 @@ import java.nio.file.Files
 class ToolChatIntegrationTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
-    @Test fun contentApiDownloadsVideoAndModelSendsItWithoutExposingMediaUrl() = contentApiScenario(true)
-    @Test fun contentApiDoesNotDisplayFilesUnlessModelCallsSendFile() = contentApiScenario(false)
+    @Test fun contentApiDisplaysVideoWithoutExposingMediaUrlOrOfferingSendFile() = contentApiScenario()
 
-    private fun contentApiScenario(deliver: Boolean) = runBlocking {
+    private fun contentApiScenario() = runBlocking {
         val server = MockWebServer()
         server.start()
         val root = Files.createTempDirectory("content-api-loop").toFile()
@@ -64,15 +63,8 @@ class ToolChatIntegrationTest {
                             "function" to obj("name" to str(name), "arguments" to str("{}"))))))
                 } else if (rounds == 2) {
                     followup = body.toString()
-                    assertTrue(body["tools"]!!.jsonArray.any { it.jsonObject["function"]!!.jsonObject.text("name") == "send_file" })
-                    if (deliver) {
-                        val response = Json.parseToJsonElement(body["messages"]!!.jsonArray.last().jsonObject.text("content")).jsonObject
-                        val uri = response["app_files"]!!.jsonArray.first().jsonObject.text("uri")
-                        obj("role" to str("assistant"), "content" to str(""), "tool_calls" to JsonArray(listOf(
-                            obj("id" to str("call2"), "type" to str("function"), "function" to obj("name" to str("send_file"),
-                                "arguments" to str(obj("type" to str("video"), "uri" to str(uri)).toString())))
-                        )))
-                    } else obj("role" to str("assistant"), "content" to str("I found a video."))
+                    assertFalse(body["tools"]!!.jsonArray.any { it.jsonObject["function"]!!.jsonObject.text("name") == "send_file" })
+                    obj("role" to str("assistant"), "content" to str("I found a video."))
                 } else {
                     obj("role" to str("assistant"), "content" to str("The video is displayed above."))
                 }
@@ -88,23 +80,18 @@ class ToolChatIntegrationTest {
             val events = ToolChat(http, McpService(http), LlmService(context)).generate(provider, "chat",
                 listOf(StoredMessage("u", ChatRole.USER, listOf(MessageVersion("Get this video")))),
                 "", listOf(preset), listOf(provider), { ToolSettings() }).toList()
-            assertEquals(if (deliver) 3 else 2, rounds)
+            assertEquals(2, rounds)
             assertFalse(followup.contains(url))
             assertFalse(followup.contains("signature=private"))
             assertTrue(followup.contains("v.douyin.com/example"))
             assertTrue(followup.contains("Video title"))
-            val activity = events.filterIsInstance<GenerationEvent.Tool>().last().activity
+            val activity = events.filterIsInstance<GenerationEvent.Tool>()
+                .last { it.activity.name.endsWith("/ extract") }.activity
             assertEquals("success", activity.status)
-            if (deliver) {
-                assertEquals("send_file", activity.name)
-                assertTrue(activity.inlineMedia)
-                assertTrue(activity.files.any { it.endsWith(".mp4") })
-                assertArrayEquals(video, store.resolve(activity.files.first { it.endsWith(".mp4") })!!.readBytes())
-            } else {
-                assertFalse(activity.inlineMedia)
-                assertFalse(activity.files.any { it.endsWith(".mp4") })
-                assertTrue(store.list().any { it.extension == "mp4" })
-            }
+            assertTrue(activity.inlineMedia)
+            assertTrue(activity.files.any { it.endsWith(".mp4") })
+            assertArrayEquals(video, store.resolve(activity.files.first { it.endsWith(".mp4") })!!.readBytes())
+            assertTrue(store.list().any { it.extension == "mp4" })
             assertFalse(activity.response.contains(url))
         } finally { server.shutdown(); root.deleteRecursively() }
     }

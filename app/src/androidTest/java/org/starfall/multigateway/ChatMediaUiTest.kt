@@ -131,6 +131,35 @@ class ChatMediaUiTest {
             compose.onNodeWithContentDescription("Close viewer").assertDoesNotExist()
         } finally { store.delete(listOf(name)) }
     }
+
+    @Test fun videosInAMediaGridOpenTheViewerInsteadOfPlayingInline() {
+        val store = ToolFiles(context)
+        val invalidVideo = ByteArray(32).also { "ftyp".toByteArray().copyInto(it, 4) }
+        val names = runBlocking {
+            listOf(
+                store.save(invalidVideo.inputStream(), "video/mp4"),
+                store.save(invalidVideo.inputStream(), "video/mp4")
+            )
+        }
+        try {
+            val message = StoredMessage("assistant-grid", ChatRole.MODEL, listOf(MessageVersion(
+                toolActivity = listOf(ToolActivity(
+                    "videos", "Content API / extract", status = "success", files = names, inlineMedia = true
+                ))
+            )))
+            compose.setContent { MaterialTheme { AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {}) } }
+            compose.waitUntil(5_000) {
+                compose.onAllNodesWithContentDescription("Open video").fetchSemanticsNodes().size == 2
+            }
+            compose.onAllNodesWithContentDescription("Play video").assertCountEquals(0)
+            compose.onAllNodesWithContentDescription("Open video").onFirst().performClick()
+            compose.waitUntil(5_000) {
+                compose.onAllNodesWithText("Unable to play this video.", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithContentDescription("Close viewer").performClick()
+        } finally { store.delete(names) }
+    }
     @Test fun readButtonTogglesToStopAndShowsModelForActiveVersion() {
         val message = StoredMessage("a", ChatRole.MODEL, listOf(MessageVersion(
             content = "Read this answer.", modelId = "model-id", modelDisplayName = "Actual model")))
