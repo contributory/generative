@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.*
 import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.R
+import androidx.compose.ui.res.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,7 +33,7 @@ fun ImageToolSettingsScreen(provider: LlmProviderInfo, config: SystemToolConfig,
     var advanced by rememberSaveable { mutableStateOf(false) }
     var confirmDiscard by remember { mutableStateOf(false) }
     val parsed = runCatching { Json.parseToJsonElement(draft).jsonObject }.getOrNull()
-    val error = if (parsed == null) "Enter a valid JSON object." else runCatching {
+    val error = if (parsed == null) stringResource(R.string.speech_json_invalid_hint) else runCatching {
         if (video) validateVideoOptions(provider, config.modelId, parsed)
         else validateImageOptions(provider, config.modelId, parsed)
     }.exceptionOrNull()?.message
@@ -52,15 +54,15 @@ fun ImageToolSettingsScreen(provider: LlmProviderInfo, config: SystemToolConfig,
             item {
                 Text(provider.name + " / " + (provider.config.modelConfigs[config.modelId]?.displayName?.ifBlank { config.modelId } ?: config.modelId),
                     style = MaterialTheme.typography.titleMedium)
-                Text("Only set options supported by this model. Empty fields use provider defaults. Settings are saved separately for each model.",
+                Text(stringResource(R.string.image_tool_model_options_description),
                     style = MaterialTheme.typography.bodySmall)
             }
             if (video && videoApi(provider) == VideoApi.AGNES) item {
-                Text("Agnes reference images require public HTTPS URLs. Files attached in chat cannot be uploaded to this API. Use frame URLs below, or reference media in Advanced JSON.",
+                Text(stringResource(R.string.image_tool_agnes_reference_description),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (!video && isAgnesProvider(provider)) item {
-                Text("Agnes supports attached reference images. Public reference-image URLs can be supplied as extra_body.image in Advanced JSON. For editing, select the response format below; return_base64 applies to text-to-image.",
+                Text(stringResource(R.string.image_tool_agnes_edit_description),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             item { ToolSwitch("Advanced JSON", advanced) { advanced = it } }
@@ -68,7 +70,7 @@ fun ImageToolSettingsScreen(provider: LlmProviderInfo, config: SystemToolConfig,
                 SelectableOutlinedTextField(
                     value = draft, onValueChange = { if (it.length <= 65536) draft = it },
                     label = { Text("Additional request body") },
-                    supportingText = { Text("Nested objects and provider extensions are supported. Model and prompt come from chat.") },
+                    supportingText = { Text(stringResource(R.string.image_tool_request_body_help)) },
                     isError = error != null, minLines = 8, maxLines = 18, modifier = Modifier.fillMaxWidth()
                 )
             } else if (parsed != null) {
@@ -77,14 +79,14 @@ fun ImageToolSettingsScreen(provider: LlmProviderInfo, config: SystemToolConfig,
                         draft = format.encodeToString(JsonObject.serializer(), parsed.withOption(field.path, value))
                     }
                 }
-            } else item { Text("Fix the JSON in Advanced JSON to use the form.", color = MaterialTheme.colorScheme.error) }
+            } else item { Text(stringResource(R.string.image_tool_json_invalid_hint), color = MaterialTheme.colorScheme.error) }
             error?.let { problem -> item { Text(problem, color = MaterialTheme.colorScheme.error) } }
             item { TextButton(onClick = { draft = "{}" }) { Text("Reset this model to defaults") } }
         }
     }
     if (confirmDiscard) AlertDialog(
         onDismissRequest = { confirmDiscard = false },
-        title = { Text("Discard changes?") }, text = { Text(if (video) "Your video settings have not been saved." else "Your image settings have not been saved.") },
+        title = { Text("Discard changes?") }, text = { Text(stringResource(if (video) R.string.image_tool_discard_video_message else R.string.image_tool_discard_image_message)) },
         confirmButton = { TextButton(onClick = onBack) { Text("Discard") } },
         dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text("Keep editing") } }
     )
@@ -115,10 +117,10 @@ private fun ImageOptionInput(field: ImageOptionField, value: JsonElement?, onCha
                     else -> onChange(JsonPrimitive(input))
                 }
             },
-            label = { Text(field.label) }, placeholder = { Text("Provider default") },
+            label = { Text(field.label) }, placeholder = { Text(stringResource(R.string.image_tool_provider_default_hint)) },
             readOnly = field.kind == "boolean", singleLine = true, isError = invalid,
             modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
-            supportingText = if (field.min != null || field.max != null) {{ Text("Range: ${field.min ?: "…"} – ${field.max ?: "…"}") }} else null
+             supportingText = if (field.min != null || field.max != null) {{ Text(stringResource(R.string.image_tool_range_hint, field.min ?: "…", field.max ?: "…")) }} else null
         )
         if (choices.isNotEmpty()) Box {
             TextButton(onClick = { choosing = true }) { Text("Choose value") }

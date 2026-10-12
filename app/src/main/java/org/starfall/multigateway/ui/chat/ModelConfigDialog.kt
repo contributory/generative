@@ -20,6 +20,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.data.model.*
+import org.starfall.multigateway.R
+import androidx.compose.ui.res.stringResource
 
 @Composable
 fun ModelConfigDialog(
@@ -65,19 +67,19 @@ fun ModelConfigDialog(
                     }
                 }
                 HorizontalDivider()
-                Text("Leave blank to use API defaults. These settings apply only to this model on this provider.")
+                Text(stringResource(R.string.model_stream_settings_description))
                 SelectableOutlinedTextField(temperature, { temperature = it }, label = { Text("Temperature (0–$tempMax)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    supportingText = { if (!tempValid) Text("Enter a number from 0 to $tempMax, or leave blank.") },
+                     supportingText = { if (!tempValid) Text(stringResource(R.string.model_temperature_invalid, tempMax)) },
                     isError = !tempValid, singleLine = true, modifier = Modifier.fillMaxWidth())
                 SelectableOutlinedTextField(topP, { topP = it }, label = { Text("Top-p (0–1)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    supportingText = { if (!topPValid) Text("Enter a number from 0 to 1, or leave blank.") },
+                     supportingText = { if (!topPValid) Text(stringResource(R.string.model_top_p_invalid)) },
                     isError = !topPValid, singleLine = true, modifier = Modifier.fillMaxWidth())
                 if (supportsTopK) {
                     SelectableOutlinedTextField(topK, { topK = it }, label = { Text("Top-k (positive integer)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        supportingText = { if (!topKValid) Text("Enter a positive whole number, or leave blank.") },
+                         supportingText = { if (!topKValid) Text(stringResource(R.string.model_top_k_invalid)) },
                         isError = !topKValid, singleLine = true, modifier = Modifier.fillMaxWidth())
                 }
                 TextButton(onClick = { temperature = ""; topP = ""; topK = "" }) { Text("Reset sampling to API defaults") }

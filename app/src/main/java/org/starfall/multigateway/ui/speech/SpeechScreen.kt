@@ -573,7 +573,7 @@ private fun AddOrEditSpeechDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 if (voice.isBlank()) Text(
-                    "Voice is optional, but this service may not work without a voice.",
+                    stringResource(R.string.speech_voice_optional_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -592,7 +592,7 @@ private fun AddOrEditSpeechDialog(
                         SelectableOutlinedTextField(
                             value = instructions, onValueChange = { instructions = it },
                             label = { Text("Voice instructions") },
-                            supportingText = { Text("Tone, accent, emotion${if (google) " and speaking speed" else ""}.") },
+                            supportingText = { Text(stringResource(R.string.speech_voice_instructions_help, if (google) " and speaking speed" else "")) },
                             modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4
                         )
                     }
@@ -603,7 +603,7 @@ private fun AddOrEditSpeechDialog(
                             placeholder = { Text("vi-VN") }, singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
-                        Text("Gemini returns PCM audio, converted to WAV for playback.", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.speech_gemini_audio_description), style = MaterialTheme.typography.bodySmall)
                     } else {
                         var formatExpanded by remember { mutableStateOf(false) }
                         Box {
@@ -622,14 +622,14 @@ private fun AddOrEditSpeechDialog(
                         value = extraBodyText, onValueChange = { extraBodyText = it },
                         label = { Text("Additional API parameters (JSON)") },
                         isError = extraBody == null,
-                        supportingText = { Text(if (extraBody == null) "Enter a valid JSON object." else "Provider-specific parameters; model, text and voice use the fields above.") },
+                         supportingText = { Text(stringResource(if (extraBody == null) R.string.speech_json_invalid_hint else R.string.speech_provider_parameters_help)) },
                         modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 5
                     )
                     SelectableOutlinedTextField(
                         value = apiKey, onValueChange = { apiKey = it },
                         label = { Text("API key override (optional)") },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
-                        supportingText = { Text("Leave empty to use the provider's authentication.") },
+                         supportingText = { Text(stringResource(R.string.speech_api_key_help)) },
                         visualTransformation = PasswordVisualTransformation(), singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )

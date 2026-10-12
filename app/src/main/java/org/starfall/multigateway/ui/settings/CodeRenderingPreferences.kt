@@ -171,6 +171,7 @@ internal fun TextAppearancePreferences(
         }
     }
 
+    Text(stringResource(R.string.message_font_family), style = MaterialTheme.typography.titleMedium)
     var fontExpanded by remember { mutableStateOf(false) }
     val fontLabels = mapOf(
         MessageFontFamily.DEFAULT to stringResource(R.string.font_family_default),
@@ -182,7 +183,7 @@ internal fun TextAppearancePreferences(
     ExposedDropdownMenuBox(fontExpanded, { fontExpanded = !fontExpanded }) {
         SelectableOutlinedTextField(
             value = fontLabels.getValue(preferences.messageFontFamily), onValueChange = {}, readOnly = true,
-            label = { Text(stringResource(R.string.message_font_family)) },
+            label = { Text(stringResource(R.string.font_family_label)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(fontExpanded) },
             modifier = Modifier.fillMaxWidth().menuAnchor().testTag("message-font-family")
         )

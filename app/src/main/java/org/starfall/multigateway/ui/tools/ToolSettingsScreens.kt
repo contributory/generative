@@ -34,6 +34,8 @@ import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.data.tools.videoOptionFields
 import org.starfall.multigateway.ui.navigation.LocalScreenTransitionActive
 import org.starfall.multigateway.ui.navigation.SlideScreenContent
+import org.starfall.multigateway.R
+import androidx.compose.ui.res.stringResource
 
 @Composable
 fun ToolSwitch(label: String, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
@@ -67,7 +69,7 @@ fun SystemToolsScreen(
 
     SlideScreenContent(
         editor = editingMedia?.let { name -> mediaProvider?.let { Triple(name, it, mediaConfig) } },
-        label = "Media tool settings"
+        label = stringResource(R.string.tool_settings_media_label)
     ) { page ->
     if (page != null) {
         ImageToolSettingsScreen(
@@ -85,10 +87,10 @@ fun SystemToolsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Default Models") },
+                title = { Text(stringResource(R.string.settings_default_models)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     }
                 }
             )
@@ -100,7 +102,7 @@ fun SystemToolsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Text("Media tools", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.tool_settings_media_tools_title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             }
             items(listOf("generate_image", "generate_video")) { name ->
                 val config = settings.system[name] ?: SystemToolConfig()
@@ -120,17 +122,17 @@ fun SystemToolsScreen(
             }
 
             item {
-                Text("Conversation helpers", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.tool_settings_conversation_helpers_title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             }
             items(listOf("title_generation", "chat_summary")) { name ->
                 val config = settings.system[name] ?: SystemToolConfig()
                 val provider = providers.find { it.id == config.providerId }
                 val model = provider?.config?.modelConfigs?.get(config.modelId)
-                val title = if (name == "title_generation") "Title Generation" else "Chat Summary"
+                val title = stringResource(if (name == "title_generation") R.string.tool_title_generation_title else R.string.tool_chat_summary_title)
                 val description = if (name == "title_generation")
-                    "Model used to generate conversation titles."
+                    stringResource(R.string.tool_title_generation_description)
                 else
-                    "Model used to summarize long conversations."
+                    stringResource(R.string.tool_chat_summary_description)
 
                 SettingsCard {
                     Text(title, style = MaterialTheme.typography.titleMedium)
@@ -141,7 +143,7 @@ fun SystemToolsScreen(
                     )
                     DefaultModelSelector(provider, config.modelId, model, onClick = { choosing = name })
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { editingPrompt = name }) { Text("Instructions") }
+                        TextButton(onClick = { editingPrompt = name }) { Text(stringResource(R.string.tool_instructions)) }
                     }
                 }
             }
@@ -159,26 +161,26 @@ fun SystemToolsScreen(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(if (name == "title_generation") "Title Generation" else "Chat Summary",
+                Text(stringResource(if (name == "title_generation") R.string.tool_title_generation_title else R.string.tool_chat_summary_title),
                     style = MaterialTheme.typography.titleLarge)
-                Text("Customize the instructions sent to this default model.",
+                Text(stringResource(R.string.tool_customize_instructions_description),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 SelectableOutlinedTextField(
                     value = prompt,
                     onValueChange = { prompt = it },
-                    label = { Text("Instruction prompt") },
+                    label = { Text(stringResource(R.string.tool_instruction_prompt)) },
                     minLines = 5,
                     maxLines = 10,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { prompt = defaultPrompt }) { Text("Reset") }
+                    TextButton(onClick = { prompt = defaultPrompt }) { Text(stringResource(R.string.tool_reset)) }
                     Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { editingPrompt = null }) { Text("Cancel") }
+                    TextButton(onClick = { editingPrompt = null }) { Text(stringResource(R.string.common_cancel)) }
                     Button(onClick = {
                         onSave(name, config.copy(prompt = prompt.ifBlank { defaultPrompt }))
                         editingPrompt = null
-                    }) { Text("Save") }
+                    }) { Text(stringResource(R.string.common_save)) }
                 }
             }
         }
@@ -248,13 +250,13 @@ private fun DefaultModelSelector(
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    modelName ?: "Select a model",
+                    modelName ?: stringResource(R.string.tool_select_model),
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    if (model == null) "Tap to choose a model" else provider?.name.orEmpty(),
+                    if (model == null) stringResource(R.string.tool_select_model_hint) else provider?.name.orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -282,11 +284,11 @@ private fun MediaDefaultModelCard(
     onOpenSettings: () -> Unit
 ) {
     val image = name == "generate_image"
-    val title = if (image) "Image Generation" else "Video Generation"
+    val title = stringResource(if (image) R.string.tool_image_generation_title else R.string.tool_video_generation_title)
     val description = if (image) {
-        "Generate images from prompts using the selected model."
+        stringResource(R.string.tool_generate_image_description)
     } else {
-        "Generate videos from prompts using the selected model."
+        stringResource(R.string.tool_generate_video_description)
     }
     val modelType = if (image) ModelType.IMAGE_GENERATION else ModelType.VIDEO_GENERATION
     val settingsAvailable = provider != null && model?.modelType == modelType &&
@@ -323,7 +325,7 @@ private fun MediaDefaultModelCard(
         DefaultModelSelector(provider, config.modelId, model, onClick = onChooseModel)
         if (!available) {
             Text(
-                "Select a compatible model to enable this tool.",
+                stringResource(R.string.tool_select_compatible_model_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(top = 8.dp)
@@ -334,7 +336,7 @@ private fun MediaDefaultModelCard(
             horizontalArrangement = Arrangement.End
         ) {
             TextButton(enabled = settingsAvailable, onClick = onOpenSettings) {
-                Text(if (image) "Image settings" else "Video settings")
+                Text(stringResource(if (image) R.string.tool_image_settings else R.string.tool_video_settings))
             }
         }
     }
@@ -348,9 +350,9 @@ fun ProfileMcpPermissions(
     settings: ToolSettings,
     onChange: (Map<String, McpAccess>) -> Unit
 ) {
-    Text("MCP permissions", style = MaterialTheme.typography.titleMedium)
+    Text(stringResource(R.string.mcp_permissions_title), style = MaterialTheme.typography.titleMedium)
     if (servers.isEmpty()) {
-        Text("Add servers in MCP Manage first.")
+        Text(stringResource(R.string.mcp_add_servers_hint))
         return
     }
 
@@ -366,7 +368,7 @@ fun ProfileMcpPermissions(
             when {
                 cached == null -> {
                     Text(
-                        "Tool list is not cached. Save or refresh this server in MCP Manage first.",
+                        stringResource(R.string.mcp_tool_list_not_cached_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -377,7 +379,7 @@ fun ProfileMcpPermissions(
                     }
                     if (globallyEnabled.isEmpty()) {
                         Text(
-                            "No globally enabled tools available.",
+                            stringResource(R.string.mcp_no_globally_enabled_tools_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
