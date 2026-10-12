@@ -46,7 +46,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -622,18 +621,31 @@ internal fun SelectedModelOverviewSheet(
             screenBurst?.hide()
         }
     }
-    // Keep the max-effort tint settled while the stars continue twinkling.
-    // Animating this color made the whole sheet flash orange whenever the slider crossed max.
-    val sheetColor =
-        if (previewTier == 6 && config.supportsThinking)
-            lerp(MaterialTheme.colorScheme.surface, Color(0xFFF97316), 0.16f)
-        else if (previewTier == 5 && config.supportsThinking)
-            lerp(MaterialTheme.colorScheme.surface, Color(0xFFA78BFA), 0.22f)
-        else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
+    // Keep the sheet opaque at every tier. Strong-effort colors are drawn across the
+    // whole sheet rather than only behind the model details column.
+    val sheetBrush = when {
+        previewTier == 6 && config.supportsThinking -> maximumEffortCardBrush()
+        previewTier == 5 && config.supportsThinking -> maximumThinkingCardBrush(MaterialTheme.colorScheme.surface)
+        else -> null
+    }
+    val sheetColor = if (sheetBrush == null) {
+        MaterialTheme.colorScheme.surfaceContainerLow
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
     AppBottomSheet(onDismissRequest = {
         screenBurst?.hide()
         onDismiss()
-    }, containerColor = sheetColor) {
+    }, containerColor = sheetColor, containerBrush = sheetBrush,
+        navigationBarColor = when {
+            previewTier == 6 && config.supportsThinking -> Color(0xFF1A0A06)
+            previewTier == 5 && config.supportsThinking -> MaterialTheme.colorScheme.surface
+            else -> sheetColor
+        },
+        containerOverlay = if (previewTier == 6 && config.supportsThinking) {
+            { drawMaximumEffortStreaks(1f) }
+        } else null
+    ) {
         // The sheet is its own window, so the screen-owned star overlay must also be attached to it;
         // otherwise the stars are only drawn on the activity window, underneath the sheet and cards.
         screenBurst?.let { ThinkingScreenBurstLayer(it) }
@@ -643,17 +655,14 @@ internal fun SelectedModelOverviewSheet(
                 .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            OutlinedButton(
-                onClick = {
-                    screenBurst?.hide()
-                    onOpenModelPicker()
-                },
-                modifier = Modifier.fillMaxWidth(0.9f).align(Alignment.CenterHorizontally),
-                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.Transparent),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
-                Text(stringResource(R.string.all_models))
-            }
+            Text(
+                stringResource(R.string.choose_another_model_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (previewTier >= 5 && config.supportsThinking) {
+                    Color.White.copy(alpha = 0.82f)
+                } else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth()
+            )
             ModelPickerCard(
                 modelId = modelId,
                 providerType = provider?.type,
@@ -663,9 +672,14 @@ internal fun SelectedModelOverviewSheet(
                 providerName = provider?.name,
                 folderName = folderName,
                 conversationReasoningEffort = conversationReasoningEffort,
-                onSetReasoningEffort = onSetReasoningEffort,
-                showReasoningEffort = true,
-                 embedded = true,
+                 onSetReasoningEffort = onSetReasoningEffort,
+                 showReasoningEffort = true,
+                 onClick = {
+                     screenBurst?.hide()
+                     onOpenModelPicker()
+                 },
+                  embedded = true,
+                  drawBackground = false,
                  onPreviewTierChange = { previewTier = it }
             )
             if (config.supportsThinking && onSetSendThinkingContent != null) {
@@ -702,11 +716,6 @@ internal fun SelectedModelOverviewSheet(
                     }
                 }
             }
-            Text(
-                stringResource(R.string.choose_another_model_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
@@ -826,7 +835,8 @@ private fun ModelPickerCard(
     showReasoningEffort: Boolean,
     onClick: () -> Unit = {},
     onPreviewTierChange: (Int) -> Unit = {},
-    embedded: Boolean = false
+    embedded: Boolean = false,
+    drawBackground: Boolean = true
 ) {
     val effortOptions = remember(providerType, modelId, maxTokens) {
         reasoningEffortOptions(providerType, modelId, maxTokens)
@@ -854,16 +864,20 @@ private fun ModelPickerCard(
     val cardContentModifier = Modifier
         .fillMaxWidth()
         .onGloballyPositioned { cardOrigin = it.localToScreen(Offset.Zero) }
-        .drawBehind {
-            revealThinkingColor(cardBurst) {
-                drawRect(cardBrush, alpha = cardTint)
-                if (tier == 6) drawMaximumEffortStreaks(cardTint)
-            }
-        }
+        .then(
+            if (drawBackground) Modifier.drawBehind {
+                revealThinkingColor(cardBurst) {
+                    drawRect(cardBrush, alpha = cardTint)
+                    if (tier == 6) drawMaximumEffortStreaks(cardTint)
+                }
+            } else Modifier
+        )
         .padding(10.dp)
     val cardContent: @Composable ColumnScope.() -> Unit = {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().then(
+                    if (embedded) Modifier.clickable(onClick = onClick) else Modifier
+                ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 EntityIcon(config.icon, Modifier.size(40.dp), text = modelInitial(modelId), matchName = config.displayName.ifBlank { modelId }, model = true)

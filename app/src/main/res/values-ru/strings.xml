@@ -103,8 +103,7 @@
     <string name="chat_input_placeholder">Введите сообщение...</string>
     <string name="search_history">Поиск в истории...</string>
     <string name="no_conversations_yet">Разговоров пока нет</string>
-    <string name="all_models">Все модели</string>
     <string name="connect_providers_description">Подключайтесь без лишних сложностей к нескольким провайдерам ИИ и агентам.</string>
-    <string name="choose_another_model_hint">Нажмите на карточку модели, чтобы выбрать другую модель</string>
+    <string name="choose_another_model_hint">Нажмите на название модели, чтобы выбрать другую модель</string>
     <string name="screen_wakelock_description">Не выключать экран во время создания ответа.</string>
 </resources>

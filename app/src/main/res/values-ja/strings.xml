@@ -103,8 +103,7 @@
     <string name="chat_input_placeholder">メッセージを入力...</string>
     <string name="search_history">履歴を検索...</string>
     <string name="no_conversations_yet">会話はまだありません</string>
-    <string name="all_models">すべてのモデル</string>
     <string name="connect_providers_description">複数のAIプロバイダーやエージェントにシームレスに接続できます。</string>
-    <string name="choose_another_model_hint">モデルカードをタップして別のモデルを選択</string>
+    <string name="choose_another_model_hint">モデル名をタップして別のモデルを選択</string>
     <string name="screen_wakelock_description">応答の生成中は画面をオンのままにします。</string>
 </resources>

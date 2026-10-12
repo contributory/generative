@@ -103,8 +103,7 @@
     <string name="chat_input_placeholder">Escribe un mensaje...</string>
     <string name="search_history">Buscar en el historial...</string>
     <string name="no_conversations_yet">Aún no hay conversaciones</string>
-    <string name="all_models">Todos los modelos</string>
     <string name="connect_providers_description">Conéctate sin complicaciones a varios proveedores de IA y agentes.</string>
-    <string name="choose_another_model_hint">Toca la tarjeta del modelo para elegir otro modelo</string>
+    <string name="choose_another_model_hint">Toca el nombre del modelo para elegir otro modelo</string>
     <string name="screen_wakelock_description">Mantener la pantalla encendida mientras se genera una respuesta.</string>
 </resources>

@@ -103,8 +103,7 @@
     <string name="chat_input_placeholder">Text eingeben...</string>
     <string name="search_history">Verlauf durchsuchen...</string>
     <string name="no_conversations_yet">Noch keine Unterhaltungen</string>
-    <string name="all_models">Alle Modelle</string>
     <string name="connect_providers_description">Nahtlos eine Verbindung zu mehreren KI-Anbietern und Agenten herstellen.</string>
-    <string name="choose_another_model_hint">Tippe auf die Modellkarte, um ein anderes Modell auszuwählen</string>
+    <string name="choose_another_model_hint">Tippe auf den Modellnamen, um ein anderes Modell auszuwählen</string>
     <string name="screen_wakelock_description">Den Bildschirm während der Antwortgenerierung eingeschaltet lassen.</string>
 </resources>

@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.components
 
+import android.view.View
+import android.view.Window
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.gestures.Orientation
@@ -11,13 +13,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.*
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.*
@@ -27,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.R
 import org.starfall.multigateway.ui.theme.modalScrimColor
 import org.starfall.multigateway.ui.theme.LocalAmoledMode
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 import kotlin.math.roundToInt
 
 /** Let downward motion at the list start reach Material; contain overscroll at the list end. */
@@ -45,6 +54,9 @@ fun AppBottomSheet(
     modifier: Modifier = Modifier,
     shape: Shape = BottomSheetDefaults.ExpandedShape,
     containerColor: Color = BottomSheetDefaults.ContainerColor,
+    containerBrush: Brush? = null,
+    containerOverlay: (androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit)? = null,
+    navigationBarColor: Color? = null,
     dragHandleHeight: Dp = 48.dp,
     dragHandleWidth: Dp = 32.dp,
     /** When set, the sheet is this fraction of the available height regardless of content; null wraps content. */
@@ -70,6 +82,7 @@ fun AppBottomSheet(
         dragHandle = null,
         contentWindowInsets = { WindowInsets.safeDrawing }
     ) {
+        ConfigureBottomSheetWindow(navigationBarColor ?: containerColor)
         // FlexibleBottomSheet snaps to segmented sizes. Retain the app's free-form
         // content sizing in this small wrapper, without owning a dialog/window.
         BoxWithConstraints(Modifier.fillMaxWidth().testTag("bottom-sheet-window")) {
@@ -78,7 +91,17 @@ fun AppBottomSheet(
                 requestedHeight = bounds.resizedHeight(requestedHeight ?: measuredHeight.toFloat(), delta)
             }
             Layout(content = {
-                Column(Modifier.fillMaxWidth().onSizeChanged { measuredHeight = it.height }) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .onSizeChanged { measuredHeight = it.height }
+                        .then(
+                            if (containerBrush == null) Modifier else Modifier.drawBehind {
+                                drawRect(containerBrush)
+                                containerOverlay?.invoke(this)
+                            }
+                        )
+                ) {
                     Box(Modifier.fillMaxWidth().height(dragHandleHeight).testTag("bottom-sheet-drag-handle")
                         .draggable(drag, Orientation.Vertical)
                         .semantics {
@@ -113,6 +136,40 @@ fun AppBottomSheet(
                 )
                 layout(placeable.width, fixedHeight ?: bounds.heightFor(placeable.height, requestedHeight)) { placeable.placeRelative(0, 0) }
             }
+        }
+    }
+}
+
+@Composable
+private fun ConfigureBottomSheetWindow(navigationBarColor: Color) {
+    var view: View? = LocalView.current
+    var window: Window? = null
+    while (view != null && window == null) {
+        if (view is DialogWindowProvider) window = view.window else view = view.parent as? View
+    }
+    DisposableEffect(window, navigationBarColor) {
+        val target = window ?: return@DisposableEffect onDispose { }
+        val oldNavigationBarColor = target.navigationBarColor
+        val oldDividerColor = if (android.os.Build.VERSION.SDK_INT >= 28) target.navigationBarDividerColor else null
+        val oldContrast = if (android.os.Build.VERSION.SDK_INT >= 29) target.isNavigationBarContrastEnforced else null
+        val controller = WindowCompat.getInsetsController(target, target.decorView)
+        val oldLightNavigationBars = controller.isAppearanceLightNavigationBars
+        val argb = navigationBarColor.toArgb()
+
+        target.navigationBarColor = argb
+        if (android.os.Build.VERSION.SDK_INT >= 28) target.navigationBarDividerColor = argb
+        if (android.os.Build.VERSION.SDK_INT >= 29) target.isNavigationBarContrastEnforced = false
+        controller.isAppearanceLightNavigationBars = navigationBarColor.luminance() > 0.5f
+
+        onDispose {
+            target.navigationBarColor = oldNavigationBarColor
+            if (android.os.Build.VERSION.SDK_INT >= 28 && oldDividerColor != null) {
+                target.navigationBarDividerColor = oldDividerColor
+            }
+            if (android.os.Build.VERSION.SDK_INT >= 29 && oldContrast != null) {
+                target.isNavigationBarContrastEnforced = oldContrast
+            }
+            controller.isAppearanceLightNavigationBars = oldLightNavigationBars
         }
     }
 }

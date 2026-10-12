@@ -109,7 +109,7 @@ fun ConversationsDrawer(
                 placeholder = { Text(stringResource(R.string.search_history)) },
                 leadingIcon = { Icon(Icons.Default.Search, "Search") },
                 trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { Icon(Icons.Default.Close, "Clear search") } },
-                shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(12.dp)
+                shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth().padding(12.dp)
             )
             if (selecting) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {

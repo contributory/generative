@@ -103,8 +103,7 @@
     <string name="chat_input_placeholder">Nhập tin nhắn...</string>
     <string name="search_history">Tìm trong lịch sử...</string>
     <string name="no_conversations_yet">Chưa có cuộc trò chuyện nào</string>
-    <string name="all_models">Tất cả model</string>
     <string name="connect_providers_description">Kết nối liền mạch API của các nhà cung cấp AI khác nhau</string>
-    <string name="choose_another_model_hint">Nhấn vào thẻ model để chọn model khác</string>
+    <string name="choose_another_model_hint">Nhấn vào tên model để chọn model khác</string>
     <string name="screen_wakelock_description">Giữ màn hình luôn sáng khi đang tạo phản hồi.</string>
 </resources>
