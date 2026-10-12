@@ -99,6 +99,7 @@ fun SettingsScreen(
     onCodeBlockMaxLinesChange: (Int) -> Unit = {},
     onCodeBlockIncludeUndefinedChange: (Boolean) -> Unit = {},
     onMessageFontSizeChange: (Int) -> Unit = {},
+    onMessageFontSizeCustomChange: (Boolean) -> Unit = {},
     onMessageFontFamilyChange: (MessageFontFamily) -> Unit = {},
     onToolRoundLimitEnabledChange: (Boolean) -> Unit = {},
     onToolRoundLimitChange: (Int) -> Unit = {}
@@ -186,6 +187,7 @@ fun SettingsScreen(
                             onCodeBlockMaxLinesChange = onCodeBlockMaxLinesChange,
                             onCodeBlockIncludeUndefinedChange = onCodeBlockIncludeUndefinedChange,
                             onMessageFontSizeChange = onMessageFontSizeChange,
+                            onMessageFontSizeCustomChange = onMessageFontSizeCustomChange,
                             onMessageFontFamilyChange = onMessageFontFamilyChange
                         )
                     }
@@ -250,6 +252,7 @@ fun AppearanceSettingsView(
     onCodeBlockMaxLinesChange: (Int) -> Unit = {},
     onCodeBlockIncludeUndefinedChange: (Boolean) -> Unit = {},
     onMessageFontSizeChange: (Int) -> Unit = {},
+    onMessageFontSizeCustomChange: (Boolean) -> Unit = {},
     onMessageFontFamilyChange: (MessageFontFamily) -> Unit = {}
 ) {
     LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -309,7 +312,7 @@ fun AppearanceSettingsView(
         }
         item {
             SettingsSection("Text appearance") {
-                TextAppearancePreferences(appPreferences, onMessageFontSizeChange, onMessageFontFamilyChange)
+                TextAppearancePreferences(appPreferences, onMessageFontSizeChange, onMessageFontFamilyChange, onMessageFontSizeCustomChange)
             }
         }
         item {

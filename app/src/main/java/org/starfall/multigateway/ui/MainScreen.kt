@@ -206,7 +206,8 @@ fun MainScreen(
         settings = toolSettings,
         providers = providers,
         setSystem = viewModel::setSystemTool,
-        setMcp = viewModel::setQuickMcp
+        setMcp = viewModel::setQuickMcp,
+        setSendFile = viewModel::setSendFileEnabled
     )) {
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -507,6 +508,7 @@ fun MainScreen(
                              onCodeBlockMaxLinesChange = settingsViewModel::setCodeBlockMaxLines,
                              onCodeBlockIncludeUndefinedChange = settingsViewModel::setCodeBlockIncludeUndefined,
                              onMessageFontSizeChange = settingsViewModel::setMessageFontSize,
+                             onMessageFontSizeCustomChange = settingsViewModel::setMessageFontSizeCustom,
                              onMessageFontFamilyChange = settingsViewModel::setMessageFontFamily,
                             onTtsReadCodeBlocksChange = settingsViewModel::setTtsReadCodeBlocks,
                             onToolRoundLimitEnabledChange = settingsViewModel::setToolRoundLimitEnabled,

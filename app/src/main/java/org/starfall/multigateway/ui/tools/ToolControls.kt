@@ -8,6 +8,7 @@ data class ToolControls(
     val settings: ToolSettings = ToolSettings(),
     val providers: List<LlmProviderInfo> = emptyList(),
     val setSystem: (String,SystemToolConfig)->Unit = {_,_->},
-    val setMcp: (String,Boolean)->Unit = {_,_->}
+    val setMcp: (String,Boolean)->Unit = {_,_->},
+    val setSendFile: (Boolean)->Unit = {}
 )
 val LocalToolControls = staticCompositionLocalOf { ToolControls() }

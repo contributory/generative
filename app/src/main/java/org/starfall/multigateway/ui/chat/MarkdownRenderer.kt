@@ -78,7 +78,7 @@ fun MarkdownRenderer(content: String, modifier: Modifier = Modifier, isStreaming
     val preferences = LocalCodeRenderingPreferences.current
     // The Settings choice (ON / OFF / AUTO) is the default; nothing used to pass it down.
     val effectiveLatexMode = latexMode ?: preferences.latexMode
-    val bodySize = preferences.messageFontSize.sp
+    val bodySize = preferences.effectiveMessageFontSize.sp
     val messageFont = preferences.messageFontFamily.toComposeFontFamily()
     Markdown(
         state = parsed,
@@ -168,7 +168,7 @@ private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String) {
         MathSplitter.split(text, latexMode).takeIf { pieces -> pieces.any { it is MathPiece.Math } }
     }
     val preferences = LocalCodeRenderingPreferences.current
-    val bodySize = preferences.messageFontSize.sp
+    val bodySize = preferences.effectiveMessageFontSize.sp
     val messageFont = preferences.messageFontFamily.toComposeFontFamily()
 
     when {

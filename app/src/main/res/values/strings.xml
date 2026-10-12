@@ -3,6 +3,8 @@
     <string name="app_name">MultiGateway</string>
     <string name="message_text_size">Message text size</string>
     <string name="message_text_size_hint">%1$d sp</string>
+    <string name="message_text_size_custom_hint">Off: follow the Android system font size</string>
+    <string name="message_text_size_reset">Reset text size to default</string>
     <string name="message_font_family">Message font</string>
     <string name="font_family_default">System default</string>
     <string name="font_family_sans_serif">Sans serif</string>

@@ -41,7 +41,7 @@ internal class SendFileTool(private val http: ToolHttp) {
     }
 }
 
-internal fun fileDeliveryResult(result: JsonObject, names: List<String>): JsonObject = JsonObject(result + mapOf(
+internal fun fileDeliveryResult(result: JsonObject, names: List<String>, canSend: Boolean = true): JsonObject = JsonObject(result + mapOf(
     "app_files" to JsonArray(names.distinct().map { name ->
         val type = when (name.substringAfterLast('.').lowercase()) {
             "png", "jpg", "jpeg", "gif", "webp" -> "image"
@@ -51,5 +51,8 @@ internal fun fileDeliveryResult(result: JsonObject, names: List<String>): JsonOb
         }
         obj("type" to str(type), "uri" to str("tool-file:$name"))
     }),
-    "app_file_delivery" to str("Files are available but have not been sent to the user. Use send_file(type, uri) to display a relevant file in chat. Do not print media URLs or local file URIs in your answer.")
+    "app_file_delivery" to str(
+        if (canSend) "Files are available but have not been sent to the user. Use send_file(type, uri) to display a relevant file in chat. Do not print media URLs or local file URIs in your answer."
+        else "Files are saved but sending files to the user is turned off. Do not try to display them and do not print media URLs or local file URIs in your answer."
+    )
 ))

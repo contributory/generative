@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.WrapText
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -48,6 +49,8 @@ import kotlinx.serialization.json.jsonObject
 import org.starfall.multigateway.data.model.ToolActivity
 import org.starfall.multigateway.data.local.preferences.WordWrapMode
 import org.starfall.multigateway.data.tools.ToolFiles
+import org.starfall.multigateway.ui.tools.MediaViewer
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.sin
@@ -158,6 +161,11 @@ private fun ToolDetailsSheet(
         }
     }
     val response = savedJson ?: activity.response.ifBlank { activity.summary }
+    val fileNames = remember(activity.files, activity.responseFile) {
+        (activity.files + listOfNotNull(activity.responseFile))
+            .map { it.removePrefix("tool-file:") }.filter { it.isNotBlank() }.distinct()
+    }
+    var viewingFile by remember(activity.id) { mutableStateOf<File?>(null) }
 
     AppBottomSheet(
         onDismissRequest = onDismiss
@@ -224,6 +232,50 @@ private fun ToolDetailsSheet(
                     if (activity.status == "running") "Waiting for tool response…" else "No response"
                 }
             )
+
+            if (fileNames.isNotEmpty()) {
+                Spacer(Modifier.height(26.dp))
+                Text(
+                    text = "Files",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.height(10.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    fileNames.forEach { name ->
+                        val file = remember(name, revision) { ToolFiles(context).resolve(name) }
+                        ToolFileRow(name, file) { file?.let { viewingFile = it } }
+                    }
+                }
+            }
+        }
+    }
+    viewingFile?.let { file -> MediaViewer(ToolFiles(context), file) { viewingFile = null } }
+}
+
+@Composable
+private fun ToolFileRow(name: String, file: File?, onOpen: () -> Unit) {
+    val context = LocalContext.current
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(enabled = file != null, onClick = onOpen),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(Icons.Outlined.InsertDriveFile, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(Modifier.weight(1f)) {
+                Text(name, style = MaterialTheme.typography.bodyMedium, maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                Text(
+                    file?.let { android.text.format.Formatter.formatFileSize(context, it.length()) } ?: "File deleted",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

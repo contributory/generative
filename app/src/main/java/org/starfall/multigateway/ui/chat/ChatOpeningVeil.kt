@@ -22,24 +22,20 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import kotlin.math.hypot
 import androidx.compose.ui.graphics.RenderEffect as ComposeRenderEffect
 
 internal const val OPENING_VEIL_TAG = "chat-opening-veil"
 
 private const val VEIL_FADE_OUT_MS = 520
 private const val BLUR_RADIUS_DP = 14f
-private const val RING_COUNT = 3
 
 /**
  * Hides [content] behind a blurred, rippling "water" layer while [active] is true and fades it away
@@ -47,7 +43,7 @@ private const val RING_COUNT = 3
  * chat can settle at its newest message without the person watching it jump around.
  *
  * Android 13+ distorts and blurs the content with an AGSL shader, Android 12 only blurs it, and older
- * versions (which have no blur) get a stronger frosted scrim. Concentric rings are drawn on all of them.
+ * versions (which have no blur) get a stronger frosted scrim. The blurred ripple distortion is the only motion; no ring outlines are drawn.
  */
 @Composable
 internal fun ChatOpeningVeil(
@@ -76,7 +72,6 @@ internal fun ChatOpeningVeil(
     }
 
     val scrim = MaterialTheme.colorScheme.background
-    val ring = MaterialTheme.colorScheme.primary
     val scrimAlpha = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 0.30f else 0.82f
     val effect = if (visible) {
         rippleBlurLayer(amount = amount, seconds = { secondsState.floatValue })
@@ -100,28 +95,14 @@ internal fun ChatOpeningVeil(
                         } else Modifier
                     )
             ) {
-                drawVeil(amount(), secondsState.floatValue, scrim, ring, scrimAlpha)
+                drawVeil(amount(), scrim, scrimAlpha)
             }
         }
     }
 }
 
-private fun DrawScope.drawVeil(amount: Float, seconds: Float, scrim: Color, ring: Color, scrimAlpha: Float) {
+private fun DrawScope.drawVeil(amount: Float, scrim: Color, scrimAlpha: Float) {
     drawRect(scrim.copy(alpha = (scrimAlpha * amount).coerceIn(0f, 1f)))
-    val center = Offset(size.width * RIPPLE_CENTER_X, size.height * RIPPLE_CENTER_Y)
-    val reach = hypot(size.width, size.height) * 0.55f
-    val baseStroke = 1.5f.dp.toPx()
-    val growth = 4.dp.toPx()
-    repeat(RING_COUNT) { index ->
-        val phase = (seconds * 0.42f + index / RING_COUNT.toFloat()) % 1f
-        val eased = 1f - (1f - phase) * (1f - phase)
-        drawCircle(
-            color = ring.copy(alpha = ((1f - phase) * 0.34f * amount).coerceIn(0f, 1f)),
-            radius = eased * reach,
-            center = center,
-            style = Stroke(width = baseStroke + growth * phase)
-        )
-    }
 }
 
 private const val RIPPLE_CENTER_X = 0.5f

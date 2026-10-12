@@ -3,6 +3,8 @@ package org.starfall.multigateway.ui.tools
 import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 import org.starfall.multigateway.ui.components.AppDialog as Dialog
 import org.starfall.multigateway.ui.components.ChatFilePreview
+import org.starfall.multigateway.ui.chat.CodeBlockSurface
+import org.starfall.multigateway.ui.chat.codeLanguage
 import org.starfall.multigateway.ui.components.LocalChatAttachmentSelection
 import org.starfall.multigateway.R
 import androidx.compose.ui.res.stringResource
@@ -59,6 +61,33 @@ import androidx.compose.ui.layout.ContentScale
 import java.io.File
 
 private fun File.mime() = mediaMimeType(name)
+
+private const val TEXT_PREVIEW_LIMIT = 200_000
+private val textFileExtensions = setOf(
+    "txt", "log", "md", "markdown", "csv", "tsv", "json", "jsonl", "xml", "svg", "html", "htm", "css", "scss",
+    "js", "mjs", "cjs", "jsx", "ts", "tsx", "py", "kt", "kts", "java", "c", "h", "cpp", "cc", "hpp", "cs",
+    "rs", "go", "swift", "rb", "php", "sh", "bash", "zsh", "sql", "lua", "r", "yaml", "yml", "toml", "ini",
+    "conf", "cfg", "properties", "gradle", "env", "tex", "rst", "diff", "patch"
+)
+
+/** Text and source files open as highlighted code instead of "preview unavailable". */
+private fun File.isTextFile(): Boolean {
+    val mime = mime()
+    return extension.lowercase() in textFileExtensions || name.equals("Dockerfile", ignoreCase = true) ||
+        mime.startsWith("text/") || mime == "application/json" || mime == "application/xml" ||
+        mime == "application/javascript" || mime == "application/x-yaml"
+}
+
+private fun File.codeLanguageName(): String = when {
+    name.equals("Dockerfile", ignoreCase = true) -> "dockerfile"
+    else -> when (val ext = extension.lowercase()) {
+        "h" -> "c"
+        "jsonl" -> "json"
+        "conf", "cfg", "properties", "env" -> "ini"
+        "gradle" -> "kotlin"
+        else -> codeLanguage(ext)
+    }
+}
 private data class ToolFilesSnapshot(val files: List<File>, val totalBytes: Long)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -258,20 +287,36 @@ fun MediaFileCard(
 }
 
 @Composable
-private fun MediaViewer(store:ToolFiles,file:File,onDismiss:()->Unit) {
+internal fun MediaViewer(store:ToolFiles,file:File,onDismiss:()->Unit) {
     val context=LocalContext.current
     val attachmentSelection = LocalChatAttachmentSelection.current
     val scope=rememberCoroutineScope()
-    var details by remember { mutableStateOf("") }
+    val textual = remember(file.name) { file.isTextFile() }
+    val language = remember(file.name) { file.codeLanguageName() }
+    var truncated by remember(file.path) { mutableStateOf(false) }
+    val text by produceState<String?>(null, file.path, file.lastModified()) {
+        if (textual) value = withContext(Dispatchers.IO) {
+            runCatching {
+                file.reader().use { r ->
+                    val buffer = CharArray(TEXT_PREVIEW_LIMIT + 1)
+                    var count = 0
+                    while (count < buffer.size) {
+                        val read = r.read(buffer, count, buffer.size - count)
+                        if (read < 0) break
+                        count += read
+                    }
+                    truncated = count > TEXT_PREVIEW_LIMIT
+                    String(buffer, 0, minOf(count, TEXT_PREVIEW_LIMIT))
+                }
+            }.getOrDefault("File deleted")
+        }
+    }
     var confirmDelete by remember { mutableStateOf(false) }
     val save=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(file.mime())) { uri ->
         if(uri!=null) scope.launch {
             val result=withContext(Dispatchers.IO){runCatching{context.contentResolver.openOutputStream(uri)!!.use{out->file.inputStream().use{it.copyTo(out)}}}}
             Toast.makeText(context,if(result.isSuccess) "File saved" else "Could not save file",Toast.LENGTH_SHORT).show()
         }
-    }
-    LaunchedEffect(file.name){
-        if(file.extension=="txt") details=withContext(Dispatchers.IO){runCatching{file.reader().use { r -> val c=CharArray(12000);val n=r.read(c);if(n>0) String(c,0,n) else "" }}.getOrDefault("File deleted")}
     }
     Dialog(onDismissRequest=onDismiss) {
         Surface(shape=MaterialTheme.shapes.large) {
@@ -288,9 +333,19 @@ private fun MediaViewer(store:ToolFiles,file:File,onDismiss:()->Unit) {
                 }
                 LazyColumn(Modifier.weight(1f,fill=false)) {
                     item {
-                        if (isPreviewableMedia(file.mime())) MediaContent(file.path, file.mime())
-                        else if (file.extension != "txt") Text("Preview unavailable for this file type.")
-                        if(details.isNotEmpty()) Text(details,style=MaterialTheme.typography.bodySmall)
+                        when {
+                            isPreviewableMedia(file.mime()) -> MediaContent(file.path, file.mime())
+                            textual -> text?.let { content ->
+                                CodeBlockSurface(language = language, code = content, originalCode = content,
+                                    isStreaming = false, onExpansionChange = null, expanded = true)
+                                if (truncated) Text("Preview truncated to the first $TEXT_PREVIEW_LIMIT characters.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            } ?: Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
+                            else -> Text("Preview unavailable for this file type.")
+                        }
                     }
                 }
                 MediaViewerToolbar(

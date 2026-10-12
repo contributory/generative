@@ -52,7 +52,7 @@ internal fun RenderMarkdownTable(model: MarkdownComponentModel) {
     if (rows.isEmpty()) return
     val settings = annotatorSettings()
     val preferences = LocalCodeRenderingPreferences.current
-    val bodySize = preferences.messageFontSize.sp
+    val bodySize = preferences.effectiveMessageFontSize.sp
     val baseStyle = MaterialTheme.typography.bodyMedium.copy(
         fontFamily = preferences.messageFontFamily.toComposeFontFamily(),
         fontSize = bodySize * 0.92f,

@@ -84,6 +84,9 @@ class SettingsViewModel(private val repository: AppPreferencesRepository) : View
     fun setMessageFontSize(value: Int) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setMessageFontSize(value) }
     }
+    fun setMessageFontSizeCustom(value: Boolean) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setMessageFontSizeCustom(value) }
+    }
     fun setToolRoundLimitEnabled(value: Boolean) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setToolRoundLimitEnabled(value) }
     }

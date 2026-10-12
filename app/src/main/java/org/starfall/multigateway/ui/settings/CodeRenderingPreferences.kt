@@ -1,6 +1,11 @@
 package org.starfall.multigateway.ui.settings
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import org.starfall.multigateway.data.local.preferences.DEFAULT_MESSAGE_FONT_SIZE
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -134,19 +139,37 @@ internal fun CodeRenderingPreferences(
 internal fun TextAppearancePreferences(
     preferences: AppPreferences,
     onFontSizeChange: (Int) -> Unit,
-    onFontFamilyChange: (MessageFontFamily) -> Unit
+    onFontFamilyChange: (MessageFontFamily) -> Unit,
+    onFontSizeCustomChange: (Boolean) -> Unit = {}
 ) {
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-    Text(stringResource(R.string.message_text_size), style = MaterialTheme.typography.titleMedium)
-    Text(stringResource(R.string.message_text_size_hint, preferences.messageFontSize),
-        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Slider(
-        value = preferences.messageFontSize.toFloat(),
-        onValueChange = { onFontSizeChange(it.roundToInt()) },
-        valueRange = 12f..24f,
-        steps = 11,
-        modifier = Modifier.fillMaxWidth().testTag("message-font-size")
+    PreferenceToggle(
+        stringResource(R.string.message_text_size),
+        stringResource(R.string.message_text_size_custom_hint),
+        preferences.messageFontSizeCustom,
+        onFontSizeCustomChange
     )
+    if (preferences.messageFontSizeCustom) {
+        Text(stringResource(R.string.message_text_size_hint, preferences.messageFontSize),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Slider(
+                value = preferences.messageFontSize.toFloat(),
+                onValueChange = { onFontSizeChange(it.roundToInt()) },
+                valueRange = 12f..24f,
+                steps = 11,
+                modifier = Modifier.weight(1f).testTag("message-font-size")
+            )
+            IconButton(
+                onClick = { onFontSizeChange(DEFAULT_MESSAGE_FONT_SIZE) },
+                enabled = preferences.messageFontSize != DEFAULT_MESSAGE_FONT_SIZE,
+                modifier = Modifier.size(36.dp).testTag("message-font-size-reset")
+            ) {
+                Icon(Icons.Outlined.RestartAlt, stringResource(R.string.message_text_size_reset),
+                    modifier = Modifier.size(20.dp))
+            }
+        }
+    }
 
     var fontExpanded by remember { mutableStateOf(false) }
     val fontLabels = mapOf(

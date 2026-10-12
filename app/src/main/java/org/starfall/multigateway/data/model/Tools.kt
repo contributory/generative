@@ -33,7 +33,9 @@ data class SystemToolConfig(
 data class ToolSettings(
     val system: Map<String, SystemToolConfig> = emptyMap(),
     val quickMcp: Map<String, Boolean> = emptyMap(),
-    val mcpTools: Map<String, Map<String, Boolean>> = emptyMap()
+    val mcpTools: Map<String, Map<String, Boolean>> = emptyMap(),
+    /** Lets the AI display files in chat through send_file. On unless the user turns it off. */
+    val sendFileEnabled: Boolean = true
 )
 
 @Serializable

@@ -40,6 +40,7 @@ class ChatViewModel(
 
     val toolSettings = toolStore.settings.stateIn(viewModelScope, SharingStarted.Eagerly, ToolSettings())
     fun setSystemTool(name: String, config: SystemToolConfig) { viewModelScope.launch(LocalWriteErrors.handler) { toolStore.update { it.copy(system = it.system + (name to config)) } } }
+    fun setSendFileEnabled(enabled: Boolean) { viewModelScope.launch(LocalWriteErrors.handler) { toolStore.update { it.copy(sendFileEnabled = enabled) } } }
     fun setQuickMcp(id: String, enabled: Boolean) { viewModelScope.launch(LocalWriteErrors.handler) { toolStore.update { it.copy(quickMcp = it.quickMcp + (id to enabled)) } } }
     fun setMcpToolEnabled(serverId: String, toolName: String, enabled: Boolean) {
         viewModelScope.launch(LocalWriteErrors.handler) {

@@ -250,7 +250,7 @@ fun AssistantMessageCard(
 @Composable
 private fun GenerationErrorBlock(error: String, onCopy: () -> Unit, modifier: Modifier = Modifier) {
     var expanded by remember(error) { mutableStateOf(false) }
-    val errorFontSize = (LocalCodeRenderingPreferences.current.messageFontSize * 0.78f).sp
+    val errorFontSize = (LocalCodeRenderingPreferences.current.effectiveMessageFontSize * 0.78f).sp
 
     Surface(
         modifier = modifier.fillMaxWidth().clickable { expanded = !expanded },

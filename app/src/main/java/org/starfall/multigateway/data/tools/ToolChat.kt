@@ -192,7 +192,7 @@ class ToolChat(private val http: ToolHttp, private val mcp: McpService, private 
                 currentCoroutineContext().ensureActive()
                 val allowed = tools.filter { tool ->
                     if (tool.serverId == null) {
-                        if (tool.name == SEND_FILE_TOOL_NAME) fileDeliveryAvailable
+                        if (tool.name == SEND_FILE_TOOL_NAME) fileDeliveryAvailable && settings().sendFileEnabled
                         else settings().system[tool.name]?.enabled == true
                     } else {
                         settings().quickMcp[tool.serverId] != false &&
@@ -261,6 +261,7 @@ class ToolChat(private val http: ToolHttp, private val mcp: McpService, private 
                             (sessions[tool.serverId] ?: error("MCP session unavailable"))
                                 .call(tool.originalName, args)
                         } else if (name == SEND_FILE_TOOL_NAME) {
+                            check(settings().sendFileEnabled) { "Send File tool disabled" }
                             fileSender.execute(args)
                         } else {
                             val cfg = settings().system[name] ?: error("System tool is not configured")
@@ -291,13 +292,13 @@ class ToolChat(private val http: ToolHttp, private val mcp: McpService, private 
 
                         val isError = (result["isError"] as? JsonPrimitive)?.booleanOrNull == true
                         val contentApi = servers.find { it.id == tool.serverId }?.isContentApiPreset() == true
-                        val contentApiMedia = if (contentApi) resolveContentApiMedia(result, http) else null
+                        val contentApiMedia = if (contentApi) resolveContentApiMedia(result, http, canSend = settings().sendFileEnabled) else null
                         if (contentApiMedia != null) result = contentApiMedia.content
                         val summary = summarizeToolResult(result, http.requireFiles())
                         result = summary.content
                         if (tool.serverId != null) {
                             val availableFiles = (summary.files.filterNot { it == summary.responseFile } + contentApiMedia?.files.orEmpty()).distinct()
-                            result = fileDeliveryResult(result, availableFiles)
+                            result = fileDeliveryResult(result, availableFiles, settings().sendFileEnabled)
                         }
                         send(
                             GenerationEvent.Tool(
@@ -305,7 +306,8 @@ class ToolChat(private val http: ToolHttp, private val mcp: McpService, private 
                                     status = if (isError) "error" else "success",
                                     summary = when {
                                         name == SEND_FILE_TOOL_NAME && tool.serverId == null -> "File sent to chat."
-                                        contentApiMedia?.files?.isNotEmpty() == true -> "Prepared ${contentApiMedia.files.size} media item(s). Use send_file to send them to chat."
+                                        contentApiMedia?.files?.isNotEmpty() == true -> if (settings().sendFileEnabled) "Prepared ${contentApiMedia.files.size} media item(s). Use send_file to send them to chat."
+                                            else "Prepared ${contentApiMedia.files.size} media item(s)."
                                         else -> summary.preview
                                     },
                                     files = when {

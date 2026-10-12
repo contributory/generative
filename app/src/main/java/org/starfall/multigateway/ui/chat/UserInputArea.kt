@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
@@ -129,6 +130,11 @@ fun UserInputArea(
         maxLines = 6
     ).lineCount else 1
     val stackInputActions = attachments.isNotEmpty() || inputLineCount >= 3
+    // From five lines on, the buttons drop below the text so it can use the full width.
+    val buttonsBelow = inputLineCount >= 5
+    // The whole input grows to half the screen for text only, 60% when attachments are shown.
+    val screenHeightDp = LocalConfiguration.current.screenHeightDp
+    val maxInputHeight = (screenHeightDp * if (attachments.isNotEmpty()) 0.6f else 0.5f).dp
     val thinkingProvider = providers.firstOrNull { it.id == selectedProviderId }
     val thinkingConfig = thinkingProvider?.config?.modelConfigs?.get(selectedModelName)
     val thinkingOptions = remember(thinkingProvider?.type, selectedModelName, thinkingProvider?.config?.maxTokens) {
@@ -321,7 +327,7 @@ fun UserInputArea(
             tonalElevation = 2.dp,
             shadowElevation = 3.dp
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.fillMaxWidth().heightIn(max = maxInputHeight)) {
                 if (editDraft != null) {
                     Row(
                         modifier = Modifier
@@ -353,13 +359,8 @@ fun UserInputArea(
                         compact = false
                     )
                 }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 6.dp, top = 6.dp, end = 6.dp, bottom = 6.dp)
-                        .onSizeChanged { inputRowWidthPx = it.width },
-                    verticalAlignment = if (stackInputActions) Alignment.Bottom else Alignment.CenterVertically
-                ) {
+                // Both action groups are declared once so they can sit beside the text or under it.
+                val addButton: @Composable () -> Unit = {
                     IconButton(
                         onClick = {
                             focusManager.clearFocus()
@@ -374,44 +375,7 @@ fun UserInputArea(
                             modifier = Modifier.size(26.dp)
                         )
                     }
-
-                    BasicTextField(
-                        value = textFieldValue,
-                        onValueChange = { textFieldValue = it },
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                        textStyle = inputTextStyle,
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 8.dp, vertical = 10.dp)
-                            .selectAllOnTripleClick {
-                                textFieldValue = textFieldValue.copy(
-                                    selection = TextRange(0, textFieldValue.text.length)
-                                )
-                            },
-                        maxLines = 6,
-                        decorationBox = { innerTextField ->
-                            Column {
-                                Box(contentAlignment = Alignment.CenterStart) {
-                                if (textState.isEmpty()) {
-                                    Text(
-                                        text = when (mediaKind) {
-                                            ModelType.IMAGE_GENERATION -> "Describe an image…"
-                                            ModelType.VIDEO_GENERATION -> "Describe a video…"
-                                            else -> stringResource(R.string.chat_input_placeholder)
-                                        },
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 22.sp),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
-                                    )
-                                }
-                                innerTextField()
-                                }
-                            }
-                        }
-                    )
-
+                }
                     val actionButtons: @Composable () -> Unit = {
                     Box(
                         modifier = Modifier
@@ -514,7 +478,67 @@ fun UserInputArea(
                     }
                     }
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically) { actionButtons() }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .padding(start = 6.dp, top = 6.dp, end = 6.dp, bottom = if (buttonsBelow) 0.dp else 6.dp)
+                        .onSizeChanged { inputRowWidthPx = it.width },
+                    verticalAlignment = if (stackInputActions) Alignment.Bottom else Alignment.CenterVertically
+                ) {
+                    // The text field keeps its position in this Row, so it keeps focus when the buttons move.
+                    if (!buttonsBelow) addButton()
+
+                    BasicTextField(
+                        value = textFieldValue,
+                        onValueChange = { textFieldValue = it },
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                        textStyle = inputTextStyle,
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = if (buttonsBelow) 14.dp else 8.dp, vertical = 10.dp)
+                            .selectAllOnTripleClick {
+                                textFieldValue = textFieldValue.copy(
+                                    selection = TextRange(0, textFieldValue.text.length)
+                                )
+                            },
+                        maxLines = Int.MAX_VALUE,
+                        decorationBox = { innerTextField ->
+                            Column {
+                                Box(contentAlignment = Alignment.CenterStart) {
+                                if (textState.isEmpty()) {
+                                    Text(
+                                        text = when (mediaKind) {
+                                            ModelType.IMAGE_GENERATION -> "Describe an image…"
+                                            ModelType.VIDEO_GENERATION -> "Describe a video…"
+                                            else -> stringResource(R.string.chat_input_placeholder)
+                                        },
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 22.sp),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+                                    )
+                                }
+                                innerTextField()
+                                }
+                            }
+                        }
+                    )
+
+                    if (!buttonsBelow) Row(verticalAlignment = Alignment.CenterVertically) { actionButtons() }
+                }
+                if (buttonsBelow) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 6.dp, end = 6.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        addButton()
+                        Spacer(Modifier.weight(1f))
+                        Row(verticalAlignment = Alignment.CenterVertically) { actionButtons() }
+                    }
                 }
             }
         }

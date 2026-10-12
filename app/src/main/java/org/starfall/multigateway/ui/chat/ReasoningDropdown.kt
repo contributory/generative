@@ -239,7 +239,7 @@ private fun CollapsibleThinkingText(
     modifier: Modifier = Modifier
 ) {
     val preferences = LocalCodeRenderingPreferences.current
-    val bodySize = preferences.messageFontSize.sp
+    val bodySize = preferences.effectiveMessageFontSize.sp
     val messageFont = preferences.messageFontFamily.toComposeFontFamily()
     val bodyLineHeight = bodySize * 1.375f
     Text(

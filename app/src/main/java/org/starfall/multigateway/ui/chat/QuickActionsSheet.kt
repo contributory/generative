@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -86,6 +87,39 @@ fun QuickActionsSheet(onDismiss: () -> Unit) {
                             onCheckedChange = { controls.setSystem(name, cfg.copy(enabled = it)) }
                         )
                     }
+                }
+            }
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Outlined.InsertDriveFile,
+                        contentDescription = null,
+                        modifier = Modifier.size(44.dp).padding(10.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Send File", style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                        Text(
+                            "Let the AI show files from tool results in the chat",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Switch(
+                        checked = controls.settings.sendFileEnabled,
+                        onCheckedChange = controls.setSendFile
+                    )
                 }
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))

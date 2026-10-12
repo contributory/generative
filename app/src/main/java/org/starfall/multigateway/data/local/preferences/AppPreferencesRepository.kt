@@ -81,10 +81,14 @@ data class AppPreferences(
     val codeBlockMaxLines: Int = DEFAULT_CODE_BLOCK_MAX_LINES,
     val codeBlockIncludeUndefined: Boolean = false,
     val messageFontSize: Int = DEFAULT_MESSAGE_FONT_SIZE,
+    /** Off: chat text uses the default size, which scales with the Android system font size. */
+    val messageFontSizeCustom: Boolean = false,
     val messageFontFamily: MessageFontFamily = MessageFontFamily.DEFAULT,
     val toolRoundLimitEnabled: Boolean = false,
     val toolRoundLimit: Int = DEFAULT_TOOL_ROUND_LIMIT
 ) {
+    /** Size in sp used for chat text. sp already follows the system font scale. */
+    val effectiveMessageFontSize: Int get() = if (messageFontSizeCustom) messageFontSize else DEFAULT_MESSAGE_FONT_SIZE
     /** Null means tool rounds are unlimited. */
     val effectiveToolRoundLimit: Int? get() = toolRoundLimit.takeIf { toolRoundLimitEnabled }
     val effectiveSystemPrompt: String get() = promptLibrary?.systemPrompt() ?: defaultSystemPrompt
@@ -131,6 +135,7 @@ class AppPreferencesRepository(private val context: Context) {
         val CODE_BLOCK_MAX_LINES = intPreferencesKey("code_block_max_lines")
         val CODE_BLOCK_INCLUDE_UNDEFINED = booleanPreferencesKey("code_block_include_undefined")
         val MESSAGE_FONT_SIZE = intPreferencesKey("message_font_size")
+        val MESSAGE_FONT_SIZE_CUSTOM = booleanPreferencesKey("message_font_size_custom")
         val MESSAGE_FONT_FAMILY = stringPreferencesKey("message_font_family")
         val TOOL_ROUND_LIMIT_ENABLED = booleanPreferencesKey("tool_round_limit_enabled")
         val TOOL_ROUND_LIMIT = intPreferencesKey("tool_round_limit")
@@ -182,6 +187,9 @@ class AppPreferencesRepository(private val context: Context) {
                     ?: DEFAULT_CODE_BLOCK_MAX_LINES,
                 codeBlockIncludeUndefined = preferences[PreferenceKeys.CODE_BLOCK_INCLUDE_UNDEFINED] ?: false,
                 messageFontSize = preferences[PreferenceKeys.MESSAGE_FONT_SIZE]?.coerceIn(12, 24) ?: DEFAULT_MESSAGE_FONT_SIZE,
+                // Users who already picked a non-default size keep it.
+                messageFontSizeCustom = preferences[PreferenceKeys.MESSAGE_FONT_SIZE_CUSTOM]
+                    ?: (preferences[PreferenceKeys.MESSAGE_FONT_SIZE]?.let { it != DEFAULT_MESSAGE_FONT_SIZE } ?: false),
                 messageFontFamily = MessageFontFamily.fromValue(preferences[PreferenceKeys.MESSAGE_FONT_FAMILY]),
                 toolRoundLimitEnabled = preferences[PreferenceKeys.TOOL_ROUND_LIMIT_ENABLED] ?: false,
                 toolRoundLimit = preferences[PreferenceKeys.TOOL_ROUND_LIMIT]?.coerceIn(1, MAX_TOOL_ROUND_LIMIT) ?: DEFAULT_TOOL_ROUND_LIMIT
@@ -477,6 +485,12 @@ class AppPreferencesRepository(private val context: Context) {
         require(size in 12..24)
         state.mutate({ it.copy(messageFontSize = size) }) {
             context.dataStore.edit { it[PreferenceKeys.MESSAGE_FONT_SIZE] = size }
+        }
+    }
+
+    suspend fun setMessageFontSizeCustom(enabled: Boolean) {
+        state.mutate({ it.copy(messageFontSizeCustom = enabled) }) {
+            context.dataStore.edit { it[PreferenceKeys.MESSAGE_FONT_SIZE_CUSTOM] = enabled }
         }
     }
 

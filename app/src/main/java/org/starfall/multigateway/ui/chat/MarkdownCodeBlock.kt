@@ -146,7 +146,7 @@ private fun CodeBlockDrawer(
 }
 
 @Composable
-private fun CodeBlockSurface(
+internal fun CodeBlockSurface(
     language: String,
     code: String,
     originalCode: String,
@@ -159,7 +159,7 @@ private fun CodeBlockSurface(
     var sessionWrap by remember(language, originalCode) { mutableStateOf(false) }
     val mode = if (preferences.wordWrapMode == WordWrapMode.OFF && sessionWrap) WordWrapMode.VIEWPORT else preferences.wordWrapMode
     val wrapCode = mode != WordWrapMode.OFF
-    val codeSize = (preferences.messageFontSize * 0.78f).sp
+    val codeSize = (preferences.effectiveMessageFontSize * 0.78f).sp
     val textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace,
         fontSize = codeSize, lineHeight = codeSize * 1.44f)
     val density = LocalDensity.current

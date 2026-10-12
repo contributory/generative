@@ -736,7 +736,7 @@ private fun chatRenderEnvironmentKey(): Int {
     val widthDp = LocalConfiguration.current.screenWidthDp
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     return java.util.Objects.hash(
-        preferences.messageFontSize,
+        preferences.effectiveMessageFontSize,
         preferences.messageFontFamily,
         preferences.latexMode,
         preferences.wordWrapMode,
