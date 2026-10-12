@@ -175,7 +175,9 @@ fun computeModelPickerItems(
     val defaultConfig = ModelConfiguration()
     val normalizedQuery = query.trim()
     val groupById = providerGroups.associateBy { it.id }
-    val providerOrder = compareBy<LlmProviderInfo> { it.sortOrder }.thenBy { it.id }
+    val providerOrder = compareBy<LlmProviderInfo> { it.id != selectedProviderId }
+        .thenBy { it.sortOrder }
+        .thenBy { it.id }
     val orderedProviders = when {
         selectedFolderId != null -> providers
             .filter { it.groupId == selectedFolderId }
@@ -244,7 +246,9 @@ fun computeModelPickerItems(
                 hasSelectedModel = models.any { it.isSelected }
             ))
             addAll(if (!forceExpanded && node.provider.id in collapsedProviderIds) {
-                emptyList()
+                // Keep the selected model visible so collapsing a provider never hides
+                // the model that the picker is currently representing.
+                models.filter { it.isSelected }
             } else models)
         }
     }
@@ -661,7 +665,6 @@ internal fun SelectedModelOverviewSheet(
                 conversationReasoningEffort = conversationReasoningEffort,
                 onSetReasoningEffort = onSetReasoningEffort,
                 showReasoningEffort = true,
-                 onClick = {},
                  embedded = true,
                  onPreviewTierChange = { previewTier = it }
             )
@@ -821,7 +824,7 @@ private fun ModelPickerCard(
     conversationReasoningEffort: String?,
     onSetReasoningEffort: (String?) -> Unit,
     showReasoningEffort: Boolean,
-    onClick: () -> Unit,
+    onClick: () -> Unit = {},
     onPreviewTierChange: (Int) -> Unit = {},
     embedded: Boolean = false
 ) {

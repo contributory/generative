@@ -13,12 +13,14 @@
     <string name="use_system_language_desc">Theo ngôn ngữ của thiết bị. Tắt để tùy chỉnh ngôn ngữ ứng dụng.</string>
     <string name="settings_category_appearance_description">Chủ đề, màu sắc và cách hiển thị tin nhắn</string>
     <string name="settings_category_preferences_description">Hành vi, phản hồi và tích hợp</string>
+    <string name="settings_category_app_settings_description">Giao diện, tùy chọn và hành vi của ứng dụng</string>
     <string name="settings_category_app_data_description">Lịch sử hội thoại và đặt lại ứng dụng</string>
     <string name="settings_category_about_description">Thông tin ứng dụng, cập nhật phần mềm và giấy phép</string>
     <string name="settings_default_models_description">Công cụ hỗ trợ hình ảnh, video và hội thoại</string>
     <string name="settings_providers_description">Provider AI, model và kết nối API</string>
     <string name="settings_mcp_manage_description">Server công cụ và các tích hợp</string>
     <string name="settings_speech_services_description">Provider chuyển văn bản thành giọng nói</string>
+    <string name="speech_services_description">Dùng Android TTS hoặc model TTS từ Providers</string>
     <string name="settings_storage_description">Các file do công cụ tạo</string>
     <string name="settings_theme_description">Chọn giao diện của MultiGateway</string>
     <string name="settings_amoled_description">Dùng bề mặt màu đen hoàn toàn ở chế độ tối</string>
@@ -93,6 +95,7 @@
     <string name="speech_provider_parameters_help">Tham số riêng của provider; model, văn bản và giọng đọc dùng các trường bên trên.</string>
     <string name="speech_api_key_help">Để trống để dùng cơ chế xác thực của provider.</string>
     <string name="model_stream_settings_description">Để trống để dùng mặc định của API. Các cài đặt này chỉ áp dụng cho model này trên provider này.</string>
+    <string name="provider_no_models_description">Provider này chưa có model nào.</string>
     <string name="model_temperature_invalid">Nhập số từ 0 đến %1$s hoặc để trống.</string>
     <string name="model_top_p_invalid">Nhập số từ 0 đến 1 hoặc để trống.</string>
     <string name="model_top_k_invalid">Nhập số nguyên dương hoặc để trống.</string>

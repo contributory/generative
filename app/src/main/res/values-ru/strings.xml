@@ -13,12 +13,14 @@
     <string name="use_system_language_desc">Использовать язык устройства. Отключите этот параметр, чтобы выбрать язык приложения.</string>
     <string name="settings_category_appearance_description">Тема, цвета и отображение сообщений</string>
     <string name="settings_category_preferences_description">Поведение, обратная связь и интеграции</string>
+    <string name="settings_category_app_settings_description">Внешний вид, настройки и поведение приложения</string>
     <string name="settings_category_app_data_description">История разговоров и сброс приложения</string>
     <string name="settings_category_about_description">Информация о приложении, обновления и лицензия</string>
     <string name="settings_default_models_description">Помощники для изображений, видео и разговоров</string>
     <string name="settings_providers_description">Поставщики ИИ, модели и подключения API</string>
     <string name="settings_mcp_manage_description">Серверы инструментов и интеграции</string>
     <string name="settings_speech_services_description">Поставщики синтеза речи и голоса</string>
+    <string name="speech_services_description">Использовать Android TTS или модели TTS от поставщиков</string>
     <string name="settings_storage_description">Файлы, созданные инструментами</string>
     <string name="settings_theme_description">Выберите внешний вид MultiGateway</string>
     <string name="settings_amoled_description">Использовать полностью чёрные поверхности в тёмном режиме</string>
@@ -93,6 +95,7 @@
     <string name="speech_provider_parameters_help">Параметры поставщика; для модели, текста и голоса используются поля выше.</string>
     <string name="speech_api_key_help">Оставьте пустым, чтобы использовать аутентификацию поставщика.</string>
     <string name="model_stream_settings_description">Оставьте пустым, чтобы использовать значения API по умолчанию. Эти настройки применяются только к этой модели у этого поставщика.</string>
+    <string name="provider_no_models_description">В этот источник ещё не добавлены модели.</string>
     <string name="model_temperature_invalid">Введите число от 0 до %1$s или оставьте поле пустым.</string>
     <string name="model_top_p_invalid">Введите число от 0 до 1 или оставьте поле пустым.</string>
     <string name="model_top_k_invalid">Введите положительное целое число или оставьте поле пустым.</string>

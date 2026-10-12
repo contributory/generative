@@ -13,12 +13,14 @@
     <string name="use_system_language_desc">Seguir el idioma del dispositivo. Desactívalo para elegir un idioma para esta aplicación.</string>
     <string name="settings_category_appearance_description">Tema, colores y visualización de mensajes</string>
     <string name="settings_category_preferences_description">Comportamiento, comentarios e integraciones</string>
+    <string name="settings_category_app_settings_description">Apariencia, preferencias y comportamiento de la aplicación</string>
     <string name="settings_category_app_data_description">Historial de conversaciones y restablecimiento de la aplicación</string>
     <string name="settings_category_about_description">Información de la aplicación, actualizaciones y licencia</string>
     <string name="settings_default_models_description">Ayudas para imágenes, vídeos y conversaciones</string>
     <string name="settings_providers_description">Proveedores de IA, modelos y conexiones API</string>
     <string name="settings_mcp_manage_description">Servidores de herramientas e integraciones</string>
     <string name="settings_speech_services_description">Proveedores de texto a voz y voces</string>
+    <string name="speech_services_description">Usar la síntesis de voz de Android o modelos TTS de Proveedores</string>
     <string name="settings_storage_description">Archivos creados por tus herramientas</string>
     <string name="settings_theme_description">Elige el aspecto de MultiGateway</string>
     <string name="settings_amoled_description">Usar superficies totalmente negras en el modo oscuro</string>
@@ -93,6 +95,7 @@
     <string name="speech_provider_parameters_help">Parámetros específicos del proveedor; el modelo, el texto y la voz usan los campos anteriores.</string>
     <string name="speech_api_key_help">Déjalo vacío para usar la autenticación del proveedor.</string>
     <string name="model_stream_settings_description">Déjalo vacío para usar los valores predeterminados de la API. Esta configuración solo se aplica a este modelo en este proveedor.</string>
+    <string name="provider_no_models_description">Aún no se han añadido modelos a este proveedor.</string>
     <string name="model_temperature_invalid">Introduce un número del 0 al %1$s o déjalo vacío.</string>
     <string name="model_top_p_invalid">Introduce un número del 0 al 1 o déjalo vacío.</string>
     <string name="model_top_k_invalid">Introduce un número entero positivo o déjalo vacío.</string>

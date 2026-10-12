@@ -13,12 +13,14 @@
     <string name="use_system_language_desc">端末の言語に従います。オフにすると、このアプリの言語を選択できます。</string>
     <string name="settings_category_appearance_description">テーマ、色、メッセージ表示</string>
     <string name="settings_category_preferences_description">動作、フィードバック、連携</string>
+    <string name="settings_category_app_settings_description">外観、設定、アプリの動作</string>
     <string name="settings_category_app_data_description">会話履歴とアプリのリセット</string>
     <string name="settings_category_about_description">アプリ情報、ソフトウェア更新、ライセンス</string>
     <string name="settings_default_models_description">画像、動画、会話の補助機能</string>
     <string name="settings_providers_description">AI プロバイダー、モデル、API 接続</string>
     <string name="settings_mcp_manage_description">ツールサーバーと連携</string>
     <string name="settings_speech_services_description">音声合成プロバイダーと音声</string>
+    <string name="speech_services_description">Android の TTS またはプロバイダーの TTS モデルを使用</string>
     <string name="settings_storage_description">ツールが作成したファイル</string>
     <string name="settings_theme_description">MultiGateway の外観を選択</string>
     <string name="settings_amoled_description">ダークモードで完全な黒の背景を使用</string>
@@ -93,6 +95,7 @@
     <string name="speech_provider_parameters_help">プロバイダー固有のパラメータです。モデル、テキスト、音声には上の項目を使用します。</string>
     <string name="speech_api_key_help">空欄にするとプロバイダーの認証を使用します。</string>
     <string name="model_stream_settings_description">空欄にすると API のデフォルトを使用します。この設定はこのプロバイダーのこのモデルにのみ適用されます。</string>
+    <string name="provider_no_models_description">このプロバイダーにはまだモデルが追加されていません。</string>
     <string name="model_temperature_invalid">0 から %1$s までの数値を入力するか、空欄にしてください。</string>
     <string name="model_top_p_invalid">0 から 1 までの数値を入力するか、空欄にしてください。</string>
     <string name="model_top_k_invalid">正の整数を入力するか、空欄にしてください。</string>

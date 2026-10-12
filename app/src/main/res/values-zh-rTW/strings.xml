@@ -13,12 +13,14 @@
     <string name="use_system_language_desc">遵循裝置語言。關閉後即可為此應用程式選擇語言。</string>
     <string name="settings_category_appearance_description">主題、色彩與訊息顯示</string>
     <string name="settings_category_preferences_description">行為、回饋與整合</string>
+    <string name="settings_category_app_settings_description">外觀、偏好設定與應用程式行為</string>
     <string name="settings_category_app_data_description">對話記錄與應用程式重設</string>
     <string name="settings_category_about_description">應用程式資訊、軟體更新與授權</string>
     <string name="settings_default_models_description">圖片、影片與對話輔助功能</string>
     <string name="settings_providers_description">AI 提供者、模型與 API 連線</string>
     <string name="settings_mcp_manage_description">工具伺服器與整合</string>
     <string name="settings_speech_services_description">文字轉語音提供者與語音</string>
+    <string name="speech_services_description">使用 Android TTS 或提供者的 TTS 模型</string>
     <string name="settings_storage_description">工具建立的檔案</string>
     <string name="settings_theme_description">選擇 MultiGateway 的外觀</string>
     <string name="settings_amoled_description">在深色模式中使用純黑表面</string>
@@ -93,6 +95,7 @@
     <string name="speech_provider_parameters_help">提供者專用參數；模型、文字與語音使用上方欄位。</string>
     <string name="speech_api_key_help">留白即可使用提供者驗證。</string>
     <string name="model_stream_settings_description">留白即可使用 API 預設值。這些設定只適用於此提供者的此模型。</string>
+    <string name="provider_no_models_description">此提供者尚未新增任何模型。</string>
     <string name="model_temperature_invalid">請輸入 0 到 %1$s 之間的數字，或留白。</string>
     <string name="model_top_p_invalid">請輸入 0 到 1 之間的數字，或留白。</string>
     <string name="model_top_k_invalid">請輸入正整數，或留白。</string>

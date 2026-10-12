@@ -323,7 +323,7 @@ class ToolChat(private val http: ToolHttp, private val mcp: McpService, private 
                                     },
                                     files = when {
                                         contentApiMedia?.files?.isNotEmpty() == true -> contentApiMedia.files
-                                         tool.serverId != null -> summary.responseFile.takeIf { it.isNotBlank() }?.let(::listOf).orEmpty()
+                                         tool.serverId != null -> summary.files.distinct()
                                         name == SEND_FILE_TOOL_NAME -> sentFileNames(result)
                                         else -> summary.files
                                     },

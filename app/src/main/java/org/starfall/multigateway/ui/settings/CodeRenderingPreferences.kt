@@ -42,6 +42,7 @@ internal fun CodeRenderingPreferences(
         WordWrapMode.COLUMN to stringResource(R.string.word_wrap_column),
         WordWrapMode.BOUNDED to stringResource(R.string.word_wrap_bounded)
     )
+    Text(stringResource(R.string.word_wrap), style = MaterialTheme.typography.titleMedium)
     ExposedDropdownMenuBox(expanded, { expanded = !expanded }) {
         SelectableOutlinedTextField(
             value = labels.getValue(preferences.wordWrapMode), onValueChange = {}, readOnly = true,
@@ -81,6 +82,7 @@ internal fun CodeRenderingPreferences(
         CodeBlockDisplayMode.EXTENDABLE to stringResource(R.string.code_block_extendable),
         CodeBlockDisplayMode.SHOW_IN_DRAWER to stringResource(R.string.code_block_show_in_drawer)
     )
+    Text(stringResource(R.string.code_block_display), style = MaterialTheme.typography.titleMedium)
     ExposedDropdownMenuBox(codeBlockExpanded, { codeBlockExpanded = !codeBlockExpanded }) {
         SelectableOutlinedTextField(
             value = codeBlockLabels.getValue(preferences.codeBlockDisplayMode),
@@ -100,6 +102,7 @@ internal fun CodeRenderingPreferences(
         }
     }
     if (preferences.codeBlockDisplayMode != CodeBlockDisplayMode.SHOW_ALL) {
+        Text(stringResource(R.string.code_block_max_lines), style = MaterialTheme.typography.titleMedium)
         var maxLines by remember(preferences.codeBlockMaxLines) {
             mutableStateOf(preferences.codeBlockMaxLines.toString())
         }
