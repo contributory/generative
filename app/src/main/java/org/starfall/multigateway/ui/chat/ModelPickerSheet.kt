@@ -589,7 +589,7 @@ internal fun SelectedModelOverviewSheet(
             screenBurst?.start(
                 origin = Offset.Zero,
                 color = Color(0xFFDC2626),
-                durationMillis = 900,
+                durationMillis = 2400,
                 keepAfterCompletion = true,
                 starCount = 180
             )
