@@ -93,6 +93,9 @@ class SettingsViewModel(private val repository: AppPreferencesRepository) : View
     fun setToolRoundLimit(value: Int) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setToolRoundLimit(value) }
     }
+    fun setAppLanguage(useSystem: Boolean, tag: String) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setAppLanguage(useSystem, tag) }
+    }
     fun setMessageFontFamily(value: MessageFontFamily) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setMessageFontFamily(value) }
     }

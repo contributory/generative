@@ -46,6 +46,10 @@ import org.starfall.multigateway.data.local.preferences.WordWrapMode
 import org.starfall.multigateway.data.local.preferences.MessageFontFamily
 import org.starfall.multigateway.data.local.preferences.CodeBlockDisplayMode
 import org.starfall.multigateway.data.local.preferences.AppPreferences
+import org.starfall.multigateway.data.local.preferences.AppLanguage
+import org.starfall.multigateway.R
+import androidx.compose.ui.res.stringResource
+import android.content.res.Resources
 import org.starfall.multigateway.data.local.preferences.DEFAULT_TOOL_ROUND_LIMIT
 import org.starfall.multigateway.data.local.preferences.MAX_TOOL_ROUND_LIMIT
 import org.starfall.multigateway.data.service.JsonExportKind
@@ -56,12 +60,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import org.starfall.multigateway.ui.navigation.SlideScreenContent
 import org.starfall.multigateway.ui.theme.ThemePresets
 
-enum class SettingsCategory(val title: String, val subtitle: String, val icon: ImageVector) {
-    APPEARANCE("Appearance", "Theme, colors & message display", Icons.Outlined.Palette),
-    PREFERENCES("Preferences", "Behavior, feedback & integrations", Icons.Outlined.Tune),
-    ICONS("Icons & Cache", "Manage shared icons and matching rules", Icons.Outlined.Image),
-    USER_DATA("App Data", "Conversation history & application reset", Icons.Outlined.ManageHistory),
-    ABOUT("About", "App information, software updates & license", Icons.Outlined.Info)
+enum class SettingsCategory(val titleRes: Int, val subtitleRes: Int, val icon: ImageVector) {
+    APPEARANCE(R.string.settings_category_appearance, R.string.settings_category_appearance_description, Icons.Outlined.Palette),
+    PREFERENCES(R.string.settings_category_preferences, R.string.settings_category_preferences_description, Icons.Outlined.Tune),
+    ICONS(R.string.icon_settings_title, R.string.icon_settings_description, Icons.Outlined.Image),
+    USER_DATA(R.string.settings_category_app_data, R.string.settings_category_app_data_description, Icons.Outlined.ManageHistory),
+    ABOUT(R.string.settings_category_about, R.string.settings_category_about_description, Icons.Outlined.Info)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -102,7 +106,8 @@ fun SettingsScreen(
     onMessageFontSizeCustomChange: (Boolean) -> Unit = {},
     onMessageFontFamilyChange: (MessageFontFamily) -> Unit = {},
     onToolRoundLimitEnabledChange: (Boolean) -> Unit = {},
-    onToolRoundLimitChange: (Int) -> Unit = {}
+    onToolRoundLimitChange: (Int) -> Unit = {},
+    onAppLanguageChange: (useSystem: Boolean, tag: String) -> Unit = { _, _ -> }
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf<SettingsCategory?>(null) }
     BackHandler(enabled = selectedCategory != null) {
@@ -114,7 +119,7 @@ fun SettingsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = if (selectedCategory == SettingsCategory.ICONS) androidx.compose.ui.res.stringResource(org.starfall.multigateway.R.string.icon_settings_title) else selectedCategory?.title ?: "General Settings",
+                        text = selectedCategory?.let { stringResource(it.titleRes) } ?: stringResource(R.string.settings_general),
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)
                     )
                 },
@@ -128,7 +133,7 @@ fun SettingsScreen(
                             }
                         }
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
                     }
                 }
             )
@@ -140,7 +145,7 @@ fun SettingsScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            SlideScreenContent(editor = selectedCategory, label = "Settings category") { category ->
+            SlideScreenContent(editor = selectedCategory, label = stringResource(R.string.settings_category)) { category ->
                 when (category) {
                     null -> {
                         LazyColumn(
@@ -149,22 +154,22 @@ fun SettingsScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             item {
-                                SettingsGroupHeading("Configuration")
+                                SettingsGroupHeading(stringResource(R.string.settings_group_configuration))
                             }
-                            item { SettingsNavigationItem("Default Models", "Image, video & conversation helpers", Icons.Outlined.Build, onNavigateToSystemTools) }
-                            item { SettingsNavigationItem("Providers", "AI providers, models & API connections", Icons.Outlined.CloudQueue, onNavigateToProviders) }
-                            item { SettingsNavigationItem("MCP Manage", "Tool servers & integrations", Icons.Outlined.Extension, onNavigateToMcp) }
-                            item { SettingsNavigationItem("Speech Services", "Text-to-speech providers & voices", Icons.Outlined.RecordVoiceOver, onNavigateToSpeech) }
-                            item { SettingsNavigationItem("Storage", "Files created by your tools", Icons.Outlined.FolderOpen, onNavigateToStorage) }
+                            item { SettingsNavigationItem(stringResource(R.string.settings_default_models), stringResource(R.string.settings_default_models_description), Icons.Outlined.Build, onNavigateToSystemTools) }
+                            item { SettingsNavigationItem(stringResource(R.string.settings_providers), stringResource(R.string.settings_providers_description), Icons.Outlined.CloudQueue, onNavigateToProviders) }
+                            item { SettingsNavigationItem(stringResource(R.string.settings_mcp_manage), stringResource(R.string.settings_mcp_manage_description), Icons.Outlined.Extension, onNavigateToMcp) }
+                            item { SettingsNavigationItem(stringResource(R.string.settings_speech_services), stringResource(R.string.settings_speech_services_description), Icons.Outlined.RecordVoiceOver, onNavigateToSpeech) }
+                            item { SettingsNavigationItem(stringResource(R.string.settings_storage), stringResource(R.string.settings_storage_description), Icons.Outlined.FolderOpen, onNavigateToStorage) }
                             item {
                                 Spacer(Modifier.height(8.dp))
-                                SettingsGroupHeading("System Settings")
+                                SettingsGroupHeading(stringResource(R.string.settings_group_system))
                             }
                             items(SettingsCategory.entries.size) { index ->
                                 val category = SettingsCategory.entries[index]
                                 SettingsNavigationItem(
-                                    title = if (category == SettingsCategory.ICONS) androidx.compose.ui.res.stringResource(org.starfall.multigateway.R.string.icon_settings_title) else category.title,
-                                    subtitle = if (category == SettingsCategory.ICONS) androidx.compose.ui.res.stringResource(org.starfall.multigateway.R.string.icon_settings_description) else category.subtitle,
+                                    title = stringResource(category.titleRes),
+                                    subtitle = stringResource(category.subtitleRes),
                                     icon = category.icon,
                                     onClick = { selectedCategory = category }
                                 )
@@ -203,7 +208,8 @@ fun SettingsScreen(
                             onLatexModeChange = onLatexModeChange,
                             onTtsReadCodeBlocksChange = onTtsReadCodeBlocksChange,
                             onToolRoundLimitEnabledChange = onToolRoundLimitEnabledChange,
-                            onToolRoundLimitChange = onToolRoundLimitChange
+                            onToolRoundLimitChange = onToolRoundLimitChange,
+                            onAppLanguageChange = onAppLanguageChange
                         )
                     }
 
@@ -257,25 +263,29 @@ fun AppearanceSettingsView(
 ) {
     LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
-            SettingsSection("Theme") {
-                Text("Choose how MultiGateway looks", style = MaterialTheme.typography.bodySmall,
+            SettingsSection(stringResource(R.string.settings_theme)) {
+                Text(stringResource(R.string.settings_theme_description), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("SYSTEM", "LIGHT", "DARK").forEach { mode ->
                         FilterChip(selected = appPreferences.themeMode == mode, onClick = { onThemeChange(mode) },
-                            label = { Text(mode.lowercase().replaceFirstChar { it.uppercase() }) }, modifier = Modifier.weight(1f))
+                            label = { Text(stringResource(when (mode) {
+                                "SYSTEM" -> R.string.settings_theme_system
+                                "LIGHT" -> R.string.settings_theme_light
+                                else -> R.string.settings_theme_dark
+                            })) }, modifier = Modifier.weight(1f))
                     }
                 }
-                PreferenceToggle("AMOLED", "Use pure black surfaces in dark mode", appPreferences.useAmoled, onAmoledChange)
+                PreferenceToggle(stringResource(R.string.settings_amoled), stringResource(R.string.settings_amoled_description), appPreferences.useAmoled, onAmoledChange)
             }
         }
         item {
-            SettingsSection("Color") {
-                PreferenceToggle("Dynamic Color", "Use colors from your wallpaper on Android 12 and above",
+            SettingsSection(stringResource(R.string.settings_color)) {
+                PreferenceToggle(stringResource(R.string.settings_dynamic_color), stringResource(R.string.settings_dynamic_color_description),
                     appPreferences.useDynamicColor, onDynamicColorChange)
                 if (!appPreferences.useDynamicColor) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                    Text("Color palette", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.settings_color_palette), style = MaterialTheme.typography.titleMedium)
                     androidx.compose.foundation.layout.FlowRow(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -303,7 +313,7 @@ fun AppearanceSettingsView(
             }
         }
         item {
-            SettingsSection("Code blocks") {
+            SettingsSection(stringResource(R.string.settings_code_blocks)) {
                 CodeRenderingPreferences(appPreferences, onWordWrapModeChange, onWordWrapColumnChange,
                     onCodePreviewEnabledChange, onMessageFontSizeChange, onMessageFontFamilyChange,
                     onCodeBlockDisplayModeChange, onCodeBlockMaxLinesChange, onCodeBlockIncludeUndefinedChange,
@@ -311,20 +321,20 @@ fun AppearanceSettingsView(
             }
         }
         item {
-            SettingsSection("Text appearance") {
+            SettingsSection(stringResource(R.string.settings_text_appearance)) {
                 TextAppearancePreferences(appPreferences, onMessageFontSizeChange, onMessageFontFamilyChange, onMessageFontSizeCustomChange)
             }
         }
         item {
-            SettingsSection("System bars") {
-                PreferenceToggle("Immersive Mode", "Hide the status bar while chatting",
+            SettingsSection(stringResource(R.string.settings_system_bars)) {
+                PreferenceToggle(stringResource(R.string.settings_immersive_mode), stringResource(R.string.settings_immersive_mode_description),
                     appPreferences.hideStatusBar, onHideStatusBarChange)
             }
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PreferencesSettingsView(
     appPreferences: AppPreferences,
@@ -336,25 +346,56 @@ fun PreferencesSettingsView(
     onLatexModeChange: (String) -> Unit,
     onTtsReadCodeBlocksChange: (Boolean) -> Unit = {},
     onToolRoundLimitEnabledChange: (Boolean) -> Unit = {},
-    onToolRoundLimitChange: (Int) -> Unit = {}
+    onToolRoundLimitChange: (Int) -> Unit = {},
+    onAppLanguageChange: (useSystem: Boolean, tag: String) -> Unit = { _, _ -> }
 ) {
     LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
-            SettingsSection("Conversations") {
-                PreferenceToggle("Continue Last Chat", "Open the most recent conversation on launch",
+            SettingsSection(stringResource(R.string.settings_language)) {
+                PreferenceToggle(stringResource(R.string.use_system_language), stringResource(R.string.use_system_language_desc),
+                    appPreferences.useSystemLanguage) { useSystem ->
+                    // Turning the switch off starts from the language the system already uses.
+                    val tag = if (useSystem) appPreferences.selectedLanguage
+                        else AppLanguage.closestTo(Resources.getSystem().configuration.locales[0]).tag
+                    onAppLanguageChange(useSystem, tag)
+                }
+                if (!appPreferences.useSystemLanguage) {
+                    var expanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(expanded, { expanded = !expanded }) {
+                        SelectableOutlinedTextField(
+                            value = AppLanguage.fromTag(appPreferences.selectedLanguage).nativeName,
+                            onValueChange = {}, readOnly = true,
+                            label = { Text(stringResource(R.string.app_language)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor().testTag("app-language")
+                        )
+                        ExposedDropdownMenu(expanded, { expanded = false }) {
+                            AppLanguage.entries.forEach { language ->
+                                DropdownMenuItem(text = { Text(language.nativeName) }, onClick = {
+                                    onAppLanguageChange(false, language.tag)
+                                    expanded = false
+                                })
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            SettingsSection(stringResource(R.string.settings_conversations)) {
+                PreferenceToggle(stringResource(R.string.settings_continue_last_chat), stringResource(R.string.settings_continue_last_chat_description),
                     appPreferences.continueLastConversation, onContinueLastConversationChange)
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                PreferenceToggle("Persist Selected Model", "Use each chat's selected model when you return to it",
+                PreferenceToggle(stringResource(R.string.settings_persist_selected_model), stringResource(R.string.settings_persist_selected_model_description),
                     appPreferences.persistSelectedModel, onPersistSelectedModelChange)
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                PreferenceToggle("Auto scroll", "Follow new responses as they generate",
+                PreferenceToggle(stringResource(R.string.settings_auto_scroll), stringResource(R.string.settings_auto_scroll_description),
                     appPreferences.autoScroll, onAutoScrollChange)
             }
         }
         item {
-            SettingsSection("Tool calls") {
-                PreferenceToggle("Limit tool rounds",
-                    "Off: the model can call tools without a round limit. On: stop after the number of rounds below.",
+            SettingsSection(stringResource(R.string.settings_tool_calls)) {
+                PreferenceToggle(stringResource(R.string.settings_limit_tool_rounds), stringResource(R.string.settings_limit_tool_rounds_description),
                     appPreferences.toolRoundLimitEnabled, onToolRoundLimitEnabledChange)
                 if (appPreferences.toolRoundLimitEnabled) {
                     var rounds by remember(appPreferences.toolRoundLimit) { mutableStateOf(appPreferences.toolRoundLimit.toString()) }
@@ -367,8 +408,11 @@ fun PreferencesSettingsView(
                                 text.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_ROUND_LIMIT }?.let(onToolRoundLimitChange)
                             }
                         },
-                        label = { Text("Maximum tool rounds") },
-                        supportingText = { Text(if (parsed == null) "Enter a number from 1 to $MAX_TOOL_ROUND_LIMIT." else "Default is $DEFAULT_TOOL_ROUND_LIMIT.") },
+                        label = { Text(stringResource(R.string.settings_maximum_tool_rounds)) },
+                        supportingText = { Text(stringResource(
+                            if (parsed == null) R.string.settings_tool_rounds_invalid else R.string.settings_tool_rounds_default,
+                            if (parsed == null) MAX_TOOL_ROUND_LIMIT else DEFAULT_TOOL_ROUND_LIMIT
+                        )) },
                         isError = parsed == null, singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth().testTag("tool-round-limit")
@@ -377,32 +421,37 @@ fun PreferencesSettingsView(
             }
         }
         item {
-            SettingsSection("Feedback") {
-                PreferenceToggle("Haptic Vibration", "Vibrate on taps and generation events",
+            SettingsSection(stringResource(R.string.settings_feedback)) {
+                PreferenceToggle(stringResource(R.string.settings_haptic_vibration), stringResource(R.string.settings_haptic_vibration_description),
                     appPreferences.enableVibration, onEnableVibrationChange)
             }
         }
         item {
-            SettingsSection("Text-to-speech") {
-                PreferenceToggle("Read code blocks", "Include fenced and indented code blocks when reading messages aloud",
+            SettingsSection(stringResource(R.string.settings_text_to_speech)) {
+                PreferenceToggle(stringResource(R.string.settings_read_code_blocks), stringResource(R.string.settings_read_code_blocks_description),
                     appPreferences.ttsReadCodeBlocks, onTtsReadCodeBlocksChange)
             }
         }
         item {
-            SettingsSection("Content") {
-                Text("LaTeX Equation Rendering", style = MaterialTheme.typography.titleMedium)
-                Text("Auto-detect renders formulas while leaving prices as plain text.",
+            SettingsSection(stringResource(R.string.settings_content)) {
+                Text(stringResource(R.string.settings_latex_equation_rendering), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.settings_latex_description),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("ON" to "Always On", "OFF" to "Disabled", "AUTO" to "Auto Detect").forEach { (mode, label) ->
-                        FilterChip(selected = appPreferences.latexMode == mode, onClick = { onLatexModeChange(mode) }, label = { Text(label) })
+                    listOf(
+                        "ON" to R.string.settings_latex_always_on,
+                        "OFF" to R.string.settings_latex_disabled,
+                        "AUTO" to R.string.settings_latex_auto_detect
+                    ).forEach { (mode, labelRes) ->
+                        FilterChip(selected = appPreferences.latexMode == mode, onClick = { onLatexModeChange(mode) },
+                            label = { Text(stringResource(labelRes)) })
                     }
                 }
             }
         }
         item {
-            SettingsSection("Developer") {
-                PreferenceToggle("Developer Debug Logs", "Show token metrics, request payloads and network logs",
+            SettingsSection(stringResource(R.string.settings_developer)) {
+                PreferenceToggle(stringResource(R.string.settings_debug_logs), stringResource(R.string.settings_debug_logs_description),
                     appPreferences.debugMode, onDebugModeChange)
             }
         }
@@ -435,63 +484,63 @@ fun UserDataSettingsView(
 
     LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
-            SettingsSection("Data overview") {
+            SettingsSection(stringResource(R.string.settings_data_overview)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    DataStatItem("Chats", conversationCount.toString())
-                    DataStatItem("Providers", providerCount.toString())
+                    DataStatItem(stringResource(R.string.settings_chats), conversationCount.toString())
+                    DataStatItem(stringResource(R.string.settings_providers), providerCount.toString())
                 }
             }
         }
         item {
-            SettingsSection("Manage data") {
-                Text("Control the conversations and configuration stored on this device.",
+            SettingsSection(stringResource(R.string.settings_manage_data)) {
+                Text(stringResource(R.string.settings_manage_data_description),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedButton(onClick = { showClearConfirm = true }, shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Outlined.DeleteSweep, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Clear All Chat History")
+                    Text(stringResource(R.string.settings_clear_all_chat_history))
                 }
                 OutlinedButton(onClick = { showResetConfirm = true }, shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Outlined.Warning, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Reset All Application Data")
+                    Text(stringResource(R.string.settings_reset_all_application_data))
                 }
             }
         }
         item {
-            SettingsSection("Export data") {
+            SettingsSection(stringResource(R.string.settings_export_data)) {
                 Text(
-                    "Save configuration or chat history as JSON files.",
+                    stringResource(R.string.settings_export_data_description),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                ExportDataButton("Export Providers JSON", Icons.Outlined.CloudQueue) {
+                ExportDataButton(stringResource(R.string.settings_export_providers_json), Icons.Outlined.CloudQueue) {
                     onExportJson(JsonExportKind.PROVIDERS)
                 }
-                ExportDataButton("Export MCP JSON", Icons.Outlined.Extension) {
+                ExportDataButton(stringResource(R.string.settings_export_mcp_json), Icons.Outlined.Extension) {
                     onExportJson(JsonExportKind.MCP_SERVERS)
                 }
-                ExportDataButton("Export Speech Services JSON", Icons.Outlined.RecordVoiceOver) {
+                ExportDataButton(stringResource(R.string.settings_export_speech_services_json), Icons.Outlined.RecordVoiceOver) {
                     onExportJson(JsonExportKind.SPEECH_SERVICES)
                 }
-                ExportDataButton("Export Chats JSON", Icons.Outlined.Chat) {
+                ExportDataButton(stringResource(R.string.settings_export_chats_json), Icons.Outlined.Chat) {
                     onExportJson(JsonExportKind.CONVERSATIONS)
                 }
                 Spacer(Modifier.height(8.dp))
-                ExportDataButton("Import Providers JSON", Icons.Outlined.FileOpen) {
+                ExportDataButton(stringResource(R.string.settings_import_providers_json), Icons.Outlined.FileOpen) {
                     onImportJson(JsonExportKind.PROVIDERS)
                 }
-                ExportDataButton("Import MCP JSON", Icons.Outlined.FileOpen) {
+                ExportDataButton(stringResource(R.string.settings_import_mcp_json), Icons.Outlined.FileOpen) {
                     onImportJson(JsonExportKind.MCP_SERVERS)
                 }
-                ExportDataButton("Import Speech Services JSON", Icons.Outlined.FileOpen) {
+                ExportDataButton(stringResource(R.string.settings_import_speech_services_json), Icons.Outlined.FileOpen) {
                     onImportJson(JsonExportKind.SPEECH_SERVICES)
                 }
-                ExportDataButton("Import Chats JSON", Icons.Outlined.FileOpen) {
+                ExportDataButton(stringResource(R.string.settings_import_chats_json), Icons.Outlined.FileOpen) {
                     onImportJson(JsonExportKind.CONVERSATIONS)
                 }
             }
@@ -501,8 +550,8 @@ fun UserDataSettingsView(
     if (showClearConfirm) {
         AlertDialog(
             onDismissRequest = { showClearConfirm = false },
-            title = { Text("Clear All Chats") },
-            text = { Text("Are you sure you want to delete all conversations? This action cannot be undone.") },
+            title = { Text(stringResource(R.string.settings_clear_all_chats_title)) },
+            text = { Text(stringResource(R.string.settings_clear_all_chats_message)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -511,11 +560,11 @@ fun UserDataSettingsView(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Clear All")
+                    Text(stringResource(R.string.settings_clear_all))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showClearConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showClearConfirm = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -523,8 +572,8 @@ fun UserDataSettingsView(
     if (showResetConfirm) {
         AlertDialog(
             onDismissRequest = { showResetConfirm = false },
-            title = { Text("Factory Reset Data") },
-            text = { Text("This will wipe all conversations and provider credentials.") },
+            title = { Text(stringResource(R.string.settings_factory_reset_title)) },
+            text = { Text(stringResource(R.string.settings_factory_reset_message)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -533,11 +582,11 @@ fun UserDataSettingsView(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Reset Everything")
+                    Text(stringResource(R.string.settings_reset_everything))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showResetConfirm = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -564,10 +613,10 @@ fun DataStatItem(label: String, count: String) {
     }
 }
 
-private fun formatFileSize(bytes: Long): String {
+private fun formatFileSize(context: android.content.Context, bytes: Long): String {
     if (bytes <= 0) return ""
     val mb = bytes / (1024.0 * 1024.0)
-    return String.format(java.util.Locale.US, "%.1f MB", mb)
+    return context.getString(R.string.settings_file_size_mb, mb)
 }
 
 private fun compareVersions(current: String, latestTag: String): Int {
@@ -602,7 +651,7 @@ fun UpdateSettingsView() {
         errorMessage = null
         runCatching { fetchLatestGitHubRelease() }
             .onSuccess { latestRelease = it }
-            .onFailure { errorMessage = it.localizedMessage ?: "Unable to check GitHub releases" }
+            .onFailure { errorMessage = it.localizedMessage ?: context.getString(R.string.settings_update_error) }
         isChecking = false
     }
 
@@ -616,7 +665,7 @@ fun UpdateSettingsView() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Software Update", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.settings_software_update), style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
                     IconButton(
                         onClick = { refreshKey++ },
                         enabled = !isChecking,
@@ -624,7 +673,7 @@ fun UpdateSettingsView() {
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Refresh,
-                            contentDescription = "Check for updates",
+                            contentDescription = stringResource(R.string.settings_check_for_updates),
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -638,12 +687,12 @@ fun UpdateSettingsView() {
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             Spacer(Modifier.width(10.dp))
-                            Text("Checking GitHub Releases...", style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.settings_checking_releases), style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                     errorMessage != null -> {
                         Text(errorMessage.orEmpty(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-                        TextButton(onClick = { refreshKey++ }) { Text("Try again") }
+                        TextButton(onClick = { refreshKey++ }) { Text(stringResource(R.string.settings_try_again)) }
                     }
                     release != null -> {
                         Column(
@@ -655,7 +704,10 @@ fun UpdateSettingsView() {
                                 color = if (updateAvailable) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
                                 Text(
-                                    text = if (updateAvailable) "Update Available (${release.tagName})" else "Up to date (${release.tagName})",
+                                     text = stringResource(
+                                         if (updateAvailable) R.string.settings_update_available else R.string.settings_up_to_date,
+                                         release.tagName
+                                     ),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = if (updateAvailable) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.outline,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -667,7 +719,7 @@ fun UpdateSettingsView() {
                         if (release.body.isNotBlank()) {
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Release Notes",
+                                text = stringResource(R.string.settings_release_notes),
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -692,14 +744,14 @@ fun UpdateSettingsView() {
                             // APK Downloads List
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Download APK Variants",
+                                text = stringResource(R.string.settings_download_apk_variants),
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)
                             )
 
                             if (release.apkAssets.isNotEmpty()) {
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     release.apkAssets.forEach { apkAsset ->
-                                        val formattedSize = formatFileSize(apkAsset.sizeBytes)
+                                         val formattedSize = formatFileSize(context, apkAsset.sizeBytes)
                                         OutlinedButton(
                                             onClick = {
                                                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(apkAsset.downloadUrl)))
@@ -718,7 +770,7 @@ fun UpdateSettingsView() {
                                                 ) {
                                                     Icon(
                                                         imageVector = Icons.Outlined.FileDownload,
-                                                        contentDescription = "Download APK",
+                                                         contentDescription = stringResource(R.string.settings_download_apk),
                                                         modifier = Modifier.size(20.dp)
                                                     )
                                                     Spacer(modifier = Modifier.width(8.dp))
@@ -751,18 +803,18 @@ fun UpdateSettingsView() {
                                 ) {
                                     Icon(Icons.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Open GitHub Release Page")
+                                     Text(stringResource(R.string.settings_open_github_release))
                                 }
                             }
                         }
                     }
                     else -> {
-                        Text("Find the latest MultiGateway release on GitHub.",
+                        Text(stringResource(R.string.settings_find_latest_release),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         FilledTonalButton(onClick = { refreshKey++ }, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Outlined.SystemUpdateAlt, null, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Check for updates")
+                            Text(stringResource(R.string.settings_check_for_updates))
                         }
                     }
                 }
@@ -787,19 +839,19 @@ fun AboutSettingsView() {
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("MultiGateway", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-                    Text("Version $versionName ($versionCode)", style = MaterialTheme.typography.bodyMedium,
+                     Text(stringResource(R.string.settings_version, versionName, versionCode), style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Text("Universal AI Gateway for Android", style = MaterialTheme.typography.bodyMedium,
+             Text(stringResource(R.string.settings_universal_description), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         UpdateSettingsView()
-        SettingsNavigationItem("Source code", "starfall-org/multigateway", Icons.Outlined.Code) {
+        SettingsNavigationItem(stringResource(R.string.settings_source_code), "starfall-org/multigateway", Icons.Outlined.Code) {
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/starfall-org/multigateway")))
         }
-        SettingsSection("License") {
-            Text("Starfall Org Contributor Commercial Copyleft License v1.0", style = MaterialTheme.typography.bodyMedium,
+        SettingsSection(stringResource(R.string.settings_license)) {
+            Text(stringResource(R.string.settings_license_name), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

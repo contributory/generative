@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 설정 제목은 의도적으로 영어 기본값을 사용하며, 설명과 안내만 번역합니다. -->
+    <string name="use_system_language_desc">기기의 언어를 따릅니다. 끄면 이 앱에서 사용할 언어를 선택할 수 있습니다.</string>
+    <string name="settings_category_appearance_description">테마, 색상 및 메시지 표시</string>
+    <string name="settings_category_preferences_description">동작, 피드백 및 통합</string>
+    <string name="settings_category_app_data_description">대화 기록 및 앱 초기화</string>
+    <string name="settings_category_about_description">앱 정보, 소프트웨어 업데이트 및 라이선스</string>
+    <string name="settings_default_models_description">이미지, 동영상 및 대화 도우미</string>
+    <string name="settings_providers_description">AI 제공업체, 모델 및 API 연결</string>
+    <string name="settings_mcp_manage_description">도구 서버 및 통합</string>
+    <string name="settings_speech_services_description">텍스트 음성 변환 제공업체 및 음성</string>
+    <string name="settings_storage_description">도구가 만든 파일</string>
+    <string name="settings_theme_description">MultiGateway의 모양 선택</string>
+    <string name="settings_amoled_description">어두운 모드에서 완전한 검은색 표면 사용</string>
+    <string name="settings_dynamic_color_description">Android 12 이상에서 배경화면 색상 사용</string>
+    <string name="settings_immersive_mode_description">채팅 중 상태 표시줄 숨기기</string>
+    <string name="settings_continue_last_chat_description">시작할 때 가장 최근 대화 열기</string>
+    <string name="settings_persist_selected_model_description">대화로 돌아올 때 해당 대화에서 선택한 모델 사용</string>
+    <string name="settings_auto_scroll_description">생성되는 새 응답 따라가기</string>
+    <string name="settings_limit_tool_rounds_description">끔: 모델이 라운드 제한 없이 도구를 호출합니다. 켬: 아래 라운드 수 이후 중지합니다.</string>
+    <string name="settings_tool_rounds_invalid">1에서 %1$d 사이의 숫자를 입력하세요.</string>
+    <string name="settings_tool_rounds_default">기본값은 %1$d입니다.</string>
+    <string name="settings_haptic_vibration_description">탭과 생성 이벤트에서 진동</string>
+    <string name="settings_read_code_blocks_description">메시지를 소리 내어 읽을 때 fenced 및 들여쓰기된 코드 블록 포함</string>
+    <string name="settings_latex_description">수식을 자동으로 감지하고 가격은 일반 텍스트로 표시합니다.</string>
+    <string name="settings_debug_logs_description">토큰 지표, 요청 내용 및 네트워크 로그 표시</string>
+    <string name="settings_manage_data_description">이 기기에 저장된 대화와 구성을 관리합니다.</string>
+    <string name="settings_export_data_description">구성 또는 대화 기록을 JSON 파일로 저장</string>
+    <string name="settings_clear_all_chats_message">모든 대화를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
+    <string name="settings_factory_reset_message">모든 대화와 제공업체 인증 정보를 삭제합니다.</string>
+    <string name="settings_find_latest_release">GitHub에서 최신 MultiGateway 릴리스를 확인합니다.</string>
+    <string name="settings_universal_description">Android용 범용 AI 게이트웨이</string>
+</resources>

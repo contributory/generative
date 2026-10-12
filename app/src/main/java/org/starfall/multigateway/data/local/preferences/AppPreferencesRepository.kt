@@ -64,6 +64,8 @@ data class AppPreferences(
     val hideNavigationBar: Boolean = false,
     val debugMode: Boolean = false,
     val selectedLanguage: String = "en",
+    /** On: follow the Android system language. Off: use [selectedLanguage]. */
+    val useSystemLanguage: Boolean = true,
     val showProfilesAsGrid: Boolean = true,
     val showProvidersAsGrid: Boolean = false,
     val showMcpAsGrid: Boolean = false,
@@ -118,6 +120,7 @@ class AppPreferencesRepository(private val context: Context) {
         val HIDE_NAVIGATION_BAR = booleanPreferencesKey("hide_navigation_bar")
         val DEBUG_MODE = booleanPreferencesKey("debug_mode")
         val SELECTED_LANGUAGE = stringPreferencesKey("selected_language")
+        val USE_SYSTEM_LANGUAGE = booleanPreferencesKey("use_system_language")
         val SHOW_PROFILES_AS_GRID = booleanPreferencesKey("show_profiles_as_grid")
         val SHOW_PROVIDERS_AS_GRID = booleanPreferencesKey("show_providers_as_grid")
         val SHOW_MCP_AS_GRID = booleanPreferencesKey("show_mcp_as_grid")
@@ -169,6 +172,7 @@ class AppPreferencesRepository(private val context: Context) {
                 hideNavigationBar = preferences[PreferenceKeys.HIDE_NAVIGATION_BAR] ?: false,
                 debugMode = preferences[PreferenceKeys.DEBUG_MODE] ?: false,
                 selectedLanguage = preferences[PreferenceKeys.SELECTED_LANGUAGE] ?: "en",
+                useSystemLanguage = preferences[PreferenceKeys.USE_SYSTEM_LANGUAGE] ?: true,
                 showProfilesAsGrid = preferences[PreferenceKeys.SHOW_PROFILES_AS_GRID] ?: true,
                 showProvidersAsGrid = preferences[PreferenceKeys.SHOW_PROVIDERS_AS_GRID] ?: false,
                 showMcpAsGrid = preferences[PreferenceKeys.SHOW_MCP_AS_GRID] ?: false,
@@ -360,6 +364,18 @@ class AppPreferencesRepository(private val context: Context) {
         state.mutate({ it.copy(selectedLanguage = lang) }) {
             context.dataStore.edit { preferences ->
                 preferences[PreferenceKeys.SELECTED_LANGUAGE] = lang
+            }
+        }
+    }
+
+    /** Changes both settings in one write so the app only has to restart its UI once. */
+    suspend fun setAppLanguage(useSystem: Boolean, tag: String) {
+        // Mirrored synchronously: the locale is needed before DataStore has loaded.
+        AppLocale.save(context, useSystem, tag)
+        state.mutate({ it.copy(useSystemLanguage = useSystem, selectedLanguage = tag) }) {
+            context.dataStore.edit { preferences ->
+                preferences[PreferenceKeys.USE_SYSTEM_LANGUAGE] = useSystem
+                preferences[PreferenceKeys.SELECTED_LANGUAGE] = tag
             }
         }
     }

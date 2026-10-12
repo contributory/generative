@@ -512,6 +512,7 @@ fun MainScreen(
                              onMessageFontFamilyChange = settingsViewModel::setMessageFontFamily,
                             onTtsReadCodeBlocksChange = settingsViewModel::setTtsReadCodeBlocks,
                             onToolRoundLimitEnabledChange = settingsViewModel::setToolRoundLimitEnabled,
+                            onAppLanguageChange = settingsViewModel::setAppLanguage,
                             onToolRoundLimitChange = settingsViewModel::setToolRoundLimit,
                             onEnableVibrationChange = { value ->
                                 settingsViewModel.setEnableVibration(value)

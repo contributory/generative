@@ -75,15 +75,7 @@ fun MessageBubble(
                     )
                 } else {
                     SelectionContainer {
-                        if (isUser) {
-                            Text(
-                                text = message.content,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        } else {
-                            MarkdownRenderer(content = message.content)
-                        }
+                        MarkdownRenderer(content = message.content)
                     }
                 }
 

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 設定のタイトルは意図的に英語のままにし、説明と手順のみ翻訳しています。 -->
+    <string name="use_system_language_desc">端末の言語に従います。オフにすると、このアプリの言語を選択できます。</string>
+    <string name="settings_category_appearance_description">テーマ、色、メッセージ表示</string>
+    <string name="settings_category_preferences_description">動作、フィードバック、連携</string>
+    <string name="settings_category_app_data_description">会話履歴とアプリのリセット</string>
+    <string name="settings_category_about_description">アプリ情報、ソフトウェア更新、ライセンス</string>
+    <string name="settings_default_models_description">画像、動画、会話の補助機能</string>
+    <string name="settings_providers_description">AI プロバイダー、モデル、API 接続</string>
+    <string name="settings_mcp_manage_description">ツールサーバーと連携</string>
+    <string name="settings_speech_services_description">音声合成プロバイダーと音声</string>
+    <string name="settings_storage_description">ツールが作成したファイル</string>
+    <string name="settings_theme_description">MultiGateway の外観を選択</string>
+    <string name="settings_amoled_description">ダークモードで完全な黒の背景を使用</string>
+    <string name="settings_dynamic_color_description">Android 12 以降で壁紙の色を使用</string>
+    <string name="settings_immersive_mode_description">チャット中にステータスバーを非表示</string>
+    <string name="settings_continue_last_chat_description">起動時に最新の会話を開く</string>
+    <string name="settings_persist_selected_model_description">チャットに戻ったとき、そのチャットで選択したモデルを使用</string>
+    <string name="settings_auto_scroll_description">生成中の新しい応答を追跡</string>
+    <string name="settings_limit_tool_rounds_description">オフ：モデルはラウンド制限なしでツールを呼び出せます。オン：指定したラウンド数で停止します。</string>
+    <string name="settings_tool_rounds_invalid">1 から %1$d までの数値を入力してください。</string>
+    <string name="settings_tool_rounds_default">デフォルトは %1$d です。</string>
+    <string name="settings_haptic_vibration_description">タップや生成時に振動</string>
+    <string name="settings_read_code_blocks_description">メッセージの読み上げ時にフェンス付き・インデント付きコードブロックを含める</string>
+    <string name="settings_latex_description">数式を自動検出し、価格は通常のテキストとして表示します。</string>
+    <string name="settings_debug_logs_description">トークン指標、リクエスト内容、ネットワークログを表示</string>
+    <string name="settings_manage_data_description">この端末に保存された会話と設定を管理します。</string>
+    <string name="settings_export_data_description">設定または会話履歴を JSON ファイルとして保存</string>
+    <string name="settings_clear_all_chats_message">すべての会話を削除しますか？この操作は元に戻せません。</string>
+    <string name="settings_factory_reset_message">すべての会話とプロバイダーの認証情報を消去します。</string>
+    <string name="settings_find_latest_release">GitHub で最新の MultiGateway リリースを確認します。</string>
+    <string name="settings_universal_description">Android 向けユニバーサル AI ゲートウェイ</string>
+</resources>

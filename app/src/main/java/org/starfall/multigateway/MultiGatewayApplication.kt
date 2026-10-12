@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import org.starfall.multigateway.data.local.preferences.AppLocale
 import org.starfall.multigateway.di.AppContainer
 import org.starfall.multigateway.data.service.CrashReportStore
 import org.starfall.multigateway.data.service.CrashRecordingHandler
@@ -20,6 +21,10 @@ class MultiGatewayApplication : Application(), coil3.SingletonImageLoader.Factor
     val container by lazy { AppContainer(this) }
     internal val crashReports by lazy { CrashReportStore(File(filesDir, "last_crash.json")) }
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    override fun attachBaseContext(base: android.content.Context) {
+        super.attachBaseContext(AppLocale.wrap(base))
+    }
 
     override fun onCreate() {
         super.onCreate()

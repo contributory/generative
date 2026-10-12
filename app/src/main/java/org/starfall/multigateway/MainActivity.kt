@@ -11,6 +11,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.luminance
 import androidx.activity.compose.setContent
@@ -32,6 +33,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.starfall.multigateway.data.local.preferences.AppLocale
 import org.starfall.multigateway.data.service.ChatBackgroundService
 import org.starfall.multigateway.ui.MainScreen
 import org.starfall.multigateway.ui.theme.MultiGatewayTheme
@@ -51,8 +53,16 @@ class MainActivity : ComponentActivity() {
     private val settingsViewModel: SettingsViewModel by viewModels { container.viewModelFactory }
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
+    /** Language override this Activity was created with; a different one means the UI must be recreated. */
+    private var createdLocaleTag: String? = null
+
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(AppLocale.wrap(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        createdLocaleTag = AppLocale.overrideTag(this)
         handleIntent(intent)
         enableEdgeToEdge()
 
@@ -79,6 +89,10 @@ class MainActivity : ComponentActivity() {
             val crashReports = (application as MultiGatewayApplication).crashReports
             var pendingCrash by remember { mutableStateOf(crashReports.pending()) }
             val appPrefs by settingsViewModel.preferences.collectAsStateWithLifecycle()
+            // Strings are resolved when the Activity is created, so a new language needs a fresh one.
+            LaunchedEffect(appPrefs.useSystemLanguage, appPrefs.selectedLanguage) {
+                if (AppLocale.overrideTag(this@MainActivity) != createdLocaleTag) recreate()
+            }
             MultiGatewayTheme(
                 themeMode = appPrefs.themeMode,
                 amoledMode = appPrefs.useAmoled,

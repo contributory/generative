@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 設定標題有意使用英文預設值；這裡只翻譯描述與說明。 -->
+    <string name="use_system_language_desc">遵循裝置語言。關閉後即可為此應用程式選擇語言。</string>
+    <string name="settings_category_appearance_description">主題、色彩與訊息顯示</string>
+    <string name="settings_category_preferences_description">行為、回饋與整合</string>
+    <string name="settings_category_app_data_description">對話記錄與應用程式重設</string>
+    <string name="settings_category_about_description">應用程式資訊、軟體更新與授權</string>
+    <string name="settings_default_models_description">圖片、影片與對話輔助功能</string>
+    <string name="settings_providers_description">AI 提供者、模型與 API 連線</string>
+    <string name="settings_mcp_manage_description">工具伺服器與整合</string>
+    <string name="settings_speech_services_description">文字轉語音提供者與語音</string>
+    <string name="settings_storage_description">工具建立的檔案</string>
+    <string name="settings_theme_description">選擇 MultiGateway 的外觀</string>
+    <string name="settings_amoled_description">在深色模式中使用純黑表面</string>
+    <string name="settings_dynamic_color_description">在 Android 12 及更新版本中使用桌布色彩</string>
+    <string name="settings_immersive_mode_description">聊天時隱藏狀態列</string>
+    <string name="settings_continue_last_chat_description">啟動時開啟最近的對話</string>
+    <string name="settings_persist_selected_model_description">返回對話時使用該對話選取的模型</string>
+    <string name="settings_auto_scroll_description">追蹤正在產生的新回覆</string>
+    <string name="settings_limit_tool_rounds_description">關閉：模型可以不受回合限制地呼叫工具。開啟：達到下方回合數後停止。</string>
+    <string name="settings_tool_rounds_invalid">請輸入 1 到 %1$d 之間的數字。</string>
+    <string name="settings_tool_rounds_default">預設值為 %1$d。</string>
+    <string name="settings_haptic_vibration_description">點按和產生回覆時震動</string>
+    <string name="settings_read_code_blocks_description">朗讀訊息時包含圍欄式與縮排式程式碼區塊</string>
+    <string name="settings_latex_description">自動偵測公式，同時將價格保留為純文字。</string>
+    <string name="settings_debug_logs_description">顯示 token 指標、請求內容與網路記錄</string>
+    <string name="settings_manage_data_description">管理儲存在此裝置上的對話與設定。</string>
+    <string name="settings_export_data_description">將設定或對話記錄儲存為 JSON 檔案。</string>
+    <string name="settings_clear_all_chats_message">確定要刪除所有對話嗎？此操作無法復原。</string>
+    <string name="settings_factory_reset_message">這將清除所有對話與提供者憑證。</string>
+    <string name="settings_find_latest_release">在 GitHub 上尋找最新的 MultiGateway 發行版本。</string>
+    <string name="settings_universal_description">適用於 Android 的通用 AI 閘道</string>
+</resources>

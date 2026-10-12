@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Los títulos de configuración usan intencionadamente el inglés; aquí se traducen las descripciones y las instrucciones. -->
+    <string name="use_system_language_desc">Seguir el idioma del dispositivo. Desactívalo para elegir un idioma para esta aplicación.</string>
+    <string name="settings_category_appearance_description">Tema, colores y visualización de mensajes</string>
+    <string name="settings_category_preferences_description">Comportamiento, comentarios e integraciones</string>
+    <string name="settings_category_app_data_description">Historial de conversaciones y restablecimiento de la aplicación</string>
+    <string name="settings_category_about_description">Información de la aplicación, actualizaciones y licencia</string>
+    <string name="settings_default_models_description">Ayudas para imágenes, vídeos y conversaciones</string>
+    <string name="settings_providers_description">Proveedores de IA, modelos y conexiones API</string>
+    <string name="settings_mcp_manage_description">Servidores de herramientas e integraciones</string>
+    <string name="settings_speech_services_description">Proveedores de texto a voz y voces</string>
+    <string name="settings_storage_description">Archivos creados por tus herramientas</string>
+    <string name="settings_theme_description">Elige el aspecto de MultiGateway</string>
+    <string name="settings_amoled_description">Usar superficies totalmente negras en el modo oscuro</string>
+    <string name="settings_dynamic_color_description">Usar los colores del fondo de pantalla en Android 12 y posteriores</string>
+    <string name="settings_immersive_mode_description">Ocultar la barra de estado durante los chats</string>
+    <string name="settings_continue_last_chat_description">Abrir la conversación más reciente al iniciar</string>
+    <string name="settings_persist_selected_model_description">Usar el modelo seleccionado de cada chat al volver a él</string>
+    <string name="settings_auto_scroll_description">Seguir las respuestas nuevas mientras se generan</string>
+    <string name="settings_limit_tool_rounds_description">Desactivado: el modelo puede llamar herramientas sin límite de rondas. Activado: detenerse tras el número de rondas indicado.</string>
+    <string name="settings_tool_rounds_invalid">Introduce un número del 1 al %1$d.</string>
+    <string name="settings_tool_rounds_default">El valor predeterminado es %1$d.</string>
+    <string name="settings_haptic_vibration_description">Vibrar al tocar y durante la generación</string>
+    <string name="settings_read_code_blocks_description">Incluir bloques de código cercados e indentados al leer mensajes en voz alta</string>
+    <string name="settings_latex_description">Detectar fórmulas automáticamente y dejar los precios como texto normal.</string>
+    <string name="settings_debug_logs_description">Mostrar métricas de tokens, contenido de solicitudes y registros de red</string>
+    <string name="settings_manage_data_description">Gestiona las conversaciones y la configuración almacenadas en este dispositivo.</string>
+    <string name="settings_export_data_description">Guardar la configuración o el historial de conversaciones como archivos JSON.</string>
+    <string name="settings_clear_all_chats_message">¿Seguro que quieres eliminar todas las conversaciones? Esta acción no se puede deshacer.</string>
+    <string name="settings_factory_reset_message">Esto eliminará todas las conversaciones y credenciales de los proveedores.</string>
+    <string name="settings_find_latest_release">Busca la versión más reciente de MultiGateway en GitHub.</string>
+    <string name="settings_universal_description">Puerta de enlace de IA universal para Android</string>
+</resources>
