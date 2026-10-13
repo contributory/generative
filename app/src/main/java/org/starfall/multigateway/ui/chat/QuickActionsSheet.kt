@@ -3,7 +3,6 @@ package org.starfall.multigateway.ui.chat
 import org.starfall.multigateway.ui.components.AppBottomSheet
 import org.starfall.multigateway.ui.components.EntityIcon
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,8 +13,6 @@ import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.Videocam
-import androidx.compose.material.icons.outlined.Computer
-import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,7 +25,6 @@ import org.starfall.multigateway.ui.tools.*
 @Composable
 fun QuickActionsSheet(onDismiss: () -> Unit) {
     val controls = LocalToolControls.current
-    var machinesExpanded by remember { mutableStateOf(false) }
     AppBottomSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
@@ -124,53 +120,6 @@ fun QuickActionsSheet(onDismiss: () -> Unit) {
                         checked = controls.settings.sendFileEnabled,
                         onCheckedChange = controls.setSendFile
                     )
-                }
-            }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-            Text("Remote Machines", style = MaterialTheme.typography.titleMedium)
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
-                Row(
-                    Modifier.fillMaxWidth().clickable { machinesExpanded = !machinesExpanded }.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Outlined.Computer, null, Modifier.size(44.dp).padding(10.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Machine tools", style = MaterialTheme.typography.titleSmall)
-                        Text("Choose which machines the model may use", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Text(if (machinesExpanded) "▲" else "▼", color = MaterialTheme.colorScheme.primary)
-                }
-            }
-            if (machinesExpanded) {
-                if (controls.machines.isEmpty()) {
-                    Text("No remote machines configured", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                controls.machines.forEach { machine ->
-                    val icon = if (machine.type.name == "GCLOUD_SHELL") Icons.Outlined.Cloud else Icons.Outlined.Computer
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                    ) {
-                        Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(icon, null, Modifier.size(44.dp).padding(10.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Spacer(Modifier.width(12.dp))
-                                Text(machine.name, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Switch(
-                                    checked = remoteMachineEnabled(controls.settings, machine),
-                                    onCheckedChange = { controls.setMachine(machine.id, it) }
-                                )
-                            }
-                        }
-                    }
                 }
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
