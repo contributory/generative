@@ -47,8 +47,12 @@ class RemoteMachinesViewModel(
         viewModelScope.launch(LocalWriteErrors.handler) { service.deleteBinary(id) }
     }
 
-    suspend fun importIdentity(machineId: String, uri: Uri): Result<String> =
-        runCatching { service.importIdentity(machineId, uri) }
+    suspend fun importIdentityKey(uri: Uri): Result<RemoteIdentityKey> =
+        runCatching { service.importIdentityKey(uri) }
+
+    fun deleteIdentityKey(id: String) {
+        viewModelScope.launch(LocalWriteErrors.handler) { service.deleteIdentityKey(id) }
+    }
 
     suspend fun importOAuthClientJson(uri: Uri): Result<GCloudOAuthClient> =
         runCatching { service.parseOAuthClientJson(uri) }

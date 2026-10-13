@@ -204,21 +204,45 @@ class RemoteMachineService(
         binary?.let { runCatching { File(it.path).delete() } }
     }
 
-    suspend fun importIdentity(machineId: String, uri: Uri): String = withContext(Dispatchers.IO) {
-        val directory = File(appContext.filesDir, "remote-machines/keys").apply { mkdirs() }
-        val target = File(directory, machineId)
-        appContext.contentResolver.openInputStream(uri)?.use { input ->
+    /** Uploads an SSH private key once; machines reference it through IdentityFile. */
+    suspend fun importIdentityKey(uri: Uri): RemoteIdentityKey = withContext(Dispatchers.IO) {
+        val resolver = appContext.contentResolver
+        val displayName = resolver.query(uri, arrayOf("_display_name"), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+        }?.substringAfterLast('/')?.takeIf { it.isNotBlank() } ?: "key-${UUID.randomUUID().toString().take(8)}"
+        val id = UUID.randomUUID().toString()
+        val directory = File(appContext.filesDir, "remote-machines/identities").apply { mkdirs() }
+        val target = File(directory, id)
+        resolver.openInputStream(uri)?.use { input ->
             target.outputStream().use { output -> input.copyTo(output) }
         } ?: error("Could not read the selected identity file.")
         target.setReadable(false, false)
         target.setWritable(true, true)
         runCatching { Os.chmod(target.absolutePath, 0b110_000_000) }
-        store.update { current ->
-            current.copy(machines = current.machines.map { machine ->
-                if (machine.id == machineId) machine.copy(identityFile = target.absolutePath) else machine
-            })
-        }
-        target.absolutePath
+        val key = RemoteIdentityKey(id, displayName, target.absolutePath)
+        // Re-uploading a key with the same name replaces it, so existing IdentityFile names keep working.
+        val replaced = state.value.identities.filter { it.name == displayName }
+        store.update { it.copy(identities = it.identities.filterNot { existing -> existing.name == displayName } + key) }
+        replaced.forEach { runCatching { File(it.path).delete() } }
+        key
+    }
+
+    suspend fun deleteIdentityKey(id: String) {
+        val key = state.value.identities.firstOrNull { it.id == id }
+        store.update { it.copy(identities = it.identities.filterNot { existing -> existing.id == id }) }
+        key?.let { runCatching { File(it.path).delete() } }
+    }
+
+    /**
+     * Resolves a machine's IdentityFile pointer: a real file path, or the name of an uploaded key
+     * (also written as `~/.ssh/<name>`).
+     */
+    private fun resolveIdentity(pointer: String): File? {
+        val trimmed = pointer.trim()
+        File(trimmed).takeIf { it.isFile }?.let { return it }
+        val name = trimmed.substringAfterLast('/')
+        return state.value.identities.firstOrNull { it.name == trimmed || it.name == name }
+            ?.let { File(it.path) }?.takeIf { it.isFile }
     }
 
     suspend fun authorizeGCloud(client: GCloudOAuthClient): Result<Unit> = result {
@@ -409,8 +433,8 @@ class RemoteMachineService(
         require(machine.username.isNotBlank()) { "Remote user is missing." }
         val jsch = JSch()
         if (machine.identityFile.isNotBlank()) {
-            val identity = File(machine.identityFile)
-            require(identity.isFile) { "Identity file does not exist: ${identity.name}" }
+            val identity = resolveIdentity(machine.identityFile)
+                ?: error("Identity file not found: ${machine.identityFile.substringAfterLast('/')}. Upload it in Remote Machines settings or fix IdentityFile.")
             if (machine.identityPassphrase.isBlank()) jsch.addIdentity(identity.absolutePath)
             else jsch.addIdentity(identity.absolutePath, machine.identityPassphrase)
         }

@@ -183,7 +183,6 @@ fun RemoteMachinesScreen(
                     editor = null
                 },
                 onBack = { editor = null },
-                onImportIdentity = { id, uri -> viewModel.importIdentity(id, uri) },
                 onRefreshIp = { viewModel.refreshIp(it) },
                 onAuthorizeOAuth = { viewModel.authorize(it) }
             )
@@ -372,7 +371,6 @@ private fun RemoteMachineEditor(
     state: RemoteMachineState,
     onSave: (RemoteMachine) -> Unit,
     onBack: () -> Unit,
-    onImportIdentity: suspend (String, Uri) -> Result<String>,
     onRefreshIp: suspend (RemoteMachine) -> Result<RemoteMachine>,
     onAuthorizeOAuth: suspend (GCloudOAuthClient) -> Result<Unit>
 ) {
@@ -407,13 +405,6 @@ private fun RemoteMachineEditor(
     var loadingIp by remember { mutableStateOf(false) }
     var authorizing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val identityLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri ?: return@rememberLauncherForActivityResult
-        scope.launch {
-            onImportIdentity(initial.id, uri).onSuccess { path -> identityFile = path }
-                .onFailure { error = it.message }
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -522,10 +513,31 @@ private fun RemoteMachineEditor(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(identityFile.ifBlank { stringResource(R.string.remote_machine_identity_missing) }, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-                        OutlinedButton(onClick = { identityLauncher.launch(arrayOf("application/octet-stream", "text/plain", "*/*")) }) {
-                            Icon(Icons.Outlined.UploadFile, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.remote_machine_choose_key))
+                    RemoteTextField(
+                        identityFile,
+                        { identityFile = it },
+                        stringResource(R.string.remote_machine_identity_file),
+                        supporting = stringResource(R.string.remote_machine_identity_file_help)
+                    )
+                    var keyMenu by remember { mutableStateOf(false) }
+                    Box {
+                        OutlinedButton(onClick = { keyMenu = true }) {
+                            Icon(Icons.Outlined.Key, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.remote_machine_choose_key))
+                        }
+                        DropdownMenu(expanded = keyMenu, onDismissRequest = { keyMenu = false }) {
+                            if (state.identities.isEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.remote_machine_no_uploaded_keys)) },
+                                    onClick = { keyMenu = false },
+                                    enabled = false
+                                )
+                            }
+                            state.identities.forEach { key ->
+                                DropdownMenuItem(
+                                    text = { Text(key.name) },
+                                    onClick = { identityFile = key.path; keyMenu = false }
+                                )
+                            }
                         }
                     }
                     RemoteTextField(passphrase, { passphrase = it }, stringResource(R.string.remote_machine_key_passphrase), visual = PasswordVisualTransformation())
@@ -624,6 +636,7 @@ private fun RemoteMachineSettings(
     var sshConfig by remember(state.sshConfig) { mutableStateOf(state.sshConfig) }
     var clientEditor by remember { mutableStateOf<GCloudOAuthClient?>(null) }
     var binaryError by remember { mutableStateOf<String?>(null) }
+    var identityError by remember { mutableStateOf<String?>(null) }
     var oauthError by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -633,6 +646,14 @@ private fun RemoteMachineSettings(
             sshConfig = withContext(Dispatchers.IO) {
                 context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
             }
+        }
+    }
+    val identityLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            viewModel.importIdentityKey(uri)
+                .onSuccess { identityError = null }
+                .onFailure { identityError = it.message }
         }
     }
     val binaryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -721,6 +742,26 @@ private fun RemoteMachineSettings(
                     }
                 }
                 oauthError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            }
+            RemoteSection(stringResource(R.string.remote_machine_ssh_keys)) {
+                Text(stringResource(R.string.remote_machine_ssh_keys_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                state.identities.forEach { key ->
+                    val users = state.machines.count { it.identityFile == key.path || it.identityFile.substringAfterLast('/') == key.name }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.Key, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(key.name, style = MaterialTheme.typography.titleSmall)
+                            Text(key.path, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                            if (users > 0) Text(stringResource(R.string.remote_machine_ssh_key_used_by, users), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        IconButton(onClick = { viewModel.deleteIdentityKey(key.id) }) { Icon(Icons.Outlined.Lock, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
+                    }
+                }
+                OutlinedButton(onClick = { identityLauncher.launch(arrayOf("application/octet-stream", "text/plain", "*/*")) }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Outlined.UploadFile, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.remote_machine_upload_ssh_key))
+                }
+                identityError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
             RemoteSection(stringResource(R.string.remote_machine_binaries)) {
                 Text(stringResource(R.string.remote_machine_binaries_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

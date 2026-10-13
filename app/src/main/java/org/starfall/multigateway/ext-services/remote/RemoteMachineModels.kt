@@ -81,6 +81,17 @@ data class RemoteBinary(
     val path: String
 )
 
+/**
+ * An uploaded SSH private key kept once in app storage. Machines never embed key material; they
+ * only point at a key through their `IdentityFile` (the key's [path] or its [name]).
+ */
+@Serializable
+data class RemoteIdentityKey(
+    val id: String,
+    val name: String,
+    val path: String
+)
+
 /** Everything belonging to the extension is persisted outside of the application's Room schema. */
 @Serializable
 data class RemoteMachineState(
@@ -88,7 +99,8 @@ data class RemoteMachineState(
     val sshConfig: String = "",
     val oauthClients: List<GCloudOAuthClient> = emptyList(),
     val oauthTokens: Map<String, RemoteOAuthToken> = emptyMap(),
-    val binaries: List<RemoteBinary> = emptyList()
+    val binaries: List<RemoteBinary> = emptyList(),
+    val identities: List<RemoteIdentityKey> = emptyList()
 )
 
 const val REMOTE_TOOL_EXECUTE = "execute"

@@ -491,7 +491,14 @@
     <string name="remote_machine_keyboard_interactive" translatable="false">Use keyboard-interactive authentication</string>
     <string name="remote_machine_keyboard_interactive_help" translatable="false">Use PAM or interactive SSH prompts. Leave the password empty to enter it when opening the terminal.</string>
     <string name="remote_machine_identity_missing" translatable="false">No identity file selected</string>
-    <string name="remote_machine_choose_key" translatable="false">Choose key</string>
+    <string name="remote_machine_choose_key" translatable="false">Choose uploaded key</string>
+    <string name="remote_machine_identity_file" translatable="false">IdentityFile</string>
+    <string name="remote_machine_identity_file_help" translatable="false">Path to the private key, or the name of a key uploaded in Remote Machines settings. The key itself is never stored in the machine.</string>
+    <string name="remote_machine_no_uploaded_keys" translatable="false">No keys uploaded yet</string>
+    <string name="remote_machine_ssh_keys" translatable="false">SSH keys</string>
+    <string name="remote_machine_ssh_keys_help" translatable="false">Upload a private key once and point any number of machines at it through IdentityFile.</string>
+    <string name="remote_machine_upload_ssh_key" translatable="false">Upload SSH key file</string>
+    <string name="remote_machine_ssh_key_used_by" translatable="false">Used by %1$d machine(s)</string>
     <string name="remote_machine_key_passphrase" translatable="false">Key passphrase</string>
     <string name="remote_machine_ssh_options" translatable="false">SSH options</string>
     <string name="remote_machine_proxy_command" translatable="false">ProxyCommand</string>
