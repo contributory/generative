@@ -1190,7 +1190,9 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
         }.getOrElse { "stty raw -echo 2>/dev/null; exec cat > /dev/null" }
         // A null working directory triggers a JNI GetStringUTFChars abort on Android 11.
         val created = TerminalSession(
-            "/system/bin/sh", filesDir.absolutePath, arrayOf("-c", script), emptyArray(), 2_000, this
+            // args[0] becomes argv[0]. Without a leading "sh" the shell treats the script as a file
+            // name ("-c: ... No such file or directory", exit 127), so the reply FIFO never opens.
+            "/system/bin/sh", filesDir.absolutePath, arrayOf("sh", "-c", script), emptyArray(), 2_000, this
         )
         session = created
         return created
@@ -1215,6 +1217,8 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
     fun attachRemote(terminal: RemoteTerminal) {
         remote = terminal
         closed = false
+        // close() shuts the sender down, but this bridge is reused when the user retries after a lost connection.
+        if (sender.isShutdown) sender = newSender()
         flushPending()
         reportSize()
     }
@@ -1247,6 +1251,7 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
         view = null
         replyFifo?.delete()
         replyFifo = null
+        sender.shutdown()
     }
 
     private fun flushPending() {
@@ -1256,13 +1261,26 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
         append(bytes)
     }
 
+    // Socket writes throw NetworkOnMainThreadException on Android's main thread, and keys/paste
+    // arrive on the main thread. They used to be swallowed by runCatching, so nothing typed or
+    // pasted ever reached the server. A single-thread executor keeps the writes ordered.
+    @Volatile private var sender = newSender()
+
+    private fun newSender() = java.util.concurrent.Executors.newSingleThreadExecutor { task ->
+        Thread(task, "remote-terminal-input").apply { isDaemon = true }
+    }
+
     private fun send(bytes: ByteArray) {
+        if (closed) return
         val output = remote?.output ?: return
-        runCatching {
-            synchronized(output) {
-                output.write(bytes)
-                output.flush()
+        try {
+            sender.execute {
+                runCatching {
+                    output.write(bytes)
+                    output.flush()
+                }
             }
+        } catch (_: java.util.concurrent.RejectedExecutionException) {
         }
     }
 
