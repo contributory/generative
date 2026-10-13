@@ -51,7 +51,7 @@ class ProviderEditorBehaviorTest {
         compose.onNode(hasSetTextAction() and hasText("Custom homepage URL")).assertIsDisplayed()
         compose.onNodeWithText("Get", useUnmergedTree = true).performClick()
         compose.waitUntil(5_000) {
-            compose.onAllNodesWithText("Enter a homepage URL or set the provider Base URL.")
+            compose.onAllNodesWithText("Enter a homepage or image URL or set the provider Base URL.")
                 .fetchSemanticsNodes().isNotEmpty()
         }
         compose.onNodeWithText("Reset").performClick()

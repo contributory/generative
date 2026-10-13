@@ -18,7 +18,7 @@ class BottomSheetHeightTest {
         val bounds = bottomSheetHeightBounds(1200, 1160)
         val first = bounds.resizedHeight(1160f, 237.5f)
         assertEquals(922.5f, first, 0f)
-        val second = bounds.resizedHeight(first, 114.25f)
+        val second = bounds.resizedHeight(1160f, 237.5f + 114.25f)
         assertEquals(808.25f, second, 0f)
         assertEquals(808, bounds.heightFor(2000, second))
         assertEquals(400f, bounds.resizedHeight(second, 10000f), 0f)

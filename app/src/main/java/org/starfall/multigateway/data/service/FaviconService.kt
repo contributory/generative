@@ -15,9 +15,9 @@ import java.util.concurrent.TimeUnit
 
 internal fun faviconHomepage(customUrl: String, baseUrl: String): HttpUrl {
     val value = customUrl.trim().ifBlank { baseUrl.trim() }
-    require(value.isNotBlank()) { "Enter a homepage URL or set the provider Base URL." }
+    require(value.isNotBlank()) { "Enter a homepage or image URL or set the provider Base URL." }
     val url = (if ("://" in value) value else "https://$value").toHttpUrlOrNull()
-        ?: error("Enter a valid HTTP or HTTPS homepage URL.")
+        ?: error("Enter a valid HTTP or HTTPS homepage or image URL.")
     require(url.username.isEmpty() && url.password.isEmpty()) { "The homepage URL must not contain embedded credentials." }
     return if (customUrl.isBlank()) url.newBuilder().encodedPath("/").query(null).fragment(null).build()
         else url.newBuilder().fragment(null).build()
@@ -105,6 +105,14 @@ internal class FaviconService(private val context: Context, private val http: To
     suspend fun get(customUrl: String, baseUrl: String): FaviconResult = withContext(Dispatchers.IO) {
         val homepage = faviconHomepage(customUrl, baseUrl)
         val failures = mutableListOf<String>()
+        // A custom URL may point straight at an image; try that before treating it as a homepage.
+        if (customUrl.isNotBlank()) {
+            try {
+                val resource = download(homepage)
+                decodeFavicon(context, resource.bytes)?.let { return@withContext FaviconResult(it, resource.url) }
+            } catch (error: CancellationException) { throw error }
+            catch (_: Exception) { /* not a direct image; fall back to homepage discovery */ }
+        }
         val links = try {
             val page = download(homepage, html = true)
             faviconHeadUrls(page.bytes.toString(Charsets.UTF_8), page.url)

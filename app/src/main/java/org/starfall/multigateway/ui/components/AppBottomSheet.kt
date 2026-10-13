@@ -4,9 +4,7 @@ import android.view.View
 import android.view.Window
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalOverscrollConfiguration
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,7 +20,9 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.nestedscroll.*
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
@@ -60,8 +60,10 @@ fun AppBottomSheet(
     containerColor: Color = BottomSheetDefaults.ContainerColor,
     containerBrush: Brush? = null,
     containerOverlay: (androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit)? = null,
-    containerBrushRevealOrigin: Offset? = null,
-    containerBrushRevealProgress: Float = 1f,
+    /** Screen-space origin of a circular reveal of [containerBrush]; null means no reveal. Read while drawing. */
+    containerBrushRevealOrigin: (() -> Offset?)? = null,
+    /** Reveal progress in 0..1 (the circle is full at 0.52, matching the thinking bloom). Read while drawing. */
+    containerBrushRevealProgress: (() -> Float)? = null,
     navigationBarColor: Color? = null,
     dragHandleHeight: Dp = 48.dp,
     dragHandleWidth: Dp = 32.dp,
@@ -75,6 +77,12 @@ fun AppBottomSheet(
     var requestedHeight by remember { mutableStateOf<Float?>(null) }
     var measuredHeight by remember { mutableIntStateOf(0) }
     var containerOriginOnScreen by remember { mutableStateOf(Offset.Zero) }
+    val handleCoordinates = remember { HandleCoordinates() }
+    val latestRequestedHeight by rememberUpdatedState(requestedHeight)
+    val latestMeasuredHeight by rememberUpdatedState(measuredHeight)
+    // The last brush that was fully on screen. While a new brush is revealed in a circle it is kept
+    // underneath, otherwise the old colour would vanish and be replaced by the flat container colour.
+    val settledBrush = remember { SettledBrush() }
     val resizeLabel = stringResource(R.string.sheet_resize)
     val sheetModifier = if (LocalAmoledMode.current) {
         modifier.amoledSheetBorder(sheetState, shape, MaterialTheme.colorScheme.outlineVariant, 1.dp)
@@ -87,46 +95,84 @@ fun AppBottomSheet(
         containerColor = containerColor,
         scrimColor = modalScrimColor(BottomSheetDefaults.ScrimColor),
         dragHandle = null,
-        contentWindowInsets = { WindowInsets.safeDrawing }
+        contentWindowInsets = {
+            WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
+        }
     ) {
         ConfigureBottomSheetWindow(navigationBarColor ?: containerColor)
         // FlexibleBottomSheet snaps to segmented sizes. Retain the app's free-form
         // content sizing in this small wrapper, without owning a dialog/window.
         BoxWithConstraints(Modifier.fillMaxWidth().testTag("bottom-sheet-window")) {
             val bounds = bottomSheetHeightBounds(windowHeight, constraints.maxHeight)
-            val drag = rememberDraggableState { delta ->
-                requestedHeight = bounds.resizedHeight(requestedHeight ?: measuredHeight.toFloat(), delta)
-            }
+            var resizeDrag by remember { mutableStateOf<ResizeDrag?>(null) }
             Layout(content = {
                 Column(
                     Modifier
                         .fillMaxWidth()
                         .onSizeChanged { measuredHeight = it.height }
                         .onGloballyPositioned { containerOriginOnScreen = it.localToScreen(Offset.Zero) }
-                        .then(
-                            if (containerBrush == null) Modifier else Modifier.drawBehind {
-                                fun drawTarget() {
-                                    drawRect(containerBrush)
-                                    containerOverlay?.invoke(this)
-                                }
-                                val localOrigin = containerBrushRevealOrigin?.let { it - containerOriginOnScreen }
-                                val progress = containerBrushRevealProgress.coerceIn(0f, 1f)
-                                if (localOrigin == null || progress >= 0.52f) {
+                        .drawBehind {
+                            if (containerBrush == null) {
+                                settledBrush.brush = null
+                                return@drawBehind
+                            }
+                            fun drawTarget() {
+                                drawRect(containerBrush)
+                                containerOverlay?.invoke(this)
+                            }
+                            val localOrigin = containerBrushRevealOrigin?.invoke()?.let { it - containerOriginOnScreen }
+                            val progress = (containerBrushRevealProgress?.invoke() ?: 1f).coerceIn(0f, 1f)
+                            if (localOrigin == null || progress >= 0.52f) {
+                                drawTarget()
+                                settledBrush.brush = containerBrush
+                            } else {
+                                // Previous colour stays beneath (without the new tier's overlay streaks).
+                                settledBrush.brush?.takeIf { it != containerBrush }?.let { drawRect(it) }
+                                val radius = 14.dp.toPx() + hypot(size.width, size.height) *
+                                    (progress / 0.52f).coerceIn(0f, 1f)
+                                clipPath(
+                                    Path().apply { addOval(androidx.compose.ui.geometry.Rect(localOrigin, radius)) }
+                                ) {
                                     drawTarget()
-                                } else {
-                                    val radius = 14.dp.toPx() + hypot(size.width, size.height) *
-                                        (progress / 0.52f).coerceIn(0f, 1f)
-                                    clipPath(
-                                        Path().apply { addOval(androidx.compose.ui.geometry.Rect(localOrigin, radius)) }
-                                    ) {
-                                        drawTarget()
-                                    }
                                 }
                             }
-                        )
+                        }
+                        // Applied after drawBehind so the brush/overlay extends under the transparent
+                        // navigation bar instead of stopping at the content edge.
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
                 ) {
                     Box(Modifier.fillMaxWidth().height(dragHandleHeight).testTag("bottom-sheet-drag-handle")
-                        .draggable(drag, Orientation.Vertical)
+                        .onGloballyPositioned { handleCoordinates.value = it }
+                        .pointerInput(bounds.minimum, bounds.maximum) {
+                            detectDragGestures(
+                                onDragStart = { startOffset ->
+                                    val startHeight = (latestRequestedHeight ?: latestMeasuredHeight.toFloat())
+                                        .coerceIn(bounds.minimum.toFloat(), bounds.maximum.toFloat())
+                                    val startY = handleCoordinates.value
+                                        ?.localToScreen(startOffset)
+                                        ?.y
+                                    if (startY != null) {
+                                        resizeDrag = ResizeDrag(startHeight, startY, startOffset.y)
+                                    } else {
+                                        resizeDrag = ResizeDrag(startHeight, startOffset.y, startOffset.y)
+                                    }
+                                },
+                                onDrag = { change, _ ->
+                                    val drag = resizeDrag ?: return@detectDragGestures
+                                    val currentY = handleCoordinates.value
+                                        ?.localToScreen(change.position)
+                                        ?.y
+                                        ?: (drag.startY + change.position.y - drag.startOffsetY)
+                                    requestedHeight = bounds.resizedHeight(
+                                        drag.startHeight,
+                                        currentY - drag.startY
+                                    )
+                                    change.consume()
+                                },
+                                onDragEnd = { resizeDrag = null },
+                                onDragCancel = { resizeDrag = null }
+                            )
+                        }
                         .semantics {
                             contentDescription = resizeLabel
                             val range = (bounds.maximum - bounds.minimum).coerceAtLeast(1).toFloat()
@@ -154,14 +200,29 @@ fun AppBottomSheet(
                     val initialHeight = (bounds.maximum * fraction.coerceIn(0f, 1f)).roundToInt()
                     bounds.heightFor(initialHeight, requestedHeight)
                 }
+                // The painted Column must always fill the sheet. Previously the sheet could be taller than
+                // the Column (resized via the handle, or content shorter than the minimum height), leaving
+                // an unpainted strip below the brush.
+                val targetHeight = fixedHeight ?: requestedHeight?.let { bounds.heightFor(0, it) }
                 val placeable = measurables.single().measure(
-                    constraints.copy(minHeight = fixedHeight ?: 0, maxHeight = fixedHeight ?: ceiling)
+                    constraints.copy(minHeight = targetHeight ?: bounds.minimum, maxHeight = targetHeight ?: ceiling)
                 )
-                layout(placeable.width, fixedHeight ?: bounds.heightFor(placeable.height, requestedHeight)) { placeable.placeRelative(0, 0) }
+                layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
             }
         }
     }
 }
+
+private class HandleCoordinates { var value: LayoutCoordinates? = null }
+
+private data class ResizeDrag(
+    val startHeight: Float,
+    val startY: Float,
+    val startOffsetY: Float = 0f
+)
+
+/** Plain holder written while drawing; deliberately not snapshot state, so it never triggers redraws. */
+private class SettledBrush { var brush: Brush? = null }
 
 @Composable
 private fun ConfigureBottomSheetWindow(navigationBarColor: Color) {
@@ -177,7 +238,7 @@ private fun ConfigureBottomSheetWindow(navigationBarColor: Color) {
         val oldContrast = if (android.os.Build.VERSION.SDK_INT >= 29) target.isNavigationBarContrastEnforced else null
         val controller = WindowCompat.getInsetsController(target, target.decorView)
         val oldLightNavigationBars = controller.isAppearanceLightNavigationBars
-        val argb = navigationBarColor.toArgb()
+        val argb = Color.Transparent.toArgb()
 
         target.navigationBarColor = argb
         if (android.os.Build.VERSION.SDK_INT >= 28) target.navigationBarDividerColor = argb

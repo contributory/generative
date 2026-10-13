@@ -47,7 +47,11 @@ internal class ModelConnectionTests(
         jobs[modelId] = job
     }
 
-    fun testAll(provider: LlmProviderInfo, modelIds: Collection<String>) {
+    fun testAll(
+        provider: LlmProviderInfo,
+        modelIds: Collection<String>,
+        skip: (String) -> Boolean = { false }
+    ) {
         if (!scope.isActive || batchRunning.value || running.values.any { it }) return
         val ids = modelIds.distinct()
         val batchRevisions = ids.associateWith(::revision)
@@ -59,16 +63,25 @@ internal class ModelConnectionTests(
         val job = scope.launch {
             try {
                 for (modelId in ids) {
-                    if (!isActive) break
-                    if (revision(modelId) != batchRevisions.getValue(modelId)) continue
+                    ensureActive()
+                    // Re-checked per model: it may have been marked for removal after the batch started.
+                    if (skip(modelId)) continue
+                    val expected = batchRevisions.getValue(modelId)
+                    if (revision(modelId) != expected) continue
                     running[modelId] = true
-                    try {
-                        // Intentionally one request at a time to avoid provider rate-limit bursts.
-                        val result = connectSafely(provider, modelId)
-                        if (revision(modelId) == batchRevisions.getValue(modelId)) results[modelId] = result
-                    } finally {
-                        if (revision(modelId) == batchRevisions.getValue(modelId)) running[modelId] = false
+                    // Each model runs in its own child job so cancelling one doesn't stop the batch.
+                    // Intentionally one request at a time to avoid provider rate-limit bursts.
+                    val child = launch {
+                        try {
+                            val result = connectSafely(provider, modelId)
+                            if (revision(modelId) == expected) results[modelId] = result
+                        } finally {
+                            if (revision(modelId) == expected) running[modelId] = false
+                        }
                     }
+                    jobs[modelId] = child
+                    child.join()
+                    jobs.remove(modelId)
                 }
             } finally {
                 if (batchRevision == runBatchRevision) batchRunning.value = false
@@ -78,7 +91,6 @@ internal class ModelConnectionTests(
     }
 
     fun cancel(modelId: String) {
-        if (batchRunning.value) { cancelAll(); return }
         revisions[modelId] = revision(modelId) + 1
         jobs.remove(modelId)?.cancel()
         running.remove(modelId)

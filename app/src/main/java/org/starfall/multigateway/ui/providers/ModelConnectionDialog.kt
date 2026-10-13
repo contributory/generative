@@ -14,6 +14,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.NetworkCheck
 import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.StopCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -46,9 +47,9 @@ internal fun ModelConnectionDialog(provider: LlmProviderInfo, tests: ModelConnec
          title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.test_connection), Modifier.weight(1f))
-                IconButton(onClick = { if (testingAny) tests.cancelAll() else tests.testAll(provider, testableModels) },
+                IconButton(onClick = { if (testingAny) tests.cancelAll() else tests.testAll(provider, testableModels, skip = { it in removals.pending }) },
                      enabled = (testingAny || testableModels.isNotEmpty()) && available) {
-                     if (testingAny) Icon(Icons.Outlined.Close, stringResource(R.string.common_cancel))
+                     if (testingAny) Icon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
                      else Icon(Icons.Outlined.NetworkCheck, "Test all text models")
                 }
                  IconButton(onClick = { if (hasRemovals) removals.restoreAll() else removals.mark(unavailable) },
@@ -79,10 +80,10 @@ internal fun ModelConnectionDialog(provider: LlmProviderInfo, tests: ModelConnec
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                  IconButton(enabled = available && (testing || (!removed && !testingAny)), onClick = { if (testing) tests.cancel(id) else tests.test(provider, id) }) {
-                                     if (testing) Icon(Icons.Outlined.Close, stringResource(R.string.common_cancel))
+                                     if (testing) Icon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
                                     else Icon(Icons.Outlined.NetworkCheck, stringResource(R.string.test_model, id))
                                 }
-                                IconButton(onClick = { removals.toggle(id) }) {
+                                IconButton(onClick = { if (!removed && testing) tests.cancel(id); removals.toggle(id) }) {
                                     Icon(if (removed) Icons.Outlined.Restore else Icons.Outlined.Delete,
                                         stringResource(if (removed) R.string.restore_model else R.string.delete_model, id),
                                         tint = if (removed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)

@@ -297,8 +297,8 @@
     <string name="provider_no_api_keys">No API keys yet. Add a key to get started.</string>
     <string name="provider_api_key_actions">API key actions for %1$s</string>
     <string name="favicon_get_logo">Get logo automatically</string>
-    <string name="favicon_homepage_url">Custom homepage URL</string>
-    <string name="favicon_homepage_help">Leave empty to use the homepage inferred from the Base URL.</string>
+    <string name="favicon_homepage_url">Custom homepage or image URL</string>
+    <string name="favicon_homepage_help">Paste a homepage or a direct image link. Leave empty to use the homepage inferred from the Base URL.</string>
     <string name="favicon_preview">Favicon preview</string>
     <string name="favicon_get">Get</string>
     <string name="favicon_reset">Reset</string>

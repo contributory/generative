@@ -611,16 +611,22 @@ internal fun SelectedModelOverviewSheet(
     }
     val screenBurst = LocalThinkingScreenBurst.current
     LaunchedEffect(previewTier, screenBurst) {
+        // The slider has already started a bloom from the thumb by the time this effect runs. Never
+        // replace its origin with Offset.Zero and never hide a bloom that is still playing: either one
+        // would cancel the circular reveal that spreads from the thumb across the sheet.
         if (previewTier == 6) {
+            // keepAfterCompletion is set synchronously by start(), so it reliably tells a slider-driven
+            // bloom (thumb origin) from the sheet simply opening at max (no thumb, origin-less burst).
+            val thumbOrigin = screenBurst?.takeIf { it.keepAfterCompletion && it.origin != Offset.Zero }?.origin
             screenBurst?.start(
-                origin = Offset.Zero,
+                origin = thumbOrigin ?: Offset.Zero,
                 color = Color(0xFFDC2626),
                 durationMillis = 2400,
                 keepAfterCompletion = true,
                 starCount = 180
             )
-        } else {
-            screenBurst?.hide()
+        } else if (screenBurst?.keepAfterCompletion == true) {
+            screenBurst.hide()
         }
     }
     // Keep the sheet opaque at every tier. Strong-effort colors are drawn across the
@@ -635,7 +641,6 @@ internal fun SelectedModelOverviewSheet(
     } else {
         MaterialTheme.colorScheme.surface
     }
-    val revealOrigin = screenBurst?.origin?.takeIf { it != Offset.Zero }
     AppBottomSheet(onDismissRequest = {
         screenBurst?.hide()
         onDismiss()
@@ -645,8 +650,9 @@ internal fun SelectedModelOverviewSheet(
             previewTier == 5 && config.supportsThinking -> MaterialTheme.colorScheme.surface
             else -> sheetColor
         },
-        containerBrushRevealOrigin = revealOrigin,
-        containerBrushRevealProgress = screenBurst?.progress?.value ?: 1f,
+        // Read in the draw phase: the reveal animates every frame and must not recompose the sheet.
+        containerBrushRevealOrigin = { screenBurst?.origin?.takeIf { it != Offset.Zero } },
+        containerBrushRevealProgress = { screenBurst?.progress?.value ?: 1f },
         containerOverlay = if (previewTier == 6 && config.supportsThinking) {
             { drawMaximumEffortStreaks(1f) }
         } else null

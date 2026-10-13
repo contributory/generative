@@ -63,7 +63,7 @@
     <string name="mcp_oauth_redirect_uri_help">Nhập chính xác callback URL đã đăng ký cho client này. Mặc định: %1$s</string>
     <string name="mcp_custom_headers_help">Thêm HTTP header tùy chỉnh cho yêu cầu MCP server</string>
     <string name="context_window_help">Dùng giới hạn API cung cấp; mặc định 128.000 token nếu không có.</string>
-    <string name="favicon_homepage_help">Để trống để sử dụng trang chủ được suy ra từ URL cơ sở.</string>
+    <string name="favicon_homepage_help">Dán link trang chủ hoặc link hình ảnh trực tiếp. Để trống để sử dụng trang chủ được suy ra từ URL cơ sở.</string>
     <string name="word_wrap_column_hint">Bounded ngắt dòng theo giới hạn nhỏ hơn giữa chiều rộng màn hình và số cột này.</string>
     <string name="code_preview_hint">Hiển thị nút xem trước trên các khối code được hỗ trợ.</string>
     <string name="code_block_display_hint">Chọn cách hiển thị các khối code dài trong đoạn chat.</string>

@@ -53,8 +53,9 @@ class ReasoningEffectsLifecycleTest {
         }
         compose.waitForIdle()
         compose.mainClock.autoAdvance = false
+        // OpenAI exposes a trailing "Max" option, so index 6 is the strongest (red) tier.
         compose.onNodeWithTag("reasoning-slider").performSemanticsAction(SemanticsActions.SetProgress) {
-            it(5f)
+            it(6f)
         }
         compose.mainClock.advanceTimeBy(800)
         compose.runOnIdle { assertTrue(burst.progress.value < 1f) }
@@ -73,5 +74,53 @@ class ReasoningEffectsLifecycleTest {
          compose.runOnIdle { assertTrue("Max effort should restore the settled stars", burst.keepAfterCompletion) }
          compose.mainClock.advanceTimeBy(7000)
         compose.runOnIdle { assertEquals(1f, burst.progress.value, 0.001f) }
+    }
+    private fun setUpSheet(onBurst: (ThinkingColorBurst) -> Unit) {
+        val provider = LlmProviderInfo("p", "Provider", ProviderType.OPENAI, baseUrl = "")
+        compose.setContent {
+            MaterialTheme {
+                val screenBurst = rememberThinkingColorBurst()
+                onBurst(screenBurst)
+                var effort by remember { mutableStateOf<String?>(null) }
+                CompositionLocalProvider(LocalThinkingScreenBurst provides screenBurst) {
+                    ThinkingScreenBurstLayer(screenBurst)
+                    SelectedModelOverviewSheet(
+                        provider = provider,
+                        folderName = null,
+                        modelId = "Effect model",
+                        config = ModelConfiguration(),
+                        conversationReasoningEffort = effort,
+                        onSetReasoningEffort = { effort = it },
+                        onOpenModelPicker = {},
+                        onDismiss = {}
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+    }
+
+    @Test fun draggingToMaxSpreadsTheColourFromTheThumbNotFromTheScreenCorner() {
+        lateinit var burst: ThinkingColorBurst
+        setUpSheet { burst = it }
+        compose.onNodeWithTag("reasoning-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(6f) }
+        compose.mainClock.advanceTimeBy(200)
+        compose.runOnIdle {
+            assertNotEquals("The bloom origin must be the slider thumb", androidx.compose.ui.geometry.Offset.Zero, burst.origin)
+            assertTrue(burst.keepAfterCompletion)
+            assertTrue("The bloom must still be spreading", burst.progress.value < 1f)
+        }
+    }
+
+    @Test fun draggingToTheSecondStrongestTierKeepsItsBloomPlaying() {
+        lateinit var burst: ThinkingColorBurst
+        setUpSheet { burst = it }
+        compose.onNodeWithTag("reasoning-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(5f) }
+        compose.mainClock.advanceTimeBy(300)
+        compose.runOnIdle {
+            assertNotEquals(androidx.compose.ui.geometry.Offset.Zero, burst.origin)
+            assertTrue("Entering the purple tier must not cancel its own bloom", burst.progress.value < 1f)
+        }
     }
 }

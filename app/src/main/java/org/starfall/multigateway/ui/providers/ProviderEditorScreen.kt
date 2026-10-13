@@ -224,7 +224,10 @@ fun ProviderEditScreen(
                                             val updated = initialProvider.copy(name = name, type = type, baseUrl = baseUrl).withType(next)
                                             name = updated.name; baseUrl = updated.baseUrl; type = updated.type
                                             val auth = next.defaultAuthorization()
-                                            authMethod = auth.method; authName = auth.key.orEmpty(); apiKey = auth.value.orEmpty()
+                                            // Keep the entered API key; only drop the "Bearer " prefix the bearer field adds,
+                                            // since the new type may send the key in a different form.
+                                            if (authMethod == AuthMethod.BEARER_TOKEN) apiKey = apiKey.replace(Regex("^\\s*Bearer\\s+", RegexOption.IGNORE_CASE), "")
+                                            authMethod = auth.method; authName = auth.key.orEmpty()
                                             oauthAuthorized = false; oauthIdentity = null; oauthMarker = ""; oauthAccountId = null; oauthAccounts = emptyList(); oauthAuthError = null
                                         }
                                         typeExpanded = false
