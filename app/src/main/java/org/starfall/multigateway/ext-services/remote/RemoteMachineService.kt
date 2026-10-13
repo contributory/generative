@@ -2,6 +2,7 @@ package org.starfall.multigateway.extservices.remote
 
 import android.content.Context
 import android.net.Uri
+import android.os.SystemClock
 import android.system.Os
 import com.jcraft.jsch.ChannelExec
 import com.jcraft.jsch.ChannelShell
@@ -17,6 +18,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -38,6 +40,9 @@ import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.ServerSocket
 import java.net.URLEncoder
+import java.util.Base64
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.Properties
 import java.util.UUID
 import kotlin.math.roundToInt
@@ -93,20 +98,41 @@ class RemoteMachineService(
     private val context: Context,
     val store: RemoteMachineStore = RemoteMachineStore(context)
 ) {
+    private data class CachedCloudEndpoint(
+        val host: String,
+        val username: String,
+        val lastUsedAtElapsedRealtime: Long
+    )
+
     private val appContext = context.applicationContext
     private val json = Json { ignoreUnknownKeys = true }
     private val authHttp = ToolHttp()
+    private val endpointCacheLock = Any()
+    private val cloudEndpointCache = mutableMapOf<String, CachedCloudEndpoint>()
 
     val state = store.state
 
     suspend fun saveMachine(machine: RemoteMachine) {
+        val username = machine.username.trim()
+        val normalizedPort = if (machine.type == RemoteMachineType.GCLOUD_SHELL) 6_000 else machine.port.coerceIn(1, 65535)
+        val passwordReference = if (machine.type == RemoteMachineType.GCLOUD_SHELL) {
+            machine.host.trim().takeIf(String::isNotBlank)?.let {
+                remotePasswordReference(username.ifBlank { machine.gcloudUsername }, it, normalizedPort)
+            } ?: machine.passwordReference
+        } else {
+            remotePasswordReference(username, machine.host.trim(), normalizedPort)
+        }
         val normalized = machine.copy(
             name = machine.name.trim(),
-            host = machine.host.trim(),
-            username = machine.username.trim(),
-            port = machine.port.coerceIn(1, 65535),
+            host = if (machine.type == RemoteMachineType.GCLOUD_SHELL) "" else machine.host.trim(),
+            username = username,
+            port = normalizedPort,
+            passwordReference = passwordReference,
             connectTimeoutSeconds = machine.connectTimeoutSeconds.coerceIn(1, 300),
-            keepAliveSeconds = machine.keepAliveSeconds.coerceIn(0, 3_600)
+            keepAliveSeconds = machine.keepAliveSeconds.coerceIn(0, 3_600),
+            preferredAuthentications = if (machine.authentication == RemoteAuthentication.PASSWORD) {
+                if (machine.keyboardInteractive) "keyboard-interactive,password" else "password"
+            } else "publickey"
         )
         require(normalized.name.isNotBlank()) { "Machine name is required." }
         store.update { current ->
@@ -125,6 +151,7 @@ class RemoteMachineService(
     }
 
     suspend fun deleteMachine(id: String) {
+        synchronized(endpointCacheLock) { cloudEndpointCache.remove(id) }
         store.update { current ->
             val deleted = current.machines.firstOrNull { it.id == id }
             current.copy(
@@ -152,9 +179,12 @@ class RemoteMachineService(
 
     suspend fun saveSshConfig(text: String) {
         store.update {
+            val synced = SshConfigParser.syncMachines(it.machines, text)
+            val config = synced.filter { machine -> machine.type == RemoteMachineType.GCLOUD_SHELL }
+                .fold(text) { currentConfig, machine -> SshConfigParser.upsertMachine(currentConfig, machine) }
             it.copy(
-                sshConfig = text,
-                machines = SshConfigParser.syncMachines(it.machines, text)
+                sshConfig = config,
+                machines = SshConfigParser.syncMachines(synced, config)
             )
         }
     }
@@ -194,12 +224,75 @@ class RemoteMachineService(
             target.outputStream().use { output -> input.copyTo(output) }
         } ?: error("Could not read the selected binary.")
         target.setReadable(false, false)
+        target.setWritable(false, false)
+        target.setExecutable(false, false)
+        target.setReadable(true, true)
         target.setWritable(true, true)
-        target.setExecutable(true, false)
+        target.setExecutable(true, true)
         runCatching { Os.chmod(target.absolutePath, 0b111_000_000) }
+        require(target.canRead() && target.canExecute()) { "Could not grant execute permission to the imported binary." }
         val binary = RemoteBinary(UUID.randomUUID().toString(), displayName, target.absolutePath)
-        store.update { it.copy(binaries = it.binaries.filterNot { existing -> existing.name == displayName } + binary) }
+        val replaced = state.value.binaries.filter { it.name == displayName }
+        try {
+            store.update { it.copy(binaries = it.binaries.filterNot { existing -> existing.name == displayName } + binary) }
+        } catch (error: Throwable) {
+            target.delete()
+            throw error
+        }
+        replaced.forEach { old ->
+            if (old.path != target.absolutePath) runCatching { File(old.path).delete() }
+        }
         binary
+    }
+
+    suspend fun testBinary(id: String): RemoteBinaryTestResult = withContext(Dispatchers.IO) {
+        val binary = state.value.binaries.firstOrNull { it.id == id } ?: error("Binary not found.")
+        val file = File(binary.path)
+        require(file.isFile) { "The imported binary file no longer exists." }
+        require(file.canExecute()) { "The imported file does not have execute permission." }
+        val process = ProcessBuilder(file.absolutePath)
+            .directory(file.parentFile)
+            .redirectErrorStream(true)
+            .start()
+        val captured = ByteArrayOutputStream()
+        val truncated = AtomicBoolean(false)
+        val reader = Thread({
+            runCatching {
+                process.inputStream.use { input ->
+                    val buffer = ByteArray(8_192)
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        val remaining = MAX_BINARY_TEST_OUTPUT_BYTES - captured.size()
+                        if (remaining > 0) captured.write(buffer, 0, minOf(count, remaining))
+                        if (count > remaining) truncated.set(true)
+                    }
+                }
+            }
+        }, "remote-binary-test-output").apply {
+            isDaemon = true
+            start()
+        }
+        runCatching { process.outputStream.close() }
+        val completed = try {
+            process.waitFor(BINARY_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        } catch (error: Throwable) {
+            process.destroyForcibly()
+            throw error
+        }
+        if (!completed) {
+            process.destroyForcibly()
+            process.waitFor()
+        }
+        reader.join(2_000)
+        val output = captured.toString(Charsets.UTF_8.name()) +
+            if (truncated.get()) "\n[output truncated]" else ""
+        RemoteBinaryTestResult(
+            output = output,
+            exitCode = process.exitValue(),
+            timedOut = !completed,
+            outputTruncated = truncated.get()
+        )
     }
 
     /** Imports a Google Desktop OAuth client file without persisting it until the user confirms it. */
@@ -225,6 +318,13 @@ class RemoteMachineService(
 
     suspend fun deleteBinary(id: String) {
         val binary = state.value.binaries.firstOrNull { it.id == id }
+        if (binary != null) {
+            require(state.value.machines.none { machine ->
+                listOf(machine.proxyCommand, machine.localCommand).any { command ->
+                    hasBinaryReference(command, binary.name)
+                }
+            }) { "Remove this binary from ProxyCommand or LocalCommand before deleting it." }
+        }
         store.update { it.copy(binaries = it.binaries.filterNot { existing -> existing.id == id }) }
         binary?.let { runCatching { File(it.path).delete() } }
     }
@@ -235,7 +335,10 @@ class RemoteMachineService(
         val displayName = resolver.query(uri, arrayOf("_display_name"), null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) cursor.getString(0) else null
         }?.substringAfterLast('/')?.takeIf { it.isNotBlank() } ?: "key-${UUID.randomUUID().toString().take(8)}"
-        val id = UUID.randomUUID().toString()
+        // Keep the path stable when replacing a key by the same display name: machines that
+        // already reference this IdentityFile path continue to use the replacement.
+        val id = state.value.identities.firstOrNull { it.name == displayName }?.id
+            ?: UUID.randomUUID().toString()
         val directory = File(appContext.filesDir, "remote-machines/identities").apply { mkdirs() }
         val target = File(directory, id)
         resolver.openInputStream(uri)?.use { input ->
@@ -246,7 +349,7 @@ class RemoteMachineService(
         runCatching { Os.chmod(target.absolutePath, 0b110_000_000) }
         val key = RemoteIdentityKey(id, displayName, target.absolutePath)
         // Re-uploading a key with the same name replaces it, so existing IdentityFile names keep working.
-        val replaced = state.value.identities.filter { it.name == displayName }
+        val replaced = state.value.identities.filter { it.name == displayName && it.id != id }
         store.update { it.copy(identities = it.identities.filterNot { existing -> existing.name == displayName } + key) }
         replaced.forEach { runCatching { File(it.path).delete() } }
         key
@@ -254,6 +357,12 @@ class RemoteMachineService(
 
     suspend fun deleteIdentityKey(id: String) {
         val key = state.value.identities.firstOrNull { it.id == id }
+        if (key != null) {
+            require(state.value.machines.none { machine ->
+                val pointer = machine.identityFile.trim()
+                pointer == key.path || pointer == key.name || pointer.substringAfterLast('/') == key.name
+            }) { "Remove this key from IdentityFile before deleting it." }
+        }
         store.update { it.copy(identities = it.identities.filterNot { existing -> existing.id == id }) }
         key?.let { runCatching { File(it.path).delete() } }
     }
@@ -268,6 +377,25 @@ class RemoteMachineService(
         val name = trimmed.substringAfterLast('/')
         return state.value.identities.firstOrNull { it.name == trimmed || it.name == name }
             ?.let { File(it.path) }?.takeIf { it.isFile }
+    }
+
+    /** Converts the configured private key to the OpenSSH public-key line Cloud Shell expects. */
+    private fun cloudShellPublicKey(machine: RemoteMachine): String? {
+        val identityFile = machine.identityFile.trim().takeIf(String::isNotBlank) ?: return null
+        val file = resolveIdentity(identityFile)
+            ?: error("Identity file not found: ${identityFile.substringAfterLast('/')}. Upload it in Remote Machines settings or fix IdentityFile.")
+        val jsch = JSch()
+        if (machine.identityPassphrase.isBlank()) jsch.addIdentity(file.absolutePath)
+        else jsch.addIdentity(file.absolutePath, machine.identityPassphrase)
+        val identity = jsch.identityRepository.identities.firstOrNull()
+            ?: error("Could not read the public key for IdentityFile.")
+        val algorithm = identity.algName
+        require(algorithm in CLOUD_SHELL_SUPPORTED_KEY_ALGORITHMS) {
+            "Google Cloud Shell does not support SSH public-key type $algorithm. Use an RSA or ECDSA key."
+        }
+        val publicKeyBlob = identity.publicKeyBlob
+            ?: error("Could not read the public key for IdentityFile.")
+        return "$algorithm ${Base64.getEncoder().encodeToString(publicKeyBlob)}"
     }
 
     suspend fun authorizeGCloud(client: GCloudOAuthClient): Result<Unit> = result {
@@ -316,46 +444,106 @@ class RemoteMachineService(
     }
 
     /** Gets the current Cloud Shell endpoint and returns an updated machine record. */
-    suspend fun refreshGCloudIp(machine: RemoteMachine): Result<RemoteMachine> = result {
+    suspend fun refreshGCloudIp(
+        machine: RemoteMachine,
+        forceRefresh: Boolean = true
+    ): Result<RemoteMachine> = result {
         require(machine.type == RemoteMachineType.GCLOUD_SHELL) { "Only Cloud Shell machines have a remote IP lookup." }
+        if (!forceRefresh) cachedCloudEndpoint(machine)?.let { return@result it }
         val client = clientFor(machine)
         val token = accessToken(client)
         val api = CloudShellApi(token)
+        val publicKey = cloudShellPublicKey(machine)
         var environment = api.getEnvironment(machine.environmentName)
+        val needsAuthorization = environment.isRunning() || environment.isPending()
         if (!environment.isRunning()) {
-            api.startEnvironment(machine.environmentName)
-        } else {
-            // The reference implementation authorizes an already-running Cloud Shell SSH endpoint
-            // with the same Google access token. Starting the environment already performs the
-            // corresponding authorization as part of that operation.
-            runCatching { api.authorizeEnvironment(machine.environmentName) }
+            if (environment.isPending()) {
+                api.waitUntilRunning(machine.environmentName)
+            } else {
+                api.startEnvironment(machine.environmentName, publicKey?.let(::listOf).orEmpty())
+            }
+        }
+        if (needsAuthorization) {
+            // Keep an already-running environment's gcloud credentials current. A fresh start
+            // receives the same token in its start request.
+            api.authorizeEnvironment(machine.environmentName)
         }
         environment = api.getEnvironment(machine.environmentName)
+        if (publicKey != null && !environment.hasPublicKey(publicKey)) {
+            api.addPublicKey(machine.environmentName, publicKey)
+            environment = api.getEnvironment(machine.environmentName)
+        }
         val endpoint = environment.endpoint()
-        val (host, port) = endpoint ?: error("Google Cloud Shell did not return an SSH endpoint.")
-        val username = environment.firstText("username", "user", "sshUsername")
-            .orEmpty().ifBlank { machine.gcloudUsername.ifBlank { machine.username } }
+        val (host, _) = endpoint ?: error("Google Cloud Shell did not return an SSH endpoint.")
+        val apiUsername = environment.firstText("sshUsername", "username", "user").orEmpty()
+        val username = machine.username.ifBlank { machine.gcloudUsername.ifBlank { apiUsername } }
         val updated = machine.copy(
             host = host,
-            port = port,
+            port = 6_000,
             username = username,
-            gcloudUsername = username
+            gcloudUsername = username,
+            passwordReference = remotePasswordReference(username, host, 6_000)
         )
-        saveMachine(updated)
+        synchronized(endpointCacheLock) {
+            cloudEndpointCache[machine.id] = CachedCloudEndpoint(
+                host = host,
+                username = username,
+                lastUsedAtElapsedRealtime = SystemClock.elapsedRealtime()
+            )
+        }
+        store.update { current ->
+            val saved = current.machines.firstOrNull { it.id == machine.id }
+                ?.takeIf { it.type == RemoteMachineType.GCLOUD_SHELL }
+            if (saved == null) current else {
+                val savedUsername = saved.username.ifBlank { username }
+                val savedMachine = saved.copy(
+                    host = host,
+                    port = 6_000,
+                    username = savedUsername,
+                    gcloudUsername = savedUsername,
+                    passwordReference = remotePasswordReference(savedUsername, host, 6_000),
+                    password = updated.password,
+                    identityPassphrase = updated.identityPassphrase
+                )
+                val config = if (saved.username.isBlank() && savedUsername.isNotBlank()) {
+                    SshConfigParser.upsertMachine(current.sshConfig, savedMachine.copy(host = "", port = 6_000))
+                } else current.sshConfig
+                current.copy(
+                    machines = current.machines.map { if (it.id == savedMachine.id) savedMachine else it },
+                    sshConfig = config
+                )
+            }
+        }
         updated
+    }
+
+    private fun cachedCloudEndpoint(machine: RemoteMachine): RemoteMachine? = synchronized(endpointCacheLock) {
+        val cached = cloudEndpointCache[machine.id] ?: return@synchronized null
+        val now = SystemClock.elapsedRealtime()
+        if (now - cached.lastUsedAtElapsedRealtime >= CLOUD_ENDPOINT_CACHE_TTL_MILLIS) {
+            cloudEndpointCache.remove(machine.id)
+            return@synchronized null
+        }
+        cloudEndpointCache[machine.id] = cached.copy(lastUsedAtElapsedRealtime = now)
+        val username = machine.username.ifBlank { cached.username }
+        machine.copy(
+            host = cached.host,
+            port = 6_000,
+            username = username,
+            gcloudUsername = username,
+            passwordReference = remotePasswordReference(username, cached.host, 6_000)
+        )
     }
 
     suspend fun startGCloudMachine(machine: RemoteMachine): Result<RemoteMachine> = result {
         require(machine.type == RemoteMachineType.GCLOUD_SHELL)
-        val client = clientFor(machine)
-        CloudShellApi(accessToken(client)).startEnvironment(machine.environmentName)
         refreshGCloudIp(machine).getOrThrow()
     }
 
     suspend fun execute(machine: RemoteMachine, command: String, timeoutSeconds: Int = 120): RemoteCommandResult {
         require(command.isNotBlank()) { "The command is empty." }
-        val actual = if (machine.type == RemoteMachineType.GCLOUD_SHELL && machine.host.isBlank()) {
-            refreshGCloudIp(machine).getOrThrow()
+        val actual = if (machine.type == RemoteMachineType.GCLOUD_SHELL) {
+            refreshGCloudIp(machine, forceRefresh = false).getOrThrow()
         } else machine
         return runSshCommand(actual, command, timeoutSeconds, retryCloudShell = true)
     }
@@ -363,6 +551,16 @@ class RemoteMachineService(
     suspend fun executeTool(machine: RemoteMachine, toolName: String, arguments: JsonObject): JsonObject {
         require(machine.isToolEnabled(toolName)) { "Remote Machine tool is disabled." }
         return when (toolName) {
+            REMOTE_TOOL_UPDATE_IP -> refreshGCloudIp(machine, forceRefresh = true).fold(
+                onSuccess = { updated ->
+                    buildJsonObject {
+                        put("status", JsonPrimitive("updated"))
+                        put("host", updated.host)
+                        put("port", updated.port)
+                    }
+                },
+                onFailure = { throw it }
+            )
             REMOTE_TOOL_START_MACHINE -> startGCloudMachine(machine).fold(
                 onSuccess = { updated ->
                     buildJsonObject {
@@ -390,8 +588,8 @@ class RemoteMachineService(
     }
 
     suspend fun openTerminal(machine: RemoteMachine, passwordOverride: String? = null): RemoteTerminal {
-        val actual = if (machine.type == RemoteMachineType.GCLOUD_SHELL && machine.host.isBlank()) {
-            refreshGCloudIp(machine).getOrThrow()
+        val actual = if (machine.type == RemoteMachineType.GCLOUD_SHELL) {
+            refreshGCloudIp(machine, forceRefresh = false).getOrThrow()
         } else machine
         return try {
             openTerminalInternal(actual, passwordOverride)
@@ -430,6 +628,7 @@ class RemoteMachineService(
         return try {
             withContext(Dispatchers.IO) {
                 val session = connect(machine)
+                val localCommand = startLocalCommand(machine)
                 try {
                     val channel = session.openChannel("exec") as ChannelExec
                     val errors = ByteArrayOutputStream()
@@ -445,6 +644,7 @@ class RemoteMachineService(
                     delay(20)
                     RemoteCommandResult(output, String(errors.toByteArray(), Charsets.UTF_8), channel.getExitStatus())
                 } finally {
+                    runCatching { localCommand?.destroy() }
                     runCatching { session.disconnect() }
                 }
             }
@@ -482,15 +682,19 @@ class RemoteMachineService(
         session.setConfig("StrictHostKeyChecking", if (machine.strictHostKeyChecking) "yes" else "no")
         session.setConfig(
             "PreferredAuthentications",
-            if (machine.authentication == RemoteAuthentication.PASSWORD &&
-                (machine.keyboardInteractive || machine.password.isEmpty())
-            ) {
+            machine.preferredAuthentications.ifBlank {
+                if (machine.authentication == RemoteAuthentication.PASSWORD &&
+                    (machine.keyboardInteractive || machine.password.isEmpty())
+                ) {
                 // Try PAM/keyboard-interactive first. JSch's password implementation retries the
                 // same method internally after a failure, which can exhaust servers that expose
                 // password login only as keyboard-interactive before KBI is reached.
-                "keyboard-interactive,password"
-            } else {
-                "publickey,password,keyboard-interactive"
+                    "keyboard-interactive,password"
+                } else if (machine.authentication == RemoteAuthentication.PASSWORD) {
+                    "password"
+                } else {
+                    "publickey"
+                }
             }
         )
         if (machine.compression) session.setConfig("compression.s2c", "zlib,none")
@@ -510,8 +714,12 @@ class RemoteMachineService(
             ProcessBuilder("sh", "-c", resolveBinary(command.replace("%h", machine.host).replace("%p", machine.port.toString())))
                 .redirectErrorStream(true)
                 .start()
+                .also { process -> discardProcessStream(process.inputStream, "remote-local-command-output") }
         }.getOrNull()
     }
+
+    private fun hasBinaryReference(command: String, name: String): Boolean =
+        Regex("(^|\\s)${Regex.escape(name)}(?=\\s|$)").containsMatchIn(command)
 
     private fun resolveBinary(command: String): String {
         var resolved = command
@@ -575,12 +783,29 @@ class RemoteMachineService(
     private inner class CloudShellApi(private val accessToken: String) {
         suspend fun getEnvironment(name: String): JsonObject = request(environmentUrl(name), "GET")
 
-        suspend fun startEnvironment(name: String): JsonObject =
-            waitForOperation(request("${environmentUrl(name)}:start", "POST", accessTokenBody()))
+        suspend fun startEnvironment(name: String, publicKeys: List<String>): JsonObject =
+            waitForOperation(request("${environmentUrl(name)}:start", "POST", accessTokenBody(publicKeys)))
 
         suspend fun authorizeEnvironment(name: String): JsonObject = waitForOperation(
             request("${environmentUrl(name)}:authorize", "POST", accessTokenBody())
         )
+
+        suspend fun addPublicKey(name: String, key: String): JsonObject = waitForOperation(
+            request(
+                "${environmentUrl(name)}:addPublicKey",
+                "POST",
+                buildJsonObject { put("key", JsonPrimitive(key)) }.toString()
+            )
+        )
+
+        suspend fun waitUntilRunning(name: String): JsonObject {
+            repeat(80) {
+                delay(1_500)
+                val current = getEnvironment(name)
+                if (current.isRunning()) return current
+            }
+            error("Timed out while waiting for Google Cloud Shell to start.")
+        }
 
         private suspend fun waitForOperation(operation: JsonObject): JsonObject {
             val operationName = operation["name"]?.jsonPrimitive?.contentOrNull
@@ -603,8 +828,9 @@ class RemoteMachineService(
             error("Timed out while waiting for the Google Cloud Shell operation.")
         }
 
-        private fun accessTokenBody(): String = buildJsonObject {
+        private fun accessTokenBody(publicKeys: List<String> = emptyList()): String = buildJsonObject {
             put("accessToken", accessToken)
+            if (publicKeys.isNotEmpty()) put("publicKeys", JsonArray(publicKeys.map(::JsonPrimitive)))
         }.toString()
 
         private suspend fun request(url: String, method: String, body: String? = null): JsonObject = withContext(Dispatchers.IO) {
@@ -650,20 +876,40 @@ class RemoteMachineService(
     }
 
     private fun JsonObject.endpoint(): Pair<String, Int>? {
-        val host = firstText("host", "sshHost", "ip", "externalIp") ?: return null
-        val port = firstText("port", "sshPort")?.toIntOrNull()?.coerceIn(1, 65535) ?: 22
+        val host = firstText("sshHost", "host", "ip", "externalIp") ?: return null
+        val port = firstText("sshPort", "port")?.toIntOrNull()?.coerceIn(1, 65535) ?: 22
         return host to port
     }
 
     private fun JsonObject.isRunning(): Boolean =
         firstText("state", "status")?.equals("RUNNING", ignoreCase = true) == true
 
+    private fun JsonObject.isPending(): Boolean =
+        firstText("state", "status")?.equals("PENDING", ignoreCase = true) == true
+
+    private fun JsonObject.hasPublicKey(key: String): Boolean {
+        val expected = key.trim().split(Regex("\\s+")).take(2).joinToString(" ")
+        val keys = this["publicKeys"] as? JsonArray ?: return false
+        return keys.any { value ->
+            value.jsonPrimitive.contentOrNull?.trim()?.split(Regex("\\s+"))?.take(2)?.joinToString(" ") == expected
+        }
+    }
+
     private fun Int?.orZero(): Int = this ?: 0
 
     companion object {
+        const val BINARY_TEST_TIMEOUT_SECONDS = 10L
+        const val MAX_BINARY_TEST_OUTPUT_BYTES = 65_536
+        const val CLOUD_ENDPOINT_CACHE_TTL_MILLIS = 15 * 60 * 1_000L
         const val GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
         const val GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
         const val GOOGLE_SCOPE = "openid email profile https://www.googleapis.com/auth/cloud-platform"
+        val CLOUD_SHELL_SUPPORTED_KEY_ALGORITHMS = setOf(
+            "ssh-rsa",
+            "ecdsa-sha2-nistp256",
+            "ecdsa-sha2-nistp384",
+            "ecdsa-sha2-nistp521"
+        )
     }
 }
 
@@ -730,9 +976,11 @@ private class CommandProxy(private val commandTemplate: String) : Proxy {
 
     override fun connect(socketFactory: SocketFactory?, host: String, port: Int, timeout: Int) {
         val command = commandTemplate.replace("%h", host).replace("%p", port.toString())
-        process = ProcessBuilder("sh", "-c", command).redirectErrorStream(false).start()
-        input = process!!.inputStream
-        output = process!!.outputStream
+        val started = ProcessBuilder("sh", "-c", command).redirectErrorStream(false).start()
+        process = started
+        input = started.inputStream
+        output = started.outputStream
+        discardProcessStream(started.errorStream, "remote-ssh-proxy-stderr")
     }
 
     override fun getInputStream(): InputStream = requireNotNull(input)
@@ -744,5 +992,19 @@ private class CommandProxy(private val commandTemplate: String) : Proxy {
         runCatching { output?.close() }
         runCatching { process?.destroy() }
         process = null
+    }
+}
+
+private fun discardProcessStream(stream: InputStream, threadName: String) {
+    Thread({
+        runCatching {
+            stream.use { input ->
+                val buffer = ByteArray(8_192)
+                while (input.read(buffer) >= 0) { }
+            }
+        }
+    }, threadName).apply {
+        isDaemon = true
+        start()
     }
 }

@@ -7,6 +7,7 @@ import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.data.service.*
 import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_EXECUTE
 import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_START_MACHINE
+import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_UPDATE_IP
 import org.starfall.multigateway.extservices.remote.RemoteMachine
 import org.starfall.multigateway.extservices.remote.RemoteMachineService
 import java.util.UUID
@@ -142,6 +143,8 @@ class ToolChat(
                             description = when (toolName) {
                                 REMOTE_TOOL_START_MACHINE ->
                                     "Start the Google Cloud Shell environment before using it."
+                                REMOTE_TOOL_UPDATE_IP ->
+                                    "Refresh this Google Cloud Shell machine's SSH endpoint. Use only after connecting to the machine reports an error."
                                 else ->
                                     "Execute a shell command on the remote machine '${machine.name}'. Return concise commands and inspect the result."
                             },
@@ -441,7 +444,7 @@ class ToolChat(
     }
 
     private fun remoteToolSchema(tool: String): JsonObject = when (tool) {
-        REMOTE_TOOL_START_MACHINE -> buildJsonObject {
+        REMOTE_TOOL_START_MACHINE, REMOTE_TOOL_UPDATE_IP -> buildJsonObject {
             put("type", "object")
             put("properties", buildJsonObject { })
         }

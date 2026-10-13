@@ -15,9 +15,8 @@ enum class RemoteAuthentication {
     PRIVATE_KEY
 }
 
-/**
- * A deliberately self-contained machine record. Secrets are stored together with this record in
- * [RemoteMachineStore], whose payload is encrypted with an Android Keystore key.
+/** Runtime machine view. SSH options are hydrated from the app's OpenSSH config file; the encrypted
+ * store keeps only its stable ID, name, address, user and secret. Cloud Shell keeps its own fields.
  */
 @Serializable
 data class RemoteMachine(
@@ -27,12 +26,16 @@ data class RemoteMachine(
     val host: String = "",
     val port: Int = 22,
     val username: String = "",
+    /** Exact credential lookup key; never a wildcard. Cloud Shell may refresh it with its endpoint. */
+    val passwordReference: String = "",
     val authentication: RemoteAuthentication = RemoteAuthentication.PRIVATE_KEY,
     val password: String = "",
     /** Use SSH keyboard-interactive/PAM prompts instead of only the plain password method. */
     val keyboardInteractive: Boolean = true,
     val identityFile: String = "",
     val identityPassphrase: String = "",
+    /** Effective SSH config value. Empty means use the app's auth-mode default. */
+    val preferredAuthentications: String = "",
     val strictHostKeyChecking: Boolean = false,
     val proxyCommand: String = "",
     val localCommand: String = "",
@@ -52,10 +55,11 @@ data class RemoteMachine(
 
     fun supportedToolNames(): List<String> = when (type) {
         RemoteMachineType.SSH -> listOf(REMOTE_TOOL_EXECUTE)
-        RemoteMachineType.GCLOUD_SHELL -> listOf(REMOTE_TOOL_START_MACHINE, REMOTE_TOOL_EXECUTE)
+        RemoteMachineType.GCLOUD_SHELL -> listOf(REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_EXECUTE)
     }
 
-    fun isToolEnabled(toolName: String): Boolean = aiToolsEnabled && aiTools[toolName] != false
+    fun isToolEnabled(toolName: String): Boolean = aiToolsEnabled &&
+        (aiTools[toolName] ?: if (toolName == REMOTE_TOOL_UPDATE_IP) aiTools[REMOTE_TOOL_START_MACHINE] else null) != false
 }
 
 @Serializable
@@ -79,6 +83,13 @@ data class RemoteBinary(
     val id: String,
     val name: String,
     val path: String
+)
+
+data class RemoteBinaryTestResult(
+    val output: String,
+    val exitCode: Int,
+    val timedOut: Boolean,
+    val outputTruncated: Boolean
 )
 
 /**
@@ -105,3 +116,4 @@ data class RemoteMachineState(
 
 const val REMOTE_TOOL_EXECUTE = "execute"
 const val REMOTE_TOOL_START_MACHINE = "start_machine"
+const val REMOTE_TOOL_UPDATE_IP = "update_ip"

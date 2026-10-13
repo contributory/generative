@@ -10,16 +10,21 @@ object SshConfigParser {
     /** Options that are generated from (and synced back to) a saved Remote Machine. */
     private val managedKeys = setOf(
         "hostname", "port", "user", "identityfile", "proxycommand", "localcommand",
-        "stricthostkeychecking", "compression", "serveraliveinterval"
+        "stricthostkeychecking", "compression", "serveraliveinterval", "connecttimeout",
+        "preferredauthentications"
     )
 
     fun parse(text: String): List<SshConfigHost> {
         val result = mutableListOf<SshConfigHost>()
         var aliases = emptyList<String>()
         val options = linkedMapOf<String, String>()
+        var hasStartedSection = false
+        var inMatchSection = false
 
         fun flush() {
-            if (aliases.isNotEmpty()) result += SshConfigHost(aliases, options.toMap())
+            if (!inMatchSection && (aliases.isNotEmpty() || (!hasStartedSection && options.isNotEmpty()))) {
+                result += SshConfigHost(aliases, options.toMap())
+            }
             aliases = emptyList()
             options.clear()
         }
@@ -28,10 +33,14 @@ object SshConfigParser {
             val (key, value) = splitDirective(raw) ?: return@forEach
             if (key == "host") {
                 flush()
+                hasStartedSection = true
+                inMatchSection = false
                 aliases = value.split(Regex("\\s+")).filter(String::isNotBlank)
             } else if (key == "match") {
                 flush()
-            } else if (aliases.isNotEmpty()) {
+                hasStartedSection = true
+                inMatchSection = true
+            } else if (!inMatchSection && (aliases.isNotEmpty() || !hasStartedSection)) {
                 options[key] = value
             }
         }
@@ -39,8 +48,21 @@ object SshConfigParser {
         return result
     }
 
-    fun find(text: String, alias: String): SshConfigHost? = parse(text).firstOrNull {
-        alias in it.aliases
+    /** Returns the effective options for an alias, including global and matching wildcard blocks. */
+    fun find(text: String, alias: String): SshConfigHost? {
+        val matching = parse(text).filter { host ->
+            host.aliases.isEmpty() || hostMatches(host.aliases, alias)
+        }
+        if (matching.isEmpty()) return null
+        // OpenSSH keeps the first value found for each option, so earlier defaults only fill gaps.
+        val options = linkedMapOf<String, String>()
+        matching.forEach { host -> host.options.forEach { (key, value) -> options.putIfAbsent(key, value) } }
+        return SshConfigHost(listOf(alias), options)
+    }
+
+    fun hasExplicitAlias(text: String, name: String): Boolean {
+        val alias = configAlias(name)
+        return parse(text).any { alias in it.aliases }
     }
 
     /**
@@ -63,8 +85,8 @@ object SshConfigParser {
                 if (directive == null) line.isNotBlank() else directive.first !in managedKeys
             }
             // Keep a multi-alias header such as "Host a b" untouched when updating the existing block.
-            if (target == existing && (hostAliases(lines[target.first])?.size ?: 1) > 1) {
-                block[0] = lines[target.first]
+            if (existing != null && (hostAliases(lines[existing.first])?.size ?: 1) > 1) {
+                block[0] = lines[existing.first]
             }
             block += extras
             if (target.last < lines.lastIndex) block += ""
@@ -76,9 +98,7 @@ object SshConfigParser {
         }
         var result = finish(lines)
         // Both the old and the new alias existed: the old block is now stale.
-        if (existing != null && old != null && previousAlias != null) {
-            result = removeAlias(result, previousAlias)
-        }
+        if (existing != null && old != null) result = removeAlias(result, previousAlias)
         return result
     }
 
@@ -104,22 +124,40 @@ object SshConfigParser {
      * alias. Secrets and app-only settings are kept; options removed from the block reset to defaults.
      */
     fun syncMachines(machines: List<RemoteMachine>, text: String): List<RemoteMachine> {
-        val hosts = parse(text)
         return machines.map { machine ->
-            if (machine.type != RemoteMachineType.SSH) return@map machine
-            val alias = configAlias(machine.name)
-            val host = hosts.firstOrNull { alias in it.aliases } ?: return@map machine
-            val o = host.options
+            if (machine.type !in setOf(RemoteMachineType.SSH, RemoteMachineType.GCLOUD_SHELL)) return@map machine
+            val isCloudShell = machine.type == RemoteMachineType.GCLOUD_SHELL
+            val host = find(text, configAlias(machine.name))
+            val o = host?.options.orEmpty()
+            val identityFile = o["identityfile"].orEmpty()
+            val preferred = o["preferredauthentications"]?.split(',')?.map { it.trim().lowercase() }.orEmpty()
+            val hasPreferred = "preferredauthentications" in o
+            val authentication = when {
+                hasPreferred && ("password" in preferred || "keyboard-interactive" in preferred) -> RemoteAuthentication.PASSWORD
+                hasPreferred && "publickey" in preferred -> RemoteAuthentication.PRIVATE_KEY
+                identityFile.isNotBlank() -> RemoteAuthentication.PRIVATE_KEY
+                else -> RemoteAuthentication.PASSWORD
+            }
+            val secret = machine.identityPassphrase.ifBlank { machine.password }
             machine.copy(
-                host = o["hostname"].orEmpty(),
-                port = o["port"]?.toIntOrNull()?.coerceIn(1, 65535) ?: 22,
-                username = o["user"].orEmpty(),
-                identityFile = o["identityfile"].orEmpty(),
+                // Machine name, address, user and the single secret are the persisted base record.
+                // Other connection options are always hydrated from the SSH config file.
+                host = if (isCloudShell) "" else machine.host,
+                port = if (isCloudShell) 6_000 else o["port"]?.toIntOrNull()?.coerceIn(1, 65535) ?: 22,
+                username = if (isCloudShell) o["user"].orEmpty() else machine.username,
+                gcloudUsername = if (isCloudShell) o["user"].orEmpty() else machine.gcloudUsername,
+                authentication = authentication,
+                password = if (authentication == RemoteAuthentication.PASSWORD) secret else "",
+                keyboardInteractive = if (hasPreferred) "keyboard-interactive" in preferred else true,
+                identityFile = identityFile,
+                identityPassphrase = if (authentication == RemoteAuthentication.PRIVATE_KEY) secret else "",
+                preferredAuthentications = o["preferredauthentications"].orEmpty(),
                 proxyCommand = o["proxycommand"].orEmpty(),
                 localCommand = o["localcommand"].orEmpty(),
                 strictHostKeyChecking = o["stricthostkeychecking"]?.equals("yes", true) == true,
                 compression = o["compression"]?.equals("yes", true) == true,
-                keepAliveSeconds = o["serveraliveinterval"]?.toIntOrNull()?.coerceIn(0, 3_600) ?: 0
+                keepAliveSeconds = o["serveraliveinterval"]?.toIntOrNull()?.coerceIn(0, 3_600) ?: 0,
+                connectTimeoutSeconds = o["connecttimeout"]?.toIntOrNull()?.coerceIn(1, 300) ?: 15
             )
         }
     }
@@ -127,32 +165,48 @@ object SshConfigParser {
     /** Imports the common fields without discarding the original config file. */
     fun toMachine(host: SshConfigHost, id: String = host.aliases.first()): RemoteMachine {
         val options = host.options
+        val identityFile = options["identityfile"].orEmpty()
+        val preferred = options["preferredauthentications"]?.split(',')?.map { it.trim().lowercase() }.orEmpty()
+        val privateKey = if ("preferredauthentications" in options) {
+            "password" !in preferred && "keyboard-interactive" !in preferred && "publickey" in preferred
+        } else identityFile.isNotBlank()
         return RemoteMachine(
             id = id,
             name = host.aliases.first(),
-            host = options["hostname"].orEmpty(),
+            host = options["hostname"].orEmpty().ifBlank { host.aliases.first() },
             port = options["port"]?.toIntOrNull()?.coerceIn(1, 65535) ?: 22,
             username = options["user"].orEmpty(),
-            identityFile = options["identityfile"].orEmpty(),
+            authentication = if (privateKey) RemoteAuthentication.PRIVATE_KEY else RemoteAuthentication.PASSWORD,
+            keyboardInteractive = if ("preferredauthentications" in options) "keyboard-interactive" in preferred else true,
+            identityFile = identityFile,
+            preferredAuthentications = options["preferredauthentications"].orEmpty(),
             proxyCommand = options["proxycommand"].orEmpty(),
             localCommand = options["localcommand"].orEmpty(),
             strictHostKeyChecking = options["stricthostkeychecking"]?.equals("yes", true) == true,
             compression = options["compression"]?.equals("yes", true) == true,
-            keepAliveSeconds = options["serveraliveinterval"]?.toIntOrNull()?.coerceAtLeast(0) ?: 30
+            keepAliveSeconds = options["serveraliveinterval"]?.toIntOrNull()?.coerceAtLeast(0) ?: 30,
+            connectTimeoutSeconds = options["connecttimeout"]?.toIntOrNull()?.coerceIn(1, 300) ?: 15
         )
     }
 
     private fun renderMachine(alias: String, machine: RemoteMachine): String = buildString {
         appendLine("Host $alias")
-        machine.host.trim().takeIf(String::isNotBlank)?.let { appendLine("  HostName $it") }
-        appendLine("  Port ${machine.port.coerceIn(1, 65535)}")
-        machine.username.trim().takeIf(String::isNotBlank)?.let { appendLine("  User $it") }
+        if (machine.type != RemoteMachineType.GCLOUD_SHELL) {
+            machine.host.trim().takeIf(String::isNotBlank)?.let { appendLine("  HostName $it") }
+        }
+        appendLine("  Port ${if (machine.type == RemoteMachineType.GCLOUD_SHELL) 6_000 else machine.port.coerceIn(1, 65535)}")
+        (if (machine.type == RemoteMachineType.GCLOUD_SHELL) machine.username.ifBlank { machine.gcloudUsername } else machine.username)
+            .trim().takeIf(String::isNotBlank)?.let { appendLine("  User $it") }
+        appendLine("  PreferredAuthentications ${if (machine.authentication == RemoteAuthentication.PASSWORD) {
+            if (machine.keyboardInteractive) "keyboard-interactive,password" else "password"
+        } else "publickey"}")
         machine.identityFile.trim().takeIf(String::isNotBlank)?.let { appendLine("  IdentityFile $it") }
         machine.proxyCommand.trim().takeIf(String::isNotBlank)?.let { appendLine("  ProxyCommand $it") }
         machine.localCommand.trim().takeIf(String::isNotBlank)?.let { appendLine("  LocalCommand $it") }
         machine.strictHostKeyChecking.takeIf { it }?.let { appendLine("  StrictHostKeyChecking yes") }
         machine.compression.takeIf { it }?.let { appendLine("  Compression yes") }
         machine.keepAliveSeconds.takeIf { it > 0 }?.let { appendLine("  ServerAliveInterval $it") }
+        appendLine("  ConnectTimeout ${machine.connectTimeoutSeconds.coerceIn(1, 300)}")
     }
 
     /** Splits "Key value", "Key=value" or "Key = value" into a lowercase key and a clean value. */
@@ -170,6 +224,31 @@ object SshConfigParser {
         val (key, value) = splitDirective(line) ?: return null
         if (key != "host") return null
         return value.split(Regex("\\s+")).filter(String::isNotBlank)
+    }
+
+    private fun hostMatches(patterns: List<String>, alias: String): Boolean {
+        val negative = patterns.filter { it.startsWith('!') }.map { it.drop(1) }
+        if (negative.any { globMatches(it, alias) }) return false
+        val positive = patterns.filterNot { it.startsWith('!') }
+        return positive.isEmpty() || positive.any { globMatches(it, alias) }
+    }
+
+    private fun globMatches(pattern: String, value: String): Boolean {
+        val regex = buildString {
+            append('^')
+            pattern.forEach { char ->
+                when (char) {
+                    '*' -> append(".*")
+                    '?' -> append('.')
+                    else -> {
+                        if (char in ".\\+()[]{}^$|") append('\\')
+                        append(char)
+                    }
+                }
+            }
+            append('$')
+        }
+        return Regex(regex, RegexOption.IGNORE_CASE).matches(value)
     }
 
     private fun findBlock(lines: List<String>, alias: String): IntRange? {

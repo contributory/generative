@@ -43,6 +43,9 @@ class RemoteMachinesViewModel(
 
     suspend fun importBinary(uri: Uri): Result<RemoteBinary> = runCatching { service.importBinary(uri) }
 
+    suspend fun testBinary(id: String): Result<RemoteBinaryTestResult> =
+        runCatching { service.testBinary(id) }
+
     fun deleteBinary(id: String) {
         viewModelScope.launch(LocalWriteErrors.handler) { service.deleteBinary(id) }
     }
@@ -58,10 +61,6 @@ class RemoteMachinesViewModel(
         runCatching { service.parseOAuthClientJson(uri) }
 
     suspend fun authorize(client: GCloudOAuthClient): Result<Unit> = service.authorizeGCloud(client)
-
-    suspend fun saveOAuthClientNow(client: GCloudOAuthClient) {
-        service.saveOAuthClient(client)
-    }
 
     suspend fun refreshIp(machine: RemoteMachine): Result<RemoteMachine> = service.refreshGCloudIp(machine)
 

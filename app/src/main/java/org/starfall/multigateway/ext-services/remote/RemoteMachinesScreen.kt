@@ -4,7 +4,6 @@ package org.starfall.multigateway.extservices.remote
 
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.net.Uri
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.inputmethod.InputMethodManager
@@ -19,6 +18,8 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableIntStateOf
@@ -40,6 +41,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -58,6 +60,7 @@ import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Terminal
@@ -135,6 +138,8 @@ import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 import org.starfall.multigateway.ui.navigation.SlideScreenContent
 
 private data class MachineEditor(val machine: RemoteMachine, val isNew: Boolean)
+private data class MachineIpUpdateNotice(val machineName: String, val message: String)
+private data class BinaryTestNotice(val binaryName: String, val status: String, val output: String)
 
 private enum class RemoteMachinesPage { SETTINGS, TERMINAL }
 private enum class TerminalInputMode { LOCAL, REMOTE }
@@ -152,6 +157,8 @@ fun RemoteMachinesScreen(
     var page by remember { mutableStateOf<RemoteMachinesPage?>(null) }
     var deleting by remember { mutableStateOf<RemoteMachine?>(null) }
     var terminalMachine by remember { mutableStateOf<RemoteMachine?>(null) }
+    var ipUpdateNotice by remember { mutableStateOf<MachineIpUpdateNotice?>(null) }
+    val scope = rememberCoroutineScope()
     BackHandler(enabled = editor != null || page != null || terminalMachine != null) {
         when {
             terminalMachine != null -> terminalMachine = null
@@ -204,7 +211,25 @@ fun RemoteMachinesScreen(
                         machines = state.machines,
                         onTerminal = { terminalMachine = it },
                         onEdit = { editor = MachineEditor(it, false) },
-                        onDelete = { deleting = it }
+                        onDelete = { deleting = it },
+                        onUpdateIp = { machine ->
+                            scope.launch {
+                                viewModel.refreshIp(machine).fold(
+                                    onSuccess = { updated ->
+                                        ipUpdateNotice = MachineIpUpdateNotice(
+                                            machine.name,
+                                            "${updated.host}:${updated.port}"
+                                        )
+                                    },
+                                    onFailure = { error ->
+                                        ipUpdateNotice = MachineIpUpdateNotice(
+                                            machine.name,
+                                            error.message ?: error.toString()
+                                        )
+                                    }
+                                )
+                            }
+                        }
                     )
                 }
             )
@@ -224,6 +249,19 @@ fun RemoteMachinesScreen(
             },
             dismissButton = {
                 TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.common_cancel)) }
+            }
+        )
+    }
+
+    ipUpdateNotice?.let { notice ->
+        AlertDialog(
+            onDismissRequest = { ipUpdateNotice = null },
+            title = { Text(stringResource(R.string.remote_machine_update_ip_title, notice.machineName)) },
+            text = { Text(notice.message) },
+            confirmButton = {
+                TextButton(onClick = { ipUpdateNotice = null }) {
+                    Text(stringResource(R.string.common_close))
+                }
             }
         )
     }
@@ -285,7 +323,8 @@ private fun RemoteMachineList(
     machines: List<RemoteMachine>,
     onTerminal: (RemoteMachine) -> Unit,
     onEdit: (RemoteMachine) -> Unit,
-    onDelete: (RemoteMachine) -> Unit
+    onDelete: (RemoteMachine) -> Unit,
+    onUpdateIp: (RemoteMachine) -> Unit
 ) {
     LazyColumn(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -297,7 +336,8 @@ private fun RemoteMachineList(
                 machine = machine,
                 onTerminal = { onTerminal(machine) },
                 onEdit = { onEdit(machine) },
-                onDelete = { onDelete(machine) }
+                onDelete = { onDelete(machine) },
+                onUpdateIp = { onUpdateIp(machine) }
             )
         }
     }
@@ -309,6 +349,7 @@ private fun RemoteMachineCard(
     onTerminal: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onUpdateIp: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var menu by remember { mutableStateOf(false) }
@@ -350,6 +391,13 @@ private fun RemoteMachineCard(
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, stringResource(R.string.more_options)) }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    if (machine.type == RemoteMachineType.GCLOUD_SHELL) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.remote_machine_update_ip)) },
+                            leadingIcon = { Icon(Icons.Outlined.Refresh, null) },
+                            onClick = { menu = false; onUpdateIp() }
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.common_edit)) },
                         leadingIcon = { Icon(Icons.Outlined.Edit, null) },
@@ -395,7 +443,6 @@ private fun RemoteMachineEditor(
     var timeout by remember(initial.id) { mutableStateOf(initial.connectTimeoutSeconds.toString()) }
     var oauthClientId by remember(initial.id) { mutableStateOf(initial.oauthClientId) }
     var environment by remember(initial.id) { mutableStateOf(initial.environmentName) }
-    var gcloudUsername by remember(initial.id) { mutableStateOf(initial.gcloudUsername) }
     var aiTools by remember(initial.id) {
         mutableStateOf(
             initial.aiTools.ifEmpty {
@@ -433,13 +480,16 @@ private fun RemoteMachineEditor(
                         connectTimeoutSeconds = timeout.toIntOrNull() ?: 15,
                         oauthClientId = oauthClientId,
                         environmentName = environment,
-                        gcloudUsername = gcloudUsername,
+                        gcloudUsername = if (type == RemoteMachineType.GCLOUD_SHELL) username else initial.gcloudUsername,
                         aiToolsEnabled = true,
                         aiTools = aiTools
                     )
                     runCatching {
                         require(name.isNotBlank()) { "Machine name is required." }
                         require(type != RemoteMachineType.SSH || host.isNotBlank()) { "Host is required for SSH machines." }
+                        require(type != RemoteMachineType.SSH || auth != RemoteAuthentication.PRIVATE_KEY || identityFile.isNotBlank()) {
+                            "IdentityFile is required for private-key authentication."
+                        }
                     }.onSuccess { onSave(machine) }.onFailure { error = it.message }
                 }) { Text(stringResource(R.string.common_save)) } }
             )
@@ -465,13 +515,25 @@ private fun RemoteMachineEditor(
                     }
                 } else {
                     RemoteTextField(environment, { environment = it }, stringResource(R.string.remote_machine_environment))
-                    RemoteTextField(gcloudUsername, { gcloudUsername = it }, stringResource(R.string.remote_machine_gcloud_user))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         RemoteTextField(host, {}, stringResource(R.string.remote_machine_ip), Modifier.weight(1f), readOnly = true)
                         OutlinedButton(enabled = !loadingIp, onClick = {
                             loadingIp = true
                             scope.launch {
-                            onRefreshIp(initial.copy(name = name, type = type, environmentName = environment, gcloudUsername = gcloudUsername, oauthClientId = oauthClientId))
+                                onRefreshIp(
+                                    initial.copy(
+                                        name = name,
+                                        type = type,
+                                        environmentName = environment,
+                                        username = username,
+                                        gcloudUsername = username,
+                                        authentication = auth,
+                                        password = password,
+                                        identityFile = identityFile,
+                                        identityPassphrase = passphrase,
+                                        oauthClientId = oauthClientId
+                                    )
+                                )
                                     .onSuccess { updated -> host = updated.host; port = updated.port.toString(); username = updated.username }
                                     .onFailure { error = it.message }
                                 loadingIp = false
@@ -608,20 +670,28 @@ private fun RemoteMachineEditor(
                 )
                 val toolNames = when (type) {
                     RemoteMachineType.SSH -> listOf(REMOTE_TOOL_EXECUTE)
-                    RemoteMachineType.GCLOUD_SHELL -> listOf(REMOTE_TOOL_START_MACHINE, REMOTE_TOOL_EXECUTE)
+                    RemoteMachineType.GCLOUD_SHELL -> listOf(REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_EXECUTE)
                 }
                 toolNames.forEach { toolName ->
                     RemoteToggle(
                         label = stringResource(
-                            if (toolName == REMOTE_TOOL_START_MACHINE) {
-                                R.string.remote_machine_tool_start_machine
+                            if (toolName == REMOTE_TOOL_UPDATE_IP) {
+                                R.string.remote_machine_update_ip
                             } else {
                                 R.string.remote_machine_tool_execute
                             }
                         ),
-                        checked = aiTools[toolName] != false
+                        checked = aiTools[toolName]
+                            ?: if (toolName == REMOTE_TOOL_UPDATE_IP) aiTools[REMOTE_TOOL_START_MACHINE] != false else true
                     ) { enabled ->
                         aiTools = aiTools + (toolName to enabled)
+                    }
+                    if (toolName == REMOTE_TOOL_UPDATE_IP) {
+                        Text(
+                            stringResource(R.string.remote_machine_tool_update_ip_help),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -639,18 +709,14 @@ private fun RemoteMachineSettings(
     var sshConfig by remember(state.sshConfig) { mutableStateOf(state.sshConfig) }
     var clientEditor by remember { mutableStateOf<GCloudOAuthClient?>(null) }
     var binaryError by remember { mutableStateOf<String?>(null) }
+    var testingBinaryId by remember { mutableStateOf<String?>(null) }
+    var binaryTestNotice by remember { mutableStateOf<BinaryTestNotice?>(null) }
     var identityError by remember { mutableStateOf<String?>(null) }
     var oauthError by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val configLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri ?: return@rememberLauncherForActivityResult
-        scope.launch {
-            sshConfig = withContext(Dispatchers.IO) {
-                context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-            }
-        }
-    }
+    val sshConfigPath = remember(context) { remoteMachineSshConfigFile(context).absolutePath }
+    val configEditorFocusRequester = remember { FocusRequester() }
     val identityLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri ?: return@rememberLauncherForActivityResult
         scope.launch {
@@ -689,13 +755,25 @@ private fun RemoteMachineSettings(
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             RemoteSection(stringResource(R.string.remote_machine_ssh_config)) {
                 Text(stringResource(R.string.remote_machine_ssh_config_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                OutlinedButton(onClick = { configLauncher.launch(arrayOf("text/plain", "application/octet-stream", "*/*")) }) {
-                    Icon(Icons.Outlined.Code, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.remote_machine_open_ssh_config))
-                }
+                RemoteTextField(
+                    value = sshConfigPath,
+                    onValueChange = {},
+                    label = stringResource(R.string.remote_machine_ssh_config_path),
+                    readOnly = true,
+                    singleLine = true,
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            configEditorFocusRequester.requestFocus()
+                        }) {
+                            Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.common_edit))
+                        }
+                    }
+                )
                 RemoteTextField(
                     value = sshConfig,
                     onValueChange = { sshConfig = it },
                     label = stringResource(R.string.remote_machine_ssh_config),
+                    modifier = Modifier.focusRequester(configEditorFocusRequester),
                     minLines = 10,
                     maxLines = 20,
                     font = FontFamily.Monospace,
@@ -708,11 +786,16 @@ private fun RemoteMachineSettings(
                     )
                 )
                 TextButton(onClick = {
-                    val parsed = SshConfigParser.parse(sshConfig)
-                    if (parsed.isNotEmpty()) {
+                    val aliases = SshConfigParser.parse(sshConfig)
+                        .flatMap { it.aliases }
+                        .filterNot { it.startsWith('!') || '*' in it || '?' in it }
+                        .distinct()
+                    if (aliases.isNotEmpty()) {
                         // Import only if aliases are not already represented; the full config stays editable above.
                         scope.launch {
-                            parsed.map { SshConfigParser.toMachine(it) }.forEach { machine ->
+                            aliases.mapNotNull { alias ->
+                                SshConfigParser.find(sshConfig, alias)?.let { SshConfigParser.toMachine(it) }
+                            }.forEach { machine ->
                                 if (state.machines.none { it.name == machine.name }) viewModel.saveMachine(machine)
                             }
                         }
@@ -758,7 +841,9 @@ private fun RemoteMachineSettings(
                             Text(key.path, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                             if (users > 0) Text(stringResource(R.string.remote_machine_ssh_key_used_by, users), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        IconButton(onClick = { viewModel.deleteIdentityKey(key.id) }) { Icon(Icons.Outlined.Lock, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
+                        IconButton(enabled = users == 0, onClick = { viewModel.deleteIdentityKey(key.id) }) {
+                            Icon(Icons.Outlined.Lock, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
                 OutlinedButton(onClick = { identityLauncher.launch(arrayOf("application/octet-stream", "text/plain", "*/*")) }, modifier = Modifier.fillMaxWidth()) {
@@ -769,14 +854,60 @@ private fun RemoteMachineSettings(
             RemoteSection(stringResource(R.string.remote_machine_binaries)) {
                 Text(stringResource(R.string.remote_machine_binaries_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 state.binaries.forEach { binary ->
+                    val users = state.machines.count { machine ->
+                        listOf(machine.proxyCommand, machine.localCommand).any { command ->
+                            Regex("(^|\\s)${Regex.escape(binary.name)}(?=\\s|$)").containsMatchIn(command)
+                        }
+                    }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.Code, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(binary.name, style = MaterialTheme.typography.titleSmall)
                             Text(binary.path, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                            if (users > 0) Text(stringResource(R.string.remote_machine_binary_used_by, users), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        IconButton(onClick = { viewModel.deleteBinary(binary.id) }) { Icon(Icons.Outlined.Lock, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
+                        IconButton(
+                            enabled = testingBinaryId == null,
+                            onClick = {
+                                testingBinaryId = binary.id
+                                scope.launch {
+                                    viewModel.testBinary(binary.id).fold(
+                                        onSuccess = { result ->
+                                            val status = if (result.timedOut) {
+                                                context.getString(R.string.remote_machine_binary_test_timeout)
+                                            } else {
+                                                context.getString(R.string.remote_machine_binary_test_exit, result.exitCode)
+                                            }
+                                            binaryTestNotice = BinaryTestNotice(
+                                                binaryName = binary.name,
+                                                status = status,
+                                                output = result.output.ifBlank {
+                                                    context.getString(R.string.remote_machine_binary_test_no_output)
+                                                }
+                                            )
+                                        },
+                                        onFailure = { error ->
+                                            binaryTestNotice = BinaryTestNotice(
+                                                binaryName = binary.name,
+                                                status = context.getString(R.string.remote_machine_binary_test_failed),
+                                                output = error.message ?: error.toString()
+                                            )
+                                        }
+                                    )
+                                    testingBinaryId = null
+                                }
+                            }
+                        ) {
+                            if (testingBinaryId == binary.id) {
+                                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Outlined.PlayArrow, stringResource(R.string.remote_machine_test_binary))
+                            }
+                        }
+                        IconButton(enabled = users == 0, onClick = { viewModel.deleteBinary(binary.id) }) {
+                            Icon(Icons.Outlined.Lock, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
                 OutlinedButton(onClick = { binaryLauncher.launch(arrayOf("application/octet-stream", "application/x-executable", "*/*")) }, modifier = Modifier.fillMaxWidth()) {
@@ -787,6 +918,35 @@ private fun RemoteMachineSettings(
         }
     }
 
+    binaryTestNotice?.let { notice ->
+        AlertDialog(
+            onDismissRequest = { binaryTestNotice = null },
+            title = { Text(stringResource(R.string.remote_machine_binary_test_title, notice.binaryName)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(notice.status, style = MaterialTheme.typography.labelMedium)
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Text(
+                            notice.output,
+                            modifier = Modifier.verticalScroll(rememberScrollState()).padding(10.dp),
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { binaryTestNotice = null }) {
+                    Text(stringResource(R.string.common_close))
+                }
+            }
+        )
+    }
+
     clientEditor?.let { initial ->
         OAuthClientDialog(
             initial = initial,
@@ -794,13 +954,6 @@ private fun RemoteMachineSettings(
             onSave = { client ->
                 viewModel.saveOAuthClient(client)
                 clientEditor = null
-            },
-            onAuthorize = { client ->
-                scope.launch {
-                    viewModel.saveOAuthClientNow(client)
-                    viewModel.authorize(client)
-                    clientEditor = null
-                }
             }
         )
     }
@@ -810,8 +963,7 @@ private fun RemoteMachineSettings(
 private fun OAuthClientDialog(
     initial: GCloudOAuthClient,
     onDismiss: () -> Unit,
-    onSave: (GCloudOAuthClient) -> Unit,
-    onAuthorize: (GCloudOAuthClient) -> Unit
+    onSave: (GCloudOAuthClient) -> Unit
 ) {
     var name by remember(initial.id) { mutableStateOf(initial.name) }
     var clientId by remember(initial.id) { mutableStateOf(initial.clientId) }
@@ -827,9 +979,8 @@ private fun OAuthClientDialog(
             }
         },
         confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(onClick = { onAuthorize(GCloudOAuthClient(initial.id, name, clientId, secret)) }) { Text(stringResource(R.string.remote_machine_authorize)) }
-                Button(onClick = { onSave(GCloudOAuthClient(initial.id, name, clientId, secret)) }) { Text(stringResource(R.string.common_save)) }
+            Button(onClick = { onSave(GCloudOAuthClient(initial.id, name, clientId, secret)) }) {
+                Text(stringResource(R.string.common_save))
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
@@ -945,11 +1096,21 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
                         }
                         DropdownMenu(
                             expanded = inputModeMenuExpanded,
-                            onDismissRequest = { inputModeMenuExpanded = false }
+                            onDismissRequest = { inputModeMenuExpanded = false },
+                            containerColor = Color(0xFF1B1E21),
+                            tonalElevation = 0.dp,
+                            shadowElevation = 8.dp
                         ) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.remote_machine_terminal_local_input)) },
-                                trailingIcon = { if (bridge.inputMode == TerminalInputMode.LOCAL) Text("✓") },
+                                text = {
+                                    Text(
+                                        stringResource(R.string.remote_machine_terminal_local_input),
+                                        color = Color.White
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (bridge.inputMode == TerminalInputMode.LOCAL) Text("✓", color = Color(0xFF9CCC65))
+                                },
                                 onClick = {
                                     if (bridge.setInputMode(TerminalInputMode.LOCAL)) {
                                         terminalPrefs.edit()
@@ -961,8 +1122,15 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
                             )
                             DropdownMenuItem(
                                 enabled = !bridge.hasLocalDraft,
-                                text = { Text(stringResource(R.string.remote_machine_terminal_remote_input)) },
-                                trailingIcon = { if (bridge.inputMode == TerminalInputMode.REMOTE) Text("✓") },
+                                text = {
+                                    Text(
+                                        stringResource(R.string.remote_machine_terminal_remote_input),
+                                        color = if (bridge.hasLocalDraft) Color(0xFF777D82) else Color.White
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (bridge.inputMode == TerminalInputMode.REMOTE) Text("✓", color = Color(0xFF9CCC65))
+                                },
                                 onClick = {
                                     if (bridge.setInputMode(TerminalInputMode.REMOTE)) {
                                         terminalPrefs.edit()
@@ -1268,7 +1436,7 @@ private class RemoteTerminalBridge(
 
     fun localDraftForDisplay(): String? {
         val submitted = submittedLocalInput
-        if (inputMode != TerminalInputMode.LOCAL && submitted == null) return null
+        if (submitted == null && localInput.isEmpty()) return null
         return buildString {
             submitted?.let(::append)
             if (localInput.isNotEmpty()) {
@@ -1276,8 +1444,6 @@ private class RemoteTerminalBridge(
                 append(localInput, 0, localCursor)
                 append('▏')
                 append(localInput.substring(localCursor))
-            } else if (submitted == null && inputMode == TerminalInputMode.LOCAL) {
-                append('▏')
             }
         }
     }
