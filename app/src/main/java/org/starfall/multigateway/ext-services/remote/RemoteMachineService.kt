@@ -65,10 +65,17 @@ class RemoteTerminal internal constructor(
         runCatching { channel.setPtySize(columns, rows, 0, 0) }
     }
 
+    /**
+     * Disconnects the channel and SSH session. JSch writes to the socket when disconnecting, which
+     * throws NetworkOnMainThreadException on the UI thread (previously swallowed, leaving the
+     * session open), so the work always runs on a background thread. Safe to call repeatedly.
+     */
     override fun close() {
-        runCatching { channel.disconnect() }
-        runCatching { session.disconnect() }
-        runCatching { localCommand?.destroy() }
+        Thread {
+            runCatching { channel.disconnect() }
+            runCatching { session.disconnect() }
+            runCatching { localCommand?.destroy() }
+        }.apply { isDaemon = true; name = "remote-terminal-disconnect" }.start()
     }
 }
 

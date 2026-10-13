@@ -868,6 +868,8 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
         terminal?.close()
         terminal = null
     }
+    // Phone back button: disconnect explicitly (same as the app bar back arrow).
+    BackHandler { closeTerminal(); onBack() }
     DisposableEffect(machine.id) {
         onDispose {
             currentReaderJob?.cancel()
