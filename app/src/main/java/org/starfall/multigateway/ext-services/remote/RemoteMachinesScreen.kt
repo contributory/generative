@@ -120,7 +120,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.withContext
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
@@ -891,11 +893,25 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
             connecting = false
             readerJob = launch(Dispatchers.IO) {
                 val buffer = ByteArray(4096)
-                while (true) {
-                    val count = opened.input.read(buffer)
-                    if (count < 0) break
-                    val chunk = buffer.copyOf(count)
-                    withContext(Dispatchers.Main) { bridge.append(chunk) }
+                try {
+                    while (true) {
+                        val count = opened.input.read(buffer)
+                        if (count < 0) break
+                        val chunk = buffer.copyOf(count)
+                        withContext(Dispatchers.Main) { bridge.append(chunk) }
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: java.io.IOException) {
+                    // Stream closed: handled below like an end of stream.
+                }
+                // The remote side ended the session (not a local back/disconnect, which cancels us).
+                if (coroutineContext.isActive) {
+                    val cleanExit = opened.exitStatus >= 0
+                    withContext(Dispatchers.Main) {
+                        closeTerminal()
+                        if (cleanExit) onBack() else error = "Connection lost"
+                    }
                 }
             }
         } catch (cancelled: CancellationException) {

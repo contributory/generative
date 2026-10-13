@@ -59,6 +59,9 @@ class RemoteTerminal internal constructor(
     val output: OutputStream,
     private val localCommand: Process?
 ) : AutoCloseable {
+    /** Exit status of the remote shell, or -1 while it is running / if the connection was dropped. */
+    val exitStatus: Int get() = channel.exitStatus
+
     /** Tells the server the terminal size changed (blocking network I/O; call off the main thread). */
     fun resize(columns: Int, rows: Int) {
         if (columns <= 0 || rows <= 0 || !channel.isConnected) return
