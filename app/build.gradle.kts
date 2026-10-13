@@ -158,6 +158,12 @@ dependencies {
     // Official Model Context Protocol client SDK.
     implementation("io.modelcontextprotocol:kotlin-sdk-client:0.15.0")
 
+    // SSH transport used by the optional Remote Machines service.
+    implementation("com.github.mwiede:jsch:0.2.25")
+
+    // Termux's maintained terminal renderer/emulator, used for the interactive SSH terminal UI.
+    implementation("com.github.termux.termux-app:terminal-view:0.118.3")
+
     // KotlinX Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("org.commonmark:commonmark:0.24.0")
