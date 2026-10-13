@@ -5,6 +5,10 @@ import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.*
 import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.data.service.*
+import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_EXECUTE
+import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_START_MACHINE
+import org.starfall.multigateway.extservices.remote.RemoteMachine
+import org.starfall.multigateway.extservices.remote.RemoteMachineService
 import java.util.UUID
 
 private fun sentFileNames(result: JsonObject): List<String> {
@@ -20,7 +24,12 @@ private fun sentFileNames(result: JsonObject): List<String> {
 }
 
 /** Native structured tool calls, bounded rounds, no executable text extracted from answers. */
-class ToolChat(private val http: ToolHttp, private val mcp: McpService, private val llm: LlmService) {
+class ToolChat(
+    private val http: ToolHttp,
+    private val mcp: McpService,
+    private val llm: LlmService,
+    private val remoteMachines: RemoteMachineService? = null
+) {
     fun generateMedia(
         provider: LlmProviderInfo,
         model: String,
@@ -99,6 +108,9 @@ class ToolChat(private val http: ToolHttp, private val mcp: McpService, private 
     ): Flow<GenerationEvent> = channelFlow {
         val sessions = mutableMapOf<String, McpSession>()
         val tools = mutableListOf<ToolDefinition>()
+        // Keep one catalog for a generation. The service still validates the selected machine at
+        // execution time, so deleting a machine cannot redirect a call to another machine.
+        val configuredMachines = remoteMachines?.state?.value?.machines.orEmpty()
         try {
             servers
                 .filter { settings().quickMcp[it.id] != false }
@@ -117,8 +129,29 @@ class ToolChat(private val http: ToolHttp, private val mcp: McpService, private 
                         throw e
                     } catch (e: Exception) {
                         send(GenerationEvent.Tool(activity.copy(status = "error", summary = e.message.orEmpty().take(500))))
+                }
+            }
+
+            if (remoteMachines != null) {
+                configuredMachines.forEach { machine ->
+                    machine.supportedToolNames()
+                        .filter { toolName -> remoteMachineToolEnabled(settings(), machine, toolName) }
+                        .forEach { toolName ->
+                        tools += ToolDefinition(
+                            name = remoteToolName(machine, toolName),
+                            description = when (toolName) {
+                                REMOTE_TOOL_START_MACHINE ->
+                                    "Start the Google Cloud Shell environment before using it."
+                                else ->
+                                    "Execute a shell command on the remote machine '${machine.name}'. Return concise commands and inspect the result."
+                            },
+                            schema = remoteToolSchema(toolName),
+                            originalName = toolName,
+                            remoteMachineId = machine.id
+                        )
                     }
                 }
+            }
 
             listOf("generate_image", "generate_video").forEach { name ->
                 val config = settings().system[name]
@@ -203,7 +236,11 @@ class ToolChat(private val http: ToolHttp, private val mcp: McpService, private 
                 round++
                 currentCoroutineContext().ensureActive()
                 val allowed = tools.filter { tool ->
-                    if (tool.serverId == null) {
+                    if (tool.remoteMachineId != null) {
+                        configuredMachines.firstOrNull { it.id == tool.remoteMachineId }?.let { machine ->
+                            remoteMachineToolEnabled(settings(), machine, tool.originalName)
+                        } == true
+                    } else if (tool.serverId == null) {
                         if (tool.name == SEND_FILE_TOOL_NAME) fileDeliveryAvailable && settings().sendFileEnabled
                         else settings().system[tool.name]?.enabled == true
                     } else {
@@ -254,6 +291,8 @@ class ToolChat(private val http: ToolHttp, private val mcp: McpService, private 
                         name = tool?.let { definition ->
                             servers.find { it.id == definition.serverId }
                                 ?.let { "${it.name} / ${definition.originalName}" }
+                                ?: configuredMachines.find { it.id == definition.remoteMachineId }
+                                    ?.let { "${it.name} / ${definition.originalName}" }
                                 ?: definition.originalName
                         } ?: name,
                         arguments = rawArguments
@@ -265,7 +304,15 @@ class ToolChat(private val http: ToolHttp, private val mcp: McpService, private 
                         require(tool != null) { "Tool is not enabled" }
                         budget.consume(if (tool.serverId == null) name else null)
                         val args = toolArguments(function["arguments"])
-                        result = if (tool.serverId != null) {
+                        result = if (tool.remoteMachineId != null) {
+                            val machine = configuredMachines.firstOrNull { it.id == tool.remoteMachineId }
+                                ?: error("Remote Machine is no longer configured")
+                            check(remoteMachineToolEnabled(settings(), machine, tool.originalName)) {
+                                "Remote Machine or tool disabled"
+                            }
+                            remoteMachines?.executeTool(machine, tool.originalName, args)
+                                ?: error("Remote Machine service is unavailable")
+                        } else if (tool.serverId != null) {
                             check(
                                 settings().quickMcp[tool.serverId] != false &&
                                     globalMcpToolEnabled(settings(), tool.serverId, tool.originalName)
@@ -387,6 +434,32 @@ class ToolChat(private val http: ToolHttp, private val mcp: McpService, private 
             sessions.values.forEach { it.close() }
         }
     }.flowOn(Dispatchers.IO)
+
+    private fun remoteToolName(machine: RemoteMachine, tool: String): String {
+        val id = machine.id.replace(Regex("[^A-Za-z0-9_]"), "_")
+        return "machine_${id}_$tool".take(64)
+    }
+
+    private fun remoteToolSchema(tool: String): JsonObject = when (tool) {
+        REMOTE_TOOL_START_MACHINE -> buildJsonObject {
+            put("type", "object")
+            put("properties", buildJsonObject { })
+        }
+        else -> buildJsonObject {
+            put("type", "object")
+            put("properties", buildJsonObject {
+                put("command", buildJsonObject {
+                    put("type", "string")
+                    put("description", "The shell command to run on the remote machine")
+                })
+                put("timeout_seconds", buildJsonObject {
+                    put("type", "integer")
+                    put("description", "Optional timeout in seconds, from 1 to 600")
+                })
+            })
+            put("required", JsonArray(listOf(JsonPrimitive("command"))))
+        }
+    }
 
     private suspend fun request(
         p: LlmProviderInfo,

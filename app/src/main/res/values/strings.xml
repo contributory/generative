@@ -378,6 +378,8 @@
     <string name="settings_speech_services_description">Text-to-speech providers &amp; voices</string>
     <string name="settings_storage">Storage</string>
     <string name="settings_storage_description">Files created by your tools</string>
+    <string name="settings_remote_machines" translatable="false">Remote Machines</string>
+    <string name="settings_remote_machines_description" translatable="false">SSH and Google Cloud Shell connections</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_theme_description">Choose how MultiGateway looks</string>
     <string name="settings_theme_system">System</string>
@@ -455,6 +457,86 @@
     <string name="settings_download_apk">Download APK</string>
     <string name="settings_open_github_release">Open GitHub Release Page</string>
     <string name="settings_find_latest_release">Find the latest MultiGateway release on GitHub.</string>
+    <string name="remote_machines_title" translatable="false">Remote Machines</string>
+    <string name="remote_machines_description" translatable="false">SSH and Google Cloud Shell connections</string>
+    <string name="remote_machine_add" translatable="false">Add machine</string>
+    <string name="remote_machine_reorder" translatable="false">Reorder machines</string>
+    <string name="remote_machine_done_reordering" translatable="false">Done reordering</string>
+    <string name="remote_machine_settings" translatable="false">Remote Machines settings</string>
+    <string name="remote_machine_empty" translatable="false">No remote machines</string>
+    <string name="remote_machine_empty_hint" translatable="false">Add an SSH or Google Cloud Shell connection to open a terminal.</string>
+    <string name="remote_machine_unnamed" translatable="false">Unnamed machine</string>
+    <string name="remote_machine_type_ssh" translatable="false">SSH</string>
+    <string name="remote_machine_type_gcloud" translatable="false">GCloud Shell</string>
+    <string name="remote_machine_open_terminal" translatable="false">Open terminal</string>
+    <string name="remote_machine_delete_title" translatable="false">Delete remote machine</string>
+    <string name="remote_machine_delete_message" translatable="false">Delete “%1$s”? Saved credentials and its local identity reference will be removed.</string>
+    <string name="remote_machine_add_title" translatable="false">Add remote machine</string>
+    <string name="remote_machine_edit_title" translatable="false">Edit remote machine</string>
+    <string name="remote_machine_basic_section" translatable="false">Basic information</string>
+    <string name="remote_machine_connection_section" translatable="false">Connection</string>
+    <string name="remote_machine_type_label" translatable="false">Machine type</string>
+    <string name="remote_machine_host" translatable="false">Host</string>
+    <string name="remote_machine_port" translatable="false">Port</string>
+    <string name="remote_machine_ip" translatable="false">Shell IP</string>
+    <string name="remote_machine_get_ip" translatable="false">Get IP</string>
+    <string name="remote_machine_environment" translatable="false">Cloud Shell environment</string>
+    <string name="remote_machine_gcloud_user" translatable="false">Cloud Shell user (optional)</string>
+    <string name="remote_machine_username" translatable="false">Username</string>
+    <string name="remote_machine_authentication" translatable="false">Authentication</string>
+    <string name="remote_machine_private_key" translatable="false">Private key</string>
+    <string name="remote_machine_password" translatable="false">Password</string>
+    <string name="remote_machine_show_password" translatable="false">Show password</string>
+    <string name="remote_machine_hide_password" translatable="false">Hide password</string>
+    <string name="remote_machine_keyboard_interactive" translatable="false">Use keyboard-interactive authentication</string>
+    <string name="remote_machine_keyboard_interactive_help" translatable="false">Use PAM or interactive SSH prompts. Leave the password empty to enter it when opening the terminal.</string>
+    <string name="remote_machine_identity_missing" translatable="false">No identity file selected</string>
+    <string name="remote_machine_choose_key" translatable="false">Choose key</string>
+    <string name="remote_machine_key_passphrase" translatable="false">Key passphrase</string>
+    <string name="remote_machine_ssh_options" translatable="false">SSH options</string>
+    <string name="remote_machine_proxy_command" translatable="false">ProxyCommand</string>
+    <string name="remote_machine_proxy_command_help" translatable="false" formatted="false">Use %h and %p for host and port. Added binaries can be referenced by name.</string>
+    <string name="remote_machine_local_command" translatable="false">LocalCommand</string>
+    <string name="remote_machine_timeout" translatable="false">Connection timeout (seconds)</string>
+    <string name="remote_machine_keep_alive" translatable="false">Server keep-alive (seconds)</string>
+    <string name="remote_machine_strict_host_key" translatable="false">Strict host-key checking</string>
+    <string name="remote_machine_compression" translatable="false">Enable compression</string>
+    <string name="remote_machine_google_section" translatable="false">Google Cloud OAuth</string>
+    <string name="remote_machine_oauth_client" translatable="false">OAuth client</string>
+    <string name="remote_machine_select_oauth" translatable="false">Select an OAuth client</string>
+    <string name="remote_machine_oauth_sign_in" translatable="false">Sign in with Google</string>
+    <string name="remote_machine_oauth_authorized" translatable="false">Google account connected</string>
+    <string name="remote_machine_add_oauth_hint" translatable="false">Add and authorize a Google OAuth client in Remote Machines settings first.</string>
+    <string name="remote_machine_tools_section" translatable="false">AI tools</string>
+    <string name="remote_machine_enable_tools" translatable="false">Enable AI tools for this machine</string>
+    <string name="remote_machine_tool_execute" translatable="false">Execute commands</string>
+    <string name="remote_machine_tool_start_machine" translatable="false">Start machine</string>
+    <string name="remote_machine_tools_choose" translatable="false">Choose which tools the model may use on this machine.</string>
+    <string name="remote_machine_ssh_tools_hint" translatable="false">SSH exposes the execute tool.</string>
+    <string name="remote_machine_gcloud_tools_hint" translatable="false">GCloud Shell exposes start_machine and execute.</string>
+    <string name="remote_machine_ssh_config" translatable="false">SSH config file</string>
+    <string name="remote_machine_ssh_config_help" translatable="false">Open or paste an OpenSSH config. The text is stored locally and can be used to import Host entries.</string>
+    <string name="remote_machine_open_ssh_config" translatable="false">Open ssh config file</string>
+    <string name="remote_machine_import_hosts" translatable="false">Import Host entries as machines</string>
+    <string name="remote_machine_oauth_clients" translatable="false">Google OAuth clients</string>
+    <string name="remote_machine_add_oauth" translatable="false">Add OAuth client</string>
+    <string name="remote_machine_import_oauth_json" translatable="false">Import JSON</string>
+    <string name="remote_machine_client_id" translatable="false">Client ID</string>
+    <string name="remote_machine_client_secret" translatable="false">Client secret</string>
+    <string name="remote_machine_authorize" translatable="false">Authorize</string>
+    <string name="remote_machine_binaries" translatable="false">Executable binaries</string>
+    <string name="remote_machine_binaries_help" translatable="false">Imported files are copied into app storage, made executable, and can be used by name in ProxyCommand or LocalCommand.</string>
+    <string name="remote_machine_add_binary" translatable="false">Add executable binary</string>
+    <string name="remote_machine_terminal_title" translatable="false">Terminal · %1$s</string>
+    <string name="remote_machine_terminal_connecting" translatable="false">Connecting to remote shell…</string>
+    <string name="remote_machine_terminal_connection_error" translatable="false">Could not connect to the remote shell</string>
+    <string name="remote_machine_terminal_password_title" translatable="false">Enter SSH password</string>
+    <string name="remote_machine_terminal_password_help" translatable="false">No password is saved for this machine. Enter it for this connection only.</string>
+    <string name="remote_machine_terminal_password_required" translatable="false">Enter a password to connect.</string>
+    <string name="remote_machine_terminal_connect" translatable="false">Connect</string>
+    <string name="remote_machine_terminal_hint" translatable="false">Tap the terminal to type. Long-press to select/copy text; ANSI colors and terminal control sequences are supported.</string>
+    <string name="remote_machine_command" translatable="false">Command</string>
+    <string name="remote_machine_run_command" translatable="false">Run command</string>
     <string name="settings_version">Version %1$s (%2$d)</string>
     <string name="settings_universal_description">Universal AI Gateway for Android</string>
     <string name="tool_settings_media_label">Media tool settings</string>

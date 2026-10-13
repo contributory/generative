@@ -12,6 +12,23 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.background
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
@@ -789,9 +806,18 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
     var passwordInput by remember(machine.id) { mutableStateOf("") }
     var showPromptPassword by remember(machine.id) { mutableStateOf(false) }
     var submittedPassword by remember(machine.id) { mutableStateOf<String?>(null) }
-    var terminalTextSize by remember(machine.id) { mutableStateOf(18) }
     val context = LocalContext.current
+    val density = LocalDensity.current.density
+    val terminalPrefs = remember { context.getSharedPreferences("remote_terminal_ui", android.content.Context.MODE_PRIVATE) }
+    var fontDp by remember { mutableIntStateOf(terminalPrefs.getInt("font_dp", 14).coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP)) }
+    val textSizePx = (fontDp * density).toInt()
     val bridge = remember(machine.id) { RemoteTerminalBridge(context) }
+    SideEffect {
+        bridge.onZoomStep = { increase ->
+            fontDp = (fontDp + if (increase) 1 else -1).coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP)
+            terminalPrefs.edit().putInt("font_dp", fontDp).apply()
+        }
+    }
     val currentTerminal by rememberUpdatedState(terminal)
     val currentReaderJob by rememberUpdatedState(readerJob)
 
@@ -843,24 +869,8 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
         containerColor = TERMINAL_BACKGROUND,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.remote_machine_terminal_title, machine.name)) },
+                title = { Text(machine.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = { IconButton(onClick = { closeTerminal(); onBack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            terminalTextSize = (terminalTextSize - 2).coerceAtLeast(10)
-                            bridge.view?.setTextSize(terminalTextSize)
-                        },
-                        enabled = terminalTextSize > 10
-                    ) { Text("A−") }
-                    IconButton(
-                        onClick = {
-                            terminalTextSize = (terminalTextSize + 2).coerceAtMost(30)
-                            bridge.view?.setTextSize(terminalTextSize)
-                        },
-                        enabled = terminalTextSize < 30
-                    ) { Text("A+") }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = TERMINAL_BACKGROUND,
                     titleContentColor = Color.White,
@@ -871,8 +881,7 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
         }
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).background(TERMINAL_BACKGROUND),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().background(TERMINAL_BACKGROUND)
         ) {
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 terminal?.let {
@@ -882,28 +891,21 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
                             view.isFocusable = true
                             view.isFocusableInTouchMode = true
                             view.setBackgroundColor(android.graphics.Color.rgb(16, 18, 20))
-                            view.setTextSize(terminalTextSize)
+                            view.setTextSize(textSizePx)
+                            view.tag = textSizePx
                             view.setTerminalViewClient(bridge)
                             bridge.view = view
-                            val session = TerminalSession(
-                                "/system/bin/sh",
-                                // terminal-view passes this value to its native subprocess launcher;
-                                // a null working directory triggers a JNI GetStringUTFChars abort on
-                                // Android 11 before the connection error can reach the UI.
-                                context.filesDir.absolutePath,
-                                arrayOf("-c", "while true; do sleep 3600; done"),
-                                emptyArray(),
-                                2_000,
-                                bridge
-                            )
-                            bridge.session = session
+                            val session = bridge.createSession(context.filesDir)
                             view.attachSession(session)
                             view
                         },
                         modifier = Modifier.fillMaxSize(),
                         update = {
                             bridge.view = it
-                            it.setTextSize(terminalTextSize)
+                            if (it.tag != textSizePx) {
+                                it.tag = textSizePx
+                                it.setTextSize(textSizePx)
+                            }
                         }
                     )
                 }
@@ -1008,7 +1010,86 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
                     }
                 }
             }
+            if (terminal != null) TerminalExtraKeys(bridge)
         }
+    }
+}
+
+private const val MIN_TERMINAL_FONT_DP = 8
+private const val MAX_TERMINAL_FONT_DP = 32
+
+@Composable
+private fun TerminalExtraKeys(bridge: RemoteTerminalBridge) {
+    Row(
+        Modifier.fillMaxWidth().background(Color(0xFF1B1E21)).padding(vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            Modifier.weight(1f).horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            TerminalKey("ESC") { bridge.sendSpecial("\u001b") }
+            TerminalKey("TAB") { bridge.sendSpecial("\t") }
+            TerminalKey("CTRL", active = bridge.ctrlActive) { bridge.ctrlActive = !bridge.ctrlActive }
+            TerminalKey("ALT", active = bridge.altActive) { bridge.altActive = !bridge.altActive }
+            TerminalKey("←", repeat = true) { bridge.sendSpecial("\u001b[D") }
+            TerminalKey("↑", repeat = true) { bridge.sendSpecial("\u001b[A") }
+            TerminalKey("↓", repeat = true) { bridge.sendSpecial("\u001b[B") }
+            TerminalKey("→", repeat = true) { bridge.sendSpecial("\u001b[C") }
+            TerminalKey("HOME") { bridge.sendSpecial("\u001b[H") }
+            TerminalKey("END") { bridge.sendSpecial("\u001b[F") }
+            TerminalKey("PGUP") { bridge.sendSpecial("\u001b[5~") }
+            TerminalKey("PGDN") { bridge.sendSpecial("\u001b[6~") }
+            listOf('|', '~', '-', '/', '\\', '_', '$', '&', '*', '<', '>', '`').forEach { char ->
+                TerminalKey(char.toString()) { bridge.sendChar(char) }
+            }
+        }
+        IconButton(onClick = { bridge.toggleKeyboard() }) {
+            Icon(Icons.Outlined.Keyboard, null, tint = Color.White)
+        }
+    }
+}
+
+@Composable
+private fun TerminalKey(
+    label: String,
+    active: Boolean = false,
+    repeat: Boolean = false,
+    onPress: () -> Unit
+) {
+    val current by rememberUpdatedState(onPress)
+    Box(
+        Modifier
+            .defaultMinSize(minWidth = 40.dp)
+            .height(38.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (active) MaterialTheme.colorScheme.primary else Color(0xFF2B2F33))
+            .pointerInput(repeat) {
+                detectTapGestures(onPress = {
+                    current()
+                    if (repeat) {
+                        coroutineScope {
+                            val job = launch {
+                                delay(350)
+                                while (true) { current(); delay(60) }
+                            }
+                            tryAwaitRelease()
+                            job.cancel()
+                        }
+                    } else {
+                        tryAwaitRelease()
+                    }
+                })
+            }
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            label,
+            color = if (active) MaterialTheme.colorScheme.onPrimary else Color.White,
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1
+        )
     }
 }
 
@@ -1026,6 +1107,51 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
     private var closed = false
     private var emulatorReady = false
     private val pending = ByteArrayOutputStream()
+    private var replyFifo: java.io.File? = null
+
+    /** Called when the user pinches: true = bigger text, false = smaller text. */
+    var onZoomStep: (Boolean) -> Unit = {}
+    var ctrlActive by mutableStateOf(false)
+    var altActive by mutableStateOf(false)
+
+    /**
+     * Creates the tiny local session TerminalView needs for its emulator. Everything the emulator
+     * itself writes (cursor reports, mouse events, scroll arrows in vim/tmux...) goes to this
+     * session's pty; a raw, non-echoing `cat` forwards it through a FIFO to the remote channel.
+     */
+    fun createSession(filesDir: java.io.File): TerminalSession {
+        val script = runCatching {
+            val fifo = java.io.File(filesDir, "remote-machines/term-${System.nanoTime()}.in")
+            fifo.parentFile?.mkdirs()
+            fifo.delete()
+            android.system.Os.mkfifo(fifo.absolutePath, 384)
+            replyFifo = fifo
+            startReplyReader(fifo)
+            "stty raw -echo 2>/dev/null; exec cat > '${fifo.absolutePath}'"
+        }.getOrElse { "stty raw -echo 2>/dev/null; exec cat > /dev/null" }
+        // A null working directory triggers a JNI GetStringUTFChars abort on Android 11.
+        val created = TerminalSession(
+            "/system/bin/sh", filesDir.absolutePath, arrayOf("-c", script), emptyArray(), 2_000, this
+        )
+        session = created
+        return created
+    }
+
+    private fun startReplyReader(fifo: java.io.File) {
+        Thread {
+            runCatching {
+                java.io.FileInputStream(fifo).use { input ->
+                    val buffer = ByteArray(1024)
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        send(buffer.copyOf(count))
+                    }
+                }
+            }
+            fifo.delete()
+        }.apply { isDaemon = true; name = "remote-terminal-replies" }.start()
+    }
 
     fun attachRemote(terminal: RemoteTerminal) {
         remote = terminal
@@ -1050,6 +1176,8 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
         session?.finishIfRunning()
         session = null
         view = null
+        replyFifo?.delete()
+        replyFifo = null
     }
 
     private fun flushPending() {
@@ -1091,6 +1219,34 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
         send((prefix + String(Character.toChars(value))).toByteArray(Charsets.UTF_8))
     }
 
+    fun sendChar(char: Char) {
+        sendCodePoint(char.code, ctrlActive, altActive)
+        clearModifiers()
+    }
+
+    private fun clearModifiers() {
+        ctrlActive = false
+        altActive = false
+    }
+
+    /** Sends an escape sequence, adding xterm modifier parameters / application cursor mode. */
+    fun sendSpecial(sequence: String, ctrl: Boolean = ctrlActive, alt: Boolean = altActive) {
+        val match = Regex("^\u001b\\[(\\d*)([A-Za-z~])$").matchEntire(sequence)
+        val out = when {
+            match != null && (ctrl || alt) -> {
+                val number = match.groupValues[1].ifEmpty { "1" }
+                val modifier = 1 + (if (alt) 2 else 0) + (if (ctrl) 4 else 0)
+                "\u001b[$number;$modifier${match.groupValues[2]}"
+            }
+            match != null && match.groupValues[1].isEmpty() && match.groupValues[2] in "ABCD" &&
+                view?.mEmulator?.isCursorKeysApplicationMode == true -> "\u001bO${match.groupValues[2]}"
+            alt && sequence.length == 1 -> "\u001b$sequence"
+            else -> sequence
+        }
+        sendText(out)
+        clearModifiers()
+    }
+
     private fun sendKey(keyCode: Int, event: KeyEvent): Boolean {
         val sequence = when (keyCode) {
             KeyEvent.KEYCODE_ENTER -> "\r"
@@ -1108,14 +1264,16 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
             KeyEvent.KEYCODE_PAGE_DOWN -> "\u001b[6~"
             else -> null
         }
+        val ctrl = event.isCtrlPressed || ctrlActive
+        val alt = event.isAltPressed || altActive
         if (sequence != null) {
-            sendText(sequence)
+            sendSpecial(sequence, ctrl, alt)
             return true
         }
         val unicode = event.unicodeChar
         if (unicode != 0) {
-            sendCodePoint(unicode, event.isCtrlPressed, event.isAltPressed)
-            return true
+            sendCodePoint(unicode, ctrl, alt)
+            clearModifiers()
         }
         return true
     }
@@ -1144,15 +1302,34 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
     override fun logStackTrace(tag: String, e: Exception) = Unit
 
     // TerminalViewClient
-    override fun onScale(scale: Float): Float = scale.coerceIn(0.8f, 1.25f)
+    // Pinch changes the font size (like Termux) instead of scaling the view.
+    override fun onScale(scale: Float): Float {
+        if (scale < 0.9f || scale > 1.1f) {
+            onZoomStep(scale > 1f)
+            return 1.0f
+        }
+        return scale
+    }
 
     private fun focusAndShowKeyboard() {
         val terminalView = view ?: return
         terminalView.post {
             if (closed) return@post
             terminalView.requestFocus()
-            context.getSystemService(InputMethodManager::class.java)
-                ?.showSoftInput(terminalView, InputMethodManager.SHOW_IMPLICIT)
+            ViewCompat.getWindowInsetsController(terminalView)?.show(WindowInsetsCompat.Type.ime())
+            context.getSystemService(InputMethodManager::class.java)?.showSoftInput(terminalView, 0)
+        }
+    }
+
+    fun toggleKeyboard() {
+        val terminalView = view ?: return
+        val visible = ViewCompat.getRootWindowInsets(terminalView)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+        if (visible) {
+            ViewCompat.getWindowInsetsController(terminalView)?.hide(WindowInsetsCompat.Type.ime())
+                ?: context.getSystemService(InputMethodManager::class.java)
+                    ?.hideSoftInputFromWindow(terminalView.windowToken, 0)
+        } else {
+            focusAndShowKeyboard()
         }
     }
 
@@ -1165,12 +1342,13 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
     override fun onKeyDown(keyCode: Int, e: KeyEvent, session: TerminalSession): Boolean = sendKey(keyCode, e)
     override fun onKeyUp(keyCode: Int, e: KeyEvent): Boolean = true
     override fun onLongPress(event: MotionEvent): Boolean = false
-    override fun readControlKey(): Boolean = false
-    override fun readAltKey(): Boolean = false
+    override fun readControlKey(): Boolean = ctrlActive
+    override fun readAltKey(): Boolean = altActive
     override fun readShiftKey(): Boolean = false
     override fun readFnKey(): Boolean = false
     override fun onCodePoint(codePoint: Int, ctrlDown: Boolean, session: TerminalSession): Boolean {
-        sendCodePoint(codePoint, ctrlDown, false)
+        sendCodePoint(codePoint, ctrlDown, altActive)
+        clearModifiers()
         return true
     }
     override fun onEmulatorSet() {

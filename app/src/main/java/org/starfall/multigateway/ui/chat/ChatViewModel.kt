@@ -50,6 +50,34 @@ class ChatViewModel(
             }
         }
     }
+    fun setMachinesEnabled(enabled: Boolean) {
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            toolStore.update { it.copy(machinesEnabled = enabled) }
+        }
+    }
+    fun setMachineEnabled(machineId: String, enabled: Boolean, knownMachineIds: List<String> = emptyList()) {
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            toolStore.update { settings ->
+                val initialMachineSwitches = if (settings.enabledMachines.isEmpty() && knownMachineIds.isNotEmpty()) {
+                    knownMachineIds.associateWith { settings.machinesEnabled }
+                } else {
+                    settings.enabledMachines
+                }
+                settings.copy(
+                    enabledMachines = initialMachineSwitches + (machineId to enabled),
+                    machinesEnabled = settings.machinesEnabled || enabled
+                )
+            }
+        }
+    }
+    fun setMachineToolEnabled(machineId: String, toolName: String, enabled: Boolean) {
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            toolStore.update { settings ->
+                val machineTools = settings.machineTools[machineId].orEmpty() + (toolName to enabled)
+                settings.copy(machineTools = settings.machineTools + (machineId to machineTools))
+            }
+        }
+    }
     private fun toolEvents(
         provider: LlmProviderInfo,
         model: String,

@@ -41,6 +41,7 @@ import org.starfall.multigateway.ui.theme.MultiGatewayTheme
 import org.starfall.multigateway.ui.chat.ChatViewModel
 import org.starfall.multigateway.ui.configuration.ConfigurationViewModel
 import org.starfall.multigateway.ui.settings.SettingsViewModel
+import org.starfall.multigateway.extservices.remote.RemoteMachinesViewModel
 import org.starfall.multigateway.data.model.parseProviderLink
 import org.starfall.multigateway.ui.components.CrashReportDialog
 
@@ -52,6 +53,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel: ChatViewModel by viewModels { container.viewModelFactory }
     private val configurationViewModel: ConfigurationViewModel by viewModels { container.viewModelFactory }
     private val settingsViewModel: SettingsViewModel by viewModels { container.viewModelFactory }
+    private val remoteMachinesViewModel: RemoteMachinesViewModel by viewModels { container.viewModelFactory }
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     /** Language override this Activity was created with; a different one means the UI must be recreated. */
@@ -127,7 +129,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen(viewModel, configurationViewModel, settingsViewModel, container.toolFiles)
+                     MainScreen(viewModel, configurationViewModel, settingsViewModel, remoteMachinesViewModel, container.toolFiles)
                 }
                 pendingCrash?.let { report ->
                     CrashReportDialog(report,

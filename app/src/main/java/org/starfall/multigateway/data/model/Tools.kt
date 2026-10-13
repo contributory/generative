@@ -34,6 +34,12 @@ data class ToolSettings(
     val system: Map<String, SystemToolConfig> = emptyMap(),
     val quickMcp: Map<String, Boolean> = emptyMap(),
     val mcpTools: Map<String, Map<String, Boolean>> = emptyMap(),
+    /** Master switch for Remote Machine tools in the chat tool picker. */
+    val machinesEnabled: Boolean = false,
+    /** Machine-level switches shown in Tools Manage. Entries override the legacy master switch. */
+    val enabledMachines: Map<String, Boolean> = emptyMap(),
+    /** Legacy per-machine tool switches retained for decoding older settings. */
+    val machineTools: Map<String, Map<String, Boolean>> = emptyMap(),
     /** Lets the AI display files in chat through send_file. On unless the user turns it off. */
     val sendFileEnabled: Boolean = true
 )
@@ -59,7 +65,9 @@ data class ToolDefinition(
     val description: String,
     val schema: JsonObject,
     val serverId: String? = null,
-    val originalName: String = name
+    val originalName: String = name,
+    /** A tool owned by a Remote Machine, mutually exclusive with [serverId]. */
+    val remoteMachineId: String? = null
 )
 
 /**
@@ -113,6 +121,20 @@ sealed interface GenerationEvent {
 
 fun globalMcpToolEnabled(settings: ToolSettings, serverId: String, name: String): Boolean =
     settings.mcpTools[serverId]?.get(name) != false
+
+fun remoteMachineEnabled(settings: ToolSettings, machine: org.starfall.multigateway.extservices.remote.RemoteMachine): Boolean =
+    if (settings.enabledMachines.isNotEmpty()) {
+        settings.enabledMachines[machine.id] == true
+    } else {
+        settings.machinesEnabled && machine.aiToolsEnabled
+    }
+
+fun remoteMachineToolEnabled(
+    settings: ToolSettings,
+    machine: org.starfall.multigateway.extservices.remote.RemoteMachine,
+    toolName: String
+): Boolean = remoteMachineEnabled(settings, machine) &&
+    machine.isToolEnabled(toolName)
 
 fun toolAllowed(
     access: McpAccess?,

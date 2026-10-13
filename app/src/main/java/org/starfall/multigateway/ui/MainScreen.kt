@@ -30,6 +30,8 @@ import org.starfall.multigateway.ui.speech.SpeechScreen
 import org.starfall.multigateway.ui.chat.ChatViewModel
 import org.starfall.multigateway.ui.configuration.ConfigurationViewModel
 import org.starfall.multigateway.ui.settings.SettingsViewModel
+import org.starfall.multigateway.extservices.remote.RemoteMachinesViewModel
+import org.starfall.multigateway.extservices.remote.RemoteMachinesScreen
 import org.starfall.multigateway.data.tools.ToolFiles
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -57,6 +59,7 @@ fun MainScreen(
     viewModel: ChatViewModel,
     configurationViewModel: ConfigurationViewModel,
     settingsViewModel: SettingsViewModel,
+    remoteMachinesViewModel: RemoteMachinesViewModel,
     toolFiles: ToolFiles,
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -95,6 +98,7 @@ fun MainScreen(
     val mcpToolsCache by configurationViewModel.mcpToolsCache.collectAsStateWithLifecycle()
     val mcpToolErrors by configurationViewModel.mcpToolErrors.collectAsStateWithLifecycle()
     val mcpToolsLoading by configurationViewModel.mcpToolsLoading.collectAsStateWithLifecycle()
+    val remoteMachineState by remoteMachinesViewModel.state.collectAsStateWithLifecycle()
 
     val toolSettings by viewModel.toolSettings.collectAsStateWithLifecycle()
     val queuedMessages by viewModel.queuedMessages.collectAsStateWithLifecycle()
@@ -210,10 +214,16 @@ fun MainScreen(
 
     CompositionLocalProvider(org.starfall.multigateway.ui.chat.LocalCodeRenderingPreferences provides appPrefs, LocalChatAttachmentSelection provides chatAttachments, LocalToolControls provides ToolControls(
         servers = mcpServers,
+        machines = remoteMachineState.machines,
         settings = toolSettings,
         providers = providers,
         setSystem = viewModel::setSystemTool,
         setMcp = viewModel::setQuickMcp,
+        setMachines = viewModel::setMachinesEnabled,
+        setMachine = { machineId, enabled ->
+            viewModel.setMachineEnabled(machineId, enabled, remoteMachineState.machines.map { it.id })
+        },
+        setMachineTool = viewModel::setMachineToolEnabled,
         setSendFile = viewModel::setSendFileEnabled
     )) {
         ModalNavigationDrawer(
@@ -487,7 +497,13 @@ fun MainScreen(
                              onBack = { navController.popBackStack() }
                         )
                     }
-                    composable(AppDestination.STORAGE.route) { StorageScreen(toolFiles) { navController.popBackStack() } }
+                     composable(AppDestination.STORAGE.route) { StorageScreen(toolFiles) { navController.popBackStack() } }
+                     composable(AppDestination.REMOTE_MACHINES.route) {
+                         RemoteMachinesScreen(
+                             viewModel = remoteMachinesViewModel,
+                             onBack = { navController.popBackStack() }
+                         )
+                     }
                     composable(AppDestination.SETTINGS.route) {
                         SettingsScreen(
                             appPreferences = appPrefs,
@@ -549,6 +565,7 @@ fun MainScreen(
                             onNavigateToSpeech = { openConfiguration(AppDestination.SPEECH) },
                             onNavigateToSystemTools = { openConfiguration(AppDestination.SYSTEM_TOOLS) },
                              onNavigateToStorage = { openConfiguration(AppDestination.STORAGE) },
+                             onNavigateToRemoteMachines = { openConfiguration(AppDestination.REMOTE_MACHINES) },
                              onExportJson = ::exportJson,
                              onImportJson = ::importJson,
                              onBack = { navController.popBackStack() }

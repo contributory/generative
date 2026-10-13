@@ -96,6 +96,7 @@ fun SettingsScreen(
     onNavigateToSpeech: () -> Unit = {},
     onNavigateToSystemTools: () -> Unit = {},
     onNavigateToStorage: () -> Unit = {},
+    onNavigateToRemoteMachines: () -> Unit = {},
     onExportJson: (JsonExportKind) -> Unit = {},
     onImportJson: (JsonExportKind) -> Unit = {},
     onTtsReadCodeBlocksChange: (Boolean) -> Unit = {},
@@ -164,6 +165,7 @@ fun SettingsScreen(
                             item { SettingsNavigationItem(stringResource(R.string.settings_providers), stringResource(R.string.settings_providers_description), Icons.Outlined.CloudQueue, onNavigateToProviders) }
                             item { SettingsNavigationItem(stringResource(R.string.settings_mcp_manage), stringResource(R.string.settings_mcp_manage_description), Icons.Outlined.Extension, onNavigateToMcp) }
                             item { SettingsNavigationItem(stringResource(R.string.settings_speech_services), stringResource(R.string.settings_speech_services_description), Icons.Outlined.RecordVoiceOver, onNavigateToSpeech) }
+                            item { SettingsNavigationItem(stringResource(R.string.settings_remote_machines), stringResource(R.string.settings_remote_machines_description), Icons.Outlined.Computer, onNavigateToRemoteMachines) }
                             item { SettingsNavigationItem(stringResource(R.string.settings_storage), stringResource(R.string.settings_storage_description), Icons.Outlined.FolderOpen, onNavigateToStorage) }
                             item {
                                 Spacer(Modifier.height(8.dp))

@@ -11,6 +11,8 @@ import org.starfall.multigateway.data.tools.*
 import org.starfall.multigateway.ui.chat.ChatViewModel
 import org.starfall.multigateway.ui.configuration.ConfigurationViewModel
 import org.starfall.multigateway.ui.settings.SettingsViewModel
+import org.starfall.multigateway.extservices.remote.RemoteMachineService
+import org.starfall.multigateway.extservices.remote.RemoteMachinesViewModel
 
 /** Application-scoped dependencies. ViewModels receive only their required dependencies. */
 class AppContainer(context: Context) {
@@ -29,6 +31,7 @@ class AppContainer(context: Context) {
     private val speech = SpeechRepository(database)
     private val preferences = AppPreferencesRepository(appContext)
     private val toolSettings = ToolSettingsStore(appContext)
+    val remoteMachineService = RemoteMachineService(appContext)
     val defaultDataInitializer = DefaultDataInitializer(providers, mcp, speech, preferences, icons)
 
     val viewModelFactory = viewModelFactory {
@@ -38,7 +41,7 @@ class AppContainer(context: Context) {
                 providers,
                 mcp,
                 preferences,
-                ToolChat(toolHttp, mcpService, llmService),
+                ToolChat(toolHttp, mcpService, llmService, remoteMachineService),
                 toolSettings,
                 speech,
                 TtsHelper(appContext),
@@ -48,5 +51,6 @@ class AppContainer(context: Context) {
         }
         initializer { ConfigurationViewModel(profiles, providers, mcp, speech, preferences) }
         initializer { SettingsViewModel(preferences) }
+        initializer { RemoteMachinesViewModel(remoteMachineService) }
     }
 }

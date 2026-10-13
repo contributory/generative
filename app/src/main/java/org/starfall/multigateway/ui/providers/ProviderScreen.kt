@@ -667,6 +667,26 @@ fun ProviderScreen(
                                         unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
                                     )
                                 )
+                            } else if (openGroup != null) {
+                                val members = orderedProviders.filter { it.groupId == openGroup.id }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    ProviderFolderPreview(group = openGroup, providers = members, modifier = Modifier.size(40.dp))
+                                    Spacer(Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = openGroup.name,
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.provider_count, members.size),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.outline,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
                             } else Column {
                                 Text(
                                     text = stringResource(R.string.providers_title),
@@ -683,12 +703,27 @@ fun ProviderScreen(
                             }
                         },
                         navigationIcon = {
-                            IconButton(onClick = onBack) {
+                            if (openGroup == null || searching) IconButton(onClick = onBack) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                             }
                         },
                         actions = {
-                            if (searching) {
+                            if (openGroup != null && !searching) {
+                                IconButton(
+                                    onClick = { createProvider(openGroup.id) },
+                                    modifier = Modifier.testTag("add_provider")
+                                ) {
+                                    Icon(Icons.Default.Add, stringResource(R.string.add_provider))
+                                }
+                                ProviderGroupOverflowMenu(
+                                    onEdit = { groupToRename = openGroup },
+                                    onDelete = { deletingGroup = openGroup; openGroupId = null },
+                                    compact = false
+                                )
+                                IconButton(onClick = { openGroupId = null }) {
+                                    Icon(Icons.Default.Close, stringResource(R.string.common_close))
+                                }
+                            } else if (searching) {
                                 IconButton(onClick = ::closeSearch) {
                                     Icon(Icons.Default.Close, stringResource(R.string.close_provider_search))
                                 }
@@ -1164,7 +1199,8 @@ private fun ProviderFolderOverlay(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .fillMaxWidth(0.92f)
-                    .fillMaxHeight(0.78f)
+                    .fillMaxHeight()
+                    .padding(vertical = 12.dp)
                     .widthIn(max = 520.dp)
                     .onGloballyPositioned { surfaces.panelBounds = it.boundsInRoot() }
                     .testTag("provider_folder_dialog_${group.id}"),
@@ -1175,33 +1211,7 @@ private fun ProviderFolderOverlay(
                 tonalElevation = if (amoled) 0.dp else 6.dp,
                 border = if (amoled) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null
             ) {
-                Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        ProviderFolderPreview(
-                            group = group,
-                            providers = providers,
-                            modifier = Modifier.size(52.dp)
-                        )
-                        Spacer(Modifier.width(14.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                text = group.name,
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = stringResource(R.string.provider_count, providers.size),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        ProviderGroupOverflowMenu(onEditGroup, onDeleteGroup)
-                        IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, stringResource(R.string.common_close))
-                        }
-                    }
-
+                Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     if (providers.isEmpty()) {
                         Column(
                             modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -1229,7 +1239,7 @@ private fun ProviderFolderOverlay(
                                 .fillMaxWidth()
                                 .onGloballyPositioned { surfaces.folderGridOrigin = it.positionInRoot() }
                                 .testTag("provider_folder_grid_${group.id}"),
-                            contentPadding = PaddingValues(vertical = 18.dp),
+                            contentPadding = PaddingValues(vertical = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -1346,17 +1356,17 @@ private fun ProviderGroupIconTile(
 }
 
 @Composable
-private fun ProviderGroupOverflowMenu(onEdit: () -> Unit, onDelete: () -> Unit) {
+private fun ProviderGroupOverflowMenu(onEdit: () -> Unit, onDelete: () -> Unit, compact: Boolean = true) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(
             onClick = { expanded = true },
-            modifier = Modifier.size(36.dp)
+            modifier = if (compact) Modifier.size(36.dp) else Modifier
         ) {
             Icon(
                 Icons.Default.MoreVert,
                 contentDescription = stringResource(R.string.more_options),
-                modifier = Modifier.size(20.dp)
+                modifier = if (compact) Modifier.size(20.dp) else Modifier
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
