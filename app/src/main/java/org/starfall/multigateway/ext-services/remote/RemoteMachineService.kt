@@ -388,11 +388,13 @@ class RemoteMachineService(
         try {
             val channel = session.openChannel("shell") as ChannelShell
             channel.setPtyType("xterm-256color")
-            channel.setInputStream(null)
-            channel.connect(machine.connectTimeoutSeconds * 1_000)
-            val local = startLocalCommand(machine)
+            // JSch only wires the piped streams into the channel thread if they are requested BEFORE
+            // connect(). Asking for them afterwards left the channel with no stdin reader (nothing the
+            // user typed was ever sent) and could drop the first output bytes.
             val input = channel.getInputStream()
             val output = channel.getOutputStream()
+            channel.connect(machine.connectTimeoutSeconds * 1_000)
+            val local = startLocalCommand(machine)
             RemoteTerminal(session, channel, input, output, local)
         } catch (error: Throwable) {
             session.disconnect()
