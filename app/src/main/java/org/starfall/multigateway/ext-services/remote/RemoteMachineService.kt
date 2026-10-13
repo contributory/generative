@@ -42,6 +42,9 @@ import java.util.Properties
 import java.util.UUID
 import kotlin.math.roundToInt
 
+internal const val REMOTE_TERMINAL_UI_PREFERENCES = "remote_terminal_ui"
+internal fun remoteTerminalInputModePreferenceKey(machineId: String) = "input_mode:$machineId"
+
 /** Result returned by an SSH command execution. */
 data class RemoteCommandResult(
     val output: String,
@@ -130,6 +133,12 @@ class RemoteMachineService(
             )
         }
         runCatching { File(appContext.filesDir, "remote-machines/keys/$id").delete() }
+        runCatching {
+            appContext.getSharedPreferences(REMOTE_TERMINAL_UI_PREFERENCES, Context.MODE_PRIVATE)
+                .edit()
+                .remove(remoteTerminalInputModePreferenceKey(id))
+                .apply()
+        }
     }
 
     suspend fun reorderMachines(ids: List<String>) {

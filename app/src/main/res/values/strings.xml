@@ -542,6 +542,10 @@
     <string name="remote_machine_terminal_password_required" translatable="false">Enter a password to connect.</string>
     <string name="remote_machine_terminal_connect" translatable="false">Connect</string>
     <string name="remote_machine_terminal_hint" translatable="false">Tap the terminal to type. Long-press to select/copy text; ANSI colors and terminal control sequences are supported.</string>
+    <string name="remote_machine_terminal_input_settings" translatable="false">Terminal input mode</string>
+    <string name="remote_machine_terminal_local_input" translatable="false">Local input · Enter to send</string>
+    <string name="remote_machine_terminal_remote_input" translatable="false">Remote input · send as you type</string>
+    <string name="remote_machine_terminal_local_input_label" translatable="false">Local input</string>
     <string name="remote_machine_command" translatable="false">Command</string>
     <string name="remote_machine_run_command" translatable="false">Run command</string>
     <string name="settings_version">Version %1$s (%2$d)</string>
