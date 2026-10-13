@@ -1198,6 +1198,16 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
         remote = terminal
         closed = false
         flushPending()
+        reportSize()
+    }
+
+    /** Sends the emulator's current size to the remote pty, off the main thread. */
+    private fun reportSize() {
+        val terminal = remote ?: return
+        val emulator = session?.emulator ?: return
+        val columns = emulator.mColumns
+        val rows = emulator.mRows
+        Thread { terminal.resize(columns, rows) }.apply { isDaemon = true }.start()
     }
 
     fun append(bytes: ByteArray) {
@@ -1392,11 +1402,18 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
         clearModifiers()
         return true
     }
+    // TerminalView calls this on EVERY size change (e.g. when the keyboard shows or hides), not only
+    // once. Resetting the session or re-showing the keyboard here made the keyboard pop back up and
+    // wiped the screen, so only the first call does that; later calls just sync the remote size.
     override fun onEmulatorSet() {
+        val first = !emulatorReady
         emulatorReady = true
-        session?.reset()
-        flushPending()
-        focusAndShowKeyboard()
+        if (first) {
+            session?.reset()
+            flushPending()
+            focusAndShowKeyboard()
+        }
+        reportSize()
     }
 }
 

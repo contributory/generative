@@ -59,6 +59,12 @@ class RemoteTerminal internal constructor(
     val output: OutputStream,
     private val localCommand: Process?
 ) : AutoCloseable {
+    /** Tells the server the terminal size changed (blocking network I/O; call off the main thread). */
+    fun resize(columns: Int, rows: Int) {
+        if (columns <= 0 || rows <= 0 || !channel.isConnected) return
+        runCatching { channel.setPtySize(columns, rows, 0, 0) }
+    }
+
     override fun close() {
         runCatching { channel.disconnect() }
         runCatching { session.disconnect() }
@@ -381,7 +387,7 @@ class RemoteMachineService(
         val session = connect(machine, passwordOverride)
         try {
             val channel = session.openChannel("shell") as ChannelShell
-            channel.setPtyType("xterm")
+            channel.setPtyType("xterm-256color")
             channel.setInputStream(null)
             channel.connect(machine.connectTimeoutSeconds * 1_000)
             val local = startLocalCommand(machine)
