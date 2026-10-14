@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.*
 import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.data.service.*
+import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_DISCONNECT
 import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_EXECUTE
 import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_START_MACHINE
 import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_UPDATE_IP
@@ -32,6 +33,11 @@ class ToolChat(
     private val llm: LlmService,
     private val remoteMachines: RemoteMachineService? = null
 ) {
+    /** Closes persistent Remote Machine SSH connections; called when the user switches chat. */
+    fun disconnectRemoteMachines() {
+        remoteMachines?.disconnectAllWhenIdle()
+    }
+
     fun generateMedia(
         provider: LlmProviderInfo,
         model: String,
@@ -144,11 +150,15 @@ class ToolChat(
                             description = when (toolName) {
                                 REMOTE_TOOL_START_MACHINE ->
                                     "Start the Google Cloud Shell environment of the remote machine '${machine.name}' before using it."
+                                REMOTE_TOOL_DISCONNECT ->
+                                    "Close the SSH connection to the remote machine '${machine.name}'. " +
+                                        "The connection opens automatically on the next execute call and closes after 5 minutes without activity, so calling this is optional."
                                 REMOTE_TOOL_UPDATE_IP ->
                                     "Refresh the SSH endpoint of the Google Cloud Shell remote machine '${machine.name}'. Use only after connecting to this machine reports an error."
                                 else ->
                                     "Execute a shell command on the remote machine named '${machine.name}' (${machine.type.label()}). " +
-                                        "The user knows this machine by that exact name. Return concise commands and inspect the result."
+                                        "The user knows this machine by that exact name. Connects automatically and keeps the connection open for 5 minutes of inactivity. " +
+                                        "Return concise commands and inspect the result."
                             },
                             schema = remoteToolSchema(toolName),
                             originalName = toolName,
@@ -470,7 +480,7 @@ class ToolChat(
     }
 
     private fun remoteToolSchema(tool: String): JsonObject = when (tool) {
-        REMOTE_TOOL_START_MACHINE, REMOTE_TOOL_UPDATE_IP -> buildJsonObject {
+        REMOTE_TOOL_START_MACHINE, REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_DISCONNECT -> buildJsonObject {
             put("type", "object")
             put("properties", buildJsonObject { })
         }

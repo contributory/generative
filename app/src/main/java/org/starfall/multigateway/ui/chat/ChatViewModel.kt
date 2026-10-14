@@ -451,6 +451,7 @@ class ChatViewModel(
     fun selectConversation(conversation: Conversation) {
         if (deletingAllConversations.value || conversation.id in deletingConversations.value) return
         val selected = existingGeneration(conversation.id)?.snapshot ?: conversation
+        if (selected.id != _currentConversation.value?.id) toolChat.disconnectRemoteMachines()
         _currentConversation.value = selected
         drainQueuedMessages()
         if (!appPreferences.value.persistSelectedModel) return
@@ -462,6 +463,7 @@ class ChatViewModel(
     }
 
     fun startNewChat() {
+        toolChat.disconnectRemoteMachines()
         val now = System.currentTimeMillis()
         _currentConversation.value = Conversation(
             id = UUID.randomUUID().toString(),

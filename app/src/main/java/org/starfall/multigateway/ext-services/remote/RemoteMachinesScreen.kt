@@ -63,6 +63,7 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.LinkOff
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material.icons.outlined.Visibility
@@ -153,6 +154,7 @@ fun RemoteMachinesScreen(
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsStateCompat()
+    val connectedIds by viewModel.connectedMachineIds.collectAsStateCompat()
     var editor by remember { mutableStateOf<MachineEditor?>(null) }
     var page by remember { mutableStateOf<RemoteMachinesPage?>(null) }
     var deleting by remember { mutableStateOf<RemoteMachine?>(null) }
@@ -209,6 +211,8 @@ fun RemoteMachinesScreen(
                 content = {
                     RemoteMachineList(
                         machines = state.machines,
+                        connectedIds = connectedIds,
+                        onDisconnect = { viewModel.disconnect(it.id) },
                         onTerminal = { terminalMachine = it },
                         onEdit = { editor = MachineEditor(it, false) },
                         onDelete = { deleting = it },
@@ -321,6 +325,8 @@ private fun RemoteMachinesRootScaffold(
 @Composable
 private fun RemoteMachineList(
     machines: List<RemoteMachine>,
+    connectedIds: Set<String>,
+    onDisconnect: (RemoteMachine) -> Unit,
     onTerminal: (RemoteMachine) -> Unit,
     onEdit: (RemoteMachine) -> Unit,
     onDelete: (RemoteMachine) -> Unit,
@@ -334,6 +340,8 @@ private fun RemoteMachineList(
         items(machines, key = { machine -> machine.id }) { machine ->
             RemoteMachineCard(
                 machine = machine,
+                connected = machine.id in connectedIds,
+                onDisconnect = { onDisconnect(machine) },
                 onTerminal = { onTerminal(machine) },
                 onEdit = { onEdit(machine) },
                 onDelete = { onDelete(machine) },
@@ -346,6 +354,8 @@ private fun RemoteMachineList(
 @Composable
 private fun RemoteMachineCard(
     machine: RemoteMachine,
+    connected: Boolean,
+    onDisconnect: () -> Unit,
     onTerminal: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -386,6 +396,11 @@ private fun RemoteMachineCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1
                 )
+            }
+            if (connected) {
+                IconButton(onClick = onDisconnect) {
+                    Icon(Icons.Outlined.LinkOff, stringResource(R.string.remote_machine_disconnect))
+                }
             }
             IconButton(onClick = onTerminal) { Icon(Icons.Outlined.Terminal, stringResource(R.string.remote_machine_open_terminal)) }
             Box {
@@ -668,17 +683,13 @@ private fun RemoteMachineEditor(
                     stringResource(R.string.remote_machine_tools_choose),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                val toolNames = when (type) {
-                    RemoteMachineType.SSH -> listOf(REMOTE_TOOL_EXECUTE)
-                    RemoteMachineType.GCLOUD_SHELL -> listOf(REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_EXECUTE)
-                }
-                toolNames.forEach { toolName ->
+                remoteMachineToolNames(type).forEach { toolName ->
                     RemoteToggle(
                         label = stringResource(
-                            if (toolName == REMOTE_TOOL_UPDATE_IP) {
-                                R.string.remote_machine_update_ip
-                            } else {
-                                R.string.remote_machine_tool_execute
+                            when (toolName) {
+                                REMOTE_TOOL_UPDATE_IP -> R.string.remote_machine_update_ip
+                                REMOTE_TOOL_DISCONNECT -> R.string.remote_machine_tool_disconnect
+                                else -> R.string.remote_machine_tool_execute
                             }
                         ),
                         checked = aiTools[toolName]
@@ -989,8 +1000,11 @@ private fun OAuthClientDialog(
 
 @Composable
 private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachinesViewModel, onBack: () -> Unit) {
+    // An existing SSH connection is reused, so no password is needed to open the terminal.
+    val alreadyConnected = remember(machine.id) { viewModel.isConnected(machine.id) }
     val requiresInteractivePassword =
-        machine.type == RemoteMachineType.SSH &&
+        !alreadyConnected &&
+            machine.type == RemoteMachineType.SSH &&
             machine.authentication == RemoteAuthentication.PASSWORD &&
             machine.password.isEmpty()
     var terminal by remember(machine.id) { mutableStateOf<RemoteTerminal?>(null) }

@@ -17,6 +17,13 @@ class RemoteMachinesViewModel(
     val state: StateFlow<RemoteMachineState> = service.state
         .stateIn(viewModelScope, SharingStarted.Eagerly, RemoteMachineState())
 
+    /** Machines holding a persistent SSH connection; there is deliberately no way to open one by hand. */
+    val connectedMachineIds: StateFlow<Set<String>> = service.connectedMachineIds
+
+    fun isConnected(machineId: String): Boolean = service.isConnected(machineId)
+
+    fun disconnect(machineId: String) = service.disconnectMachine(machineId)
+
     fun saveMachine(machine: RemoteMachine) {
         viewModelScope.launch(LocalWriteErrors.handler) { service.saveMachine(machine) }
     }

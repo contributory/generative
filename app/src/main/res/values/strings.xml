@@ -519,6 +519,8 @@
     <string name="remote_machine_enable_tools" translatable="false">Enable AI tools for this machine</string>
     <string name="remote_machine_tool_execute" translatable="false">Execute commands</string>
     <string name="remote_machine_update_ip" translatable="false">Update IP</string>
+    <string name="remote_machine_tool_disconnect" translatable="false">Disconnect</string>
+    <string name="remote_machine_disconnect" translatable="false">Disconnect</string>
     <string name="remote_machine_tool_update_ip_help" translatable="false">Use only when connecting to this machine reports an error.</string>
     <string name="remote_machine_update_ip_title" translatable="false">Cloud Shell IP · %1$s</string>
     <string name="remote_machine_tools_choose" translatable="false">Choose which tools the model may use on this machine.</string>

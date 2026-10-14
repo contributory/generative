@@ -53,10 +53,7 @@ data class RemoteMachine(
     val displayHost: String
         get() = host.ifBlank { if (type == RemoteMachineType.GCLOUD_SHELL) "Cloud Shell IP not loaded" else "Host not configured" }
 
-    fun supportedToolNames(): List<String> = when (type) {
-        RemoteMachineType.SSH -> listOf(REMOTE_TOOL_EXECUTE)
-        RemoteMachineType.GCLOUD_SHELL -> listOf(REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_EXECUTE)
-    }
+    fun supportedToolNames(): List<String> = remoteMachineToolNames(type)
 
     fun isToolEnabled(toolName: String): Boolean = aiToolsEnabled &&
         (aiTools[toolName] ?: if (toolName == REMOTE_TOOL_UPDATE_IP) aiTools[REMOTE_TOOL_START_MACHINE] else null) != false
@@ -114,6 +111,14 @@ data class RemoteMachineState(
     val identities: List<RemoteIdentityKey> = emptyList()
 )
 
+/** Tools offered for a machine type. Disconnect and execute exist for every type; execute connects on demand. */
+fun remoteMachineToolNames(type: RemoteMachineType): List<String> = when (type) {
+    RemoteMachineType.SSH -> listOf(REMOTE_TOOL_DISCONNECT, REMOTE_TOOL_EXECUTE)
+    RemoteMachineType.GCLOUD_SHELL ->
+        listOf(REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_DISCONNECT, REMOTE_TOOL_EXECUTE)
+}
+
 const val REMOTE_TOOL_EXECUTE = "execute"
+const val REMOTE_TOOL_DISCONNECT = "disconnect"
 const val REMOTE_TOOL_START_MACHINE = "start_machine"
 const val REMOTE_TOOL_UPDATE_IP = "update_ip"

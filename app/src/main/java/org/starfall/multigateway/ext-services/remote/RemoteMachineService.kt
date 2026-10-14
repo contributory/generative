@@ -13,11 +13,22 @@ import com.jcraft.jsch.SocketFactory
 import com.jcraft.jsch.UIKeyboardInteractive
 import com.jcraft.jsch.UserInfo
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
@@ -44,6 +55,7 @@ import java.net.HttpURLConnection
 import java.net.ServerSocket
 import java.net.URLEncoder
 import java.util.Base64
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -63,14 +75,22 @@ data class RemoteCommandResult(
     val isError: Boolean get() = exitCode != 0
 }
 
-/** A connected interactive shell. The owner must close it when the terminal screen is disposed. */
+/**
+ * A connected interactive shell. The owner must close it when the terminal screen is disposed.
+ * A terminal that reuses a shared SSH connection only closes its own channel; one that opened a
+ * private connection ([ownsSession]) closes the whole connection as well.
+ */
 class RemoteTerminal internal constructor(
     private val session: Session,
     private val channel: ChannelShell,
     val input: InputStream,
     val output: OutputStream,
-    private val localCommand: Process?
+    private val localCommand: Process?,
+    private val ownsSession: Boolean = true,
+    private val onClosed: () -> Unit = {}
 ) : AutoCloseable {
+    private val closed = AtomicBoolean(false)
+
     /** Exit status of the remote shell, or -1 while it is running / if the connection was dropped. */
     val exitStatus: Int get() = channel.exitStatus
 
@@ -81,15 +101,20 @@ class RemoteTerminal internal constructor(
     }
 
     /**
-     * Disconnects the channel and SSH session. JSch writes to the socket when disconnecting, which
-     * throws NetworkOnMainThreadException on the UI thread (previously swallowed, leaving the
-     * session open), so the work always runs on a background thread. Safe to call repeatedly.
+     * Disconnects the channel (and the SSH session when this terminal owns it). JSch writes to the
+     * socket when disconnecting, which throws NetworkOnMainThreadException on the UI thread
+     * (previously swallowed, leaving the session open), so the work always runs on a background
+     * thread. Safe to call repeatedly.
      */
     override fun close() {
+        if (!closed.compareAndSet(false, true)) return
         Thread {
             runCatching { channel.disconnect() }
-            runCatching { session.disconnect() }
-            runCatching { localCommand?.destroy() }
+            if (ownsSession) {
+                runCatching { session.disconnect() }
+                runCatching { localCommand?.destroy() }
+            }
+            runCatching { onClosed() }
         }.apply { isDaemon = true; name = "remote-terminal-disconnect" }.start()
     }
 }
@@ -115,6 +140,17 @@ class RemoteMachineService(
     private val cloudEndpointCache = mutableMapOf<String, CachedCloudEndpoint>()
 
     val state = store.state
+
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val connections = ConcurrentHashMap<String, SharedConnection>()
+    private val machineLocks = ConcurrentHashMap<String, Mutex>()
+    private val _connectedMachineIds = MutableStateFlow<Set<String>>(emptySet())
+
+    /**
+     * Machines that currently hold a persistent SSH connection (opened by the connect tool or by
+     * execute). A terminal's private connection is not listed.
+     */
+    val connectedMachineIds: StateFlow<Set<String>> = _connectedMachineIds.asStateFlow()
 
     suspend fun saveMachine(machine: RemoteMachine) {
         val username = machine.username.trim()
@@ -152,9 +188,12 @@ class RemoteMachineService(
                 sshConfig = SshConfigParser.upsertMachine(current.sshConfig, saved, previousName)
             )
         }
+        // The next connection must use the saved settings.
+        disconnectMachineNow(normalized.id)
     }
 
     suspend fun deleteMachine(id: String) {
+        disconnectMachineNow(id)
         synchronized(endpointCacheLock) { cloudEndpointCache.remove(id) }
         store.update { current ->
             val deleted = current.machines.firstOrNull { it.id == id }
@@ -546,10 +585,7 @@ class RemoteMachineService(
 
     suspend fun execute(machine: RemoteMachine, command: String, timeoutSeconds: Int = 120): RemoteCommandResult {
         require(command.isNotBlank()) { "The command is empty." }
-        val actual = if (machine.type == RemoteMachineType.GCLOUD_SHELL) {
-            refreshGCloudIp(machine, forceRefresh = false).getOrThrow()
-        } else machine
-        return runSshCommand(actual, command, timeoutSeconds, retryCloudShell = true)
+        return runSshCommand(machine, command, timeoutSeconds)
     }
 
     suspend fun executeTool(machine: RemoteMachine, toolName: String, arguments: JsonObject): JsonObject {
@@ -575,6 +611,9 @@ class RemoteMachineService(
                 },
                 onFailure = { throw it }
             )
+            REMOTE_TOOL_DISCONNECT -> buildJsonObject {
+                put("status", JsonPrimitive(if (disconnectMachineNow(machine.id)) "disconnected" else "not_connected"))
+            }
             REMOTE_TOOL_EXECUTE -> {
                 val command = arguments["command"]?.jsonPrimitive?.contentOrNull.orEmpty()
                 val timeout = arguments["timeout_seconds"]?.jsonPrimitive?.longOrNull
@@ -591,23 +630,225 @@ class RemoteMachineService(
         }
     }
 
+    /**
+     * Opens an interactive shell. An existing SSH connection is reused and stays open when the
+     * terminal exits; otherwise a private connection is opened and closed with the terminal.
+     */
     suspend fun openTerminal(machine: RemoteMachine, passwordOverride: String? = null): RemoteTerminal {
-        val actual = if (machine.type == RemoteMachineType.GCLOUD_SHELL) {
-            refreshGCloudIp(machine, forceRefresh = false).getOrThrow()
-        } else machine
+        val shared = acquireShared(machine.id, create = null)
+        if (shared != null) {
+            try {
+                val (channel, input, output) = openShellChannel(shared.session, machine)
+                return RemoteTerminal(
+                    shared.session, channel, input, output, null,
+                    ownsSession = false, onClosed = shared::release
+                )
+            } catch (error: Throwable) {
+                shared.release()
+                if (error is CancellationException) throw error
+                // The shared connection was probably dropped; fall back to a private one.
+                dropConnection(shared)
+            }
+        }
+        val (session, local) = openSession(machine, passwordOverride)
         return try {
-            openTerminalInternal(actual, passwordOverride)
-        } catch (error: Exception) {
-            if (error is CancellationException || actual.type != RemoteMachineType.GCLOUD_SHELL) throw error
-            val refreshed = refreshGCloudIp(actual).getOrThrow()
-            openTerminalInternal(refreshed, passwordOverride)
+            val (channel, input, output) = openShellChannel(session, machine)
+            RemoteTerminal(session, channel, input, output, local, ownsSession = true)
+        } catch (error: Throwable) {
+            withContext(NonCancellable + Dispatchers.IO) {
+                runCatching { session.disconnect() }
+                runCatching { local?.destroy() }
+            }
+            throw error
         }
     }
 
-    private suspend fun openTerminalInternal(machine: RemoteMachine, passwordOverride: String?): RemoteTerminal = withContext(Dispatchers.IO) {
-        val session = connect(machine, passwordOverride)
+    fun isConnected(machineId: String): Boolean = connections[machineId]?.session?.isConnected == true
+
+    /** Closes the machine's persistent connection without waiting (safe to call from the UI thread). */
+    fun disconnectMachine(machineId: String) {
+        ioScope.launch { disconnectMachineNow(machineId) }
+    }
+
+    /**
+     * Closes every persistent connection (used when the user switches chat). A connection that is
+     * running a command is closed right after that command finishes instead of cutting it off.
+     */
+    fun disconnectAllWhenIdle() {
+        ioScope.launch {
+            connections.values.toList().forEach { connection ->
+                if (connection.requestClose()) closeConnection(connection)
+            }
+        }
+    }
+
+    /** Closes the machine's persistent connection. Returns false when there was none. */
+    suspend fun disconnectMachineNow(machineId: String): Boolean = withContext(NonCancellable + Dispatchers.IO) {
+        val connection = connections[machineId] ?: return@withContext false
+        closeConnection(connection)
+        true
+    }
+
+    /** One SSH session shared by tool commands and terminals of the same machine. */
+    private inner class SharedConnection(
+        val machineId: String,
+        val session: Session,
+        private val localCommand: Process?
+    ) {
+        private var users = 0
+        private var closeOnRelease = false
+        private var idleJob: Job? = null
+        private var monitorJob: Job? = null
+
+        val inUse: Boolean @Synchronized get() = users > 0
+
+        @Synchronized
+        fun acquire() {
+            users++
+            closeOnRelease = false
+            idleJob?.cancel()
+            idleJob = null
+        }
+
+        /** Closes now when nothing uses the connection, else as soon as the last user releases it. */
+        @Synchronized
+        fun requestClose(): Boolean {
+            if (users == 0) return true
+            closeOnRelease = true
+            return false
+        }
+
+        /** Every acquire() needs exactly one release(); the idle countdown starts at the last one. */
+        @Synchronized
+        fun release() {
+            if (users > 0) users--
+            if (users == 0) {
+                val wait = if (closeOnRelease) 0L else IDLE_DISCONNECT_MILLIS
+                idleJob?.cancel()
+                idleJob = ioScope.launch {
+                    delay(wait)
+                    disconnectIfIdle(this@SharedConnection)
+                }
+            }
+        }
+
+        /** Drops the entry when the server or network closed the session, so the UI stays truthful. */
+        fun startMonitor() {
+            monitorJob = ioScope.launch {
+                while (isActive) {
+                    delay(CONNECTION_POLL_MILLIS)
+                    if (!session.isConnected) {
+                        closeConnection(this@SharedConnection)
+                        break
+                    }
+                }
+            }
+        }
+
+        /** Blocking network I/O: call off the main thread. */
+        fun shutdown() {
+            monitorJob?.cancel()
+            synchronized(this) {
+                idleJob?.cancel()
+                idleJob = null
+            }
+            runCatching { session.disconnect() }
+            runCatching { localCommand?.destroy() }
+        }
+    }
+
+    private suspend fun disconnectIfIdle(connection: SharedConnection) {
+        machineLocks.getOrPut(connection.machineId) { Mutex() }.withLock {
+            if (connection.inUse || connections[connection.machineId] !== connection) return
+            closeConnection(connection)
+        }
+    }
+
+    private fun closeConnection(connection: SharedConnection) {
+        connections.remove(connection.machineId, connection)
+        publishConnected()
+        connection.shutdown()
+    }
+
+    private suspend fun dropConnection(connection: SharedConnection) =
+        withContext(NonCancellable + Dispatchers.IO) { closeConnection(connection) }
+
+    private fun publishConnected() {
+        _connectedMachineIds.value = connections.keys.toSet()
+    }
+
+    private suspend fun acquireConnection(machine: RemoteMachine): SharedConnection =
+        acquireShared(machine.id, create = machine) ?: error("Could not open an SSH connection.")
+
+    /**
+     * Returns the machine's live connection with one use acquired, opening it when [create] is
+     * given. Without [create] it returns null if the machine is not connected.
+     */
+    private suspend fun acquireShared(machineId: String, create: RemoteMachine?): SharedConnection? =
+        withContext(Dispatchers.IO) {
+            machineLocks.getOrPut(machineId) { Mutex() }.withLock {
+                var connection = connections[machineId]
+                if (connection != null && !connection.session.isConnected) {
+                    closeConnection(connection)
+                    connection = null
+                }
+                if (connection == null) {
+                    if (create == null) return@withLock null
+                    val (session, local) = openSession(create)
+                    connection = SharedConnection(machineId, session, local)
+                    connections[machineId] = connection
+                    connection.startMonitor()
+                    publishConnected()
+                }
+                connection.acquire()
+                connection
+            }
+        }
+
+    /** Opens an SSH session (refreshing the Cloud Shell endpoint when needed) plus its local command. */
+    private suspend fun openSession(machine: RemoteMachine, passwordOverride: String? = null): Pair<Session, Process?> {
+        var actual = if (machine.type == RemoteMachineType.GCLOUD_SHELL) {
+            refreshGCloudIp(machine, forceRefresh = false).getOrThrow()
+        } else machine
+        val session = try {
+            connectCancellable(actual, passwordOverride)
+        } catch (error: Exception) {
+            if (error is CancellationException || actual.type != RemoteMachineType.GCLOUD_SHELL) throw error
+            actual = refreshGCloudIp(actual).getOrThrow()
+            connectCancellable(actual, passwordOverride)
+        }
+        val resolved = actual
+        val local = withContext(Dispatchers.IO) { startLocalCommand(resolved) }
+        return session to local
+    }
+
+    /**
+     * JSch's connect call blocks its thread and ignores coroutine cancellation, so it runs in a child
+     * coroutine and the half-open session is closed when cancelled (the Stop button).
+     */
+    private suspend fun connectCancellable(machine: RemoteMachine, passwordOverride: String?): Session =
+        withContext(Dispatchers.IO) {
+            val pending = AtomicReference<Session?>()
+            coroutineScope {
+                val opening = async(Dispatchers.IO) {
+                    connect(machine, passwordOverride, onCreated = { pending.set(it) })
+                }
+                try {
+                    opening.await()
+                } catch (error: Throwable) {
+                    runCatching { pending.get()?.disconnect() }
+                    opening.cancel()
+                    throw error
+                }
+            }
+        }
+
+    private suspend fun openShellChannel(
+        session: Session,
+        machine: RemoteMachine
+    ): Triple<ChannelShell, InputStream, OutputStream> = withContext(Dispatchers.IO) {
+        val channel = session.openChannel("shell") as ChannelShell
         try {
-            val channel = session.openChannel("shell") as ChannelShell
             channel.setPtyType("xterm-256color")
             // JSch only wires the piped streams into the channel thread if they are requested BEFORE
             // connect(). Asking for them afterwards left the channel with no stdin reader (nothing the
@@ -615,98 +856,121 @@ class RemoteMachineService(
             val input = channel.getInputStream()
             val output = channel.getOutputStream()
             channel.connect(machine.connectTimeoutSeconds * 1_000)
-            val local = startLocalCommand(machine)
-            RemoteTerminal(session, channel, input, output, local)
+            Triple(channel, input, output)
         } catch (error: Throwable) {
-            session.disconnect()
+            runCatching { channel.disconnect() }
             throw error
         }
     }
 
+    private class ExecChannel(
+        val channel: ChannelExec,
+        val input: InputStream,
+        val errors: ByteArrayOutputStream
+    )
+
+    private fun openExecChannel(session: Session, machine: RemoteMachine, command: String): ExecChannel {
+        val channel = session.openChannel("exec") as ChannelExec
+        val errors = ByteArrayOutputStream()
+        try {
+            channel.setCommand(command)
+            channel.setInputStream(null)
+            channel.setErrStream(errors)
+            val input = channel.getInputStream()
+            channel.connect(machine.connectTimeoutSeconds * 1_000)
+            return ExecChannel(channel, input, errors)
+        } catch (error: Throwable) {
+            runCatching { channel.disconnect() }
+            throw error
+        }
+    }
+
+    /** Runs a command over the machine's persistent connection, opening it first when needed. */
     private suspend fun runSshCommand(
         machine: RemoteMachine,
         command: String,
-        timeoutSeconds: Int,
-        retryCloudShell: Boolean
+        timeoutSeconds: Int
     ): RemoteCommandResult {
-        return try {
-            withContext(Dispatchers.IO) {
-                // JSch's connect/read calls block their thread and ignore coroutine cancellation, so
-                // run them in child coroutines and close the socket/channel when cancelled. That
-                // makes the Stop button take effect immediately instead of after the remote command.
-                val pending = AtomicReference<Session?>()
-                val session = coroutineScope {
-                    val opening = async(Dispatchers.IO) { connect(machine, onCreated = { pending.set(it) }) }
-                    try {
-                        opening.await()
-                    } catch (error: Throwable) {
-                        runCatching { pending.get()?.disconnect() }
-                        opening.cancel()
-                        throw error
-                    }
+        var retried = false
+        while (true) {
+            val connection = acquireConnection(machine)
+            val exec = try {
+                withContext(Dispatchers.IO) { openExecChannel(connection.session, machine, command) }
+            } catch (error: Throwable) {
+                connection.release()
+                if (error is CancellationException) throw error
+                // The server or network may have dropped the connection since its last use. The
+                // command never started, so reconnecting once and retrying cannot repeat it.
+                dropConnection(connection)
+                if (retried) throw error
+                retried = true
+                continue
+            }
+            try {
+                return collectExecResult(exec, timeoutSeconds)
+            } finally {
+                withContext(NonCancellable + Dispatchers.IO) {
+                    runCatching { exec.channel.disconnect() }
                 }
-                val localCommand = startLocalCommand(machine)
+                connection.release()
+            }
+        }
+    }
+
+    private fun stopExec(channel: ChannelExec) {
+        // The session stays open, so ask the server to end the process too (best effort; older
+        // servers ignore the signal) before closing the channel.
+        runCatching { channel.sendSignal("TERM") }
+        runCatching { channel.disconnect() }
+    }
+
+    private suspend fun collectExecResult(exec: ExecChannel, timeoutSeconds: Int): RemoteCommandResult {
+        // JSch's read calls block their thread and ignore coroutine cancellation, so reading runs in
+        // a child coroutine and the channel is closed when cancelled. That makes the Stop button
+        // take effect immediately instead of after the remote command.
+        val limitSeconds = timeoutSeconds.coerceIn(1, 600)
+        val collected = ByteArrayOutputStream()
+        var timedOut = false
+        coroutineScope {
+            val reader = async(Dispatchers.IO) {
+                val buffer = ByteArray(8_192)
                 try {
-                    val channel = session.openChannel("exec") as ChannelExec
-                    val errors = ByteArrayOutputStream()
-                    channel.setCommand(command)
-                    channel.setInputStream(null)
-                    channel.setErrStream(errors)
-                    channel.connect(machine.connectTimeoutSeconds * 1_000)
-                    val input = channel.getInputStream()
-                    val limitSeconds = timeoutSeconds.coerceIn(1, 600)
-                    val collected = ByteArrayOutputStream()
-                    var timedOut = false
-                    coroutineScope {
-                        val reader = async(Dispatchers.IO) {
-                            val buffer = ByteArray(8_192)
-                            try {
-                                while (true) {
-                                    val count = input.read(buffer)
-                                    if (count < 0) break
-                                    synchronized(collected) { collected.write(buffer, 0, count) }
-                                }
-                            } catch (_: java.io.IOException) {
-                                // The channel was closed by cancel/timeout below.
-                            }
-                        }
-                        try {
-                            withTimeout(limitSeconds * 1_000L) { reader.await() }
-                        } catch (_: TimeoutCancellationException) {
-                            // A timeout is a tool result for the model, not a cancelled generation:
-                            // TimeoutCancellationException is a CancellationException and would
-                            // otherwise abort the whole chat turn as if the user pressed Stop.
-                            timedOut = true
-                            runCatching { channel.disconnect() }
-                            reader.cancel()
-                        } catch (error: Throwable) {
-                            runCatching { channel.disconnect() }
-                            reader.cancel()
-                            throw error
-                        }
+                    while (true) {
+                        val count = exec.input.read(buffer)
+                        if (count < 0) break
+                        synchronized(collected) { collected.write(buffer, 0, count) }
                     }
-                    val output = synchronized(collected) { collected.toString(Charsets.UTF_8.name()) }
-                    // The channel can finish writing stderr just after stdout reaches EOF.
-                    delay(20)
-                    val stderr = String(errors.toByteArray(), Charsets.UTF_8)
-                    if (timedOut) {
-                        RemoteCommandResult(
-                            output,
-                            (stderr + "\n[Command timed out after ${limitSeconds}s and was terminated; output above is partial.]").trim(),
-                            -1
-                        )
-                    } else {
-                        RemoteCommandResult(output, stderr, channel.getExitStatus())
-                    }
-                } finally {
-                    runCatching { localCommand?.destroy() }
-                    runCatching { session.disconnect() }
+                } catch (_: java.io.IOException) {
+                    // The channel was closed by cancel/timeout below.
                 }
             }
-        } catch (error: Exception) {
-            if (error is CancellationException || !retryCloudShell || machine.type != RemoteMachineType.GCLOUD_SHELL) throw error
-            val refreshed = refreshGCloudIp(machine).getOrThrow()
-            runSshCommand(refreshed, command, timeoutSeconds, retryCloudShell = false)
+            try {
+                withTimeout(limitSeconds * 1_000L) { reader.await() }
+            } catch (_: TimeoutCancellationException) {
+                // A timeout is a tool result for the model, not a cancelled generation:
+                // TimeoutCancellationException is a CancellationException and would
+                // otherwise abort the whole chat turn as if the user pressed Stop.
+                timedOut = true
+                stopExec(exec.channel)
+                reader.cancel()
+            } catch (error: Throwable) {
+                stopExec(exec.channel)
+                reader.cancel()
+                throw error
+            }
+        }
+        val output = synchronized(collected) { collected.toString(Charsets.UTF_8.name()) }
+        // The channel can finish writing stderr just after stdout reaches EOF.
+        delay(20)
+        val stderr = String(exec.errors.toByteArray(), Charsets.UTF_8)
+        return if (timedOut) {
+            RemoteCommandResult(
+                output,
+                (stderr + "\n[Command timed out after ${limitSeconds}s and was terminated; output above is partial.]").trim(),
+                -1
+            )
+        } else {
+            RemoteCommandResult(output, stderr, exec.channel.getExitStatus())
         }
     }
 
@@ -961,6 +1225,9 @@ class RemoteMachineService(
         const val BINARY_TEST_TIMEOUT_SECONDS = 10L
         const val MAX_BINARY_TEST_OUTPUT_BYTES = 65_536
         const val CLOUD_ENDPOINT_CACHE_TTL_MILLIS = 15 * 60 * 1_000L
+        /** A persistent SSH connection with no command or terminal using it is closed after this. */
+        const val IDLE_DISCONNECT_MILLIS = 5 * 60 * 1_000L
+        const val CONNECTION_POLL_MILLIS = 5_000L
         const val GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
         const val GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
         const val GOOGLE_SCOPE = "openid email profile https://www.googleapis.com/auth/cloud-platform"

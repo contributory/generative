@@ -4,8 +4,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_DISCONNECT
 import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_EXECUTE
 import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_START_MACHINE
+import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_UPDATE_IP
 import org.starfall.multigateway.extservices.remote.RemoteMachine
 import org.starfall.multigateway.extservices.remote.RemoteMachineType
 import org.starfall.multigateway.extservices.remote.PasswordKeyboardInteractiveUserInfo
@@ -41,10 +43,13 @@ class RemoteMachineTest {
     }
 
     @Test
-    fun cloudShellExposesStartAndExecuteWhileSshOnlyExecutes() {
-        assertEquals(listOf(REMOTE_TOOL_EXECUTE), RemoteMachine("ssh", "SSH").supportedToolNames())
+    fun everyMachineExposesDisconnectAndExecuteAndCloudShellAddsUpdateIp() {
         assertEquals(
-            listOf(REMOTE_TOOL_START_MACHINE, REMOTE_TOOL_EXECUTE),
+            listOf(REMOTE_TOOL_DISCONNECT, REMOTE_TOOL_EXECUTE),
+            RemoteMachine("ssh", "SSH").supportedToolNames()
+        )
+        assertEquals(
+            listOf(REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_DISCONNECT, REMOTE_TOOL_EXECUTE),
             RemoteMachine("cloud", "Cloud", type = RemoteMachineType.GCLOUD_SHELL).supportedToolNames()
         )
         assertTrue(RemoteMachine("cloud", "Cloud", type = RemoteMachineType.GCLOUD_SHELL).displayHost.isNotBlank())
