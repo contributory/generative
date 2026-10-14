@@ -174,7 +174,7 @@ internal abstract class OAuthAccountAdapter(
                 }
             }
         }
-        val requestEffort = config.requestReasoningEffort
+        val requestEffort = config.wireReasoningEffort
         val body = buildJsonObject {
             if (type == ProviderType.GOOGLE) {
                 put("model", model)

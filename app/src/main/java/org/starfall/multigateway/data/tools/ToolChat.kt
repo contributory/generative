@@ -519,7 +519,7 @@ class ToolChat(
                     put("max_output_tokens", p.config.maxTokens)
                     config.temperature?.let { put("temperature", it) }
                     config.topP?.let { put("top_p", it) }
-                    config.requestReasoningEffort?.trim()?.takeIf { it.isNotEmpty() }?.let { effort ->
+                    config.wireReasoningEffort?.trim()?.takeIf { it.isNotEmpty() }?.let { effort ->
                         put("reasoning", buildJsonObject { put("effort", effort) })
                     }
                     if (tools.isNotEmpty()) put("tools", JsonArray(tools.map {
@@ -588,7 +588,7 @@ class ToolChat(
                         put("max_tokens", p.config.maxTokens)
                         config.temperature?.let { put("temperature", it) }
                         config.topP?.let { put("top_p", it) }
-                        config.requestReasoningEffort?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                        config.wireReasoningEffort?.trim()?.takeIf { it.isNotEmpty() }?.let {
                             put("reasoning_effort", it)
                         }
                     }

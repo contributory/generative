@@ -201,7 +201,7 @@ class ChatViewModel(
         return provider.copy(
             config = provider.config.copy(
                 modelConfigs = provider.config.modelConfigs +
-                    (modelId to config.withConversationReasoning(effort, provider.type))
+                    (modelId to config.withConversationReasoning(effort))
             )
         )
     }

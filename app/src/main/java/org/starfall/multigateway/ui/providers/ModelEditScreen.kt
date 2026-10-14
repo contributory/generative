@@ -83,7 +83,8 @@ fun ModelEditScreen(
                     contextWindowTokens = contextWindow!!,
                     modelJson = modelJson,
                     displayName = config.displayName.trim(),
-                    reasoningEffort = config.reasoningEffort?.trim()?.ifEmpty { null }
+                    reasoningEffort = config.reasoningEffort?.trim()?.ifEmpty { null },
+                    reasoningEfforts = config.supportedReasoningEfforts
                 ).normalizedForStorage()
             )
             onBack()
@@ -203,7 +204,37 @@ fun ModelEditScreen(
                     config = config.copy(supportsThinking = it)
                 }
                 if (config.supportsThinking) {
-                    // The level (Off, low, medium, high, ...) is chosen in the chat's selected-model sheet.
+                    // Which levels exist is marked here; the one in use is chosen in the chat's selected-model sheet.
+                    Text(stringResource(R.string.model_reasoning_levels), style = MaterialTheme.typography.titleSmall)
+                    val markedEfforts = config.supportedReasoningEfforts
+                    MultiChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("reasoning-levels")) {
+                        SELECTABLE_REASONING_EFFORTS.forEachIndexed { index, level ->
+                            SegmentedButton(
+                                checked = level in markedEfforts,
+                                onCheckedChange = { checked ->
+                                    val next = if (checked) markedEfforts + level else markedEfforts - level
+                                    config = config.copy(
+                                        reasoningEfforts = SELECTABLE_REASONING_EFFORTS.filter { it in next }
+                                    )
+                                },
+                                shape = SegmentedButtonDefaults.itemShape(index, SELECTABLE_REASONING_EFFORTS.size),
+                                icon = {},
+                                modifier = Modifier.testTag("reasoning-level-$level")
+                            ) {
+                                Text(
+                                    when (level) {
+                                        "minimal" -> "Min"
+                                        "medium" -> "Med"
+                                        "xhigh" -> "XHigh"
+                                        else -> level.replaceFirstChar { it.uppercase() }
+                                    },
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                        }
+                    }
                     ModelCapabilitySwitch(stringResource(R.string.send_thinking_content_back), config.sendThinkingContent) {
                         config = config.copy(sendThinkingContent = it)
                     }

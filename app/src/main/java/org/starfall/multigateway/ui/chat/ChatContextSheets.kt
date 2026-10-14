@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import org.starfall.multigateway.data.model.ConversationSummaryRequest
 import org.starfall.multigateway.data.model.ProviderType
+import org.starfall.multigateway.data.model.DEFAULT_REASONING_EFFORTS
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,11 +24,12 @@ fun ReasoningEffortSheet(
     onDismiss: () -> Unit,
     providerType: ProviderType? = null,
     modelId: String = "",
-    maxTokens: Int = Int.MAX_VALUE
+    maxTokens: Int = Int.MAX_VALUE,
+    supportedEfforts: List<String> = DEFAULT_REASONING_EFFORTS
 ) {
     var effort by remember(currentEffort) { mutableStateOf(currentEffort) }
-    val options = remember(providerType, modelId, maxTokens) {
-        reasoningEffortOptions(providerType, modelId, maxTokens)
+    val options = remember(providerType, modelId, maxTokens, supportedEfforts) {
+        reasoningEffortOptions(providerType, modelId, maxTokens, supportedEfforts)
     }
 
     AppBottomSheet(

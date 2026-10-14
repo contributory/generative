@@ -66,6 +66,7 @@ import org.starfall.multigateway.R
 import org.starfall.multigateway.data.model.LlmProviderInfo
 import org.starfall.multigateway.data.model.DEFAULT_CONTEXT_WINDOW_TOKENS
 import org.starfall.multigateway.data.model.ModelConfiguration
+import org.starfall.multigateway.data.model.supportedReasoningEfforts
 import org.starfall.multigateway.data.model.ModelType
 import org.starfall.multigateway.data.model.ProviderGroup
 import org.starfall.multigateway.data.model.ProviderType
@@ -603,29 +604,18 @@ internal fun SelectedModelOverviewSheet(
     onOpenModelPicker: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val effortOptions = remember(provider?.type, modelId, provider?.config?.maxTokens) {
-        reasoningEffortOptions(provider?.type, modelId, provider?.config?.maxTokens ?: Int.MAX_VALUE)
+    val supportedEfforts = config.supportedReasoningEfforts
+    val effortOptions = remember(provider?.type, modelId, provider?.config?.maxTokens, supportedEfforts) {
+        reasoningEffortOptions(provider?.type, modelId, provider?.config?.maxTokens ?: Int.MAX_VALUE, supportedEfforts)
     }
     var previewTier by remember(conversationReasoningEffort, effortOptions) {
         mutableIntStateOf(reasoningEffortTier(reasoningEffortIndex(conversationReasoningEffort, effortOptions), effortOptions))
     }
     val screenBurst = LocalThinkingScreenBurst.current
     LaunchedEffect(previewTier, screenBurst) {
-        // The slider has already started a bloom from the thumb by the time this effect runs. Never
-        // replace its origin with Offset.Zero and never hide a bloom that is still playing: either one
-        // would cancel the circular reveal that spreads from the thumb across the sheet.
-        if (previewTier == 6) {
-            // keepAfterCompletion is set synchronously by start(), so it reliably tells a slider-driven
-            // bloom (thumb origin) from the sheet simply opening at max (no thumb, origin-less burst).
-            val thumbOrigin = screenBurst?.takeIf { it.keepAfterCompletion && it.origin != Offset.Zero }?.origin
-            screenBurst?.start(
-                origin = thumbOrigin ?: Offset.Zero,
-                color = Color(0xFFDC2626),
-                durationMillis = 2400,
-                keepAfterCompletion = true,
-                starCount = 180
-            )
-        } else if (screenBurst?.keepAfterCompletion == true) {
+        // A max-effort burst is started only by crossing into the red tier on the slider.
+        // Reopening this sheet at an already-selected max tier should not replay it.
+        if (previewTier != 6 && screenBurst?.keepAfterCompletion == true) {
             screenBurst.hide()
         }
     }
@@ -849,8 +839,9 @@ private fun ModelPickerCard(
     embedded: Boolean = false,
     drawBackground: Boolean = true
 ) {
-    val effortOptions = remember(providerType, modelId, maxTokens) {
-        reasoningEffortOptions(providerType, modelId, maxTokens)
+    val supportedEfforts = config.supportedReasoningEfforts
+    val effortOptions = remember(providerType, modelId, maxTokens, supportedEfforts) {
+        reasoningEffortOptions(providerType, modelId, maxTokens, supportedEfforts)
     }
     var previewReasoningValue by remember(conversationReasoningEffort, isSelected, effortOptions) {
         mutableFloatStateOf(reasoningEffortIndex(conversationReasoningEffort, effortOptions).toFloat())
@@ -1028,18 +1019,19 @@ private fun ModelPickerCard(
                     },
                     options = effortOptions,
                     onColorBurst = { origin, selectedTier ->
-                         if (selectedTier >= 5) cardBurst.start(origin - cardOrigin, Color(0xFFA78BFA),
+                         val burstColor = if (selectedTier == 6) Color(0xFFDC2626) else Color(0xFFA78BFA)
+                         if (selectedTier >= 5) cardBurst.start(origin - cardOrigin, burstColor,
                              reasoningEffortBurstDuration(selectedTier))
                          screenBurst?.let { burst ->
                              when (selectedTier) {
                                  6 -> burst.start(
                                      origin = origin,
-                                     color = Color(0xFFA78BFA),
+                                     color = burstColor,
                                      durationMillis = 6500,
                                      keepAfterCompletion = true,
                                      starCount = 180
                                  )
-                                 5 -> burst.start(
+                                 5 -> if (embedded) burst.hide() else burst.start(
                                      origin = origin,
                                      color = Color(0xFFA78BFA),
                                      durationMillis = 2600,

@@ -43,7 +43,7 @@ fun claudeThinkingCapabilities(modelId: String): ClaudeThinkingCapabilities {
 fun ModelConfiguration.claudeThinkingParameters(modelId: String, maxTokens: Int): JsonObject = buildJsonObject {
     if (!supportsThinking) return@buildJsonObject
     val capabilities = claudeThinkingCapabilities(modelId)
-    val requested = reasoningEffort?.trim()?.lowercase() ?: return@buildJsonObject
+    val requested = requestReasoningEffort ?: return@buildJsonObject
     if (requested in listOf("none", "off")) {
         when {
             capabilities.betweenTools -> {
@@ -51,30 +51,20 @@ fun ModelConfiguration.claudeThinkingParameters(modelId: String, maxTokens: Int)
                 put("output_config", buildJsonObject { put("effort", "low") })
             }
             capabilities.canDisable -> put("thinking", buildJsonObject { put("type", "disabled") })
-            else -> {
-                put("thinking", buildJsonObject { put("type", "adaptive"); put("display", "summarized") })
-                put("output_config", buildJsonObject { put("effort", "low") })
-            }
+            // This model cannot be switched off, so Off sends nothing instead of another level.
         }
         return@buildJsonObject
     }
-    val effort = when {
-        capabilities.efforts.isEmpty() -> requested
-        requested in capabilities.efforts -> requested
-        requested == "xhigh" -> if ("max" in capabilities.efforts) "max" else "high"
-        requested == "max" -> if ("xhigh" in capabilities.efforts) "xhigh" else "high"
-        else -> requested
-    }
-    if (capabilities.efforts.isNotEmpty()) {
-        if (effort !in capabilities.efforts) return@buildJsonObject
-        put("output_config", buildJsonObject { put("effort", effort) })
+    // The level is sent exactly as chosen; Active only turns thinking on.
+    if (capabilities.efforts.isNotEmpty() && requested != REASONING_EFFORT_ACTIVE) {
+        put("output_config", buildJsonObject { put("effort", requested) })
     }
     if (capabilities.adaptive) {
         put("thinking", buildJsonObject { put("type", "adaptive"); put("display", "summarized") })
     } else if (maxTokens > 1024) {
         put("thinking", buildJsonObject {
             put("type", "enabled")
-            put("budget_tokens", copy(reasoningEffort = effort).reasoningBudget(maxTokens))
+            put("budget_tokens", copy(reasoningEffort = requested).reasoningBudget(maxTokens))
         })
     }
 }
@@ -82,4 +72,4 @@ fun ModelConfiguration.claudeThinkingParameters(modelId: String, maxTokens: Int)
 /** Keep sampling options out of adaptive and manual thinking requests. */
 fun ModelConfiguration.claudeAllowsSampling(modelId: String, maxTokens: Int): Boolean =
     !claudeThinkingCapabilities(modelId).adaptive &&
-        (!supportsThinking || reasoningEffort == null || reasoningEffortDisabled || maxTokens <= 1024)
+        (!supportsThinking || requestReasoningEffort == null || reasoningEffortDisabled || maxTokens <= 1024)

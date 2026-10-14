@@ -222,6 +222,12 @@ enum class ModelType(val displayName: String) {
     TEXT_TO_SPEECH("Text to speech")
 }
 
+/** Every level a model can be marked as supporting, lowest first. */
+val SELECTABLE_REASONING_EFFORTS = listOf("minimal", "low", "medium", "high", "xhigh", "max")
+val DEFAULT_REASONING_EFFORTS = listOf("low", "medium", "high")
+/** Thinking is on, but the model has no levels: nothing is sent to pick one. */
+const val REASONING_EFFORT_ACTIVE = "active"
+
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class ModelConfiguration(
@@ -240,6 +246,10 @@ data class ModelConfiguration(
     val supportsAudioInput: Boolean = false,
     val supportsThinking: Boolean = true,
     @SerialName("reasoning_effort") val reasoningEffort: String? = null,
+    // Reasoning levels this model offers in the selected-model sheet. The default set is not stored.
+    @SerialName("reasoning_efforts")
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val reasoningEfforts: List<String> = DEFAULT_REASONING_EFFORTS,
     // Last chosen thinking level (set from the chat's selected-model sheet). Kept while thinking
     // is switched off so turning it back on restores the level; null means the provider default.
     @SerialName("thinking_level")
@@ -268,25 +278,32 @@ fun LlmProviderInfo.streamEnabledFor(modelId: String): Boolean =
 val ModelConfiguration.reasoningEffortDisabled: Boolean
     get() = reasoningEffort?.trim()?.lowercase() in listOf("none", "off")
 
-/** Effort sent to the endpoint; Off is sent as "none". */
-val ModelConfiguration.requestReasoningEffort: String?
-    get() = reasoningEffort
+/** The levels this model offers, in canonical order. */
+val ModelConfiguration.supportedReasoningEfforts: List<String>
+    get() = SELECTABLE_REASONING_EFFORTS.filter { it in reasoningEfforts }
 
-fun ModelConfiguration.withConversationReasoning(effort: String?, providerType: ProviderType? = null): ModelConfiguration {
-    if (effort.isNullOrBlank()) return this
-    val normalized = when {
-        effort == "off" -> "none"
-        effort == "max" && providerType in listOf(ProviderType.OPENAI, ProviderType.OPENAI_RESPONSES,
-            ProviderType.OPENAI_CODEX, ProviderType.GOOGLE, ProviderType.ANTIGRAVITY) -> "xhigh"
-        else -> effort
+/**
+ * The saved effort, but only when the selector can actually show it: Off, Active or a level this
+ * model supports. Anything else is shown as Default, so it is never sent either.
+ */
+val ModelConfiguration.requestReasoningEffort: String?
+    get() = reasoningEffort?.trim()?.lowercase()?.takeIf {
+        it in listOf("none", "off", REASONING_EFFORT_ACTIVE) || it in supportedReasoningEfforts
     }
-    return copy(reasoningEffort = normalized)
+
+/** The level written into the request body; Active carries no level. */
+val ModelConfiguration.wireReasoningEffort: String?
+    get() = requestReasoningEffort?.takeUnless { it == REASONING_EFFORT_ACTIVE }
+
+fun ModelConfiguration.withConversationReasoning(effort: String?): ModelConfiguration {
+    if (effort.isNullOrBlank()) return this
+    return copy(reasoningEffort = if (effort == "off") "none" else effort)
 }
 
 /** Persist a selected-model-sheet choice; Off is stored as the "none" effort level. */
-fun ModelConfiguration.withSelectedReasoningEffort(effort: String?, providerType: ProviderType? = null): ModelConfiguration {
+fun ModelConfiguration.withSelectedReasoningEffort(effort: String?): ModelConfiguration {
     val applied = if (effort.isNullOrBlank()) copy(reasoningEffort = null)
-    else withConversationReasoning(effort.trim().lowercase(), providerType)
+    else withConversationReasoning(effort.trim().lowercase())
     val rememberedLevel = if (applied.reasoningEffortDisabled) {
         thinkingLevel?.takeUnless { it.trim().lowercase() in listOf("none", "off") }
             ?: reasoningEffort?.takeUnless { it.trim().lowercase() in listOf("none", "off") }
@@ -297,22 +314,33 @@ fun ModelConfiguration.withSelectedReasoningEffort(effort: String?, providerType
 }
 
 
+const val ACTIVE_THINKING_BUDGET = 2048
+
 // Keep Claude budgets inside its output token limit.
 fun ModelConfiguration.reasoningBudget(maxTokens: Int): Int =
-    minOf(when (reasoningEffort) { "low" -> 1024; "medium" -> 2048; "high" -> 4096; "xhigh", "max" -> 8192; else -> 1024 }, maxTokens - 1)
+    minOf(when (reasoningEffort) {
+        "minimal", "low" -> 1024
+        "medium" -> 2048
+        "high" -> 4096
+        "xhigh", "max" -> 8192
+        REASONING_EFFORT_ACTIVE -> ACTIVE_THINKING_BUDGET
+        else -> 1024
+    }, maxTokens - 1)
 
-fun ModelConfiguration.googleThinkingConfig(): kotlinx.serialization.json.JsonObject? =
-    when {
+fun ModelConfiguration.googleThinkingConfig(): kotlinx.serialization.json.JsonObject? {
+    val effort = requestReasoningEffort
+    return when {
         reasoningEffortDisabled -> kotlinx.serialization.json.buildJsonObject {
             put("thinkingBudget", kotlinx.serialization.json.JsonPrimitive(0))
             put("includeThoughts", kotlinx.serialization.json.JsonPrimitive(false))
         }
-        reasoningEffort != null -> kotlinx.serialization.json.buildJsonObject {
-            put("thinkingLevel", kotlinx.serialization.json.JsonPrimitive(if (reasoningEffort == "xhigh") "high" else reasoningEffort))
+        effort != null -> kotlinx.serialization.json.buildJsonObject {
+            wireReasoningEffort?.let { put("thinkingLevel", kotlinx.serialization.json.JsonPrimitive(it)) }
             put("includeThoughts", kotlinx.serialization.json.JsonPrimitive(true))
         }
         else -> null
     }
+}
 
 const val DEFAULT_CONTEXT_WINDOW_TOKENS = 128_000
 

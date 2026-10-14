@@ -119,7 +119,7 @@ class ConfigurationViewModel(
         viewModelScope.launch(LocalWriteErrors.handler) {
             val provider = llmRepo.getProviderById(providerId) ?: return@launch
             val config = provider.config.modelConfigs[modelId] ?: return@launch
-            val updated = config.withSelectedReasoningEffort(effort, provider.type)
+            val updated = config.withSelectedReasoningEffort(effort)
             if (updated == config) return@launch
             llmRepo.saveProvider(provider.copy(config = provider.config.copy(
                 modelConfigs = provider.config.modelConfigs + (modelId to updated)

@@ -165,6 +165,7 @@
     <string name="model_thinking">Reasoning</string>
     <string name="reasoning_effort">Effort</string>
     <string name="tool_calls">Tools</string>
+    <string name="model_reasoning_levels">Supported reasoning levels</string>
     <string name="send_thinking_content_back">Passback Thinking</string>
     <string name="streaming">Streaming</string>
     <string name="common_default">Default</string>

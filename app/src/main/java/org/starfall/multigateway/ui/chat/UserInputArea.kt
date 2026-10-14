@@ -62,6 +62,8 @@ import androidx.compose.ui.unit.sp
 import org.starfall.multigateway.R
 import org.starfall.multigateway.data.model.LlmProviderInfo
 import org.starfall.multigateway.data.model.ModelConfiguration
+import org.starfall.multigateway.data.model.DEFAULT_REASONING_EFFORTS
+import org.starfall.multigateway.data.model.supportedReasoningEfforts
 import org.starfall.multigateway.data.model.ProviderGroup
 import org.starfall.multigateway.data.model.ConversationSummaryRequest
 import org.starfall.multigateway.data.model.ModelType
@@ -140,8 +142,9 @@ fun UserInputArea(
     val maxInputHeight = (screenHeightDp * if (attachments.isNotEmpty()) 0.6f else 0.5f).dp
     val thinkingProvider = providers.firstOrNull { it.id == selectedProviderId }
     val thinkingConfig = thinkingProvider?.config?.modelConfigs?.get(selectedModelName)
-    val thinkingOptions = remember(thinkingProvider?.type, selectedModelName, thinkingProvider?.config?.maxTokens) {
-        reasoningEffortOptions(thinkingProvider?.type, selectedModelName, thinkingProvider?.config?.maxTokens ?: Int.MAX_VALUE)
+    val thinkingEfforts = thinkingConfig?.supportedReasoningEfforts ?: DEFAULT_REASONING_EFFORTS
+    val thinkingOptions = remember(thinkingProvider?.type, selectedModelName, thinkingProvider?.config?.maxTokens, thinkingEfforts) {
+        reasoningEffortOptions(thinkingProvider?.type, selectedModelName, thinkingProvider?.config?.maxTokens ?: Int.MAX_VALUE, thinkingEfforts)
     }
     val currentEffort = conversationReasoningEffort ?: thinkingConfig?.reasoningEffort
     val maximumThinking = thinkingConfig?.supportsThinking == true &&

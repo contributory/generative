@@ -75,10 +75,11 @@ class OfficialLlmSdkTest {
             server.enqueue(sse("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"))
             val base = provider(server, ProviderType.ANTHROPIC)
             val configured = base.copy(config = base.config.copy(modelConfigs = mapOf(model to
-                ModelConfiguration(supportsThinking = true, reasoningEffort = "xhigh"))))
+                ModelConfiguration(supportsThinking = true, reasoningEffort = "xhigh",
+                    reasoningEfforts = SELECTABLE_REASONING_EFFORTS))))
             sdk.streamAnthropic(configured, model, messages, "", 0.7, 0.9, 512, 40).toList()
             val body = Json.parseToJsonElement(server.takeRequest(5, TimeUnit.SECONDS)!!.body.readUtf8()).jsonObject
-            assertEquals("max", body["output_config"]!!.jsonObject["effort"]!!.jsonPrimitive.content)
+            assertEquals("xhigh", body["output_config"]!!.jsonObject["effort"]!!.jsonPrimitive.content)
             assertEquals("adaptive", body["thinking"]!!.jsonObject["type"]!!.jsonPrimitive.content)
             assertFalse(body["thinking"]!!.jsonObject.containsKey("budget_tokens"))
             assertFalse(body.containsKey("temperature"))
@@ -93,7 +94,8 @@ class OfficialLlmSdkTest {
             server.enqueue(sse("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"))
             val base = provider(server, ProviderType.ANTHROPIC)
             val configured = base.copy(config = base.config.copy(modelConfigs = mapOf(model to
-                ModelConfiguration(supportsThinking = true, reasoningEffort = "xhigh"))))
+                ModelConfiguration(supportsThinking = true, reasoningEffort = "xhigh",
+                    reasoningEfforts = SELECTABLE_REASONING_EFFORTS))))
             sdk.streamAnthropic(configured, model, messages, "", null, null, 6000).toList()
             val body = Json.parseToJsonElement(server.takeRequest(5, TimeUnit.SECONDS)!!.body.readUtf8()).jsonObject
             assertEquals("enabled", body["thinking"]!!.jsonObject["type"]!!.jsonPrimitive.content)

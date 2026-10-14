@@ -36,6 +36,12 @@ class AccountAdapterTest {
         assertEquals("claude-opus-4-6-thinking", models.resolve("claude-opus-4-6"))
         assertEquals("claude-sonnet-4-6", models.resolve("claude-sonnet-4-6-thinking"))
         assertEquals("custom-model", models.resolve("custom-model"))
+        // Levels are never swapped for another one.
+        assertEquals("gemini-3.6-flash-minimal", models.resolve("gemini-3.6-flash", "minimal"))
+        assertEquals("gemini-3.7-flash-xhigh", models.resolve("gemini-3.7-flash", "xhigh"))
+        assertEquals("gemini-3.5-flash-minimal", models.resolve("gemini-3.5-flash", "minimal"))
+        assertEquals("gemini-3.1-pro-minimal", models.resolve("gemini-3.1-pro", "minimal"))
+        assertEquals("gemini-3.1-pro-medium", models.resolve("gemini-3.1-pro", "medium"))
     }
 
     @Test fun allAccountProvidersUseOAuthAndAreRegistered() {
