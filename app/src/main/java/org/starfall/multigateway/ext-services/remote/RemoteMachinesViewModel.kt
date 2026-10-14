@@ -17,6 +17,13 @@ class RemoteMachinesViewModel(
     val state: StateFlow<RemoteMachineState> = service.state
         .stateIn(viewModelScope, SharingStarted.Eagerly, RemoteMachineState())
 
+    /** Machines holding a persistent SSH connection; there is deliberately no way to open one by hand. */
+    val connectedMachineIds: StateFlow<Set<String>> = service.connectedMachineIds
+
+    fun isConnected(machineId: String): Boolean = service.isConnected(machineId)
+
+    fun disconnect(machineId: String) = service.disconnectMachine(machineId)
+
     fun saveMachine(machine: RemoteMachine) {
         viewModelScope.launch(LocalWriteErrors.handler) { service.saveMachine(machine) }
     }
@@ -41,8 +48,20 @@ class RemoteMachinesViewModel(
         viewModelScope.launch(LocalWriteErrors.handler) { service.deleteOAuthClient(id) }
     }
 
+    suspend fun importBinary(uri: Uri): Result<RemoteBinary> = runCatching { service.importBinary(uri) }
+
+    suspend fun testBinary(id: String): Result<RemoteBinaryTestResult> =
+        runCatching { service.testBinary(id) }
+
+    fun deleteBinary(id: String) {
+        viewModelScope.launch(LocalWriteErrors.handler) { service.deleteBinary(id) }
+    }
+
     suspend fun importIdentityKey(uri: Uri): Result<RemoteIdentityKey> =
         runCatching { service.importIdentityKey(uri) }
+
+    suspend fun importPublicKey(keyId: String, uri: Uri): Result<RemoteIdentityKey> =
+        runCatching { service.importPublicKey(keyId, uri) }
 
     fun deleteIdentityKey(id: String) {
         viewModelScope.launch(LocalWriteErrors.handler) { service.deleteIdentityKey(id) }
@@ -53,16 +72,15 @@ class RemoteMachinesViewModel(
 
     suspend fun authorize(client: GCloudOAuthClient): Result<Unit> = service.authorizeGCloud(client)
 
-    suspend fun saveOAuthClientNow(client: GCloudOAuthClient) {
-        service.saveOAuthClient(client)
-    }
-
     suspend fun refreshIp(machine: RemoteMachine): Result<RemoteMachine> = service.refreshGCloudIp(machine)
 
     suspend fun startMachine(machine: RemoteMachine): Result<RemoteMachine> = service.startGCloudMachine(machine)
 
-    suspend fun openTerminal(machine: RemoteMachine, askSecret: RemoteSecretPrompt? = null): RemoteTerminal =
-        service.openTerminal(machine, askSecret)
+    suspend fun openTerminal(
+        machine: RemoteMachine,
+        passwordOverride: String? = null,
+        askSecret: RemoteSecretPrompt? = null
+    ): RemoteTerminal = service.openTerminal(machine, passwordOverride, askSecret)
 
     fun newMachine(): RemoteMachine = RemoteMachine(
         id = UUID.randomUUID().toString(),

@@ -2,6 +2,8 @@ package org.starfall.multigateway.extservices.remote
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.SystemClock
 import android.system.Os
 import com.jcraft.jsch.ChannelExec
 import com.jcraft.jsch.ChannelShell
@@ -13,12 +15,27 @@ import com.jcraft.jsch.SocketFactory
 import com.jcraft.jsch.UIKeyboardInteractive
 import com.jcraft.jsch.UserInfo
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -41,9 +58,17 @@ import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.ServerSocket
 import java.net.URLEncoder
+import java.util.Base64
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import java.util.Properties
 import java.util.UUID
 import kotlin.math.roundToInt
+
+internal const val REMOTE_TERMINAL_UI_PREFERENCES = "remote_terminal_ui"
+internal fun remoteTerminalInputModePreferenceKey(machineId: String) = "input_mode:$machineId"
 
 /** Result returned by an SSH command execution. */
 data class RemoteCommandResult(
@@ -54,27 +79,28 @@ data class RemoteCommandResult(
     val isError: Boolean get() = exitCode != 0
 }
 
-/**
- * A secret the SSH server asked for while connecting. [passphrase] is true for an encrypted private
- * key; otherwise it is a password (or a hidden keyboard-interactive answer). [prompt] is the text the
- * server/JSch supplied and may be blank.
- */
+/** A secret requested by the SSH server while connecting. */
 data class RemoteSecretRequest(val passphrase: Boolean, val prompt: String)
 
-/**
- * Asks the user for a secret. It is only invoked when the server really requests one and nothing is
- * saved for it. Returns null when the user cancels.
- */
+/** Called only when SSH requests a password or key passphrase that is not already saved. */
 typealias RemoteSecretPrompt = suspend (RemoteSecretRequest) -> String?
 
-/** A connected interactive shell. The owner must close it when the terminal screen is disposed. */
+/**
+ * A connected interactive shell. The owner must close it when the terminal screen is disposed.
+ * A terminal that reuses a shared SSH connection only closes its own channel; one that opened a
+ * private connection ([ownsSession]) closes the whole connection as well.
+ */
 class RemoteTerminal internal constructor(
     private val session: Session,
     private val channel: ChannelShell,
     val input: InputStream,
     val output: OutputStream,
-    private val localCommand: Process?
+    private val localCommand: Process?,
+    private val ownsSession: Boolean = true,
+    private val onClosed: () -> Unit = {}
 ) : AutoCloseable {
+    private val closed = AtomicBoolean(false)
+
     /** Exit status of the remote shell, or -1 while it is running / if the connection was dropped. */
     val exitStatus: Int get() = channel.exitStatus
 
@@ -85,15 +111,20 @@ class RemoteTerminal internal constructor(
     }
 
     /**
-     * Disconnects the channel and SSH session. JSch writes to the socket when disconnecting, which
-     * throws NetworkOnMainThreadException on the UI thread (previously swallowed, leaving the
-     * session open), so the work always runs on a background thread. Safe to call repeatedly.
+     * Disconnects the channel (and the SSH session when this terminal owns it). JSch writes to the
+     * socket when disconnecting, which throws NetworkOnMainThreadException on the UI thread
+     * (previously swallowed, leaving the session open), so the work always runs on a background
+     * thread. Safe to call repeatedly.
      */
     override fun close() {
+        if (!closed.compareAndSet(false, true)) return
         Thread {
             runCatching { channel.disconnect() }
-            runCatching { session.disconnect() }
-            runCatching { localCommand?.destroy() }
+            if (ownsSession) {
+                runCatching { session.disconnect() }
+                runCatching { localCommand?.destroy() }
+            }
+            runCatching { onClosed() }
         }.apply { isDaemon = true; name = "remote-terminal-disconnect" }.start()
     }
 }
@@ -104,24 +135,63 @@ class RemoteTerminal internal constructor(
  */
 class RemoteMachineService(
     private val context: Context,
-    /** Read-only view of the executables uploaded in Settings; used to expand ProxyCommand/LocalCommand. */
-    private val binaries: ExecutableBinaries,
-    val store: RemoteMachineStore = RemoteMachineStore(context)
+    val store: RemoteMachineStore = RemoteMachineStore(context),
+    /** Shared read-only executable list managed from Settings. */
+    private val binaries: ExecutableBinaries? = null
 ) {
+    private data class CachedCloudEndpoint(
+        val host: String,
+        val username: String,
+        val lastUsedAtElapsedRealtime: Long
+    )
+
     private val appContext = context.applicationContext
     private val json = Json { ignoreUnknownKeys = true }
     private val authHttp = ToolHttp()
+    private val endpointCacheLock = Any()
+    private val cloudEndpointCache = mutableMapOf<String, CachedCloudEndpoint>()
 
     val state = store.state
 
+    /** Binaries uploaded in the previous Remote Machines screen, before migration to Settings. */
+    fun legacyBinaries(): List<RemoteBinary> = state.value.binaries
+
+    suspend fun clearLegacyBinaries() {
+        store.update { it.copy(binaries = emptyList()) }
+    }
+
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val connections = ConcurrentHashMap<String, SharedConnection>()
+    private val machineLocks = ConcurrentHashMap<String, Mutex>()
+    private val _connectedMachineIds = MutableStateFlow<Set<String>>(emptySet())
+
+    /**
+     * Machines that currently hold a persistent SSH connection (opened by the connect tool or by
+     * execute). A terminal's private connection is not listed.
+     */
+    val connectedMachineIds: StateFlow<Set<String>> = _connectedMachineIds.asStateFlow()
+
     suspend fun saveMachine(machine: RemoteMachine) {
+        val username = machine.username.trim()
+        val normalizedPort = if (machine.type == RemoteMachineType.GCLOUD_SHELL) 6_000 else machine.port.coerceIn(1, 65535)
+        val passwordReference = if (machine.type == RemoteMachineType.GCLOUD_SHELL) {
+            machine.host.trim().takeIf(String::isNotBlank)?.let {
+                remotePasswordReference(username.ifBlank { machine.gcloudUsername }, it, normalizedPort)
+            } ?: machine.passwordReference
+        } else {
+            remotePasswordReference(username, machine.host.trim(), normalizedPort)
+        }
         val normalized = machine.copy(
             name = machine.name.trim(),
-            host = machine.host.trim(),
-            username = machine.username.trim(),
-            port = machine.port.coerceIn(1, 65535),
+            host = if (machine.type == RemoteMachineType.GCLOUD_SHELL) "" else machine.host.trim(),
+            username = username,
+            port = normalizedPort,
+            passwordReference = passwordReference,
             connectTimeoutSeconds = machine.connectTimeoutSeconds.coerceIn(1, 300),
-            keepAliveSeconds = machine.keepAliveSeconds.coerceIn(0, 3_600)
+            keepAliveSeconds = machine.keepAliveSeconds.coerceIn(0, 3_600),
+            preferredAuthentications = if (machine.authentication == RemoteAuthentication.PASSWORD) {
+                if (machine.keyboardInteractive) "keyboard-interactive,password" else "password"
+            } else "publickey"
         )
         require(normalized.name.isNotBlank()) { "Machine name is required." }
         store.update { current ->
@@ -137,9 +207,13 @@ class RemoteMachineService(
                 sshConfig = SshConfigParser.upsertMachine(current.sshConfig, saved, previousName)
             )
         }
+        // The next connection must use the saved settings.
+        disconnectMachineNow(normalized.id)
     }
 
     suspend fun deleteMachine(id: String) {
+        disconnectMachineNow(id)
+        synchronized(endpointCacheLock) { cloudEndpointCache.remove(id) }
         store.update { current ->
             val deleted = current.machines.firstOrNull { it.id == id }
             current.copy(
@@ -148,6 +222,12 @@ class RemoteMachineService(
             )
         }
         runCatching { File(appContext.filesDir, "remote-machines/keys/$id").delete() }
+        runCatching {
+            appContext.getSharedPreferences(REMOTE_TERMINAL_UI_PREFERENCES, Context.MODE_PRIVATE)
+                .edit()
+                .remove(remoteTerminalInputModePreferenceKey(id))
+                .apply()
+        }
     }
 
     suspend fun reorderMachines(ids: List<String>) {
@@ -161,9 +241,12 @@ class RemoteMachineService(
 
     suspend fun saveSshConfig(text: String) {
         store.update {
+            val synced = SshConfigParser.syncMachines(it.machines, text)
+            val config = synced.filter { machine -> machine.type == RemoteMachineType.GCLOUD_SHELL }
+                .fold(text) { currentConfig, machine -> SshConfigParser.upsertMachine(currentConfig, machine) }
             it.copy(
-                sshConfig = text,
-                machines = SshConfigParser.syncMachines(it.machines, text)
+                sshConfig = config,
+                machines = SshConfigParser.syncMachines(synced, config)
             )
         }
     }
@@ -190,6 +273,97 @@ class RemoteMachineService(
         }
     }
 
+    suspend fun importBinary(uri: Uri): RemoteBinary = withContext(Dispatchers.IO) {
+        val resolver = appContext.contentResolver
+        val displayName = resolver.query(uri, arrayOf("_display_name"), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+        }?.takeIf { it.isNotBlank() } ?: "binary-${UUID.randomUUID()}"
+        val safeName = displayName.substringAfterLast('/').replace(Regex("[^A-Za-z0-9._-]"), "_")
+            .ifBlank { "binary-${UUID.randomUUID()}" }
+        val directory = File(appContext.filesDir, "remote-machines/bin").apply { mkdirs() }
+        val target = File(directory, "${UUID.randomUUID()}-$safeName")
+        resolver.openInputStream(uri)?.use { input ->
+            target.outputStream().use { output -> input.copyTo(output) }
+        } ?: error("Could not read the selected binary.")
+        target.setReadable(false, false)
+        target.setWritable(false, false)
+        target.setExecutable(false, false)
+        target.setReadable(true, true)
+        target.setWritable(true, true)
+        target.setExecutable(true, true)
+        runCatching { Os.chmod(target.absolutePath, 0b111_000_000) }
+        require(target.canRead() && target.canExecute()) { "Could not grant execute permission to the imported binary." }
+        val binary = RemoteBinary(UUID.randomUUID().toString(), displayName, target.absolutePath)
+        val replaced = state.value.binaries.filter { it.name == displayName }
+        try {
+            store.update { it.copy(binaries = it.binaries.filterNot { existing -> existing.name == displayName } + binary) }
+        } catch (error: Throwable) {
+            target.delete()
+            throw error
+        }
+        replaced.forEach { old ->
+            if (old.path != target.absolutePath) runCatching { File(old.path).delete() }
+        }
+        binary
+    }
+
+    suspend fun testBinary(id: String): RemoteBinaryTestResult = withContext(Dispatchers.IO) {
+        val binary = state.value.binaries.firstOrNull { it.id == id } ?: error("Binary not found.")
+        val file = File(binary.path)
+        require(file.isFile) { "The imported binary file no longer exists." }
+        require(file.canExecute()) { "The imported file does not have execute permission." }
+        val header = readHeader(file)
+        val invocation = binaryInvocation(file)
+        require(invocation.size == 1 || !isStaticNonPieElf(header)) {
+            "This is a statically linked, non-PIE executable. Android 10+ blocks running files from app " +
+                "storage directly, and the system linker cannot load such a file. Use a PIE build made " +
+                "for Android (for example from Termux)."
+        }
+        val process = ProcessBuilder(invocation)
+            .directory(file.parentFile)
+            .redirectErrorStream(true)
+            .start()
+        val captured = ByteArrayOutputStream()
+        val truncated = AtomicBoolean(false)
+        val reader = Thread({
+            runCatching {
+                process.inputStream.use { input ->
+                    val buffer = ByteArray(8_192)
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        val remaining = MAX_BINARY_TEST_OUTPUT_BYTES - captured.size()
+                        if (remaining > 0) captured.write(buffer, 0, minOf(count, remaining))
+                        if (count > remaining) truncated.set(true)
+                    }
+                }
+            }
+        }, "remote-binary-test-output").apply {
+            isDaemon = true
+            start()
+        }
+        runCatching { process.outputStream.close() }
+        val completed = try {
+            process.waitFor(BINARY_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        } catch (error: Throwable) {
+            process.destroyForcibly()
+            throw error
+        }
+        if (!completed) {
+            process.destroyForcibly()
+            process.waitFor()
+        }
+        reader.join(2_000)
+        val output = captured.toString(Charsets.UTF_8.name()) +
+            if (truncated.get()) "\n[output truncated]" else ""
+        RemoteBinaryTestResult(
+            output = output,
+            exitCode = process.exitValue(),
+            timedOut = !completed,
+            outputTruncated = truncated.get()
+        )
+    }
+
     /** Imports a Google Desktop OAuth client file without persisting it until the user confirms it. */
     suspend fun parseOAuthClientJson(uri: Uri): GCloudOAuthClient = withContext(Dispatchers.IO) {
         val displayName = appContext.contentResolver.query(uri, arrayOf("_display_name"), null, null, null)?.use { cursor ->
@@ -211,11 +385,17 @@ class RemoteMachineService(
         )
     }
 
-    /** Binaries uploaded here before they moved to Settings; consumed once by the app container. */
-    fun legacyBinaries(): List<RemoteBinary> = state.value.binaries
-
-    suspend fun clearLegacyBinaries() {
-        store.update { it.copy(binaries = emptyList()) }
+    suspend fun deleteBinary(id: String) {
+        val binary = state.value.binaries.firstOrNull { it.id == id }
+        if (binary != null) {
+            require(state.value.machines.none { machine ->
+                listOf(machine.proxyCommand, machine.localCommand).any { command ->
+                    hasBinaryReference(command, binary.name)
+                }
+            }) { "Remove this binary from ProxyCommand or LocalCommand before deleting it." }
+        }
+        store.update { it.copy(binaries = it.binaries.filterNot { existing -> existing.id == id }) }
+        binary?.let { runCatching { File(it.path).delete() } }
     }
 
     /** Uploads an SSH private key once; machines reference it through IdentityFile. */
@@ -224,7 +404,10 @@ class RemoteMachineService(
         val displayName = resolver.query(uri, arrayOf("_display_name"), null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) cursor.getString(0) else null
         }?.substringAfterLast('/')?.takeIf { it.isNotBlank() } ?: "key-${UUID.randomUUID().toString().take(8)}"
-        val id = UUID.randomUUID().toString()
+        // Keep the path stable when replacing a key by the same display name: machines that
+        // already reference this IdentityFile path continue to use the replacement.
+        val id = state.value.identities.firstOrNull { it.name == displayName }?.id
+            ?: UUID.randomUUID().toString()
         val directory = File(appContext.filesDir, "remote-machines/identities").apply { mkdirs() }
         val target = File(directory, id)
         resolver.openInputStream(uri)?.use { input ->
@@ -233,18 +416,49 @@ class RemoteMachineService(
         target.setReadable(false, false)
         target.setWritable(true, true)
         runCatching { Os.chmod(target.absolutePath, 0b110_000_000) }
+        // A replaced private key may no longer match its old public key, so that one is dropped too.
+        state.value.identities.firstOrNull { it.id == id }?.publicKeyPath?.takeIf(String::isNotBlank)
+            ?.let { runCatching { File(it).delete() } }
         val key = RemoteIdentityKey(id, displayName, target.absolutePath)
         // Re-uploading a key with the same name replaces it, so existing IdentityFile names keep working.
-        val replaced = state.value.identities.filter { it.name == displayName }
+        val replaced = state.value.identities.filter { it.name == displayName && it.id != id }
         store.update { it.copy(identities = it.identities.filterNot { existing -> existing.name == displayName } + key) }
         replaced.forEach { runCatching { File(it.path).delete() } }
         key
     }
 
+    /**
+     * Attaches an OpenSSH public key (.pub file) to an uploaded private key. Google Cloud Shell needs
+     * the public key to authorize the connection, so it is used instead of deriving one.
+     */
+    suspend fun importPublicKey(keyId: String, uri: Uri): RemoteIdentityKey = withContext(Dispatchers.IO) {
+        val key = state.value.identities.firstOrNull { it.id == keyId } ?: error("SSH key not found.")
+        val text = appContext.contentResolver.openInputStream(uri)?.use { it.bufferedReader().readText() }
+            ?: error("Could not read the selected public key file.")
+        val normalized = normalizeOpenSshPublicKey(text)
+        val directory = File(appContext.filesDir, "remote-machines/identities").apply { mkdirs() }
+        val target = File(directory, "$keyId.pub")
+        target.writeText(normalized + "\n")
+        val updated = key.copy(publicKeyPath = target.absolutePath)
+        store.update { current ->
+            current.copy(identities = current.identities.map { if (it.id == keyId) updated else it })
+        }
+        updated
+    }
+
     suspend fun deleteIdentityKey(id: String) {
         val key = state.value.identities.firstOrNull { it.id == id }
+        if (key != null) {
+            require(state.value.machines.none { machine ->
+                val pointer = machine.identityFile.trim()
+                pointer == key.path || pointer == key.name || pointer.substringAfterLast('/') == key.name
+            }) { "Remove this key from IdentityFile before deleting it." }
+        }
         store.update { it.copy(identities = it.identities.filterNot { existing -> existing.id == id }) }
-        key?.let { runCatching { File(it.path).delete() } }
+        key?.let {
+            runCatching { File(it.path).delete() }
+            if (it.publicKeyPath.isNotBlank()) runCatching { File(it.publicKeyPath).delete() }
+        }
     }
 
     /**
@@ -257,6 +471,38 @@ class RemoteMachineService(
         val name = trimmed.substringAfterLast('/')
         return state.value.identities.firstOrNull { it.name == trimmed || it.name == name }
             ?.let { File(it.path) }?.takeIf { it.isFile }
+    }
+
+    /** Converts the configured private key to the OpenSSH public-key line Cloud Shell expects. */
+    /** The public key uploaded next to this private key in settings, if any. */
+    private fun uploadedPublicKey(privateKey: File): String? {
+        val identity = state.value.identities.firstOrNull { it.path == privateKey.absolutePath } ?: return null
+        val file = identity.publicKeyPath.takeIf(String::isNotBlank)?.let(::File)?.takeIf { it.isFile } ?: return null
+        val normalized = normalizeOpenSshPublicKey(file.readText())
+        val algorithm = normalized.substringBefore(' ')
+        require(algorithm in CLOUD_SHELL_SUPPORTED_KEY_ALGORITHMS) {
+            "Google Cloud Shell does not support SSH public-key type $algorithm. Use an RSA or ECDSA key."
+        }
+        return normalized
+    }
+
+    private fun cloudShellPublicKey(machine: RemoteMachine): String? {
+        val identityFile = machine.identityFile.trim().takeIf(String::isNotBlank) ?: return null
+        val file = resolveIdentity(identityFile)
+            ?: error("Identity file not found: ${identityFile.substringAfterLast('/')}. Upload it in Remote Machines settings or fix IdentityFile.")
+        uploadedPublicKey(file)?.let { return it }
+        val jsch = JSch()
+        if (machine.identityPassphrase.isBlank()) jsch.addIdentity(file.absolutePath)
+        else jsch.addIdentity(file.absolutePath, machine.identityPassphrase)
+        val identity = jsch.identityRepository.identities.firstOrNull()
+            ?: error("Could not read the public key for IdentityFile.")
+        val algorithm = identity.algName
+        require(algorithm in CLOUD_SHELL_SUPPORTED_KEY_ALGORITHMS) {
+            "Google Cloud Shell does not support SSH public-key type $algorithm. Use an RSA or ECDSA key."
+        }
+        val publicKeyBlob = identity.publicKeyBlob
+            ?: error("Could not read the public key for IdentityFile.")
+        return "$algorithm ${Base64.getEncoder().encodeToString(publicKeyBlob)}"
     }
 
     suspend fun authorizeGCloud(client: GCloudOAuthClient): Result<Unit> = result {
@@ -305,53 +551,120 @@ class RemoteMachineService(
     }
 
     /** Gets the current Cloud Shell endpoint and returns an updated machine record. */
-    suspend fun refreshGCloudIp(machine: RemoteMachine): Result<RemoteMachine> = result {
+    suspend fun refreshGCloudIp(
+        machine: RemoteMachine,
+        forceRefresh: Boolean = true
+    ): Result<RemoteMachine> = result {
         require(machine.type == RemoteMachineType.GCLOUD_SHELL) { "Only Cloud Shell machines have a remote IP lookup." }
+        if (!forceRefresh) cachedCloudEndpoint(machine)?.let { return@result it }
         val client = clientFor(machine)
         val token = accessToken(client)
         val api = CloudShellApi(token)
+        val publicKey = cloudShellPublicKey(machine)
         var environment = api.getEnvironment(machine.environmentName)
+        val needsAuthorization = environment.isRunning() || environment.isPending()
         if (!environment.isRunning()) {
-            api.startEnvironment(machine.environmentName)
-        } else {
-            // The reference implementation authorizes an already-running Cloud Shell SSH endpoint
-            // with the same Google access token. Starting the environment already performs the
-            // corresponding authorization as part of that operation.
-            runCatching { api.authorizeEnvironment(machine.environmentName) }
+            if (environment.isPending()) {
+                api.waitUntilRunning(machine.environmentName)
+            } else {
+                api.startEnvironment(machine.environmentName, publicKey?.let(::listOf).orEmpty())
+            }
+        }
+        if (needsAuthorization) {
+            // Keep an already-running environment's gcloud credentials current. A fresh start
+            // receives the same token in its start request.
+            api.authorizeEnvironment(machine.environmentName)
         }
         environment = api.getEnvironment(machine.environmentName)
+        if (publicKey != null && !environment.hasPublicKey(publicKey)) {
+            api.addPublicKey(machine.environmentName, publicKey)
+            environment = api.getEnvironment(machine.environmentName)
+        }
         val endpoint = environment.endpoint()
-        val (host, port) = endpoint ?: error("Google Cloud Shell did not return an SSH endpoint.")
-        val username = environment.firstText("username", "user", "sshUsername")
-            .orEmpty().ifBlank { machine.gcloudUsername.ifBlank { machine.username } }
+        val (host, _) = endpoint ?: error("Google Cloud Shell did not return an SSH endpoint.")
+        val apiUsername = environment.firstText("sshUsername", "username", "user").orEmpty()
+        val username = machine.username.ifBlank { machine.gcloudUsername.ifBlank { apiUsername } }
         val updated = machine.copy(
             host = host,
-            port = port,
+            port = 6_000,
             username = username,
-            gcloudUsername = username
+            gcloudUsername = username,
+            passwordReference = remotePasswordReference(username, host, 6_000)
         )
-        saveMachine(updated)
+        synchronized(endpointCacheLock) {
+            cloudEndpointCache[machine.id] = CachedCloudEndpoint(
+                host = host,
+                username = username,
+                lastUsedAtElapsedRealtime = SystemClock.elapsedRealtime()
+            )
+        }
+        store.update { current ->
+            val saved = current.machines.firstOrNull { it.id == machine.id }
+                ?.takeIf { it.type == RemoteMachineType.GCLOUD_SHELL }
+            if (saved == null) current else {
+                val savedUsername = saved.username.ifBlank { username }
+                val savedMachine = saved.copy(
+                    host = host,
+                    port = 6_000,
+                    username = savedUsername,
+                    gcloudUsername = savedUsername,
+                    passwordReference = remotePasswordReference(savedUsername, host, 6_000),
+                    password = updated.password,
+                    identityPassphrase = updated.identityPassphrase
+                )
+                val config = if (saved.username.isBlank() && savedUsername.isNotBlank()) {
+                    SshConfigParser.upsertMachine(current.sshConfig, savedMachine.copy(host = "", port = 6_000))
+                } else current.sshConfig
+                current.copy(
+                    machines = current.machines.map { if (it.id == savedMachine.id) savedMachine else it },
+                    sshConfig = config
+                )
+            }
+        }
         updated
+    }
+
+    private fun cachedCloudEndpoint(machine: RemoteMachine): RemoteMachine? = synchronized(endpointCacheLock) {
+        val cached = cloudEndpointCache[machine.id] ?: return@synchronized null
+        val now = SystemClock.elapsedRealtime()
+        if (now - cached.lastUsedAtElapsedRealtime >= CLOUD_ENDPOINT_CACHE_TTL_MILLIS) {
+            cloudEndpointCache.remove(machine.id)
+            return@synchronized null
+        }
+        cloudEndpointCache[machine.id] = cached.copy(lastUsedAtElapsedRealtime = now)
+        val username = machine.username.ifBlank { cached.username }
+        machine.copy(
+            host = cached.host,
+            port = 6_000,
+            username = username,
+            gcloudUsername = username,
+            passwordReference = remotePasswordReference(username, cached.host, 6_000)
+        )
     }
 
     suspend fun startGCloudMachine(machine: RemoteMachine): Result<RemoteMachine> = result {
         require(machine.type == RemoteMachineType.GCLOUD_SHELL)
-        val client = clientFor(machine)
-        CloudShellApi(accessToken(client)).startEnvironment(machine.environmentName)
         refreshGCloudIp(machine).getOrThrow()
     }
 
     suspend fun execute(machine: RemoteMachine, command: String, timeoutSeconds: Int = 120): RemoteCommandResult {
         require(command.isNotBlank()) { "The command is empty." }
-        val actual = if (machine.type == RemoteMachineType.GCLOUD_SHELL && machine.host.isBlank()) {
-            refreshGCloudIp(machine).getOrThrow()
-        } else machine
-        return runSshCommand(actual, command, timeoutSeconds, retryCloudShell = true)
+        return runSshCommand(machine, command, timeoutSeconds)
     }
 
     suspend fun executeTool(machine: RemoteMachine, toolName: String, arguments: JsonObject): JsonObject {
         require(machine.isToolEnabled(toolName)) { "Remote Machine tool is disabled." }
         return when (toolName) {
+            REMOTE_TOOL_UPDATE_IP -> refreshGCloudIp(machine, forceRefresh = true).fold(
+                onSuccess = { updated ->
+                    buildJsonObject {
+                        put("status", JsonPrimitive("updated"))
+                        put("host", updated.host)
+                        put("port", updated.port)
+                    }
+                },
+                onFailure = { throw it }
+            )
             REMOTE_TOOL_START_MACHINE -> startGCloudMachine(machine).fold(
                 onSuccess = { updated ->
                     buildJsonObject {
@@ -362,6 +675,9 @@ class RemoteMachineService(
                 },
                 onFailure = { throw it }
             )
+            REMOTE_TOOL_DISCONNECT -> buildJsonObject {
+                put("status", JsonPrimitive(if (disconnectMachineNow(machine.id)) "disconnected" else "not_connected"))
+            }
             REMOTE_TOOL_EXECUTE -> {
                 val command = arguments["command"]?.jsonPrimitive?.contentOrNull.orEmpty()
                 val timeout = arguments["timeout_seconds"]?.jsonPrimitive?.longOrNull
@@ -378,23 +694,237 @@ class RemoteMachineService(
         }
     }
 
-    suspend fun openTerminal(machine: RemoteMachine, askSecret: RemoteSecretPrompt? = null): RemoteTerminal {
-        val actual = if (machine.type == RemoteMachineType.GCLOUD_SHELL && machine.host.isBlank()) {
-            refreshGCloudIp(machine).getOrThrow()
-        } else machine
+    /**
+     * Opens an interactive shell. An existing SSH connection is reused and stays open when the
+     * terminal exits; otherwise a private connection is opened and closed with the terminal.
+     */
+    suspend fun openTerminal(
+        machine: RemoteMachine,
+        passwordOverride: String? = null,
+        askSecret: RemoteSecretPrompt? = null
+    ): RemoteTerminal {
+        val shared = acquireShared(machine.id, create = null)
+        if (shared != null) {
+            try {
+                val (channel, input, output) = openShellChannel(shared.session, machine)
+                return RemoteTerminal(
+                    shared.session, channel, input, output, null,
+                    ownsSession = false, onClosed = shared::release
+                )
+            } catch (error: Throwable) {
+                shared.release()
+                if (error is CancellationException) throw error
+                // The shared connection was probably dropped; fall back to a private one.
+                dropConnection(shared)
+            }
+        }
+        val (session, local) = openSession(machine, passwordOverride, askSecret)
         return try {
-            openTerminalInternal(actual, askSecret)
-        } catch (error: Exception) {
-            if (error is CancellationException || actual.type != RemoteMachineType.GCLOUD_SHELL) throw error
-            val refreshed = refreshGCloudIp(actual).getOrThrow()
-            openTerminalInternal(refreshed, askSecret)
+            val (channel, input, output) = openShellChannel(session, machine)
+            RemoteTerminal(session, channel, input, output, local, ownsSession = true)
+        } catch (error: Throwable) {
+            withContext(NonCancellable + Dispatchers.IO) {
+                runCatching { session.disconnect() }
+                runCatching { local?.destroy() }
+            }
+            throw error
         }
     }
 
-    private suspend fun openTerminalInternal(machine: RemoteMachine, askSecret: RemoteSecretPrompt?): RemoteTerminal = withContext(Dispatchers.IO) {
-        val session = connect(machine, askSecret)
+    fun isConnected(machineId: String): Boolean = connections[machineId]?.session?.isConnected == true
+
+    /** Closes the machine's persistent connection without waiting (safe to call from the UI thread). */
+    fun disconnectMachine(machineId: String) {
+        ioScope.launch { disconnectMachineNow(machineId) }
+    }
+
+    /**
+     * Closes every persistent connection (used when the user switches chat). A connection that is
+     * running a command is closed right after that command finishes instead of cutting it off.
+     */
+    fun disconnectAllWhenIdle() {
+        ioScope.launch {
+            connections.values.toList().forEach { connection ->
+                if (connection.requestClose()) closeConnection(connection)
+            }
+        }
+    }
+
+    /** Closes the machine's persistent connection. Returns false when there was none. */
+    suspend fun disconnectMachineNow(machineId: String): Boolean = withContext(NonCancellable + Dispatchers.IO) {
+        val connection = connections[machineId] ?: return@withContext false
+        closeConnection(connection)
+        true
+    }
+
+    /** One SSH session shared by tool commands and terminals of the same machine. */
+    private inner class SharedConnection(
+        val machineId: String,
+        val session: Session,
+        private val localCommand: Process?
+    ) {
+        private var users = 0
+        private var closeOnRelease = false
+        private var idleJob: Job? = null
+        private var monitorJob: Job? = null
+
+        val inUse: Boolean @Synchronized get() = users > 0
+
+        @Synchronized
+        fun acquire() {
+            users++
+            closeOnRelease = false
+            idleJob?.cancel()
+            idleJob = null
+        }
+
+        /** Closes now when nothing uses the connection, else as soon as the last user releases it. */
+        @Synchronized
+        fun requestClose(): Boolean {
+            if (users == 0) return true
+            closeOnRelease = true
+            return false
+        }
+
+        /** Every acquire() needs exactly one release(); the idle countdown starts at the last one. */
+        @Synchronized
+        fun release() {
+            if (users > 0) users--
+            if (users == 0) {
+                val wait = if (closeOnRelease) 0L else IDLE_DISCONNECT_MILLIS
+                idleJob?.cancel()
+                idleJob = ioScope.launch {
+                    delay(wait)
+                    disconnectIfIdle(this@SharedConnection)
+                }
+            }
+        }
+
+        /** Drops the entry when the server or network closed the session, so the UI stays truthful. */
+        fun startMonitor() {
+            monitorJob = ioScope.launch {
+                while (isActive) {
+                    delay(CONNECTION_POLL_MILLIS)
+                    if (!session.isConnected) {
+                        closeConnection(this@SharedConnection)
+                        break
+                    }
+                }
+            }
+        }
+
+        /** Blocking network I/O: call off the main thread. */
+        fun shutdown() {
+            monitorJob?.cancel()
+            synchronized(this) {
+                idleJob?.cancel()
+                idleJob = null
+            }
+            runCatching { session.disconnect() }
+            runCatching { localCommand?.destroy() }
+        }
+    }
+
+    private suspend fun disconnectIfIdle(connection: SharedConnection) {
+        machineLocks.getOrPut(connection.machineId) { Mutex() }.withLock {
+            if (connection.inUse || connections[connection.machineId] !== connection) return
+            closeConnection(connection)
+        }
+    }
+
+    private fun closeConnection(connection: SharedConnection) {
+        connections.remove(connection.machineId, connection)
+        publishConnected()
+        connection.shutdown()
+    }
+
+    private suspend fun dropConnection(connection: SharedConnection) =
+        withContext(NonCancellable + Dispatchers.IO) { closeConnection(connection) }
+
+    private fun publishConnected() {
+        _connectedMachineIds.value = connections.keys.toSet()
+    }
+
+    private suspend fun acquireConnection(machine: RemoteMachine): SharedConnection =
+        acquireShared(machine.id, create = machine) ?: error("Could not open an SSH connection.")
+
+    /**
+     * Returns the machine's live connection with one use acquired, opening it when [create] is
+     * given. Without [create] it returns null if the machine is not connected.
+     */
+    private suspend fun acquireShared(machineId: String, create: RemoteMachine?): SharedConnection? =
+        withContext(Dispatchers.IO) {
+            machineLocks.getOrPut(machineId) { Mutex() }.withLock {
+                var connection = connections[machineId]
+                if (connection != null && !connection.session.isConnected) {
+                    closeConnection(connection)
+                    connection = null
+                }
+                if (connection == null) {
+                    if (create == null) return@withLock null
+                    val (session, local) = openSession(create)
+                    connection = SharedConnection(machineId, session, local)
+                    connections[machineId] = connection
+                    connection.startMonitor()
+                    publishConnected()
+                }
+                connection.acquire()
+                connection
+            }
+        }
+
+    /** Opens an SSH session (refreshing the Cloud Shell endpoint when needed) plus its local command. */
+    private suspend fun openSession(
+        machine: RemoteMachine,
+        passwordOverride: String? = null,
+        askSecret: RemoteSecretPrompt? = null
+    ): Pair<Session, Process?> {
+        var actual = if (machine.type == RemoteMachineType.GCLOUD_SHELL) {
+            refreshGCloudIp(machine, forceRefresh = false).getOrThrow()
+        } else machine
+        val session = try {
+            connectCancellable(actual, passwordOverride, askSecret)
+        } catch (error: Exception) {
+            if (error is CancellationException || actual.type != RemoteMachineType.GCLOUD_SHELL) throw error
+            actual = refreshGCloudIp(actual).getOrThrow()
+            connectCancellable(actual, passwordOverride, askSecret)
+        }
+        val resolved = actual
+        val local = withContext(Dispatchers.IO) { startLocalCommand(resolved) }
+        return session to local
+    }
+
+    /**
+     * JSch's connect call blocks its thread and ignores coroutine cancellation, so it runs in a child
+     * coroutine and the half-open session is closed when cancelled (the Stop button).
+     */
+    private suspend fun connectCancellable(
+        machine: RemoteMachine,
+        passwordOverride: String?,
+        askSecret: RemoteSecretPrompt? = null
+    ): Session =
+        withContext(Dispatchers.IO) {
+            val pending = AtomicReference<Session?>()
+            coroutineScope {
+                val opening = async(Dispatchers.IO) {
+                    connect(machine, passwordOverride, askSecret, onCreated = { pending.set(it) })
+                }
+                try {
+                    opening.await()
+                } catch (error: Throwable) {
+                    runCatching { pending.get()?.disconnect() }
+                    opening.cancel()
+                    throw error
+                }
+            }
+        }
+
+    private suspend fun openShellChannel(
+        session: Session,
+        machine: RemoteMachine
+    ): Triple<ChannelShell, InputStream, OutputStream> = withContext(Dispatchers.IO) {
+        val channel = session.openChannel("shell") as ChannelShell
         try {
-            val channel = session.openChannel("shell") as ChannelShell
             channel.setPtyType("xterm-256color")
             // JSch only wires the piped streams into the channel thread if they are requested BEFORE
             // connect(). Asking for them afterwards left the channel with no stdin reader (nothing the
@@ -402,56 +932,134 @@ class RemoteMachineService(
             val input = channel.getInputStream()
             val output = channel.getOutputStream()
             channel.connect(machine.connectTimeoutSeconds * 1_000)
-            val local = startLocalCommand(machine)
-            RemoteTerminal(session, channel, input, output, local)
+            Triple(channel, input, output)
         } catch (error: Throwable) {
-            session.disconnect()
+            runCatching { channel.disconnect() }
             throw error
         }
     }
 
-    private suspend fun runSshCommand(
-        machine: RemoteMachine,
-        command: String,
-        timeoutSeconds: Int,
-        retryCloudShell: Boolean
-    ): RemoteCommandResult {
-        return try {
-            withContext(Dispatchers.IO) {
-                val session = connect(machine)
-                try {
-                    val channel = session.openChannel("exec") as ChannelExec
-                    val errors = ByteArrayOutputStream()
-                    channel.setCommand(command)
-                    channel.setInputStream(null)
-                    channel.setErrStream(errors)
-                    channel.connect(machine.connectTimeoutSeconds * 1_000)
-                    val input = channel.getInputStream()
-                    val output = withTimeout(timeoutSeconds.coerceIn(1, 600) * 1_000L) {
-                        input.readBytes()
-                    }.toString(Charsets.UTF_8)
-                    // The channel can finish writing stderr just after stdout reaches EOF.
-                    delay(20)
-                    RemoteCommandResult(output, String(errors.toByteArray(), Charsets.UTF_8), channel.getExitStatus())
-                } finally {
-                    runCatching { session.disconnect() }
-                }
-            }
-        } catch (error: Exception) {
-            if (error is CancellationException || !retryCloudShell || machine.type != RemoteMachineType.GCLOUD_SHELL) throw error
-            val refreshed = refreshGCloudIp(machine).getOrThrow()
-            runSshCommand(refreshed, command, timeoutSeconds, retryCloudShell = false)
+    private class ExecChannel(
+        val channel: ChannelExec,
+        val input: InputStream,
+        val errors: ByteArrayOutputStream
+    )
+
+    private fun openExecChannel(session: Session, machine: RemoteMachine, command: String): ExecChannel {
+        val channel = session.openChannel("exec") as ChannelExec
+        val errors = ByteArrayOutputStream()
+        try {
+            channel.setCommand(command)
+            channel.setInputStream(null)
+            channel.setErrStream(errors)
+            val input = channel.getInputStream()
+            channel.connect(machine.connectTimeoutSeconds * 1_000)
+            return ExecChannel(channel, input, errors)
+        } catch (error: Throwable) {
+            runCatching { channel.disconnect() }
+            throw error
         }
     }
 
-    private fun connect(machine: RemoteMachine, askSecret: RemoteSecretPrompt? = null): Session {
+    /** Runs a command over the machine's persistent connection, opening it first when needed. */
+    private suspend fun runSshCommand(
+        machine: RemoteMachine,
+        command: String,
+        timeoutSeconds: Int
+    ): RemoteCommandResult {
+        var retried = false
+        while (true) {
+            val connection = acquireConnection(machine)
+            val exec = try {
+                withContext(Dispatchers.IO) { openExecChannel(connection.session, machine, command) }
+            } catch (error: Throwable) {
+                connection.release()
+                if (error is CancellationException) throw error
+                // The server or network may have dropped the connection since its last use. The
+                // command never started, so reconnecting once and retrying cannot repeat it.
+                dropConnection(connection)
+                if (retried) throw error
+                retried = true
+                continue
+            }
+            try {
+                return collectExecResult(exec, timeoutSeconds)
+            } finally {
+                withContext(NonCancellable + Dispatchers.IO) {
+                    runCatching { exec.channel.disconnect() }
+                }
+                connection.release()
+            }
+        }
+    }
+
+    private fun stopExec(channel: ChannelExec) {
+        // The session stays open, so ask the server to end the process too (best effort; older
+        // servers ignore the signal) before closing the channel.
+        runCatching { channel.sendSignal("TERM") }
+        runCatching { channel.disconnect() }
+    }
+
+    private suspend fun collectExecResult(exec: ExecChannel, timeoutSeconds: Int): RemoteCommandResult {
+        // JSch's read calls block their thread and ignore coroutine cancellation, so reading runs in
+        // a child coroutine and the channel is closed when cancelled. That makes the Stop button
+        // take effect immediately instead of after the remote command.
+        val limitSeconds = timeoutSeconds.coerceIn(1, 600)
+        val collected = ByteArrayOutputStream()
+        var timedOut = false
+        coroutineScope {
+            val reader = async(Dispatchers.IO) {
+                val buffer = ByteArray(8_192)
+                try {
+                    while (true) {
+                        val count = exec.input.read(buffer)
+                        if (count < 0) break
+                        synchronized(collected) { collected.write(buffer, 0, count) }
+                    }
+                } catch (_: java.io.IOException) {
+                    // The channel was closed by cancel/timeout below.
+                }
+            }
+            try {
+                withTimeout(limitSeconds * 1_000L) { reader.await() }
+            } catch (_: TimeoutCancellationException) {
+                // A timeout is a tool result for the model, not a cancelled generation:
+                // TimeoutCancellationException is a CancellationException and would
+                // otherwise abort the whole chat turn as if the user pressed Stop.
+                timedOut = true
+                stopExec(exec.channel)
+                reader.cancel()
+            } catch (error: Throwable) {
+                stopExec(exec.channel)
+                reader.cancel()
+                throw error
+            }
+        }
+        val output = synchronized(collected) { collected.toString(Charsets.UTF_8.name()) }
+        // The channel can finish writing stderr just after stdout reaches EOF.
+        delay(20)
+        val stderr = String(exec.errors.toByteArray(), Charsets.UTF_8)
+        return if (timedOut) {
+            RemoteCommandResult(
+                output,
+                (stderr + "\n[Command timed out after ${limitSeconds}s and was terminated; output above is partial.]").trim(),
+                -1
+            )
+        } else {
+            RemoteCommandResult(output, stderr, exec.channel.getExitStatus())
+        }
+    }
+
+    private fun connect(
+        machine: RemoteMachine,
+        passwordOverride: String? = null,
+        askSecret: RemoteSecretPrompt? = null,
+        onCreated: (Session) -> Unit = {}
+    ): Session {
         require(machine.host.isNotBlank()) { "Remote host is missing." }
         require(machine.username.isNotBlank()) { "Remote user is missing." }
         AndroidEdDSA.install()
         val jsch = JSch()
-        // An empty identity file / password is valid: the server may need no authentication at all
-        // (JSch always tries the "none" method first), or it may ask for a secret later, in which
-        // case [askSecret] is used to prompt only at that point.
         if (machine.identityFile.isNotBlank()) {
             val identity = resolveIdentity(machine.identityFile)
                 ?: error("Identity file not found: ${machine.identityFile.substringAfterLast('/')}. Upload it in Remote Machines settings or fix IdentityFile.")
@@ -460,27 +1068,28 @@ class RemoteMachineService(
         }
         val session = jsch.getSession(machine.username, machine.host, machine.port)
         val passwordMode = machine.authentication == RemoteAuthentication.PASSWORD
-        val savedPassword = if (passwordMode) machine.password else ""
-        val useKeyboardInteractive = passwordMode && (machine.keyboardInteractive || savedPassword.isEmpty())
-        // Some SSH servers expose password login only through keyboard-interactive/PAM. JSch needs
-        // a UserInfo implementation to answer those prompts; setting Session.password alone only
-        // handles the plain ssh-userauth/password method and cancels KBI prompts. The UserInfo is
-        // also what lets us ask for a password/passphrase on demand when none is saved.
-        val plainSavedPassword = passwordMode && !machine.keyboardInteractive && savedPassword.isNotEmpty()
+        val password = if (passwordMode) passwordOverride ?: machine.password else ""
+        val useKeyboardInteractive = passwordMode && (machine.keyboardInteractive || password.isEmpty())
+        val plainSavedPassword = passwordMode && !machine.keyboardInteractive && password.isNotEmpty()
+        // UserInfo also handles an encrypted key's passphrase when public-key auth is selected.
         if (!plainSavedPassword) {
-            session.setUserInfo(PasswordKeyboardInteractiveUserInfo(machine.username, savedPassword, askSecret))
+            session.setUserInfo(PasswordKeyboardInteractiveUserInfo(machine.username, password, askSecret))
         }
-        if (savedPassword.isNotEmpty()) session.setPassword(savedPassword)
+        if (password.isNotEmpty()) session.setPassword(password)
         session.setConfig("StrictHostKeyChecking", if (machine.strictHostKeyChecking) "yes" else "no")
         session.setConfig(
             "PreferredAuthentications",
-            if (useKeyboardInteractive) {
+            machine.preferredAuthentications.ifBlank {
+                if (useKeyboardInteractive) {
                 // Try PAM/keyboard-interactive first. JSch's password implementation retries the
                 // same method internally after a failure, which can exhaust servers that expose
                 // password login only as keyboard-interactive before KBI is reached.
-                "keyboard-interactive,password"
-            } else {
-                "publickey,password,keyboard-interactive"
+                    "keyboard-interactive,password"
+                } else if (machine.authentication == RemoteAuthentication.PASSWORD) {
+                    "password"
+                } else {
+                    "publickey"
+                }
             }
         )
         if (machine.compression) session.setConfig("compression.s2c", "zlib,none")
@@ -490,11 +1099,13 @@ class RemoteMachineService(
         machine.proxyCommand.trim().takeIf(String::isNotBlank)?.let { command ->
             session.setProxy(CommandProxy(resolveBinary(command)))
         }
+        onCreated(session)
         try {
             session.connect(machine.connectTimeoutSeconds * 1_000)
         } catch (failure: JSchException) {
-            val noSecretSaved = savedPassword.isEmpty() && machine.identityFile.isBlank()
-            if (askSecret == null && noSecretSaved && failure.isAuthenticationFailure()) {
+            if (askSecret == null && password.isEmpty() && machine.identityFile.isBlank() &&
+                failure.isAuthenticationFailure()
+            ) {
                 throw IllegalStateException(
                     "The server requires authentication, but this machine has no saved password or private key. Add one in the machine settings.",
                     failure
@@ -516,10 +1127,41 @@ class RemoteMachineService(
             ProcessBuilder("sh", "-c", resolveBinary(command.replace("%h", machine.host).replace("%p", machine.port.toString())))
                 .redirectErrorStream(true)
                 .start()
+                .also { process -> discardProcessStream(process.inputStream, "remote-local-command-output") }
         }.getOrNull()
     }
 
-    private fun resolveBinary(command: String): String = binaries.resolveCommand(command)
+    private fun hasBinaryReference(command: String, name: String): Boolean =
+        Regex("(^|\\s)${Regex.escape(name)}(?=\\s|$)").containsMatchIn(command)
+
+    private fun resolveBinary(command: String): String {
+        var resolved = binaries?.resolveCommand(command) ?: command
+        state.value.binaries.forEach { binary ->
+            val pattern = Regex("(^|\\s)${Regex.escape(binary.name)}(?=\\s|$)")
+            val invocation = binaryInvocation(File(binary.path)).joinToString(" ")
+            resolved = pattern.replace(resolved) { match -> "${match.value.substringBefore(binary.name)}$invocation" }
+        }
+        return resolved
+    }
+
+    /**
+     * Command line that runs an imported binary. Since Android 10, apps targeting API 29+ may not
+     * execve() files in their own storage (SELinux denies it with "Permission denied" even though the
+     * file mode allows execution), so ELF files are started through the system dynamic linker and
+     * scripts through their interpreter. The result is a path-only argv safe to join with spaces.
+     */
+    private fun binaryInvocation(file: File): List<String> {
+        val header = readHeader(file)
+        return binaryLauncher(header, Build.VERSION.SDK_INT, appContext.applicationInfo.targetSdkVersion) +
+            file.absolutePath
+    }
+
+    private fun readHeader(file: File): ByteArray = runCatching {
+        file.inputStream().use { input ->
+            val buffer = ByteArray(256)
+            buffer.copyOf(input.read(buffer).coerceAtLeast(0))
+        }
+    }.getOrDefault(ByteArray(0))
 
     private suspend fun accessToken(client: GCloudOAuthClient): String {
         val existing = state.value.oauthTokens[client.id]
@@ -574,12 +1216,29 @@ class RemoteMachineService(
     private inner class CloudShellApi(private val accessToken: String) {
         suspend fun getEnvironment(name: String): JsonObject = request(environmentUrl(name), "GET")
 
-        suspend fun startEnvironment(name: String): JsonObject =
-            waitForOperation(request("${environmentUrl(name)}:start", "POST", accessTokenBody()))
+        suspend fun startEnvironment(name: String, publicKeys: List<String>): JsonObject =
+            waitForOperation(request("${environmentUrl(name)}:start", "POST", accessTokenBody(publicKeys)))
 
         suspend fun authorizeEnvironment(name: String): JsonObject = waitForOperation(
             request("${environmentUrl(name)}:authorize", "POST", accessTokenBody())
         )
+
+        suspend fun addPublicKey(name: String, key: String): JsonObject = waitForOperation(
+            request(
+                "${environmentUrl(name)}:addPublicKey",
+                "POST",
+                buildJsonObject { put("key", JsonPrimitive(key)) }.toString()
+            )
+        )
+
+        suspend fun waitUntilRunning(name: String): JsonObject {
+            repeat(80) {
+                delay(1_500)
+                val current = getEnvironment(name)
+                if (current.isRunning()) return current
+            }
+            error("Timed out while waiting for Google Cloud Shell to start.")
+        }
 
         private suspend fun waitForOperation(operation: JsonObject): JsonObject {
             val operationName = operation["name"]?.jsonPrimitive?.contentOrNull
@@ -602,8 +1261,9 @@ class RemoteMachineService(
             error("Timed out while waiting for the Google Cloud Shell operation.")
         }
 
-        private fun accessTokenBody(): String = buildJsonObject {
+        private fun accessTokenBody(publicKeys: List<String> = emptyList()): String = buildJsonObject {
             put("accessToken", accessToken)
+            if (publicKeys.isNotEmpty()) put("publicKeys", JsonArray(publicKeys.map(::JsonPrimitive)))
         }.toString()
 
         private suspend fun request(url: String, method: String, body: String? = null): JsonObject = withContext(Dispatchers.IO) {
@@ -649,21 +1309,106 @@ class RemoteMachineService(
     }
 
     private fun JsonObject.endpoint(): Pair<String, Int>? {
-        val host = firstText("host", "sshHost", "ip", "externalIp") ?: return null
-        val port = firstText("port", "sshPort")?.toIntOrNull()?.coerceIn(1, 65535) ?: 22
+        val host = firstText("sshHost", "host", "ip", "externalIp") ?: return null
+        val port = firstText("sshPort", "port")?.toIntOrNull()?.coerceIn(1, 65535) ?: 22
         return host to port
     }
 
     private fun JsonObject.isRunning(): Boolean =
         firstText("state", "status")?.equals("RUNNING", ignoreCase = true) == true
 
+    private fun JsonObject.isPending(): Boolean =
+        firstText("state", "status")?.equals("PENDING", ignoreCase = true) == true
+
+    private fun JsonObject.hasPublicKey(key: String): Boolean {
+        val expected = key.trim().split(Regex("\\s+")).take(2).joinToString(" ")
+        val keys = this["publicKeys"] as? JsonArray ?: return false
+        return keys.any { value ->
+            value.jsonPrimitive.contentOrNull?.trim()?.split(Regex("\\s+"))?.take(2)?.joinToString(" ") == expected
+        }
+    }
+
     private fun Int?.orZero(): Int = this ?: 0
 
     companion object {
+        const val BINARY_TEST_TIMEOUT_SECONDS = 10L
+        const val MAX_BINARY_TEST_OUTPUT_BYTES = 65_536
+        const val CLOUD_ENDPOINT_CACHE_TTL_MILLIS = 15 * 60 * 1_000L
+        /** A persistent SSH connection with no command or terminal using it is closed after this. */
+        const val IDLE_DISCONNECT_MILLIS = 5 * 60 * 1_000L
+        const val CONNECTION_POLL_MILLIS = 5_000L
         const val GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
         const val GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
         const val GOOGLE_SCOPE = "openid email profile https://www.googleapis.com/auth/cloud-platform"
+        val CLOUD_SHELL_SUPPORTED_KEY_ALGORITHMS = setOf(
+            "ssh-rsa",
+            "ecdsa-sha2-nistp256",
+            "ecdsa-sha2-nistp384",
+            "ecdsa-sha2-nistp521"
+        )
     }
+}
+
+/**
+ * Launcher prefix for running an imported file on Android 10+ (see RemoteMachineService.binaryInvocation).
+ * Empty means the file can be executed directly.
+ */
+internal fun binaryLauncher(
+    header: ByteArray,
+    sdkInt: Int,
+    targetSdk: Int,
+    exists: (String) -> Boolean = { File(it).exists() }
+): List<String> {
+    if (sdkInt < 29 || targetSdk < 29) return emptyList()
+    if (isElf(header)) {
+        val linker = if (header[4].toInt() == 2) "/system/bin/linker64" else "/system/bin/linker"
+        return if (exists(linker)) listOf(linker) else emptyList()
+    }
+    if (header.size >= 2 && header[0] == '#'.code.toByte() && header[1] == '!'.code.toByte()) {
+        val line = String(header, Charsets.ISO_8859_1).lineSequence().first().drop(2).trim()
+        val tokens = line.split(Regex("\\s+")).filter(String::isNotEmpty)
+        val interpreter = tokens.firstOrNull()?.takeIf(exists)
+        // A script's interpreter path is often from another system (/bin/bash, Termux paths).
+        return if (interpreter != null) listOf(interpreter) + tokens.drop(1) else listOf("/system/bin/sh")
+    }
+    return emptyList()
+}
+
+private fun isElf(header: ByteArray): Boolean = header.size >= 5 &&
+    header[0] == 0x7f.toByte() && header[1] == 'E'.code.toByte() &&
+    header[2] == 'L'.code.toByte() && header[3] == 'F'.code.toByte()
+
+/** ET_EXEC (type 2): a fixed-address executable, which the Android linker cannot load. */
+internal fun isStaticNonPieElf(header: ByteArray): Boolean =
+    isElf(header) && header.size >= 18 && header[5].toInt() == 1 &&
+        (header[16].toInt() and 0xff) == 2 && header[17].toInt() == 0
+
+/**
+ * Validates the text of an OpenSSH public key file and returns it as "<algorithm> <base64>" without
+ * the comment. Throws IllegalArgumentException when it is not a usable OpenSSH public key.
+ */
+internal fun normalizeOpenSshPublicKey(text: String): String {
+    val line = text.lineSequence().map(String::trim).firstOrNull { it.isNotEmpty() && !it.startsWith("#") }
+        ?: throw IllegalArgumentException("The public key file is empty.")
+    val parts = line.split(Regex("\\s+"))
+    val algorithm = parts[0]
+    val blob = parts.getOrNull(1)
+    require(blob != null && (algorithm.startsWith("ssh-") || algorithm.startsWith("ecdsa-"))) {
+        "Not an OpenSSH public key. Expected a single line like \"ssh-rsa AAAA… comment\"."
+    }
+    val bytes = try {
+        Base64.getDecoder().decode(blob)
+    } catch (_: IllegalArgumentException) {
+        throw IllegalArgumentException("The public key data is not valid Base64.")
+    }
+    // The blob starts with its own algorithm name (length-prefixed); it must match the line's label.
+    val embedded = if (bytes.size >= 4) {
+        val length = ((bytes[0].toInt() and 0xff) shl 24) or ((bytes[1].toInt() and 0xff) shl 16) or
+            ((bytes[2].toInt() and 0xff) shl 8) or (bytes[3].toInt() and 0xff)
+        if (length in 1..(bytes.size - 4)) String(bytes, 4, length, Charsets.US_ASCII) else null
+    } else null
+    require(embedded == algorithm) { "The public key data does not match its declared type ($algorithm)." }
+    return "$algorithm $blob"
 }
 
 /**
@@ -671,9 +1416,6 @@ class RemoteMachineService(
  * keyboard-interactive (usually PAM). Every hidden prompt is answered with the saved password;
  * this matches the behavior users expect from the Password authentication mode for servers that
  * label the challenge differently from "Password:".
- *
- * When no password is saved, [askSecret] (if any) is asked instead, but only at the moment the
- * server really requests a secret. Machines that need no authentication never reach this code.
  */
 internal class PasswordKeyboardInteractiveUserInfo(
     private val username: String,
@@ -689,12 +1431,12 @@ internal class PasswordKeyboardInteractiveUserInfo(
 
     override fun promptPassword(message: String): Boolean {
         if (password.isNotEmpty()) return true
-        enteredPassword = ask(passphrase = false, message) ?: return false
+        enteredPassword = ask(passphrase = false, message = message) ?: return false
         return true
     }
 
     override fun promptPassphrase(message: String): Boolean {
-        enteredPassphrase = ask(passphrase = true, message) ?: return false
+        enteredPassphrase = ask(passphrase = true, message = message) ?: return false
         return true
     }
 
@@ -714,7 +1456,9 @@ internal class PasswordKeyboardInteractiveUserInfo(
         for (index in prompt.indices) {
             val text = prompt[index]
             val answer = when {
-                !echo[index] || isPasswordPrompt(text) -> password.ifEmpty { ask(passphrase = false, text) }
+                !echo[index] || isPasswordPrompt(text) -> password.ifEmpty {
+                    ask(passphrase = isPassphrasePrompt(text), message = text)
+                }
                 isUsernamePrompt(text) -> username
                 else -> ""
             } ?: return null
@@ -723,7 +1467,7 @@ internal class PasswordKeyboardInteractiveUserInfo(
         return answers.toTypedArray()
     }
 
-    /** Blocks the SSH thread until the user answers; null when cancelled or no prompt is available. */
+    /** SSH invokes UserInfo on its blocking connection thread; the UI prompt runs on Main. */
     private fun ask(passphrase: Boolean, message: String): String? {
         val prompt = askSecret ?: return null
         return runCatching { runBlocking { prompt(RemoteSecretRequest(passphrase, message)) } }
@@ -735,6 +1479,11 @@ internal class PasswordKeyboardInteractiveUserInfo(
         val normalized = prompt.lowercase()
         return listOf("password", "passphrase", "pass phrase", "passcode", "pass code")
             .any(normalized::contains)
+    }
+
+    private fun isPassphrasePrompt(prompt: String): Boolean {
+        val normalized = prompt.lowercase()
+        return "passphrase" in normalized || "pass phrase" in normalized
     }
 
     private fun isUsernamePrompt(prompt: String): Boolean {
@@ -751,9 +1500,11 @@ private class CommandProxy(private val commandTemplate: String) : Proxy {
 
     override fun connect(socketFactory: SocketFactory?, host: String, port: Int, timeout: Int) {
         val command = commandTemplate.replace("%h", host).replace("%p", port.toString())
-        process = ProcessBuilder("sh", "-c", command).redirectErrorStream(false).start()
-        input = process!!.inputStream
-        output = process!!.outputStream
+        val started = ProcessBuilder("sh", "-c", command).redirectErrorStream(false).start()
+        process = started
+        input = started.inputStream
+        output = started.outputStream
+        discardProcessStream(started.errorStream, "remote-ssh-proxy-stderr")
     }
 
     override fun getInputStream(): InputStream = requireNotNull(input)
@@ -765,5 +1516,19 @@ private class CommandProxy(private val commandTemplate: String) : Proxy {
         runCatching { output?.close() }
         runCatching { process?.destroy() }
         process = null
+    }
+}
+
+private fun discardProcessStream(stream: InputStream, threadName: String) {
+    Thread({
+        runCatching {
+            stream.use { input ->
+                val buffer = ByteArray(8_192)
+                while (input.read(buffer) >= 0) { }
+            }
+        }
+    }, threadName).apply {
+        isDaemon = true
+        start()
     }
 }

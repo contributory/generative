@@ -66,6 +66,9 @@ import org.starfall.multigateway.R
 import org.starfall.multigateway.data.model.LlmProviderInfo
 import org.starfall.multigateway.data.model.DEFAULT_CONTEXT_WINDOW_TOKENS
 import org.starfall.multigateway.data.model.ModelConfiguration
+import org.starfall.multigateway.data.model.ThinkingPassback
+import org.starfall.multigateway.data.model.passbackMode
+import org.starfall.multigateway.data.model.supportedReasoningEfforts
 import org.starfall.multigateway.data.model.ModelType
 import org.starfall.multigateway.data.model.ProviderGroup
 import org.starfall.multigateway.data.model.ProviderType
@@ -599,43 +602,27 @@ internal fun SelectedModelOverviewSheet(
     config: ModelConfiguration,
     conversationReasoningEffort: String?,
     onSetReasoningEffort: (String?) -> Unit,
-    onSetSendThinkingContent: ((Boolean) -> Unit)? = null,
+    onSetThinkingPassback: ((ThinkingPassback) -> Unit)? = null,
     onOpenModelPicker: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val effortOptions = remember(provider?.type, modelId, provider?.config?.maxTokens) {
-        reasoningEffortOptions(provider?.type, modelId, provider?.config?.maxTokens ?: Int.MAX_VALUE)
+    val supportedEfforts = config.supportedReasoningEfforts
+    val effortOptions = remember(provider?.type, modelId, provider?.config?.maxTokens, supportedEfforts) {
+        reasoningEffortOptions(provider?.type, modelId, provider?.config?.maxTokens ?: Int.MAX_VALUE, supportedEfforts)
     }
     var previewTier by remember(conversationReasoningEffort, effortOptions) {
         mutableIntStateOf(reasoningEffortTier(reasoningEffortIndex(conversationReasoningEffort, effortOptions), effortOptions))
     }
     val screenBurst = LocalThinkingScreenBurst.current
     LaunchedEffect(previewTier, screenBurst) {
-        // The slider has already started a bloom from the thumb by the time this effect runs. Never
-        // replace its origin with Offset.Zero and never hide a bloom that is still playing: either one
-        // would cancel the circular reveal that spreads from the thumb across the sheet.
-        if (previewTier == 6) {
-            // keepAfterCompletion is set synchronously by start(), so it reliably tells a slider-driven
-            // bloom (thumb origin) from the sheet simply opening at max (no thumb, origin-less burst).
-            val thumbOrigin = screenBurst?.takeIf { it.keepAfterCompletion && it.origin != Offset.Zero }?.origin
-            screenBurst?.start(
-                origin = thumbOrigin ?: Offset.Zero,
-                color = Color(0xFFDC2626),
-                durationMillis = 2400,
-                keepAfterCompletion = true,
-                starCount = 180
-            )
-        } else if (screenBurst?.keepAfterCompletion == true) {
+        // A max-effort burst is started only by crossing into the red tier on the slider.
+        // Reopening this sheet at an already-selected max tier should not replay it.
+        if (previewTier != 6 && screenBurst?.keepAfterCompletion == true) {
             screenBurst.hide()
         }
     }
-    // Keep the sheet opaque at every tier. Strong-effort colors are drawn across the
-    // whole sheet rather than only behind the model details column.
-    val sheetBrush = when {
-        previewTier == 6 && config.supportsThinking -> maximumEffortCardBrush()
-        previewTier == 5 && config.supportsThinking -> maximumThinkingCardBrush(MaterialTheme.colorScheme.surface)
-        else -> null
-    }
+    // The purple tier is shown only on the effort control; max effort keeps its red sheet treatment.
+    val sheetBrush = if (previewTier == 6 && config.supportsThinking) maximumEffortCardBrush() else null
     val sheetColor = if (sheetBrush == null) {
         MaterialTheme.colorScheme.surfaceContainerLow
     } else {
@@ -647,7 +634,6 @@ internal fun SelectedModelOverviewSheet(
     }, containerColor = sheetColor, containerBrush = sheetBrush,
         navigationBarColor = when {
             previewTier == 6 && config.supportsThinking -> Color(0xFF1A0A06)
-            previewTier == 5 && config.supportsThinking -> MaterialTheme.colorScheme.surface
             else -> sheetColor
         },
         // Read in the draw phase: the reveal animates every frame and must not recompose the sheet.
@@ -669,7 +655,7 @@ internal fun SelectedModelOverviewSheet(
             Text(
                 stringResource(R.string.choose_another_model_hint),
                 style = MaterialTheme.typography.bodySmall,
-                color = if (previewTier >= 5 && config.supportsThinking) {
+                color = if (previewTier == 6 && config.supportsThinking) {
                     Color.White.copy(alpha = 0.82f)
                 } else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth()
@@ -693,37 +679,57 @@ internal fun SelectedModelOverviewSheet(
                   drawBackground = false,
                  onPreviewTierChange = { previewTier = it }
             )
-            if (config.supportsThinking && onSetSendThinkingContent != null) {
+            // Every reasoning-capable model has this setting; it does not wait for a saved configuration.
+            if (config.supportsThinking) {
+                val modes = listOf(ThinkingPassback.AUTO, ThinkingPassback.ON, ThinkingPassback.OFF)
+                val labels = listOf(
+                    stringResource(R.string.common_auto),
+                    stringResource(R.string.common_on),
+                    stringResource(R.string.common_off)
+                )
                 Surface(
                     shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.1f),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().testTag("selected-model-passback-thinking")
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(
-                                value = config.sendThinkingContent,
-                                role = Role.Switch,
-                                onValueChange = onSetSendThinkingContent
-                            )
-                            .padding(horizontal = 14.dp, vertical = 10.dp)
-                            .testTag("selected-model-passback-thinking"),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            Icons.Outlined.Psychology,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Outlined.Psychology,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                stringResource(R.string.send_thinking_content_back),
+                                style = MaterialTheme.typography.titleSmall,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("passback-thinking-mode")) {
+                            modes.forEachIndexed { index, mode ->
+                                SegmentedButton(
+                                    selected = config.passbackMode == mode,
+                                    onClick = { onSetThinkingPassback?.invoke(mode) },
+                                    enabled = onSetThinkingPassback != null,
+                                    shape = SegmentedButtonDefaults.itemShape(index, modes.size),
+                                    modifier = Modifier.testTag("passback-thinking-${mode.name.lowercase()}")
+                                ) {
+                                    Text(labels[index], maxLines = 1)
+                                }
+                            }
+                        }
                         Text(
-                            stringResource(R.string.send_thinking_content_back),
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.weight(1f)
+                            stringResource(R.string.send_thinking_content_back_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Switch(checked = config.sendThinkingContent, onCheckedChange = null)
                     }
                 }
             }
@@ -849,8 +855,9 @@ private fun ModelPickerCard(
     embedded: Boolean = false,
     drawBackground: Boolean = true
 ) {
-    val effortOptions = remember(providerType, modelId, maxTokens) {
-        reasoningEffortOptions(providerType, modelId, maxTokens)
+    val supportedEfforts = config.supportedReasoningEfforts
+    val effortOptions = remember(providerType, modelId, maxTokens, supportedEfforts) {
+        reasoningEffortOptions(providerType, modelId, maxTokens, supportedEfforts)
     }
     var previewReasoningValue by remember(conversationReasoningEffort, isSelected, effortOptions) {
         mutableFloatStateOf(reasoningEffortIndex(conversationReasoningEffort, effortOptions).toFloat())
@@ -870,7 +877,7 @@ private fun ModelPickerCard(
     val cardBurst = rememberThinkingColorBurst()
     val screenBurst = LocalThinkingScreenBurst.current
     var cardOrigin by remember { mutableStateOf(Offset.Zero) }
-    val cardContentColor = if (enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
+    val cardContentColor = if (!embedded && enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
     val cardModifier = Modifier.fillMaxWidth().then(if (embedded) Modifier else Modifier.clickable(onClick = onClick))
     val cardContentModifier = Modifier
         .fillMaxWidth()
@@ -913,7 +920,7 @@ private fun ModelPickerCard(
                         Text(
                             text = modelId,
                             style = MaterialTheme.typography.labelSmall,
-                             color = if (enhancedThinking && tier >= 5) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                             color = if (!embedded && enhancedThinking && tier >= 5) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -1000,7 +1007,7 @@ private fun ModelPickerCard(
                             text = if (usesThinkingBudget(providerType, modelId))
                                 "Thinking Budget (tokens)" else "Reasoning Effort",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = if (enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
+                            color = if (!embedded && enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -1028,18 +1035,19 @@ private fun ModelPickerCard(
                     },
                     options = effortOptions,
                     onColorBurst = { origin, selectedTier ->
-                         if (selectedTier >= 5) cardBurst.start(origin - cardOrigin, Color(0xFFA78BFA),
+                         val burstColor = if (selectedTier == 6) Color(0xFFDC2626) else Color(0xFFA78BFA)
+                         if (selectedTier >= 5) cardBurst.start(origin - cardOrigin, burstColor,
                              reasoningEffortBurstDuration(selectedTier))
                          screenBurst?.let { burst ->
                              when (selectedTier) {
                                  6 -> burst.start(
                                      origin = origin,
-                                     color = Color(0xFFA78BFA),
+                                     color = burstColor,
                                      durationMillis = 6500,
                                      keepAfterCompletion = true,
                                      starCount = 180
                                  )
-                                 5 -> burst.start(
+                                 5 -> if (embedded) burst.hide() else burst.start(
                                      origin = origin,
                                      color = Color(0xFFA78BFA),
                                      durationMillis = 2600,

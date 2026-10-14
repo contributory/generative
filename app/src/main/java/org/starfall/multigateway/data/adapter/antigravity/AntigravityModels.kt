@@ -11,18 +11,25 @@ internal object AntigravityModels {
             return if (base.contains("opus")) "$base-thinking" else base
         }
         if (id in listOf("gemini-3-flash-agent", "gemini-3.5-flash-extra-low", "gemini-3.5-flash-low")) return id
-        val suffix = Regex("-(minimal|low|medium|high)$").find(id)
+        val suffix = Regex("-(minimal|low|medium|high|xhigh|max)$").find(id)
         val base = suffix?.let { id.removeSuffix(it.value) } ?: id
-        val level = effort?.takeIf { it in listOf("minimal", "low", "medium", "high") }
-            ?: suffix?.groupValues?.get(1) ?: "high"
+        // The chosen level is never swapped for another one; levels without a known route are
+        // requested as "<model>-<level>" so the endpoint answers for them.
+        // These routes cannot express Off, so it behaves like the selector's Default.
+        val level = effort?.takeUnless { it in listOf("none", "off") } ?: suffix?.groupValues?.get(1) ?: "high"
         return when (base) {
-            "gemini-3.1-pro" -> if (level == "low") "gemini-3.1-pro-low" else "gemini-pro-agent"
-            "gemini-3.5-flash" -> when (level) {
-                "low", "minimal" -> "gemini-3.5-flash-extra-low"
-                "medium" -> "gemini-3.5-flash-low"
-                else -> "gemini-3-flash-agent"
+            "gemini-3.1-pro" -> when (level) {
+                "low" -> "gemini-3.1-pro-low"
+                "high" -> "gemini-pro-agent"
+                else -> "$base-$level"
             }
-            "gemini-3.6-flash", "gemini-3.7-flash" -> "$base-${if (level == "minimal") "low" else level}"
+            "gemini-3.5-flash" -> when (level) {
+                "low" -> "gemini-3.5-flash-extra-low"
+                "medium" -> "gemini-3.5-flash-low"
+                "high" -> "gemini-3-flash-agent"
+                else -> "$base-$level"
+            }
+            "gemini-3.6-flash", "gemini-3.7-flash" -> "$base-$level"
             else -> id
         }
     }

@@ -174,7 +174,7 @@ internal abstract class OAuthAccountAdapter(
                 }
             }
         }
-        val requestEffort = config.requestReasoningEffort
+        val requestEffort = config.wireReasoningEffort
         val body = buildJsonObject {
             if (type == ProviderType.GOOGLE) {
                 put("model", model)
@@ -198,9 +198,10 @@ internal abstract class OAuthAccountAdapter(
                 }
                 if (type == ProviderType.OPENAI && config.supportsThinking)
                     requestEffort?.let { put("reasoning_effort", it) }
+                val sendThinking = config.sendsThinkingBack(messages.hasToolCalls())
                 val native = messages.filter { it.role != ChatRole.SYSTEM }.map {
                     val content = if (type == ProviderType.ANTHROPIC) JsonArray(
-                        (if (it.role == ChatRole.MODEL && config.sendThinkingContent &&
+                        (if (it.role == ChatRole.MODEL && sendThinking &&
                             !it.reasoningContent.isNullOrBlank() && !it.reasoningSignature.isNullOrBlank())
                             listOf(obj("type" to str("thinking"), "thinking" to str(it.reasoningContent!!),
                                 "signature" to str(it.reasoningSignature!!))) else emptyList()) + parts(it)

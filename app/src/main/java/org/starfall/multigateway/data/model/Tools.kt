@@ -71,24 +71,20 @@ data class ToolDefinition(
 )
 
 /**
- * MCP server names are user-controlled, so two servers can still produce the
- * same readable wire name after sanitization. Disambiguate only those rare
- * collisions; the normal name remains server_tool.
+ * Server and machine names are user-controlled, so two entries can still produce the same readable
+ * wire name after sanitization. Disambiguate only those collisions with a plain ordinal
+ * (name, name_2, name_3...); the normal name stays untouched. Internal ids are never used here
+ * because wire names are shown to the model.
  */
 internal fun List<ToolDefinition>.withUniqueWireNames(): List<ToolDefinition> {
     val used = mutableSetOf<String>()
     return map { definition ->
         var name = definition.name
-        if (!used.add(name)) {
-            val baseSuffix = UUID.nameUUIDFromBytes(
-                (definition.serverId.orEmpty() + ":" + definition.originalName).toByteArray()
-            ).toString().replace("-", "").take(10)
-            var attempt = 0
-            do {
-                val suffix = if (attempt == 0) baseSuffix else "$baseSuffix$attempt"
-                name = definition.name.take(64 - suffix.length - 1) + "_" + suffix
-                attempt++
-            } while (!used.add(name))
+        var ordinal = 1
+        while (!used.add(name)) {
+            ordinal++
+            val suffix = "_$ordinal"
+            name = definition.name.take(64 - suffix.length) + suffix
         }
         if (name == definition.name) definition else definition.copy(name = name)
     }

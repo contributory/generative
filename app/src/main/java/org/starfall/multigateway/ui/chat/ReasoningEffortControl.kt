@@ -34,27 +34,40 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.hypot
 import kotlin.math.roundToInt
+import org.starfall.multigateway.data.model.DEFAULT_REASONING_EFFORTS
 import org.starfall.multigateway.data.model.ModelConfiguration
 import org.starfall.multigateway.data.model.ProviderType
+import org.starfall.multigateway.data.model.REASONING_EFFORT_ACTIVE
+import org.starfall.multigateway.data.model.SELECTABLE_REASONING_EFFORTS
 import org.starfall.multigateway.data.model.reasoningBudget
 import org.starfall.multigateway.data.model.claudeThinkingCapabilities
 
-internal val reasoningEfforts = listOf<String?>("none", null, "low", "medium", "high", "xhigh")
-internal val reasoningEffortLabels = listOf("None", "Default", "Low", "Medium", "High", "X-High")
+internal fun reasoningEffortLabel(effort: String): String = when (effort) {
+    "xhigh" -> "X-High"
+    else -> effort.replaceFirstChar { it.uppercase() }
+}
 
+private fun isReasoningLevel(effort: String?): Boolean =
+    effort != null && reasoningEffortEnabled(effort) && effort != REASONING_EFFORT_ACTIVE
+
+/**
+ * Colour tiers follow the model's own levels: its two highest levels get the purple and red
+ * effects, lower ones keep the normal colours. A single level only gets purple, Default never
+ * gets a colour, and Active (a thinking model without levels) is purple.
+ */
 internal fun reasoningEffortTier(index: Int, options: List<ReasoningEffortOption>): Int {
     val option = options.getOrNull(index) ?: return 1
     if (!reasoningEffortEnabled(option.effort)) return 0
     if (option.effort == null) return 1
-    val enabled = options.filter { it.effort != null && reasoningEffortEnabled(it.effort) }
-    val palette = when (enabled.size) {
-        1 -> listOf(6)
-        2 -> listOf(5, 6)
-        3 -> listOf(2, 5, 6)
-        4 -> listOf(2, 3, 5, 6)
-        else -> listOf(2, 3, 4, 5, 6)
+    if (option.effort == REASONING_EFFORT_ACTIVE) return 5
+    val levels = options.filter { isReasoningLevel(it.effort) }
+    if (levels.size == 1) return 5
+    val position = levels.indexOf(option)
+    return when (levels.lastIndex - position) {
+        0 -> 6
+        1 -> 5
+        else -> minOf(2 + position, 4)
     }
-    return palette[enabled.indexOf(option).coerceIn(palette.indices)]
 }
 
 internal fun reasoningEffortAccent(tier: Int, default: Color): Color = when (tier) {
@@ -82,72 +95,42 @@ internal fun usesThinkingBudget(providerType: ProviderType?, modelId: String): B
 internal fun reasoningEffortOptions(
     providerType: ProviderType? = null,
     modelId: String = "",
-    maxTokens: Int = Int.MAX_VALUE
+    maxTokens: Int = Int.MAX_VALUE,
+    supportedEfforts: List<String> = DEFAULT_REASONING_EFFORTS
 ): List<ReasoningEffortOption> {
-    if (providerType in listOf(ProviderType.ANTHROPIC, ProviderType.CLAUDE_CODE)) {
-        val capabilities = claudeThinkingCapabilities(modelId)
-        if (capabilities.efforts.isNotEmpty()) {
-            val off = when {
-                capabilities.canDisable -> listOf(ReasoningEffortOption("none", "None"))
-                capabilities.betweenTools -> listOf(ReasoningEffortOption("none", "Between tools"))
-                else -> emptyList()
-            }
-            return off + ReasoningEffortOption(null, "Default") + capabilities.efforts.map { effort ->
-                ReasoningEffortOption(effort, when (effort) {
-                    "xhigh" -> "X-High"
-                    "max" -> "Max"
-                    else -> effort.replaceFirstChar { it.uppercase() }
-                })
-            }
-        }
-    }
     val budgetBased = usesThinkingBudget(providerType, modelId)
-    val gemini = providerType == ProviderType.GOOGLE ||
-        (providerType == ProviderType.ANTIGRAVITY && !budgetBased)
-    val options = reasoningEfforts.mapIndexedNotNull { index, effort ->
-        if (gemini && effort == "xhigh") return@mapIndexedNotNull null
-        val label = when {
-            budgetBased && index >= 2 -> ModelConfiguration(reasoningEffort = effort)
-                .reasoningBudget(maxTokens.coerceAtLeast(2)).toString()
-            providerType == ProviderType.OLLAMA && effort == "xhigh" -> "Maximum"
-            else -> reasoningEffortLabels[index]
-        }
+    val claude = providerType in listOf(ProviderType.ANTHROPIC, ProviderType.CLAUDE_CODE)
+    val capabilities = if (claude) claudeThinkingCapabilities(modelId) else null
+    val antigravityGemini = providerType == ProviderType.ANTIGRAVITY && !budgetBased
+    val off = when {
+        antigravityGemini -> emptyList()
+        capabilities == null || capabilities.efforts.isEmpty() || capabilities.canDisable ->
+            listOf(ReasoningEffortOption("none", "None"))
+        capabilities.betweenTools -> listOf(ReasoningEffortOption("none", "Between tools"))
+        else -> emptyList()
+    }
+    val levels = SELECTABLE_REASONING_EFFORTS.filter { it in supportedEfforts }.map { effort ->
+        val label = if (budgetBased) ModelConfiguration(reasoningEffort = effort)
+            .reasoningBudget(maxTokens.coerceAtLeast(2)).toString() else reasoningEffortLabel(effort)
         ReasoningEffortOption(effort, label)
     }
-    val providerOptions = if (gemini) {
-        options.flatMap { option ->
-            if (option.effort == "low") listOf(ReasoningEffortOption("minimal", "Minimal"), option)
-            else listOf(option)
-        }
-    } else options
-    return if (providerType in listOf(ProviderType.OPENAI, ProviderType.OPENAI_RESPONSES)) {
-        providerOptions + ReasoningEffortOption("max", "Max")
-    } else providerOptions
+    // A thinking model with no levels still needs a step that turns thinking on.
+    val active = if (levels.isEmpty()) listOf(ReasoningEffortOption(REASONING_EFFORT_ACTIVE, "Active")) else emptyList()
+    return off + active + ReasoningEffortOption(null, "Default") + levels
 }
 
 internal fun reasoningEffortEnabled(effort: String?): Boolean =
     effort?.trim()?.lowercase() !in listOf("none", "off")
 
+/** Anything the selector does not offer is shown as Default, which is also what gets sent. */
 internal fun reasoningEffortIndex(
     effort: String?,
     options: List<ReasoningEffortOption> = reasoningEffortOptions()
 ): Int {
-    if (!reasoningEffortEnabled(effort)) {
-        return options.indexOfFirst { it.effort == "none" }.takeIf { it >= 0 }
-            ?: options.indexOfFirst { it.effort == "low" }.takeIf { it >= 0 } ?: 0
-    }
-    val normalized = effort?.trim()?.lowercase()
-    val index = options.indexOfFirst { it.effort == normalized }
-    if (index >= 0) return index
+    val normalized = effort?.trim()?.lowercase()?.let { if (it == "off") "none" else it }
     val defaultIndex = options.indexOfFirst { it.effort == null }.coerceAtLeast(0)
-    // Preserve saved maximum overrides when switching between model capabilities.
-    return if (normalized == "xhigh") {
-        options.indexOfFirst { it.effort == "max" }.takeIf { it >= 0 }
-            ?: options.indexOfFirst { it.effort == "high" }.takeIf { it >= 0 } ?: defaultIndex
-    } else if (normalized == "max") {
-        options.indexOfFirst { it.effort == "xhigh" }.takeIf { it >= 0 }
-            ?: options.indexOfFirst { it.effort == "high" }.takeIf { it >= 0 } ?: defaultIndex
-    } else defaultIndex
+    if (normalized.isNullOrEmpty()) return defaultIndex
+    return options.indexOfFirst { it.effort == normalized }.takeIf { it >= 0 } ?: defaultIndex
 }
 
 /** Changes only the conversation override; model capabilities remain untouched. */

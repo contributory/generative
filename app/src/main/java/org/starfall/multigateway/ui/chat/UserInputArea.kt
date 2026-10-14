@@ -62,10 +62,13 @@ import androidx.compose.ui.unit.sp
 import org.starfall.multigateway.R
 import org.starfall.multigateway.data.model.LlmProviderInfo
 import org.starfall.multigateway.data.model.ModelConfiguration
+import org.starfall.multigateway.data.model.DEFAULT_REASONING_EFFORTS
+import org.starfall.multigateway.data.model.supportedReasoningEfforts
 import org.starfall.multigateway.data.model.ProviderGroup
 import org.starfall.multigateway.data.model.ConversationSummaryRequest
 import org.starfall.multigateway.data.model.ModelType
 import org.starfall.multigateway.data.model.ProviderType
+import org.starfall.multigateway.data.model.ThinkingPassback
 
 data class DirectMediaRequest(
     val prompt: String,
@@ -107,7 +110,7 @@ fun UserInputArea(
     onSelectModel: (providerId: String, modelId: String) -> Unit,
     conversationReasoningEffort: String?,
     onSetReasoningEffort: (String?) -> Unit,
-    onSetSendThinkingContent: (providerId: String, modelId: String, enabled: Boolean) -> Unit = { _, _, _ -> },
+    onSetThinkingPassback: (providerId: String, modelId: String, mode: ThinkingPassback) -> Unit = { _, _, _ -> },
     onSetModelReasoningEffort: (providerId: String, modelId: String, effort: String?) -> Unit = { _, _, _ -> },
     onStartConversationSummary: (ConversationSummaryRequest) -> Boolean,
     onFetchOllamaModels: (suspend (String) -> List<String>)? = null,
@@ -140,8 +143,9 @@ fun UserInputArea(
     val maxInputHeight = (screenHeightDp * if (attachments.isNotEmpty()) 0.6f else 0.5f).dp
     val thinkingProvider = providers.firstOrNull { it.id == selectedProviderId }
     val thinkingConfig = thinkingProvider?.config?.modelConfigs?.get(selectedModelName)
-    val thinkingOptions = remember(thinkingProvider?.type, selectedModelName, thinkingProvider?.config?.maxTokens) {
-        reasoningEffortOptions(thinkingProvider?.type, selectedModelName, thinkingProvider?.config?.maxTokens ?: Int.MAX_VALUE)
+    val thinkingEfforts = thinkingConfig?.supportedReasoningEfforts ?: DEFAULT_REASONING_EFFORTS
+    val thinkingOptions = remember(thinkingProvider?.type, selectedModelName, thinkingProvider?.config?.maxTokens, thinkingEfforts) {
+        reasoningEffortOptions(thinkingProvider?.type, selectedModelName, thinkingProvider?.config?.maxTokens ?: Int.MAX_VALUE, thinkingEfforts)
     }
     val currentEffort = conversationReasoningEffort ?: thinkingConfig?.reasoningEffort
     val maximumThinking = thinkingConfig?.supportsThinking == true &&
@@ -607,13 +611,15 @@ fun UserInputArea(
                         onSetModelReasoningEffort(selectedProvider.id, selectedConfigEntry.key, effort)
                     }
                 },
-                // Only models with a saved configuration can persist the toggle.
-                onSetSendThinkingContent = if (selectedProvider != null && selectedConfigEntry != null) {
-                    val providerId = selectedProvider.id
-                    val configKey = selectedConfigEntry.key
-                    val setPassback: (Boolean) -> Unit = { enabled -> onSetSendThinkingContent(providerId, configKey, enabled) }
+                // Available as soon as the sheet opens; a model without a saved configuration gets one
+                // created when the choice is stored.
+                onSetThinkingPassback = (selectedConfigEntry?.key ?: selectedModelName).takeIf {
+                    selectedProvider != null && it.isNotBlank()
+                }?.let { configKey ->
+                    val providerId = selectedProvider!!.id
+                    val setPassback: (ThinkingPassback) -> Unit = { mode -> onSetThinkingPassback(providerId, configKey, mode) }
                     setPassback
-                } else null,
+                },
                 onOpenModelPicker = {
                     showModelPicker = true
                 },

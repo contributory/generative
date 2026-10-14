@@ -15,9 +15,8 @@ enum class RemoteAuthentication {
     PRIVATE_KEY
 }
 
-/**
- * A deliberately self-contained machine record. Secrets are stored together with this record in
- * [RemoteMachineStore], whose payload is encrypted with an Android Keystore key.
+/** Runtime machine view. SSH options are hydrated from the app's OpenSSH config file; the encrypted
+ * store keeps only its stable ID, name, address, user and secret. Cloud Shell keeps its own fields.
  */
 @Serializable
 data class RemoteMachine(
@@ -27,12 +26,16 @@ data class RemoteMachine(
     val host: String = "",
     val port: Int = 22,
     val username: String = "",
+    /** Exact credential lookup key; never a wildcard. Cloud Shell may refresh it with its endpoint. */
+    val passwordReference: String = "",
     val authentication: RemoteAuthentication = RemoteAuthentication.PRIVATE_KEY,
     val password: String = "",
     /** Use SSH keyboard-interactive/PAM prompts instead of only the plain password method. */
     val keyboardInteractive: Boolean = true,
     val identityFile: String = "",
     val identityPassphrase: String = "",
+    /** Effective SSH config value. Empty means use the app's auth-mode default. */
+    val preferredAuthentications: String = "",
     val strictHostKeyChecking: Boolean = false,
     val proxyCommand: String = "",
     val localCommand: String = "",
@@ -50,12 +53,10 @@ data class RemoteMachine(
     val displayHost: String
         get() = host.ifBlank { if (type == RemoteMachineType.GCLOUD_SHELL) "Cloud Shell IP not loaded" else "Host not configured" }
 
-    fun supportedToolNames(): List<String> = when (type) {
-        RemoteMachineType.SSH -> listOf(REMOTE_TOOL_EXECUTE)
-        RemoteMachineType.GCLOUD_SHELL -> listOf(REMOTE_TOOL_START_MACHINE, REMOTE_TOOL_EXECUTE)
-    }
+    fun supportedToolNames(): List<String> = remoteMachineToolNames(type)
 
-    fun isToolEnabled(toolName: String): Boolean = aiToolsEnabled && aiTools[toolName] != false
+    fun isToolEnabled(toolName: String): Boolean = aiToolsEnabled &&
+        (aiTools[toolName] ?: if (toolName == REMOTE_TOOL_UPDATE_IP) aiTools[REMOTE_TOOL_START_MACHINE] else null) != false
 }
 
 @Serializable
@@ -82,6 +83,13 @@ data class RemoteBinary(
     val path: String
 )
 
+data class RemoteBinaryTestResult(
+    val output: String,
+    val exitCode: Int,
+    val timedOut: Boolean,
+    val outputTruncated: Boolean
+)
+
 /**
  * An uploaded SSH private key kept once in app storage. Machines never embed key material; they
  * only point at a key through their `IdentityFile` (the key's [path] or its [name]).
@@ -90,7 +98,9 @@ data class RemoteBinary(
 data class RemoteIdentityKey(
     val id: String,
     val name: String,
-    val path: String
+    val path: String,
+    /** Uploaded OpenSSH public key (.pub) belonging to this private key; empty when none. */
+    val publicKeyPath: String = ""
 )
 
 /** Everything belonging to the extension is persisted outside of the application's Room schema. */
@@ -105,5 +115,14 @@ data class RemoteMachineState(
     val identities: List<RemoteIdentityKey> = emptyList()
 )
 
+/** Tools offered for a machine type. Disconnect and execute exist for every type; execute connects on demand. */
+fun remoteMachineToolNames(type: RemoteMachineType): List<String> = when (type) {
+    RemoteMachineType.SSH -> listOf(REMOTE_TOOL_DISCONNECT, REMOTE_TOOL_EXECUTE)
+    RemoteMachineType.GCLOUD_SHELL ->
+        listOf(REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_DISCONNECT, REMOTE_TOOL_EXECUTE)
+}
+
 const val REMOTE_TOOL_EXECUTE = "execute"
+const val REMOTE_TOOL_DISCONNECT = "disconnect"
 const val REMOTE_TOOL_START_MACHINE = "start_machine"
+const val REMOTE_TOOL_UPDATE_IP = "update_ip"

@@ -165,7 +165,9 @@
     <string name="model_thinking">Reasoning</string>
     <string name="reasoning_effort">Effort</string>
     <string name="tool_calls">Tools</string>
+    <string name="model_reasoning_levels">Supported reasoning levels</string>
     <string name="send_thinking_content_back">Passback Thinking</string>
+    <string name="send_thinking_content_back_hint">Auto sends earlier thinking back only in chats that use tool calls. On always sends it; Off never does.</string>
     <string name="streaming">Streaming</string>
     <string name="common_default">Default</string>
     <string name="use_provider_stream_setting">Use provider stream setting</string>
@@ -484,7 +486,6 @@
     <string name="remote_machine_ip" translatable="false">Shell IP</string>
     <string name="remote_machine_get_ip" translatable="false">Get IP</string>
     <string name="remote_machine_environment" translatable="false">Cloud Shell environment</string>
-    <string name="remote_machine_gcloud_user" translatable="false">Cloud Shell user (optional)</string>
     <string name="remote_machine_username" translatable="false">Username</string>
     <string name="remote_machine_authentication" translatable="false">Authentication</string>
     <string name="remote_machine_private_key" translatable="false">Private key</string>
@@ -500,8 +501,11 @@
     <string name="remote_machine_identity_file_help" translatable="false">Path to the private key, or the name of a key uploaded in Remote Machines settings. The key itself is never stored in the machine. Leave empty if no key is needed.</string>
     <string name="remote_machine_no_uploaded_keys" translatable="false">No keys uploaded yet</string>
     <string name="remote_machine_ssh_keys" translatable="false">SSH keys</string>
-    <string name="remote_machine_ssh_keys_help" translatable="false">Upload a private key once and point any number of machines at it through IdentityFile.</string>
+    <string name="remote_machine_ssh_keys_help" translatable="false">Upload a private key once and point any number of machines at it through IdentityFile. Google Cloud Shell also needs the matching public key (.pub): upload it with the button on each key.</string>
     <string name="remote_machine_upload_ssh_key" translatable="false">Upload SSH key file</string>
+    <string name="remote_machine_upload_public_key" translatable="false">Upload public key</string>
+    <string name="remote_machine_public_key_uploaded" translatable="false">Public key uploaded</string>
+    <string name="remote_machine_public_key_missing" translatable="false">No public key (needed for Cloud Shell)</string>
     <string name="remote_machine_ssh_key_used_by" translatable="false">Used by %1$d machine(s)</string>
     <string name="remote_machine_key_passphrase" translatable="false">Key passphrase</string>
     <string name="remote_machine_ssh_options" translatable="false">SSH options</string>
@@ -517,24 +521,37 @@
     <string name="remote_machine_select_oauth" translatable="false">Select an OAuth client</string>
     <string name="remote_machine_oauth_sign_in" translatable="false">Sign in with Google</string>
     <string name="remote_machine_oauth_authorized" translatable="false">Google account connected</string>
-    <string name="remote_machine_add_oauth_hint" translatable="false">Add and authorize a Google OAuth client in Remote Machines settings first.</string>
+    <string name="remote_machine_add_oauth_hint" translatable="false">Add an OAuth client in settings, select it here, then sign in before connecting.</string>
     <string name="remote_machine_tools_section" translatable="false">AI tools</string>
     <string name="remote_machine_enable_tools" translatable="false">Enable AI tools for this machine</string>
     <string name="remote_machine_tool_execute" translatable="false">Execute commands</string>
-    <string name="remote_machine_tool_start_machine" translatable="false">Start machine</string>
+    <string name="remote_machine_update_ip" translatable="false">Update IP</string>
+    <string name="remote_machine_tool_disconnect" translatable="false">Disconnect</string>
+    <string name="remote_machine_disconnect" translatable="false">Disconnect</string>
+    <string name="remote_machine_tool_update_ip_help" translatable="false">Use only when connecting to this machine reports an error.</string>
+    <string name="remote_machine_update_ip_title" translatable="false">Cloud Shell IP · %1$s</string>
     <string name="remote_machine_tools_choose" translatable="false">Choose which tools the model may use on this machine.</string>
     <string name="remote_machine_ssh_tools_hint" translatable="false">SSH exposes the execute tool.</string>
-    <string name="remote_machine_gcloud_tools_hint" translatable="false">GCloud Shell exposes start_machine and execute.</string>
+    <string name="remote_machine_gcloud_tools_hint" translatable="false">GCloud Shell exposes update_ip and execute.</string>
     <string name="remote_machine_ssh_config" translatable="false">SSH config file</string>
-    <string name="remote_machine_ssh_config_help" translatable="false">Open or paste an OpenSSH config. The text is stored locally and can be used to import Host entries.</string>
-    <string name="remote_machine_open_ssh_config" translatable="false">Open ssh config file</string>
+    <string name="remote_machine_ssh_config_help" translatable="false">This app-private file is read and edited directly. SSH settings come from each Host entry; Cloud Shell gets its current host from Google and keeps its SSH settings here.</string>
+    <string name="remote_machine_ssh_config_path" translatable="false">SSH config file path</string>
     <string name="remote_machine_import_hosts" translatable="false">Import Host entries as machines</string>
     <string name="remote_machine_oauth_clients" translatable="false">Google OAuth clients</string>
     <string name="remote_machine_add_oauth" translatable="false">Add OAuth client</string>
     <string name="remote_machine_import_oauth_json" translatable="false">Import JSON</string>
     <string name="remote_machine_client_id" translatable="false">Client ID</string>
     <string name="remote_machine_client_secret" translatable="false">Client secret</string>
-    <string name="remote_machine_authorize" translatable="false">Authorize</string>
+    <string name="remote_machine_binaries" translatable="false">Executable binaries</string>
+    <string name="remote_machine_binaries_help" translatable="false">Imported files are copied into app storage, made executable, and can be used by name in ProxyCommand or LocalCommand.</string>
+    <string name="remote_machine_binary_used_by" translatable="false">Referenced by %1$d machine(s)</string>
+    <string name="remote_machine_test_binary" translatable="false">Test binary</string>
+    <string name="remote_machine_binary_test_title" translatable="false">Binary test · %1$s</string>
+    <string name="remote_machine_binary_test_exit" translatable="false">Process exited with code %1$d</string>
+    <string name="remote_machine_binary_test_timeout" translatable="false">Timed out after 10 seconds</string>
+    <string name="remote_machine_binary_test_failed" translatable="false">Could not run binary</string>
+    <string name="remote_machine_binary_test_no_output" translatable="false">The binary produced no output.</string>
+    <string name="remote_machine_add_binary" translatable="false">Add executable binary</string>
     <string name="remote_machine_terminal_title" translatable="false">Terminal · %1$s</string>
     <string name="remote_machine_terminal_connecting" translatable="false">Connecting to remote shell…</string>
     <string name="remote_machine_terminal_connection_error" translatable="false">Could not connect to the remote shell</string>
@@ -544,6 +561,10 @@
     <string name="remote_machine_terminal_password_required" translatable="false">Enter a password to connect.</string>
     <string name="remote_machine_terminal_connect" translatable="false">Connect</string>
     <string name="remote_machine_terminal_hint" translatable="false">Tap the terminal to type. Long-press to select/copy text; ANSI colors and terminal control sequences are supported.</string>
+    <string name="remote_machine_terminal_input_settings" translatable="false">Terminal input mode</string>
+    <string name="remote_machine_terminal_local_input" translatable="false">Local input · Enter to send</string>
+    <string name="remote_machine_terminal_remote_input" translatable="false">Remote input · send as you type</string>
+    <string name="remote_machine_terminal_local_input_label" translatable="false">Local input</string>
     <string name="remote_machine_command" translatable="false">Command</string>
     <string name="remote_machine_run_command" translatable="false">Run command</string>
     <string name="settings_version">Version %1$s (%2$d)</string>

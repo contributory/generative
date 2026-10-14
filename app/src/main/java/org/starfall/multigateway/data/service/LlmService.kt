@@ -322,6 +322,7 @@ class LlmService(context: Context) {
         maxOutputTokens: Int? = null
     ): Flow<GenerationEvent> = flow {
         val modelConfig = provider.config.modelConfigs[modelName] ?: ModelConfiguration()
+        val sendThinking = modelConfig.sendsThinkingBack(messages.hasToolCalls())
         val requestProvider = provider.copy(config = provider.config.copy(supportStream = provider.streamEnabledFor(modelName)))
         val requestMessages = filterAttachmentsForProvider(requestProvider, modelConfig, messages)
         val temperature = modelConfig.temperature
@@ -341,25 +342,25 @@ class LlmService(context: Context) {
             ProviderType.OPENAI -> emitAll(
                 sdk.streamOpenAi(
                     requestProvider, modelName, requestMessages, systemPrompt,
-                    temperature, topP, maxTokens, modelConfig.requestReasoningEffort, modelConfig.sendThinkingContent
+                    temperature, topP, maxTokens, modelConfig.wireReasoningEffort, sendThinking
                 )
             )
             ProviderType.OPENAI_RESPONSES -> emitAll(
                 sdk.streamResponses(
                     requestProvider, modelName, requestMessages, systemPrompt,
-                    temperature, topP, maxTokens, modelConfig.requestReasoningEffort, modelConfig.sendThinkingContent
+                    temperature, topP, maxTokens, modelConfig.wireReasoningEffort, sendThinking
                 )
             )
             ProviderType.ANTHROPIC -> emitAll(
                 sdk.streamAnthropic(
                     requestProvider, modelName, requestMessages, systemPrompt,
-                    temperature, topP, maxTokens, topK, modelConfig.sendThinkingContent
+                    temperature, topP, maxTokens, topK, sendThinking
                 )
             )
             ProviderType.GOOGLE -> emitAll(
                 sdk.streamGoogle(
                     requestProvider, modelName, requestMessages, systemPrompt,
-                    temperature, topP, maxTokens, topK, modelConfig.sendThinkingContent
+                    temperature, topP, maxTokens, topK, sendThinking
                 )
             )
             ProviderType.OLLAMA -> streamOllama(

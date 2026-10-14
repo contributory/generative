@@ -5,10 +5,13 @@ import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.*
 import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.data.service.*
+import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_DISCONNECT
 import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_EXECUTE
 import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_START_MACHINE
+import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_UPDATE_IP
 import org.starfall.multigateway.extservices.remote.RemoteMachine
 import org.starfall.multigateway.extservices.remote.RemoteMachineService
+import org.starfall.multigateway.extservices.remote.RemoteMachineType
 import java.util.UUID
 
 private fun sentFileNames(result: JsonObject): List<String> {
@@ -30,6 +33,11 @@ class ToolChat(
     private val llm: LlmService,
     private val remoteMachines: RemoteMachineService? = null
 ) {
+    /** Closes persistent Remote Machine SSH connections; called when the user switches chat. */
+    fun disconnectRemoteMachines() {
+        remoteMachines?.disconnectAllWhenIdle()
+    }
+
     fun generateMedia(
         provider: LlmProviderInfo,
         model: String,
@@ -141,9 +149,16 @@ class ToolChat(
                             name = remoteToolName(machine, toolName),
                             description = when (toolName) {
                                 REMOTE_TOOL_START_MACHINE ->
-                                    "Start the Google Cloud Shell environment before using it."
+                                    "Start the Google Cloud Shell environment of the remote machine '${machine.name}' before using it."
+                                REMOTE_TOOL_DISCONNECT ->
+                                    "Close the SSH connection to the remote machine '${machine.name}'. " +
+                                        "The connection opens automatically on the next execute call and closes after 5 minutes without activity, so calling this is optional."
+                                REMOTE_TOOL_UPDATE_IP ->
+                                    "Refresh the SSH endpoint of the Google Cloud Shell remote machine '${machine.name}'. Use only after connecting to this machine reports an error."
                                 else ->
-                                    "Execute a shell command on the remote machine '${machine.name}'. Return concise commands and inspect the result."
+                                    "Execute a shell command on the remote machine named '${machine.name}' (${machine.type.label()}). " +
+                                        "The user knows this machine by that exact name. Connects automatically and keeps the connection open for 5 minutes of inactivity. " +
+                                        "Return concise commands and inspect the result."
                             },
                             schema = remoteToolSchema(toolName),
                             originalName = toolName,
@@ -182,7 +197,10 @@ class ToolChat(
             if (provider.type != ProviderType.GOOGLE && prompt.isNotBlank()) {
                 history += obj("role" to str("system"), "content" to str(prompt))
             }
-            val sendThinkingContent = provider.config.modelConfigs[model]?.sendThinkingContent == true
+            val passbackConfig = provider.config.modelConfigs[model] ?: ModelConfiguration()
+            // Auto passes earlier reasoning back only when this conversation already used tools. It also
+            // switches on as soon as the current turn makes a tool call (see below).
+            var sendThinkingContent = passbackConfig.sendsThinkingBack(messages.hasToolCalls())
             val importedAttachments = mutableMapOf<String, String>()
             messages.forEach { message ->
                 val toolSummary = message.activeVersion.toolActivity
@@ -256,6 +274,7 @@ class ToolChat(
                     history,
                     allowed,
                     prompt,
+                    sendThinking = sendThinkingContent,
                     onText = { send(GenerationEvent.Text(it)) },
                     onReasoning = { send(GenerationEvent.Reasoning(it)) }
                 )
@@ -274,6 +293,9 @@ class ToolChat(
                 val calls = turn["tool_calls"] as? JsonArray ?: JsonArray(emptyList())
                 if (calls.isEmpty()) return@channelFlow
                 check(calls.size <= 16) { "Too many tool calls in a single response" }
+                // A turn that calls tools must keep its reasoning chain on the following requests
+                // (Auto and On); Off never sends it.
+                if (passbackConfig.sendsThinkingBack(hasToolCalls = true)) sendThinkingContent = true
                 history += turn
 
                 calls.forEach { value ->
@@ -435,13 +457,30 @@ class ToolChat(
         }
     }.flowOn(Dispatchers.IO)
 
+    /**
+     * Tool names are visible to the model, so they use the machine name the user sees in the app
+     * rather than its internal id, which stays in [ToolDefinition.remoteMachineId] for dispatch only.
+     * Same-named machines are told apart later by withUniqueWireNames (name_2, name_3...).
+     */
     private fun remoteToolName(machine: RemoteMachine, tool: String): String {
-        val id = machine.id.replace(Regex("[^A-Za-z0-9_]"), "_")
-        return "machine_${id}_$tool".take(64)
+        val readable = java.text.Normalizer.normalize(machine.name, java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}+"), "")
+            .replace('đ', 'd').replace('Đ', 'D')
+            .replace(Regex("[^A-Za-z0-9_]+"), "_")
+            .trim('_')
+            .ifBlank { "unnamed" }
+        val prefix = "machine_"
+        val suffix = "_$tool"
+        return prefix + readable.take((64 - prefix.length - suffix.length).coerceAtLeast(1)) + suffix
+    }
+
+    private fun RemoteMachineType.label(): String = when (this) {
+        RemoteMachineType.SSH -> "SSH"
+        RemoteMachineType.GCLOUD_SHELL -> "Google Cloud Shell"
     }
 
     private fun remoteToolSchema(tool: String): JsonObject = when (tool) {
-        REMOTE_TOOL_START_MACHINE -> buildJsonObject {
+        REMOTE_TOOL_START_MACHINE, REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_DISCONNECT -> buildJsonObject {
             put("type", "object")
             put("properties", buildJsonObject { })
         }
@@ -467,6 +506,7 @@ class ToolChat(
         history: List<JsonObject>,
         tools: List<ToolDefinition>,
         prompt: String,
+        sendThinking: Boolean,
         onText: suspend (String) -> Unit,
         onReasoning: suspend (String) -> Unit
     ): JsonObject {
@@ -484,7 +524,7 @@ class ToolChat(
 
         return when(wireProvider.type) {
             ProviderType.OPENAI_RESPONSES -> {
-                val sendReasoning = config.sendThinkingContent
+                val sendReasoning = sendThinking
                 val isDeepSeek = wireProvider.baseUrl.contains("deepseek.com", ignoreCase = true) || model.startsWith("deepseek-", ignoreCase = true)
                 val input = history.flatMap { message ->
                     when {
@@ -516,7 +556,7 @@ class ToolChat(
                     put("max_output_tokens", p.config.maxTokens)
                     config.temperature?.let { put("temperature", it) }
                     config.topP?.let { put("top_p", it) }
-                    config.requestReasoningEffort?.trim()?.takeIf { it.isNotEmpty() }?.let { effort ->
+                    config.wireReasoningEffort?.trim()?.takeIf { it.isNotEmpty() }?.let { effort ->
                         put("reasoning", buildJsonObject { put("effort", effort) })
                     }
                     if (tools.isNotEmpty()) put("tools", JsonArray(tools.map {
@@ -536,7 +576,7 @@ class ToolChat(
             }
             ProviderType.OPENAI, ProviderType.OLLAMA -> {
                 val ollama = wireProvider.type == ProviderType.OLLAMA
-                val sendReasoning = config.sendThinkingContent && !ollama
+                val sendReasoning = sendThinking && !ollama
                 val wireHistory = history.map { message ->
                     var clean = JsonObject(message.filterKeys { key ->
                         key != "_attachments" && key != "responsesOutput" && key != "reasoning_signature" && (sendReasoning || key != "reasoning_content")
@@ -585,7 +625,7 @@ class ToolChat(
                         put("max_tokens", p.config.maxTokens)
                         config.temperature?.let { put("temperature", it) }
                         config.topP?.let { put("top_p", it) }
-                        config.requestReasoningEffort?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                        config.wireReasoningEffort?.trim()?.takeIf { it.isNotEmpty() }?.let {
                             put("reasoning_effort", it)
                         }
                     }
@@ -608,7 +648,7 @@ class ToolChat(
                             "content" to str(message.text("content"))
                         )
                     } else {
-                        if (role == "assistant" && config.sendThinkingContent) {
+                        if (role == "assistant" && sendThinking) {
                             message.text("reasoning_content").takeIf { it.isNotBlank() }?.let { reasoning ->
                                 val signature = message.text("reasoning_signature")
                                 blocks += buildJsonObject {

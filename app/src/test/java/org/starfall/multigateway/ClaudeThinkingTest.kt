@@ -7,7 +7,8 @@ import org.starfall.multigateway.data.model.*
 
 class ClaudeThinkingTest {
     private fun parameters(model: String, effort: String?, limit: Int = 16000) =
-        ModelConfiguration(supportsThinking = true, reasoningEffort = effort).claudeThinkingParameters(model, limit)
+        ModelConfiguration(supportsThinking = true, reasoningEffort = effort, reasoningEfforts = SELECTABLE_REASONING_EFFORTS)
+            .claudeThinkingParameters(model, limit)
 
     @Test fun adaptiveThinkingSendsNativeEffortWithoutATokenBudget() {
         val body = parameters("claude-opus-4-6", "medium", 512)
@@ -25,9 +26,27 @@ class ClaudeThinkingTest {
         assertTrue(claudeThinkingCapabilities("claude-opus-5-9").efforts.isEmpty())
     }
 
-    @Test fun savedXHighMapsToMaxOnlyForModelsThatSupportMax() {
-        assertEquals("max", parameters("claude-opus-4-6", "xhigh")["output_config"]!!.jsonObject["effort"]!!.jsonPrimitive.content)
-        assertEquals("high", parameters("claude-opus-4-5", "max")["output_config"]!!.jsonObject["effort"]!!.jsonPrimitive.content)
+    @Test fun theChosenLevelIsSentExactlyAsChosen() {
+        assertEquals("xhigh", parameters("claude-opus-4-6", "xhigh")["output_config"]!!.jsonObject["effort"]!!.jsonPrimitive.content)
+        assertEquals("max", parameters("claude-opus-4-5", "max")["output_config"]!!.jsonObject["effort"]!!.jsonPrimitive.content)
+        assertEquals("minimal", parameters("claude-opus-4-6", "minimal")["output_config"]!!.jsonObject["effort"]!!.jsonPrimitive.content)
+    }
+
+    @Test fun aLevelTheModelDoesNotOfferIsNeverSent() {
+        val config = ModelConfiguration(supportsThinking = true, reasoningEffort = "max")
+        assertNull(config.requestReasoningEffort)
+        assertTrue(config.claudeThinkingParameters("claude-opus-4-6", 16000).isEmpty())
+    }
+
+    @Test fun activeTurnsThinkingOnWithoutPickingALevel() {
+        val config = ModelConfiguration(supportsThinking = true, reasoningEffort = "active", reasoningEfforts = emptyList())
+        val adaptive = config.claudeThinkingParameters("claude-opus-4-6", 16000)
+        assertEquals("adaptive", adaptive["thinking"]!!.jsonObject["type"]!!.jsonPrimitive.content)
+        assertFalse(adaptive.containsKey("output_config"))
+        val manual = config.claudeThinkingParameters("claude-sonnet-4-5", 16000)
+        assertEquals("enabled", manual["thinking"]!!.jsonObject["type"]!!.jsonPrimitive.content)
+        assertEquals(ACTIVE_THINKING_BUDGET, manual["thinking"]!!.jsonObject["budget_tokens"]!!.jsonPrimitive.int)
+        assertNull(config.wireReasoningEffort)
     }
 
     @Test fun opus45CombinesEffortWithManualThinking() {
@@ -49,9 +68,8 @@ class ClaudeThinkingTest {
     @Test fun offRespectsEachModelsThinkingModes() {
         assertEquals("disabled", parameters("claude-opus-4-6", "none")["thinking"]!!.jsonObject["type"]!!.jsonPrimitive.content)
         assertEquals("between_tools", parameters("claude-sonnet-5-5", "none")["thinking"]!!.jsonObject["type"]!!.jsonPrimitive.content)
-        val alwaysOn = parameters("claude-opus-5-5", "off")
-        assertEquals("adaptive", alwaysOn["thinking"]!!.jsonObject["type"]!!.jsonPrimitive.content)
-        assertEquals("low", alwaysOn["output_config"]!!.jsonObject["effort"]!!.jsonPrimitive.content)
+        // A model that cannot be switched off gets no thinking parameters instead of a different level.
+        assertTrue(parameters("claude-opus-5-5", "off").isEmpty())
     }
 
     @Test fun defaultAndModelsWithThinkingDisabledInCapabilitiesAreNotOverridden() {
@@ -69,11 +87,20 @@ class ClaudeThinkingTest {
             .claudeAllowsSampling("claude-sonnet-4-5", 16000))
     }
 
-    @Test fun aClaudeMaxOverrideRemainsValidAfterSwitchingProviders() {
-        val model = ModelConfiguration(supportsThinking = true)
-        assertEquals("max", model.withConversationReasoning("max", ProviderType.ANTHROPIC).reasoningEffort)
-        assertEquals("xhigh", model.withConversationReasoning("max", ProviderType.OPENAI_CODEX).reasoningEffort)
-        val gemini = model.withConversationReasoning("max", ProviderType.GOOGLE)
-        assertEquals("high", gemini.googleThinkingConfig()!!["thinkingLevel"]!!.jsonPrimitive.content)
+    @Test fun levelsAreKeptAsChosenForEveryProvider() {
+        val model = ModelConfiguration(supportsThinking = true, reasoningEfforts = SELECTABLE_REASONING_EFFORTS)
+        for (level in SELECTABLE_REASONING_EFFORTS) {
+            assertEquals(level, model.withConversationReasoning(level).reasoningEffort)
+            assertEquals(level, model.withSelectedReasoningEffort(level).wireReasoningEffort)
+            val google = model.withConversationReasoning(level).googleThinkingConfig()!!
+            assertEquals(level, google["thinkingLevel"]!!.jsonPrimitive.content)
+        }
+    }
+
+    @Test fun googleActiveEnablesThoughtsWithoutALevel() {
+        val google = ModelConfiguration(supportsThinking = true, reasoningEffort = "active", reasoningEfforts = emptyList())
+            .googleThinkingConfig()!!
+        assertFalse(google.containsKey("thinkingLevel"))
+        assertEquals(true, google["includeThoughts"]!!.jsonPrimitive.boolean)
     }
 }

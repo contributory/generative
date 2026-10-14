@@ -4,8 +4,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_DISCONNECT
 import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_EXECUTE
 import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_START_MACHINE
+import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_UPDATE_IP
 import org.starfall.multigateway.extservices.remote.RemoteMachine
 import org.starfall.multigateway.extservices.remote.RemoteMachineType
 import org.starfall.multigateway.extservices.remote.RemoteSecretRequest
@@ -44,10 +46,13 @@ class RemoteMachineTest {
     }
 
     @Test
-    fun cloudShellExposesStartAndExecuteWhileSshOnlyExecutes() {
-        assertEquals(listOf(REMOTE_TOOL_EXECUTE), RemoteMachine("ssh", "SSH").supportedToolNames())
+    fun everyMachineExposesDisconnectAndExecuteAndCloudShellAddsUpdateIp() {
         assertEquals(
-            listOf(REMOTE_TOOL_START_MACHINE, REMOTE_TOOL_EXECUTE),
+            listOf(REMOTE_TOOL_DISCONNECT, REMOTE_TOOL_EXECUTE),
+            RemoteMachine("ssh", "SSH").supportedToolNames()
+        )
+        assertEquals(
+            listOf(REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_DISCONNECT, REMOTE_TOOL_EXECUTE),
             RemoteMachine("cloud", "Cloud", type = RemoteMachineType.GCLOUD_SHELL).supportedToolNames()
         )
         assertTrue(RemoteMachine("cloud", "Cloud", type = RemoteMachineType.GCLOUD_SHELL).displayHost.isNotBlank())
@@ -213,5 +218,34 @@ class RemoteMachineTest {
         assertTrue(synced.compression)
         assertEquals(0, synced.keepAliveSeconds)
         assertEquals("secret", synced.password)
+    }
+
+    @Test
+    fun publicKeyNormalizationKeepsAlgorithmAndDataAndRejectsMismatches() {
+        // blob = length-prefixed "ssh-rsa" followed by filler
+        val blob = java.util.Base64.getEncoder().encodeToString(
+            byteArrayOf(0, 0, 0, 7) + "ssh-rsa".toByteArray() + byteArrayOf(1, 2, 3)
+        )
+        assertEquals("ssh-rsa $blob", org.starfall.multigateway.extservices.remote.normalizeOpenSshPublicKey("# note\nssh-rsa $blob user@host\n"))
+        assertTrue(runCatching { org.starfall.multigateway.extservices.remote.normalizeOpenSshPublicKey("ecdsa-sha2-nistp256 $blob") }.isFailure)
+        assertTrue(runCatching { org.starfall.multigateway.extservices.remote.normalizeOpenSshPublicKey("-----BEGIN OPENSSH PRIVATE KEY-----") }.isFailure)
+        assertTrue(runCatching { org.starfall.multigateway.extservices.remote.normalizeOpenSshPublicKey("") }.isFailure)
+    }
+
+    @Test
+    fun importedBinariesAreStartedThroughTheLinkerOrInterpreterOnAndroid10Plus() {
+        fun elf(bits: Int, type: Int) = ByteArray(64).also {
+            it[0] = 0x7f; it[1] = 'E'.code.toByte(); it[2] = 'L'.code.toByte(); it[3] = 'F'.code.toByte()
+            it[4] = bits.toByte(); it[5] = 1; it[16] = type.toByte()
+        }
+        fun run(header: ByteArray, sdk: Int, target: Int = 36, exists: (String) -> Boolean = { true }): List<String> =
+            org.starfall.multigateway.extservices.remote.binaryLauncher(header, sdk, target, exists)
+        assertEquals(listOf("/system/bin/linker64"), run(elf(2, 3), 34))
+        assertEquals(listOf("/system/bin/linker"), run(elf(1, 3), 34))
+        assertEquals(emptyList<String>(), run(elf(2, 3), 28))
+        assertEquals(emptyList<String>(), run(elf(2, 3), 34, target = 28))
+        assertEquals(emptyList<String>(), run(elf(2, 3), 34) { false })
+        assertEquals(listOf("/system/bin/sh"), run("#!/usr/bin/env bash\necho".toByteArray(), 34) { false })
+        assertEquals(listOf("/bin/sh", "-e"), run("#!/bin/sh -e\n".toByteArray(), 34))
     }
 }

@@ -11,15 +11,92 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import java.io.File
 import java.security.KeyStore
 import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+
+internal const val REMOTE_MACHINE_STORE_PREFERENCES = "remote_machines"
+
+internal fun remoteMachineSshConfigFile(context: Context): File =
+    File(File(context.applicationContext.filesDir, "remote-machines"), "ssh_config")
+
+internal fun remotePasswordReference(username: String, host: String, port: Int): String {
+    val address = host.trim().let { if (it.contains(':') && !it.startsWith('[')) "[$it]" else it }
+    return "${username.trim()}@$address:${port.coerceIn(1, 65535)}"
+}
+
+@Serializable
+private data class PersistedRemoteMachineState(
+    val schemaVersion: Int = 3,
+    val machines: List<PersistedMachine> = emptyList(),
+    val passwords: Map<String, String> = emptyMap(),
+    val oauthClients: List<GCloudOAuthClient> = emptyList(),
+    val oauthTokens: Map<String, RemoteOAuthToken> = emptyMap(),
+    val binaries: List<RemoteBinary> = emptyList(),
+    val identities: List<RemoteIdentityKey> = emptyList()
+)
+
+@Serializable
+private data class PersistedMachine(
+    val ssh: PersistedSshMachine? = null,
+    val cloud: PersistedGCloudMachine? = null
+)
+
+@Serializable
+private data class PersistedSshMachine(
+    val id: String,
+    val name: String,
+    val host: String,
+    val username: String,
+    val passwordReference: String
+)
+
+@Serializable
+private data class PersistedGCloudMachine(
+    val id: String,
+    val name: String,
+    val oauthClientId: String,
+    val environmentName: String,
+    val aiToolsEnabled: Boolean,
+    val aiTools: Map<String, Boolean>,
+    val passwordReference: String = ""
+)
+
+/** Previous persisted schema, read only for an in-place migration. */
+@Serializable
+private data class PersistedRemoteMachineStateV2(
+    val schemaVersion: Int = 2,
+    val machines: List<PersistedMachineV2> = emptyList(),
+    val oauthClients: List<GCloudOAuthClient> = emptyList(),
+    val oauthTokens: Map<String, RemoteOAuthToken> = emptyMap(),
+    val binaries: List<RemoteBinary> = emptyList(),
+    val identities: List<RemoteIdentityKey> = emptyList()
+)
+
+@Serializable
+private data class PersistedMachineV2(
+    val ssh: PersistedSshMachineV2? = null,
+    val cloud: RemoteMachine? = null
+)
+
+@Serializable
+private data class PersistedSshMachineV2(
+    val id: String,
+    val name: String,
+    val host: String,
+    val username: String,
+    val password: String
+)
 
 /**
  * Independent persistence for the Remote Machines extension.
@@ -30,11 +107,19 @@ import javax.crypto.spec.GCMParameterSpec
  */
 class RemoteMachineStore(context: Context) {
     private val appContext = context.applicationContext
-    private val preferences = appContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+    private val preferences = appContext.getSharedPreferences(REMOTE_MACHINE_STORE_PREFERENCES, Context.MODE_PRIVATE)
+    private val sshConfigFile = remoteMachineSshConfigFile(appContext)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val lock = Mutex()
+    private var needsMigration = false
+    private var passwords = emptyMap<String, String>()
     private val _state = MutableStateFlow(readState())
     val state: StateFlow<RemoteMachineState> = _state.asStateFlow()
+
+    init {
+        if (!sshConfigFile.exists()) writeSshConfigFile(_state.value.sshConfig)
+        if (needsMigration) writeState(_state.value)
+    }
 
     suspend fun update(transform: (RemoteMachineState) -> RemoteMachineState) {
         withContext(Dispatchers.IO) {
@@ -51,16 +136,208 @@ class RemoteMachineStore(context: Context) {
     }
 
     private fun readState(): RemoteMachineState {
-        val stored = preferences.getString(KEY, null) ?: return RemoteMachineState()
+        val configFileText = readSshConfigFile()
+        val stored = preferences.getString(KEY, null)
+            ?: return RemoteMachineState(sshConfig = configFileText.orEmpty())
         return runCatching {
             val payload = if (stored.startsWith(PREFIX)) decrypt(stored) else stored
-            json.decodeFromString<RemoteMachineState>(payload)
-        }.getOrDefault(RemoteMachineState())
+            val root = json.parseToJsonElement(payload).jsonObject
+            val schemaVersion = root["schemaVersion"]?.jsonPrimitive?.content?.toIntOrNull()
+            if (schemaVersion == 3) {
+                val persisted = json.decodeFromString<PersistedRemoteMachineState>(payload)
+                passwords = persisted.passwords
+                val baseMachines = persisted.machines.mapIndexedNotNull { index, item ->
+                    item.cloud?.let { cloud ->
+                        RemoteMachine(
+                            id = cloud.id,
+                            name = cloud.name,
+                            type = RemoteMachineType.GCLOUD_SHELL,
+                            port = 6_000,
+                            passwordReference = cloud.passwordReference,
+                            password = passwords[cloud.passwordReference].orEmpty(),
+                            oauthClientId = cloud.oauthClientId,
+                            environmentName = cloud.environmentName,
+                            aiToolsEnabled = cloud.aiToolsEnabled,
+                            aiTools = cloud.aiTools,
+                            sortOrder = index
+                        )
+                    } ?: item.ssh?.let { ssh ->
+                        RemoteMachine(
+                            id = ssh.id,
+                            name = ssh.name,
+                            host = ssh.host,
+                            username = ssh.username,
+                            passwordReference = ssh.passwordReference,
+                            password = passwords[ssh.passwordReference].orEmpty(),
+                            sortOrder = index
+                        )
+                    }
+                }
+                val originalConfig = configFileText.orEmpty()
+                val syncedBase = SshConfigParser.syncMachines(baseMachines, originalConfig)
+                val config = syncedBase.filter { it.type == RemoteMachineType.GCLOUD_SHELL }
+                    .fold(originalConfig) { text, machine ->
+                        SshConfigParser.upsertMachine(text, machine.copy(host = "", port = 6_000))
+                    }
+                if (config != originalConfig) needsMigration = true
+                val machines = SshConfigParser.syncMachines(syncedBase, config)
+                RemoteMachineState(
+                    machines = machines,
+                    sshConfig = config,
+                    oauthClients = persisted.oauthClients,
+                    oauthTokens = persisted.oauthTokens,
+                    binaries = persisted.binaries,
+                    identities = persisted.identities
+                )
+            } else if (schemaVersion == 2) {
+                val persisted = json.decodeFromString<PersistedRemoteMachineStateV2>(payload)
+                needsMigration = true
+                val oldMachines = persisted.machines.mapIndexedNotNull { index, item ->
+                    item.cloud?.let { cloud ->
+                        val reference = cloud.passwordReference.ifBlank {
+                            cloud.host.takeIf(String::isNotBlank)?.let {
+                                remotePasswordReference(cloud.username.ifBlank { cloud.gcloudUsername }, it, 6_000)
+                            }.orEmpty()
+                        }
+                        cloud.copy(host = "", port = 6_000, passwordReference = reference, sortOrder = index)
+                    }
+                        ?: item.ssh?.let { ssh ->
+                            RemoteMachine(
+                                id = ssh.id,
+                                name = ssh.name,
+                                host = ssh.host,
+                                username = ssh.username,
+                                passwordReference = remotePasswordReference(ssh.username, ssh.host, 22),
+                                password = ssh.password,
+                                sortOrder = index
+                            )
+                        }
+                }
+                val config = canonicalizeConfig(oldMachines, configFileText.orEmpty())
+                val machines = SshConfigParser.syncMachines(oldMachines, config)
+                passwords = collectPasswords(machines)
+                RemoteMachineState(
+                    machines = machines,
+                    sshConfig = config,
+                    oauthClients = persisted.oauthClients,
+                    oauthTokens = persisted.oauthTokens,
+                    binaries = persisted.binaries,
+                    identities = persisted.identities
+                )
+            } else {
+                // Migrate the old encrypted state: it contained full SSH machine records and the
+                // config text. The config file becomes canonical, then writeState stores only the
+                // minimal SSH records on disk.
+                val legacy = json.decodeFromString<RemoteMachineState>(payload)
+                needsMigration = true
+                val existingConfig = configFileText ?: legacy.sshConfig
+                val machines = legacy.machines.map { machine ->
+                    if (machine.type == RemoteMachineType.GCLOUD_SHELL) {
+                        val username = machine.username.ifBlank { machine.gcloudUsername }
+                        val reference = machine.passwordReference.ifBlank {
+                            machine.host.takeIf(String::isNotBlank)?.let { remotePasswordReference(username, it, 6_000) }.orEmpty()
+                        }
+                        machine.copy(
+                            host = "",
+                            port = 6_000,
+                            username = username,
+                            gcloudUsername = username,
+                            passwordReference = reference
+                        )
+                    } else machine
+                }
+                val config = canonicalizeConfig(machines, existingConfig)
+                val synced = SshConfigParser.syncMachines(machines, config)
+                passwords = collectPasswords(synced)
+                legacy.copy(
+                    machines = synced,
+                    sshConfig = config
+                )
+            }
+        }.getOrDefault(RemoteMachineState(sshConfig = configFileText.orEmpty()))
     }
 
     private fun writeState(state: RemoteMachineState) {
-        val payload = encrypt(json.encodeToString(state))
+        writeSshConfigFile(state.sshConfig)
+        val passwordReferences = collectPasswords(state.machines)
+        val persisted = PersistedRemoteMachineState(
+            machines = state.machines.map { machine ->
+                if (machine.type == RemoteMachineType.SSH) {
+                    val passwordReference = remotePasswordReference(machine.username, machine.host, machine.port)
+                    PersistedMachine(
+                        ssh = PersistedSshMachine(
+                            id = machine.id,
+                            name = machine.name,
+                            host = machine.host,
+                            username = machine.username,
+                            passwordReference = passwordReference
+                        )
+                    )
+                } else {
+                    PersistedMachine(
+                        cloud = PersistedGCloudMachine(
+                            id = machine.id,
+                            name = machine.name,
+                            oauthClientId = machine.oauthClientId,
+                            environmentName = machine.environmentName,
+                            aiToolsEnabled = machine.aiToolsEnabled,
+                            aiTools = machine.aiTools,
+                            passwordReference = machine.passwordReference.ifBlank {
+                                machine.host.takeIf(String::isNotBlank)?.let {
+                                    remotePasswordReference(machine.username.ifBlank { machine.gcloudUsername }, it, 6_000)
+                                }.orEmpty()
+                            }
+                        )
+                    )
+                }
+            },
+            passwords = passwordReferences,
+            oauthClients = state.oauthClients,
+            oauthTokens = state.oauthTokens,
+            binaries = state.binaries,
+            identities = state.identities
+        )
+        val payload = encrypt(json.encodeToString(persisted))
         preferences.edit(commit = true) { putString(KEY, payload) }
+    }
+
+    private fun canonicalizeConfig(machines: List<RemoteMachine>, initialConfig: String): String =
+        machines.fold(initialConfig) { text, machine ->
+            if (SshConfigParser.hasExplicitAlias(text, machine.name)) {
+                if (machine.type == RemoteMachineType.GCLOUD_SHELL) {
+                    SshConfigParser.upsertMachine(text, machine.copy(host = "", port = 6_000))
+                } else text
+            } else {
+                SshConfigParser.upsertMachine(text, machine)
+            }
+        }
+
+    private fun collectPasswords(machines: List<RemoteMachine>): Map<String, String> =
+        machines.asSequence()
+            .mapNotNull { machine ->
+                val secret = if (machine.authentication == RemoteAuthentication.PRIVATE_KEY) {
+                    machine.identityPassphrase
+                } else machine.password
+                val reference = when (machine.type) {
+                    RemoteMachineType.SSH -> remotePasswordReference(machine.username, machine.host, machine.port)
+                    RemoteMachineType.GCLOUD_SHELL -> machine.passwordReference.ifBlank {
+                        machine.host.takeIf(String::isNotBlank)?.let {
+                            remotePasswordReference(machine.username.ifBlank { machine.gcloudUsername }, it, 6_000)
+                        }.orEmpty()
+                    }
+                }
+                secret.takeIf { it.isNotEmpty() && reference.isNotBlank() }?.let {
+                    reference to it
+                }
+            }
+            .toMap()
+
+    private fun readSshConfigFile(): String? =
+        if (sshConfigFile.isFile) runCatching { sshConfigFile.readText(Charsets.UTF_8) }.getOrNull() else null
+
+    private fun writeSshConfigFile(contents: String) {
+        sshConfigFile.parentFile?.mkdirs()
+        sshConfigFile.writeText(contents, Charsets.UTF_8)
     }
 
     private fun key(create: Boolean): SecretKey = synchronized(KEY_LOCK) {
@@ -100,7 +377,6 @@ class RemoteMachineStore(context: Context) {
     }
 
     private companion object {
-        const val PREFERENCES = "remote_machines"
         const val KEY = "state"
         const val KEY_ALIAS = "multigateway.remote-machines.v1"
         const val PREFIX = "keystore:v1:"

@@ -119,7 +119,7 @@ class ConfigurationViewModel(
         viewModelScope.launch(LocalWriteErrors.handler) {
             val provider = llmRepo.getProviderById(providerId) ?: return@launch
             val config = provider.config.modelConfigs[modelId] ?: return@launch
-            val updated = config.withSelectedReasoningEffort(effort, provider.type)
+            val updated = config.withSelectedReasoningEffort(effort)
             if (updated == config) return@launch
             llmRepo.saveProvider(provider.copy(config = provider.config.copy(
                 modelConfigs = provider.config.modelConfigs + (modelId to updated)
@@ -127,13 +127,18 @@ class ConfigurationViewModel(
         }
     }
 
-    fun setSendThinkingContent(providerId: String, modelId: String, enabled: Boolean) {
+    fun setThinkingPassback(providerId: String, modelId: String, mode: ThinkingPassback) {
         viewModelScope.launch(LocalWriteErrors.handler) {
             val provider = llmRepo.getProviderById(providerId) ?: return@launch
-            val config = provider.config.modelConfigs[modelId] ?: return@launch
-            if (config.sendThinkingContent == enabled) return@launch
+            val existing = provider.config.modelConfigs[modelId]
+            // A freshly selected model may not have a saved configuration yet (it is written
+            // asynchronously on selection); create it here so the choice is never lost.
+            val config = existing ?: ModelConfiguration()
+            if (existing != null && existing.passbackMode == mode && existing.thinkingPassback == mode) return@launch
+            val modelIds = provider.config.modelIds
             llmRepo.saveProvider(provider.copy(config = provider.config.copy(
-                modelConfigs = provider.config.modelConfigs + (modelId to config.copy(sendThinkingContent = enabled))
+                modelIds = if (modelIds != null && modelId !in modelIds) modelIds + modelId else modelIds,
+                modelConfigs = provider.config.modelConfigs + (modelId to config.withThinkingPassback(mode))
             )))
         }
     }

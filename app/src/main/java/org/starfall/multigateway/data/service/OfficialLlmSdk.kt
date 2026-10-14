@@ -426,8 +426,9 @@ internal class OfficialLlmSdk(private val attachments: AttachmentResolver) {
                 if (modelConfig.reasoningEffortDisabled) {
                     config.thinkingConfig(com.google.genai.types.ThinkingConfig.builder().thinkingBudget(0).includeThoughts(false).build())
                 } else modelConfig.requestReasoningEffort?.let {
-                    config.thinkingConfig(com.google.genai.types.ThinkingConfig.builder()
-                        .thinkingLevel(if (it == "xhigh") "high" else it).includeThoughts(true).build())
+                    val thinking = com.google.genai.types.ThinkingConfig.builder().includeThoughts(true)
+                    modelConfig.wireReasoningEffort?.let { level -> thinking.thinkingLevel(level) }
+                    config.thinkingConfig(thinking.build())
                 }
             }
             if (systemPrompt.isNotBlank()) config.systemInstruction(Content.fromParts(Part.fromText(systemPrompt)))

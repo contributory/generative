@@ -10,13 +10,13 @@ import org.starfall.multigateway.data.service.mcpToolWireName
 
 class McpToolNameTest {
     @Test fun wireNameUsesReadableServerAndToolNames() {
-        assertEquals("Context7_get_docs", mcpToolWireName("Context7", "get_docs", "context7"))
-        assertEquals("My_Server_search_web", mcpToolWireName("My Server", "search/web", "server"))
-        assertFalse(mcpToolWireName("Context7", "get_docs", "context7").startsWith("mcp_"))
+        assertEquals("Context7_get_docs", mcpToolWireName("Context7", "get_docs"))
+        assertEquals("My_Server_search_web", mcpToolWireName("My Server", "search/web"))
+        assertFalse(mcpToolWireName("Context7", "get_docs").startsWith("mcp_"))
     }
 
     @Test fun longNamesStayWithinProviderFunctionNameLimit() {
-        val name = mcpToolWireName("Server".repeat(20), "tool".repeat(20), "server")
+        val name = mcpToolWireName("Server".repeat(20), "tool".repeat(20))
 
         assertTrue(name.length <= 64)
         assertTrue(name.matches(Regex("[A-Za-z0-9_-]+")))
@@ -29,7 +29,18 @@ class McpToolNameTest {
         ).withUniqueWireNames()
 
         assertEquals("Context7_get_docs", definitions[0].name)
-        assertTrue(definitions[1].name.startsWith("Context7_get_docs_"))
+        assertEquals("Context7_get_docs_2", definitions[1].name)
         assertTrue(definitions.map { it.name }.toSet().size == definitions.size)
+    }
+
+    @Test fun wireNamesNeverContainInternalIds() {
+        val long = mcpToolWireName("Server".repeat(20), "tool".repeat(20))
+        assertEquals(long, mcpToolWireName("Server".repeat(20), "tool".repeat(20)))
+        val machines = listOf(
+            ToolDefinition("machine_Home_execute", "", kotlinx.serialization.json.buildJsonObject {}, remoteMachineId = "uuid-1", originalName = "execute"),
+            ToolDefinition("machine_Home_execute", "", kotlinx.serialization.json.buildJsonObject {}, remoteMachineId = "uuid-2", originalName = "execute")
+        ).withUniqueWireNames()
+        assertEquals(listOf("machine_Home_execute", "machine_Home_execute_2"), machines.map { it.name })
+        assertTrue(machines.none { it.name.contains("uuid") })
     }
 }
