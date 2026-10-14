@@ -619,13 +619,8 @@ internal fun SelectedModelOverviewSheet(
             screenBurst.hide()
         }
     }
-    // Keep the sheet opaque at every tier. Strong-effort colors are drawn across the
-    // whole sheet rather than only behind the model details column.
-    val sheetBrush = when {
-        previewTier == 6 && config.supportsThinking -> maximumEffortCardBrush()
-        previewTier == 5 && config.supportsThinking -> maximumThinkingCardBrush(MaterialTheme.colorScheme.surface)
-        else -> null
-    }
+    // The purple tier is shown only on the effort control; max effort keeps its red sheet treatment.
+    val sheetBrush = if (previewTier == 6 && config.supportsThinking) maximumEffortCardBrush() else null
     val sheetColor = if (sheetBrush == null) {
         MaterialTheme.colorScheme.surfaceContainerLow
     } else {
@@ -637,7 +632,6 @@ internal fun SelectedModelOverviewSheet(
     }, containerColor = sheetColor, containerBrush = sheetBrush,
         navigationBarColor = when {
             previewTier == 6 && config.supportsThinking -> Color(0xFF1A0A06)
-            previewTier == 5 && config.supportsThinking -> MaterialTheme.colorScheme.surface
             else -> sheetColor
         },
         // Read in the draw phase: the reveal animates every frame and must not recompose the sheet.
@@ -659,7 +653,7 @@ internal fun SelectedModelOverviewSheet(
             Text(
                 stringResource(R.string.choose_another_model_hint),
                 style = MaterialTheme.typography.bodySmall,
-                color = if (previewTier >= 5 && config.supportsThinking) {
+                color = if (previewTier == 6 && config.supportsThinking) {
                     Color.White.copy(alpha = 0.82f)
                 } else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth()
@@ -861,7 +855,7 @@ private fun ModelPickerCard(
     val cardBurst = rememberThinkingColorBurst()
     val screenBurst = LocalThinkingScreenBurst.current
     var cardOrigin by remember { mutableStateOf(Offset.Zero) }
-    val cardContentColor = if (enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
+    val cardContentColor = if (!embedded && enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
     val cardModifier = Modifier.fillMaxWidth().then(if (embedded) Modifier else Modifier.clickable(onClick = onClick))
     val cardContentModifier = Modifier
         .fillMaxWidth()
@@ -904,7 +898,7 @@ private fun ModelPickerCard(
                         Text(
                             text = modelId,
                             style = MaterialTheme.typography.labelSmall,
-                             color = if (enhancedThinking && tier >= 5) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                             color = if (!embedded && enhancedThinking && tier >= 5) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -991,7 +985,7 @@ private fun ModelPickerCard(
                             text = if (usesThinkingBudget(providerType, modelId))
                                 "Thinking Budget (tokens)" else "Reasoning Effort",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = if (enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
+                            color = if (!embedded && enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
                         )
                     }
 
