@@ -390,12 +390,34 @@ class RemoteMachineService(
         target.setReadable(false, false)
         target.setWritable(true, true)
         runCatching { Os.chmod(target.absolutePath, 0b110_000_000) }
+        // A replaced private key may no longer match its old public key, so that one is dropped too.
+        state.value.identities.firstOrNull { it.id == id }?.publicKeyPath?.takeIf(String::isNotBlank)
+            ?.let { runCatching { File(it).delete() } }
         val key = RemoteIdentityKey(id, displayName, target.absolutePath)
         // Re-uploading a key with the same name replaces it, so existing IdentityFile names keep working.
         val replaced = state.value.identities.filter { it.name == displayName && it.id != id }
         store.update { it.copy(identities = it.identities.filterNot { existing -> existing.name == displayName } + key) }
         replaced.forEach { runCatching { File(it.path).delete() } }
         key
+    }
+
+    /**
+     * Attaches an OpenSSH public key (.pub file) to an uploaded private key. Google Cloud Shell needs
+     * the public key to authorize the connection, so it is used instead of deriving one.
+     */
+    suspend fun importPublicKey(keyId: String, uri: Uri): RemoteIdentityKey = withContext(Dispatchers.IO) {
+        val key = state.value.identities.firstOrNull { it.id == keyId } ?: error("SSH key not found.")
+        val text = appContext.contentResolver.openInputStream(uri)?.use { it.bufferedReader().readText() }
+            ?: error("Could not read the selected public key file.")
+        val normalized = normalizeOpenSshPublicKey(text)
+        val directory = File(appContext.filesDir, "remote-machines/identities").apply { mkdirs() }
+        val target = File(directory, "$keyId.pub")
+        target.writeText(normalized + "\n")
+        val updated = key.copy(publicKeyPath = target.absolutePath)
+        store.update { current ->
+            current.copy(identities = current.identities.map { if (it.id == keyId) updated else it })
+        }
+        updated
     }
 
     suspend fun deleteIdentityKey(id: String) {
@@ -407,7 +429,10 @@ class RemoteMachineService(
             }) { "Remove this key from IdentityFile before deleting it." }
         }
         store.update { it.copy(identities = it.identities.filterNot { existing -> existing.id == id }) }
-        key?.let { runCatching { File(it.path).delete() } }
+        key?.let {
+            runCatching { File(it.path).delete() }
+            if (it.publicKeyPath.isNotBlank()) runCatching { File(it.publicKeyPath).delete() }
+        }
     }
 
     /**
@@ -423,10 +448,23 @@ class RemoteMachineService(
     }
 
     /** Converts the configured private key to the OpenSSH public-key line Cloud Shell expects. */
+    /** The public key uploaded next to this private key in settings, if any. */
+    private fun uploadedPublicKey(privateKey: File): String? {
+        val identity = state.value.identities.firstOrNull { it.path == privateKey.absolutePath } ?: return null
+        val file = identity.publicKeyPath.takeIf(String::isNotBlank)?.let(::File)?.takeIf { it.isFile } ?: return null
+        val normalized = normalizeOpenSshPublicKey(file.readText())
+        val algorithm = normalized.substringBefore(' ')
+        require(algorithm in CLOUD_SHELL_SUPPORTED_KEY_ALGORITHMS) {
+            "Google Cloud Shell does not support SSH public-key type $algorithm. Use an RSA or ECDSA key."
+        }
+        return normalized
+    }
+
     private fun cloudShellPublicKey(machine: RemoteMachine): String? {
         val identityFile = machine.identityFile.trim().takeIf(String::isNotBlank) ?: return null
         val file = resolveIdentity(identityFile)
             ?: error("Identity file not found: ${identityFile.substringAfterLast('/')}. Upload it in Remote Machines settings or fix IdentityFile.")
+        uploadedPublicKey(file)?.let { return it }
         val jsch = JSch()
         if (machine.identityPassphrase.isBlank()) jsch.addIdentity(file.absolutePath)
         else jsch.addIdentity(file.absolutePath, machine.identityPassphrase)
@@ -1238,6 +1276,34 @@ class RemoteMachineService(
             "ecdsa-sha2-nistp521"
         )
     }
+}
+
+/**
+ * Validates the text of an OpenSSH public key file and returns it as "<algorithm> <base64>" without
+ * the comment. Throws IllegalArgumentException when it is not a usable OpenSSH public key.
+ */
+internal fun normalizeOpenSshPublicKey(text: String): String {
+    val line = text.lineSequence().map(String::trim).firstOrNull { it.isNotEmpty() && !it.startsWith("#") }
+        ?: throw IllegalArgumentException("The public key file is empty.")
+    val parts = line.split(Regex("\\s+"))
+    val algorithm = parts[0]
+    val blob = parts.getOrNull(1)
+    require(blob != null && (algorithm.startsWith("ssh-") || algorithm.startsWith("ecdsa-"))) {
+        "Not an OpenSSH public key. Expected a single line like \"ssh-rsa AAAA… comment\"."
+    }
+    val bytes = try {
+        Base64.getDecoder().decode(blob)
+    } catch (_: IllegalArgumentException) {
+        throw IllegalArgumentException("The public key data is not valid Base64.")
+    }
+    // The blob starts with its own algorithm name (length-prefixed); it must match the line's label.
+    val embedded = if (bytes.size >= 4) {
+        val length = ((bytes[0].toInt() and 0xff) shl 24) or ((bytes[1].toInt() and 0xff) shl 16) or
+            ((bytes[2].toInt() and 0xff) shl 8) or (bytes[3].toInt() and 0xff)
+        if (length in 1..(bytes.size - 4)) String(bytes, 4, length, Charsets.US_ASCII) else null
+    } else null
+    require(embedded == algorithm) { "The public key data does not match its declared type ($algorithm)." }
+    return "$algorithm $blob"
 }
 
 /**

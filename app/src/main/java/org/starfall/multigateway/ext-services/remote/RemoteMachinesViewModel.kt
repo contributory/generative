@@ -60,6 +60,9 @@ class RemoteMachinesViewModel(
     suspend fun importIdentityKey(uri: Uri): Result<RemoteIdentityKey> =
         runCatching { service.importIdentityKey(uri) }
 
+    suspend fun importPublicKey(keyId: String, uri: Uri): Result<RemoteIdentityKey> =
+        runCatching { service.importPublicKey(keyId, uri) }
+
     fun deleteIdentityKey(id: String) {
         viewModelScope.launch(LocalWriteErrors.handler) { service.deleteIdentityKey(id) }
     }

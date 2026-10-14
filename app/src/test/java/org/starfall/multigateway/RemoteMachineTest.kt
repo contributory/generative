@@ -170,4 +170,16 @@ class RemoteMachineTest {
         assertEquals(0, synced.keepAliveSeconds)
         assertEquals("secret", synced.password)
     }
+
+    @Test
+    fun publicKeyNormalizationKeepsAlgorithmAndDataAndRejectsMismatches() {
+        // blob = length-prefixed "ssh-rsa" followed by filler
+        val blob = java.util.Base64.getEncoder().encodeToString(
+            byteArrayOf(0, 0, 0, 7) + "ssh-rsa".toByteArray() + byteArrayOf(1, 2, 3)
+        )
+        assertEquals("ssh-rsa $blob", org.starfall.multigateway.extservices.remote.normalizeOpenSshPublicKey("# note\nssh-rsa $blob user@host\n"))
+        assertTrue(runCatching { org.starfall.multigateway.extservices.remote.normalizeOpenSshPublicKey("ecdsa-sha2-nistp256 $blob") }.isFailure)
+        assertTrue(runCatching { org.starfall.multigateway.extservices.remote.normalizeOpenSshPublicKey("-----BEGIN OPENSSH PRIVATE KEY-----") }.isFailure)
+        assertTrue(runCatching { org.starfall.multigateway.extservices.remote.normalizeOpenSshPublicKey("") }.isFailure)
+    }
 }

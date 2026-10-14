@@ -97,7 +97,9 @@ data class RemoteBinaryTestResult(
 data class RemoteIdentityKey(
     val id: String,
     val name: String,
-    val path: String
+    val path: String,
+    /** Uploaded OpenSSH public key (.pub) belonging to this private key; empty when none. */
+    val publicKeyPath: String = ""
 )
 
 /** Everything belonging to the extension is persisted outside of the application's Room schema. */

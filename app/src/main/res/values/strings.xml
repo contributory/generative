@@ -497,8 +497,11 @@
     <string name="remote_machine_identity_file_help" translatable="false">Path to the private key, or the name of a key uploaded in Remote Machines settings. The key itself is never stored in the machine.</string>
     <string name="remote_machine_no_uploaded_keys" translatable="false">No keys uploaded yet</string>
     <string name="remote_machine_ssh_keys" translatable="false">SSH keys</string>
-    <string name="remote_machine_ssh_keys_help" translatable="false">Upload a private key once and point any number of machines at it through IdentityFile.</string>
+    <string name="remote_machine_ssh_keys_help" translatable="false">Upload a private key once and point any number of machines at it through IdentityFile. Google Cloud Shell also needs the matching public key (.pub): upload it with the button on each key.</string>
     <string name="remote_machine_upload_ssh_key" translatable="false">Upload SSH key file</string>
+    <string name="remote_machine_upload_public_key" translatable="false">Upload public key</string>
+    <string name="remote_machine_public_key_uploaded" translatable="false">Public key uploaded</string>
+    <string name="remote_machine_public_key_missing" translatable="false">No public key (needed for Cloud Shell)</string>
     <string name="remote_machine_ssh_key_used_by" translatable="false">Used by %1$d machine(s)</string>
     <string name="remote_machine_key_passphrase" translatable="false">Key passphrase</string>
     <string name="remote_machine_ssh_options" translatable="false">SSH options</string>

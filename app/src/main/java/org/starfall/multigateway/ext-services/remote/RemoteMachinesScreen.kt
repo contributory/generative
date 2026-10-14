@@ -736,6 +736,17 @@ private fun RemoteMachineSettings(
                 .onFailure { identityError = it.message }
         }
     }
+    var publicKeyTarget by remember { mutableStateOf<String?>(null) }
+    val publicKeyLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val keyId = publicKeyTarget
+        publicKeyTarget = null
+        if (uri == null || keyId == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            viewModel.importPublicKey(keyId, uri)
+                .onSuccess { identityError = null }
+                .onFailure { identityError = it.message }
+        }
+    }
     val binaryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri ?: return@rememberLauncherForActivityResult
         scope.launch {
@@ -850,7 +861,22 @@ private fun RemoteMachineSettings(
                         Column(Modifier.weight(1f)) {
                             Text(key.name, style = MaterialTheme.typography.titleSmall)
                             Text(key.path, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                            Text(
+                                stringResource(
+                                    if (key.publicKeyPath.isNotBlank()) R.string.remote_machine_public_key_uploaded
+                                    else R.string.remote_machine_public_key_missing
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (key.publicKeyPath.isNotBlank()) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             if (users > 0) Text(stringResource(R.string.remote_machine_ssh_key_used_by, users), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        IconButton(onClick = {
+                            publicKeyTarget = key.id
+                            publicKeyLauncher.launch(arrayOf("text/plain", "application/octet-stream", "*/*"))
+                        }) {
+                            Icon(Icons.Outlined.UploadFile, stringResource(R.string.remote_machine_upload_public_key))
                         }
                         IconButton(enabled = users == 0, onClick = { viewModel.deleteIdentityKey(key.id) }) {
                             Icon(Icons.Outlined.Lock, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error)
