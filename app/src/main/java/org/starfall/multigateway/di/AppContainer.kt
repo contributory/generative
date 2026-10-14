@@ -1,6 +1,11 @@
 package org.starfall.multigateway.di
 
 import android.content.Context
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import java.io.File
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import org.starfall.multigateway.data.local.db.AppDatabase
@@ -31,8 +36,26 @@ class AppContainer(context: Context) {
     private val speech = SpeechRepository(database)
     private val preferences = AppPreferencesRepository(appContext)
     private val toolSettings = ToolSettingsStore(appContext)
-    val remoteMachineService = RemoteMachineService(appContext)
+    private val executableBinaries = ExecutableBinaryStore(appContext)
+    // Remote Machines only receives the read-only view; Settings gets the full store below.
+    val remoteMachineService = RemoteMachineService(appContext, binaries = executableBinaries)
     val defaultDataInitializer = DefaultDataInitializer(providers, mcp, speech, preferences, icons)
+
+    init {
+        migrateLegacyRemoteBinaries()
+    }
+
+    /** Binaries used to be uploaded under Remote Machines; hand them to the shared store once. */
+    private fun migrateLegacyRemoteBinaries() {
+        val legacy = remoteMachineService.legacyBinaries()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            if (legacy.isNotEmpty()) {
+                legacy.forEach { executableBinaries.adoptLegacy(it.name, File(it.path)) }
+                remoteMachineService.clearLegacyBinaries()
+            }
+            executableBinaries.repairPermissions()
+        }
+    }
 
     val viewModelFactory = viewModelFactory {
         initializer {
@@ -50,7 +73,7 @@ class AppContainer(context: Context) {
             )
         }
         initializer { ConfigurationViewModel(profiles, providers, mcp, speech, preferences) }
-        initializer { SettingsViewModel(preferences) }
+        initializer { SettingsViewModel(preferences, executableBinaries) }
         initializer { RemoteMachinesViewModel(remoteMachineService) }
     }
 }

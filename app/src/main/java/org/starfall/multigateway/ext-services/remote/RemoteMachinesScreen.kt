@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.background
@@ -171,8 +172,11 @@ fun RemoteMachinesScreen(
         label = stringResource(R.string.remote_machines_title)
     ) { selected ->
         when {
-            terminalMachine != null -> RemoteTerminalScreen(
-                machine = terminalMachine!!,
+            // Branch on this slot's own page (`selected`), not on the outer state: while sliding,
+            // AnimatedContent composes the outgoing list page and the incoming terminal at once,
+            // and reading `terminalMachine` made BOTH slots render a terminal.
+            selected is RemoteMachine -> RemoteTerminalScreen(
+                machine = selected,
                 viewModel = viewModel,
                 onBack = { terminalMachine = null }
             )
@@ -493,6 +497,7 @@ private fun RemoteMachineEditor(
                         value = password,
                         onValueChange = { password = it },
                         label = stringResource(R.string.remote_machine_password),
+                        supporting = stringResource(R.string.remote_machine_password_help),
                         visual = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { showPassword = !showPassword }) {
@@ -637,7 +642,6 @@ private fun RemoteMachineSettings(
 ) {
     var sshConfig by remember(state.sshConfig) { mutableStateOf(state.sshConfig) }
     var clientEditor by remember { mutableStateOf<GCloudOAuthClient?>(null) }
-    var binaryError by remember { mutableStateOf<String?>(null) }
     var identityError by remember { mutableStateOf<String?>(null) }
     var oauthError by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
@@ -656,12 +660,6 @@ private fun RemoteMachineSettings(
             viewModel.importIdentityKey(uri)
                 .onSuccess { identityError = null }
                 .onFailure { identityError = it.message }
-        }
-    }
-    val binaryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri ?: return@rememberLauncherForActivityResult
-        scope.launch {
-            viewModel.importBinary(uri).onFailure { binaryError = it.message }
         }
     }
     val oauthLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -765,24 +763,6 @@ private fun RemoteMachineSettings(
                 }
                 identityError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
-            RemoteSection(stringResource(R.string.remote_machine_binaries)) {
-                Text(stringResource(R.string.remote_machine_binaries_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                state.binaries.forEach { binary ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Code, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(binary.name, style = MaterialTheme.typography.titleSmall)
-                            Text(binary.path, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                        }
-                        IconButton(onClick = { viewModel.deleteBinary(binary.id) }) { Icon(Icons.Outlined.Lock, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
-                    }
-                }
-                OutlinedButton(onClick = { binaryLauncher.launch(arrayOf("application/octet-stream", "application/x-executable", "*/*")) }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Outlined.UploadFile, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.remote_machine_add_binary))
-                }
-                binaryError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-            }
         }
     }
 
@@ -837,18 +817,15 @@ private fun OAuthClientDialog(
 
 @Composable
 private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachinesViewModel, onBack: () -> Unit) {
-    val requiresInteractivePassword =
-        machine.type == RemoteMachineType.SSH &&
-            machine.authentication == RemoteAuthentication.PASSWORD &&
-            machine.password.isEmpty()
     var terminal by remember(machine.id) { mutableStateOf<RemoteTerminal?>(null) }
-    var connecting by remember(machine.id) { mutableStateOf(!requiresInteractivePassword) }
+    var connecting by remember(machine.id) { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var readerJob by remember { mutableStateOf<Job?>(null) }
     var retryAttempt by remember(machine.id) { mutableStateOf(0) }
+    // Set only while the server is actually asking for a password/passphrase that isn't saved.
+    var secretRequest by remember(machine.id) { mutableStateOf<PendingSecretRequest?>(null) }
     var passwordInput by remember(machine.id) { mutableStateOf("") }
     var showPromptPassword by remember(machine.id) { mutableStateOf(false) }
-    var submittedPassword by remember(machine.id) { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val density = LocalDensity.current.density
     val terminalPrefs = remember { context.getSharedPreferences("remote_terminal_ui", android.content.Context.MODE_PRIVATE) }
@@ -865,6 +842,7 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
     val currentReaderJob by rememberUpdatedState(readerJob)
 
     fun closeTerminal() {
+        secretRequest?.answer?.complete(null)
         readerJob?.cancel()
         bridge.close()
         terminal?.close()
@@ -872,22 +850,35 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
     }
     // Phone back button: disconnect explicitly (same as the app bar back arrow).
     BackHandler { closeTerminal(); onBack() }
+    val currentSecretRequest by rememberUpdatedState(secretRequest)
     DisposableEffect(machine.id) {
         onDispose {
+            currentSecretRequest?.answer?.complete(null)
             currentReaderJob?.cancel()
             bridge.close()
             currentTerminal?.close()
         }
     }
     LaunchedEffect(machine.id, retryAttempt) {
-        if (requiresInteractivePassword && submittedPassword == null) {
-            connecting = false
-            return@LaunchedEffect
-        }
         connecting = true
         error = null
         try {
-            val opened = viewModel.openTerminal(machine, submittedPassword)
+            val opened = viewModel.openTerminal(machine) { request ->
+                // Called from the SSH thread only when the server asks for a secret we don't have.
+                val pending = PendingSecretRequest(request, CompletableDeferred())
+                withContext(Dispatchers.Main) {
+                    passwordInput = ""
+                    showPromptPassword = false
+                    secretRequest = pending
+                }
+                try {
+                    pending.answer.await()
+                } finally {
+                    withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) {
+                        if (secretRequest === pending) secretRequest = null
+                    }
+                }
+            }
             terminal = opened
             bridge.attachRemote(opened)
             connecting = false
@@ -968,7 +959,7 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
                         }
                     )
                 }
-                if (connecting) {
+                if (connecting && secretRequest == null) {
                     Surface(
                         Modifier.align(Alignment.Center),
                         shape = RoundedCornerShape(12.dp),
@@ -1002,19 +993,14 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
-                            Button(onClick = {
-                                if (requiresInteractivePassword) {
-                                    submittedPassword = null
-                                    passwordInput = ""
-                                }
-                                retryAttempt++
-                            }) {
+                            Button(onClick = { retryAttempt++ }) {
                                 Text(stringResource(R.string.common_retry))
                             }
                         }
                     }
                 }
-                if (!connecting && error == null && requiresInteractivePassword && submittedPassword == null) {
+                secretRequest?.let { pending ->
+                    val request = pending.request
                     Surface(
                         Modifier.align(Alignment.Center).padding(16.dp),
                         shape = RoundedCornerShape(16.dp),
@@ -1026,7 +1012,10 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                stringResource(R.string.remote_machine_terminal_password_title),
+                                stringResource(
+                                    if (request.passphrase) R.string.remote_machine_terminal_passphrase_title
+                                    else R.string.remote_machine_terminal_password_title
+                                ),
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Text(
@@ -1037,7 +1026,11 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
                             RemoteTextField(
                                 value = passwordInput,
                                 onValueChange = { passwordInput = it },
-                                label = stringResource(R.string.remote_machine_password),
+                                label = when {
+                                    request.passphrase -> stringResource(R.string.remote_machine_key_passphrase)
+                                    request.prompt.isBlank() -> stringResource(R.string.remote_machine_password)
+                                    else -> request.prompt.trim()
+                                },
                                 visual = if (showPromptPassword) VisualTransformation.None else PasswordVisualTransformation(),
                                 trailingIcon = {
                                     IconButton(onClick = { showPromptPassword = !showPromptPassword }) {
@@ -1052,15 +1045,16 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                TextButton(onClick = onBack) {
+                                TextButton(onClick = {
+                                    pending.answer.complete(null)
+                                    closeTerminal()
+                                    onBack()
+                                }) {
                                     Text(stringResource(R.string.common_cancel))
                                 }
                                 Button(
                                     enabled = passwordInput.isNotEmpty(),
-                                    onClick = {
-                                        submittedPassword = passwordInput
-                                        retryAttempt++
-                                    }
+                                    onClick = { pending.answer.complete(passwordInput) }
                                 ) {
                                     Text(stringResource(R.string.remote_machine_terminal_connect))
                                 }
@@ -1073,6 +1067,12 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
         }
     }
 }
+
+/** A password/passphrase the SSH server asked for; completed with null when the user cancels. */
+private class PendingSecretRequest(
+    val request: RemoteSecretRequest,
+    val answer: CompletableDeferred<String?>
+)
 
 private const val MIN_TERMINAL_FONT_DP = 8
 private const val MAX_TERMINAL_FONT_DP = 32
@@ -1190,7 +1190,9 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
         }.getOrElse { "stty raw -echo 2>/dev/null; exec cat > /dev/null" }
         // A null working directory triggers a JNI GetStringUTFChars abort on Android 11.
         val created = TerminalSession(
-            "/system/bin/sh", filesDir.absolutePath, arrayOf("-c", script), emptyArray(), 2_000, this
+            // args[0] becomes argv[0]. Without a leading "sh" the shell treats the script as a file
+            // name ("-c: ... No such file or directory", exit 127), so the reply FIFO never opens.
+            "/system/bin/sh", filesDir.absolutePath, arrayOf("sh", "-c", script), emptyArray(), 2_000, this
         )
         session = created
         return created
@@ -1215,6 +1217,8 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
     fun attachRemote(terminal: RemoteTerminal) {
         remote = terminal
         closed = false
+        // close() shuts the sender down, but this bridge is reused when the user retries after a lost connection.
+        if (sender.isShutdown) sender = newSender()
         flushPending()
         reportSize()
     }
@@ -1247,6 +1251,7 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
         view = null
         replyFifo?.delete()
         replyFifo = null
+        sender.shutdown()
     }
 
     private fun flushPending() {
@@ -1256,13 +1261,26 @@ private class RemoteTerminalBridge(private val context: android.content.Context)
         append(bytes)
     }
 
+    // Socket writes throw NetworkOnMainThreadException on Android's main thread, and keys/paste
+    // arrive on the main thread. They used to be swallowed by runCatching, so nothing typed or
+    // pasted ever reached the server. A single-thread executor keeps the writes ordered.
+    @Volatile private var sender = newSender()
+
+    private fun newSender() = java.util.concurrent.Executors.newSingleThreadExecutor { task ->
+        Thread(task, "remote-terminal-input").apply { isDaemon = true }
+    }
+
     private fun send(bytes: ByteArray) {
+        if (closed) return
         val output = remote?.output ?: return
-        runCatching {
-            synchronized(output) {
-                output.write(bytes)
-                output.flush()
+        try {
+            sender.execute {
+                runCatching {
+                    output.write(bytes)
+                    output.flush()
+                }
             }
+        } catch (_: java.util.concurrent.RejectedExecutionException) {
         }
     }
 

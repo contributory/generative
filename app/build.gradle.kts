@@ -160,6 +160,8 @@ dependencies {
 
     // SSH transport used by the optional Remote Machines service.
     implementation("com.github.mwiede:jsch:0.2.25")
+    // Pure-Java Ed25519 for JSch (Android has no JDK 15+ EdDSA provider); see AndroidEdDSA.kt.
+    implementation("net.i2p.crypto:eddsa:0.3.0")
 
     // Termux's maintained terminal renderer/emulator, used for the interactive SSH terminal UI.
     implementation("com.github.termux.termux-app:terminal-view:0.118.3")

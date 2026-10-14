@@ -422,6 +422,9 @@
     <string name="settings_latex_disabled">Disabled</string>
     <string name="settings_latex_auto_detect">Auto Detect</string>
     <string name="settings_developer">Developer</string>
+    <string name="settings_executable_binaries" translatable="false">Executable binaries</string>
+    <string name="settings_executable_binaries_description" translatable="false">Imported files are copied into app storage and made executable. Features such as Remote Machines can use them by name, for example in a ProxyCommand.</string>
+    <string name="settings_add_executable_binary" translatable="false">Add executable binary</string>
     <string name="settings_debug_logs">Developer Debug Logs</string>
     <string name="settings_debug_logs_description">Show token metrics, request payloads and network logs</string>
     <string name="settings_data_overview">Data overview</string>
@@ -489,11 +492,12 @@
     <string name="remote_machine_show_password" translatable="false">Show password</string>
     <string name="remote_machine_hide_password" translatable="false">Hide password</string>
     <string name="remote_machine_keyboard_interactive" translatable="false">Use keyboard-interactive authentication</string>
-    <string name="remote_machine_keyboard_interactive_help" translatable="false">Use PAM or interactive SSH prompts. Leave the password empty to enter it when opening the terminal.</string>
+    <string name="remote_machine_keyboard_interactive_help" translatable="false">Use PAM or interactive SSH prompts. With an empty password you are asked only if the server requests one.</string>
+    <string name="remote_machine_password_help" translatable="false">Optional. Leave empty if the server needs no password, or to be asked only when it asks for one.</string>
     <string name="remote_machine_identity_missing" translatable="false">No identity file selected</string>
     <string name="remote_machine_choose_key" translatable="false">Choose uploaded key</string>
     <string name="remote_machine_identity_file" translatable="false">IdentityFile</string>
-    <string name="remote_machine_identity_file_help" translatable="false">Path to the private key, or the name of a key uploaded in Remote Machines settings. The key itself is never stored in the machine.</string>
+    <string name="remote_machine_identity_file_help" translatable="false">Path to the private key, or the name of a key uploaded in Remote Machines settings. The key itself is never stored in the machine. Leave empty if no key is needed.</string>
     <string name="remote_machine_no_uploaded_keys" translatable="false">No keys uploaded yet</string>
     <string name="remote_machine_ssh_keys" translatable="false">SSH keys</string>
     <string name="remote_machine_ssh_keys_help" translatable="false">Upload a private key once and point any number of machines at it through IdentityFile.</string>
@@ -502,7 +506,7 @@
     <string name="remote_machine_key_passphrase" translatable="false">Key passphrase</string>
     <string name="remote_machine_ssh_options" translatable="false">SSH options</string>
     <string name="remote_machine_proxy_command" translatable="false">ProxyCommand</string>
-    <string name="remote_machine_proxy_command_help" translatable="false" formatted="false">Use %h and %p for host and port. Added binaries can be referenced by name.</string>
+    <string name="remote_machine_proxy_command_help" translatable="false" formatted="false">Use %h and %p for host and port. Binaries added in Settings → Preferences can be referenced by name.</string>
     <string name="remote_machine_local_command" translatable="false">LocalCommand</string>
     <string name="remote_machine_timeout" translatable="false">Connection timeout (seconds)</string>
     <string name="remote_machine_keep_alive" translatable="false">Server keep-alive (seconds)</string>
@@ -531,14 +535,12 @@
     <string name="remote_machine_client_id" translatable="false">Client ID</string>
     <string name="remote_machine_client_secret" translatable="false">Client secret</string>
     <string name="remote_machine_authorize" translatable="false">Authorize</string>
-    <string name="remote_machine_binaries" translatable="false">Executable binaries</string>
-    <string name="remote_machine_binaries_help" translatable="false">Imported files are copied into app storage, made executable, and can be used by name in ProxyCommand or LocalCommand.</string>
-    <string name="remote_machine_add_binary" translatable="false">Add executable binary</string>
     <string name="remote_machine_terminal_title" translatable="false">Terminal · %1$s</string>
     <string name="remote_machine_terminal_connecting" translatable="false">Connecting to remote shell…</string>
     <string name="remote_machine_terminal_connection_error" translatable="false">Could not connect to the remote shell</string>
     <string name="remote_machine_terminal_password_title" translatable="false">Enter SSH password</string>
-    <string name="remote_machine_terminal_password_help" translatable="false">No password is saved for this machine. Enter it for this connection only.</string>
+    <string name="remote_machine_terminal_password_help" translatable="false">The server is asking for a secret that is not saved for this machine. It is used for this connection only.</string>
+    <string name="remote_machine_terminal_passphrase_title" translatable="false">Enter key passphrase</string>
     <string name="remote_machine_terminal_password_required" translatable="false">Enter a password to connect.</string>
     <string name="remote_machine_terminal_connect" translatable="false">Connect</string>
     <string name="remote_machine_terminal_hint" translatable="false">Tap the terminal to type. Long-press to select/copy text; ANSI colors and terminal control sequences are supported.</string>

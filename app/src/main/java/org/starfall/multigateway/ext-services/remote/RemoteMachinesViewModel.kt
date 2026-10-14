@@ -41,12 +41,6 @@ class RemoteMachinesViewModel(
         viewModelScope.launch(LocalWriteErrors.handler) { service.deleteOAuthClient(id) }
     }
 
-    suspend fun importBinary(uri: Uri): Result<RemoteBinary> = runCatching { service.importBinary(uri) }
-
-    fun deleteBinary(id: String) {
-        viewModelScope.launch(LocalWriteErrors.handler) { service.deleteBinary(id) }
-    }
-
     suspend fun importIdentityKey(uri: Uri): Result<RemoteIdentityKey> =
         runCatching { service.importIdentityKey(uri) }
 
@@ -67,8 +61,8 @@ class RemoteMachinesViewModel(
 
     suspend fun startMachine(machine: RemoteMachine): Result<RemoteMachine> = service.startGCloudMachine(machine)
 
-    suspend fun openTerminal(machine: RemoteMachine, passwordOverride: String? = null): RemoteTerminal =
-        service.openTerminal(machine, passwordOverride)
+    suspend fun openTerminal(machine: RemoteMachine, askSecret: RemoteSecretPrompt? = null): RemoteTerminal =
+        service.openTerminal(machine, askSecret)
 
     fun newMachine(): RemoteMachine = RemoteMachine(
         id = UUID.randomUUID().toString(),

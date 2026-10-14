@@ -74,6 +74,7 @@ data class RemoteOAuthToken(
     val expiresAt: Long? = null
 )
 
+/** Legacy record: executables are now managed in Settings; kept only to migrate old saved state. */
 @Serializable
 data class RemoteBinary(
     val id: String,
@@ -99,6 +100,7 @@ data class RemoteMachineState(
     val sshConfig: String = "",
     val oauthClients: List<GCloudOAuthClient> = emptyList(),
     val oauthTokens: Map<String, RemoteOAuthToken> = emptyMap(),
+    /** Legacy, see [RemoteBinary]. Always empty after the one-time migration. */
     val binaries: List<RemoteBinary> = emptyList(),
     val identities: List<RemoteIdentityKey> = emptyList()
 )

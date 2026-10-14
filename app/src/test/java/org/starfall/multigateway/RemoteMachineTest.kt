@@ -8,6 +8,9 @@ import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_EXECUTE
 import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_START_MACHINE
 import org.starfall.multigateway.extservices.remote.RemoteMachine
 import org.starfall.multigateway.extservices.remote.RemoteMachineType
+import org.starfall.multigateway.extservices.remote.RemoteSecretRequest
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.starfall.multigateway.extservices.remote.PasswordKeyboardInteractiveUserInfo
 import org.starfall.multigateway.extservices.remote.SshConfigParser
 import org.starfall.multigateway.data.model.ToolSettings
@@ -102,6 +105,52 @@ class RemoteMachineTest {
                 "deploy@staging", "", "", arrayOf("Verification code:"), booleanArrayOf(false)
             )
         )
+    }
+
+    @Test
+    fun emptyPasswordAsksOnlyWhenTheServerRequestsOne() {
+        val requests = mutableListOf<RemoteSecretRequest>()
+        val userInfo = PasswordKeyboardInteractiveUserInfo("deploy", "") { request ->
+            requests += request
+            "typed"
+        }
+        // Nothing is asked until JSch actually invokes a prompt (a no-auth server never does).
+        assertTrue(requests.isEmpty())
+
+        assertTrue(userInfo.promptPassword("Password for deploy@host"))
+        assertEquals("typed", userInfo.password)
+        assertFalse(requests.single().passphrase)
+
+        assertArrayEquals(
+            arrayOf("typed"),
+            userInfo.promptKeyboardInteractive("d", "", "", arrayOf("Password:"), booleanArrayOf(false))
+        )
+        assertEquals(2, requests.size)
+
+        assertTrue(userInfo.promptPassphrase("Passphrase for key"))
+        assertEquals("typed", userInfo.passphrase)
+        assertTrue(requests.last().passphrase)
+    }
+
+    @Test
+    fun emptyPasswordWithoutPromptOrWhenCancelledAuthenticationFails() {
+        val silent = PasswordKeyboardInteractiveUserInfo("deploy", "")
+        assertFalse(silent.promptPassword("Password:"))
+        assertNull(silent.promptKeyboardInteractive("d", "", "", arrayOf("Password:"), booleanArrayOf(false)))
+
+        val cancelled = PasswordKeyboardInteractiveUserInfo("deploy", "") { null }
+        assertFalse(cancelled.promptPassword("Password:"))
+        assertNull(cancelled.promptKeyboardInteractive("d", "", "", arrayOf("Password:"), booleanArrayOf(false)))
+    }
+
+    @Test
+    fun savedPasswordNeverPrompts() {
+        var asked = false
+        val userInfo = PasswordKeyboardInteractiveUserInfo("deploy", "secret") { asked = true; "typed" }
+        assertTrue(userInfo.promptPassword("Password:"))
+        assertEquals("secret", userInfo.password)
+        userInfo.promptKeyboardInteractive("d", "", "", arrayOf("Password:"), booleanArrayOf(false))
+        assertFalse(asked)
     }
 
     @Test

@@ -184,6 +184,7 @@ fun UserInputArea(
     var showModelPicker by remember { mutableStateOf(false) }
     var showSelectedModelOverview by remember { mutableStateOf(false) }
     var showQuickActions by remember { mutableStateOf(false) }
+    var showRemoteMachines by remember { mutableStateOf(false) }
     var showConversationSummary by remember { mutableStateOf(false) }
     var showAddMenu by remember { mutableStateOf(false) }
     var showFilesSheet by remember { mutableStateOf(false) }
@@ -573,6 +574,7 @@ fun UserInputArea(
             onCreateVideo = { onCancelEdit(); mediaKind = ModelType.VIDEO_GENERATION },
             onOpenConversationSummary = { showConversationSummary = true },
             onOpenTools = { showQuickActions = true },
+            onOpenRemoteMachines = { showRemoteMachines = true },
             onDismiss = { showAddMenu = false }
         )
     }
@@ -647,6 +649,10 @@ fun UserInputArea(
 
     if (showQuickActions) {
         QuickActionsSheet(onDismiss = { showQuickActions = false })
+    }
+
+    if (showRemoteMachines) {
+        RemoteMachinesSheet(onDismiss = { showRemoteMachines = false })
     }
 
     if (showConversationSummary) {

@@ -6,6 +6,7 @@ import android.system.Os
 import com.jcraft.jsch.ChannelExec
 import com.jcraft.jsch.ChannelShell
 import com.jcraft.jsch.JSch
+import com.jcraft.jsch.JSchException
 import com.jcraft.jsch.Proxy
 import com.jcraft.jsch.Session
 import com.jcraft.jsch.SocketFactory
@@ -14,6 +15,7 @@ import com.jcraft.jsch.UserInfo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
@@ -30,6 +32,7 @@ import org.starfall.multigateway.data.adapter.common.AppAuthTransactions
 import org.starfall.multigateway.data.adapter.common.OAuthCallbackService
 import org.starfall.multigateway.data.adapter.common.OAuthBrowser
 import org.starfall.multigateway.data.adapter.common.awaitLoopbackAuthorizationCode
+import org.starfall.multigateway.data.service.ExecutableBinaries
 import org.starfall.multigateway.data.tools.ToolHttp
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -50,6 +53,19 @@ data class RemoteCommandResult(
 ) {
     val isError: Boolean get() = exitCode != 0
 }
+
+/**
+ * A secret the SSH server asked for while connecting. [passphrase] is true for an encrypted private
+ * key; otherwise it is a password (or a hidden keyboard-interactive answer). [prompt] is the text the
+ * server/JSch supplied and may be blank.
+ */
+data class RemoteSecretRequest(val passphrase: Boolean, val prompt: String)
+
+/**
+ * Asks the user for a secret. It is only invoked when the server really requests one and nothing is
+ * saved for it. Returns null when the user cancels.
+ */
+typealias RemoteSecretPrompt = suspend (RemoteSecretRequest) -> String?
 
 /** A connected interactive shell. The owner must close it when the terminal screen is disposed. */
 class RemoteTerminal internal constructor(
@@ -88,6 +104,8 @@ class RemoteTerminal internal constructor(
  */
 class RemoteMachineService(
     private val context: Context,
+    /** Read-only view of the executables uploaded in Settings; used to expand ProxyCommand/LocalCommand. */
+    private val binaries: ExecutableBinaries,
     val store: RemoteMachineStore = RemoteMachineStore(context)
 ) {
     private val appContext = context.applicationContext
@@ -172,27 +190,6 @@ class RemoteMachineService(
         }
     }
 
-    suspend fun importBinary(uri: Uri): RemoteBinary = withContext(Dispatchers.IO) {
-        val resolver = appContext.contentResolver
-        val displayName = resolver.query(uri, arrayOf("_display_name"), null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) cursor.getString(0) else null
-        }?.takeIf { it.isNotBlank() } ?: "binary-${UUID.randomUUID()}"
-        val safeName = displayName.substringAfterLast('/').replace(Regex("[^A-Za-z0-9._-]"), "_")
-            .ifBlank { "binary-${UUID.randomUUID()}" }
-        val directory = File(appContext.filesDir, "remote-machines/bin").apply { mkdirs() }
-        val target = File(directory, "${UUID.randomUUID()}-$safeName")
-        resolver.openInputStream(uri)?.use { input ->
-            target.outputStream().use { output -> input.copyTo(output) }
-        } ?: error("Could not read the selected binary.")
-        target.setReadable(false, false)
-        target.setWritable(true, true)
-        target.setExecutable(true, false)
-        runCatching { Os.chmod(target.absolutePath, 0b111_000_000) }
-        val binary = RemoteBinary(UUID.randomUUID().toString(), displayName, target.absolutePath)
-        store.update { it.copy(binaries = it.binaries.filterNot { existing -> existing.name == displayName } + binary) }
-        binary
-    }
-
     /** Imports a Google Desktop OAuth client file without persisting it until the user confirms it. */
     suspend fun parseOAuthClientJson(uri: Uri): GCloudOAuthClient = withContext(Dispatchers.IO) {
         val displayName = appContext.contentResolver.query(uri, arrayOf("_display_name"), null, null, null)?.use { cursor ->
@@ -214,10 +211,11 @@ class RemoteMachineService(
         )
     }
 
-    suspend fun deleteBinary(id: String) {
-        val binary = state.value.binaries.firstOrNull { it.id == id }
-        store.update { it.copy(binaries = it.binaries.filterNot { existing -> existing.id == id }) }
-        binary?.let { runCatching { File(it.path).delete() } }
+    /** Binaries uploaded here before they moved to Settings; consumed once by the app container. */
+    fun legacyBinaries(): List<RemoteBinary> = state.value.binaries
+
+    suspend fun clearLegacyBinaries() {
+        store.update { it.copy(binaries = emptyList()) }
     }
 
     /** Uploads an SSH private key once; machines reference it through IdentityFile. */
@@ -380,21 +378,21 @@ class RemoteMachineService(
         }
     }
 
-    suspend fun openTerminal(machine: RemoteMachine, passwordOverride: String? = null): RemoteTerminal {
+    suspend fun openTerminal(machine: RemoteMachine, askSecret: RemoteSecretPrompt? = null): RemoteTerminal {
         val actual = if (machine.type == RemoteMachineType.GCLOUD_SHELL && machine.host.isBlank()) {
             refreshGCloudIp(machine).getOrThrow()
         } else machine
         return try {
-            openTerminalInternal(actual, passwordOverride)
+            openTerminalInternal(actual, askSecret)
         } catch (error: Exception) {
             if (error is CancellationException || actual.type != RemoteMachineType.GCLOUD_SHELL) throw error
             val refreshed = refreshGCloudIp(actual).getOrThrow()
-            openTerminalInternal(refreshed, passwordOverride)
+            openTerminalInternal(refreshed, askSecret)
         }
     }
 
-    private suspend fun openTerminalInternal(machine: RemoteMachine, passwordOverride: String?): RemoteTerminal = withContext(Dispatchers.IO) {
-        val session = connect(machine, passwordOverride)
+    private suspend fun openTerminalInternal(machine: RemoteMachine, askSecret: RemoteSecretPrompt?): RemoteTerminal = withContext(Dispatchers.IO) {
+        val session = connect(machine, askSecret)
         try {
             val channel = session.openChannel("shell") as ChannelShell
             channel.setPtyType("xterm-256color")
@@ -446,10 +444,14 @@ class RemoteMachineService(
         }
     }
 
-    private fun connect(machine: RemoteMachine, passwordOverride: String? = null): Session {
+    private fun connect(machine: RemoteMachine, askSecret: RemoteSecretPrompt? = null): Session {
         require(machine.host.isNotBlank()) { "Remote host is missing." }
         require(machine.username.isNotBlank()) { "Remote user is missing." }
+        AndroidEdDSA.install()
         val jsch = JSch()
+        // An empty identity file / password is valid: the server may need no authentication at all
+        // (JSch always tries the "none" method first), or it may ask for a secret later, in which
+        // case [askSecret] is used to prompt only at that point.
         if (machine.identityFile.isNotBlank()) {
             val identity = resolveIdentity(machine.identityFile)
                 ?: error("Identity file not found: ${machine.identityFile.substringAfterLast('/')}. Upload it in Remote Machines settings or fix IdentityFile.")
@@ -457,25 +459,22 @@ class RemoteMachineService(
             else jsch.addIdentity(identity.absolutePath, machine.identityPassphrase)
         }
         val session = jsch.getSession(machine.username, machine.host, machine.port)
-        if (machine.authentication == RemoteAuthentication.PASSWORD) {
-            val password = passwordOverride ?: machine.password
-            val useKeyboardInteractive = machine.keyboardInteractive || machine.password.isEmpty()
-            // Some SSH servers expose password login only through keyboard-interactive/PAM. JSch
-            // needs a UserInfo implementation to answer those prompts; setting Session.password
-            // alone only handles the plain ssh-userauth/password method and cancels KBI prompts.
-            if (useKeyboardInteractive) {
-                session.setUserInfo(PasswordKeyboardInteractiveUserInfo(machine.username, password))
-                if (password.isNotEmpty()) session.setPassword(password)
-            } else if (password.isNotEmpty()) {
-                session.setPassword(password)
-            }
+        val passwordMode = machine.authentication == RemoteAuthentication.PASSWORD
+        val savedPassword = if (passwordMode) machine.password else ""
+        val useKeyboardInteractive = passwordMode && (machine.keyboardInteractive || savedPassword.isEmpty())
+        // Some SSH servers expose password login only through keyboard-interactive/PAM. JSch needs
+        // a UserInfo implementation to answer those prompts; setting Session.password alone only
+        // handles the plain ssh-userauth/password method and cancels KBI prompts. The UserInfo is
+        // also what lets us ask for a password/passphrase on demand when none is saved.
+        val plainSavedPassword = passwordMode && !machine.keyboardInteractive && savedPassword.isNotEmpty()
+        if (!plainSavedPassword) {
+            session.setUserInfo(PasswordKeyboardInteractiveUserInfo(machine.username, savedPassword, askSecret))
         }
+        if (savedPassword.isNotEmpty()) session.setPassword(savedPassword)
         session.setConfig("StrictHostKeyChecking", if (machine.strictHostKeyChecking) "yes" else "no")
         session.setConfig(
             "PreferredAuthentications",
-            if (machine.authentication == RemoteAuthentication.PASSWORD &&
-                (machine.keyboardInteractive || machine.password.isEmpty())
-            ) {
+            if (useKeyboardInteractive) {
                 // Try PAM/keyboard-interactive first. JSch's password implementation retries the
                 // same method internally after a failure, which can exhaust servers that expose
                 // password login only as keyboard-interactive before KBI is reached.
@@ -491,8 +490,24 @@ class RemoteMachineService(
         machine.proxyCommand.trim().takeIf(String::isNotBlank)?.let { command ->
             session.setProxy(CommandProxy(resolveBinary(command)))
         }
-        session.connect(machine.connectTimeoutSeconds * 1_000)
+        try {
+            session.connect(machine.connectTimeoutSeconds * 1_000)
+        } catch (failure: JSchException) {
+            val noSecretSaved = savedPassword.isEmpty() && machine.identityFile.isBlank()
+            if (askSecret == null && noSecretSaved && failure.isAuthenticationFailure()) {
+                throw IllegalStateException(
+                    "The server requires authentication, but this machine has no saved password or private key. Add one in the machine settings.",
+                    failure
+                )
+            }
+            throw failure
+        }
         return session
+    }
+
+    private fun JSchException.isAuthenticationFailure(): Boolean {
+        val text = message.orEmpty().lowercase()
+        return "auth fail" in text || "auth cancel" in text || "userauth fail" in text
     }
 
     private fun startLocalCommand(machine: RemoteMachine): Process? {
@@ -504,14 +519,7 @@ class RemoteMachineService(
         }.getOrNull()
     }
 
-    private fun resolveBinary(command: String): String {
-        var resolved = command
-        state.value.binaries.forEach { binary ->
-            val pattern = Regex("(^|\\s)${Regex.escape(binary.name)}(?=\\s|$)")
-            resolved = pattern.replace(resolved) { match -> "${match.value.substringBefore(binary.name)}${binary.path}" }
-        }
-        return resolved
-    }
+    private fun resolveBinary(command: String): String = binaries.resolveCommand(command)
 
     private suspend fun accessToken(client: GCloudOAuthClient): String {
         val existing = state.value.oauthTokens[client.id]
@@ -663,18 +671,32 @@ class RemoteMachineService(
  * keyboard-interactive (usually PAM). Every hidden prompt is answered with the saved password;
  * this matches the behavior users expect from the Password authentication mode for servers that
  * label the challenge differently from "Password:".
+ *
+ * When no password is saved, [askSecret] (if any) is asked instead, but only at the moment the
+ * server really requests a secret. Machines that need no authentication never reach this code.
  */
 internal class PasswordKeyboardInteractiveUserInfo(
     private val username: String,
-    private val password: String
+    private val password: String,
+    private val askSecret: RemoteSecretPrompt? = null
 ) : UserInfo, UIKeyboardInteractive {
-    override fun getPassphrase(): String? = null
+    private var enteredPassword: String? = null
+    private var enteredPassphrase: String? = null
 
-    override fun getPassword(): String = password
+    override fun getPassphrase(): String? = enteredPassphrase
 
-    override fun promptPassword(message: String): Boolean = password.isNotEmpty()
+    override fun getPassword(): String = enteredPassword ?: password
 
-    override fun promptPassphrase(message: String): Boolean = false
+    override fun promptPassword(message: String): Boolean {
+        if (password.isNotEmpty()) return true
+        enteredPassword = ask(passphrase = false, message) ?: return false
+        return true
+    }
+
+    override fun promptPassphrase(message: String): Boolean {
+        enteredPassphrase = ask(passphrase = true, message) ?: return false
+        return true
+    }
 
     override fun promptYesNo(message: String): Boolean = false
 
@@ -688,17 +710,25 @@ internal class PasswordKeyboardInteractiveUserInfo(
         echo: BooleanArray
     ): Array<String>? {
         if (prompt.size != echo.size) return null
-        if (password.isEmpty() && echo.any { !it }) return null
-        return Array(prompt.size) { index ->
+        val answers = ArrayList<String>(prompt.size)
+        for (index in prompt.indices) {
             val text = prompt[index]
-            when {
-                isPasswordPrompt(text) -> password
-                isUsernamePrompt(text) && echo[index] -> username
-                !echo[index] -> password
-                echo[index] -> ""
+            val answer = when {
+                !echo[index] || isPasswordPrompt(text) -> password.ifEmpty { ask(passphrase = false, text) }
+                isUsernamePrompt(text) -> username
                 else -> ""
-            }
+            } ?: return null
+            answers += answer
         }
+        return answers.toTypedArray()
+    }
+
+    /** Blocks the SSH thread until the user answers; null when cancelled or no prompt is available. */
+    private fun ask(passphrase: Boolean, message: String): String? {
+        val prompt = askSecret ?: return null
+        return runCatching { runBlocking { prompt(RemoteSecretRequest(passphrase, message)) } }
+            .getOrNull()
+            ?.takeIf { it.isNotEmpty() }
     }
 
     private fun isPasswordPrompt(prompt: String): Boolean {
