@@ -570,6 +570,7 @@ fun ModelPickerSheet(
                                 is ModelPickerItem.Model -> {
                                     Box(Modifier.fillMaxWidth().testTag("model-picker-model_${item.provider.id}_${item.modelId}")) {
                                         ModelPickerCard(
+                                            modelId = item.modelId,
                                             config = item.config,
                                             isSelected = item.isSelected,
                                             conversationReasoningEffort = conversationReasoningEffort,
@@ -658,6 +659,7 @@ internal fun SelectedModelOverviewSheet(
                 modifier = Modifier.fillMaxWidth()
             )
             ModelPickerCard(
+                modelId = modelId,
                 config = config,
                 isSelected = true,
                 providerName = provider?.name,
@@ -834,6 +836,7 @@ private fun ModelPickerProviderRow(
 
 @Composable
 private fun ModelPickerCard(
+    modelId: String,
     config: ModelConfiguration,
     isSelected: Boolean,
     providerName: String? = null,
@@ -909,7 +912,7 @@ private fun ModelPickerCard(
                     )
                     if (config.displayName.isNotBlank() && config.displayName != modelId) {
                         Text(
-                            text = modelId,
+                            text = "ID: $modelId",
                             style = MaterialTheme.typography.labelSmall,
                              color = if (!embedded && enhancedThinking && tier >= 5) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
