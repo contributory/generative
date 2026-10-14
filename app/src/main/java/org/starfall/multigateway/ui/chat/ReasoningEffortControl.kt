@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.hypot
 import kotlin.math.roundToInt
+import org.starfall.multigateway.data.model.DEFAULT_REASONING_EFFORTS
 import org.starfall.multigateway.data.model.REASONING_EFFORT_ACTIVE
 import org.starfall.multigateway.data.model.SELECTABLE_REASONING_EFFORTS
 
@@ -83,7 +84,7 @@ internal fun reasoningEffortBurstDuration(tier: Int): Int = when (tier) {
 internal data class ReasoningEffortOption(val effort: String?, val label: String)
 
 internal fun reasoningEffortOptions(
-    supportedEfforts: List<String> = emptyList()
+    supportedEfforts: List<String> = DEFAULT_REASONING_EFFORTS
 ): List<ReasoningEffortOption> {
     val levels = SELECTABLE_REASONING_EFFORTS.filter { it in supportedEfforts }.map { effort ->
         ReasoningEffortOption(effort, reasoningEffortLabel(effort))

@@ -13,6 +13,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import org.starfall.multigateway.data.model.ConversationSummaryRequest
+import org.starfall.multigateway.data.model.DEFAULT_REASONING_EFFORTS
 import org.starfall.multigateway.data.model.ProviderType
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -24,7 +25,7 @@ fun ReasoningEffortSheet(
     providerType: ProviderType? = null,
     modelId: String = "",
     maxTokens: Int = Int.MAX_VALUE,
-    supportedEfforts: List<String> = emptyList()
+    supportedEfforts: List<String> = DEFAULT_REASONING_EFFORTS
 ) {
     var effort by remember(currentEffort) { mutableStateOf(currentEffort) }
     val options = remember(supportedEfforts) {

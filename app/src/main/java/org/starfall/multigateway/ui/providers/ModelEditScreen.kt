@@ -132,7 +132,7 @@ fun ModelEditScreen(
                 label = { Text(stringResource(R.string.model_id)) },
                 supportingText = { Text(idError ?: idApiHint) },
                 isError = idError != null,
-                singleLine = true,
+                maxLines = 3,
                 modifier = Modifier.fillMaxWidth()
             )
             SelectableOutlinedTextField(

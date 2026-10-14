@@ -50,6 +50,7 @@ import org.starfall.multigateway.ui.navigation.SlideScreenContent
 @Composable
 fun ProviderEditScreen(
     initialProvider: LlmProviderInfo, isNew: Boolean,
+    initialEditingModelId: String? = null,
     onAuthorizeProvider: (suspend (LlmProviderInfo) -> Result<LlmProviderInfo>)? = null,
     onCancelProviderAuthorization: ((LlmProviderInfo) -> Unit)? = null,
     onClearOAuthCredentials: (suspend (LlmProviderInfo) -> Result<LlmProviderInfo>)? = null,
@@ -110,7 +111,7 @@ fun ProviderEditScreen(
     var models by remember { mutableStateOf(initialProvider.config.modelIds?.associateWith { initialProvider.config.modelConfigs[it] ?: ModelConfiguration() }
         ?: initialProvider.config.modelConfigs) }
     var order by remember { mutableStateOf(models.keys.toList()) }
-    var editingModel by remember { mutableStateOf<String?>(null) }
+    var editingModel by remember(initialProvider.id, initialEditingModelId) { mutableStateOf(initialEditingModelId) }
     var showCatalog by remember { mutableStateOf(false) }
     var catalog by remember { mutableStateOf<Map<String, DiscoveredModel>>(emptyMap()) }
     val activeHeaders = headerRows.filterNot { (key, value) -> key.isBlank() && value.isBlank() }

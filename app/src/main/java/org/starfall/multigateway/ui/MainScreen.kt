@@ -1,5 +1,6 @@
 package org.starfall.multigateway.ui
 
+import android.net.Uri
 import org.starfall.multigateway.ui.theme.modalScrimColor
 import org.starfall.multigateway.ui.components.ChatAttachmentSelection
 import org.starfall.multigateway.ui.components.LocalChatAttachmentSelection
@@ -40,6 +41,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.activity.compose.BackHandler
 import org.starfall.multigateway.ui.navigation.AppDestination
 import org.starfall.multigateway.ui.tools.*
@@ -351,6 +354,16 @@ fun MainScreen(
                                 onSetReasoningEffort = viewModel::setConversationReasoningEffort,
                                 onSetThinkingPassback = configurationViewModel::setThinkingPassback,
                                 onSetModelReasoningEffort = configurationViewModel::setModelReasoningEffort,
+                                onEditModel = { providerId, modelId ->
+                                    navController.navigate("providers/edit/${Uri.encode(providerId)}?modelId=${Uri.encode(modelId)}") {
+                                        launchSingleTop = true
+                                    }
+                                },
+                                onEditProvider = { providerId ->
+                                    navController.navigate("providers/edit/${Uri.encode(providerId)}") {
+                                        launchSingleTop = true
+                                    }
+                                },
                                 onStartConversationSummary = viewModel::startConversationSummary,
                                 onSummaryRoleChange = viewModel::setSummaryRole,
                                 onDeleteSummary = viewModel::deleteConversationSummary,
@@ -384,8 +397,16 @@ fun MainScreen(
                         Box(Modifier.fillMaxSize())
                     }
 
-                    composable("providers/edit/{providerId}") { entry ->
+                    composable(
+                        route = "providers/edit/{providerId}?modelId={modelId}",
+                        arguments = listOf(navArgument("modelId") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        })
+                    ) { entry ->
                         val providerId = entry.arguments?.getString("providerId")
+                        val modelId = entry.arguments?.getString("modelId")
                         val provider = providers.firstOrNull { it.id == providerId }
                         if (provider == null) {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -396,6 +417,7 @@ fun MainScreen(
                                 ProviderEditScreen(
                                     initialProvider = provider,
                                     isNew = false,
+                                    initialEditingModelId = modelId,
                                     onSave = configurationViewModel::saveProvider,
                                     onDismiss = { navController.popBackStack() },
                                     onSaveModels = configurationViewModel::saveProviderModels,
@@ -494,6 +516,11 @@ fun MainScreen(
                              onCollapsedProviderIdsChange = settingsViewModel::setModelPickerCollapsedProviders,
                              selectedTabKey = appPrefs.modelPickerSelectedTab,
                              onSelectedTabKeyChange = settingsViewModel::setModelPickerSelectedTab,
+                             onEditProvider = { providerId ->
+                                 navController.navigate("providers/edit/${Uri.encode(providerId)}") {
+                                     launchSingleTop = true
+                                 }
+                             },
                              onBack = { navController.popBackStack() }
                         )
                     }

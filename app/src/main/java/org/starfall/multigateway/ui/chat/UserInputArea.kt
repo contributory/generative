@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import org.starfall.multigateway.R
 import org.starfall.multigateway.data.model.LlmProviderInfo
 import org.starfall.multigateway.data.model.ModelConfiguration
+import org.starfall.multigateway.data.model.DEFAULT_REASONING_EFFORTS
 import org.starfall.multigateway.data.model.supportedReasoningEfforts
 import org.starfall.multigateway.data.model.ProviderGroup
 import org.starfall.multigateway.data.model.ConversationSummaryRequest
@@ -111,6 +112,8 @@ fun UserInputArea(
     onSetReasoningEffort: (String?) -> Unit,
     onSetThinkingPassback: (providerId: String, modelId: String, mode: ThinkingPassback) -> Unit = { _, _, _ -> },
     onSetModelReasoningEffort: (providerId: String, modelId: String, effort: String?) -> Unit = { _, _, _ -> },
+    onEditModel: (providerId: String, modelId: String) -> Unit = { _, _ -> },
+    onEditProvider: (providerId: String) -> Unit = {},
     onStartConversationSummary: (ConversationSummaryRequest) -> Boolean,
     onFetchOllamaModels: (suspend (String) -> List<String>)? = null,
     attachments: List<String> = emptyList(),
@@ -142,7 +145,7 @@ fun UserInputArea(
     val maxInputHeight = (screenHeightDp * if (attachments.isNotEmpty()) 0.6f else 0.5f).dp
     val thinkingProvider = providers.firstOrNull { it.id == selectedProviderId }
     val thinkingConfig = thinkingProvider?.config?.modelConfigs?.get(selectedModelName)
-    val thinkingEfforts = thinkingConfig?.supportedReasoningEfforts.orEmpty()
+    val thinkingEfforts = thinkingConfig?.supportedReasoningEfforts ?: DEFAULT_REASONING_EFFORTS
     val thinkingOptions = remember(thinkingEfforts) {
         reasoningEffortOptions(thinkingEfforts)
     }
@@ -619,6 +622,13 @@ fun UserInputArea(
                     val setPassback: (ThinkingPassback) -> Unit = { mode -> onSetThinkingPassback(providerId, configKey, mode) }
                     setPassback
                 },
+                onEditModel = selectedProvider?.let { provider ->
+                    val modelId = selectedConfigEntry?.key ?: selectedModelName
+                    {
+                        showSelectedModelOverview = false
+                        onEditModel(provider.id, modelId)
+                    }
+                },
                 onOpenModelPicker = {
                     showModelPicker = true
                 },
@@ -648,6 +658,7 @@ fun UserInputArea(
             showReasoningEffort = false,
             dynamicModelsMap = if (mediaKind != null) emptyMap() else dynamicModelsMap.toMap(),
             modelFilter = if (mediaKind == null) chatModelPickerFilter else { _, _, config -> config.modelType == mediaKind },
+            onEditProvider = onEditProvider,
             onDismiss = { showModelPicker = false }
         )
     }

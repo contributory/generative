@@ -92,6 +92,8 @@ fun ChatScreen(
     onSetReasoningEffort: (String?) -> Unit,
     onSetThinkingPassback: (providerId: String, modelId: String, mode: ThinkingPassback) -> Unit = { _, _, _ -> },
     onSetModelReasoningEffort: (providerId: String, modelId: String, effort: String?) -> Unit = { _, _, _ -> },
+    onEditModel: (providerId: String, modelId: String) -> Unit = { _, _ -> },
+    onEditProvider: (providerId: String) -> Unit = {},
     onStartConversationSummary: (ConversationSummaryRequest) -> Boolean,
     onSummaryRoleChange: (SummaryRole) -> Unit,
     onDeleteSummary: () -> Unit,
@@ -620,6 +622,8 @@ fun ChatScreen(
                 onSetReasoningEffort = onSetReasoningEffort,
                 onSetThinkingPassback = onSetThinkingPassback,
                 onSetModelReasoningEffort = onSetModelReasoningEffort,
+                onEditModel = onEditModel,
+                onEditProvider = onEditProvider,
                 onStartConversationSummary = onStartConversationSummary,
                 onFetchOllamaModels = onFetchOllamaModels
             )

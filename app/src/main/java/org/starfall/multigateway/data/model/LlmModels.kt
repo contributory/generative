@@ -258,10 +258,10 @@ data class ModelConfiguration(
     val supportsAudioInput: Boolean = false,
     val supportsThinking: Boolean = true,
     @SerialName("reasoning_effort") val reasoningEffort: String? = null,
-    // Reasoning levels saved for this model. An empty list means it has no configured levels.
+    // Reasoning levels saved for this model; reasoning-capable models default to the common levels.
     @SerialName("reasoning_efforts")
     @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val reasoningEfforts: List<String> = emptyList(),
+    val reasoningEfforts: List<String> = DEFAULT_REASONING_EFFORTS,
     // Last chosen thinking level (set from the chat's selected-model sheet). Kept while thinking
     // is switched off so turning it back on restores the level; null means the provider default.
     @SerialName("thinking_level")

@@ -6,6 +6,8 @@ import kotlin.math.roundToInt
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -75,6 +77,16 @@ import org.starfall.multigateway.data.model.ProviderType
 import org.starfall.multigateway.ui.components.AppBottomSheet
 import org.starfall.multigateway.ui.components.EntityIcon
 import org.starfall.multigateway.ui.components.providerInitials
+
+private const val MODEL_LABEL_PREFIX_LIMIT = 20
+
+/** Keep the model's final path segment visible when a namespace or prefix is unusually long. */
+private fun compactModelLabel(value: String): String {
+    val slash = value.indexOf('/')
+    if (slash <= MODEL_LABEL_PREFIX_LIMIT) return value
+    val prefix = value.substring(0, slash)
+    return "${prefix.first()}...${prefix.takeLast(5)}/${value.substring(slash + 1)}"
+}
 
 sealed interface ModelPickerItem {
     data class Group(
@@ -277,6 +289,7 @@ fun ModelPickerSheet(
     dynamicModelsMap: Map<String, List<String>> = emptyMap(),
     modelFilter: (LlmProviderInfo, String, ModelConfiguration) -> Boolean = { _, _, _ -> true },
     showReasoningEffort: Boolean = true,
+    onEditProvider: (providerId: String) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
@@ -557,6 +570,10 @@ fun ModelPickerSheet(
                                             provider = item.provider,
                                             collapsed = collapsed,
                                             hasSelectedModel = item.hasSelectedModel,
+                                            onEdit = {
+                                                onDismiss()
+                                                onEditProvider(item.provider.id)
+                                            },
                                             onToggle = {
                                             expandSearchResults = false
                                             setCollapsedProviders(
@@ -601,6 +618,7 @@ internal fun SelectedModelOverviewSheet(
     conversationReasoningEffort: String?,
     onSetReasoningEffort: (String?) -> Unit,
     onSetThinkingPassback: ((ThinkingPassback) -> Unit)? = null,
+    onEditModel: (() -> Unit)? = null,
     onOpenModelPicker: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -670,6 +688,10 @@ internal fun SelectedModelOverviewSheet(
                  onClick = {
                      screenBurst?.hide()
                      onOpenModelPicker()
+                 },
+                 onLongClick = {
+                     screenBurst?.hide()
+                     onEditModel?.invoke()
                  },
                   embedded = true,
                   drawBackground = false,
@@ -776,11 +798,13 @@ private fun ModelPickerGroupRow(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ModelPickerProviderRow(
     provider: LlmProviderInfo,
     collapsed: Boolean,
     hasSelectedModel: Boolean,
+    onEdit: () -> Unit,
     onToggle: () -> Unit
 ) {
     Surface(
@@ -795,7 +819,7 @@ private fun ModelPickerProviderRow(
                 animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
             )
             .testTag("model-picker-provider_${provider.id}")
-            .clickable(onClick = onToggle)
+            .combinedClickable(onClick = onToggle, onLongClick = onEdit)
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
@@ -834,6 +858,7 @@ private fun ModelPickerProviderRow(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ModelPickerCard(
     modelId: String,
@@ -844,6 +869,7 @@ private fun ModelPickerCard(
     conversationReasoningEffort: String?,
     onSetReasoningEffort: (String?) -> Unit,
     showReasoningEffort: Boolean,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit = {},
     onPreviewTierChange: (Int) -> Unit = {},
     embedded: Boolean = false,
@@ -872,7 +898,8 @@ private fun ModelPickerCard(
     val screenBurst = LocalThinkingScreenBurst.current
     var cardOrigin by remember { mutableStateOf(Offset.Zero) }
     val cardContentColor = if (!embedded && enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
-    val cardModifier = Modifier.fillMaxWidth().then(if (embedded) Modifier else Modifier.clickable(onClick = onClick))
+    val cardGesture = Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+    val cardModifier = Modifier.fillMaxWidth().then(if (embedded) Modifier else cardGesture)
     val cardContentModifier = Modifier
         .fillMaxWidth()
         .onGloballyPositioned { cardOrigin = it.localToScreen(Offset.Zero) }
@@ -891,7 +918,7 @@ private fun ModelPickerCard(
                     Modifier
                         .clip(RoundedCornerShape(12.dp))
                         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
-                        .clickable(onClick = onClick)
+                        .then(cardGesture)
                         .padding(10.dp)
                 } else Modifier),
                 verticalAlignment = Alignment.CenterVertically
@@ -905,14 +932,14 @@ private fun ModelPickerCard(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = config.displayName.ifBlank { modelId },
+                        text = compactModelLabel(config.displayName.ifBlank { modelId }),
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                     if (config.displayName.isNotBlank() && config.displayName != modelId) {
                         Text(
-                            text = "ID: $modelId",
+                            text = "ID: ${compactModelLabel(modelId)}",
                             style = MaterialTheme.typography.labelSmall,
                              color = if (!embedded && enhancedThinking && tier >= 5) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,

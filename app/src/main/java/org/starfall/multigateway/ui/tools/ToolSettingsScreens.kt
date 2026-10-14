@@ -61,6 +61,7 @@ fun SystemToolsScreen(
     onCollapsedProviderIdsChange: (Set<String>) -> Unit = {},
     selectedTabKey: String = "default",
     onSelectedTabKeyChange: (String) -> Unit = {},
+    onEditProvider: (providerId: String) -> Unit = {},
     onBack: () -> Unit
 ) {
     var choosing by remember { mutableStateOf<String?>(null) }
@@ -218,6 +219,7 @@ fun SystemToolsScreen(
             onSelectModel = { providerId, modelId ->
                 onSave(name, current.copy(providerId = providerId, modelId = modelId))
             },
+            onEditProvider = onEditProvider,
             onDismiss = { choosing = null }
         )
     }
