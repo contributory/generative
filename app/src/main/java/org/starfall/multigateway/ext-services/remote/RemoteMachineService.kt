@@ -2,6 +2,7 @@ package org.starfall.multigateway.extservices.remote
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.os.SystemClock
 import android.system.Os
 import com.jcraft.jsch.ChannelExec
@@ -293,7 +294,14 @@ class RemoteMachineService(
         val file = File(binary.path)
         require(file.isFile) { "The imported binary file no longer exists." }
         require(file.canExecute()) { "The imported file does not have execute permission." }
-        val process = ProcessBuilder(file.absolutePath)
+        val header = readHeader(file)
+        val invocation = binaryInvocation(file)
+        require(invocation.size == 1 || !isStaticNonPieElf(header)) {
+            "This is a statically linked, non-PIE executable. Android 10+ blocks running files from app " +
+                "storage directly, and the system linker cannot load such a file. Use a PIE build made " +
+                "for Android (for example from Termux)."
+        }
+        val process = ProcessBuilder(invocation)
             .directory(file.parentFile)
             .redirectErrorStream(true)
             .start()
@@ -1087,10 +1095,30 @@ class RemoteMachineService(
         var resolved = command
         state.value.binaries.forEach { binary ->
             val pattern = Regex("(^|\\s)${Regex.escape(binary.name)}(?=\\s|$)")
-            resolved = pattern.replace(resolved) { match -> "${match.value.substringBefore(binary.name)}${binary.path}" }
+            val invocation = binaryInvocation(File(binary.path)).joinToString(" ")
+            resolved = pattern.replace(resolved) { match -> "${match.value.substringBefore(binary.name)}$invocation" }
         }
         return resolved
     }
+
+    /**
+     * Command line that runs an imported binary. Since Android 10, apps targeting API 29+ may not
+     * execve() files in their own storage (SELinux denies it with "Permission denied" even though the
+     * file mode allows execution), so ELF files are started through the system dynamic linker and
+     * scripts through their interpreter. The result is a path-only argv safe to join with spaces.
+     */
+    private fun binaryInvocation(file: File): List<String> {
+        val header = readHeader(file)
+        return binaryLauncher(header, Build.VERSION.SDK_INT, appContext.applicationInfo.targetSdkVersion) +
+            file.absolutePath
+    }
+
+    private fun readHeader(file: File): ByteArray = runCatching {
+        file.inputStream().use { input ->
+            val buffer = ByteArray(256)
+            buffer.copyOf(input.read(buffer).coerceAtLeast(0))
+        }
+    }.getOrDefault(ByteArray(0))
 
     private suspend fun accessToken(client: GCloudOAuthClient): String {
         val existing = state.value.oauthTokens[client.id]
@@ -1277,6 +1305,40 @@ class RemoteMachineService(
         )
     }
 }
+
+/**
+ * Launcher prefix for running an imported file on Android 10+ (see RemoteMachineService.binaryInvocation).
+ * Empty means the file can be executed directly.
+ */
+internal fun binaryLauncher(
+    header: ByteArray,
+    sdkInt: Int,
+    targetSdk: Int,
+    exists: (String) -> Boolean = { File(it).exists() }
+): List<String> {
+    if (sdkInt < 29 || targetSdk < 29) return emptyList()
+    if (isElf(header)) {
+        val linker = if (header[4].toInt() == 2) "/system/bin/linker64" else "/system/bin/linker"
+        return if (exists(linker)) listOf(linker) else emptyList()
+    }
+    if (header.size >= 2 && header[0] == '#'.code.toByte() && header[1] == '!'.code.toByte()) {
+        val line = String(header, Charsets.ISO_8859_1).lineSequence().first().drop(2).trim()
+        val tokens = line.split(Regex("\\s+")).filter(String::isNotEmpty)
+        val interpreter = tokens.firstOrNull()?.takeIf(exists)
+        // A script's interpreter path is often from another system (/bin/bash, Termux paths).
+        return if (interpreter != null) listOf(interpreter) + tokens.drop(1) else listOf("/system/bin/sh")
+    }
+    return emptyList()
+}
+
+private fun isElf(header: ByteArray): Boolean = header.size >= 5 &&
+    header[0] == 0x7f.toByte() && header[1] == 'E'.code.toByte() &&
+    header[2] == 'L'.code.toByte() && header[3] == 'F'.code.toByte()
+
+/** ET_EXEC (type 2): a fixed-address executable, which the Android linker cannot load. */
+internal fun isStaticNonPieElf(header: ByteArray): Boolean =
+    isElf(header) && header.size >= 18 && header[5].toInt() == 1 &&
+        (header[16].toInt() and 0xff) == 2 && header[17].toInt() == 0
 
 /**
  * Validates the text of an OpenSSH public key file and returns it as "<algorithm> <base64>" without
