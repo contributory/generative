@@ -13,22 +13,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.starfall.multigateway.data.local.preferences.AppPreferences
 import org.starfall.multigateway.data.local.preferences.AppPreferencesRepository
-import org.starfall.multigateway.data.service.ExecutableBinary
-import org.starfall.multigateway.data.service.ExecutableBinaryStore
 
 class SettingsViewModel(
-    private val repository: AppPreferencesRepository,
-    private val executableBinaryStore: ExecutableBinaryStore
+    private val repository: AppPreferencesRepository
 ) : ViewModel() {
-    val executableBinaries = executableBinaryStore.binaries
-
-    suspend fun importExecutableBinary(uri: android.net.Uri): Result<ExecutableBinary> =
-        runCatching { executableBinaryStore.import(uri) }
-
-    fun deleteExecutableBinary(id: String) {
-        viewModelScope.launch(LocalWriteErrors.handler) { executableBinaryStore.delete(id) }
-    }
-
     val preferences = repository.appPreferencesFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppPreferences())
 

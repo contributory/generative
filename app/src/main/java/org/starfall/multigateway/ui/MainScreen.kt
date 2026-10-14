@@ -91,7 +91,6 @@ fun MainScreen(
     val summaryProgress by viewModel.summaryProgress.collectAsStateWithLifecycle()
     val contextWindowStatus by viewModel.contextWindowStatus.collectAsStateWithLifecycle()
     val appPrefs: AppPreferences by settingsViewModel.preferences.collectAsStateWithLifecycle()
-    val executableBinaries by settingsViewModel.executableBinaries.collectAsStateWithLifecycle()
     val providers: List<LlmProviderInfo> by viewModel.providers.collectAsStateWithLifecycle()
     val providerGroups: List<ProviderGroup> by configurationViewModel.providerGroups.collectAsStateWithLifecycle()
     val mcpServers: List<McpInfo> by viewModel.mcpServers.collectAsStateWithLifecycle()
@@ -541,11 +540,6 @@ fun MainScreen(
                             onTtsReadCodeBlocksChange = settingsViewModel::setTtsReadCodeBlocks,
                             onToolRoundLimitEnabledChange = settingsViewModel::setToolRoundLimitEnabled,
                             onAppLanguageChange = settingsViewModel::setAppLanguage,
-                            executableBinaries = org.starfall.multigateway.ui.settings.ExecutableBinaryControls(
-                                binaries = executableBinaries,
-                                onImport = settingsViewModel::importExecutableBinary,
-                                onDelete = settingsViewModel::deleteExecutableBinary
-                            ),
                              onToolRoundLimitChange = settingsViewModel::setToolRoundLimit,
                              onScreenWakelockModeChange = settingsViewModel::setScreenWakelockMode,
                             onEnableVibrationChange = { value ->

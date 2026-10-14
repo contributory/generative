@@ -570,9 +570,6 @@ fun ModelPickerSheet(
                                 is ModelPickerItem.Model -> {
                                     Box(Modifier.fillMaxWidth().testTag("model-picker-model_${item.provider.id}_${item.modelId}")) {
                                         ModelPickerCard(
-                                            modelId = item.modelId,
-                                            providerType = item.provider.type,
-                                            maxTokens = item.provider.config.maxTokens,
                                             config = item.config,
                                             isSelected = item.isSelected,
                                             conversationReasoningEffort = conversationReasoningEffort,
@@ -607,8 +604,8 @@ internal fun SelectedModelOverviewSheet(
     onDismiss: () -> Unit
 ) {
     val supportedEfforts = config.supportedReasoningEfforts
-    val effortOptions = remember(provider?.type, modelId, provider?.config?.maxTokens, supportedEfforts) {
-        reasoningEffortOptions(provider?.type, modelId, provider?.config?.maxTokens ?: Int.MAX_VALUE, supportedEfforts)
+    val effortOptions = remember(supportedEfforts) {
+        reasoningEffortOptions(supportedEfforts)
     }
     var previewTier by remember(conversationReasoningEffort, effortOptions) {
         mutableIntStateOf(reasoningEffortTier(reasoningEffortIndex(conversationReasoningEffort, effortOptions), effortOptions))
@@ -661,9 +658,6 @@ internal fun SelectedModelOverviewSheet(
                 modifier = Modifier.fillMaxWidth()
             )
             ModelPickerCard(
-                modelId = modelId,
-                providerType = provider?.type,
-                maxTokens = provider?.config?.maxTokens ?: Int.MAX_VALUE,
                 config = config,
                 isSelected = true,
                 providerName = provider?.name,
@@ -840,9 +834,6 @@ private fun ModelPickerProviderRow(
 
 @Composable
 private fun ModelPickerCard(
-    modelId: String,
-    providerType: ProviderType?,
-    maxTokens: Int,
     config: ModelConfiguration,
     isSelected: Boolean,
     providerName: String? = null,
@@ -856,8 +847,8 @@ private fun ModelPickerCard(
     drawBackground: Boolean = true
 ) {
     val supportedEfforts = config.supportedReasoningEfforts
-    val effortOptions = remember(providerType, modelId, maxTokens, supportedEfforts) {
-        reasoningEffortOptions(providerType, modelId, maxTokens, supportedEfforts)
+    val effortOptions = remember(supportedEfforts) {
+        reasoningEffortOptions(supportedEfforts)
     }
     var previewReasoningValue by remember(conversationReasoningEffort, isSelected, effortOptions) {
         mutableFloatStateOf(reasoningEffortIndex(conversationReasoningEffort, effortOptions).toFloat())
@@ -1004,8 +995,7 @@ private fun ModelPickerCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = if (usesThinkingBudget(providerType, modelId))
-                                "Thinking Budget (tokens)" else "Reasoning Effort",
+                            text = "Reasoning Effort",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = if (!embedded && enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
                         )

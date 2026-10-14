@@ -37,7 +37,7 @@ class AppContainer(context: Context) {
     private val preferences = AppPreferencesRepository(appContext)
     private val toolSettings = ToolSettingsStore(appContext)
     private val executableBinaries = ExecutableBinaryStore(appContext)
-    // Remote Machines only receives the read-only view; Settings gets the full store below.
+    // Shared executable storage backs ProxyCommand lookup for Remote Machines.
     val remoteMachineService = RemoteMachineService(appContext, binaries = executableBinaries)
     val defaultDataInitializer = DefaultDataInitializer(providers, mcp, speech, preferences, icons)
 
@@ -73,7 +73,7 @@ class AppContainer(context: Context) {
             )
         }
         initializer { ConfigurationViewModel(profiles, providers, mcp, speech, preferences) }
-        initializer { SettingsViewModel(preferences, executableBinaries) }
+        initializer { SettingsViewModel(preferences) }
         initializer { RemoteMachinesViewModel(remoteMachineService) }
     }
 }

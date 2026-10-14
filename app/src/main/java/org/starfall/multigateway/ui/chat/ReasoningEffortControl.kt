@@ -34,13 +34,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.hypot
 import kotlin.math.roundToInt
-import org.starfall.multigateway.data.model.DEFAULT_REASONING_EFFORTS
-import org.starfall.multigateway.data.model.ModelConfiguration
-import org.starfall.multigateway.data.model.ProviderType
 import org.starfall.multigateway.data.model.REASONING_EFFORT_ACTIVE
 import org.starfall.multigateway.data.model.SELECTABLE_REASONING_EFFORTS
-import org.starfall.multigateway.data.model.reasoningBudget
-import org.starfall.multigateway.data.model.claudeThinkingCapabilities
 
 internal fun reasoningEffortLabel(effort: String): String = when (effort) {
     "xhigh" -> "X-High"
@@ -87,36 +82,16 @@ internal fun reasoningEffortBurstDuration(tier: Int): Int = when (tier) {
 
 internal data class ReasoningEffortOption(val effort: String?, val label: String)
 
-internal fun usesThinkingBudget(providerType: ProviderType?, modelId: String): Boolean =
-    (providerType in listOf(ProviderType.ANTHROPIC, ProviderType.CLAUDE_CODE) &&
-        claudeThinkingCapabilities(modelId).efforts.isEmpty()) ||
-        (providerType == ProviderType.ANTIGRAVITY && modelId.contains("claude", ignoreCase = true))
-
 internal fun reasoningEffortOptions(
-    providerType: ProviderType? = null,
-    modelId: String = "",
-    maxTokens: Int = Int.MAX_VALUE,
-    supportedEfforts: List<String> = DEFAULT_REASONING_EFFORTS
+    supportedEfforts: List<String> = emptyList()
 ): List<ReasoningEffortOption> {
-    val budgetBased = usesThinkingBudget(providerType, modelId)
-    val claude = providerType in listOf(ProviderType.ANTHROPIC, ProviderType.CLAUDE_CODE)
-    val capabilities = if (claude) claudeThinkingCapabilities(modelId) else null
-    val antigravityGemini = providerType == ProviderType.ANTIGRAVITY && !budgetBased
-    val off = when {
-        antigravityGemini -> emptyList()
-        capabilities == null || capabilities.efforts.isEmpty() || capabilities.canDisable ->
-            listOf(ReasoningEffortOption("none", "None"))
-        capabilities.betweenTools -> listOf(ReasoningEffortOption("none", "Between tools"))
-        else -> emptyList()
-    }
     val levels = SELECTABLE_REASONING_EFFORTS.filter { it in supportedEfforts }.map { effort ->
-        val label = if (budgetBased) ModelConfiguration(reasoningEffort = effort)
-            .reasoningBudget(maxTokens.coerceAtLeast(2)).toString() else reasoningEffortLabel(effort)
-        ReasoningEffortOption(effort, label)
+        ReasoningEffortOption(effort, reasoningEffortLabel(effort))
     }
-    // A thinking model with no levels still needs a step that turns thinking on.
+    // Active asks the server to enable reasoning without choosing a configured level.
     val active = if (levels.isEmpty()) listOf(ReasoningEffortOption(REASONING_EFFORT_ACTIVE, "Active")) else emptyList()
-    return off + active + ReasoningEffortOption(null, "Default") + levels
+    return listOf(ReasoningEffortOption("none", "None"), ReasoningEffortOption(null, "Default")) +
+        if (levels.isEmpty()) active else levels
 }
 
 internal fun reasoningEffortEnabled(effort: String?): Boolean =

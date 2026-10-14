@@ -424,9 +424,6 @@
     <string name="settings_latex_disabled">Disabled</string>
     <string name="settings_latex_auto_detect">Auto Detect</string>
     <string name="settings_developer">Developer</string>
-    <string name="settings_executable_binaries" translatable="false">Executable binaries</string>
-    <string name="settings_executable_binaries_description" translatable="false">Imported files are copied into app storage and made executable. Features such as Remote Machines can use them by name, for example in a ProxyCommand.</string>
-    <string name="settings_add_executable_binary" translatable="false">Add executable binary</string>
     <string name="settings_debug_logs">Developer Debug Logs</string>
     <string name="settings_debug_logs_description">Show token metrics, request payloads and network logs</string>
     <string name="settings_data_overview">Data overview</string>

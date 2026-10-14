@@ -112,8 +112,7 @@ fun SettingsScreen(
     onToolRoundLimitEnabledChange: (Boolean) -> Unit = {},
     onToolRoundLimitChange: (Int) -> Unit = {},
     onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit = {},
-    onAppLanguageChange: (useSystem: Boolean, tag: String) -> Unit = { _, _ -> },
-    executableBinaries: ExecutableBinaryControls = ExecutableBinaryControls()
+    onAppLanguageChange: (useSystem: Boolean, tag: String) -> Unit = { _, _ -> }
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf<SettingsCategory?>(null) }
     BackHandler(enabled = selectedCategory != null) {
@@ -211,8 +210,7 @@ fun SettingsScreen(
                             onToolRoundLimitEnabledChange = onToolRoundLimitEnabledChange,
                             onToolRoundLimitChange = onToolRoundLimitChange,
                             onScreenWakelockModeChange = onScreenWakelockModeChange,
-                            onAppLanguageChange = onAppLanguageChange,
-                            executableBinaries = executableBinaries
+                            onAppLanguageChange = onAppLanguageChange
                         )
                     }
 
@@ -273,8 +271,7 @@ private fun AppSettingsView(
     onToolRoundLimitEnabledChange: (Boolean) -> Unit,
     onToolRoundLimitChange: (Int) -> Unit,
     onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit,
-    onAppLanguageChange: (Boolean, String) -> Unit,
-    executableBinaries: ExecutableBinaryControls
+    onAppLanguageChange: (Boolean, String) -> Unit
 ) {
     val pager = rememberPagerState(pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
@@ -305,8 +302,7 @@ private fun AppSettingsView(
                     onToolRoundLimitEnabledChange = onToolRoundLimitEnabledChange,
                     onToolRoundLimitChange = onToolRoundLimitChange,
                     onScreenWakelockModeChange = onScreenWakelockModeChange,
-                    onAppLanguageChange = onAppLanguageChange,
-                    executableBinaries = executableBinaries
+                    onAppLanguageChange = onAppLanguageChange
                 )
                 else -> AppearanceSettingsView(
                     appPreferences = appPreferences,
@@ -436,8 +432,7 @@ fun PreferencesSettingsView(
     onToolRoundLimitEnabledChange: (Boolean) -> Unit = {},
     onToolRoundLimitChange: (Int) -> Unit = {},
     onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit = {},
-    onAppLanguageChange: (useSystem: Boolean, tag: String) -> Unit = { _, _ -> },
-    executableBinaries: ExecutableBinaryControls = ExecutableBinaryControls()
+    onAppLanguageChange: (useSystem: Boolean, tag: String) -> Unit = { _, _ -> }
 ) {
     LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
@@ -568,7 +563,6 @@ fun PreferencesSettingsView(
                 }
             }
         }
-        item { ExecutableBinariesSection(executableBinaries) }
         item {
             SettingsSection(stringResource(R.string.settings_developer)) {
                 PreferenceToggle(stringResource(R.string.settings_debug_logs), stringResource(R.string.settings_debug_logs_description),
