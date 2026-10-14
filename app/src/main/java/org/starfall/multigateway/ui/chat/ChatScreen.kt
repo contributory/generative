@@ -49,6 +49,7 @@ import org.starfall.multigateway.data.model.Conversation
 import org.starfall.multigateway.data.model.LlmProviderInfo
 import org.starfall.multigateway.data.model.ProviderGroup
 import org.starfall.multigateway.data.model.StoredMessage
+import org.starfall.multigateway.data.model.ThinkingPassback
 import org.starfall.multigateway.data.model.ConversationSummaryProgress
 import org.starfall.multigateway.data.model.ConversationSummaryRequest
 import org.starfall.multigateway.data.model.SummaryRole
@@ -89,7 +90,7 @@ fun ChatScreen(
     onSelectModel: (providerId: String, modelId: String) -> Unit,
     summaryProgress: ConversationSummaryProgress?,
     onSetReasoningEffort: (String?) -> Unit,
-    onSetSendThinkingContent: (providerId: String, modelId: String, enabled: Boolean) -> Unit = { _, _, _ -> },
+    onSetThinkingPassback: (providerId: String, modelId: String, mode: ThinkingPassback) -> Unit = { _, _, _ -> },
     onSetModelReasoningEffort: (providerId: String, modelId: String, effort: String?) -> Unit = { _, _, _ -> },
     onStartConversationSummary: (ConversationSummaryRequest) -> Boolean,
     onSummaryRoleChange: (SummaryRole) -> Unit,
@@ -617,7 +618,7 @@ fun ChatScreen(
                 onSelectModel = onSelectModel,
                 conversationReasoningEffort = conversation?.reasoningEffort,
                 onSetReasoningEffort = onSetReasoningEffort,
-                onSetSendThinkingContent = onSetSendThinkingContent,
+                onSetThinkingPassback = onSetThinkingPassback,
                 onSetModelReasoningEffort = onSetModelReasoningEffort,
                 onStartConversationSummary = onStartConversationSummary,
                 onFetchOllamaModels = onFetchOllamaModels

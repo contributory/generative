@@ -228,6 +228,18 @@ val DEFAULT_REASONING_EFFORTS = listOf("low", "medium", "high")
 /** Thinking is on, but the model has no levels: nothing is sent to pick one. */
 const val REASONING_EFFORT_ACTIVE = "active"
 
+/**
+ * Whether earlier reasoning is sent back to the model with the conversation history.
+ * [AUTO] sends it only in conversations that use tool calls, where providers need the reasoning
+ * chain to stay intact; [ON] always sends it; [OFF] never does.
+ */
+@Serializable
+enum class ThinkingPassback {
+    @SerialName("auto") AUTO,
+    @SerialName("on") ON,
+    @SerialName("off") OFF
+}
+
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class ModelConfiguration(
@@ -256,7 +268,14 @@ data class ModelConfiguration(
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val thinkingLevel: String? = null,
     val supportsToolCalls: Boolean = true,
-    @SerialName("send_thinking_content") val sendThinkingContent: Boolean = false,
+    // Legacy on/off switch, read only to migrate saved configs (true -> On, anything else -> Auto).
+    // Never written again once [thinkingPassback] is set.
+    @SerialName("send_thinking_content")
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val legacySendThinkingContent: Boolean? = null,
+    @SerialName("thinking_passback")
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val thinkingPassback: ThinkingPassback? = null,
     val icon: String? = null,
     @SerialName("model_json")
     @EncodeDefault(EncodeDefault.Mode.NEVER)
@@ -270,6 +289,25 @@ fun ModelConfiguration.normalizedForStorage(): ModelConfiguration =
 
 fun ProviderConfiguration.normalizedForStorage(): ProviderConfiguration =
     copy(modelConfigs = modelConfigs.mapValues { (_, config) -> config.normalizedForStorage() })
+
+/** The effective passback mode; saved configs without the new field migrate from the old switch. */
+val ModelConfiguration.passbackMode: ThinkingPassback
+    get() = thinkingPassback
+        ?: if (legacySendThinkingContent == true) ThinkingPassback.ON else ThinkingPassback.AUTO
+
+fun ModelConfiguration.withThinkingPassback(mode: ThinkingPassback): ModelConfiguration =
+    copy(thinkingPassback = mode, legacySendThinkingContent = null)
+
+/** Resolves the mode for a request: Auto passes reasoning back only once tool calls are involved. */
+fun ModelConfiguration.sendsThinkingBack(hasToolCalls: Boolean): Boolean = when (passbackMode) {
+    ThinkingPassback.ON -> true
+    ThinkingPassback.OFF -> false
+    ThinkingPassback.AUTO -> hasToolCalls
+}
+
+/** True when any answer in the conversation used a tool; connection handshakes do not count. */
+fun List<StoredMessage>.hasToolCalls(): Boolean =
+    any { message -> message.activeVersion.toolActivity.any { !it.name.endsWith(": connect") } }
 
 fun LlmProviderInfo.streamEnabledFor(modelId: String): Boolean =
     config.modelConfigs[modelId]?.supportStream ?: config.supportStream

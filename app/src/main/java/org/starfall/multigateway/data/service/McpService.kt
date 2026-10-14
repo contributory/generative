@@ -178,7 +178,7 @@ class McpSession(
     private fun toolDefinition(tool: Tool): ToolDefinition {
         val inputSchema = tool.inputSchema.toJson()
         return ToolDefinition(
-            mcpToolWireName(info.name, tool.name, info.id),
+            mcpToolWireName(info.name, tool.name),
             tool.description.orEmpty().take(4000),
             inputSchema,
             info.id,
@@ -220,13 +220,14 @@ class McpSession(
  * within the portable function-name grammar used by OpenAI-compatible,
  * Anthropic, and Gemini endpoints.
  */
-internal fun mcpToolWireName(serverName: String, toolName: String, serverId: String): String {
+internal fun mcpToolWireName(serverName: String, toolName: String): String {
     val server = serverName.toWireNamePart().ifBlank { "mcp" }
     val tool = toolName.toWireNamePart().ifBlank { "tool" }
     val base = "${server}_${tool}"
     if (base.length <= MCP_TOOL_NAME_MAX_LENGTH) return base
 
-    val suffix = UUID.nameUUIDFromBytes((serverId + ":" + toolName).toByteArray())
+    // Derived from the visible names only: internal server ids must never reach the model.
+    val suffix = UUID.nameUUIDFromBytes((serverName + ":" + toolName).toByteArray())
         .toString().replace("-", "").take(MCP_TOOL_NAME_SUFFIX_LENGTH)
     return base.take(MCP_TOOL_NAME_MAX_LENGTH - suffix.length - 1) + "_" + suffix
 }

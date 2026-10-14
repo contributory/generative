@@ -14,6 +14,9 @@ import com.jcraft.jsch.UIKeyboardInteractive
 import com.jcraft.jsch.UserInfo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -43,6 +46,7 @@ import java.net.URLEncoder
 import java.util.Base64
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import java.util.Properties
 import java.util.UUID
 import kotlin.math.roundToInt
@@ -627,7 +631,20 @@ class RemoteMachineService(
     ): RemoteCommandResult {
         return try {
             withContext(Dispatchers.IO) {
-                val session = connect(machine)
+                // JSch's connect/read calls block their thread and ignore coroutine cancellation, so
+                // run them in child coroutines and close the socket/channel when cancelled. That
+                // makes the Stop button take effect immediately instead of after the remote command.
+                val pending = AtomicReference<Session?>()
+                val session = coroutineScope {
+                    val opening = async(Dispatchers.IO) { connect(machine, onCreated = { pending.set(it) }) }
+                    try {
+                        opening.await()
+                    } catch (error: Throwable) {
+                        runCatching { pending.get()?.disconnect() }
+                        opening.cancel()
+                        throw error
+                    }
+                }
                 val localCommand = startLocalCommand(machine)
                 try {
                     val channel = session.openChannel("exec") as ChannelExec
@@ -637,12 +654,50 @@ class RemoteMachineService(
                     channel.setErrStream(errors)
                     channel.connect(machine.connectTimeoutSeconds * 1_000)
                     val input = channel.getInputStream()
-                    val output = withTimeout(timeoutSeconds.coerceIn(1, 600) * 1_000L) {
-                        input.readBytes()
-                    }.toString(Charsets.UTF_8)
+                    val limitSeconds = timeoutSeconds.coerceIn(1, 600)
+                    val collected = ByteArrayOutputStream()
+                    var timedOut = false
+                    coroutineScope {
+                        val reader = async(Dispatchers.IO) {
+                            val buffer = ByteArray(8_192)
+                            try {
+                                while (true) {
+                                    val count = input.read(buffer)
+                                    if (count < 0) break
+                                    synchronized(collected) { collected.write(buffer, 0, count) }
+                                }
+                            } catch (_: java.io.IOException) {
+                                // The channel was closed by cancel/timeout below.
+                            }
+                        }
+                        try {
+                            withTimeout(limitSeconds * 1_000L) { reader.await() }
+                        } catch (_: TimeoutCancellationException) {
+                            // A timeout is a tool result for the model, not a cancelled generation:
+                            // TimeoutCancellationException is a CancellationException and would
+                            // otherwise abort the whole chat turn as if the user pressed Stop.
+                            timedOut = true
+                            runCatching { channel.disconnect() }
+                            reader.cancel()
+                        } catch (error: Throwable) {
+                            runCatching { channel.disconnect() }
+                            reader.cancel()
+                            throw error
+                        }
+                    }
+                    val output = synchronized(collected) { collected.toString(Charsets.UTF_8.name()) }
                     // The channel can finish writing stderr just after stdout reaches EOF.
                     delay(20)
-                    RemoteCommandResult(output, String(errors.toByteArray(), Charsets.UTF_8), channel.getExitStatus())
+                    val stderr = String(errors.toByteArray(), Charsets.UTF_8)
+                    if (timedOut) {
+                        RemoteCommandResult(
+                            output,
+                            (stderr + "\n[Command timed out after ${limitSeconds}s and was terminated; output above is partial.]").trim(),
+                            -1
+                        )
+                    } else {
+                        RemoteCommandResult(output, stderr, channel.getExitStatus())
+                    }
                 } finally {
                     runCatching { localCommand?.destroy() }
                     runCatching { session.disconnect() }
@@ -655,7 +710,11 @@ class RemoteMachineService(
         }
     }
 
-    private fun connect(machine: RemoteMachine, passwordOverride: String? = null): Session {
+    private fun connect(
+        machine: RemoteMachine,
+        passwordOverride: String? = null,
+        onCreated: (Session) -> Unit = {}
+    ): Session {
         require(machine.host.isNotBlank()) { "Remote host is missing." }
         require(machine.username.isNotBlank()) { "Remote user is missing." }
         val jsch = JSch()
@@ -704,6 +763,7 @@ class RemoteMachineService(
         machine.proxyCommand.trim().takeIf(String::isNotBlank)?.let { command ->
             session.setProxy(CommandProxy(resolveBinary(command)))
         }
+        onCreated(session)
         session.connect(machine.connectTimeoutSeconds * 1_000)
         return session
     }

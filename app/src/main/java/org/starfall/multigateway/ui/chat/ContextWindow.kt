@@ -28,8 +28,10 @@ internal fun estimateMessageTokens(message: StoredMessage, includeReasoning: Boo
 internal fun contextWindowStatus(conversation: Conversation, prompt: String, config: ModelConfiguration,
     prefixMessages: List<StoredMessage> = emptyList()): ContextWindowStatus {
     val effective = effectiveContext(conversation, conversation.messages, prompt)
+    val allMessages = prefixMessages + effective.messages
+    val includeReasoning = config.sendsThinkingBack(allMessages.hasToolCalls())
     val count = estimateTextTokens(effective.systemPrompt) +
-        (prefixMessages + effective.messages).sumOf { estimateMessageTokens(it, config.sendThinkingContent) }
+        allMessages.sumOf { estimateMessageTokens(it, includeReasoning) }
     return ContextWindowStatus(count, config.contextWindowTokens.takeIf { it > 0 } ?: DEFAULT_CONTEXT_WINDOW_TOKENS)
 }
 

@@ -68,6 +68,7 @@ import org.starfall.multigateway.data.model.ProviderGroup
 import org.starfall.multigateway.data.model.ConversationSummaryRequest
 import org.starfall.multigateway.data.model.ModelType
 import org.starfall.multigateway.data.model.ProviderType
+import org.starfall.multigateway.data.model.ThinkingPassback
 
 data class DirectMediaRequest(
     val prompt: String,
@@ -109,7 +110,7 @@ fun UserInputArea(
     onSelectModel: (providerId: String, modelId: String) -> Unit,
     conversationReasoningEffort: String?,
     onSetReasoningEffort: (String?) -> Unit,
-    onSetSendThinkingContent: (providerId: String, modelId: String, enabled: Boolean) -> Unit = { _, _, _ -> },
+    onSetThinkingPassback: (providerId: String, modelId: String, mode: ThinkingPassback) -> Unit = { _, _, _ -> },
     onSetModelReasoningEffort: (providerId: String, modelId: String, effort: String?) -> Unit = { _, _, _ -> },
     onStartConversationSummary: (ConversationSummaryRequest) -> Boolean,
     onFetchOllamaModels: (suspend (String) -> List<String>)? = null,
@@ -610,13 +611,15 @@ fun UserInputArea(
                         onSetModelReasoningEffort(selectedProvider.id, selectedConfigEntry.key, effort)
                     }
                 },
-                // Only models with a saved configuration can persist the toggle.
-                onSetSendThinkingContent = if (selectedProvider != null && selectedConfigEntry != null) {
-                    val providerId = selectedProvider.id
-                    val configKey = selectedConfigEntry.key
-                    val setPassback: (Boolean) -> Unit = { enabled -> onSetSendThinkingContent(providerId, configKey, enabled) }
+                // Available as soon as the sheet opens; a model without a saved configuration gets one
+                // created when the choice is stored.
+                onSetThinkingPassback = (selectedConfigEntry?.key ?: selectedModelName).takeIf {
+                    selectedProvider != null && it.isNotBlank()
+                }?.let { configKey ->
+                    val providerId = selectedProvider!!.id
+                    val setPassback: (ThinkingPassback) -> Unit = { mode -> onSetThinkingPassback(providerId, configKey, mode) }
                     setPassback
-                } else null,
+                },
                 onOpenModelPicker = {
                     showModelPicker = true
                 },

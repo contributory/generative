@@ -235,9 +235,30 @@ fun ModelEditScreen(
                             }
                         }
                     }
-                    ModelCapabilitySwitch(stringResource(R.string.send_thinking_content_back), config.sendThinkingContent) {
-                        config = config.copy(sendThinkingContent = it)
+                    Text(stringResource(R.string.send_thinking_content_back), style = MaterialTheme.typography.titleSmall)
+                    val passbackModes = listOf(ThinkingPassback.AUTO, ThinkingPassback.ON, ThinkingPassback.OFF)
+                    val passbackLabels = listOf(
+                        stringResource(R.string.common_auto),
+                        stringResource(R.string.common_on),
+                        stringResource(R.string.common_off)
+                    )
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("passback-thinking-mode")) {
+                        passbackModes.forEachIndexed { index, mode ->
+                            SegmentedButton(
+                                selected = config.passbackMode == mode,
+                                onClick = { config = config.withThinkingPassback(mode) },
+                                shape = SegmentedButtonDefaults.itemShape(index, passbackModes.size),
+                                modifier = Modifier.testTag("passback-thinking-${mode.name.lowercase()}")
+                            ) {
+                                Text(passbackLabels[index], maxLines = 1)
+                            }
+                        }
                     }
+                    Text(
+                        stringResource(R.string.send_thinking_content_back_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 ModelCapabilitySwitch(stringResource(R.string.tool_calls), config.supportsToolCalls) {
                     config = config.copy(supportsToolCalls = it)

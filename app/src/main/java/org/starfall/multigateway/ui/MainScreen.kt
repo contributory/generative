@@ -349,7 +349,7 @@ fun MainScreen(
                                 summaryProgress = summaryProgress,
                                 contextWindowStatus = contextWindowStatus,
                                 onSetReasoningEffort = viewModel::setConversationReasoningEffort,
-                                onSetSendThinkingContent = configurationViewModel::setSendThinkingContent,
+                                onSetThinkingPassback = configurationViewModel::setThinkingPassback,
                                 onSetModelReasoningEffort = configurationViewModel::setModelReasoningEffort,
                                 onStartConversationSummary = viewModel::startConversationSummary,
                                 onSummaryRoleChange = viewModel::setSummaryRole,

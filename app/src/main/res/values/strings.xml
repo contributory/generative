@@ -167,6 +167,7 @@
     <string name="tool_calls">Tools</string>
     <string name="model_reasoning_levels">Supported reasoning levels</string>
     <string name="send_thinking_content_back">Passback Thinking</string>
+    <string name="send_thinking_content_back_hint">Auto sends earlier thinking back only in chats that use tool calls. On always sends it; Off never does.</string>
     <string name="streaming">Streaming</string>
     <string name="common_default">Default</string>
     <string name="use_provider_stream_setting">Use provider stream setting</string>

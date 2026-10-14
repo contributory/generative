@@ -66,6 +66,8 @@ import org.starfall.multigateway.R
 import org.starfall.multigateway.data.model.LlmProviderInfo
 import org.starfall.multigateway.data.model.DEFAULT_CONTEXT_WINDOW_TOKENS
 import org.starfall.multigateway.data.model.ModelConfiguration
+import org.starfall.multigateway.data.model.ThinkingPassback
+import org.starfall.multigateway.data.model.passbackMode
 import org.starfall.multigateway.data.model.supportedReasoningEfforts
 import org.starfall.multigateway.data.model.ModelType
 import org.starfall.multigateway.data.model.ProviderGroup
@@ -600,7 +602,7 @@ internal fun SelectedModelOverviewSheet(
     config: ModelConfiguration,
     conversationReasoningEffort: String?,
     onSetReasoningEffort: (String?) -> Unit,
-    onSetSendThinkingContent: ((Boolean) -> Unit)? = null,
+    onSetThinkingPassback: ((ThinkingPassback) -> Unit)? = null,
     onOpenModelPicker: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -677,37 +679,57 @@ internal fun SelectedModelOverviewSheet(
                   drawBackground = false,
                  onPreviewTierChange = { previewTier = it }
             )
-            if (config.supportsThinking && onSetSendThinkingContent != null) {
+            // Every reasoning-capable model has this setting; it does not wait for a saved configuration.
+            if (config.supportsThinking) {
+                val modes = listOf(ThinkingPassback.AUTO, ThinkingPassback.ON, ThinkingPassback.OFF)
+                val labels = listOf(
+                    stringResource(R.string.common_auto),
+                    stringResource(R.string.common_on),
+                    stringResource(R.string.common_off)
+                )
                 Surface(
                     shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.1f),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().testTag("selected-model-passback-thinking")
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(
-                                value = config.sendThinkingContent,
-                                role = Role.Switch,
-                                onValueChange = onSetSendThinkingContent
-                            )
-                            .padding(horizontal = 14.dp, vertical = 10.dp)
-                            .testTag("selected-model-passback-thinking"),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            Icons.Outlined.Psychology,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Outlined.Psychology,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                stringResource(R.string.send_thinking_content_back),
+                                style = MaterialTheme.typography.titleSmall,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("passback-thinking-mode")) {
+                            modes.forEachIndexed { index, mode ->
+                                SegmentedButton(
+                                    selected = config.passbackMode == mode,
+                                    onClick = { onSetThinkingPassback?.invoke(mode) },
+                                    enabled = onSetThinkingPassback != null,
+                                    shape = SegmentedButtonDefaults.itemShape(index, modes.size),
+                                    modifier = Modifier.testTag("passback-thinking-${mode.name.lowercase()}")
+                                ) {
+                                    Text(labels[index], maxLines = 1)
+                                }
+                            }
+                        }
                         Text(
-                            stringResource(R.string.send_thinking_content_back),
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.weight(1f)
+                            stringResource(R.string.send_thinking_content_back_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Switch(checked = config.sendThinkingContent, onCheckedChange = null)
                     }
                 }
             }
