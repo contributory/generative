@@ -24,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -86,7 +87,28 @@ fun UserMessageCard(
                     val messageText: @Composable () -> Unit = {
                         MarkdownRenderer(content = message.content, fillMaxWidth = false, trimLeadingBlockSpace = true)
                     }
-                    if (message.isQueued) messageText() else SelectionContainer { messageText() }
+                    if (message.isQueued) {
+                        messageText()
+                    } else {
+                        // Selection only starts from a long press that lands on the text itself; a press on blank
+                        // space inside the bubble is left to the message menu instead of selecting a nearby word.
+                        val glyphRegistry = remember { GlyphHitRegistry() }
+                        var selectionBlocked by remember { mutableStateOf(false) }
+                        val latestText by rememberUpdatedState(messageText)
+                        val movableText = remember { movableContentOf { latestText() } }
+                        CompositionLocalProvider(
+                            LocalGlyphHitRegistry provides glyphRegistry,
+                            LocalSelectionBlocked provides selectionBlocked
+                        ) {
+                            Box(
+                                Modifier
+                                    .onGloballyPositioned { glyphRegistry.owner = it }
+                                    .glyphSelectionGate(glyphRegistry) { selectionBlocked = it }
+                            ) {
+                                GatedSelectionContainer { movableText() }
+                            }
+                        }
+                    }
 
                     // Version switcher if multiple versions exist
                     if (!message.isQueued && message.versions.size > 1) {

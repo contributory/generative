@@ -126,7 +126,7 @@ private fun InlineMathFlow(pieces: List<MathPiece>, style: TextStyle, fillMaxWid
         }
     }
 
-    SelectionContainer {
+    GatedSelectionContainer {
         MarkdownClickableText(
             text = text,
             style = flowStyle,

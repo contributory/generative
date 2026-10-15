@@ -16,6 +16,13 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -130,6 +137,7 @@ fun ChatScreen(
     val seenMessageIds = remember(conversationKey) { mutableSetOf<String>() }
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val selectedProvider = providers.firstOrNull { it.id == selectedProviderId }
     val selectedModelDisplayName = selectedProvider?.config?.modelConfigs?.get(selectedModelName)
         ?.displayName?.takeIf { it.isNotBlank() } ?: selectedModelName
@@ -327,14 +335,15 @@ fun ChatScreen(
         focusManager.clearFocus(force = true)
     }
     LaunchedEffect(listState.isScrollInProgress) {
-        if (listState.isScrollInProgress) {
-            focusManager.clearFocus()
-        }
+        // Scrolling only tucks the keyboard away; it must not clear the text selection (a tap does that).
+        if (listState.isScrollInProgress) keyboardController?.hide()
     }
 
     val density = LocalDensity.current
     var appBarHeightPx by remember { mutableIntStateOf(0) }
     var inputAreaHeightPx by remember { mutableIntStateOf(0) }
+    var chatRootCoordinates by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
+    var inputAreaBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     val appBarHeight = if (appBarHeightPx > 0) with(density) { appBarHeightPx.toDp() }
         else 72.dp
     val navigationBarHeight = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
@@ -344,6 +353,28 @@ fun ChatScreen(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .onGloballyPositioned { chatRootCoordinates = it }
+            // A plain tap anywhere on the chat screen except the input area (messages, blank space, app bar)
+            // drops focus: the input field loses focus and any text selection is cleared. Scrolling and dragging
+            // do not. Nothing is consumed, and a press held past the long-press timeout is selection, not a tap.
+            .pointerInput(focusManager) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        if (event.changes.size > 1) break
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (change.uptimeMillis - down.uptimeMillis >= viewConfiguration.longPressTimeoutMillis) break
+                        if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) break
+                        if (change.changedToUpIgnoreConsumed()) {
+                            val inRoot = chatRootCoordinates?.takeIf { it.isAttached }?.localToRoot(down.position)
+                            val onInput = inRoot != null && inputAreaBounds?.contains(inRoot) == true
+                            if (!onInput) focusManager.clearFocus(force = true)
+                            break
+                        }
+                    }
+                }
+            }
     ) {
         // Let the list occupy the whole edge-to-edge surface. Its top padding keeps the newest
         // content readable initially, while later scrolls visibly pass behind the translucent app bar.
@@ -580,7 +611,9 @@ fun ChatScreen(
                 attachments = inputAttachments,
                 onAttachmentsChange = { inputAttachments = it },
                 chatModeRequest = chatModeRequest,
-                modifier = Modifier.onSizeChanged { inputAreaHeightPx = it.height },
+                modifier = Modifier
+                    .onSizeChanged { inputAreaHeightPx = it.height }
+                    .onGloballyPositioned { inputAreaBounds = it.boundsInRoot() },
                 isGenerating = isGenerating,
                 onSendMedia = { request ->
                     inlineChatError = null

@@ -79,7 +79,7 @@ internal fun RenderMarkdownTable(model: MarkdownComponentModel) {
     val headerBackground = MaterialTheme.colorScheme.surfaceContainerHigh
     val shape = RoundedCornerShape(8.dp)
 
-    SelectionContainer {
+    GatedSelectionContainer {
         Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).horizontalScroll(rememberScrollState())) {
             Column(Modifier.clip(shape).border(1.dp, border, shape)) {
                 rows.forEachIndexed { rowIndex, row ->

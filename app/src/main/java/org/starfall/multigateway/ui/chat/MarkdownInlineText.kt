@@ -28,9 +28,10 @@ internal fun MarkdownClickableText(
     inlineContent: Map<String, InlineTextContent> = emptyMap()
 ) {
     val presentation = rememberStreamingTextPresentation(text.text)
+    val glyphTarget = rememberGlyphTarget()
     val mergedStyle = style.copy(color = if (style.color != Color.Unspecified) style.color else MaterialTheme.colorScheme.onSurface)
-    Text(text = text, style = mergedStyle, modifier = modifier.then(presentation.modifier),
-        inlineContent = inlineContent, onTextLayout = presentation.onTextLayout)
+    Text(text = text, style = mergedStyle, modifier = modifier.then(presentation.modifier).glyphTarget(glyphTarget),
+        inlineContent = inlineContent, onTextLayout = { presentation.onTextLayout(it); glyphTarget?.layout = it })
 }
 
 @Composable

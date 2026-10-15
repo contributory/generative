@@ -66,6 +66,11 @@ fun MainScreen(
     toolFiles: ToolFiles,
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val drawerFocusManager = LocalFocusManager.current
+    // Opening the sidebar (button or swipe) takes focus away from the chat input.
+    LaunchedEffect(drawerState.targetValue) {
+        if (drawerState.targetValue == DrawerValue.Open) drawerFocusManager.clearFocus(force = true)
+    }
     val coroutineScope = rememberCoroutineScope()
 
     val navController = rememberNavController()

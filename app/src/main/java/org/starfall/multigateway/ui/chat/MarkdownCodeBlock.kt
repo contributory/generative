@@ -171,6 +171,7 @@ internal fun CodeBlockSurface(
     }
     val codeScrollState = rememberScrollState()
     val codePresentation = rememberStreamingTextPresentation(code)
+    val glyphTarget = rememberGlyphTarget()
     Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest,
         tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(10.dp))) {
@@ -189,8 +190,8 @@ internal fun CodeBlockSurface(
                 val bodyModifier = if (target == null) Modifier else Modifier.width(with(density) { target.toDp() } + 24.dp)
                 Box(Modifier.fillMaxWidth().then(if (mode == WordWrapMode.OFF || mode == WordWrapMode.COLUMN) Modifier.horizontalScroll(codeScrollState) else Modifier)) {
                     Text(highlighted, style = textStyle,
-                        softWrap = wrapCode, modifier = bodyModifier.padding(12.dp).then(codePresentation.modifier),
-                        onTextLayout = codePresentation.onTextLayout, color = MaterialTheme.colorScheme.onSurface)
+                        softWrap = wrapCode, modifier = bodyModifier.padding(12.dp).then(codePresentation.modifier).glyphTarget(glyphTarget),
+                        onTextLayout = { codePresentation.onTextLayout(it); glyphTarget?.layout = it }, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
             onExpansionChange?.let { toggle ->

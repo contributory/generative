@@ -211,7 +211,7 @@ private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String, fi
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(modifier = Modifier.weight(1f)) {
-                        androidx.compose.foundation.text.selection.SelectionContainer {
+                        GatedSelectionContainer {
                             Text(
                                 text = text,
                                 modifier = presentation.modifier,
@@ -262,7 +262,7 @@ private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String, fi
             val annotated = buildAnnotatedString {
                     buildMarkdownAnnotatedString(model.content, model.node, settings)
             }
-            androidx.compose.foundation.text.selection.SelectionContainer {
+            GatedSelectionContainer {
                 MarkdownClickableText(
                     text = annotated,
                     style = MaterialTheme.typography.bodyLarge.copy(
