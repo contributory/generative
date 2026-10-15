@@ -69,6 +69,7 @@ import org.starfall.multigateway.data.model.ConversationSummaryRequest
 import org.starfall.multigateway.data.model.ModelType
 import org.starfall.multigateway.data.model.ProviderType
 import org.starfall.multigateway.data.model.ThinkingPassback
+import org.starfall.multigateway.ui.theme.LocalAmoledMode
 
 data class DirectMediaRequest(
     val prompt: String,
@@ -150,6 +151,7 @@ fun UserInputArea(
         reasoningEffortOptions(thinkingEfforts)
     }
     val currentEffort = conversationReasoningEffort ?: thinkingConfig?.reasoningEffort
+    val amoledMode = LocalAmoledMode.current
     val maximumThinking = thinkingConfig?.supportsThinking == true &&
         reasoningEffortTier(reasoningEffortIndex(currentEffort, thinkingOptions), thinkingOptions) == 6
     val inputColor by animateColorAsState(
@@ -334,11 +336,11 @@ fun UserInputArea(
                 .fillMaxWidth()
                 .testTag("chat-input"),
             shape = RoundedCornerShape(36.dp),
-            color = inputColor,
+            color = if (amoledMode) MaterialTheme.colorScheme.surface.copy(alpha = 0.86f) else inputColor,
             border = BorderStroke(1.dp, if (mediaKind != null) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                 else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-            tonalElevation = 2.dp,
-            shadowElevation = 3.dp
+            tonalElevation = if (amoledMode) 0.dp else 2.dp,
+            shadowElevation = if (amoledMode) 0.dp else 3.dp
         ) {
             Column(modifier = Modifier.fillMaxWidth().heightIn(max = maxInputHeight)) {
                 if (editDraft != null) {
