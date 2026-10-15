@@ -84,7 +84,7 @@ fun UserMessageCard(
                     // Text Content
                     // Same renderer (markdown, LaTeX, code, tables, font and size) as AI messages.
                     val messageText: @Composable () -> Unit = {
-                        MarkdownRenderer(content = message.content, fillMaxWidth = false)
+                        MarkdownRenderer(content = message.content, fillMaxWidth = false, trimLeadingBlockSpace = true)
                     }
                     if (message.isQueued) messageText() else SelectionContainer { messageText() }
 

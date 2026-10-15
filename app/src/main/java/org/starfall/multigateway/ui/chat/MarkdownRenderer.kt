@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
@@ -44,7 +45,13 @@ fun MarkdownRenderer(
     modifier: Modifier = Modifier,
     isStreaming: Boolean = false,
     latexMode: String? = null,
-    fillMaxWidth: Boolean = true
+    fillMaxWidth: Boolean = true,
+    /**
+     * The library puts a block-sized spacer before every top-level block, including the first, and none
+     * after the last. Inside a padded container (the user bubble) that makes the top gap larger than the
+     * bottom one; this removes the leading spacer so both gaps match.
+     */
+    trimLeadingBlockSpace: Boolean = false
 ) {
     if (content.isBlank()) return
     if (content.length > MAX_MARKDOWN_RENDER_CHARS) {
@@ -89,6 +96,7 @@ fun MarkdownRenderer(
     Markdown(
         state = parsed,
         modifier = modifier
+            .then(if (trimLeadingBlockSpace) Modifier.trimLeadingSpace(MARKDOWN_BLOCK_PADDING) else Modifier)
             .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)
             .then(if (isStreaming) Modifier else Modifier.animateContentSize()),
         colors = markdownColor(),
@@ -102,7 +110,7 @@ fun MarkdownRenderer(
             paragraph = type.bodyLarge.copy(fontFamily = messageFont, fontSize = bodySize, lineHeight = bodySize * 1.375f),
             textLink = TextLinkStyles(SpanStyle(color = MaterialTheme.colorScheme.primary))
         ),
-        padding = markdownPadding(block = 8.dp),
+        padding = markdownPadding(block = MARKDOWN_BLOCK_PADDING),
         components = markdownComponents(
             codeFence = { model ->
                 val fence = markdownFence(model.content, model.node)
@@ -118,6 +126,14 @@ fun MarkdownRenderer(
 }
 
 private const val MAX_MARKDOWN_RENDER_CHARS = 128_000
+private val MARKDOWN_BLOCK_PADDING = 8.dp
+
+/** Cuts [amount] from the top of the content: it is measured in full, then placed higher and reported shorter. */
+private fun Modifier.trimLeadingSpace(amount: androidx.compose.ui.unit.Dp): Modifier = layout { measurable, constraints ->
+    val shift = amount.roundToPx()
+    val placeable = measurable.measure(constraints)
+    layout(placeable.width, (placeable.height - shift).coerceAtLeast(0)) { placeable.place(0, -shift) }
+}
 
 internal fun MessageFontFamily.toComposeFontFamily(): FontFamily = when (this) {
     MessageFontFamily.DEFAULT -> FontFamily.Default
