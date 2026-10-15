@@ -35,6 +35,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.starfall.multigateway.data.local.preferences.AppLocale
+import org.starfall.multigateway.data.local.preferences.ScreenWakelockMode
 import org.starfall.multigateway.data.service.ChatBackgroundService
 import org.starfall.multigateway.ui.MainScreen
 import org.starfall.multigateway.ui.theme.MultiGatewayTheme
@@ -92,14 +93,15 @@ class MainActivity : ComponentActivity() {
             val crashReports = (application as MultiGatewayApplication).crashReports
             var pendingCrash by remember { mutableStateOf(crashReports.pending()) }
             val appPrefs by settingsViewModel.preferences.collectAsStateWithLifecycle()
-            val isGenerating by viewModel.isGenerating.collectAsStateWithLifecycle()
-            val isWaitingForTool by viewModel.isWaitingForTool.collectAsStateWithLifecycle()
+            val isAnyGenerating by viewModel.isAnyGenerating.collectAsStateWithLifecycle()
+            val isAnyResponseActive by viewModel.isAnyResponseActive.collectAsStateWithLifecycle()
             // Read state during composition (not inside SideEffect) so changes trigger a recompose.
-            val keepScreenOn = isGenerating && when (appPrefs.screenWakelockMode) {
-                org.starfall.multigateway.data.local.preferences.ScreenWakelockMode.NONE -> false
-                org.starfall.multigateway.data.local.preferences.ScreenWakelockMode.ALL -> true
-                org.starfall.multigateway.data.local.preferences.ScreenWakelockMode.EXCEPT_TOOL_CALLS -> !isWaitingForTool
-            }
+            // The response-active state is true from request start, before the first API event.
+            val keepScreenOn = shouldKeepScreenOn(
+                appPrefs.screenWakelockMode,
+                anyGenerationActive = isAnyGenerating,
+                anyResponseActive = isAnyResponseActive
+            )
             // Strings are resolved when the Activity is created, so a new language needs a fresh one.
             LaunchedEffect(appPrefs.useSystemLanguage, appPrefs.selectedLanguage) {
                 if (AppLocale.overrideTag(this@MainActivity) != createdLocaleTag) recreate()
@@ -224,4 +226,14 @@ class MainActivity : ComponentActivity() {
         }
 
     }
+}
+
+internal fun shouldKeepScreenOn(
+    mode: ScreenWakelockMode,
+    anyGenerationActive: Boolean,
+    anyResponseActive: Boolean
+): Boolean = when (mode) {
+    ScreenWakelockMode.NONE -> false
+    ScreenWakelockMode.ALL -> anyGenerationActive
+    ScreenWakelockMode.EXCEPT_TOOL_CALLS -> anyResponseActive
 }

@@ -169,6 +169,15 @@ class ChatViewModel(
         .map { states -> states.values.any { it.busy } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
+    /**
+     * A response is active before the first API event arrives as well as while content is being
+     * streamed. This is the state used by the screen wakelock's automatic mode; tool calls are
+     * deliberately excluded there.
+     */
+    val isAnyResponseActive: StateFlow<Boolean> = _generationStates
+        .map { states -> states.values.any { it.busy && !it.waitingForTool } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     val generatingConversationIds: StateFlow<Set<String>> = _generationStates
         .map { states -> states.filterValues { it.busy }.keys }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())

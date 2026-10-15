@@ -72,6 +72,22 @@ class ModelPickerSelectionVisibilityTest {
         assertEquals(listOf(selected.id to "alpha"), marked.map { it.provider.id to it.modelId })
     }
 
+    @Test fun sameDisplayNameWithinProviderDoesNotMarkSiblingModelSelected() {
+        val provider = selected.copy(
+            config = ProviderConfiguration(
+                modelIds = listOf("alpha", "beta"),
+                modelConfigs = mapOf(
+                    "alpha" to ModelConfiguration(displayName = "alpha"),
+                    "beta" to ModelConfiguration(displayName = "alpha")
+                )
+            )
+        )
+        val items = computeModelPickerItems(listOf(provider), listOf(group), emptyMap(), provider.id, "alpha")
+        val marked = items.filterIsInstance<ModelPickerItem.Model>().filter { it.isSelected }
+
+        assertEquals(listOf(provider.id to "alpha"), marked.map { it.provider.id to it.modelId })
+    }
+
     @Test fun selectionDoesNotLeakToSameNamedModelsWhenSelectedProviderIsNotVisible() {
         val elsewhere = other.copy(groupId = null)
         val items = computeModelPickerItems(listOf(selected, elsewhere), listOf(group), emptyMap(), selected.id, "alpha",

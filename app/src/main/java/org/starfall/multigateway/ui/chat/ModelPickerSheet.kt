@@ -158,15 +158,6 @@ private data class ModelPickerTab(
     val ungroupedOnly: Boolean = false
 )
 
-fun matchesModel(selectedModelId: String, itemModelId: String, itemDisplayName: String): Boolean {
-    if (selectedModelId.isBlank()) return false
-    val s = selectedModelId.trim().lowercase()
-    val m = itemModelId.trim().lowercase()
-    val d = itemDisplayName.trim().lowercase()
-    return m == s || d == s || m.endsWith("/$s") || s.endsWith("/$m") ||
-        m.substringAfterLast('/') == s.substringAfterLast('/')
-}
-
 internal val chatModelPickerFilter: (LlmProviderInfo, String, ModelConfiguration) -> Boolean = { _, _, config ->
     config.modelType == org.starfall.multigateway.data.model.ModelType.TEXT_GENERATION
 }
@@ -238,17 +229,16 @@ fun computeModelPickerItems(
         if (models.isEmpty()) null else ProviderNode(provider, models)
     }
 
-    // The selection belongs to one provider. Only fall back to matching by model name alone
-    // when no provider was recorded (or it no longer exists); otherwise models that merely
-    // share a name with the selected one under other providers would also look selected.
-    val selectedProviderKnown = selectedProviderId.isNotBlank() && providers.any { it.id == selectedProviderId }
-
     val forceExpanded = (normalizedQuery.isNotBlank() && expandSearchResults) || providerFilterId != null
     fun modelItems(node: ProviderNode, depth: Int): List<ModelPickerItem.Model> =
         node.models.map { modelId ->
             val config = node.provider.config.modelConfigs[modelId] ?: defaultConfig
-            val isSelected = (!selectedProviderKnown || node.provider.id == selectedProviderId) &&
-                matchesModel(selectedModelId, modelId, config.displayName)
+            // Model IDs are scoped to a provider. Display names are presentation-only and may
+            // legitimately be shared by multiple models, so selection must use both IDs exactly.
+            val isSelected = selectedProviderId.isNotBlank() &&
+                selectedModelId.isNotBlank() &&
+                node.provider.id == selectedProviderId &&
+                modelId == selectedModelId
             ModelPickerItem.Model(node.provider, modelId, config, isSelected, depth)
         }
 

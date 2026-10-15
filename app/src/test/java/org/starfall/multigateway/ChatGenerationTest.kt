@@ -45,6 +45,25 @@ class ChatGenerationTest {
         assertFalse(runner.busy.value)
     }
 
+    @Test fun busyRemainsSetWhileWaitingForTheFirstResponseEvent() = runBlocking {
+        val requestStarted = CompletableDeferred<Unit>()
+        val responseReady = CompletableDeferred<Unit>()
+        val runner = ChatGeneration(CoroutineScope(coroutineContext + Dispatchers.Unconfined), {}, {})
+
+        runner.start(conversation(), "a1", flow {
+            requestStarted.complete(Unit)
+            responseReady.await()
+            emit("first response")
+        })
+
+        requestStarted.await()
+        assertTrue(runner.busy.value)
+
+        responseReady.complete(Unit)
+        runner.stopAndJoin()
+        assertFalse(runner.busy.value)
+    }
+
     @Test fun rapidSendIsRejectedAndCancellationSavesPartialText() = runBlocking {
         var saved: Conversation? = null
         val runner = ChatGeneration(CoroutineScope(coroutineContext + Dispatchers.Unconfined), { saved = it }, {})

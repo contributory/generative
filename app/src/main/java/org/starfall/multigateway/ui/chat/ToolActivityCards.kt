@@ -44,8 +44,6 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -145,45 +143,18 @@ private fun ToolDetailsSheet(
     onDismiss: () -> Unit
 ) {
     var argsTab by remember(activity.id) { mutableStateOf(0) }
-    var showFullResponse by remember(activity.id) { mutableStateOf(false) }
     val context = LocalContext.current
     val revision by ToolFiles.revision.collectAsState()
     val jsonFile = (activity.responseFile ?: activity.files.firstOrNull { it.endsWith(".json", ignoreCase = true) })?.removePrefix("tool-file:")
     val savedJson by produceState<String?>(null, jsonFile, revision, activity.responsePreviewLimit, activity.fullResponse) {
-        if (activity.responsePreviewLimit > 0 && activity.fullResponse != null) {
-            value = null
-        } else {
-            value = withContext(Dispatchers.IO) {
-                runCatching {
-                    jsonFile?.let { ToolFiles(context).resolve(it) }?.reader()?.use { reader ->
-                        val buffer = CharArray(64_001)
-                        var count = 0
-                        while (count < buffer.size) {
-                            val read = reader.read(buffer, count, buffer.size - count)
-                            if (read < 0) break
-                            count += read
-                        }
-                        String(buffer, 0, minOf(count, 64_000)) +
-                            if (count > 64_000) "\n\n[JSON preview truncated]" else ""
-                    }
-                }.getOrNull()
-            }
+        if (activity.responsePreviewLimit > 0 && activity.fullResponse != nullfullResponse) {
+        value = if (activity.fullResponse != null) null else withContext(Dispatchers.IO) {
+            runCatching { jsonFile?.let { ToolFiles(context).resolve(it) }?.readText() }.getOrNull()
         }
     }
-    val responsePreview = remember(activity.response, activity.summary, activity.responsePreviewLimit) {
-        val response = activity.response.ifBlank { activity.summary }
-        val parsed = runCatching { Json.parseToJsonElement(response) as? JsonObject }.getOrNull()
-        val truncated = activity.responsePreviewLimit > 0 &&
-            (parsed?.get("truncated") as? JsonPrimitive)?.content == "true"
-        val preview = (parsed?.get("preview") as? JsonPrimitive)?.content
-        ToolResponsePreview(
-            value = if (truncated) (preview ?: response).take(activity.responsePreviewLimit) else response,
-            truncated = truncated
-        )
-    }
-    val response = if (activity.responsePreviewLimit > 0) responsePreview.value
-        else savedJson ?: activity.response.ifBlank { activity.summary }
-    val fileNames = remember(activity.files, activity.responseFile) {
+    val fullResponseText = remember(activity.fullResponse, savedJson, activity.response, activity.summary) {
+        unescapeToolResponse(activity.fullResponse ?: savedJson ?: activity.response.ifBlank { activity.summary })
+   
         (activity.files + listOfNotNull(activity.responseFile))
             .map { it.removePrefix("tool-file:") }.filter { it.isNotBlank() }.distinct()
     }
@@ -214,20 +185,20 @@ private fun ToolDetailsSheet(
         ) {
             Text(
                 text = activity.name,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(Modifier.height(24.dp))
-            Text(
-                text = "Args",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(Modifier.height(10.dp))
-
-            TabRow(
+                style = MaterialThfullResponseText) { looksLikeJson(fullResponseText) }
+    val downloadResponse = rememberResponseDownload(
+        fileName = "${activity.name.replace(Regex("[^A-Za-z0-9._-]+"), "_")}_response.${if (responseIsJson) "json" else "txt"}",
+        mime = if (responseIsJson) "application/json" else "text/plain"
+    ) {
+        // The file is only built here, when the user taps download: the untruncated response when there is one.
+        ResponseSource(
+            text = fullResponseText,
+            file = if (activity.fullResponse == null) {
+                jsonFile?.let { ToolFiles(context).resolve(it) }?.takeIf { it.exists() }
+            } else null
+        )
+    }
+    val canDownload = fullResponseText.isNotBlank()
                 selectedTabIndex = argsTab,
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                 divider = {}
@@ -253,31 +224,25 @@ private fun ToolDetailsSheet(
 
             Spacer(Modifier.height(26.dp))
             Text(
-                text = if (responsePreview.truncated) "Response (first ${activity.responsePreviewLimit} characters)" else "Response",
+                text = "Response",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(Modifier.height(10.dp))
-            if (activity.responsePreviewLimit == 0 && jsonFile != null) {
+            if (jsonFile != null) {
                 Text(jsonFile, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(6.dp))
             }
-            RawValueBlock(
-                value = response.ifBlank {
+            // Lazy chunked rendering: no character cap, only visible chunks are composed and highlighted.
+            LazyCodeBlock(
+                language = if (responseIsJson) "json" else "text",
+                text = fullResponseText.ifBlank {
                     if (activity.status == "running") "Waiting for tool response…" else "No response"
                 },
+                modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp),
                 onDownload = downloadResponse.takeIf { canDownload }
             )
-            if (responsePreview.truncated && (activity.fullResponse != null || savedJson != null)) {
-                Spacer(Modifier.height(10.dp))
-                OutlinedButton(
-                    onClick = { showFullResponse = true },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Open full response")
-                }
-            }
 
             if (fileNames.isNotEmpty()) {
                 Spacer(Modifier.height(26.dp))
@@ -303,43 +268,45 @@ private fun ToolDetailsSheet(
             onDismissRequest = { showFullResponse = false },
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Full tool response",
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        TextButton(onClick = { showFullResponse = false }) { Text("Close") }
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    LazyCodeBlock(
-                        language = remember(fullResponse) { if (looksLikeJson(fullResponse)) "json" else "text" },
-                        text = fullResponse,
-                        modifier = Modifier.weight(1f),
-                        onDownload = downloadResponse
-                    )
-                }
-            }
-        }
-    }
 }
 
-private data class ToolResponsePreview(val value: String, val truncated: Boolean)
-
-@Composable
-private fun ToolFileRow(name: String, file: File?, onOpen: () -> Unit) {
-    val context = LocalContext.current
-    Surface(
-        modifier = Modifier.fillMaxWidth().clickable(enabled = file != null, onClick = onOpen),
+/**
+ * Tool responses are sometimes wrapped in a JSON string or carry literal escape sequences ("\n", "\t", …),
+ * which would otherwise show up as raw text on one line. Decode a JSON string wrapper first, then fall back
+ * to unescaping the common sequences so newlines render as real line breaks.
+ */
+private fun unescapeToolResponse(raw: String): String {
+    val trimmed = raw.trim()
+    if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
+        val decoded = runCatching {
+            (Json.parseToJsonElement(trimmed) as? JsonPrimitive)?.takeIf { it.isString }?.content
+        }.getOrNull()
+        if (decoded != null) return decoded
+    }
+    if (!raw.contains('\\')) return raw
+    val out = StringBuilder(raw.length)
+    var i = 0
+    while (i < raw.length) {
+        val c = raw[i]
+        if (c == '\\' && i + 1 < raw.length) {
+            when (raw[i + 1]) {
+                'n' -> { out.append('\n'); i += 2 }
+                't' -> { out.append('\t'); i += 2 }
+                'r' -> { out.append('\r'); i += 2 }
+                'b' -> { out.append('\b'); i += 2 }
+                'f' -> { out.append('\u000C'); i += 2 }
+                '"' -> { out.append('"'); i += 2 }
+                '/' -> { out.append('/'); i += 2 }
+                '\\' -> { out.append('\\'); i += 2 }
+                else -> { out.append(c); i++ }
+            }
+        } else {
+            out.append(c)
+            i++
+        }
+    }
+    return out.toString()
+}ick = onOpen),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
