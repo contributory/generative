@@ -384,9 +384,11 @@ class ToolChat(
                         } else {
                             summarizeGenericToolResult(result)
                         }
+                        // The model may only get a bounded view of the result, but the UI keeps the complete response.
+                        val completeResponse = result.toString()
                         result = summary.content
                         if (tool.serverId != null && !contentApi) {
-                            val availableFiles = (summary.files.filterNot { it == summary.responseFile } + contentApiMedia?.files.orEmpty()).distinct()
+                            val availableFiles = (summary.files + contentApiMedia?.files.orEmpty()).distinct()
                             result = fileDeliveryResult(result, availableFiles, settings().sendFileEnabled)
                         }
                         send(
@@ -406,10 +408,8 @@ class ToolChat(
                                     },
                                     inlineMedia = contentApiMedia?.files?.isNotEmpty() == true ||
                                         tool.serverId == null && name == SEND_FILE_TOOL_NAME,
-                                    responseFile = summary.responseFile,
                                     responsePreviewLimit = if (contentApi || mediaTool) 0 else 6_000,
-                                    fullResponse = summary.fullResponse,
-                                    response = result.toString()
+                                    response = completeResponse
                                 )
                             )
                         )

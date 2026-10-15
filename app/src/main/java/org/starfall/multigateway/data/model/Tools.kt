@@ -56,11 +56,8 @@ data class ToolActivity(
     val contentOffset: Int = 0,
     val reasoningOffset: Int? = null,
     val inlineMedia: Boolean = false,
-    val responseFile: String? = null,
-    /** Preview limit for generic tool responses; zero keeps the existing details behavior. */
-    val responsePreviewLimit: Int = 0,
-    /** Full generic response shown in a dedicated viewer when the inline response is truncated. */
-    val fullResponse: String? = null
+    /** Non-zero marks a generic MCP tool response (not media / Content-API). It does not limit [response]. */
+    val responsePreviewLimit: Int = 0
 )
 
 @Serializable

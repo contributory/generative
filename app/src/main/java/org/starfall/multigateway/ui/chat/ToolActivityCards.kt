@@ -145,34 +145,27 @@ private fun ToolDetailsSheet(
     var argsTab by remember(activity.id) { mutableStateOf(0) }
     val context = LocalContext.current
     val revision by ToolFiles.revision.collectAsState()
-    val jsonFile = (activity.responseFile ?: activity.files.firstOrNull { it.endsWith(".json", ignoreCase = true) })?.removePrefix("tool-file:")
-    val savedJson by produceState<String?>(null, jsonFile, revision, activity.responsePreviewLimit, activity.fullResponse) {
-        if (activity.responsePreviewLimit > 0 && activity.fullResponse != nullfullResponse) {
-        value = if (activity.fullResponse != null) null else withContext(Dispatchers.IO) {
-            runCatching { jsonFile?.let { ToolFiles(context).resolve(it) }?.readText() }.getOrNull()
-        }
+    val responseText = remember(activity.response, activity.summary) {
+        unescapeToolResponse(activity.response.ifBlank { activity.summary })
     }
-    val fullResponseText = remember(activity.fullResponse, savedJson, activity.response, activity.summary) {
-        unescapeToolResponse(activity.fullResponse ?: savedJson ?: activity.response.ifBlank { activity.summary })
-   
-        (activity.files + listOfNotNull(activity.responseFile))
-            .map { it.removePrefix("tool-file:") }.filter { it.isNotBlank() }.distinct()
+    val fileNames = remember(activity.files) {
+        activity.files.map { it.removePrefix("tool-file:") }.filter { it.isNotBlank() }.distinct()
     }
     var viewingFile by remember(activity.id) { mutableStateOf<File?>(null) }
-    val responseIsJson = remember(response) { looksLikeJson(response) }
+    val responseIsJson = remember(responseText) { looksLikeJson(responseText) }
     val downloadResponse = rememberResponseDownload(
-        fileName = "${activity.name.replace(Regex("[^A-Za-z0-9._-]+"), "_")}_response.${if (responseIsJson) "json" else "txt"}",
+        fileName = "${
+            activity.name.replace(
+                Regex("[^A-Za-z0-9._-]+"),
+                "_"
+            )
+        }_response.${if (responseIsJson) "json" else "txt"}",
         mime = if (responseIsJson) "application/json" else "text/plain"
     ) {
-        // The file is only built here, when the user taps download: the untruncated response when there is one.
-        ResponseSource(
-            text = activity.fullResponse ?: response,
-            file = if (activity.fullResponse == null && activity.responsePreviewLimit == 0) {
-                jsonFile?.let { ToolFiles(context).resolve(it) }?.takeIf { it.exists() }
-            } else null
-        )
+        // Build the export only after the user taps download; tool responses are never stored as text files.
+        ResponseSource(responseText)
     }
-    val canDownload = response.isNotBlank() || activity.fullResponse != null
+    val canDownload = responseText.isNotBlank()
 
     AppBottomSheet(
         onDismissRequest = onDismiss
@@ -185,20 +178,20 @@ private fun ToolDetailsSheet(
         ) {
             Text(
                 text = activity.name,
-                style = MaterialThfullResponseText) { looksLikeJson(fullResponseText) }
-    val downloadResponse = rememberResponseDownload(
-        fileName = "${activity.name.replace(Regex("[^A-Za-z0-9._-]+"), "_")}_response.${if (responseIsJson) "json" else "txt"}",
-        mime = if (responseIsJson) "application/json" else "text/plain"
-    ) {
-        // The file is only built here, when the user taps download: the untruncated response when there is one.
-        ResponseSource(
-            text = fullResponseText,
-            file = if (activity.fullResponse == null) {
-                jsonFile?.let { ToolFiles(context).resolve(it) }?.takeIf { it.exists() }
-            } else null
-        )
-    }
-    val canDownload = fullResponseText.isNotBlank()
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(Modifier.height(24.dp))
+            Text(
+                text = "Args",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(10.dp))
+
+            TabRow(
                 selectedTabIndex = argsTab,
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                 divider = {}
@@ -229,15 +222,10 @@ private fun ToolDetailsSheet(
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(Modifier.height(10.dp))
-            if (jsonFile != null) {
-                Text(jsonFile, style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(6.dp))
-            }
             // Lazy chunked rendering: no character cap, only visible chunks are composed and highlighted.
             LazyCodeBlock(
                 language = if (responseIsJson) "json" else "text",
-                text = fullResponseText.ifBlank {
+                text = responseText.ifBlank {
                     if (activity.status == "running") "Waiting for tool response…" else "No response"
                 },
                 modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp),
@@ -262,13 +250,8 @@ private fun ToolDetailsSheet(
         }
     }
     viewingFile?.let { file -> MediaViewer(ToolFiles(context), file) { viewingFile = null } }
-    val fullResponse = activity.fullResponse ?: savedJson
-    if (showFullResponse && fullResponse != null) {
-        Dialog(
-            onDismissRequest = { showFullResponse = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
 }
+
 
 /**
  * Tool responses are sometimes wrapped in a JSON string or carry literal escape sequences ("\n", "\t", …),
@@ -290,15 +273,41 @@ private fun unescapeToolResponse(raw: String): String {
         val c = raw[i]
         if (c == '\\' && i + 1 < raw.length) {
             when (raw[i + 1]) {
-                'n' -> { out.append('\n'); i += 2 }
-                't' -> { out.append('\t'); i += 2 }
-                'r' -> { out.append('\r'); i += 2 }
-                'b' -> { out.append('\b'); i += 2 }
-                'f' -> { out.append('\u000C'); i += 2 }
-                '"' -> { out.append('"'); i += 2 }
-                '/' -> { out.append('/'); i += 2 }
-                '\\' -> { out.append('\\'); i += 2 }
-                else -> { out.append(c); i++ }
+                'n' -> {
+                    out.append('\n'); i += 2
+                }
+
+                't' -> {
+                    out.append('\t'); i += 2
+                }
+
+                'r' -> {
+                    out.append('\r'); i += 2
+                }
+
+                'b' -> {
+                    out.append('\b'); i += 2
+                }
+
+                'f' -> {
+                    out.append('\u000C'); i += 2
+                }
+
+                '"' -> {
+                    out.append('"'); i += 2
+                }
+
+                '/' -> {
+                    out.append('/'); i += 2
+                }
+
+                '\\' -> {
+                    out.append('\\'); i += 2
+                }
+
+                else -> {
+                    out.append(c); i++
+                }
             }
         } else {
             out.append(c)
@@ -306,7 +315,13 @@ private fun unescapeToolResponse(raw: String): String {
         }
     }
     return out.toString()
-}ick = onOpen),
+}
+
+@Composable
+private fun ToolFileRow(name: String, file: File?, onOpen: () -> Unit) {
+    val context = LocalContext.current
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(enabled = file != null, onClick = onOpen),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
@@ -317,8 +332,10 @@ private fun unescapeToolResponse(raw: String): String {
         ) {
             Icon(Icons.Outlined.InsertDriveFile, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Column(Modifier.weight(1f)) {
-                Text(name, style = MaterialTheme.typography.bodyMedium, maxLines = 2,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                Text(
+                    name, style = MaterialTheme.typography.bodyMedium, maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
                 Text(
                     file?.let { android.text.format.Formatter.formatFileSize(context, it.length()) } ?: "File deleted",
                     style = MaterialTheme.typography.labelSmall,
@@ -395,7 +412,7 @@ private fun RawValueBlock(value: String, onDownload: (() -> Unit)? = null) {
     )
 }
 
-private class ResponseSource(val text: String?, val file: File?)
+private class ResponseSource(val text: String)
 
 /** Returns a click handler that opens the system "save as" picker; nothing is written until a location is chosen. */
 @Composable
@@ -411,9 +428,7 @@ private fun rememberResponseDownload(fileName: String, mime: String, source: () 
             val saved = withContext(Dispatchers.IO) {
                 runCatching {
                     context.contentResolver.openOutputStream(uri, "wt")!!.use { out ->
-                        val file = data.file
-                        if (file != null) file.inputStream().use { it.copyTo(out) }
-                        else out.bufferedWriter(Charsets.UTF_8).use { it.write(data.text.orEmpty()) }
+                        out.bufferedWriter(Charsets.UTF_8).use { it.write(data.text) }
                     }
                 }.isSuccess
             }

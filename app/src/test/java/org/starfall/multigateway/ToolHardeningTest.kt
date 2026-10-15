@@ -47,17 +47,17 @@ class ToolHardeningTest {
         val media = ToolBudget(); repeat(2) { media.consume("generate_image") }; rejected { media.consume("generate_image") }
         media.consume("generate_video"); rejected { media.consume("generate_video") }
     }
-    @Test fun summaryRemainsJsonAndNoResponseFileIsSaved() = runBlocking {
+    @Test fun summaryKeepsLargeResponseAndNoResponseFileIsSaved() = runBlocking {
         val root=Files.createTempDirectory("summary").toFile()
         try {
             val files=ToolFiles(root); val original=obj("text" to str("quoted \" ".repeat(5000)))
             val summary=summarizeToolResult(original,files)
-            assertTrue(summary.content["truncated"]!!.jsonPrimitive.boolean)
+            assertFalse(summary.content.containsKey("truncated"))
+            assertEquals(original, summary.content)
             assertEquals(summary.content,Json.parseToJsonElement(summary.content.toString()))
             assertTrue(summary.files.isEmpty())
-            assertEquals("",summary.responseFile)
             assertTrue(files.list().isEmpty())
-            assertTrue(summary.preview.length<500)
+            assertEquals("Tool completed.", summary.preview)
         } finally { root.deleteRecursively() }
     }
     @Test fun dataUrlsSmallAndLargeBecomeFiles() = runBlocking {

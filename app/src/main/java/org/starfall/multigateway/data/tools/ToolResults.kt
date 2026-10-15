@@ -15,15 +15,12 @@ internal class ToolBudget {
         if (systemTool == "generate_video") videos++
     }
 }
-private const val INLINE_TOOL_RESULT_LIMIT = 10_000
 private const val TOOL_RESULT_FILE_LIMIT = 10_000
 private const val TOOL_RESULT_PREVIEW_LIMIT = 6_000
 internal data class ToolSummary(
     val content: JsonObject,
     val preview: String,
-    val files: List<String>,
-    val responseFile: String,
-    val fullResponse: String? = null
+    val files: List<String>
 )
 
 /**
@@ -32,21 +29,14 @@ internal data class ToolSummary(
  */
 @Suppress("UNUSED_PARAMETER")
 internal fun summarizeToolResult(result: JsonObject, files: ToolFiles): ToolSummary {
-    val full = result.toString()
-    val media = Regex("tool-file:([a-zA-Z0-9._-]+)").findAll(full).map { it.groupValues[1] }.distinct().take(32).toList()
-    val truncated = full.length >= INLINE_TOOL_RESULT_LIMIT
+    val media = Regex("tool-file:([a-zA-Z0-9._-]+)").findAll(result.toString()).map { it.groupValues[1] }.distinct().take(32).toList()
     val isError = (result["isError"] as? JsonPrimitive)?.booleanOrNull == true
-    val content = if (!truncated) result else obj(
-        "truncated" to JsonPrimitive(true), "characters" to JsonPrimitive(full.length),
-        "preview" to str(full.take(2000)),
-        "files" to JsonArray(media.map { str("tool-file:$it") }),
-        "isError" to (result["isError"] ?: JsonPrimitive(false)))
     val preview = when {
         isError -> "Tool reported an error."
         media.isNotEmpty() -> "Saved ${media.size} file(s). Open Storage for details."
         else -> "Tool completed."
     }
-    return ToolSummary(content, preview, media, "")
+    return ToolSummary(result, preview, media)
 }
 
 /** Compact response handling for ordinary MCP tools, separate from media and Content-API. */
@@ -62,16 +52,10 @@ internal suspend fun summarizeGenericToolResult(result: JsonObject): ToolSummary
         "isError" to (completeResult["isError"] ?: JsonPrimitive(false)))
     val preview = when {
         (completeResult["isError"] as? JsonPrimitive)?.booleanOrNull == true && truncated ->
-            "Tool reported an error. Open the full result for details."
-        truncated -> "Tool completed. Open the full result for details."
+            "Tool reported an error. Open details to view the result."
+        truncated -> "Tool completed. Open details to view the result."
         media.isNotEmpty() -> "Tool completed with ${media.size} file(s). Open details to view."
         else -> "Tool completed."
     }
-    return ToolSummary(
-        content = content,
-        preview = preview,
-        files = media,
-        responseFile = "",
-        fullResponse = full.takeIf { truncated }
-    )
+    return ToolSummary(content = content, preview = preview, files = media)
 }

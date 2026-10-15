@@ -371,7 +371,6 @@ private fun suppressToolResponseEchoes(text: String, activities: List<ToolActivi
         .filter { it.responsePreviewLimit > 0 }
         .flatMap { activity ->
             sequence {
-                activity.fullResponse?.let { yield(it) }
                 val response = runCatching { Json.parseToJsonElement(activity.response) }.getOrNull()
                 if (response != null) {
                     yieldAll(longJsonStrings(response))
