@@ -143,24 +143,40 @@ private fun ToolDetailsSheet(
     val context = LocalContext.current
     val revision by ToolFiles.revision.collectAsState()
     val jsonFile = (activity.responseFile ?: activity.files.firstOrNull { it.endsWith(".json", ignoreCase = true) })?.removePrefix("tool-file:")
-    val savedJson by produceState<String?>(null, jsonFile, revision) {
-        value = withContext(Dispatchers.IO) {
-            runCatching {
-                jsonFile?.let { ToolFiles(context).resolve(it) }?.reader()?.use { reader ->
-                    val buffer = CharArray(64_001)
-                    var count = 0
-                    while (count < buffer.size) {
-                        val read = reader.read(buffer, count, buffer.size - count)
-                        if (read < 0) break
-                        count += read
+    val savedJson by produceState<String?>(null, jsonFile, revision, activity.responsePreviewLimit) {
+        if (activity.responsePreviewLimit > 0) {
+            value = null
+        } else {
+            value = withContext(Dispatchers.IO) {
+                runCatching {
+                    jsonFile?.let { ToolFiles(context).resolve(it) }?.reader()?.use { reader ->
+                        val buffer = CharArray(64_001)
+                        var count = 0
+                        while (count < buffer.size) {
+                            val read = reader.read(buffer, count, buffer.size - count)
+                            if (read < 0) break
+                            count += read
+                        }
+                        String(buffer, 0, minOf(count, 64_000)) +
+                            if (count > 64_000) "\n\n[JSON preview truncated]" else ""
                     }
-                    String(buffer, 0, minOf(count, 64_000)) +
-                        if (count > 64_000) "\n\n[JSON preview truncated]" else ""
-                }
-            }.getOrNull()
+                }.getOrNull()
+            }
         }
     }
-    val response = savedJson ?: activity.response.ifBlank { activity.summary }
+    val responsePreview = remember(activity.response, activity.summary, activity.responsePreviewLimit) {
+        val response = activity.response.ifBlank { activity.summary }
+        val parsed = runCatching { Json.parseToJsonElement(response) as? JsonObject }.getOrNull()
+        val truncated = activity.responsePreviewLimit > 0 &&
+            (parsed?.get("truncated") as? JsonPrimitive)?.content == "true"
+        val preview = (parsed?.get("preview") as? JsonPrimitive)?.content
+        ToolResponsePreview(
+            value = if (truncated) (preview ?: response).take(activity.responsePreviewLimit) else response,
+            truncated = truncated
+        )
+    }
+    val response = if (activity.responsePreviewLimit > 0) responsePreview.value
+        else savedJson ?: activity.response.ifBlank { activity.summary }
     val fileNames = remember(activity.files, activity.responseFile) {
         (activity.files + listOfNotNull(activity.responseFile))
             .map { it.removePrefix("tool-file:") }.filter { it.isNotBlank() }.distinct()
@@ -217,12 +233,12 @@ private fun ToolDetailsSheet(
 
             Spacer(Modifier.height(26.dp))
             Text(
-                text = "Response",
+                text = if (responsePreview.truncated) "Response (first ${activity.responsePreviewLimit} characters)" else "Response",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(Modifier.height(10.dp))
-            if (jsonFile != null) {
+            if (activity.responsePreviewLimit == 0 && jsonFile != null) {
                 Text(jsonFile, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(6.dp))
@@ -252,6 +268,8 @@ private fun ToolDetailsSheet(
     }
     viewingFile?.let { file -> MediaViewer(ToolFiles(context), file) { viewingFile = null } }
 }
+
+private data class ToolResponsePreview(val value: String, val truncated: Boolean)
 
 @Composable
 private fun ToolFileRow(name: String, file: File?, onOpen: () -> Unit) {

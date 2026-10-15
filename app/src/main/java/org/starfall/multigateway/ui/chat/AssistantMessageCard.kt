@@ -442,7 +442,8 @@ private fun CompletedAssistantContent(
                     }
 
                     val visibleProcessingItems = block.items.filterNot { item ->
-                        item is ProcessingDropdownItem.Tool && item.activity.name in listOf("generate_image", "generate_video") &&
+                        item is ProcessingDropdownItem.Tool && item.activity.responsePreviewLimit == 0 &&
+                            item.activity.name in listOf("generate_image", "generate_video") &&
                             item.activity.status == "success" && item.activity.files.any {
                                 mediaMimeType(it.removePrefix("tool-file:")).startsWith(
                                     if (item.activity.name == "generate_video") "video/" else "image/"
@@ -460,13 +461,16 @@ private fun CompletedAssistantContent(
                             val activity = item.activity
                             if (activity.name == "send_file" && activity.inlineMedia) {
                                 activity.files
-                            } else if (activity.inlineMedia || activity.name in listOf("generate_image", "generate_video")) {
+                            } else if (activity.inlineMedia || activity.responsePreviewLimit == 0 &&
+                                activity.name in listOf("generate_image", "generate_video")) {
                                 activity.files.filter { file ->
                                     val mime = mediaMimeType(file.removePrefix("tool-file:"))
                                     mime.startsWith("image/") || mime.startsWith("video/") || mime.startsWith("audio/")
                                 }
-                            } else activity.files.filterNot { it.endsWith(".json", ignoreCase = true) }
-                        }.map { it.removePrefix("tool-file:") }
+                            } else if (activity.responsePreviewLimit > 0) emptyList()
+                            else activity.files.filterNot { it.endsWith(".json", ignoreCase = true) }
+                        }
+                        .map { it.removePrefix("tool-file:") }
                         .filter { shownFiles.add(it) }
                     if (files.isNotEmpty()) {
                         val columns = when {

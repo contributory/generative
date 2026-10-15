@@ -56,7 +56,9 @@ data class ToolActivity(
     val contentOffset: Int = 0,
     val reasoningOffset: Int? = null,
     val inlineMedia: Boolean = false,
-    val responseFile: String? = null
+    val responseFile: String? = null,
+    /** Preview limit for generic tool responses; zero keeps the existing details behavior. */
+    val responsePreviewLimit: Int = 0
 )
 
 @Serializable

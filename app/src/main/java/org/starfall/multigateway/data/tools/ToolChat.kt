@@ -319,6 +319,11 @@ class ToolChat(
                         } ?: name,
                         arguments = rawArguments
                     )
+                    val contentApi = tool?.serverId?.let { serverId ->
+                        servers.find { it.id == serverId }?.isContentApiPreset()
+                    } == true
+                    val mediaTool = tool != null && tool.serverId == null && tool.remoteMachineId == null &&
+                        name in setOf("generate_image", "generate_video")
                     send(GenerationEvent.Tool(activity))
 
                     var result: JsonObject
@@ -340,7 +345,7 @@ class ToolChat(
                                     globalMcpToolEnabled(settings(), tool.serverId, tool.originalName)
                             ) { "MCP tool disabled" }
                             (sessions[tool.serverId] ?: error("MCP session unavailable"))
-                                .call(tool.originalName, args)
+                                .call(tool.originalName, args, spillLongText = !contentApi)
                         } else if (name == SEND_FILE_TOOL_NAME) {
                             check(settings().sendFileEnabled) { "Send File tool disabled" }
                             fileSender.execute(args)
@@ -372,10 +377,13 @@ class ToolChat(
                         }
 
                         val isError = (result["isError"] as? JsonPrimitive)?.booleanOrNull == true
-                        val contentApi = servers.find { it.id == tool.serverId }?.isContentApiPreset() == true
                         val contentApiMedia = if (contentApi) resolveContentApiMedia(result, http) else null
                         if (contentApiMedia != null) result = contentApiMedia.content
-                        val summary = summarizeToolResult(result, http.requireFiles())
+                        val summary = if (contentApi || mediaTool) {
+                            summarizeToolResult(result, http.requireFiles())
+                        } else {
+                            summarizeGenericToolResult(result, http.requireFiles())
+                        }
                         result = summary.content
                         if (tool.serverId != null && !contentApi) {
                             val availableFiles = (summary.files.filterNot { it == summary.responseFile } + contentApiMedia?.files.orEmpty()).distinct()
@@ -399,6 +407,7 @@ class ToolChat(
                                     inlineMedia = contentApiMedia?.files?.isNotEmpty() == true ||
                                         tool.serverId == null && name == SEND_FILE_TOOL_NAME,
                                     responseFile = summary.responseFile,
+                                    responsePreviewLimit = if (contentApi || mediaTool) 0 else 1_000,
                                     response = result.toString()
                                 )
                             )
