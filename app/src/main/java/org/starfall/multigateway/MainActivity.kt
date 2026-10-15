@@ -94,6 +94,12 @@ class MainActivity : ComponentActivity() {
             val appPrefs by settingsViewModel.preferences.collectAsStateWithLifecycle()
             val isGenerating by viewModel.isGenerating.collectAsStateWithLifecycle()
             val isWaitingForTool by viewModel.isWaitingForTool.collectAsStateWithLifecycle()
+            // Read state during composition (not inside SideEffect) so changes trigger a recompose.
+            val keepScreenOn = isGenerating && when (appPrefs.screenWakelockMode) {
+                org.starfall.multigateway.data.local.preferences.ScreenWakelockMode.NONE -> false
+                org.starfall.multigateway.data.local.preferences.ScreenWakelockMode.ALL -> true
+                org.starfall.multigateway.data.local.preferences.ScreenWakelockMode.EXCEPT_TOOL_CALLS -> !isWaitingForTool
+            }
             // Strings are resolved when the Activity is created, so a new language needs a fresh one.
             LaunchedEffect(appPrefs.useSystemLanguage, appPrefs.selectedLanguage) {
                 if (AppLocale.overrideTag(this@MainActivity) != createdLocaleTag) recreate()
@@ -116,11 +122,6 @@ class MainActivity : ComponentActivity() {
                     WindowCompat.getInsetsController(window, window.decorView).apply {
                         isAppearanceLightStatusBars = !darkBars
                         isAppearanceLightNavigationBars = !darkBars
-                    }
-                    val keepScreenOn = isGenerating && when (appPrefs.screenWakelockMode) {
-                        org.starfall.multigateway.data.local.preferences.ScreenWakelockMode.NONE -> false
-                        org.starfall.multigateway.data.local.preferences.ScreenWakelockMode.ALL -> true
-                        org.starfall.multigateway.data.local.preferences.ScreenWakelockMode.EXCEPT_TOOL_CALLS -> !isWaitingForTool
                     }
                     if (keepScreenOn) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                     else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

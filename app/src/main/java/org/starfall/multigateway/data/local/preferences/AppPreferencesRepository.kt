@@ -41,7 +41,7 @@ enum class ScreenWakelockMode(val value: String) {
     NONE("none"), ALL("all"), EXCEPT_TOOL_CALLS("except_tool_calls");
 
     companion object {
-        fun fromValue(value: String?) = entries.firstOrNull { it.value == value } ?: NONE
+        fun fromValue(value: String?) = entries.firstOrNull { it.value == value } ?: EXCEPT_TOOL_CALLS
     }
 }
 
@@ -97,7 +97,7 @@ data class AppPreferences(
     val messageFontFamily: MessageFontFamily = MessageFontFamily.DEFAULT,
     val toolRoundLimitEnabled: Boolean = false,
     val toolRoundLimit: Int = DEFAULT_TOOL_ROUND_LIMIT,
-    val screenWakelockMode: ScreenWakelockMode = ScreenWakelockMode.NONE
+    val screenWakelockMode: ScreenWakelockMode = ScreenWakelockMode.EXCEPT_TOOL_CALLS
 ) {
     /** Size in sp used for chat text. sp already follows the system font scale. */
     val effectiveMessageFontSize: Int get() = if (messageFontSizeCustom) messageFontSize else DEFAULT_MESSAGE_FONT_SIZE

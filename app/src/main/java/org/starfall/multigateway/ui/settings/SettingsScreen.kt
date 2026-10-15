@@ -469,9 +469,9 @@ fun PreferencesSettingsView(
         item {
             var wakelockExpanded by remember { mutableStateOf(false) }
             val wakelockLabels = mapOf(
-                ScreenWakelockMode.NONE to stringResource(R.string.screen_wakelock_none),
+                ScreenWakelockMode.EXCEPT_TOOL_CALLS to stringResource(R.string.screen_wakelock_except_tool_calls),
                 ScreenWakelockMode.ALL to stringResource(R.string.screen_wakelock_all),
-                ScreenWakelockMode.EXCEPT_TOOL_CALLS to stringResource(R.string.screen_wakelock_except_tool_calls)
+                ScreenWakelockMode.NONE to stringResource(R.string.screen_wakelock_none)
             )
             SettingsSection(stringResource(R.string.screen_wakelock_title)) {
                 Text(stringResource(R.string.screen_wakelock_description),

@@ -624,8 +624,8 @@
     <string name="settings_file_size_mb">%.1f MB</string>
     <string name="settings_update_error">Unable to check GitHub releases</string>
     <string name="screen_wakelock_title">Wakelock screen during generation</string>
-    <string name="screen_wakelock_description">Keep the screen on while generating a response.</string>
-    <string name="screen_wakelock_none">None</string>
-    <string name="screen_wakelock_all">All</string>
-    <string name="screen_wakelock_except_tool_calls">Except ToolCalls</string>
+    <string name="screen_wakelock_description">Auto keeps the screen on while waiting for the AI response or while it writes or thinks, but not during tool calls. On keeps it on for the whole generation. Off never keeps it on.</string>
+    <string name="screen_wakelock_none">Off</string>
+    <string name="screen_wakelock_all">On</string>
+    <string name="screen_wakelock_except_tool_calls">Auto</string>
 </resources>
