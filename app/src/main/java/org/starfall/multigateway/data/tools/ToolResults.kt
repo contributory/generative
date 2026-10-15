@@ -17,7 +17,7 @@ internal class ToolBudget {
 }
 private const val INLINE_TOOL_RESULT_LIMIT = 10_000
 private const val TOOL_RESULT_FILE_LIMIT = 10_000
-private const val TOOL_RESULT_OUTSIDE_PREVIEW_LIMIT = 6_000
+private const val TOOL_RESULT_PREVIEW_LIMIT = 6_000
 internal data class ToolSummary(
     val content: JsonObject,
     val preview: String,
@@ -56,7 +56,7 @@ internal suspend fun summarizeGenericToolResult(result: JsonObject): ToolSummary
     val truncated = full.length > TOOL_RESULT_FILE_LIMIT
     val content = if (!truncated) completeResult else obj(
         "truncated" to JsonPrimitive(true), "characters" to JsonPrimitive(full.length),
-        "preview" to str(full.take(TOOL_RESULT_OUTSIDE_PREVIEW_LIMIT)),
+        "preview" to str(full.take(TOOL_RESULT_PREVIEW_LIMIT)),
         "files" to JsonArray(media.map { str("tool-file:$it") }),
         "isError" to (completeResult["isError"] ?: JsonPrimitive(false)))
     val preview = when {

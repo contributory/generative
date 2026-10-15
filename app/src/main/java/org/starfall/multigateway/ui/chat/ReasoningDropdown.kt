@@ -120,10 +120,6 @@ internal fun ProcessingDropdown(
 
     val onlyThinking = visibleItems.all { it is ProcessingDropdownItem.Thinking }
     val onlyTools = visibleItems.all { it is ProcessingDropdownItem.Tool }
-    val outsidePreviews = remember(visibleItems) {
-        visibleItems.filterIsInstance<ProcessingDropdownItem.Tool>()
-            .mapNotNull { toolActivityOutsidePreview(it.activity) }
-    }
     val processingLabel = when {
         onlyThinking && durationMillis != null ->
             stringResource(R.string.reasoning_completed_in, formatProcessingDuration(durationMillis))
@@ -160,19 +156,6 @@ internal fun ProcessingDropdown(
                 tint = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.size(20.dp)
             )
-        }
-
-        if (!expanded) {
-            outsidePreviews.forEach { preview ->
-                Text(
-                    text = preview,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 12.dp, end = 8.dp, bottom = 8.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
 
         AnimatedVisibility(

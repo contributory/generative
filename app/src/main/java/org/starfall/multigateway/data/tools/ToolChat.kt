@@ -407,7 +407,7 @@ class ToolChat(
                                     inlineMedia = contentApiMedia?.files?.isNotEmpty() == true ||
                                         tool.serverId == null && name == SEND_FILE_TOOL_NAME,
                                     responseFile = summary.responseFile,
-                                    responsePreviewLimit = if (contentApi || mediaTool) 0 else 1_000,
+                                    responsePreviewLimit = if (contentApi || mediaTool) 0 else 6_000,
                                     fullResponse = summary.fullResponse,
                                     response = result.toString()
                                 )

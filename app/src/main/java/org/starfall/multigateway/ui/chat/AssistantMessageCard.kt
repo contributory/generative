@@ -38,6 +38,11 @@ import org.starfall.multigateway.data.model.countedVersionIndices
 import org.starfall.multigateway.data.tools.ToolFiles
 import org.starfall.multigateway.ui.tools.MediaFileCard
 import org.starfall.multigateway.ui.components.mediaMimeType
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 @Composable
 fun AssistantMessageCard(
@@ -360,6 +365,50 @@ private fun buildProcessingTimeline(version: MessageVersion): List<ProcessingTim
     return timeline
 }
 
+private fun suppressToolResponseEchoes(text: String, activities: List<ToolActivity>): String {
+    if (text.isEmpty()) return text
+    val candidates = activities.asSequence()
+        .filter { it.responsePreviewLimit > 0 }
+        .flatMap { activity ->
+            sequence {
+                activity.fullResponse?.let { yield(it) }
+                val response = runCatching { Json.parseToJsonElement(activity.response) }.getOrNull()
+                if (response != null) {
+                    yieldAll(longJsonStrings(response))
+                } else {
+                    yield(activity.response)
+                }
+            }
+        }
+        .filter { it.length >= 256 }
+        .distinct()
+        .sortedByDescending(String::length)
+        .take(32)
+        .toList()
+    if (candidates.isEmpty()) return text
+
+    val redacted = text.toCharArray()
+    for (candidate in candidates) {
+        var start = text.indexOf(candidate)
+        while (start >= 0) {
+            val end = start + candidate.length
+            for (index in start until end) {
+                if (redacted[index] != '\n' && redacted[index] != '\r') redacted[index] = ' '
+            }
+            start = text.indexOf(candidate, end)
+        }
+    }
+    return String(redacted)
+}
+
+private fun longJsonStrings(element: JsonElement): Sequence<String> = sequence {
+    when (element) {
+        is JsonObject -> element.values.forEach { yieldAll(longJsonStrings(it)) }
+        is JsonArray -> element.forEach { yieldAll(longJsonStrings(it)) }
+        is JsonPrimitive -> if (element.isString && element.content.length >= 256) yield(element.content)
+    }
+}
+
 @Composable
 private fun StreamingProcessingPreview(version: MessageVersion) {
     val timeline = remember(version.reasoningContent, version.toolActivity, version.content.length) {
@@ -419,7 +468,9 @@ private fun CompletedAssistantContent(
     val blocks = remember(version.content, version.reasoningContent, version.toolActivity) {
         buildProcessingBlocks(version)
     }
-    val content = version.content
+    val content = remember(version.content, version.toolActivity) {
+        suppressToolResponseEchoes(version.content, version.toolActivity)
+    }
     val shownFiles = mutableSetOf<String>()
 
     SelectionContainer {

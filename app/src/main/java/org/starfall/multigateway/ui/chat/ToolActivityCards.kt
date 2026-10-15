@@ -58,19 +58,6 @@ import kotlinx.coroutines.withContext
 import kotlin.math.sin
 
 private val toolJson = Json { prettyPrint = true }
-private const val TOOL_ACTIVITY_OUTSIDE_PREVIEW_LIMIT = 6_000
-
-internal fun toolActivityOutsidePreview(activity: ToolActivity): String? {
-    if (activity.responsePreviewLimit <= 0) return null
-    return runCatching {
-        val response = Json.parseToJsonElement(activity.response) as? JsonObject
-        val truncated = (response?.get("truncated") as? JsonPrimitive)?.content == "true"
-        if (truncated) {
-            (response?.get("preview") as? JsonPrimitive)?.content
-                ?.take(TOOL_ACTIVITY_OUTSIDE_PREVIEW_LIMIT)
-        } else null
-    }.getOrNull()
-}
 
 @Composable
 fun ToolActivityCards(activities: List<ToolActivity>) {
@@ -135,31 +122,16 @@ private fun ToolActivityLabel(
             withStyle(SpanStyle(color = color.copy(alpha = alpha))) { append(character) }
         }
     }
-    val outsidePreview = remember(activity.response, activity.responsePreviewLimit) {
-        toolActivityOutsidePreview(activity)
-    }
-
-    Column(
+    Text(
+        text = label,
+        style = if (running) MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp) else MaterialTheme.typography.bodyLarge,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(start = 16.dp, end = 12.dp, top = 7.dp, bottom = 7.dp)
-    ) {
-        Text(
-            text = label,
-            style = if (running) MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp) else MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        if (!outsidePreview.isNullOrBlank()) {
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = outsidePreview,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
+            .padding(start = 16.dp, top = 7.dp, bottom = 7.dp)
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
