@@ -90,6 +90,7 @@ fun ChatScreen(
     onOpenDrawer: () -> Unit,
     onOpenSettings: () -> Unit,
     onRegenerate: (String) -> Unit,
+    onRetryFromError: (String) -> Unit = {},
     onEditMessage: (messageId: String, newContent: String, files: List<String>) -> Boolean,
     onDeleteMessage: (messageId: String) -> Unit,
     onDeleteMessageVersion: (messageId: String) -> Unit,
@@ -506,6 +507,9 @@ fun ChatScreen(
                                     else onRegenerate(msg.id)
                                 }
                             },
+                            onRetryError = if (isLast) {
+                                { whenIdle { onRetryFromError(msg.id) } }
+                            } else null,
                             onEdit = {
                                 editDraft = ChatInputEditDraft(
                                     messageId = msg.id,

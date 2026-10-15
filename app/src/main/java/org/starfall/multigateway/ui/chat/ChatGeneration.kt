@@ -41,7 +41,9 @@ internal class ChatGeneration(
         conversation: Conversation,
         messageId: String,
         chunks: Flow<GenerationEvent>,
-        rollbackConversation: Conversation? = null
+        rollbackConversation: Conversation? = null,
+        // Continue the response already stored in [messageId] instead of starting it from empty.
+        resume: Boolean = false
     ): Boolean {
         if (_busy.value) return false
         _busy.value = true
@@ -64,6 +66,13 @@ internal class ChatGeneration(
             var renderJob: Job? = null
             var lastRenderAt = 0L
             var generationInterrupted = false
+            if (resume) {
+                snapshot?.messages?.firstOrNull { it.id == messageId }?.activeVersion?.let { version ->
+                    output.append(version.content)
+                    version.reasoningContent?.let { reasoningOutput.append(it) }
+                    version.reasoningSignature?.let { reasoningSignatureOutput.append(it) }
+                }
+            }
 
             fun appendLimited(target: StringBuilder, text: String, limit: Int, label: String) {
                 check(target.length.toLong() + text.length <= limit) {

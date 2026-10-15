@@ -332,6 +332,9 @@ fun MainScreen(
                                 onRegenerate = { id ->
                                     viewModel.regenerateMessage(id)
                                 },
+                                onRetryFromError = { id ->
+                                    viewModel.retryFromError(id)
+                                },
                                 onEditMessage = { id, content, files ->
                                     viewModel.editMessage(id, content, files)
                                 },

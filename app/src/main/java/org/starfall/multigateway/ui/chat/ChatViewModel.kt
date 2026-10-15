@@ -962,11 +962,23 @@ class ChatViewModel(
         provider: LlmProviderInfo,
         modelId: String,
         preferences: AppPreferences,
-        rollbackConversation: Conversation? = null
+        rollbackConversation: Conversation? = null,
+        resume: Boolean = false
     ): Boolean {
         val responseIndex = conversation.messages.indexOfFirst { it.id == responseId }
         if (responseIndex <= 0) return false
-        val contextMessages = conversation.messages.take(responseIndex)
+        // Resuming keeps the partial answer and its tool results in the context, followed by a
+        // hidden instruction (never stored or shown) to carry on from where the error happened.
+        val contextMessages = if (resume) {
+            conversation.messages.take(responseIndex + 1) + StoredMessage(
+                id = "resume_$responseId",
+                role = ChatRole.USER,
+                versions = listOf(MessageVersion(
+                    content = RESUME_AFTER_ERROR_PROMPT,
+                    timestamp = System.currentTimeMillis().toString()
+                ))
+            )
+        } else conversation.messages.take(responseIndex)
         val context = effectiveContext(
             conversation,
             contextMessages.dropLast(1),
@@ -977,7 +989,8 @@ class ChatViewModel(
             conversation,
             responseId,
             toolEvents(configuredProvider, modelId, context.messages, context.systemPrompt, conversation.id),
-            rollbackConversation = rollbackConversation
+            rollbackConversation = rollbackConversation,
+            resume = resume
         )
     }
 
@@ -1088,6 +1101,42 @@ class ChatViewModel(
         return startUserMessageResponse(conv, responseMessageId, baseProvider, model, prefs)
     }
 
+    /**
+     * Retry a failed response from the point where it failed. The partial answer, reasoning and
+     * tool results stay in the same message and generation continues into it, unlike resend or
+     * regenerate which restart from the user message.
+     */
+    fun retryFromError(messageId: String) {
+        if (isGenerating.value || summaryJob?.isActive == true || pendingConversationWrites > 0) return
+        val current = _currentConversation.value ?: return
+        val failed = current.messages.lastOrNull()?.takeIf {
+            it.id == messageId && it.role == ChatRole.MODEL && it.activeVersion.generationError != null
+        } ?: return
+        val prefs = appPreferences.value
+        val (baseProvider, model) = selectedChatModel(current, prefs)
+        if (baseProvider == null || model.isBlank()) return
+        val version = failed.activeVersion
+        val hasPartial = version.content.isNotBlank() || !version.reasoningContent.isNullOrBlank() ||
+            version.toolActivity.any { !it.name.endsWith(": connect") }
+        val cleared = failed.copy(versions = failed.versions.mapIndexed { index, item ->
+            if (index != failed.activeVersionIndex) item else item.copy(
+                generationError = null,
+                generationInterrupted = false,
+                processingFinishedAt = null,
+                // Connection handshakes are recreated by the new request.
+                toolActivity = item.toolActivity.filterNot { it.name.endsWith(": connect") }
+            )
+        })
+        val conv = current.copy(
+            messages = current.messages.dropLast(1) + cleared,
+            providerId = baseProvider.id,
+            modelId = model,
+            profileId = null,
+            updatedAt = System.currentTimeMillis()
+        )
+        startUserMessageResponse(conv, messageId, baseProvider, model, prefs, resume = hasPartial)
+    }
+
     fun regenerateMessage(messageId: String) {
         if (isGenerating.value || summaryJob?.isActive == true || pendingConversationWrites > 0) return
         val current = _currentConversation.value ?: return
@@ -1120,3 +1169,7 @@ class ChatViewModel(
         speech.shutdown()
     }
 }
+
+private const val RESUME_AFTER_ERROR_PROMPT =
+    "The previous response was interrupted by an error. Continue it exactly from where it stopped " +
+        "without repeating what was already written or already done by tools."

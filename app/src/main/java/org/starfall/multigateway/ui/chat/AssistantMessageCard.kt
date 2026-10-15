@@ -50,6 +50,7 @@ fun AssistantMessageCard(
     isStreaming: Boolean,
     onCopy: () -> Unit,
     onRegenerate: () -> Unit,
+    onRetryError: (() -> Unit)? = null,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onRead: () -> Unit,
@@ -95,6 +96,7 @@ fun AssistantMessageCard(
         activeVersion.generationError?.let { error ->
             GenerationErrorBlock(
                 error = error,
+                onRetry = onRetryError,
                 onCopy = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     clipboard.setPrimaryClip(ClipData.newPlainText("Error", error))
@@ -258,7 +260,12 @@ fun AssistantMessageCard(
 }
 
 @Composable
-private fun GenerationErrorBlock(error: String, onCopy: () -> Unit, modifier: Modifier = Modifier) {
+private fun GenerationErrorBlock(
+    error: String,
+    onCopy: () -> Unit,
+    modifier: Modifier = Modifier,
+    onRetry: (() -> Unit)? = null
+) {
     var expanded by remember(error) { mutableStateOf(false) }
     val errorFontSize = (LocalCodeRenderingPreferences.current.effectiveMessageFontSize * 0.78f).sp
 
@@ -287,6 +294,16 @@ private fun GenerationErrorBlock(error: String, onCopy: () -> Unit, modifier: Mo
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
                 Spacer(Modifier.weight(1f))
+                if (onRetry != null) {
+                    IconButton(onClick = onRetry, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            Icons.Outlined.Refresh,
+                            contentDescription = "Retry from error",
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
                 IconButton(onClick = onCopy, modifier = Modifier.size(32.dp)) {
                     Icon(
                         Icons.Outlined.ContentCopy,
