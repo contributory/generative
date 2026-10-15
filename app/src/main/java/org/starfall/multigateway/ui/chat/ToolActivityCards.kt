@@ -4,6 +4,9 @@ import org.starfall.multigateway.ui.components.AppBottomSheet
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.widget.Toast
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.LinearEasing
@@ -54,6 +57,7 @@ import org.starfall.multigateway.data.tools.ToolFiles
 import org.starfall.multigateway.ui.tools.MediaViewer
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.sin
 
@@ -184,6 +188,20 @@ private fun ToolDetailsSheet(
             .map { it.removePrefix("tool-file:") }.filter { it.isNotBlank() }.distinct()
     }
     var viewingFile by remember(activity.id) { mutableStateOf<File?>(null) }
+    val responseIsJson = remember(response) { looksLikeJson(response) }
+    val downloadResponse = rememberResponseDownload(
+        fileName = "${activity.name.replace(Regex("[^A-Za-z0-9._-]+"), "_")}_response.${if (responseIsJson) "json" else "txt"}",
+        mime = if (responseIsJson) "application/json" else "text/plain"
+    ) {
+        // The file is only built here, when the user taps download: the untruncated response when there is one.
+        ResponseSource(
+            text = activity.fullResponse ?: response,
+            file = if (activity.fullResponse == null && activity.responsePreviewLimit == 0) {
+                jsonFile?.let { ToolFiles(context).resolve(it) }?.takeIf { it.exists() }
+            } else null
+        )
+    }
+    val canDownload = response.isNotBlank() || activity.fullResponse != null
 
     AppBottomSheet(
         onDismissRequest = onDismiss
@@ -248,7 +266,8 @@ private fun ToolDetailsSheet(
             RawValueBlock(
                 value = response.ifBlank {
                     if (activity.status == "running") "Waiting for tool response…" else "No response"
-                }
+                },
+                onDownload = downloadResponse.takeIf { canDownload }
             )
             if (responsePreview.truncated && (activity.fullResponse != null || savedJson != null)) {
                 Spacer(Modifier.height(10.dp))
@@ -302,14 +321,12 @@ private fun ToolDetailsSheet(
                         TextButton(onClick = { showFullResponse = false }) { Text("Close") }
                     }
                     Spacer(Modifier.height(10.dp))
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        RawValueBlock(fullResponse)
-                    }
+                    LazyCodeBlock(
+                        language = remember(fullResponse) { if (looksLikeJson(fullResponse)) "json" else "text" },
+                        text = fullResponse,
+                        modifier = Modifier.weight(1f),
+                        onDownload = downloadResponse
+                    )
                 }
             }
         }
@@ -396,93 +413,47 @@ private fun PrettyArguments(raw: String) {
     }
 }
 
+/** Same rendering rules as chat code blocks: font size, highlighting and word wrap all come from [CodeBlockSurface]. */
 @Composable
-private fun RawValueBlock(value: String) {
-    val context = LocalContext.current
-    val label = if (looksLikeJson(value)) "json" else "text"
-    val preferences = LocalCodeRenderingPreferences.current
-    var sessionWrap by remember { mutableStateOf(false) }
-    val mode = if (preferences.wordWrapMode == WordWrapMode.OFF && sessionWrap) WordWrapMode.VIEWPORT else preferences.wordWrapMode
-    val density = LocalDensity.current
-    val textStyle = MaterialTheme.typography.bodySmall.copy(
-        fontFamily = FontFamily.Monospace,
-        fontSize = 12.sp,
-        lineHeight = 17.sp
+private fun RawValueBlock(value: String, onDownload: (() -> Unit)? = null) {
+    val language = remember(value) { if (looksLikeJson(value)) "json" else "text" }
+    CodeBlockSurface(
+        language = language,
+        code = value,
+        originalCode = value,
+        isStreaming = false,
+        onExpansionChange = null,
+        expanded = true,
+        onDownload = onDownload
     )
-    val measurer = rememberTextMeasurer()
-    val characterWidth = remember(textStyle, density) {
-        (measurer.measure("0".repeat(100), textStyle, softWrap = false).size.width / 100f).coerceAtLeast(1f)
-    }
-    val scrollState = rememberScrollState()
+}
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer
-    ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = label,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.outline
-                )
-                if (preferences.wordWrapMode == WordWrapMode.OFF) {
-                    IconButton(onClick = { sessionWrap = !sessionWrap }, modifier = Modifier.size(34.dp)) {
-                        Icon(
-                            imageVector = Icons.Outlined.WrapText,
-                            contentDescription = stringResource(if (sessionWrap) R.string.code_wrap_disable else R.string.code_wrap_enable),
-                            modifier = Modifier.size(18.dp),
-                            tint = if (sessionWrap) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                        )
-                    }
-                }
-                IconButton(
-                    onClick = {
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("Tool details", value))
-                        Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier.size(34.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.ContentCopy,
-                        contentDescription = "Copy",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.outline
-                    )
-                }
-            }
+private class ResponseSource(val text: String?, val file: File?)
 
-            // Same wrap rules as chat code blocks: the saved word-wrap mode decides width and horizontal scrolling.
-            BoxWithConstraints(Modifier.fillMaxWidth()) {
-                val viewport = with(density) { (maxWidth - 24.dp).coerceAtLeast(1.dp).toPx() }
-                val target = codeWrapWidth(mode, viewport, (characterWidth * preferences.wordWrapColumn).coerceAtMost(200_000f))
-                val bodyModifier = if (target == null) Modifier else Modifier.width(with(density) { target.toDp() } + 24.dp)
-                Box(
-                    Modifier.fillMaxWidth()
-                        .then(if (mode == WordWrapMode.OFF || mode == WordWrapMode.COLUMN) Modifier.horizontalScroll(scrollState) else Modifier)
-                ) {
-                    SelectionContainer {
-                        Text(
-                            text = value,
-                            style = textStyle,
-                            softWrap = mode != WordWrapMode.OFF,
-                            modifier = bodyModifier.padding(12.dp),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+/** Returns a click handler that opens the system "save as" picker; nothing is written until a location is chosen. */
+@Composable
+private fun rememberResponseDownload(fileName: String, mime: String, source: () -> ResponseSource): () -> Unit {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var pending by remember { mutableStateOf<ResponseSource?>(null) }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(mime)) { uri: Uri? ->
+        val data = pending
+        pending = null
+        if (uri == null || data == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val saved = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openOutputStream(uri, "wt")!!.use { out ->
+                        val file = data.file
+                        if (file != null) file.inputStream().use { it.copyTo(out) }
+                        else out.bufferedWriter(Charsets.UTF_8).use { it.write(data.text.orEmpty()) }
                     }
-                }
+                }.isSuccess
             }
+            Toast.makeText(context, if (saved) "File saved" else "Could not save file", Toast.LENGTH_SHORT).show()
         }
     }
+    return { pending = source(); launcher.launch(fileName) }
 }
 
 private fun parseJsonObject(raw: String): JsonObject? = runCatching {
@@ -494,6 +465,13 @@ private fun displayJsonValue(value: JsonElement): String = when (value) {
     else -> runCatching { toolJson.encodeToString(JsonElement.serializer(), value) }.getOrDefault(value.toString())
 }
 
-private fun looksLikeJson(value: String): Boolean = runCatching {
-    Json.parseToJsonElement(value)
-}.isSuccess
+private fun looksLikeJson(value: String): Boolean {
+    val first = value.firstOrNull { !it.isWhitespace() } ?: return false
+    if (first != '{' && first != '[') return false
+    // Parsing builds a whole tree; for large values only the outer shape is checked to avoid memory spikes.
+    if (value.length > 100_000) {
+        val last = value.lastOrNull { !it.isWhitespace() }
+        return (first == '{' && last == '}') || (first == '[' && last == ']')
+    }
+    return runCatching { Json.parseToJsonElement(value) }.isSuccess
+}

@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.WrapText
 import androidx.compose.material.icons.outlined.Visibility
@@ -21,6 +22,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -152,16 +154,14 @@ internal fun CodeBlockSurface(
     originalCode: String,
     isStreaming: Boolean,
     onExpansionChange: (() -> Unit)?,
-    expanded: Boolean
+    expanded: Boolean,
+    onDownload: (() -> Unit)? = null
 ) {
-    val context = LocalContext.current
     val preferences = LocalCodeRenderingPreferences.current
     var sessionWrap by remember(language, originalCode) { mutableStateOf(false) }
     val mode = if (preferences.wordWrapMode == WordWrapMode.OFF && sessionWrap) WordWrapMode.VIEWPORT else preferences.wordWrapMode
     val wrapCode = mode != WordWrapMode.OFF
-    val codeSize = (preferences.effectiveMessageFontSize * 0.78f).sp
-    val textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace,
-        fontSize = codeSize, lineHeight = codeSize * 1.44f)
+    val textStyle = codeTextStyle()
     val density = LocalDensity.current
     val measurer = rememberTextMeasurer()
     val characterWidth = remember(textStyle, density) { (measurer.measure("0".repeat(100), textStyle, softWrap = false).size.width / 100f).coerceAtLeast(1f) }
@@ -169,52 +169,20 @@ internal fun CodeBlockSurface(
     val highlighted by produceState(AnnotatedString(code), code, language, dark) {
         value = withContext(Dispatchers.Default) { highlightedCode(language, code, dark) }
     }
-    var copied by remember(language, originalCode) { mutableStateOf(false) }
     val codeScrollState = rememberScrollState()
     val codePresentation = rememberStreamingTextPresentation(code)
-    LaunchedEffect(copied) { if (copied) { delay(2000); copied = false } }
     Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest,
         tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(10.dp))) {
         Column {
-            Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                .padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)) {
-                        Text(language.ifBlank { "code" }, style = MaterialTheme.typography.labelSmall.copy(
-                            fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onPrimaryContainer)
-                    }
-                    if (isStreaming) {
-                        Spacer(Modifier.width(8.dp))
-                        CircularProgressIndicator(Modifier.size(10.dp), strokeWidth = 1.5.dp, color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (preferences.wordWrapMode == WordWrapMode.OFF) {
-                        IconButton(onClick = { sessionWrap = !sessionWrap }, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Outlined.WrapText, stringResource(if (sessionWrap) R.string.code_wrap_disable else R.string.code_wrap_enable),
-                                tint = if (sessionWrap) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
-                        }
-                    }
-                    if (preferences.codePreviewEnabled && canPreviewCode(language)) {
-                        IconButton(onClick = { CodePreviewActivity.open(context, language, originalCode) }, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Outlined.Visibility, stringResource(R.string.preview_code),
-                                tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
-                        }
-                    }
-                    IconButton(onClick = {
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("Code", originalCode))
-                        copied = true
-                        Toast.makeText(context, "Code copied", Toast.LENGTH_SHORT).show()
-                    }, modifier = Modifier.size(28.dp)) {
-                        Icon(if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, "Copy code",
-                            tint = if (copied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
-                    }
-                }
-            }
+            CodeBlockHeader(
+                language = language,
+                isStreaming = isStreaming,
+                originalCode = originalCode,
+                sessionWrap = sessionWrap,
+                onToggleWrap = { sessionWrap = !sessionWrap },
+                onDownload = onDownload
+            )
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val viewport = with(density) { (maxWidth - 24.dp).coerceAtLeast(1.dp).toPx() }
                 val target = codeWrapWidth(mode, viewport, (characterWidth * preferences.wordWrapColumn).coerceAtMost(200_000f))
@@ -229,6 +197,75 @@ internal fun CodeBlockSurface(
                 TextButton(onClick = toggle, modifier = Modifier.align(Alignment.End).padding(end = 8.dp, bottom = 4.dp)) {
                     Text(stringResource(if (expanded) R.string.code_block_collapse else R.string.code_block_extend))
                 }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun codeTextStyle(): TextStyle {
+    val size = (LocalCodeRenderingPreferences.current.effectiveMessageFontSize * 0.78f).sp
+    return MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = size, lineHeight = size * 1.44f)
+}
+
+/** Header shared by every code surface: language badge, wrap toggle, preview, download and copy. */
+@Composable
+internal fun CodeBlockHeader(
+    language: String,
+    isStreaming: Boolean,
+    originalCode: String,
+    sessionWrap: Boolean,
+    onToggleWrap: () -> Unit,
+    onDownload: (() -> Unit)? = null
+) {
+    val context = LocalContext.current
+    val preferences = LocalCodeRenderingPreferences.current
+    var copied by remember(language, originalCode) { mutableStateOf(false) }
+    LaunchedEffect(copied) { if (copied) { delay(2000); copied = false } }
+    Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh)
+        .padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f))
+                .padding(horizontal = 6.dp, vertical = 2.dp)) {
+                Text(language.ifBlank { "code" }, style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onPrimaryContainer)
+            }
+            if (isStreaming) {
+                Spacer(Modifier.width(8.dp))
+                CircularProgressIndicator(Modifier.size(10.dp), strokeWidth = 1.5.dp, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (preferences.wordWrapMode == WordWrapMode.OFF) {
+                IconButton(onClick = onToggleWrap, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Outlined.WrapText, stringResource(if (sessionWrap) R.string.code_wrap_disable else R.string.code_wrap_enable),
+                        tint = if (sessionWrap) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
+                }
+            }
+            if (preferences.codePreviewEnabled && canPreviewCode(language)) {
+                IconButton(onClick = { CodePreviewActivity.open(context, language, originalCode) }, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Outlined.Visibility, stringResource(R.string.preview_code),
+                        tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
+                }
+            }
+            if (onDownload != null) {
+                IconButton(onClick = onDownload, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Outlined.Download, stringResource(R.string.file_download),
+                        tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
+                }
+            }
+            IconButton(onClick = {
+                // Very large texts exceed the clipboard binder limit; fail softly instead of crashing.
+                val result = runCatching {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Code", originalCode))
+                }
+                if (result.isSuccess) copied = true
+                Toast.makeText(context, if (result.isSuccess) "Code copied" else "Too large to copy", Toast.LENGTH_SHORT).show()
+            }, modifier = Modifier.size(28.dp)) {
+                Icon(if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, "Copy code",
+                    tint = if (copied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
             }
         }
     }

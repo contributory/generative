@@ -167,6 +167,7 @@ class ToolFiles(val directory: File) {
                 var length = 0L
                 var media = false
                 var largeValueClassified = false
+                var truncatedText = false
                 try {
                     while (true) {
                         val n = input.read()
@@ -180,7 +181,7 @@ class ToolFiles(val directory: File) {
                             media = lastKey in setOf("b64_json", "bytesBase64Encoded", "video_base64", "base64", "blob") ||
                                 value.startsWith("data:image/") || value.startsWith("data:video/") || value.startsWith("data:audio/") ||
                                 (lastKey == "data" && value.all { it.isLetterOrDigit() || it in "+/=\\" })
-                            if (!retainLongTextInMemory || media) {
+                            if (media) {
                                 checkSpace()
                                 raw = File(directory, "${UUID.randomUUID()}.part")
                                 spool = raw.bufferedWriter()
@@ -190,6 +191,7 @@ class ToolFiles(val directory: File) {
                         }
                         if (spool != null) spool.write(n)
                         else if (retainLongTextInMemory || value.length < 65536) value.append(n.toChar())
+                        else truncatedText = true
                         escaped = if (escaped) false else n == '\\'.code
                     }
                     spool?.close()
@@ -199,9 +201,6 @@ class ToolFiles(val directory: File) {
                     if (next == ':'.code) {
                         lastKey = value.toString()
                         output.append('"').append(value).append('"')
-                    } else if (raw != null && !media) {
-                        val name = save(raw.inputStream(), "text/plain")
-                        output.append('"').append("tool-file:").append(name).append('"')
                     } else if (raw != null) {
                         val normalized = File(directory, "${UUID.randomUUID()}.part")
                         try {
@@ -238,8 +237,24 @@ class ToolFiles(val directory: File) {
                                 output.append('"').append("tool-file:").append(decode(rawSmall)).append('"')
                             } finally { rawSmall.delete() }
                         } else {
-                            val decoded = runCatching { kotlinx.serialization.json.Json.parseToJsonElement("\"$text\"") }.getOrNull()
-                            output.append(decoded?.toString() ?: "\"[Text truncated]\"")
+                            // Long non-media text is never written to a file: it is cut here. A cut may land
+                            // inside an escape sequence, so back off a few characters until it parses.
+                            var decoded: String? = null
+                            var end = text.length
+                            val minEnd = if (truncatedText) maxOf(0, end - 8) else end
+                            while (decoded == null && end >= minEnd) {
+                                decoded = runCatching {
+                                    kotlinx.serialization.json.Json.parseToJsonElement("\"${text.substring(0, end)}\"")
+                                        .let { (it as kotlinx.serialization.json.JsonPrimitive).content }
+                                }.getOrNull()
+                                end--
+                            }
+                            output.append(
+                                if (decoded == null) "\"[Text truncated]\""
+                                else kotlinx.serialization.json.JsonPrimitive(
+                                    if (truncatedText) "$decoded\u2026[truncated]" else decoded
+                                ).toString()
+                            )
                         }
                     }
                 } finally { spool?.close(); raw?.delete() }

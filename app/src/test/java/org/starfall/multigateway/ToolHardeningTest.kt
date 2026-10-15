@@ -47,14 +47,16 @@ class ToolHardeningTest {
         val media = ToolBudget(); repeat(2) { media.consume("generate_image") }; rejected { media.consume("generate_image") }
         media.consume("generate_video"); rejected { media.consume("generate_video") }
     }
-    @Test fun summaryRemainsJsonAndFullResultIsSaved() = runBlocking {
+    @Test fun summaryRemainsJsonAndNoResponseFileIsSaved() = runBlocking {
         val root=Files.createTempDirectory("summary").toFile()
         try {
             val files=ToolFiles(root); val original=obj("text" to str("quoted \" ".repeat(5000)))
             val summary=summarizeToolResult(original,files)
             assertTrue(summary.content["truncated"]!!.jsonPrimitive.boolean)
             assertEquals(summary.content,Json.parseToJsonElement(summary.content.toString()))
-            assertEquals(original,Json.parseToJsonElement(files.resolve(summary.files.last())!!.readText()))
+            assertTrue(summary.files.isEmpty())
+            assertEquals("",summary.responseFile)
+            assertTrue(files.list().isEmpty())
             assertTrue(summary.preview.length<500)
         } finally { root.deleteRecursively() }
     }
@@ -70,12 +72,16 @@ class ToolHardeningTest {
             }
         } finally { root.deleteRecursively() }
     }
-    @Test fun longTextIsStoredInFull() = runBlocking {
+    @Test fun longTextIsTruncatedAndNeverSavedAsFile() = runBlocking {
         val root=Files.createTempDirectory("long-text").toFile()
         try {
             val files=ToolFiles(root); val text="x".repeat(100000)
             val result=json(files.sanitize(StringReader("{\"text\":\"$text\"}")))
-            assertEquals(text,files.resolve(result.text("text").removePrefix("tool-file:"))!!.readText())
+            val value=result.text("text")
+            assertTrue(value.startsWith("x".repeat(65536)))
+            assertTrue(value.endsWith("[truncated]"))
+            assertTrue(files.list().isEmpty())
+            assertTrue(root.listFiles()!!.isEmpty())
         } finally { root.deleteRecursively() }
     }
     @Test fun authKeepsLegacyTokenAndNamedHeaderDistinct() {

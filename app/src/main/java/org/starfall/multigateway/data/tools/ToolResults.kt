@@ -26,26 +26,27 @@ internal data class ToolSummary(
     val fullResponse: String? = null
 )
 
-/** Existing summary behavior for generated media and Content-API responses. */
-internal suspend fun summarizeToolResult(result: JsonObject, files: ToolFiles): ToolSummary {
+/**
+ * Summary for generated media and Content-API responses. Only the media itself is stored as files;
+ * the response JSON is never written to disk, so nothing extra is left for the user to clean up.
+ */
+@Suppress("UNUSED_PARAMETER")
+internal fun summarizeToolResult(result: JsonObject, files: ToolFiles): ToolSummary {
     val full = result.toString()
     val media = Regex("tool-file:([a-zA-Z0-9._-]+)").findAll(full).map { it.groupValues[1] }.distinct().take(32).toList()
-    val needsResponseFile = media.isNotEmpty() || full.length >= INLINE_TOOL_RESULT_LIMIT
-    val details = if (needsResponseFile) files.save(full.byteInputStream(), "application/json") else ""
     val truncated = full.length >= INLINE_TOOL_RESULT_LIMIT
+    val isError = (result["isError"] as? JsonPrimitive)?.booleanOrNull == true
     val content = if (!truncated) result else obj(
         "truncated" to JsonPrimitive(true), "characters" to JsonPrimitive(full.length),
         "preview" to str(full.take(2000)),
-        "files" to JsonArray((media + details).filter { it.isNotBlank() }.map { str("tool-file:$it") }),
+        "files" to JsonArray(media.map { str("tool-file:$it") }),
         "isError" to (result["isError"] ?: JsonPrimitive(false)))
     val preview = when {
-        (result["isError"] as? JsonPrimitive)?.booleanOrNull == true && details.isNotBlank() ->
-            "Tool reported an error. Open the saved result for details."
-        details.isNotBlank() && media.isEmpty() -> "Tool completed. Open the saved result for details."
+        isError -> "Tool reported an error."
         media.isNotEmpty() -> "Saved ${media.size} file(s). Open Storage for details."
         else -> "Tool completed."
     }
-    return ToolSummary(content, preview, (media + details).filter { it.isNotBlank() }, details)
+    return ToolSummary(content, preview, media, "")
 }
 
 /** Compact response handling for ordinary MCP tools, separate from media and Content-API. */
