@@ -5,7 +5,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.update
-import kotlinx.serialization.json.*
 import java.io.*
 import java.security.MessageDigest
 import java.util.UUID
@@ -32,7 +31,6 @@ class ToolFiles(val directory: File) {
     private val index = synchronized(initialized) {
         indexes.getOrPut(directory.canonicalPath) { DirectoryIndex() }
     }
-    private val textSpillReferences = mutableMapOf<String, Int>()
     private val limit = 256L * 1024 * 1024
     fun resolve(name: String): File? = name.takeIf { it.matches(Regex("[a-zA-Z0-9._-]+")) }
         ?.let { File(directory, it) }?.takeIf {
@@ -51,14 +49,12 @@ class ToolFiles(val directory: File) {
     }
     private fun checkSpace() { check(directory.usableSpace > 64L * 1024 * 1024) { "Not enough storage. Free space in Storage." } }
     suspend fun save(input: InputStream, mime: String? = null, maxBytes: Long = limit): String =
-        saveInternal(input, mime, maxBytes, extensionOverride = null, deduplicate = true)
+        saveInternal(input, mime, maxBytes)
 
     private suspend fun saveInternal(
         input: InputStream,
         mime: String?,
-        maxBytes: Long,
-        extensionOverride: String?,
-        deduplicate: Boolean
+        maxBytes: Long
     ): String = withContext(Dispatchers.IO) {
         checkSpace()
         val temp = File(directory, "${UUID.randomUUID()}.part")
@@ -81,7 +77,7 @@ class ToolFiles(val directory: File) {
             check(temp.length() > 0) { "Empty media response" }
             val header = ByteArray(16)
             temp.inputStream().use { it.read(header) }
-            val ext = extensionOverride ?: when {
+            val ext = when {
                 header[0] == 0x89.toByte() && header[1] == 0x50.toByte() -> "png"
                 header[0] == 0xff.toByte() && header[1] == 0xd8.toByte() -> "jpg"
                 String(header, 0, 3) == "GIF" -> "gif"
@@ -114,7 +110,7 @@ class ToolFiles(val directory: File) {
                 context.ensureActive()
                 val existingFiles = list().mapNotNull { resolve(it.name) }
                 index.hashes.keys.retainAll(existingFiles.map { it.name }.toSet())
-                val existing = if (deduplicate) existingFiles.firstOrNull { file ->
+                val existing = existingFiles.firstOrNull { file ->
                     if (file.length() != temp.length()) return@firstOrNull false
                     val cached = index.hashes[file.name]?.takeIf {
                         it.length == file.length() && it.modified == file.lastModified()
@@ -134,13 +130,12 @@ class ToolFiles(val directory: File) {
                             .also { index.hashes[file.name] = it }
                     } catch (_: IOException) { return@firstOrNull false }
                     fingerprint.digest == hash
-                } else null
+                }
                 if (existing != null) existing.name else {
                     context.ensureActive()
                     // Never overwrite an existing referenced file, even if a
                     // hash-named file was externally changed or is a symlink.
-                    val canonical = if (deduplicate) File(directory, "$hash.$ext")
-                    else File(directory, "${UUID.randomUUID()}.$ext")
+                    val canonical = File(directory, "$hash.$ext")
                     val dest = if (canonical.exists()) File(directory, "${UUID.randomUUID()}.$ext") else canonical
                     check(temp.renameTo(dest)) { "Could not save media" }
                     index.hashes[dest.name] = CachedHash(dest.length(), dest.lastModified(), hash)
@@ -150,63 +145,11 @@ class ToolFiles(val directory: File) {
             }
         } finally { input.close(); temp.delete() }
     }
-    private suspend fun saveTextSpill(input: InputStream): String =
-        saveInternal(input, "text/plain", limit, extensionOverride = "spill", deduplicate = false)
     suspend fun decode(raw: File): String = raw.inputStream().use { source ->
         java.util.Base64.getMimeDecoder().wrap(source).use { save(it) }
     }
-    internal suspend fun restoreTextSpills(result: JsonObject): JsonObject {
-        val references = mutableListOf<String>()
-        fun collect(value: JsonElement) {
-            when (value) {
-                is JsonObject -> value.values.forEach(::collect)
-                is JsonArray -> value.forEach(::collect)
-                is JsonPrimitive -> if (value.isString && value.content.startsWith("tool-file:")) {
-                    references += value.content.removePrefix("tool-file:")
-                }
-                else -> Unit
-            }
-        }
-        collect(result)
-        val spillCounts = synchronized(textSpillReferences) {
-            references.filter { it in textSpillReferences }.groupingBy { it }.eachCount()
-        }
-        if (spillCounts.isEmpty()) return result
-
-        val restored = mutableMapOf<String, String>()
-        try {
-            spillCounts.keys.forEach { name ->
-                val escaped = resolve(name)?.readText() ?: error("Tool text result is unavailable")
-                restored[name] = Json.parseToJsonElement("\"$escaped\"").jsonPrimitive.content
-            }
-            fun restore(value: JsonElement): JsonElement = when (value) {
-                is JsonObject -> JsonObject(value.mapValues { (_, child) -> restore(child) })
-                is JsonArray -> JsonArray(value.map(::restore))
-                is JsonPrimitive -> if (value.isString && value.content.startsWith("tool-file:")) {
-                    val name = value.content.removePrefix("tool-file:")
-                    restored[name]?.let { JsonPrimitive(it) } ?: value
-                } else value
-                else -> value
-            }
-            return restore(result) as JsonObject
-        } finally {
-            val toDelete = synchronized(textSpillReferences) {
-                spillCounts.keys.filter { name ->
-                    val remaining = (textSpillReferences[name] ?: 0) - (spillCounts[name] ?: 0)
-                    if (remaining <= 0) {
-                        textSpillReferences.remove(name)
-                        true
-                    } else {
-                        textSpillReferences[name] = remaining
-                        false
-                    }
-                }
-            }
-            if (toDelete.isNotEmpty()) delete(toDelete)
-        }
-    }
-    /** Streaming JSON string scanner: large base64 strings are spooled to disk, not held in RAM. */
-    suspend fun sanitize(reader: Reader, spillLongText: Boolean = false): String = withContext(Dispatchers.IO) {
+    /** Streaming JSON scanner; media payloads are spooled, while generic long text can stay in memory. */
+    suspend fun sanitize(reader: Reader, retainLongTextInMemory: Boolean = false): String = withContext(Dispatchers.IO) {
         val input = PushbackReader(BufferedReader(reader), 2)
         val output = StringBuilder()
         var lastKey = ""
@@ -223,6 +166,7 @@ class ToolFiles(val directory: File) {
                 var escaped = false
                 var length = 0L
                 var media = false
+                var largeValueClassified = false
                 try {
                     while (true) {
                         val n = input.read()
@@ -231,17 +175,21 @@ class ToolFiles(val directory: File) {
                         length++
                         if (length % 32768L == 0L) coroutineContext.ensureActive()
                         check(length <= limit * 2) { "Tool result exceeds file limit" }
-                        if (raw == null && value.length >= 16384) {
+                        if (raw == null && !largeValueClassified && value.length >= 16384) {
+                            largeValueClassified = true
                             media = lastKey in setOf("b64_json", "bytesBase64Encoded", "video_base64", "base64", "blob") ||
                                 value.startsWith("data:image/") || value.startsWith("data:video/") || value.startsWith("data:audio/") ||
                                 (lastKey == "data" && value.all { it.isLetterOrDigit() || it in "+/=\\" })
-                            checkSpace()
-                            raw = File(directory, "${UUID.randomUUID()}.part")
-                            spool = raw.bufferedWriter()
-                            spool.write(value.toString())
-                            value.setLength(0)
+                            if (!retainLongTextInMemory || media) {
+                                checkSpace()
+                                raw = File(directory, "${UUID.randomUUID()}.part")
+                                spool = raw.bufferedWriter()
+                                spool.write(value.toString())
+                                value.setLength(0)
+                            }
                         }
-                        if (spool != null) spool.write(n) else if (value.length < 65536) value.append(n.toChar())
+                        if (spool != null) spool.write(n)
+                        else if (retainLongTextInMemory || value.length < 65536) value.append(n.toChar())
                         escaped = if (escaped) false else n == '\\'.code
                     }
                     spool?.close()
@@ -252,16 +200,7 @@ class ToolFiles(val directory: File) {
                         lastKey = value.toString()
                         output.append('"').append(value).append('"')
                     } else if (raw != null && !media) {
-                        val name = if (spillLongText) {
-                            // Generic MCP calls merge this into one response file after parsing.
-                            saveTextSpill(raw.inputStream()).also { spillName ->
-                                synchronized(textSpillReferences) {
-                                    textSpillReferences[spillName] = (textSpillReferences[spillName] ?: 0) + 1
-                                }
-                            }
-                        } else {
-                            save(raw.inputStream(), "text/plain")
-                        }
+                        val name = save(raw.inputStream(), "text/plain")
                         output.append('"').append("tool-file:").append(name).append('"')
                     } else if (raw != null) {
                         val normalized = File(directory, "${UUID.randomUUID()}.part")

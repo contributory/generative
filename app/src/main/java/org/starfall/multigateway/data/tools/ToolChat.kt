@@ -345,7 +345,7 @@ class ToolChat(
                                     globalMcpToolEnabled(settings(), tool.serverId, tool.originalName)
                             ) { "MCP tool disabled" }
                             (sessions[tool.serverId] ?: error("MCP session unavailable"))
-                                .call(tool.originalName, args, spillLongText = !contentApi)
+                                .call(tool.originalName, args, retainLongTextInMemory = !contentApi)
                         } else if (name == SEND_FILE_TOOL_NAME) {
                             check(settings().sendFileEnabled) { "Send File tool disabled" }
                             fileSender.execute(args)
@@ -382,7 +382,7 @@ class ToolChat(
                         val summary = if (contentApi || mediaTool) {
                             summarizeToolResult(result, http.requireFiles())
                         } else {
-                            summarizeGenericToolResult(result, http.requireFiles())
+                            summarizeGenericToolResult(result)
                         }
                         result = summary.content
                         if (tool.serverId != null && !contentApi) {
@@ -408,6 +408,7 @@ class ToolChat(
                                         tool.serverId == null && name == SEND_FILE_TOOL_NAME,
                                     responseFile = summary.responseFile,
                                     responsePreviewLimit = if (contentApi || mediaTool) 0 else 1_000,
+                                    fullResponse = summary.fullResponse,
                                     response = result.toString()
                                 )
                             )

@@ -58,7 +58,9 @@ data class ToolActivity(
     val inlineMedia: Boolean = false,
     val responseFile: String? = null,
     /** Preview limit for generic tool responses; zero keeps the existing details behavior. */
-    val responsePreviewLimit: Int = 0
+    val responsePreviewLimit: Int = 0,
+    /** Full generic response shown in a dedicated viewer when the inline response is truncated. */
+    val fullResponse: String? = null
 )
 
 @Serializable

@@ -41,6 +41,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -56,6 +58,19 @@ import kotlinx.coroutines.withContext
 import kotlin.math.sin
 
 private val toolJson = Json { prettyPrint = true }
+private const val TOOL_ACTIVITY_OUTSIDE_PREVIEW_LIMIT = 6_000
+
+internal fun toolActivityOutsidePreview(activity: ToolActivity): String? {
+    if (activity.responsePreviewLimit <= 0) return null
+    return runCatching {
+        val response = Json.parseToJsonElement(activity.response) as? JsonObject
+        val truncated = (response?.get("truncated") as? JsonPrimitive)?.content == "true"
+        if (truncated) {
+            (response?.get("preview") as? JsonPrimitive)?.content
+                ?.take(TOOL_ACTIVITY_OUTSIDE_PREVIEW_LIMIT)
+        } else null
+    }.getOrNull()
+}
 
 @Composable
 fun ToolActivityCards(activities: List<ToolActivity>) {
@@ -120,17 +135,31 @@ private fun ToolActivityLabel(
             withStyle(SpanStyle(color = color.copy(alpha = alpha))) { append(character) }
         }
     }
+    val outsidePreview = remember(activity.response, activity.responsePreviewLimit) {
+        toolActivityOutsidePreview(activity)
+    }
 
-    Text(
-        text = label,
-        style = if (running) MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp) else MaterialTheme.typography.bodyLarge,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurface,
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(start = 16.dp, top = 7.dp, bottom = 7.dp)
-    )
+            .padding(start = 16.dp, end = 12.dp, top = 7.dp, bottom = 7.dp)
+    ) {
+        Text(
+            text = label,
+            style = if (running) MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp) else MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        if (!outsidePreview.isNullOrBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = outsidePreview,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -140,11 +169,12 @@ private fun ToolDetailsSheet(
     onDismiss: () -> Unit
 ) {
     var argsTab by remember(activity.id) { mutableStateOf(0) }
+    var showFullResponse by remember(activity.id) { mutableStateOf(false) }
     val context = LocalContext.current
     val revision by ToolFiles.revision.collectAsState()
     val jsonFile = (activity.responseFile ?: activity.files.firstOrNull { it.endsWith(".json", ignoreCase = true) })?.removePrefix("tool-file:")
-    val savedJson by produceState<String?>(null, jsonFile, revision, activity.responsePreviewLimit) {
-        if (activity.responsePreviewLimit > 0) {
+    val savedJson by produceState<String?>(null, jsonFile, revision, activity.responsePreviewLimit, activity.fullResponse) {
+        if (activity.responsePreviewLimit > 0 && activity.fullResponse != null) {
             value = null
         } else {
             value = withContext(Dispatchers.IO) {
@@ -248,6 +278,15 @@ private fun ToolDetailsSheet(
                     if (activity.status == "running") "Waiting for tool response…" else "No response"
                 }
             )
+            if (responsePreview.truncated && (activity.fullResponse != null || savedJson != null)) {
+                Spacer(Modifier.height(10.dp))
+                OutlinedButton(
+                    onClick = { showFullResponse = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Open full response")
+                }
+            }
 
             if (fileNames.isNotEmpty()) {
                 Spacer(Modifier.height(26.dp))
@@ -267,6 +306,42 @@ private fun ToolDetailsSheet(
         }
     }
     viewingFile?.let { file -> MediaViewer(ToolFiles(context), file) { viewingFile = null } }
+    val fullResponse = activity.fullResponse ?: savedJson
+    if (showFullResponse && fullResponse != null) {
+        Dialog(
+            onDismissRequest = { showFullResponse = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Full tool response",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        TextButton(onClick = { showFullResponse = false }) { Text("Close") }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        RawValueBlock(fullResponse)
+                    }
+                }
+            }
+        }
+    }
 }
 
 private data class ToolResponsePreview(val value: String, val truncated: Boolean)
