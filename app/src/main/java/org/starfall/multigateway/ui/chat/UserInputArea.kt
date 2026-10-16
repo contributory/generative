@@ -1,10 +1,15 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package org.starfall.multigateway.ui.chat
 
 import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 
 import org.starfall.multigateway.ui.components.EntityIcon
 import org.starfall.multigateway.ui.components.selectAllOnTripleClick
+import org.starfall.multigateway.data.tools.ToolFiles
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
@@ -20,6 +25,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.content.ReceiveContentListener
+import androidx.compose.foundation.content.contentReceiver
+import androidx.compose.foundation.content.consume
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -86,6 +94,8 @@ data class ChatInputEditDraft(
     val revision: Long
 )
 
+private const val MAX_CLIPBOARD_IMAGE_BYTES = 20L * 1024L * 1024L
+
 @Composable
 fun UserInputArea(
     isGenerating: Boolean,
@@ -122,6 +132,47 @@ fun UserInputArea(
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue()) }
     val textState = textFieldValue.text
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val toolFiles = remember(context) { ToolFiles(context) }
+    val latestAttachments by rememberUpdatedState(attachments)
+    val latestOnAttachmentsChange by rememberUpdatedState(onAttachmentsChange)
+    val clipboardContentListener = remember(context, toolFiles, coroutineScope) {
+        ReceiveContentListener { content ->
+            val clipData = content.clipEntry.clipData
+            val imageItems = (0 until clipData.itemCount)
+                .map { clipData.getItemAt(it) }
+                .filter { item ->
+                    val uri = item.uri ?: return@filter false
+                    val mimeType = context.contentResolver.getType(uri)
+                    mimeType?.startsWith("image/") == true ||
+                        clipData.description.hasMimeType("image/*")
+                }
+
+            if (imageItems.isEmpty()) {
+                content
+            } else {
+                imageItems.forEach { item ->
+                    val uri = item.uri ?: return@forEach
+                    coroutineScope.launch {
+                        val reference = withContext(Dispatchers.IO) {
+                            runCatching {
+                                val mimeType = context.contentResolver.getType(uri)
+                                context.contentResolver.openInputStream(uri)?.use { input ->
+                                    val name = toolFiles.save(input, mimeType, MAX_CLIPBOARD_IMAGE_BYTES)
+                                    toolFiles.resolve(name)?.absolutePath
+                                }
+                            }.getOrNull()
+                        }
+                        reference?.let {
+                            latestOnAttachmentsChange((latestAttachments + it).distinct())
+                        }
+                    }
+                }
+                content.consume { item -> item.uri != null && imageItems.any { it.uri == item.uri } }
+            }
+        }
+    }
     var inputRowWidthPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
@@ -183,9 +234,6 @@ fun UserInputArea(
             mediaModelId = mediaProviders.firstOrNull()?.config?.modelIds?.firstOrNull().orEmpty()
         }
     }
-    val context = LocalContext.current
-
-
     val focusManager = LocalFocusManager.current
     var showModelPicker by remember { mutableStateOf(false) }
     var showSelectedModelOverview by remember { mutableStateOf(false) }
@@ -514,7 +562,8 @@ fun UserInputArea(
                                 textFieldValue = textFieldValue.copy(
                                     selection = TextRange(0, textFieldValue.text.length)
                                 )
-                            },
+                            }
+                            .contentReceiver(clipboardContentListener),
                         maxLines = Int.MAX_VALUE,
                         decorationBox = { innerTextField ->
                             Column {

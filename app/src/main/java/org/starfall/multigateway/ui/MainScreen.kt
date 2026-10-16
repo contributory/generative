@@ -83,6 +83,10 @@ fun MainScreen(
             restoreState = true
         }
     }
+    fun startNewChat() {
+        viewModel.startNewChat()
+        navigate(AppDestination.CHAT)
+    }
     fun openConfiguration(destination: AppDestination) {
         navController.navigate(destination.route) { launchSingleTop = true }
     }
@@ -256,8 +260,7 @@ fun MainScreen(
                         navigate(AppDestination.CHAT)
                     },
                     onNewChat = {
-                        viewModel.startNewChat()
-                        navigate(AppDestination.CHAT)
+                        startNewChat()
                     },
                     onRenameConversation = { id, newTitle ->
                         viewModel.renameConversation(id, newTitle)
@@ -325,6 +328,9 @@ fun MainScreen(
                                 },
                                 onOpenDrawer = {
                                     coroutineScope.launch { drawerState.open() }
+                                },
+                                onNewChat = {
+                                    startNewChat()
                                 },
                                 onOpenSettings = {
                                     navigate(AppDestination.SETTINGS)

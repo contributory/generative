@@ -14,8 +14,8 @@ android {
         applicationId = "org.starfall.multigateway"
         minSdk = 26
         targetSdk = 36
-        versionCode = 41
-        versionName = "1.4.7"
+        versionCode = 42
+        versionName = "1.4.8"
 
         manifestPlaceholders["appAuthRedirectScheme"] = "multigateway-oauth"
 
@@ -41,7 +41,7 @@ android {
             // Codemagic provides CM_KEYSTORE_PATH and signs in Gradle. On Appcircle it is absent, so the
             // APK stays unsigned here and the "Android Sign" workflow step signs it with the selected keystore.
             if (System.getenv("CM_KEYSTORE_PATH") != null) signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = true
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

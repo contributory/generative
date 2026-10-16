@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -31,6 +32,7 @@ fun ChatAppBar(
     modelName: String,
     providerName: String,
     onOpenDrawer: () -> Unit,
+    onNewChat: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenModelPicker: () -> Unit = {},
     onOpenSummary: () -> Unit = {},
@@ -41,6 +43,7 @@ fun ChatAppBar(
         WindowInsets.statusBars.getTop(this).toDp()
     }
     var contextMenuVisible by remember { mutableStateOf(false) }
+    val displayedModelName = modelName.substringAfterLast('/').ifBlank { modelName }
 
     Box(
         modifier = modifier
@@ -71,39 +74,45 @@ fun ChatAppBar(
             }
         }
 
-        Column(
+        Row(
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .fillMaxWidth()
-                .padding(start = 68.dp, end = 56.dp)
-                .clickable(onClick = onOpenModelPicker),
-            verticalArrangement = Arrangement.Center
+                .padding(start = 68.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(onClick = onOpenModelPicker)
+                    .padding(end = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = displayedModelName.ifBlank { stringResource(R.string.select_model) },
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (providerName.isNotBlank()) {
                     Text(
-                        text = modelName.ifBlank { stringResource(R.string.select_model) },
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
+                        text = providerName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    if (providerName.isNotBlank()) {
-                        Text(
-                            text = providerName,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
                 }
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 contextWindowStatus?.let { status ->
                     Box {
                         ContextWindowIndicator(
@@ -125,27 +134,45 @@ fun ChatAppBar(
                         }
                     }
                 }
-            }
-        }
 
-        Surface(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .size(48.dp)
-                .clip(CircleShape)
-                .clickable(onClick = onOpenSettings),
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-            shadowElevation = 4.dp,
-            tonalElevation = 2.dp
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Outlined.Settings,
-                    contentDescription = "General Settings",
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(22.dp)
-                )
+                Surface(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                    shadowElevation = 4.dp,
+                    tonalElevation = 2.dp
+                ) {
+                    IconButton(onClick = onNewChat, modifier = Modifier.fillMaxSize()) {
+                        Icon(
+                            imageVector = Icons.Outlined.Create,
+                            contentDescription = "New chat",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onOpenSettings),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                    shadowElevation = 4.dp,
+                    tonalElevation = 2.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings,
+                            contentDescription = "General Settings",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
             }
         }
     }

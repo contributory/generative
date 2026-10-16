@@ -11,6 +11,7 @@ import org.starfall.multigateway.ui.components.windowWidth
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -112,6 +113,10 @@ fun ConversationsDrawer(
     }
     LaunchedEffect(isOpen) { if (!isOpen) { stopSelecting(); unfocusSearch() } }
     BackHandler(enabled = selecting && isOpen) { stopSelecting() }
+    val newChatButtonSize by animateDpAsState(
+        targetValue = if (searchFocused) 40.dp else 52.dp,
+        label = "new chat button size"
+    )
 
     val drawerShape = RoundedCornerShape(topEnd = 32.dp, bottomEnd = 32.dp)
     val drawerModifier = modifier.windowWidth(0.85f).let {
@@ -218,7 +223,10 @@ fun ConversationsDrawer(
                         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     ),
-                    modifier = Modifier.weight(1f).onFocusChanged { searchFocused = it.isFocused }
+                    modifier = Modifier
+                        .weight(1f)
+                        .widthIn(max = 220.dp)
+                        .onFocusChanged { searchFocused = it.isFocused }
                 )
                 // Secondary actions step aside while the search field is expanded.
                 AnimatedVisibility(
@@ -236,12 +244,14 @@ fun ConversationsDrawer(
                 if (LocalAmoledMode.current) {
                     OutlinedIconButton(
                         onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
+                        modifier = Modifier.size(newChatButtonSize),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                         colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
                     ) { Icon(Icons.Outlined.Create, "New chat") }
                 } else {
                     FilledIconButton(
                         onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
+                        modifier = Modifier.size(newChatButtonSize),
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
