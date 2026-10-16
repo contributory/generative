@@ -184,12 +184,19 @@ fun ConversationsDrawer(
                 if (matches.isEmpty()) item { Text(if (search.isBlank()) stringResource(R.string.no_conversations_yet) else "No matching conversations", Modifier.padding(12.dp), color = MaterialTheme.colorScheme.outline) }
             }
             HorizontalDivider()
-            Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                FilledTonalButton(onClick = { stopSelecting(); onNewChat(); onCloseDrawer() }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 12.dp)) {
-                    Icon(Icons.Default.Add, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("New Chat", maxLines = 1)
+            // Primary action on its own row; the two secondary actions share the row below, labelled.
+            Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                FilledTonalButton(onClick = { stopSelecting(); onNewChat(); onCloseDrawer() }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Outlined.Create, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("New Chat", maxLines = 1)
                 }
-                IconButton(onClick = { promptDialog = true }) { Icon(Icons.Outlined.EditNote, "Default system prompt") }
-                IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }) { Icon(Icons.Outlined.Settings, "General Settings") }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = { promptDialog = true }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) {
+                        Icon(Icons.Outlined.EditNote, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("System prompt", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    TextButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) {
+                        Icon(Icons.Outlined.Settings, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Settings", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
             }
         }
     }
