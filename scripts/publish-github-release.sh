@@ -53,7 +53,7 @@ if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
   echo "Release $tag already exists; tag moved to $short_commit and matching artifacts will be replaced."
 else
   gh release create "$tag" --repo "$repo" \
-    --title "MultiGateway $tag" --generate-notes
+    --title "MultiGateway $tag" --generate-notes --latest
 fi
 
 # Prefix GitHub's generated changelog with release metadata that makes the
@@ -90,5 +90,5 @@ if [[ "$release_body" != *"$release_marker"* ]]; then
 fi
 
 gh release upload "$tag" "${apks[@]}" "${checksums[@]}" --repo "$repo" --clobber
-gh release edit "$tag" --repo "$repo" --draft=false
+gh release edit "$tag" --repo "$repo" --draft=false --latest
 gh release view "$tag" --repo "$repo" --json url --jq .url
