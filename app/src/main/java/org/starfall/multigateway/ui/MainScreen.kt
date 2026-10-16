@@ -379,6 +379,7 @@ fun MainScreen(
                                     }
                                 },
                                 onStartConversationSummary = viewModel::startConversationSummary,
+                                onCancelConversationSummary = viewModel::cancelConversationSummary,
                                 onSummaryRoleChange = viewModel::setSummaryRole,
                                 onDeleteSummary = viewModel::deleteConversationSummary,
                                 speakingMessageId = speakingMessageId,

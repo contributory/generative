@@ -661,6 +661,20 @@ class ChatViewModel(
         writeConversation { conversationRepo.saveConversation(updated) }
     }
 
+    fun cancelConversationSummary() {
+        val progress = summaryProgress.value
+        val current = _currentConversation.value
+        if (progress != null && current?.id == progress.conversationId) {
+            // Do not immediately restart an automatic summary for the same boundary after a
+            // manual cancellation. A later message or an explicit manual start can still run it.
+            val prefs = appPreferences.value
+            lastAutomaticSummaryAttempt =
+                "${progress.conversationId}/${progress.throughMessageId}/${current.summary?.id}/" +
+                    "${prefs.selectedProviderId}/${prefs.selectedModelId}"
+        }
+        summaryJob?.cancel()
+    }
+
     fun startConversationSummary(request: ConversationSummaryRequest): Boolean {
         if (isGenerating.value || summaryJob?.isActive == true || pendingConversationWrites > 0) return false
         val conversation = _currentConversation.value ?: return false

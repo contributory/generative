@@ -104,6 +104,7 @@ fun ChatScreen(
     onEditModel: (providerId: String, modelId: String) -> Unit = { _, _ -> },
     onEditProvider: (providerId: String) -> Unit = {},
     onStartConversationSummary: (ConversationSummaryRequest) -> Boolean,
+    onCancelConversationSummary: () -> Unit = {},
     onSummaryRoleChange: (SummaryRole) -> Unit,
     onDeleteSummary: () -> Unit,
     onReadMessage: (String, String) -> Unit,
@@ -542,6 +543,7 @@ fun ChatScreen(
                             summary = summaryHere,
                             progress = progressHere,
                             onOpenSummary = { showSummaryDialog = true },
+                            onCancelSummary = onCancelConversationSummary,
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }

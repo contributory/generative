@@ -13,8 +13,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.starfall.multigateway.R
 import org.starfall.multigateway.data.model.ConversationSummary
 import org.starfall.multigateway.data.model.ConversationSummaryProgress
 import org.starfall.multigateway.data.model.SummaryRole
@@ -25,6 +27,7 @@ fun ConversationSummaryDivider(
     summary: ConversationSummary?,
     progress: ConversationSummaryProgress?,
     onOpenSummary: () -> Unit,
+    onCancelSummary: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val running = progress != null
@@ -57,10 +60,26 @@ fun ConversationSummaryDivider(
                 HorizontalDivider(modifier = Modifier.weight(1f))
             }
             if (progress != null) {
-                LinearProgressIndicator(
-                    progress = { progress.progress.coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    LinearProgressIndicator(
+                        progress = { progress.progress.coerceIn(0f, 1f) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    IconButton(
+                        onClick = onCancelSummary,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        FluentIcon(
+                            Icons.Outlined.StopCircle,
+                            contentDescription = stringResource(R.string.common_cancel),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
         }
     }
