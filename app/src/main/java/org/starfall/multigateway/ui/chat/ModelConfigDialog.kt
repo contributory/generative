@@ -4,11 +4,7 @@ import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.rememberScrollState
@@ -34,7 +30,6 @@ fun ModelConfigDialog(
     var temperature by remember { mutableStateOf(config.temperature?.toString().orEmpty()) }
     var topP by remember { mutableStateOf(config.topP?.toString().orEmpty()) }
     var topK by remember { mutableStateOf(config.topK?.toString().orEmpty()) }
-    var supportStream by remember { mutableStateOf(config.supportStream) }
     val supportsTopK = !provider.type.isOpenAi
     val tempMax = if (provider.type == ProviderType.ANTHROPIC) 1.0 else 2.0
     val tempValid = temperature.isBlank() || temperature.toDoubleOrNull()?.let { it.isFinite() && it in 0.0..tempMax } == true
@@ -47,26 +42,6 @@ fun ModelConfigDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(provider.name, style = MaterialTheme.typography.labelLarge)
-                Text("Stream responses", style = MaterialTheme.typography.titleSmall)
-                Column(Modifier.fillMaxWidth().selectableGroup()) {
-                    listOf<Boolean?>(null, true, false).forEach { option ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                                .selectable(selected = supportStream == option, role = Role.RadioButton,
-                                    onClick = { supportStream = option }).padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(selected = supportStream == option, onClick = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(when (option) {
-                                null -> "Use provider setting (${if (provider.config.supportStream) "On" else "Off"})"
-                                true -> "On"
-                                false -> "Off"
-                            }, modifier = Modifier.weight(1f))
-                        }
-                    }
-                }
-                HorizontalDivider()
                 Text(stringResource(R.string.model_stream_settings_description))
                 SelectableOutlinedTextField(temperature, { temperature = it }, label = { Text("Temperature (0–$tempMax)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -88,7 +63,7 @@ fun ModelConfigDialog(
         confirmButton = {
             Button(enabled = tempValid && topPValid && topKValid, onClick = {
                 onSave(config.copy(temperature = temperature.toDoubleOrNull(), topP = topP.toDoubleOrNull(),
-                    topK = if (supportsTopK) topK.toIntOrNull() else null, supportStream = supportStream))
+                    topK = if (supportsTopK) topK.toIntOrNull() else null))
                 onDismiss()
             }) { Text("Save") }
         },

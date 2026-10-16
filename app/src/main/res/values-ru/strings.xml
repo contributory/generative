@@ -107,5 +107,4 @@
     <string name="choose_another_model_hint">Нажмите на название модели, чтобы выбрать другую модель</string>
     <string name="screen_wakelock_description">Не выключать экран во время создания ответа.</string>
     <string name="context_window_compact_hint">Нажмите на круг, чтобы сжать контекстное окно</string>
-    <string name="headers">Заголовки</string>
 </resources>
