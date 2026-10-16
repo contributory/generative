@@ -16,7 +16,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import org.starfall.multigateway.ui.components.ApiKeyMask
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.layout.Box
 import org.starfall.multigateway.R
@@ -106,7 +106,7 @@ internal fun ProviderAuthField(
                     stringResource(if (revealed) R.string.provider_hide_api_key else R.string.provider_show_api_key))
             }
         }) else null,
-        visualTransformation = if (revealed || !hasKey) VisualTransformation.None else PasswordVisualTransformation(),
+        visualTransformation = if (revealed || !hasKey) VisualTransformation.None else ApiKeyMask,
         keyboardOptions = KeyboardOptions(
             capitalization = if (hasKey) KeyboardCapitalization.None else KeyboardCapitalization.Sentences
         ),

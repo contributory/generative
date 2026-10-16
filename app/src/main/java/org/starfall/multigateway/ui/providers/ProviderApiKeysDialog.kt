@@ -27,7 +27,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import org.starfall.multigateway.ui.components.ApiKeyMask
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -74,7 +74,7 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                         singleLine = true, modifier = Modifier.fillMaxWidth().testTag("provider_api_key_label"))
                     SelectableOutlinedTextField(value, { value = it; error = null }, label = { Text(stringResource(R.string.provider_api_key_value)) },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
-                        visualTransformation = if (revealed) VisualTransformation.None else PasswordVisualTransformation(),
+                        visualTransformation = if (revealed) VisualTransformation.None else ApiKeyMask,
                         trailingIcon = { IconButton(onClick = { revealed = !revealed }) {
                             Icon(if (revealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
                                 stringResource(if (revealed) R.string.provider_hide_api_key else R.string.provider_show_api_key))
