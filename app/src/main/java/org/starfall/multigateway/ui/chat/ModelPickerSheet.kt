@@ -62,6 +62,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.starfall.multigateway.R
@@ -387,28 +388,27 @@ fun ModelPickerSheet(
         )
     }
 
+    // The selected model is centered in the list. Near the top of the list the scroll position
+    // simply clamps to 0, so it only sits at the very top when nothing is above it.
     val targetIndex = remember(flatItems, selectedProviderId, selectedModelId) {
-        val modelIndex = flatItems.indexOfFirst {
-            it is ModelPickerItem.Model && it.isSelected
-        }
-        // Keep the selected model's visible parent headers in view when opening the picker.
-        when {
-            modelIndex < 0 -> 0
-            flatItems.getOrNull(modelIndex - 1) is ModelPickerItem.Provider -> {
-                if (flatItems.getOrNull(modelIndex - 2) is ModelPickerItem.Group) modelIndex - 2
-                else modelIndex - 1
-            }
-            else -> modelIndex
-        }
+        flatItems.indexOfFirst { it is ModelPickerItem.Model && it.isSelected }.coerceAtLeast(0)
     }
     val listState = remember(selectedTabKey) {
-        tabListStates.getOrPut(selectedTabKey) { LazyListState(targetIndex) }
+        tabListStates.getOrPut(selectedTabKey) { LazyListState((targetIndex - 3).coerceAtLeast(0)) }
     }
+    val centerTopPaddingPx = with(LocalDensity.current) { 10.dp.roundToPx() }
     LaunchedEffect(selectedTabKey, flatItems, query, targetIndex) {
         if (query.isBlank() && flatItems.isNotEmpty() &&
             initializedTabKeys.add(selectedTabKey) && !listState.isScrollInProgress
         ) {
             listState.scrollToItem(targetIndex)
+            val info = listState.layoutInfo
+            val itemSize = info.visibleItemsInfo.firstOrNull { it.index == targetIndex }?.size
+            if (itemSize != null && targetIndex > 0) {
+                val centerDelta = ((info.viewportSize.height - itemSize) / 2 - centerTopPaddingPx)
+                    .coerceAtLeast(0)
+                listState.scrollToItem(targetIndex, -centerDelta)
+            }
         }
     }
     LaunchedEffect(query, selectedTabKey) {
