@@ -49,7 +49,8 @@ import org.starfall.multigateway.data.adapter.common.AppAuthTransactions
 import org.starfall.multigateway.data.adapter.common.OAuthCallbackService
 import org.starfall.multigateway.data.adapter.common.OAuthBrowser
 import org.starfall.multigateway.data.adapter.common.awaitLoopbackAuthorizationCode
-import org.starfall.multigateway.data.service.ExecutableBinaries
+import org.starfall.multigateway.data.service.ExecutableBinary
+import org.starfall.multigateway.data.service.ExecutableBinaryStore
 import org.starfall.multigateway.data.tools.ToolHttp
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -136,8 +137,8 @@ class RemoteTerminal internal constructor(
 class RemoteMachineService(
     private val context: Context,
     val store: RemoteMachineStore = RemoteMachineStore(context),
-    /** Shared read-only executable list managed from Settings. */
-    private val binaries: ExecutableBinaries? = null
+    /** Shared executable storage used by Remote Machines settings and command expansion. */
+    private val executableBinaries: ExecutableBinaryStore = ExecutableBinaryStore(context)
 ) {
     private data class CachedCloudEndpoint(
         val host: String,
@@ -152,6 +153,7 @@ class RemoteMachineService(
     private val cloudEndpointCache = mutableMapOf<String, CachedCloudEndpoint>()
 
     val state = store.state
+    val binaries: StateFlow<List<ExecutableBinary>> = executableBinaries.binaries
 
     /** Binaries uploaded in the previous Remote Machines screen, before migration to Settings. */
     fun legacyBinaries(): List<RemoteBinary> = state.value.binaries
@@ -273,42 +275,10 @@ class RemoteMachineService(
         }
     }
 
-    suspend fun importBinary(uri: Uri): RemoteBinary = withContext(Dispatchers.IO) {
-        val resolver = appContext.contentResolver
-        val displayName = resolver.query(uri, arrayOf("_display_name"), null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) cursor.getString(0) else null
-        }?.takeIf { it.isNotBlank() } ?: "binary-${UUID.randomUUID()}"
-        val safeName = displayName.substringAfterLast('/').replace(Regex("[^A-Za-z0-9._-]"), "_")
-            .ifBlank { "binary-${UUID.randomUUID()}" }
-        val directory = File(appContext.filesDir, "remote-machines/bin").apply { mkdirs() }
-        val target = File(directory, "${UUID.randomUUID()}-$safeName")
-        resolver.openInputStream(uri)?.use { input ->
-            target.outputStream().use { output -> input.copyTo(output) }
-        } ?: error("Could not read the selected binary.")
-        target.setReadable(false, false)
-        target.setWritable(false, false)
-        target.setExecutable(false, false)
-        target.setReadable(true, true)
-        target.setWritable(true, true)
-        target.setExecutable(true, true)
-        runCatching { Os.chmod(target.absolutePath, 0b111_000_000) }
-        require(target.canRead() && target.canExecute()) { "Could not grant execute permission to the imported binary." }
-        val binary = RemoteBinary(UUID.randomUUID().toString(), displayName, target.absolutePath)
-        val replaced = state.value.binaries.filter { it.name == displayName }
-        try {
-            store.update { it.copy(binaries = it.binaries.filterNot { existing -> existing.name == displayName } + binary) }
-        } catch (error: Throwable) {
-            target.delete()
-            throw error
-        }
-        replaced.forEach { old ->
-            if (old.path != target.absolutePath) runCatching { File(old.path).delete() }
-        }
-        binary
-    }
+    suspend fun importBinary(uri: Uri): ExecutableBinary = executableBinaries.import(uri)
 
     suspend fun testBinary(id: String): RemoteBinaryTestResult = withContext(Dispatchers.IO) {
-        val binary = state.value.binaries.firstOrNull { it.id == id } ?: error("Binary not found.")
+        val binary = executableBinaries.binaries.value.firstOrNull { it.id == id } ?: error("Binary not found.")
         val file = File(binary.path)
         require(file.isFile) { "The imported binary file no longer exists." }
         require(file.canExecute()) { "The imported file does not have execute permission." }
@@ -386,7 +356,7 @@ class RemoteMachineService(
     }
 
     suspend fun deleteBinary(id: String) {
-        val binary = state.value.binaries.firstOrNull { it.id == id }
+        val binary = executableBinaries.binaries.value.firstOrNull { it.id == id }
         if (binary != null) {
             require(state.value.machines.none { machine ->
                 listOf(machine.proxyCommand, machine.localCommand).any { command ->
@@ -394,8 +364,7 @@ class RemoteMachineService(
                 }
             }) { "Remove this binary from ProxyCommand or LocalCommand before deleting it." }
         }
-        store.update { it.copy(binaries = it.binaries.filterNot { existing -> existing.id == id }) }
-        binary?.let { runCatching { File(it.path).delete() } }
+        executableBinaries.delete(id)
     }
 
     /** Uploads an SSH private key once; machines reference it through IdentityFile. */
@@ -1135,7 +1104,7 @@ class RemoteMachineService(
         Regex("(^|\\s)${Regex.escape(name)}(?=\\s|$)").containsMatchIn(command)
 
     private fun resolveBinary(command: String): String {
-        var resolved = binaries?.resolveCommand(command) ?: command
+        var resolved = executableBinaries.resolveCommand(command)
         state.value.binaries.forEach { binary ->
             val pattern = Regex("(^|\\s)${Regex.escape(binary.name)}(?=\\s|$)")
             val invocation = binaryInvocation(File(binary.path)).joinToString(" ")

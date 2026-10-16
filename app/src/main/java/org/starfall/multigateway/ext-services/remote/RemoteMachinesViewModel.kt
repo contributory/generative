@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.starfall.multigateway.data.repository.LocalWriteErrors
+import org.starfall.multigateway.data.service.ExecutableBinary
 import java.util.UUID
 
 class RemoteMachinesViewModel(
@@ -16,6 +17,7 @@ class RemoteMachinesViewModel(
 ) : ViewModel() {
     val state: StateFlow<RemoteMachineState> = service.state
         .stateIn(viewModelScope, SharingStarted.Eagerly, RemoteMachineState())
+    val binaries: StateFlow<List<ExecutableBinary>> = service.binaries
 
     /** Machines holding a persistent SSH connection; there is deliberately no way to open one by hand. */
     val connectedMachineIds: StateFlow<Set<String>> = service.connectedMachineIds
@@ -48,7 +50,7 @@ class RemoteMachinesViewModel(
         viewModelScope.launch(LocalWriteErrors.handler) { service.deleteOAuthClient(id) }
     }
 
-    suspend fun importBinary(uri: Uri): Result<RemoteBinary> = runCatching { service.importBinary(uri) }
+    suspend fun importBinary(uri: Uri): Result<ExecutableBinary> = runCatching { service.importBinary(uri) }
 
     suspend fun testBinary(id: String): Result<RemoteBinaryTestResult> =
         runCatching { service.testBinary(id) }

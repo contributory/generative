@@ -87,7 +87,8 @@ fun launchCommandFor(
 
 /**
  * Owns the uploaded executables: files under `filesDir/binaries` plus a small JSON index. It is
- * independent of every feature; Settings manages it, other features read it via [ExecutableBinaries].
+ * independent of the Remote Machines state; its settings screen manages it, while command
+ * execution reads it via [ExecutableBinaries].
  */
 class ExecutableBinaryStore(context: Context) : ExecutableBinaries {
     private val appContext = context.applicationContext

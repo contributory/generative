@@ -136,6 +136,7 @@ import com.termux.view.TerminalView
 import com.termux.view.TerminalViewClient
 import java.io.ByteArrayOutputStream
 import org.starfall.multigateway.R
+import org.starfall.multigateway.data.service.ExecutableBinary
 import org.starfall.multigateway.ui.components.AppAlertDialog
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 import org.starfall.multigateway.ui.navigation.SlideScreenContent
@@ -156,6 +157,7 @@ fun RemoteMachinesScreen(
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsStateCompat()
+    val binaries by viewModel.binaries.collectAsStateCompat()
     val connectedIds by viewModel.connectedMachineIds.collectAsStateCompat()
     var editor by remember { mutableStateOf<MachineEditor?>(null) }
     var page by remember { mutableStateOf<RemoteMachinesPage?>(null) }
@@ -204,6 +206,7 @@ fun RemoteMachinesScreen(
             )
             selected == RemoteMachinesPage.SETTINGS -> RemoteMachineSettings(
                 state = state,
+                binaries = binaries,
                 viewModel = viewModel,
                 onBack = { page = null }
             )
@@ -719,6 +722,7 @@ private fun RemoteMachineEditor(
 @Composable
 private fun RemoteMachineSettings(
     state: RemoteMachineState,
+    binaries: List<ExecutableBinary>,
     viewModel: RemoteMachinesViewModel,
     onBack: () -> Unit
 ) {
@@ -895,7 +899,7 @@ private fun RemoteMachineSettings(
             }
             RemoteSection(stringResource(R.string.remote_machine_binaries)) {
                 Text(stringResource(R.string.remote_machine_binaries_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                state.binaries.forEach { binary ->
+                binaries.forEach { binary ->
                     val users = state.machines.count { machine ->
                         listOf(machine.proxyCommand, machine.localCommand).any { command ->
                             Regex("(^|\\s)${Regex.escape(binary.name)}(?=\\s|$)").containsMatchIn(command)

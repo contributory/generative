@@ -38,7 +38,7 @@ class AppContainer(context: Context) {
     private val toolSettings = ToolSettingsStore(appContext)
     private val executableBinaries = ExecutableBinaryStore(appContext)
     // Shared executable storage backs ProxyCommand lookup for Remote Machines.
-    val remoteMachineService = RemoteMachineService(appContext, binaries = executableBinaries)
+    val remoteMachineService = RemoteMachineService(appContext, executableBinaries = executableBinaries)
     val defaultDataInitializer = DefaultDataInitializer(providers, mcp, speech, preferences, icons)
 
     init {
