@@ -534,11 +534,6 @@ fun PreferencesSettingsView(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(strategyExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor().testTag("tool-call-strategy")
                     )
-                    Text(
-                        stringResource(R.string.tool_call_strategy_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                     ExposedDropdownMenu(strategyExpanded, { strategyExpanded = false }) {
                         strategyLabels.forEach { (strategy, label) ->
                             DropdownMenuItem(text = { Text(label) }, onClick = {
@@ -548,6 +543,11 @@ fun PreferencesSettingsView(
                         }
                     }
                 }
+                Text(
+                    stringResource(R.string.tool_call_strategy_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 if (appPreferences.toolCallStrategy == ToolCallStrategy.PARALLEL) {
                     var limit by remember(appPreferences.toolCallConcurrentLimit) { mutableStateOf(appPreferences.toolCallConcurrentLimit.toString()) }
                     val parsed = limit.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_CALL_CONCURRENT_LIMIT }
