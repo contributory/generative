@@ -160,7 +160,7 @@ fun SettingsScreen(
                             item {
                                 SettingsGroupHeading(stringResource(R.string.settings_group_configuration))
                             }
-                            item { SettingsNavigationItem(stringResource(R.string.settings_default_models), stringResource(R.string.settings_default_models_description), Icons.Outlined.Build, onNavigateToSystemTools) }
+                            item { SettingsNavigationItem(stringResource(R.string.settings_default_and_tools), stringResource(R.string.settings_default_models_description), Icons.Outlined.Build, onNavigateToSystemTools) }
                             item { SettingsNavigationItem(stringResource(R.string.settings_providers), stringResource(R.string.settings_providers_description), Icons.Outlined.CloudQueue, onNavigateToProviders) }
                             item { SettingsNavigationItem(stringResource(R.string.settings_mcp_manage), stringResource(R.string.settings_mcp_manage_description), Icons.Outlined.Extension, onNavigateToMcp) }
                             item { SettingsNavigationItem(stringResource(R.string.settings_speech_services), stringResource(R.string.settings_speech_services_description), Icons.Outlined.RecordVoiceOver, onNavigateToSpeech) }

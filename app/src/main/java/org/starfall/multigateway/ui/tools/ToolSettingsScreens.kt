@@ -61,6 +61,7 @@ fun SystemToolsScreen(
     onEditProvider: (providerId: String) -> Unit = {},
     onBack: () -> Unit
 ) {
+    var selectedPage by rememberSaveable { mutableIntStateOf(0) }
     var choosing by remember { mutableStateOf<String?>(null) }
     var editingPrompt by rememberSaveable { mutableStateOf<String?>(null) }
     var editingMedia by remember { mutableStateOf<String?>(null) }
@@ -87,7 +88,7 @@ fun SystemToolsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.settings_default_models)) },
+                title = { Text(stringResource(R.string.settings_default_and_tools)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
@@ -96,8 +97,16 @@ fun SystemToolsScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
+        Column(Modifier.fillMaxSize().padding(padding)) {
+        TabRow(selectedTabIndex = selectedPage) {
+            Tab(selectedPage == 0, { selectedPage = 0 }, text = { Text(stringResource(R.string.settings_default_models), fontWeight = FontWeight.SemiBold) })
+            Tab(selectedPage == 1, { selectedPage = 1 }, text = { Text(stringResource(R.string.settings_tools_tab), fontWeight = FontWeight.SemiBold) })
+        }
+        if (selectedPage == 1) {
+            // Tools tab: intentionally empty for now.
+            Box(Modifier.fillMaxSize())
+        } else LazyColumn(
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -147,6 +156,7 @@ fun SystemToolsScreen(
                     }
                 }
             }
+        }
         }
     }
 
