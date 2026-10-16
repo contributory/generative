@@ -2,6 +2,8 @@
 
 package org.starfall.multigateway.ui.chat
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 
 import org.starfall.multigateway.ui.components.EntityIcon
@@ -33,13 +35,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.Videocam
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -77,6 +72,7 @@ import org.starfall.multigateway.data.model.ModelType
 import org.starfall.multigateway.data.model.ProviderType
 import org.starfall.multigateway.data.model.ThinkingPassback
 import org.starfall.multigateway.ui.theme.LocalAmoledMode
+import org.starfall.multigateway.ui.icons.Icons
 
 data class DirectMediaRequest(
     val prompt: String,
@@ -354,7 +350,7 @@ fun UserInputArea(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
+                FluentIcon(
                     if (mediaKind == ModelType.IMAGE_GENERATION) Icons.Outlined.Image else Icons.Outlined.Videocam,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
@@ -370,7 +366,7 @@ fun UserInputArea(
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = { mediaKind = null }) {
-                    Icon(Icons.Outlined.Close, contentDescription = "Exit $mediaLabel generation mode")
+                    FluentIcon(Icons.Outlined.Close, contentDescription = "Exit $mediaLabel generation mode")
                 }
             }
             }
@@ -428,7 +424,7 @@ fun UserInputArea(
                         },
                         modifier = Modifier.size(48.dp)
                     ) {
-                        Icon(
+                        FluentIcon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Attachments and tools",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -513,14 +509,14 @@ fun UserInputArea(
                         contentAlignment = Alignment.Center
                     ) {
                         if (showStop) {
-                            Icon(
+                            FluentIcon(
                                 imageVector = Icons.Default.Stop,
                                 contentDescription = "Stop generation",
                                 tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(20.dp)
                             )
                         } else {
-                            Icon(
+                            FluentIcon(
                                 imageVector = when (mediaKind) {
                                     ModelType.IMAGE_GENERATION -> Icons.Outlined.Image
                                     ModelType.VIDEO_GENERATION -> Icons.Outlined.Videocam

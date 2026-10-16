@@ -2,6 +2,8 @@
 
 package org.starfall.multigateway.extservices.remote
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.view.KeyEvent
@@ -20,7 +22,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.input.pointer.pointerInput
@@ -50,24 +51,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Cloud
-import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.Computer
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Key
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.LinkOff
-import androidx.compose.material.icons.outlined.Terminal
-import androidx.compose.material.icons.outlined.UploadFile
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
@@ -79,7 +62,6 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -140,6 +122,7 @@ import org.starfall.multigateway.data.service.ExecutableBinary
 import org.starfall.multigateway.ui.components.AppAlertDialog
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 import org.starfall.multigateway.ui.navigation.SlideScreenContent
+import org.starfall.multigateway.ui.icons.Icons
 
 private data class MachineEditor(val machine: RemoteMachine, val isNew: Boolean)
 private data class MachineIpUpdateNotice(val machineName: String, val message: String)
@@ -301,11 +284,11 @@ private fun RemoteMachinesRootScaffold(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) }
+                    IconButton(onClick = onBack) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) }
                 },
                 actions = {
-                    IconButton(onClick = onAdd) { Icon(Icons.Default.Add, stringResource(R.string.remote_machine_add)) }
-                    IconButton(onClick = onSettings) { Icon(Icons.Outlined.Settings, stringResource(R.string.remote_machine_settings)) }
+                    IconButton(onClick = onAdd) { FluentIcon(Icons.Default.Add, stringResource(R.string.remote_machine_add)) }
+                    IconButton(onClick = onSettings) { FluentIcon(Icons.Outlined.Settings, stringResource(R.string.remote_machine_settings)) }
                 }
             )
         }
@@ -317,12 +300,12 @@ private fun RemoteMachinesRootScaffold(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Icon(Icons.Outlined.Computer, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(64.dp))
+                    FluentIcon(Icons.Outlined.Computer, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(64.dp))
                     Spacer(Modifier.height(16.dp))
                     Text(stringResource(R.string.remote_machine_empty), style = MaterialTheme.typography.titleMedium)
                     Text(stringResource(R.string.remote_machine_empty_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                     Spacer(Modifier.height(16.dp))
-                    Button(onClick = onAdd) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.remote_machine_add)) }
+                    Button(onClick = onAdd) { FluentIcon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.remote_machine_add)) }
                 }
             } else content()
         }
@@ -382,7 +365,7 @@ private fun RemoteMachineCard(
                 shape = RoundedCornerShape(14.dp),
                 color = if (machine.type == RemoteMachineType.GCLOUD_SHELL) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
             ) {
-                Icon(
+                FluentIcon(
                     if (machine.type == RemoteMachineType.GCLOUD_SHELL) Icons.Outlined.Cloud else Icons.Outlined.Computer,
                     null,
                     tint = if (machine.type == RemoteMachineType.GCLOUD_SHELL) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer,
@@ -406,28 +389,28 @@ private fun RemoteMachineCard(
             }
             if (connected) {
                 IconButton(onClick = onDisconnect) {
-                    Icon(Icons.Outlined.LinkOff, stringResource(R.string.remote_machine_disconnect))
+                    FluentIcon(Icons.Outlined.LinkOff, stringResource(R.string.remote_machine_disconnect))
                 }
             }
-            IconButton(onClick = onTerminal) { Icon(Icons.Outlined.Terminal, stringResource(R.string.remote_machine_open_terminal)) }
+            IconButton(onClick = onTerminal) { FluentIcon(Icons.Outlined.Terminal, stringResource(R.string.remote_machine_open_terminal)) }
             Box {
-                IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, stringResource(R.string.more_options)) }
+                IconButton(onClick = { menu = true }) { FluentIcon(Icons.Default.MoreVert, stringResource(R.string.more_options)) }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     if (machine.type == RemoteMachineType.GCLOUD_SHELL) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.remote_machine_update_ip)) },
-                            leadingIcon = { Icon(Icons.Outlined.Refresh, null) },
+                            leadingIcon = { FluentIcon(Icons.Outlined.Refresh, null) },
                             onClick = { menu = false; onUpdateIp() }
                         )
                     }
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.common_edit)) },
-                        leadingIcon = { Icon(Icons.Outlined.Edit, null) },
+                        leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) },
                         onClick = { menu = false; onEdit() }
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
-                        leadingIcon = { Icon(Icons.Outlined.Lock, null, tint = MaterialTheme.colorScheme.error) },
+                        leadingIcon = { FluentIcon(Icons.Outlined.Lock, null, tint = MaterialTheme.colorScheme.error) },
                         onClick = { menu = false; onDelete() }
                     )
                 }
@@ -482,7 +465,7 @@ private fun RemoteMachineEditor(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(if (isNew) R.string.remote_machine_add_title else R.string.remote_machine_edit_title)) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
+                navigationIcon = { IconButton(onClick = onBack) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                 actions = { TextButton(onClick = {
                     val machine = initial.copy(
                         name = name,
@@ -562,7 +545,7 @@ private fun RemoteMachineEditor(
                             }
                         }) {
                             if (loadingIp) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                            else Icon(Icons.Outlined.Refresh, null, Modifier.size(18.dp))
+                            else FluentIcon(Icons.Outlined.Refresh, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.remote_machine_get_ip))
                         }
                     }
@@ -582,7 +565,7 @@ private fun RemoteMachineEditor(
                         visual = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { showPassword = !showPassword }) {
-                                Icon(
+                                FluentIcon(
                                     if (showPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                                     contentDescription = stringResource(
                                         if (showPassword) R.string.remote_machine_hide_password else R.string.remote_machine_show_password
@@ -610,7 +593,7 @@ private fun RemoteMachineEditor(
                     var keyMenu by remember { mutableStateOf(false) }
                     Box {
                         OutlinedButton(onClick = { keyMenu = true }) {
-                            Icon(Icons.Outlined.Key, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.remote_machine_choose_key))
+                            FluentIcon(Icons.Outlined.Key, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.remote_machine_choose_key))
                         }
                         DropdownMenu(expanded = keyMenu, onDismissRequest = { keyMenu = false }) {
                             if (state.identities.isEmpty()) {
@@ -672,7 +655,7 @@ private fun RemoteMachineEditor(
                             }
                         ) {
                             if (authorizing) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                            else Icon(Icons.Outlined.Key, null, Modifier.size(18.dp))
+                            else FluentIcon(Icons.Outlined.Key, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.remote_machine_oauth_sign_in))
                         }
@@ -778,7 +761,7 @@ private fun RemoteMachineSettings(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.remote_machine_settings)) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
+                navigationIcon = { IconButton(onClick = onBack) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                 actions = { TextButton(onClick = { viewModel.saveSshConfig(sshConfig); onBack() }) { Text(stringResource(R.string.common_save)) } }
             )
         }
@@ -796,7 +779,7 @@ private fun RemoteMachineSettings(
                         IconButton(onClick = {
                             configEditorFocusRequester.requestFocus()
                         }) {
-                            Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.common_edit))
+                            FluentIcon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.common_edit))
                         }
                     }
                 )
@@ -836,26 +819,26 @@ private fun RemoteMachineSettings(
             RemoteSection(stringResource(R.string.remote_machine_oauth_clients)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = { oauthLauncher.launch(arrayOf("application/json", "text/json", "*/*")) }) {
-                        Icon(Icons.Outlined.UploadFile, null, Modifier.size(18.dp))
+                        FluentIcon(Icons.Outlined.UploadFile, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.remote_machine_import_oauth_json))
                     }
                     OutlinedButton(onClick = { clientEditor = viewModel.newOAuthClient() }) {
-                        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                        FluentIcon(Icons.Default.Add, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.remote_machine_add_oauth))
                     }
                 }
                 state.oauthClients.forEach { client ->
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Key, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                        FluentIcon(Icons.Outlined.Key, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(client.name, style = MaterialTheme.typography.titleSmall)
                             Text(client.clientId, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         TextButton(onClick = { clientEditor = client }) { Text(stringResource(R.string.common_edit)) }
-                        IconButton(onClick = { viewModel.deleteOAuthClient(client.id) }) { Icon(Icons.Outlined.Lock, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
+                        IconButton(onClick = { viewModel.deleteOAuthClient(client.id) }) { FluentIcon(Icons.Outlined.Lock, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
                     }
                 }
                 oauthError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
@@ -865,7 +848,7 @@ private fun RemoteMachineSettings(
                 state.identities.forEach { key ->
                     val users = state.machines.count { it.identityFile == key.path || it.identityFile.substringAfterLast('/') == key.name }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Key, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                        FluentIcon(Icons.Outlined.Key, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(key.name, style = MaterialTheme.typography.titleSmall)
@@ -885,15 +868,15 @@ private fun RemoteMachineSettings(
                             publicKeyTarget = key.id
                             publicKeyLauncher.launch(arrayOf("text/plain", "application/octet-stream", "*/*"))
                         }) {
-                            Icon(Icons.Outlined.UploadFile, stringResource(R.string.remote_machine_upload_public_key))
+                            FluentIcon(Icons.Outlined.UploadFile, stringResource(R.string.remote_machine_upload_public_key))
                         }
                         IconButton(enabled = users == 0, onClick = { viewModel.deleteIdentityKey(key.id) }) {
-                            Icon(Icons.Outlined.Lock, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error)
+                            FluentIcon(Icons.Outlined.Lock, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
                 OutlinedButton(onClick = { identityLauncher.launch(arrayOf("application/octet-stream", "text/plain", "*/*")) }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Outlined.UploadFile, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.remote_machine_upload_ssh_key))
+                    FluentIcon(Icons.Outlined.UploadFile, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.remote_machine_upload_ssh_key))
                 }
                 identityError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
@@ -906,7 +889,7 @@ private fun RemoteMachineSettings(
                         }
                     }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Code, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                        FluentIcon(Icons.Outlined.Code, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(binary.name, style = MaterialTheme.typography.titleSmall)
@@ -948,16 +931,16 @@ private fun RemoteMachineSettings(
                             if (testingBinaryId == binary.id) {
                                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                             } else {
-                                Icon(Icons.Outlined.PlayArrow, stringResource(R.string.remote_machine_test_binary))
+                                FluentIcon(Icons.Outlined.PlayArrow, stringResource(R.string.remote_machine_test_binary))
                             }
                         }
                         IconButton(enabled = users == 0, onClick = { viewModel.deleteBinary(binary.id) }) {
-                            Icon(Icons.Outlined.Lock, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error)
+                            FluentIcon(Icons.Outlined.Lock, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
                 OutlinedButton(onClick = { binaryLauncher.launch(arrayOf("application/octet-stream", "application/x-executable", "*/*")) }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Outlined.UploadFile, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.remote_machine_add_binary))
+                    FluentIcon(Icons.Outlined.UploadFile, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.remote_machine_add_binary))
                 }
                 binaryError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
@@ -1144,11 +1127,11 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
         topBar = {
             TopAppBar(
                 title = { Text(machine.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = { IconButton(onClick = { closeTerminal(); onBack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
+                navigationIcon = { IconButton(onClick = { closeTerminal(); onBack() }) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                 actions = {
                     Box {
                         IconButton(onClick = { inputModeMenuExpanded = true }) {
-                            Icon(Icons.Outlined.Settings, stringResource(R.string.remote_machine_terminal_input_settings))
+                            FluentIcon(Icons.Outlined.Settings, stringResource(R.string.remote_machine_terminal_input_settings))
                         }
                         DropdownMenu(
                             expanded = inputModeMenuExpanded,
@@ -1337,7 +1320,7 @@ private fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachin
                                 visual = if (showPromptPassword) VisualTransformation.None else PasswordVisualTransformation(),
                                 trailingIcon = {
                                     IconButton(onClick = { showPromptPassword = !showPromptPassword }) {
-                                        Icon(
+                                        FluentIcon(
                                             if (showPromptPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                                             contentDescription = stringResource(
                                                 if (showPromptPassword) R.string.remote_machine_hide_password else R.string.remote_machine_show_password
@@ -1406,7 +1389,7 @@ private fun TerminalExtraKeys(bridge: RemoteTerminalBridge) {
             }
         }
         IconButton(onClick = { bridge.toggleKeyboard() }) {
-            Icon(Icons.Outlined.Keyboard, null, tint = Color.White)
+            FluentIcon(Icons.Outlined.Keyboard, null, tint = Color.White)
         }
     }
 }

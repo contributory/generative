@@ -1,14 +1,10 @@
 package org.starfall.multigateway.ui.providers
+
+import org.starfall.multigateway.ui.icons.FluentIcon
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ArrowDropUp
-import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -23,6 +19,7 @@ import org.starfall.multigateway.R
 import org.starfall.multigateway.data.model.AuthMethod
 import org.starfall.multigateway.data.model.ProviderType
 import org.starfall.multigateway.ui.components.RoundedDropdownMenuItem
+import org.starfall.multigateway.ui.icons.Icons
 
 private fun AuthMethod.legacyDisplayName(): String = when (this) {
     AuthMethod.PLATFORM_DEFAULT -> "Platform Default"
@@ -55,7 +52,7 @@ internal fun ProviderBaseUrlField(type: ProviderType, value: String, valid: Bool
         supportingText = if (!valid) ({ Text(stringResource(R.string.provider_invalid_base_url)) }) else null,
         trailingIcon = {
             IconButton(onClick = { onChange(defaultUrl) }) {
-                Icon(Icons.Outlined.Language, stringResource(R.string.provider_restore_default_url))
+                FluentIcon(Icons.Outlined.Language, stringResource(R.string.provider_restore_default_url))
             }
         },
         singleLine = true, modifier = Modifier.fillMaxWidth()
@@ -85,7 +82,7 @@ internal fun ProviderAuthField(
         leadingIcon = if (canSelect) ({
             Box {
                 IconButton(onClick = { expanded = true }) {
-                    Icon(
+                    FluentIcon(
                         if (expanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
                         stringResource(R.string.provider_select_auth_type)
                     )
@@ -102,7 +99,7 @@ internal fun ProviderAuthField(
         }) else null,
         trailingIcon = if (hasKey) ({
             IconButton(onClick = { revealed = !revealed }) {
-                Icon(if (revealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                FluentIcon(if (revealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
                     stringResource(if (revealed) R.string.provider_hide_api_key else R.string.provider_show_api_key))
             }
         }) else null,

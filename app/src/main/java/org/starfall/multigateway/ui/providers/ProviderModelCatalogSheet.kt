@@ -1,4 +1,6 @@
 package org.starfall.multigateway.ui.providers
+
+import org.starfall.multigateway.ui.icons.FluentIcon
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 
 import androidx.compose.foundation.BorderStroke
@@ -6,10 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +26,7 @@ import org.starfall.multigateway.R
 import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.ui.components.AppBottomSheet
 import org.starfall.multigateway.ui.components.EntityIcon
+import org.starfall.multigateway.ui.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,7 +68,7 @@ internal fun ProviderModelCatalogSheet(
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 IconButton(onClick = { refresh++ }, enabled = !loading) {
-                    Icon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.refresh_models))
+                    FluentIcon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.refresh_models))
                 }
                 SelectableOutlinedTextField(query, { query = it }, label = { Text(stringResource(R.string.search_models)) },
                     singleLine = true, modifier = Modifier.weight(1f))
@@ -123,7 +122,7 @@ internal fun ProviderModelCatalogSheet(
                                 if (title != id) Text(id, style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = if (expanded) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
                             }
-                            Icon(if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            FluentIcon(if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                                 stringResource(if (expanded) R.string.collapse else R.string.expand), modifier = Modifier.size(20.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Checkbox(checked = added, onCheckedChange = { onToggle(id) }, modifier = Modifier.semantics {

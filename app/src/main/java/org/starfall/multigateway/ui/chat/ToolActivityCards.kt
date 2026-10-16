@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.chat
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppBottomSheet
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -23,10 +25,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.InsertDriveFile
-import androidx.compose.material.icons.outlined.WrapText
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -58,6 +56,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.sin
+import org.starfall.multigateway.ui.icons.Icons
 
 private val toolJson = Json { prettyPrint = true }
 
@@ -352,7 +351,7 @@ private fun ToolFileRow(name: String, file: File?, onOpen: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(Icons.Outlined.InsertDriveFile, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            FluentIcon(Icons.Outlined.InsertDriveFile, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Column(Modifier.weight(1f)) {
                 Text(
                     name, style = MaterialTheme.typography.bodyMedium, maxLines = 2,

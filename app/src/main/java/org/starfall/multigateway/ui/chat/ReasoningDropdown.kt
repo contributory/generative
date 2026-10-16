@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.chat
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -11,12 +13,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.starfall.multigateway.R
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 fun ReasoningDropdown(
@@ -50,7 +47,7 @@ fun ReasoningDropdown(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
+                FluentIcon(
                     imageVector = Icons.Outlined.Lightbulb,
                     contentDescription = stringResource(R.string.thinking),
                     tint = MaterialTheme.colorScheme.primary,
@@ -71,7 +68,7 @@ fun ReasoningDropdown(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Icon(
+                FluentIcon(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = if (isExpanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
                     tint = MaterialTheme.colorScheme.outline,
@@ -150,7 +147,7 @@ internal fun ProcessingDropdown(
                 color = MaterialTheme.colorScheme.outline
             )
             Spacer(Modifier.width(4.dp))
-            Icon(
+            FluentIcon(
                 imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
                 contentDescription = if (expanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
                 tint = MaterialTheme.colorScheme.outline,

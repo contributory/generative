@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.chat
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
@@ -15,12 +17,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.InsertDriveFile
-import androidx.compose.material.icons.outlined.Audiotrack
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.RadioButtonUnchecked
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,6 +36,7 @@ import org.starfall.multigateway.data.service.AttachmentResolver
 import org.starfall.multigateway.ui.components.MediaPreviewDialog
 import org.starfall.multigateway.ui.components.ChatFilePreview
 import org.starfall.multigateway.ui.components.mediaThumbnail
+import org.starfall.multigateway.ui.icons.Icons
 
 internal data class AttachmentPreviewData(
     val name: String,
@@ -140,7 +137,7 @@ private fun AttachmentTile(
                 modifier = Modifier.fillMaxSize().padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
+                FluentIcon(
                     if (preview?.mimeType?.startsWith("audio/") == true) Icons.Outlined.Audiotrack
                     else Icons.Outlined.InsertDriveFile,
                     contentDescription = null,
@@ -160,7 +157,7 @@ private fun AttachmentTile(
         if (preview?.mimeType?.startsWith("video/") == true || preview?.mimeType?.startsWith("audio/") == true) {
             Surface(modifier = Modifier.align(Alignment.Center), shape = CircleShape,
                 color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.65f)) {
-                Icon(Icons.Default.PlayArrow, "Play media", Modifier.padding(8.dp), tint = MaterialTheme.colorScheme.inverseOnSurface)
+                FluentIcon(Icons.Default.PlayArrow, "Play media", Modifier.padding(8.dp), tint = MaterialTheme.colorScheme.inverseOnSurface)
             }
         }
         preview?.durationMs?.let { duration ->
@@ -202,7 +199,7 @@ private fun AttachmentTile(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f)
                 )
             ) {
-                Icon(if (selectedForChat) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
+                FluentIcon(if (selectedForChat) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
                     if (selectedForChat) "Remove image from next message" else "Attach image to next message")
             }
         }

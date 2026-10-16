@@ -1,4 +1,6 @@
 package org.starfall.multigateway.ui.tools
+
+import org.starfall.multigateway.ui.icons.FluentIcon
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 
 import org.starfall.multigateway.ui.components.AppBottomSheet
@@ -6,10 +8,6 @@ import org.starfall.multigateway.ui.settings.SettingsCard
 import org.starfall.multigateway.ui.chat.ModelPickerSheet
 import org.starfall.multigateway.ui.components.EntityIcon
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
@@ -18,8 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +32,7 @@ import org.starfall.multigateway.ui.navigation.LocalScreenTransitionActive
 import org.starfall.multigateway.ui.navigation.SlideScreenContent
 import org.starfall.multigateway.R
 import androidx.compose.ui.res.stringResource
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 fun ToolSwitch(label: String, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
@@ -93,7 +90,7 @@ fun SystemToolsScreen(
                 title = { Text(stringResource(R.string.settings_default_models)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     }
                 }
             )
@@ -269,7 +266,7 @@ private fun DefaultModelSelector(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Icon(
+            FluentIcon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -307,7 +304,7 @@ private fun MediaDefaultModelCard(
                 color = MaterialTheme.colorScheme.primaryContainer,
                 modifier = Modifier.size(48.dp)
             ) {
-                Icon(
+                FluentIcon(
                     imageVector = if (image) Icons.Outlined.Image else Icons.Outlined.Videocam,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,

@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.chat
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 import org.starfall.multigateway.ui.components.ChatAttachmentSelection
 import org.starfall.multigateway.ui.components.LocalChatAttachmentSelection
@@ -25,9 +27,6 @@ import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -60,6 +59,7 @@ import org.starfall.multigateway.data.model.ThinkingPassback
 import org.starfall.multigateway.data.model.ConversationSummaryProgress
 import org.starfall.multigateway.data.model.ConversationSummaryRequest
 import org.starfall.multigateway.data.model.SummaryRole
+import org.starfall.multigateway.ui.icons.Icons
 
 // Far larger than any item; clamped to the bottom by the first LazyColumn measure.
 private const val OPEN_AT_BOTTOM_OFFSET = 10_000_000
@@ -574,7 +574,7 @@ fun ChatScreen(
                             style = MaterialTheme.typography.bodySmall
                         )
                         IconButton(onClick = { inlineChatError = null }) {
-                            Icon(Icons.Default.Close, contentDescription = "Dismiss error", tint = MaterialTheme.colorScheme.onErrorContainer)
+                            FluentIcon(Icons.Default.Close, contentDescription = "Dismiss error", tint = MaterialTheme.colorScheme.onErrorContainer)
                         }
                     }
                 }
@@ -590,7 +590,7 @@ fun ChatScreen(
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
                 ) {
-                    Icon(
+                    FluentIcon(
                         imageVector = Icons.Default.KeyboardArrowDown,
                         contentDescription = "Jump to latest",
                         modifier = Modifier.size(24.dp)

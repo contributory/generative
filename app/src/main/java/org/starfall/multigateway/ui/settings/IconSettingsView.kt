@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.settings
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 import org.starfall.multigateway.ui.components.RoundedDropdownMenuItem as DropdownMenuItem
@@ -14,12 +16,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.AddPhotoAlternate
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +33,7 @@ import org.starfall.multigateway.R
 import org.starfall.multigateway.data.service.IconStore
 import org.starfall.multigateway.data.service.StoredIcon
 import org.starfall.multigateway.ui.components.EntityIcon
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 fun IconSettingsView() {
@@ -112,14 +109,14 @@ fun IconSettingsView() {
             SelectableOutlinedTextField(value = query, onValueChange = { query = it },
                 modifier = Modifier.fillMaxWidth(), singleLine = true,
                 label = { Text(stringResource(R.string.icon_cache_search)) },
-                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) })
+                leadingIcon = { FluentIcon(Icons.Outlined.Search, contentDescription = null) })
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.icon_settings_title), modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleSmall)
                 IconButton(enabled = !busy, onClick = {
                     picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }) { Icon(Icons.Outlined.AddPhotoAlternate, stringResource(R.string.icon_cache_add)) }
+                }) { FluentIcon(Icons.Outlined.AddPhotoAlternate, stringResource(R.string.icon_cache_add)) }
             }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         }
@@ -144,7 +141,7 @@ fun IconSettingsView() {
                         }
                         Box {
                             IconButton(enabled = !busy, onClick = { menu = true }) {
-                                Icon(Icons.Outlined.MoreVert, stringResource(R.string.icon_cache_actions))
+                                FluentIcon(Icons.Outlined.MoreVert, stringResource(R.string.icon_cache_actions))
                             }
                             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                                 DropdownMenuItem(text = { Text(stringResource(R.string.icon_cache_edit)) },
@@ -193,7 +190,7 @@ fun IconSettingsView() {
                                             Toast.makeText(context, R.string.icon_cache_save_failed, Toast.LENGTH_LONG).show()
                                         } finally { busy = false }
                                     }
-                                }) { Icon(Icons.Outlined.Close, stringResource(R.string.remove_icon)) }
+                                }) { FluentIcon(Icons.Outlined.Close, stringResource(R.string.remove_icon)) }
                             }
                         }
                     }
@@ -209,12 +206,12 @@ fun IconSettingsView() {
                                     supportingText = if (invalid) ({ Text(stringResource(R.string.icon_cache_invalid_regex)) }) else null)
                                 IconButton(enabled = !busy, onClick = {
                                     patterns = patterns.filterIndexed { i, _ -> i != index }
-                                }) { Icon(Icons.Outlined.Close, stringResource(R.string.icon_cache_delete)) }
+                                }) { FluentIcon(Icons.Outlined.Close, stringResource(R.string.icon_cache_delete)) }
                             }
                         }
                     }
                     TextButton(enabled = !busy, onClick = { patterns = patterns + "" }) {
-                        Icon(Icons.Outlined.Add, contentDescription = null)
+                        FluentIcon(Icons.Outlined.Add, contentDescription = null)
                         Text(stringResource(R.string.icon_cache_add_match))
                     }
                 }

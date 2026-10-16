@@ -1,4 +1,6 @@
 package org.starfall.multigateway.ui.providers
+
+import org.starfall.multigateway.ui.icons.FluentIcon
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 
 import androidx.activity.compose.BackHandler
@@ -11,14 +13,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.FormatListBulleted
-import androidx.compose.material.icons.outlined.NetworkCheck
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -45,6 +39,7 @@ import org.starfall.multigateway.ui.components.moved
 import org.starfall.multigateway.ui.components.rememberOAuthStart
 import org.starfall.multigateway.ui.navigation.LocalScreenTransitionActive
 import org.starfall.multigateway.ui.navigation.SlideScreenContent
+import org.starfall.multigateway.ui.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -190,7 +185,7 @@ fun ProviderEditScreen(
         } else {
             Scaffold(modifier = Modifier.fillMaxSize(), topBar = {
                 TopAppBar(title = { Text(if (isNew) stringResource(R.string.new_provider) else name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    navigationIcon = { IconButton(onClick = onDismiss) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
+                    navigationIcon = { IconButton(onClick = onDismiss) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                     actions = {
                         if (pager.currentPage == 0) Button(enabled = valid && !oauthAuthorizing && !iconImporting,
                             onClick = { onSave(draft()) }, modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(R.string.common_save)) }
@@ -200,11 +195,11 @@ fun ProviderEditScreen(
                                 enabled = testingConnection || (onTestConnection != null && (type.isAccountProvider || baseUrl.isNotBlank()) && valid && models.isNotEmpty())) {
                                 Box(contentAlignment = Alignment.Center) {
                                     if (testingConnection && !showTestDialog) CircularProgressIndicator(Modifier.size(36.dp), strokeWidth = 2.dp)
-                                    Icon(Icons.Outlined.NetworkCheck, stringResource(R.string.test_connection_lower))
+                                    FluentIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.test_connection_lower))
                                 }
                             }
-                            IconButton(onClick = { editingModel = "" }) { Icon(Icons.Default.Add, stringResource(R.string.add_model_manually)) }
-                            IconButton(onClick = { showCatalog = true }) { Icon(Icons.Outlined.FormatListBulleted, stringResource(R.string.open_model_catalog)) }
+                            IconButton(onClick = { editingModel = "" }) { FluentIcon(Icons.Default.Add, stringResource(R.string.add_model_manually)) }
+                            IconButton(onClick = { showCatalog = true }) { FluentIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.open_model_catalog)) }
                         }
                     })
             }) { padding ->

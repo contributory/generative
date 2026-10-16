@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.preview
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -7,9 +9,6 @@ import android.webkit.*
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -21,6 +20,7 @@ import org.starfall.multigateway.ui.theme.MultiGatewayTheme
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.util.UUID
+import org.starfall.multigateway.ui.icons.Icons
 
 /** Private Activity keeps generated scripts away from native app state and credentials. */
 class CodePreviewActivity : ComponentActivity() {
@@ -42,11 +42,11 @@ class CodePreviewActivity : ComponentActivity() {
                 DisposableEffect(Unit) { onDispose { webView?.stopLoading(); webView?.destroy(); webView = null } }
                 Scaffold(topBar = {
                     TopAppBar(title = { Text(stringResource(R.string.code_preview_title)) }, navigationIcon = {
-                        IconButton(onClick = { finish() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) }
+                        IconButton(onClick = { finish() }) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) }
                     }, actions = {
                         if (document != null) IconButton(onClick = {
                             webView?.loadDataWithBaseURL(PREVIEW_ORIGIN, document, "text/html", "UTF-8", null)
-                        }) { Icon(Icons.Outlined.Refresh, stringResource(R.string.code_preview_reload)) }
+                        }) { FluentIcon(Icons.Outlined.Refresh, stringResource(R.string.code_preview_reload)) }
                     })
                 }) { padding ->
                     if (document == null) Text(stringResource(R.string.code_preview_unavailable), Modifier.padding(padding))

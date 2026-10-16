@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.providers
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 import org.starfall.multigateway.ui.components.RoundedDropdownMenuItem as DropdownMenuItem
@@ -33,10 +35,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.*
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.focus.FocusRequester
@@ -100,6 +98,7 @@ import org.starfall.multigateway.ui.components.AdaptiveCardLayout
 import org.starfall.multigateway.ui.components.moved
 import org.starfall.multigateway.ui.navigation.LocalScreenTransitionActive
 import org.starfall.multigateway.ui.navigation.SlideScreenContent
+import org.starfall.multigateway.ui.icons.Icons
 
 
 private data class ProviderEditor(val provider: LlmProviderInfo, val isNew: Boolean)
@@ -636,7 +635,7 @@ fun ProviderScreen(
                                     trailingIcon = {
                                         Box {
                                             IconButton(onClick = { searchFilterOpen = true }) {
-                                                Icon(Icons.Outlined.FilterList, stringResource(R.string.provider_search_filter),
+                                                FluentIcon(Icons.Outlined.FilterList, stringResource(R.string.provider_search_filter),
                                                     tint = if (searchFields == setOf(ProviderSearchField.PROVIDER_NAME))
                                                         MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary)
                                             }
@@ -704,7 +703,7 @@ fun ProviderScreen(
                         },
                         navigationIcon = {
                             if (openGroup == null || searching) IconButton(onClick = onBack) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                                FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                             }
                         },
                         actions = {
@@ -713,7 +712,7 @@ fun ProviderScreen(
                                     onClick = { createProvider(openGroup.id) },
                                     modifier = Modifier.testTag("add_provider")
                                 ) {
-                                    Icon(Icons.Default.Add, stringResource(R.string.add_provider))
+                                    FluentIcon(Icons.Default.Add, stringResource(R.string.add_provider))
                                 }
                                 ProviderGroupOverflowMenu(
                                     onEdit = { groupToRename = openGroup },
@@ -721,18 +720,18 @@ fun ProviderScreen(
                                     compact = false
                                 )
                                 IconButton(onClick = { openGroupId = null }) {
-                                    Icon(Icons.Default.Close, stringResource(R.string.common_close))
+                                    FluentIcon(Icons.Default.Close, stringResource(R.string.common_close))
                                 }
                             } else if (searching) {
                                 IconButton(onClick = ::closeSearch) {
-                                    Icon(Icons.Default.Close, stringResource(R.string.close_provider_search))
+                                    FluentIcon(Icons.Default.Close, stringResource(R.string.close_provider_search))
                                 }
                             } else {
                                 IconButton(onClick = { openGroupId = null; searching = true }) {
-                                    Icon(Icons.Default.Search, stringResource(R.string.search_providers))
+                                    FluentIcon(Icons.Default.Search, stringResource(R.string.search_providers))
                                 }
                                 IconButton(onClick = { onToggleGridView?.invoke(!isGridView) }) {
-                                    Icon(
+                                    FluentIcon(
                                         imageVector = if (isGridView) Icons.Default.List else Icons.Default.GridView,
                                         contentDescription = stringResource(
                                             if (isGridView) R.string.switch_to_list_view else R.string.switch_to_grid_view
@@ -740,13 +739,13 @@ fun ProviderScreen(
                                     )
                                 }
                                 IconButton(onClick = { creatingGroup = true }) {
-                                    Icon(Icons.Outlined.CreateNewFolder, stringResource(R.string.add_provider_group))
+                                    FluentIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.add_provider_group))
                                 }
                                 IconButton(
                                     onClick = { createProvider(openGroupId) },
                                     modifier = Modifier.testTag("add_provider")
                                 ) {
-                                    Icon(Icons.Default.Add, stringResource(R.string.add_provider))
+                                    FluentIcon(Icons.Default.Add, stringResource(R.string.add_provider))
                                 }
                             }
                         }
@@ -770,7 +769,7 @@ fun ProviderScreen(
                     if (visibleRootItems.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
+                                FluentIcon(
                                     imageVector = Icons.Outlined.Hub,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.outline,
@@ -1218,7 +1217,7 @@ private fun ProviderFolderOverlay(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(
+                            FluentIcon(
                                 imageVector = Icons.Outlined.FolderOpen,
                                 contentDescription = null,
                                 modifier = Modifier.size(52.dp),
@@ -1363,7 +1362,7 @@ private fun ProviderGroupOverflowMenu(onEdit: () -> Unit, onDelete: () -> Unit, 
             onClick = { expanded = true },
             modifier = if (compact) Modifier.size(36.dp) else Modifier
         ) {
-            Icon(
+            FluentIcon(
                 Icons.Default.MoreVert,
                 contentDescription = stringResource(R.string.more_options),
                 modifier = if (compact) Modifier.size(20.dp) else Modifier
@@ -1372,13 +1371,13 @@ private fun ProviderGroupOverflowMenu(onEdit: () -> Unit, onDelete: () -> Unit, 
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.common_edit)) },
-                leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
                 onClick = { expanded = false; onEdit() }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.delete_group), color = MaterialTheme.colorScheme.error) },
                 leadingIcon = {
-                    Icon(
+                    FluentIcon(
                         Icons.Outlined.Delete,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error
@@ -1517,7 +1516,7 @@ private fun ProviderGroupChoiceCard(
                 modifier = Modifier.weight(1f)
             )
             if (selected) {
-                Icon(
+                FluentIcon(
                     Icons.Default.Check,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
@@ -1621,7 +1620,7 @@ private fun ProviderOAuthStatus(provider: LlmProviderInfo) {
     val signedIn = provider.auth.method == AuthMethod.OAUTH && !provider.auth.value.isNullOrBlank()
     val color = if (signedIn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Icon(if (signedIn) Icons.Outlined.CheckCircle else Icons.Outlined.AccountCircle,
+        FluentIcon(if (signedIn) Icons.Outlined.CheckCircle else Icons.Outlined.AccountCircle,
             contentDescription = null, modifier = Modifier.size(14.dp), tint = color)
         Text(stringResource(if (signedIn) R.string.oauth_signed_in else R.string.oauth_signed_out),
             style = MaterialTheme.typography.labelSmall, color = color)
@@ -1637,22 +1636,22 @@ private fun ProviderOverflowMenu(
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
-            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more_options))
+            FluentIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.common_edit)) },
-                leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
                 onClick = { expanded = false; onEdit() }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.move_to_group)) },
-                leadingIcon = { Icon(Icons.Outlined.Folder, contentDescription = null) },
+                leadingIcon = { FluentIcon(Icons.Outlined.Folder, contentDescription = null) },
                 onClick = { expanded = false; onMoveToGroup() }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
-                leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                leadingIcon = { FluentIcon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                 onClick = { expanded = false; onDelete() }
             )
         }
@@ -1693,7 +1692,7 @@ private fun ProviderGroupGridHeading(
                     onClick = onAddProvider,
                     modifier = Modifier.size(32.dp).testTag("add_provider_to_group_${group.id}")
                 ) {
-                    Icon(Icons.Default.Add, stringResource(R.string.add_provider), modifier = Modifier.size(20.dp))
+                    FluentIcon(Icons.Default.Add, stringResource(R.string.add_provider), modifier = Modifier.size(20.dp))
                 }
                 ProviderGroupOverflowMenu(onEditGroup, onDeleteGroup)
             }

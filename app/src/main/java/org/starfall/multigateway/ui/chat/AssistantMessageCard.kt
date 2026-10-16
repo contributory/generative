@@ -1,4 +1,6 @@
 package org.starfall.multigateway.ui.chat
+
+import org.starfall.multigateway.ui.icons.FluentIcon
 import org.starfall.multigateway.ui.components.RoundedDropdownMenuItem as DropdownMenuItem
 
 import android.content.ClipData
@@ -13,13 +15,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,6 +38,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 fun AssistantMessageCard(
@@ -148,7 +144,7 @@ fun AssistantMessageCard(
                     enabled = displayedVersionIndex > 0,
                     modifier = Modifier.size(30.dp)
                 ) {
-                    Icon(
+                    FluentIcon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Previous version",
                         modifier = Modifier.size(16.dp)
@@ -168,7 +164,7 @@ fun AssistantMessageCard(
                     enabled = displayedVersionIndex < versionIndices.lastIndex,
                     modifier = Modifier.size(30.dp)
                 ) {
-                    Icon(
+                    FluentIcon(
                         Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = "Next version",
                         modifier = Modifier.size(16.dp)
@@ -189,7 +185,7 @@ fun AssistantMessageCard(
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 MessageActionButton(onClick = onRegenerate, contentDescription = "Regenerate") {
-                    Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    FluentIcon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
                 MessageActionButton(
                     onClick = {
@@ -201,7 +197,7 @@ fun AssistantMessageCard(
                     },
                     contentDescription = "Share"
                 ) {
-                    Icon(Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    FluentIcon(Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
                 MessageActionButton(onClick = {
                     if (message.content.isNotBlank()) {
@@ -212,7 +208,7 @@ fun AssistantMessageCard(
                         Toast.makeText(context, "Error copied to clipboard", Toast.LENGTH_SHORT).show()
                     }
                 }, contentDescription = "Copy") {
-                    Icon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                    FluentIcon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
 
                 Box {
@@ -220,7 +216,7 @@ fun AssistantMessageCard(
                         onClick = { showMoreMenu = true },
                         contentDescription = "More"
                     ) {
-                        Icon(Icons.Default.MoreHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
+                        FluentIcon(Icons.Default.MoreHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
                     DropdownMenu(
                         expanded = showMoreMenu,
@@ -228,7 +224,7 @@ fun AssistantMessageCard(
                     ) {
                         DropdownMenuItem(
                             text = { Text("Edit") },
-                            leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                            leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
                             onClick = {
                                 showMoreMenu = false
                                 onEdit()
@@ -236,7 +232,7 @@ fun AssistantMessageCard(
                         )
                         DropdownMenuItem(
                             text = { Text("Delete") },
-                            leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
+                            leadingIcon = { FluentIcon(Icons.Outlined.Delete, contentDescription = null) },
                             onClick = {
                                 showMoreMenu = false
                                 onDelete()
@@ -254,7 +250,7 @@ fun AssistantMessageCard(
                 } else Spacer(modifier = Modifier.weight(1f))
 
                 MessageActionButton(onClick = onRead, contentDescription = if (isReading) "Stop reading" else "Read aloud") {
-                    Icon(if (isReading) Icons.Outlined.StopCircle else Icons.Outlined.VolumeUp,
+                    FluentIcon(if (isReading) Icons.Outlined.StopCircle else Icons.Outlined.VolumeUp,
                         contentDescription = null, modifier = Modifier.size(18.dp),
                         tint = if (isReading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -286,7 +282,7 @@ private fun GenerationErrorBlock(
                 .padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
+                FluentIcon(
                     Icons.Outlined.ErrorOutline,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.error,
@@ -301,7 +297,7 @@ private fun GenerationErrorBlock(
                 Spacer(Modifier.weight(1f))
                 if (onRetry != null) {
                     IconButton(onClick = onRetry, modifier = Modifier.size(32.dp)) {
-                        Icon(
+                        FluentIcon(
                             Icons.Outlined.Refresh,
                             contentDescription = "Retry from error",
                             tint = MaterialTheme.colorScheme.onErrorContainer,
@@ -310,14 +306,14 @@ private fun GenerationErrorBlock(
                     }
                 }
                 IconButton(onClick = onCopy, modifier = Modifier.size(32.dp)) {
-                    Icon(
+                    FluentIcon(
                         Icons.Outlined.ContentCopy,
                         contentDescription = "Copy error",
                         tint = MaterialTheme.colorScheme.onErrorContainer,
                         modifier = Modifier.size(18.dp)
                     )
                 }
-                Icon(
+                FluentIcon(
                     imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                     contentDescription = if (expanded) "Collapse error" else "Expand error",
                     tint = MaterialTheme.colorScheme.onErrorContainer,

@@ -1,11 +1,10 @@
 package org.starfall.multigateway.ui.providers
+
+import org.starfall.multigateway.ui.icons.FluentIcon
 import org.starfall.multigateway.ui.components.RoundedDropdownMenuItem as DropdownMenuItem
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.R
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 internal fun OAuthAccountCard(
@@ -57,7 +57,7 @@ internal fun OAuthAccountCard(
                         if (busy) {
                             CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                         } else {
-                            Icon(
+                            FluentIcon(
                                 if (signedIn) Icons.Outlined.CheckCircle else Icons.Outlined.AccountCircle,
                                 contentDescription = null,
                                 tint = accent,
@@ -85,19 +85,19 @@ internal fun OAuthAccountCard(
                 if (signedIn) {
                     Box {
                         IconButton(onClick = { menuExpanded = true }, enabled = !busy) {
-                            Icon(Icons.Outlined.MoreVert, stringResource(R.string.oauth_account_actions))
+                            FluentIcon(Icons.Outlined.MoreVert, stringResource(R.string.oauth_account_actions))
                         }
                         DropdownMenu(menuExpanded && !busy, onDismissRequest = { menuExpanded = false }) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.oauth_sign_in_again)) },
-                                leadingIcon = { Icon(Icons.Outlined.OpenInBrowser, null) },
+                                leadingIcon = { FluentIcon(Icons.Outlined.OpenInBrowser, null) },
                                 enabled = canSignIn,
                                 onClick = { menuExpanded = false; onSignIn() }
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.oauth_sign_out),
                                     color = MaterialTheme.colorScheme.error) },
-                                leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Logout, null,
+                                leadingIcon = { FluentIcon(Icons.AutoMirrored.Outlined.Logout, null,
                                     tint = MaterialTheme.colorScheme.error) },
                                 enabled = canSignOut,
                                 onClick = { menuExpanded = false; onSignOut() }
@@ -108,7 +108,7 @@ internal fun OAuthAccountCard(
             }
             if (!signedIn && !busy) {
                 Button(onClick = onSignIn, enabled = canSignIn, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Outlined.OpenInBrowser, null, Modifier.size(18.dp))
+                    FluentIcon(Icons.Outlined.OpenInBrowser, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.oauth_sign_in))
                 }

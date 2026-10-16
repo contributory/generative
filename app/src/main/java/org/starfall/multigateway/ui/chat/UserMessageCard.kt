@@ -1,4 +1,6 @@
 package org.starfall.multigateway.ui.chat
+
+import org.starfall.multigateway.ui.icons.FluentIcon
 import org.starfall.multigateway.ui.components.RoundedDropdownMenuItem as DropdownMenuItem
 
 import android.content.ClipData
@@ -11,14 +13,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,6 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.data.model.StoredMessage
 import org.starfall.multigateway.ui.theme.LocalAmoledMode
+import org.starfall.multigateway.ui.icons.Icons
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -127,7 +122,7 @@ fun UserMessageCard(
                                 enabled = message.activeVersionIndex > 0,
                                 modifier = Modifier.size(24.dp)
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Prev Version", modifier = Modifier.size(14.dp))
+                                FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Prev Version", modifier = Modifier.size(14.dp))
                             }
                             Text(
                                 text = "${message.activeVersionIndex + 1}/${message.versions.size}",
@@ -144,7 +139,7 @@ fun UserMessageCard(
                                 enabled = message.activeVersionIndex < message.versions.size - 1,
                                 modifier = Modifier.size(24.dp)
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next Version", modifier = Modifier.size(14.dp))
+                                FluentIcon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next Version", modifier = Modifier.size(14.dp))
                             }
                         }
                     }
@@ -156,7 +151,7 @@ fun UserMessageCard(
                     ) {
                         if (!message.isQueued) DropdownMenuItem(
                             text = { Text("Copy") },
-                            leadingIcon = { Icon(Icons.Outlined.ContentCopy, contentDescription = null) },
+                            leadingIcon = { FluentIcon(Icons.Outlined.ContentCopy, contentDescription = null) },
                             onClick = {
                                 showMenu = false
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -166,7 +161,7 @@ fun UserMessageCard(
                         )
                         if (onResendFromMenu != null) DropdownMenuItem(
                             text = { Text(stringResource(org.starfall.multigateway.R.string.resend_message)) },
-                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) },
+                            leadingIcon = { FluentIcon(Icons.AutoMirrored.Filled.Send, contentDescription = null) },
                             enabled = resendEnabled,
                             onClick = {
                                 showMenu = false
@@ -175,7 +170,7 @@ fun UserMessageCard(
                         )
                         DropdownMenuItem(
                             text = { Text("Edit") },
-                            leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                            leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
                             onClick = {
                                 showMenu = false
                                 onEdit(message.id)
@@ -183,7 +178,7 @@ fun UserMessageCard(
                         )
                         DropdownMenuItem(
                             text = { Text(if (message.isQueued) "Cancel" else "Delete") },
-                            leadingIcon = { Icon(if (message.isQueued) Icons.Outlined.Close else Icons.Outlined.Delete, contentDescription = null) },
+                            leadingIcon = { FluentIcon(if (message.isQueued) Icons.Outlined.Close else Icons.Outlined.Delete, contentDescription = null) },
                             onClick = {
                                 showMenu = false
                                 onDelete(message.id)
@@ -194,7 +189,7 @@ fun UserMessageCard(
             }
             if (onResend != null) {
                 IconButton(onClick = onResend, enabled = resendEnabled, modifier = Modifier.size(40.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.Send,
+                    FluentIcon(Icons.AutoMirrored.Filled.Send,
                         contentDescription = stringResource(org.starfall.multigateway.R.string.resend_message),
                         modifier = Modifier.size(20.dp))
                 }

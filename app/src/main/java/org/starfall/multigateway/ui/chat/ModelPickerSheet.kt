@@ -1,4 +1,6 @@
 package org.starfall.multigateway.ui.chat
+
+import org.starfall.multigateway.ui.icons.FluentIcon
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 
 import kotlinx.coroutines.delay
@@ -24,24 +26,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Audiotrack
-import androidx.compose.material.icons.outlined.Build
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.FolderOpen
-import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.Memory
-import androidx.compose.material.icons.outlined.Psychology
-import androidx.compose.material.icons.outlined.UnfoldLess
-import androidx.compose.material.icons.outlined.UnfoldMore
-import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -78,6 +62,7 @@ import org.starfall.multigateway.data.model.ProviderType
 import org.starfall.multigateway.ui.components.AppBottomSheet
 import org.starfall.multigateway.ui.components.EntityIcon
 import org.starfall.multigateway.ui.components.providerInitials
+import org.starfall.multigateway.ui.icons.Icons
 
 private const val MODEL_LABEL_PREFIX_LIMIT = 20
 
@@ -452,7 +437,7 @@ fun ModelPickerSheet(
                     },
                     modifier = Modifier.size(48.dp)
                 ) {
-                    Icon(
+                    FluentIcon(
                         if (allCollapsed) Icons.Outlined.ExpandMore else Icons.Outlined.ExpandLess,
                         contentDescription = stringResource(
                             if (allCollapsed) R.string.expand_all_model_sections else R.string.collapse_all_model_sections
@@ -462,7 +447,7 @@ fun ModelPickerSheet(
                 SelectableOutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                    leadingIcon = { FluentIcon(Icons.Outlined.Search, contentDescription = null) },
                     placeholder = { Text(stringResource(R.string.search_models_placeholder)) },
                     singleLine = true,
                     shape = RoundedCornerShape(28.dp),
@@ -708,7 +693,7 @@ internal fun SelectedModelOverviewSheet(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Icon(
+                            FluentIcon(
                                 Icons.Outlined.Psychology,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
@@ -815,7 +800,7 @@ private fun ModelPickerProviderRow(
             Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
+            FluentIcon(
                 if (collapsed) Icons.Default.KeyboardArrowRight else Icons.Default.KeyboardArrowDown,
                 contentDescription = stringResource(if (collapsed) R.string.expand_group else R.string.collapse_group, provider.name),
                 modifier = Modifier.size(20.dp)
@@ -837,7 +822,7 @@ private fun ModelPickerProviderRow(
                  fontWeight = FontWeight.Medium
              )
              if (hasSelectedModel) {
-                 Icon(
+                 FluentIcon(
                      Icons.Filled.Check,
                      contentDescription = null,
                      tint = MaterialTheme.colorScheme.primary,
@@ -980,7 +965,7 @@ private fun ModelPickerCard(
                         modifier = Modifier.size(22.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(
+                            FluentIcon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = "Selected",
                                 tint = MaterialTheme.colorScheme.onPrimary,
@@ -1008,7 +993,7 @@ private fun ModelPickerCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(
+                        FluentIcon(
                             imageVector = Icons.Outlined.Psychology,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
@@ -1228,7 +1213,7 @@ private fun compactContextWindow(tokens: Int): String {
 @Composable
 private fun ModelBadge(
     label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    icon: Int? = null,
     iconOnly: Boolean = false,
     colors: ChipColors = AssistChipDefaults.assistChipColors()
 ) {
@@ -1243,7 +1228,7 @@ private fun ModelBadge(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            icon?.let { Icon(it, contentDescription = if (iconOnly) label else null, modifier = Modifier.size(12.dp)) }
+            icon?.let { FluentIcon(it, contentDescription = if (iconOnly) label else null, modifier = Modifier.size(12.dp)) }
             if (!iconOnly) Text(label, fontSize = 10.sp)
         }
     }

@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.providers
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,9 +9,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.FormatListBulleted
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import sh.calvin.reorderable.ReorderableItem
@@ -24,6 +23,7 @@ import org.starfall.multigateway.data.model.ModelConfiguration
 import org.starfall.multigateway.ui.chat.ModelCapabilityBadges
 import org.starfall.multigateway.ui.chat.modelInitial
 import org.starfall.multigateway.ui.components.*
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 internal fun ProviderModelsPane(models: List<String>, configurations: Map<String, ModelConfiguration>, listState: LazyListState,
@@ -36,8 +36,8 @@ internal fun ProviderModelsPane(models: List<String>, configurations: Map<String
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.provider_no_models_description), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = { onEdit("") }) { Icon(Icons.Outlined.Edit, stringResource(R.string.add_manually), Modifier.size(18.dp)) }
-                    Button(onClick = onOpenCatalog) { Icon(Icons.Outlined.FormatListBulleted, stringResource(R.string.open_model_catalog), Modifier.size(18.dp)) }
+                    OutlinedButton(onClick = { onEdit("") }) { FluentIcon(Icons.Outlined.Edit, stringResource(R.string.add_manually), Modifier.size(18.dp)) }
+                    Button(onClick = onOpenCatalog) { FluentIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.open_model_catalog), Modifier.size(18.dp)) }
                 }
             }
         }

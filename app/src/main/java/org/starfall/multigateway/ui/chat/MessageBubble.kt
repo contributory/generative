@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.chat
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -7,9 +9,6 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -18,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.data.model.ChatRole
 import org.starfall.multigateway.data.model.StoredMessage
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 fun MessageBubble(
@@ -42,7 +42,7 @@ fun MessageBubble(
                     .padding(end = 8.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(
+                    FluentIcon(
                         Icons.Outlined.ChatBubbleOutline,
                         contentDescription = "AI",
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -95,7 +95,7 @@ fun MessageBubble(
                             },
                             modifier = Modifier.size(28.dp)
                         ) {
-                            Icon(
+                            FluentIcon(
                                 Icons.Outlined.ContentCopy,
                                 contentDescription = "Copy",
                                 tint = MaterialTheme.colorScheme.outline,

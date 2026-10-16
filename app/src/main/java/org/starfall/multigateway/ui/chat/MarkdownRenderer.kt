@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.chat
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -8,8 +10,6 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withContext
 import org.intellij.markdown.ast.getTextInNode
 import org.starfall.multigateway.data.local.preferences.MessageFontFamily
+import org.starfall.multigateway.ui.icons.Icons
 
 /** Library primitives with app-owned code toolbar, error/LaTeX UI and streaming fades. */
 @Composable
@@ -235,7 +236,7 @@ private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String, fi
                         },
                         modifier = Modifier.size(28.dp)
                     ) {
-                        Icon(
+                        FluentIcon(
                             imageVector = Icons.Outlined.ContentCopy,
                             contentDescription = "Copy Error",
                             tint = errorColor,

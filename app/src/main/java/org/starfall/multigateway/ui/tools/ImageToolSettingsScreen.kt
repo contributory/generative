@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.tools
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 import org.starfall.multigateway.ui.components.RoundedDropdownMenuItem as DropdownMenuItem
@@ -9,9 +11,6 @@ import org.starfall.multigateway.ui.navigation.LocalScreenTransitionActive
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -23,6 +22,7 @@ import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.data.tools.*
 import org.starfall.multigateway.R
 import androidx.compose.ui.res.stringResource
+import org.starfall.multigateway.ui.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +43,7 @@ fun ImageToolSettingsScreen(provider: LlmProviderInfo, config: SystemToolConfig,
     Scaffold(
         topBar = { TopAppBar(
             title = { Text(if (video) "Video settings" else "Image settings") },
-            navigationIcon = { IconButton(onClick = { back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+            navigationIcon = { IconButton(onClick = { back() }) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
             actions = { Button(enabled = error == null, onClick = { parsed?.let(onSave) }, modifier = Modifier.padding(end = 8.dp)) { Text("Save") } }
         ) }
     ) { padding ->

@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.settings
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 import org.starfall.multigateway.data.service.GitHubReleaseInfo
 import org.starfall.multigateway.data.service.fetchLatestGitHubRelease
@@ -18,9 +20,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -31,7 +30,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -63,8 +61,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import org.starfall.multigateway.ui.navigation.SlideScreenContent
 import org.starfall.multigateway.ui.theme.ThemePresets
+import org.starfall.multigateway.ui.icons.Icons
 
-enum class SettingsCategory(val titleRes: Int, val subtitleRes: Int, val icon: ImageVector) {
+enum class SettingsCategory(val titleRes: Int, val subtitleRes: Int, val icon: Int) {
     APP_SETTINGS(R.string.settings_category_app_settings, R.string.settings_category_app_settings_description, Icons.Outlined.Tune),
     ICONS(R.string.icon_settings_title, R.string.icon_settings_description, Icons.Outlined.Image),
     USER_DATA(R.string.settings_category_app_data, R.string.settings_category_app_data_description, Icons.Outlined.ManageHistory),
@@ -138,7 +137,7 @@ fun SettingsScreen(
                             }
                         }
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
+                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
                     }
                 }
             )
@@ -388,7 +387,7 @@ fun AppearanceSettingsView(
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Box(Modifier.size(26.dp).clip(CircleShape).background(color))
-                                    if (selected) Icon(Icons.Outlined.Check, null, tint = MaterialTheme.colorScheme.inverseOnSurface, modifier = Modifier.size(18.dp))
+                                    if (selected) FluentIcon(Icons.Outlined.Check, null, tint = MaterialTheme.colorScheme.inverseOnSurface, modifier = Modifier.size(18.dp))
                                 }
                             }
                         }
@@ -612,14 +611,14 @@ fun UserDataSettingsView(
                 OutlinedButton(onClick = { showClearConfirm = true }, shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Outlined.DeleteSweep, null, modifier = Modifier.size(20.dp))
+                    FluentIcon(Icons.Outlined.DeleteSweep, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.settings_clear_all_chat_history))
                 }
                 OutlinedButton(onClick = { showResetConfirm = true }, shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Outlined.Warning, null, modifier = Modifier.size(20.dp))
+                    FluentIcon(Icons.Outlined.Warning, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.settings_reset_all_application_data))
                 }
@@ -701,13 +700,13 @@ fun UserDataSettingsView(
 }
 
 @Composable
-private fun ExportDataButton(title: String, icon: ImageVector, onClick: () -> Unit) {
+private fun ExportDataButton(title: String, icon: Int, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+        FluentIcon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
         Text(title)
     }
@@ -779,7 +778,7 @@ fun UpdateSettingsView() {
                         enabled = !isChecking,
                         modifier = Modifier.size(48.dp)
                     ) {
-                        Icon(
+                        FluentIcon(
                             imageVector = Icons.Outlined.Refresh,
                             contentDescription = stringResource(R.string.settings_check_for_updates),
                             modifier = Modifier.size(18.dp)
@@ -876,7 +875,7 @@ fun UpdateSettingsView() {
                                                     verticalAlignment = Alignment.CenterVertically,
                                                     modifier = Modifier.weight(1f)
                                                 ) {
-                                                    Icon(
+                                                    FluentIcon(
                                                         imageVector = Icons.Outlined.FileDownload,
                                                          contentDescription = stringResource(R.string.settings_download_apk),
                                                         modifier = Modifier.size(20.dp)
@@ -909,7 +908,7 @@ fun UpdateSettingsView() {
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Icon(Icons.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    FluentIcon(Icons.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
                                      Text(stringResource(R.string.settings_open_github_release))
                                 }
@@ -920,7 +919,7 @@ fun UpdateSettingsView() {
                         Text(stringResource(R.string.settings_find_latest_release),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         FilledTonalButton(onClick = { refreshKey++ }, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                            Icon(Icons.Outlined.SystemUpdateAlt, null, modifier = Modifier.size(20.dp))
+                            FluentIcon(Icons.Outlined.SystemUpdateAlt, null, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.settings_check_for_updates))
                         }
@@ -942,7 +941,7 @@ fun AboutSettingsView() {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(60.dp)) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.Hub, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(32.dp))
+                        FluentIcon(Icons.Outlined.Hub, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(32.dp))
                     }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {

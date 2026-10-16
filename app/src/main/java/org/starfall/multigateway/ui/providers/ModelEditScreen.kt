@@ -1,4 +1,6 @@
 package org.starfall.multigateway.ui.providers
+
+import org.starfall.multigateway.ui.icons.FluentIcon
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 import org.starfall.multigateway.ui.components.RoundedDropdownMenuItem as DropdownMenuItem
 
@@ -9,16 +11,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import org.starfall.multigateway.ui.chat.RenderCodeBlock
-import androidx.compose.material.icons.outlined.Audiotrack
-import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,6 +28,7 @@ import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.ui.chat.ModelConfigDialog
 import org.starfall.multigateway.ui.components.IconPickerRow
 import org.starfall.multigateway.ui.navigation.LocalScreenTransitionActive
+import org.starfall.multigateway.ui.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,7 +97,7 @@ fun ModelEditScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
+                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                     }
                 },
                 actions = {
@@ -182,21 +178,21 @@ fun ModelEditScreen(
                         checked = config.supportsVision,
                         onCheckedChange = { config = config.copy(supportsVision = it) },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-                        icon = { Icon(Icons.Outlined.Image, contentDescription = null) },
+                        icon = { FluentIcon(Icons.Outlined.Image, contentDescription = null) },
                         label = { Text(stringResource(R.string.common_image)) }
                     )
                     SegmentedButton(
                         checked = config.supportsVideoInput,
                         onCheckedChange = { config = config.copy(supportsVideoInput = it) },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-                        icon = { Icon(Icons.Outlined.Videocam, contentDescription = null) },
+                        icon = { FluentIcon(Icons.Outlined.Videocam, contentDescription = null) },
                         label = { Text(stringResource(R.string.common_video)) }
                     )
                     SegmentedButton(
                         checked = config.supportsAudioInput,
                         onCheckedChange = { config = config.copy(supportsAudioInput = it) },
                         shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                        icon = { Icon(Icons.Outlined.Audiotrack, contentDescription = null) },
+                        icon = { FluentIcon(Icons.Outlined.Audiotrack, contentDescription = null) },
                         label = { Text(stringResource(R.string.common_audio)) }
                     )
                 }
@@ -293,7 +289,7 @@ fun ModelEditScreen(
                             .clickable { modelJsonExpanded = !modelJsonExpanded }.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
+                        FluentIcon(
                             if (modelJsonExpanded) Icons.Default.ExpandMore else Icons.AutoMirrored.Filled.KeyboardArrowRight,
                             contentDescription = null
                         )

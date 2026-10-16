@@ -1,16 +1,12 @@
 package org.starfall.multigateway.ui.mcp
+
+import org.starfall.multigateway.ui.icons.FluentIcon
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Extension
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +22,7 @@ import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.ui.components.IconPickerRow
 import org.starfall.multigateway.ui.components.providerInitials
 import org.starfall.multigateway.ui.components.RoundedDropdownMenuItem
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 internal fun mcpAuthenticationLabel(method: McpAuthMethod) = stringResource(when (method) {
@@ -95,7 +92,7 @@ internal fun McpConnectionSettings(
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
             trailingIcon = {
                 IconButton(onClick = { authValueRevealed = !authValueRevealed }) {
-                    Icon(
+                    FluentIcon(
                         if (authValueRevealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
                         stringResource(if (authValueRevealed) R.string.provider_hide_api_key else R.string.provider_show_api_key)
                     )
@@ -109,7 +106,7 @@ internal fun McpConnectionSettings(
         HorizontalDivider()
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.custom_headers), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-            IconButton(onClick = { onHeadersChange(headers + ("" to "")) }) { Icon(Icons.Default.Add, stringResource(R.string.add_header)) }
+            IconButton(onClick = { onHeadersChange(headers + ("" to "")) }) { FluentIcon(Icons.Default.Add, stringResource(R.string.add_header)) }
         }
         headers.forEachIndexed { index, header ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -117,7 +114,7 @@ internal fun McpConnectionSettings(
                     label = { Text(stringResource(R.string.common_key)) }, singleLine = true, modifier = Modifier.weight(1f))
                 SelectableOutlinedTextField(header.second, { value -> onHeadersChange(headers.toMutableList().also { it[index] = header.first to value }) },
                     label = { Text(stringResource(R.string.common_value)) }, singleLine = true, modifier = Modifier.weight(1f))
-                IconButton(onClick = { onHeadersChange(headers.filterIndexed { i, _ -> i != index }) }) { Icon(Icons.Outlined.Delete, stringResource(R.string.remove_header)) }
+                IconButton(onClick = { onHeadersChange(headers.filterIndexed { i, _ -> i != index }) }) { FluentIcon(Icons.Outlined.Delete, stringResource(R.string.remove_header)) }
             }
         }
         Spacer(Modifier.height(24.dp))

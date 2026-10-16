@@ -1,13 +1,12 @@
 package org.starfall.multigateway.ui.chat
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Cloud
-import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -17,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.data.model.remoteMachineEnabled
 import org.starfall.multigateway.ui.components.AppBottomSheet
 import org.starfall.multigateway.ui.tools.LocalToolControls
+import org.starfall.multigateway.ui.icons.Icons
 
 /** Bottom sheet that turns each Remote Machine on or off for the model. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,7 +55,7 @@ fun RemoteMachinesSheet(onDismiss: () -> Unit) {
                         Modifier.fillMaxWidth().padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
+                        FluentIcon(
                             icon, null,
                             Modifier.size(44.dp).padding(10.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant

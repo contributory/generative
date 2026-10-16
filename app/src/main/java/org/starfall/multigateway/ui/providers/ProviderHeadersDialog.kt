@@ -1,12 +1,10 @@
 package org.starfall.multigateway.ui.providers
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.snapshots.SnapshotStateList
@@ -18,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.R
 import org.starfall.multigateway.ui.components.AppDialog
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
+import org.starfall.multigateway.ui.icons.Icons
 
 /** Manages a provider's custom HTTP headers; edits are applied to [rows] immediately. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,8 +32,8 @@ internal fun ProviderHeadersDialog(
                 TopAppBar(
                     title = { Text(stringResource(R.string.headers), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     actions = {
-                        IconButton(onClick = { rows.add("" to "") }) { Icon(Icons.Default.Add, stringResource(R.string.add_header)) }
-                        IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, stringResource(R.string.common_close)) }
+                        IconButton(onClick = { rows.add("" to "") }) { FluentIcon(Icons.Default.Add, stringResource(R.string.add_header)) }
+                        IconButton(onClick = onDismiss) { FluentIcon(Icons.Default.Close, stringResource(R.string.common_close)) }
                     }
                 )
                 LazyColumn(
@@ -59,7 +58,7 @@ internal fun ProviderHeadersDialog(
                                 maxLines = 2, modifier = Modifier.weight(1f)
                             )
                             IconButton(onClick = { rows.removeAt(index) }) {
-                                Icon(Icons.Outlined.Delete, stringResource(R.string.delete_header))
+                                FluentIcon(Icons.Outlined.Delete, stringResource(R.string.delete_header))
                             }
                         }
                     }

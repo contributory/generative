@@ -3,6 +3,8 @@
 
 package org.starfall.multigateway.ui.drawer
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 import org.starfall.multigateway.ui.components.RoundedDropdownMenuItem as DropdownMenuItem
@@ -29,9 +31,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,6 +49,7 @@ import org.starfall.multigateway.R
 import org.starfall.multigateway.ui.components.amoledEdgeBorder
 import org.starfall.multigateway.ui.theme.LocalAmoledMode
 import java.util.UUID
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 fun ConversationsDrawer(
@@ -138,14 +138,14 @@ fun ConversationsDrawer(
         ) {
             if (selecting) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = ::stopSelecting) { Icon(Icons.Default.Close, "Exit selection") }
+                    IconButton(onClick = ::stopSelecting) { FluentIcon(Icons.Default.Close, "Exit selection") }
                     Text("${selected.size}", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                     val allSelected = matchingIds.isNotEmpty() && selected.containsAll(matchingIds)
                     IconButton(enabled = matchingIds.isNotEmpty(), onClick = {
                         selected = if (allSelected) selected - matchingIds else selected + matchingIds
-                    }) { Icon(if (allSelected) Icons.Outlined.Deselect else Icons.Outlined.SelectAll, if (allSelected) "Deselect all" else "Select all") }
-                    IconButton(enabled = selected.isNotEmpty(), onClick = { folderName = ""; grouping = true }) { Icon(Icons.Outlined.CreateNewFolder, "Move selected chats to folder") }
-                    IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { Icon(Icons.Outlined.Delete, "Delete selected chats", tint = MaterialTheme.colorScheme.error) }
+                    }) { FluentIcon(if (allSelected) Icons.Outlined.Deselect else Icons.Outlined.SelectAll, if (allSelected) "Deselect all" else "Select all") }
+                    IconButton(enabled = selected.isNotEmpty(), onClick = { folderName = ""; grouping = true }) { FluentIcon(Icons.Outlined.CreateNewFolder, "Move selected chats to folder") }
+                    IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { FluentIcon(Icons.Outlined.Delete, "Delete selected chats", tint = MaterialTheme.colorScheme.error) }
                 }
             }
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -161,15 +161,15 @@ fun ConversationsDrawer(
                                 Row(Modifier.fillMaxWidth().combinedClickable(onClick = {
                                     onUpdateOrganization { state -> state.copy(folders = state.folders.map { if (it.id == folder.id) it.copy(expanded = !it.expanded) else it }) }
                                 }).padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(if (folder.expanded || search.isNotBlank()) Icons.Default.ExpandMore else Icons.Default.ChevronRight, "Toggle folder")
-                                    Icon(Icons.Outlined.Folder, null, modifier = Modifier.size(20.dp))
+                                    FluentIcon(if (folder.expanded || search.isNotBlank()) Icons.Default.ExpandMore else Icons.Default.ChevronRight, "Toggle folder")
+                                    FluentIcon(Icons.Outlined.Folder, null, modifier = Modifier.size(20.dp))
                                     Text(folder.name, Modifier.weight(1f).padding(8.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     Text("${chats.size}", style = MaterialTheme.typography.labelSmall)
-                                    if (folder.pinned) Icon(Icons.Default.PushPin, "Pinned folder", Modifier.size(14.dp))
+                                    if (folder.pinned) FluentIcon(Icons.Default.PushPin, "Pinned folder", Modifier.size(14.dp))
                                     Box {
-                                        IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "Folder options") }
+                                        IconButton(onClick = { menu = true }) { FluentIcon(Icons.Default.MoreVert, "Folder options") }
                                         DropdownMenu(menu, { menu = false }) {
-                                            DropdownMenuItem(text = { Text(if (folder.pinned) "Unpin" else "Pin") }, leadingIcon = { Icon(Icons.Outlined.PushPin, null) }, onClick = {
+                                            DropdownMenuItem(text = { Text(if (folder.pinned) "Unpin" else "Pin") }, leadingIcon = { FluentIcon(Icons.Outlined.PushPin, null) }, onClick = {
                                                 menu = false
                                                 onUpdateOrganization { state -> state.copy(folders = state.folders.map { if (it.id == folder.id) it.copy(pinned = !it.pinned) else it }) }
                                             })
@@ -214,14 +214,13 @@ fun ConversationsDrawer(
                 SelectableOutlinedTextField(
                     value = search, onValueChange = { search = it }, singleLine = true,
                     placeholder = { Text(stringResource(R.string.search_history), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    leadingIcon = { Icon(Icons.Default.Search, "Search") },
-                    trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { Icon(Icons.Default.Close, "Clear search") } },
+                    leadingIcon = { FluentIcon(Icons.Default.Search, "Search") },
+                    trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { FluentIcon(Icons.Default.Close, "Clear search") } },
                     shape = RoundedCornerShape(28.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        // Soft outline: muted when idle, only a gentle accent when focused.
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                     ),
                     modifier = Modifier
                         .weight(1f)
@@ -236,8 +235,8 @@ fun ConversationsDrawer(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Spacer(Modifier.width(4.dp))
-                        IconButton(onClick = { promptDialog = true }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.EditNote, "Default system prompt") }
-                        IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.Settings, "General Settings") }
+                        IconButton(onClick = { promptDialog = true }, modifier = Modifier.size(40.dp)) { FluentIcon(Icons.Outlined.EditNote, "Default system prompt") }
+                        IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) { FluentIcon(Icons.Outlined.Settings, "General Settings") }
                     }
                 }
                 Spacer(Modifier.width(8.dp))
@@ -245,9 +244,9 @@ fun ConversationsDrawer(
                     OutlinedIconButton(
                         onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
                         modifier = Modifier.size(newChatButtonSize),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
                         colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-                    ) { Icon(Icons.Outlined.Create, "New chat") }
+                    ) { FluentIcon(Icons.Outlined.Compose, "New chat") }
                 } else {
                     FilledIconButton(
                         onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
@@ -256,7 +255,7 @@ fun ConversationsDrawer(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                    ) { Icon(Icons.Outlined.Create, "New chat") }
+                    ) { FluentIcon(Icons.Outlined.Compose, "New chat") }
                 }
             }
         }
@@ -265,7 +264,7 @@ fun ConversationsDrawer(
         onDismissRequest = { grouping = false }, title = { Text("Move to folder") },
         text = {
             LazyColumn(Modifier.windowHeightIn(maxFraction = 0.5f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(organization.folders, key = { it.id }) { folder -> TextButton(onClick = { moveToFolder(folder.id) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Folder, null); Spacer(Modifier.width(8.dp)); Text(folder.name) } }
+                items(organization.folders, key = { it.id }) { folder -> TextButton(onClick = { moveToFolder(folder.id) }, modifier = Modifier.fillMaxWidth()) { FluentIcon(Icons.Outlined.Folder, null); Spacer(Modifier.width(8.dp)); Text(folder.name) } }
                 item { TextButton(onClick = { moveToFolder(null) }) { Text("Move to History") } }
                 item { SelectableOutlinedTextField(folderName, { folderName = it }, label = { Text("New folder name") }, singleLine = true) }
             }
@@ -321,15 +320,15 @@ private fun DrawerChatRow(
                 Text(chat.title.ifBlank { "New Chat" }, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
                 Text(formatTimestamp(chat.updatedAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             }
-            if (pinned) Icon(Icons.Default.PushPin, "Pinned chat", Modifier.size(14.dp))
+            if (pinned) FluentIcon(Icons.Default.PushPin, "Pinned chat", Modifier.size(14.dp))
             if (chat.id in generatingIds) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 1.5.dp)
             if (!selecting) Box {
-                IconButton(onClick = { menu = true }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.MoreVert, "Chat options", Modifier.size(18.dp)) }
+                IconButton(onClick = { menu = true }, modifier = Modifier.size(32.dp)) { FluentIcon(Icons.Default.MoreVert, "Chat options", Modifier.size(18.dp)) }
                 DropdownMenu(menu, { menu = false }) {
-                    DropdownMenuItem(text = { Text(if (pinned) "Unpin" else "Pin") }, leadingIcon = { Icon(Icons.Outlined.PushPin, null) }, onClick = { menu = false; onPin() })
-                    DropdownMenuItem(text = { Text("Move to folder") }, leadingIcon = { Icon(Icons.Outlined.Folder, null) }, onClick = { menu = false; onMove() })
-                    DropdownMenuItem(text = { Text("Rename") }, leadingIcon = { Icon(Icons.Outlined.Edit, null) }, onClick = { menu = false; onRename() })
-                    DropdownMenuItem(text = { Text("Delete", color = MaterialTheme.colorScheme.error) }, leadingIcon = { Icon(Icons.Outlined.Delete, null) }, onClick = { menu = false; onDelete() })
+                    DropdownMenuItem(text = { Text(if (pinned) "Unpin" else "Pin") }, leadingIcon = { FluentIcon(Icons.Outlined.PushPin, null) }, onClick = { menu = false; onPin() })
+                    DropdownMenuItem(text = { Text("Move to folder") }, leadingIcon = { FluentIcon(Icons.Outlined.Folder, null) }, onClick = { menu = false; onMove() })
+                    DropdownMenuItem(text = { Text("Rename") }, leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) }, onClick = { menu = false; onRename() })
+                    DropdownMenuItem(text = { Text("Delete", color = MaterialTheme.colorScheme.error) }, leadingIcon = { FluentIcon(Icons.Outlined.Delete, null) }, onClick = { menu = false; onDelete() })
                 }
             }
         }

@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.components
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -14,10 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.InsertDriveFile
-import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,6 +36,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.starfall.multigateway.R
 import org.starfall.multigateway.data.service.AttachmentResolver
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 internal fun BoundedMediaFrame(ratio: Float, modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
@@ -91,7 +90,7 @@ fun ChatFilePreview(
                     color = Color.Black.copy(alpha = 0.68f),
                     modifier = Modifier.size(44.dp)
                 ) {
-                    Icon(
+                    FluentIcon(
                         Icons.Outlined.PlayArrow,
                         contentDescription = "Open video",
                         tint = Color.White,
@@ -107,7 +106,7 @@ fun ChatFilePreview(
                     if (mime.startsWith("audio/")) InlineAudioPreview(reference)
                     else Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Icon(Icons.Outlined.InsertDriveFile, null)
+                        FluentIcon(Icons.Outlined.InsertDriveFile, null)
                         Text(name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
@@ -155,7 +154,7 @@ private fun FileCornerActions(reference: String, name: String, mime: String, sel
     Surface(modifier = modifier, shape = RoundedCornerShape(12.dp), color = Color.Black.copy(alpha = 0.62f)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(enabled = !downloading, onClick = { save.launch(name) }, modifier = Modifier.size(40.dp)) {
-                Icon(Icons.Outlined.Download, stringResource(R.string.file_download), tint = Color.White, modifier = Modifier.size(20.dp))
+                FluentIcon(Icons.Outlined.Download, stringResource(R.string.file_download), tint = Color.White, modifier = Modifier.size(20.dp))
             }
             Checkbox(selected, onCheckedChange = { onToggle?.invoke(reference) }, enabled = onToggle != null,
                 modifier = Modifier.size(40.dp).semantics { contentDescription = selectionLabel },

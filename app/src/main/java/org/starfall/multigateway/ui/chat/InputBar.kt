@@ -1,12 +1,10 @@
 package org.starfall.multigateway.ui.chat
+
+import org.starfall.multigateway.ui.icons.FluentIcon
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import org.starfall.multigateway.R
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 fun InputBar(
@@ -41,7 +40,7 @@ fun InputBar(
                 onClick = { /* File picker */ },
                 modifier = Modifier.size(40.dp)
             ) {
-                Icon(
+                FluentIcon(
                     Icons.Outlined.AttachFile,
                     contentDescription = "Attach File",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -71,7 +70,7 @@ fun InputBar(
                     ),
                     modifier = Modifier.size(40.dp)
                 ) {
-                    Icon(Icons.Default.Stop, contentDescription = "Stop")
+                    FluentIcon(Icons.Default.Stop, contentDescription = "Stop")
                 }
             } else {
                 IconButton(
@@ -90,7 +89,7 @@ fun InputBar(
                     ),
                     modifier = Modifier.size(40.dp)
                 ) {
-                    Icon(Icons.Default.ArrowUpward, contentDescription = "Send")
+                    FluentIcon(Icons.Default.ArrowUpward, contentDescription = "Send")
                 }
             }
         }

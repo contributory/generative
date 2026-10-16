@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.components
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -7,17 +9,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import coil3.compose.AsyncImage
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -28,6 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.starfall.multigateway.R
 import org.starfall.multigateway.data.service.IconStore
+import org.starfall.multigateway.ui.icons.Icons
 
 internal fun providerInitials(name: String): String = name.trim()
     .split(Regex("\\s+"))
@@ -42,7 +40,7 @@ fun EntityIcon(
     image: String?,
     modifier: Modifier = Modifier.size(42.dp),
     text: String? = null,
-    fallback: ImageVector? = null,
+    fallback: Int? = null,
     matchName: String? = null,
     model: Boolean = false,
     useDarkVariant: Boolean? = null,
@@ -71,7 +69,7 @@ fun EntityIcon(
                 if (fallbackContent != null) {
                     // Wait for the first lookup so a folder logo never flashes the substitute first.
                     if (resolved) fallbackContent()
-                } else if (fallback != null) Icon(fallback, contentDescription = null,
+                } else if (fallback != null) FluentIcon(fallback, contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxSize().padding(9.dp))
                 else Text(text?.takeIf { it.isNotBlank() } ?: "?",
                     style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
@@ -83,7 +81,7 @@ fun EntityIcon(
 }
 
 @Composable
-fun IconPickerRow(image: String?, onChange: (String?) -> Unit, text: String? = null, fallback: ImageVector? = null, onBusyChange: (Boolean) -> Unit = {}, matchName: String? = null, model: Boolean = false, faviconBaseUrl: String = "", defaultImage: String? = null) {
+fun IconPickerRow(image: String?, onChange: (String?) -> Unit, text: String? = null, fallback: Int? = null, onBusyChange: (Boolean) -> Unit = {}, matchName: String? = null, model: Boolean = false, faviconBaseUrl: String = "", defaultImage: String? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val currentOnChange by rememberUpdatedState(onChange)
@@ -116,17 +114,17 @@ fun IconPickerRow(image: String?, onChange: (String?) -> Unit, text: String? = n
                 TextButton(enabled = !importing, onClick = {
                     picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }) {
-                    Icon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(18.dp))
+                    FluentIcon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(if (importing) R.string.icon_importing else R.string.choose_icon))
                 }
                 IconButton(enabled = !importing, onClick = { showFavicon = true }) {
-                    Icon(Icons.Outlined.Download, stringResource(R.string.favicon_get_logo))
+                    FluentIcon(Icons.Outlined.Download, stringResource(R.string.favicon_get_logo))
                 }
             }
         }
         if (image != null) IconButton(enabled = !importing, onClick = { currentOnChange(null) }) {
-            Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.remove_icon))
+            FluentIcon(Icons.Outlined.Close, contentDescription = stringResource(R.string.remove_icon))
         }
     }
 }

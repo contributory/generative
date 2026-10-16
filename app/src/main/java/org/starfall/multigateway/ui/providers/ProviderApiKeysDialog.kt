@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.providers
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,17 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Save
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +26,7 @@ import org.starfall.multigateway.R
 import org.starfall.multigateway.ui.components.AppDialog
 import org.starfall.multigateway.ui.components.RoundedDropdownMenuItem
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
+import org.starfall.multigateway.ui.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,14 +50,14 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                     title = { Text(stringResource(if (editing) R.string.provider_edit_api_key else R.string.provider_manage_api_keys),
                         maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     navigationIcon = { if (editing) IconButton(onClick = { editing = false }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     } },
                     actions = {
                         if (editing) IconButton(enabled = value.isNotBlank(), onClick = {
                             runCatching { state.save(editingId, label, value, identity) }.onSuccess { editing = false }.onFailure { error = it.message }
-                        }) { Icon(Icons.Outlined.Save, stringResource(R.string.provider_save_api_key)) }
-                        else IconButton(onClick = { edit(null) }) { Icon(Icons.Default.Add, stringResource(R.string.provider_add_api_key)) }
-                        IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, stringResource(R.string.common_close)) }
+                        }) { FluentIcon(Icons.Outlined.Save, stringResource(R.string.provider_save_api_key)) }
+                        else IconButton(onClick = { edit(null) }) { FluentIcon(Icons.Default.Add, stringResource(R.string.provider_add_api_key)) }
+                        IconButton(onClick = onDismiss) { FluentIcon(Icons.Default.Close, stringResource(R.string.common_close)) }
                     }
                 )
                 if (editing) Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -76,7 +68,7 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
                         visualTransformation = if (revealed) VisualTransformation.None else ApiKeyMask,
                         trailingIcon = { IconButton(onClick = { revealed = !revealed }) {
-                            Icon(if (revealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                            FluentIcon(if (revealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
                                 stringResource(if (revealed) R.string.provider_hide_api_key else R.string.provider_show_api_key))
                         } }, maxLines = 3, isError = error != null, modifier = Modifier.fillMaxWidth().testTag("provider_managed_api_key"))
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
@@ -98,15 +90,15 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                                         if (selected) Text(stringResource(R.string.provider_selected_api_key), style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onSecondaryContainer)
                                     }
-                                    if (selected) Icon(Icons.Default.Check, stringResource(R.string.provider_selected_api_key))
+                                    if (selected) FluentIcon(Icons.Default.Check, stringResource(R.string.provider_selected_api_key))
                                     Box {
-                                        IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert,
+                                        IconButton(onClick = { menu = true }) { FluentIcon(Icons.Default.MoreVert,
                                             stringResource(R.string.provider_api_key_actions, entry.label.ifBlank { maskedProviderApiKey(entry.value) })) }
                                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                                             RoundedDropdownMenuItem(text = { Text(stringResource(R.string.common_edit)) },
-                                                leadingIcon = { Icon(Icons.Outlined.Edit, null) }, onClick = { menu = false; edit(entry.id) })
+                                                leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) }, onClick = { menu = false; edit(entry.id) })
                                             RoundedDropdownMenuItem(text = { Text(stringResource(R.string.common_delete)) },
-                                                leadingIcon = { Icon(Icons.Outlined.Delete, null) }, onClick = { menu = false; state.delete(entry.id, identity) })
+                                                leadingIcon = { FluentIcon(Icons.Outlined.Delete, null) }, onClick = { menu = false; state.delete(entry.id, identity) })
                                         }
                                     }
                                 }

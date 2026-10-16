@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.mcp
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 
 import android.content.ClipData
@@ -14,12 +16,6 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,6 +35,7 @@ import org.starfall.multigateway.ui.components.moved
 import org.starfall.multigateway.ui.components.windowHeightIn
 import org.starfall.multigateway.ui.navigation.SlideScreenContent
 import java.util.UUID
+import org.starfall.multigateway.ui.icons.Icons
 
 private data class McpEditor(val server: McpInfo, val isNew: Boolean)
 
@@ -70,21 +67,21 @@ fun McpScreen(
                     Text(stringResource(R.string.mcp_servers_title), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
                     Text(stringResource(R.string.mcp_servers_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                 }
-            }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
+            }, navigationIcon = { IconButton(onClick = onBack) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                 actions = {
                     IconButton(onClick = { onToggleGridView?.invoke(!isGridView) }) {
-                        Icon(if (isGridView) Icons.Default.List else Icons.Default.GridView, stringResource(R.string.toggle_grid_list))
+                        FluentIcon(if (isGridView) Icons.Default.List else Icons.Default.GridView, stringResource(R.string.toggle_grid_list))
                     }
                     IconButton(onClick = {
                         editor = McpEditor(McpInfo(id = UUID.randomUUID().toString(), name = "", protocol = McpProtocol.STREAMABLE_HTTP,
                             url = null, headers = emptyMap()), true)
-                    }) { Icon(Icons.Default.Add, stringResource(R.string.add_server)) }
+                    }) { FluentIcon(Icons.Default.Add, stringResource(R.string.add_server)) }
                 })
         }) { padding ->
             Box(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp, vertical = 8.dp)) {
                 if (mcpServers.isEmpty()) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Outlined.Extension, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(48.dp))
+                        FluentIcon(Icons.Outlined.Extension, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(48.dp))
                         Spacer(Modifier.height(12.dp))
                         Text(stringResource(R.string.no_mcp_servers), style = MaterialTheme.typography.titleMedium)
                         Text(stringResource(R.string.no_mcp_servers_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)

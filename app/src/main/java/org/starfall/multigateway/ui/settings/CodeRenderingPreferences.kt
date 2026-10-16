@@ -1,8 +1,8 @@
 package org.starfall.multigateway.ui.settings
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.data.local.preferences.DEFAULT_MESSAGE_FONT_SIZE
@@ -20,6 +20,7 @@ import org.starfall.multigateway.data.local.preferences.MessageFontFamily
 import org.starfall.multigateway.data.local.preferences.CodeBlockDisplayMode
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 import kotlin.math.roundToInt
+import org.starfall.multigateway.ui.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,7 +169,7 @@ internal fun TextAppearancePreferences(
                 enabled = preferences.messageFontSize != DEFAULT_MESSAGE_FONT_SIZE,
                 modifier = Modifier.size(36.dp).testTag("message-font-size-reset")
             ) {
-                Icon(Icons.Outlined.RestartAlt, stringResource(R.string.message_text_size_reset),
+                FluentIcon(Icons.Outlined.RestartAlt, stringResource(R.string.message_text_size_reset),
                     modifier = Modifier.size(20.dp))
             }
         }

@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.speech
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 import org.starfall.multigateway.ui.components.RoundedDropdownMenuItem as DropdownMenuItem
@@ -21,18 +23,6 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.RecordVoiceOver
-import androidx.compose.material.icons.outlined.StopCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.res.stringResource
@@ -65,6 +55,7 @@ import sh.calvin.reorderable.ScrollMoveMode
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import org.starfall.multigateway.ui.components.moved
 import org.starfall.multigateway.ui.components.providerInitials
+import org.starfall.multigateway.ui.icons.Icons
 
 private data class SpeechEditor(val service: SpeechService, val isNew: Boolean)
 
@@ -113,12 +104,12 @@ fun SpeechScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
                     IconButton(onClick = { onToggleGridView?.invoke(!isGridView) }) {
-                        Icon(
+                        FluentIcon(
                             imageVector = if (isGridView) Icons.Default.List else Icons.Default.GridView,
                             contentDescription = if (isGridView) "Switch to List View" else "Switch to Grid View"
                         )
@@ -137,7 +128,7 @@ fun SpeechScreen(
                             ), true)
                         }
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Add speech service")
+                        FluentIcon(Icons.Default.Add, contentDescription = "Add speech service")
                     }
                 }
             )
@@ -302,7 +293,7 @@ private fun SpeechServiceUnifiedCard(
                         modifier = Modifier.size(36.dp),
                         colors = if (isPlaying) IconButtonDefaults.filledIconButtonColors() else IconButtonDefaults.iconButtonColors()
                     ) {
-                        Icon(
+                        FluentIcon(
                             if (isPlaying) Icons.Outlined.StopCircle else Icons.Default.PlayArrow,
                             contentDescription = stringResource(if (isPlaying) R.string.speech_stop else R.string.speech_test_voice),
                             tint = if (isPlaying) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
@@ -335,7 +326,7 @@ private fun SpeechServiceUnifiedCard(
                             modifier = Modifier.weight(1f, fill = false)
                         )
                         if (selected) {
-                            Icon(
+                            FluentIcon(
                                 Icons.Default.Check,
                                 contentDescription = "Selected",
                                 tint = MaterialTheme.colorScheme.primary,
@@ -492,7 +483,7 @@ private fun AddOrEditSpeechDialog(
                             },
                             modifier = Modifier.weight(1f)
                         )
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                        FluentIcon(Icons.Default.KeyboardArrowDown, contentDescription = null)
                     }
                     DropdownMenu(
                         expanded = providerExpanded,
@@ -525,7 +516,7 @@ private fun AddOrEditSpeechDialog(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(modelId ?: "Select TTS model", modifier = Modifier.weight(1f))
-                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                            FluentIcon(Icons.Default.KeyboardArrowDown, contentDescription = null)
                         }
                         DropdownMenu(
                             expanded = modelExpanded,
@@ -609,7 +600,7 @@ private fun AddOrEditSpeechDialog(
                         Box {
                             OutlinedButton(onClick = { formatExpanded = true }, modifier = Modifier.fillMaxWidth()) {
                                 Text("Audio format: $responseFormat", Modifier.weight(1f))
-                                Icon(Icons.Default.KeyboardArrowDown, null)
+                                FluentIcon(Icons.Default.KeyboardArrowDown, null)
                             }
                             DropdownMenu(expanded = formatExpanded, onDismissRequest = { formatExpanded = false }) {
                                 listOf("mp3", "wav", "aac", "flac", "opus", "pcm").forEach { format ->
@@ -651,7 +642,7 @@ private fun AddOrEditSpeechDialog(
                     enabled = canSave,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(
+                    FluentIcon(
                         if (isPlaying) Icons.Outlined.StopCircle else Icons.Default.PlayArrow,
                         contentDescription = null
                     )

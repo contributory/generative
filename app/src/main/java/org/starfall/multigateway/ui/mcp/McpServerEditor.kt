@@ -1,9 +1,9 @@
 package org.starfall.multigateway.ui.mcp
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import org.starfall.multigateway.R
 import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.ui.navigation.LocalScreenTransitionActive
+import org.starfall.multigateway.ui.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,7 +75,7 @@ fun AddOrEditMcpScreenContent(
                 title = { Text(stringResource(if (isNew) R.string.add_mcp_server_title else R.string.configure_mcp_server_title),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)) },
                 navigationIcon = { IconButton(onClick = onDismiss) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                    FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                 } },
                 actions = { Button(onClick = { onSave(currentServer()) }, enabled = canSave && !iconImporting,
                     modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(R.string.common_save)) } }

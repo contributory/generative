@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.drawer
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppDialog as Dialog
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 
@@ -10,9 +12,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.ui.components.windowHeightIn
 import java.util.UUID
+import org.starfall.multigateway.ui.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,7 +41,7 @@ fun PromptLibraryDialog(initialLibrary: PromptLibrary, onChange: (PromptLibrary)
                     var role by remember(editing?.id) { mutableStateOf(editing?.role ?: ChatRole.SYSTEM) }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { creating = false; editing = null }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to prompt list")
+                            FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, "Back to prompt list")
                         }
                         Text(if (creating) "New prompt" else "Edit prompt", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                         IconButton(enabled = name.isNotBlank() && content.isNotBlank(), onClick = {
@@ -51,8 +51,8 @@ fun PromptLibraryDialog(initialLibrary: PromptLibrary, onChange: (PromptLibrary)
                                 prompts = if (editing == null) library.prompts + prompt else library.prompts.map { if (it.id == id) prompt else it },
                                 selectedIds = if (editing == null) library.selectedIds + id else library.selectedIds))
                             creating = false; editing = null
-                        }) { Icon(Icons.Outlined.Save, "Save prompt") }
-                        IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, "Close prompts") }
+                        }) { FluentIcon(Icons.Outlined.Save, "Save prompt") }
+                        IconButton(onClick = onDismiss) { FluentIcon(Icons.Outlined.Close, "Close prompts") }
                     }
                     Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         SelectableOutlinedTextField(name, { name = it }, label = { Text("Prompt name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -70,12 +70,12 @@ fun PromptLibraryDialog(initialLibrary: PromptLibrary, onChange: (PromptLibrary)
                     val allSelected = library.prompts.isNotEmpty() && library.prompts.all { it.id in library.selectedIds }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text("System prompts", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                        IconButton(onClick = { creating = true }) { Icon(Icons.Outlined.Add, "Add prompt") }
+                        IconButton(onClick = { creating = true }) { FluentIcon(Icons.Outlined.Add, "Add prompt") }
                         IconButton(enabled = library.prompts.isNotEmpty(), onClick = {
                             update(library.copy(selectedIds = if (allSelected) emptySet() else library.prompts.map { it.id }.toSet()))
-                        }) { Icon(if (allSelected) Icons.Outlined.Deselect else Icons.Outlined.SelectAll,
+                        }) { FluentIcon(if (allSelected) Icons.Outlined.Deselect else Icons.Outlined.SelectAll,
                             if (allSelected) "Deselect all prompts" else "Select all prompts") }
-                        IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, "Close prompts") }
+                        IconButton(onClick = onDismiss) { FluentIcon(Icons.Outlined.Close, "Close prompts") }
                     }
                     LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(top = 8.dp)) {
@@ -97,10 +97,10 @@ fun PromptLibraryDialog(initialLibrary: PromptLibrary, onChange: (PromptLibrary)
                                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     Column {
-                                        IconButton(onClick = { editing = prompt }, modifier = Modifier.size(36.dp)) { Icon(Icons.Outlined.Edit, "Edit ${prompt.name}") }
+                                        IconButton(onClick = { editing = prompt }, modifier = Modifier.size(36.dp)) { FluentIcon(Icons.Outlined.Edit, "Edit ${prompt.name}") }
                                         IconButton(onClick = { update(library.copy(prompts = library.prompts.filterNot { it.id == prompt.id },
                                             selectedIds = library.selectedIds - prompt.id)) }, modifier = Modifier.size(36.dp)) {
-                                            Icon(Icons.Outlined.Delete, "Delete ${prompt.name}")
+                                            FluentIcon(Icons.Outlined.Delete, "Delete ${prompt.name}")
                                         }
                                     }
                                 }

@@ -1,14 +1,11 @@
 package org.starfall.multigateway.ui.components
+
+import org.starfall.multigateway.ui.icons.FluentIcon
 import org.starfall.multigateway.ui.components.RoundedDropdownMenuItem as DropdownMenuItem
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
@@ -17,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 fun ItemOverflowMenu(
@@ -28,7 +26,7 @@ fun ItemOverflowMenu(
 
     Box {
         IconButton(onClick = { expanded = true }) {
-            Icon(Icons.Default.MoreVert, contentDescription = "More options")
+            FluentIcon(Icons.Default.MoreVert, contentDescription = "More options")
         }
 
         MaterialTheme(
@@ -47,7 +45,7 @@ fun ItemOverflowMenu(
             ) {
                 DropdownMenuItem(
                     text = { Text("Edit") },
-                    leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                    leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
                     onClick = {
                         expanded = false
                         onEdit()
@@ -56,7 +54,7 @@ fun ItemOverflowMenu(
                 DropdownMenuItem(
                     text = { Text("Delete", color = deleteColor) },
                     leadingIcon = {
-                        Icon(
+                        FluentIcon(
                             Icons.Outlined.Delete,
                             contentDescription = null,
                             tint = deleteColor

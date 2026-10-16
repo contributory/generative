@@ -14,8 +14,8 @@ android {
         applicationId = "org.starfall.multigateway"
         minSdk = 26
         targetSdk = 36
-        versionCode = 42
-        versionName = "1.4.8"
+        versionCode = 43
+        versionName = "1.4.9"
 
         manifestPlaceholders["appAuthRedirectScheme"] = "multigateway-oauth"
 
@@ -106,7 +106,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
+    implementation("com.microsoft.design:fluent-system-icons:1.1.315@aar")
 
     implementation("androidx.navigation:navigation-compose:2.8.4")
 

@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.chat
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -11,13 +13,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.WrapText
-import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.luminance
@@ -45,6 +40,7 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import org.starfall.multigateway.data.local.preferences.CodeBlockDisplayMode
+import org.starfall.multigateway.ui.icons.Icons
 
 internal val LocalCodeRenderingPreferences = staticCompositionLocalOf { AppPreferences() }
 
@@ -129,7 +125,7 @@ private fun CodeBlockDrawer(
                     Text(language.ifBlank { "code" }, Modifier.weight(1f),
                         style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace))
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Outlined.Close, stringResource(R.string.code_block_close))
+                        FluentIcon(Icons.Outlined.Close, stringResource(R.string.code_block_close))
                     }
                 }
                 Box(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
@@ -240,19 +236,19 @@ internal fun CodeBlockHeader(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             if (preferences.wordWrapMode == WordWrapMode.OFF) {
                 IconButton(onClick = onToggleWrap, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Outlined.WrapText, stringResource(if (sessionWrap) R.string.code_wrap_disable else R.string.code_wrap_enable),
+                    FluentIcon(Icons.Outlined.WrapText, stringResource(if (sessionWrap) R.string.code_wrap_disable else R.string.code_wrap_enable),
                         tint = if (sessionWrap) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
                 }
             }
             if (preferences.codePreviewEnabled && canPreviewCode(language)) {
                 IconButton(onClick = { CodePreviewActivity.open(context, language, originalCode) }, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Outlined.Visibility, stringResource(R.string.preview_code),
+                    FluentIcon(Icons.Outlined.Visibility, stringResource(R.string.preview_code),
                         tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
                 }
             }
             if (onDownload != null) {
                 IconButton(onClick = onDownload, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Outlined.Download, stringResource(R.string.file_download),
+                    FluentIcon(Icons.Outlined.Download, stringResource(R.string.file_download),
                         tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
                 }
             }
@@ -265,7 +261,7 @@ internal fun CodeBlockHeader(
                 if (result.isSuccess) copied = true
                 Toast.makeText(context, if (result.isSuccess) "Code copied" else "Too large to copy", Toast.LENGTH_SHORT).show()
             }, modifier = Modifier.size(28.dp)) {
-                Icon(if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, "Copy code",
+                FluentIcon(if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, "Copy code",
                     tint = if (copied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
             }
         }

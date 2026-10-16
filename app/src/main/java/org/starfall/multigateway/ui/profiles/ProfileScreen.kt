@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.profiles
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 
@@ -21,13 +23,6 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.PersonOff
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,6 +49,7 @@ import sh.calvin.reorderable.rememberReorderableLazyGridState
 import sh.calvin.reorderable.ScrollMoveMode
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import org.starfall.multigateway.ui.components.moved
+import org.starfall.multigateway.ui.icons.Icons
 
 private data class ProfileEditor(val profile: ChatProfile?)
 
@@ -95,12 +91,12 @@ fun ProfileScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
                     IconButton(onClick = { onToggleGridView?.invoke(!isGridView) }) {
-                        Icon(
+                        FluentIcon(
                             imageVector = if (isGridView) Icons.Default.List else Icons.Default.GridView,
                             contentDescription = "Toggle View"
                         )
@@ -110,7 +106,7 @@ fun ProfileScreen(
                             editor = ProfileEditor(null)
                         }
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "New Profile")
+                        FluentIcon(Icons.Default.Add, contentDescription = "New Profile")
                     }
                 }
             )

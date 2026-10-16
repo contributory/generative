@@ -1,10 +1,9 @@
 package org.starfall.multigateway.ui.components
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppDialog as Dialog
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.outlined.Fullscreen
-import androidx.compose.material.icons.outlined.FullscreenExit
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.DialogProperties
@@ -24,9 +23,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,6 +49,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.starfall.multigateway.data.service.AttachmentResolver
+import org.starfall.multigateway.ui.icons.Icons
 
 fun mediaMimeType(name: String): String = MimeTypeMap.getSingleton()
     .getMimeTypeFromExtension(name.substringAfterLast('.', "").lowercase()) ?: "application/octet-stream"
@@ -139,10 +136,10 @@ fun InlineVideoPreview(reference: String, thumbnail: ImageBitmap?, modifier: Mod
             contentAlignment = Alignment.Center) {
             thumbnail?.let { Image(it, "Video preview", Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
             Surface(shape = MaterialTheme.shapes.extraLarge, color = Color.Black.copy(alpha = 0.55f)) {
-                Icon(Icons.Default.PlayArrow, "Play video", Modifier.padding(12.dp), tint = Color.White)
+                FluentIcon(Icons.Default.PlayArrow, "Play video", Modifier.padding(12.dp), tint = Color.White)
             }
             IconButton(onClick = { activated = true; fullscreen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp)) {
-                Icon(Icons.Outlined.Fullscreen, stringResource(R.string.video_fullscreen), tint = Color.White)
+                FluentIcon(Icons.Outlined.Fullscreen, stringResource(R.string.video_fullscreen), tint = Color.White)
             }
         }
         overlay()
@@ -158,7 +155,7 @@ fun InlineVideoPreview(reference: String, thumbnail: ImageBitmap?, modifier: Mod
             VideoPlayback(reference, fullscreen = true, initialPosition = resumePosition, autoPlay = resumePlaying,
                 onPositionChanged = { resumePosition = it }, onPlayingChanged = { resumePlaying = it }, onFullscreen = { fullscreen = false })
             IconButton(onClick = { fullscreen = false }, modifier = Modifier.align(Alignment.TopStart).padding(8.dp)) {
-                Icon(Icons.Outlined.Close, stringResource(R.string.video_exit_fullscreen), tint = Color.White)
+                FluentIcon(Icons.Outlined.Close, stringResource(R.string.video_exit_fullscreen), tint = Color.White)
             }
         }
     }
@@ -200,7 +197,7 @@ private fun VideoPlayback(reference: String, inline: Boolean = false,
     val controls: @Composable () -> Unit = {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = ::togglePlayback) {
-                Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                FluentIcon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                     if (playing) "Pause video" else "Play video", tint = Color.White)
             }
             MediaSeekBar(value = seekPosition ?: position.toFloat().coerceIn(0f, duration.toFloat()),
@@ -210,7 +207,7 @@ private fun VideoPlayback(reference: String, inline: Boolean = false,
                 }, duration = duration.coerceAtLeast(1).toFloat(), modifier = Modifier.weight(1f))
             onFullscreen?.let { open ->
                 IconButton(onClick = open) {
-                    Icon(if (fullscreen) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
+                    FluentIcon(if (fullscreen) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
                         stringResource(if (fullscreen) R.string.video_exit_fullscreen else R.string.video_fullscreen), tint = Color.White)
                 }
             }
@@ -302,7 +299,7 @@ private fun AudioPlayback(reference: String) {
         else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 FilledIconButton(onClick = playback::toggle) {
-                    Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    FluentIcon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                         if (playing) "Pause audio" else "Play audio")
                 }
                 Slider(

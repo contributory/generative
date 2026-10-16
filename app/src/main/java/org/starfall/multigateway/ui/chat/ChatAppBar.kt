@@ -1,14 +1,12 @@
 package org.starfall.multigateway.ui.chat
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.outlined.Create
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import java.util.Locale
 import androidx.compose.ui.res.stringResource
 import org.starfall.multigateway.R
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 fun ChatAppBar(
@@ -65,7 +64,7 @@ fun ChatAppBar(
             tonalElevation = 2.dp
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(
+                FluentIcon(
                     imageVector = Icons.Default.Menu,
                     contentDescription = "Open side navigation",
                     tint = MaterialTheme.colorScheme.onSurface,
@@ -145,8 +144,8 @@ fun ChatAppBar(
                     tonalElevation = 2.dp
                 ) {
                     IconButton(onClick = onNewChat, modifier = Modifier.fillMaxSize()) {
-                        Icon(
-                            imageVector = Icons.Outlined.Create,
+                        FluentIcon(
+                            imageVector = Icons.Outlined.Compose,
                             contentDescription = "New chat",
                             tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(24.dp)
@@ -165,7 +164,7 @@ fun ChatAppBar(
                     tonalElevation = 2.dp
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(
+                        FluentIcon(
                             imageVector = Icons.Outlined.Settings,
                             contentDescription = "General Settings",
                             tint = MaterialTheme.colorScheme.onSurface,

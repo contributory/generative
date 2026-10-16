@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.chat
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -7,8 +9,6 @@ import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 internal fun RenderLatexBlock(source: String, formula: String) {
@@ -35,7 +36,7 @@ internal fun RenderLatexBlock(source: String, formula: String) {
                      clipboard.setPrimaryClip(ClipData.newPlainText("LaTeX Formula", source))
                      Toast.makeText(context, "Formula copied", Toast.LENGTH_SHORT).show()
                 }, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Outlined.ContentCopy, "Copy Formula", tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(14.dp))
+                    FluentIcon(Icons.Outlined.ContentCopy, "Copy Formula", tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(14.dp))
                 }
             }
             Spacer(Modifier.height(6.dp))

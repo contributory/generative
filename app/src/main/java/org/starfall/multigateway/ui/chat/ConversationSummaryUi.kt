@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.chat
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 import org.starfall.multigateway.ui.components.windowHeightIn
 
@@ -7,9 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Summarize
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.data.model.ConversationSummary
 import org.starfall.multigateway.data.model.ConversationSummaryProgress
 import org.starfall.multigateway.data.model.SummaryRole
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 fun ConversationSummaryDivider(
@@ -41,7 +41,7 @@ fun ConversationSummaryDivider(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 HorizontalDivider(modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(10.dp))
-                Icon(
+                FluentIcon(
                     Icons.Outlined.Summarize,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
@@ -119,7 +119,7 @@ fun ConversationSummaryDialog(
                 },
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
             ) {
-                Icon(Icons.Outlined.Delete, contentDescription = null)
+                FluentIcon(Icons.Outlined.Delete, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
                 Text("Delete summary")
             }

@@ -1,14 +1,12 @@
 package org.starfall.multigateway.ui.providers
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +20,7 @@ import kotlinx.coroutines.launch
 import org.starfall.multigateway.R
 import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.ui.components.*
+import org.starfall.multigateway.ui.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,16 +59,16 @@ internal fun ProviderOAuthAccountsDialog(
                     if (editingId == null) R.string.provider_add_account else R.string.provider_edit_account
                 } else R.string.provider_manage_accounts)) },
                     navigationIcon = { if (editing) IconButton(enabled = !busy, onClick = { editing = false }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     } },
                     actions = {
                         if (editing) IconButton(enabled = !busy && (editingId != null || canAuthorize), onClick = {
                             if (editingId == null) signIn() else { onSaveLabel(editingId!!, label); editing = false }
-                        }) { Icon(Icons.Outlined.Save, stringResource(R.string.common_save)) }
+                        }) { FluentIcon(Icons.Outlined.Save, stringResource(R.string.common_save)) }
                         if (!editing) IconButton(enabled = !busy && canAuthorize, onClick = { edit(null) }) {
-                            Icon(Icons.Default.Add, stringResource(R.string.provider_add_account))
+                            FluentIcon(Icons.Default.Add, stringResource(R.string.provider_add_account))
                         }
-                        IconButton(onClick = ::dismiss) { Icon(Icons.Default.Close, stringResource(R.string.common_close)) }
+                        IconButton(onClick = ::dismiss) { FluentIcon(Icons.Default.Close, stringResource(R.string.common_close)) }
                     })
                 error?.let { Text(it, Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error) }
                 if (editing) Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -98,10 +97,10 @@ internal fun ProviderOAuthAccountsDialog(
                                     if (selected) Text(stringResource(R.string.provider_selected_account),
                                         style = MaterialTheme.typography.labelMedium)
                                 }
-                                if (selected) Icon(Icons.Default.Check, stringResource(R.string.provider_selected_account))
+                                if (selected) FluentIcon(Icons.Default.Check, stringResource(R.string.provider_selected_account))
                                 Box {
                                     IconButton(enabled = !busy, onClick = { menu = true }) {
-                                        Icon(Icons.Default.MoreVert, stringResource(R.string.oauth_account_actions))
+                                        FluentIcon(Icons.Default.MoreVert, stringResource(R.string.oauth_account_actions))
                                     }
                                     DropdownMenu(menu, onDismissRequest = { menu = false }) {
                                         RoundedDropdownMenuItem(text = { Text(stringResource(R.string.common_edit)) },

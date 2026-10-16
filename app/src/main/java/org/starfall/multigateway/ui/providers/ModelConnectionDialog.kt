@@ -1,20 +1,13 @@
 package org.starfall.multigateway.ui.providers
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.DeleteSweep
-import androidx.compose.material.icons.outlined.NetworkCheck
-import androidx.compose.material.icons.outlined.Restore
-import androidx.compose.material.icons.outlined.StopCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -26,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.R
 import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.ui.components.windowHeightIn
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 internal fun ModelConnectionDialog(provider: LlmProviderInfo, tests: ModelConnectionTests, available: Boolean,
@@ -49,17 +43,17 @@ internal fun ModelConnectionDialog(provider: LlmProviderInfo, tests: ModelConnec
                 Text(stringResource(R.string.test_connection), Modifier.weight(1f))
                 IconButton(onClick = { if (testingAny) tests.cancelAll() else tests.testAll(provider, testableModels, skip = { it in removals.pending }) },
                      enabled = (testingAny || testableModels.isNotEmpty()) && available) {
-                     if (testingAny) Icon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
-                     else Icon(Icons.Outlined.NetworkCheck, "Test all text models")
+                     if (testingAny) FluentIcon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
+                     else FluentIcon(Icons.Outlined.NetworkCheck, "Test all text models")
                 }
                  IconButton(onClick = { if (hasRemovals) removals.restoreAll() else removals.mark(unavailable) },
                      enabled = hasRemovals || unavailable.isNotEmpty()) {
-                    Icon(if (hasRemovals) Icons.Outlined.Restore else Icons.Outlined.DeleteSweep,
+                    FluentIcon(if (hasRemovals) Icons.Outlined.Restore else Icons.Outlined.DeleteSweep,
                         stringResource(if (hasRemovals) R.string.restore_removed_models else R.string.remove_unavailable_models),
                          tint = if (hasRemovals) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                  }
                  IconButton(onClick = ::close) {
-                     Icon(Icons.Outlined.Close, stringResource(R.string.common_close))
+                     FluentIcon(Icons.Outlined.Close, stringResource(R.string.common_close))
                  }
             }
         },
@@ -80,11 +74,11 @@ internal fun ModelConnectionDialog(provider: LlmProviderInfo, tests: ModelConnec
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                  IconButton(enabled = available && (testing || (!removed && !testingAny)), onClick = { if (testing) tests.cancel(id) else tests.test(provider, id) }) {
-                                     if (testing) Icon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
-                                    else Icon(Icons.Outlined.NetworkCheck, stringResource(R.string.test_model, id))
+                                     if (testing) FluentIcon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
+                                    else FluentIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.test_model, id))
                                 }
                                 IconButton(onClick = { if (!removed && testing) tests.cancel(id); removals.toggle(id) }) {
-                                    Icon(if (removed) Icons.Outlined.Restore else Icons.Outlined.Delete,
+                                    FluentIcon(if (removed) Icons.Outlined.Restore else Icons.Outlined.Delete,
                                         stringResource(if (removed) R.string.restore_model else R.string.delete_model, id),
                                         tint = if (removed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                                 }
@@ -94,7 +88,7 @@ internal fun ModelConnectionDialog(provider: LlmProviderInfo, tests: ModelConnec
                             result?.let { tested ->
                                 Spacer(Modifier.height(8.dp))
                                 Row(verticalAlignment = Alignment.Top) {
-                                    Icon(if (tested.isSuccess) Icons.Default.CheckCircle else Icons.Default.Error, null,
+                                    FluentIcon(if (tested.isSuccess) Icons.Default.CheckCircle else Icons.Default.Error, null,
                                         tint = if (tested.isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                                         modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.width(8.dp))

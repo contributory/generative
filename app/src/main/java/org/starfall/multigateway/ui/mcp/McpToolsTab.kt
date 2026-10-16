@@ -1,15 +1,13 @@
 package org.starfall.multigateway.ui.mcp
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +21,7 @@ import kotlinx.serialization.json.*
 import org.starfall.multigateway.R
 import org.starfall.multigateway.data.model.ToolSettings
 import org.starfall.multigateway.data.model.ToolDefinition
+import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 internal fun McpToolsTab(
@@ -84,12 +83,12 @@ private fun McpToolItem(tool: ToolDefinition, enabled: Boolean, onEnabledChange:
                 supportingContent = {
                     if (tool.description.isNotBlank()) Text(tool.description, maxLines = if (expanded) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
                 },
-                leadingContent = { Icon(Icons.Outlined.Extension, null) },
+                leadingContent = { FluentIcon(Icons.Outlined.Extension, null) },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(enabled, onCheckedChange = onEnabledChange)
                         Spacer(Modifier.width(6.dp))
-                        Icon(if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                        FluentIcon(if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
                             stringResource(if (expanded) R.string.collapse_tool_details else R.string.expand_tool_details))
                     }
                 })

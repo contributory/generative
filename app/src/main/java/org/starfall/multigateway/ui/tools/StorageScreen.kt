@@ -1,5 +1,7 @@
 package org.starfall.multigateway.ui.tools
 
+import org.starfall.multigateway.ui.icons.FluentIcon
+
 import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
 import org.starfall.multigateway.ui.components.AppDialog as Dialog
 import org.starfall.multigateway.ui.components.ChatFilePreview
@@ -27,11 +29,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.FolderOpen
-import androidx.compose.material.icons.outlined.InsertDriveFile
-import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -52,13 +49,9 @@ import org.starfall.multigateway.ui.components.MediaContent
 import org.starfall.multigateway.ui.components.isPreviewableMedia
 import org.starfall.multigateway.ui.components.mediaMimeType
 import org.starfall.multigateway.ui.components.mediaThumbnail
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.outlined.Audiotrack
-import androidx.compose.material.icons.outlined.BrokenImage
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.ui.layout.ContentScale
 import java.io.File
+import org.starfall.multigateway.ui.icons.Icons
 
 private fun File.mime() = mediaMimeType(name)
 
@@ -117,7 +110,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                 title = { Text("Storage", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -167,7 +160,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(
+                        FluentIcon(
                             Icons.Outlined.FolderOpen,
                             contentDescription = null,
                             modifier = Modifier.size(48.dp),
@@ -228,7 +221,7 @@ private fun StorageFileRow(store: ToolFiles, file: File, selected: Boolean, onSe
                 Box(contentAlignment = Alignment.Center) {
                     thumbnail?.let {
                         Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    } ?: Icon(
+                    } ?: FluentIcon(
                         when {
                             mime.startsWith("audio/") -> Icons.Outlined.Audiotrack
                             mime.startsWith("video/") -> Icons.Outlined.Videocam
