@@ -27,10 +27,18 @@ fun SettingsCard(modifier: Modifier = Modifier, content: @Composable ColumnScope
 }
 
 @Composable
-fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+fun SettingsSection(
+    title: String,
+    description: String? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
     SettingsCard {
         Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary)
+        if (description != null) {
+            Text(description, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         content()
     }
 }

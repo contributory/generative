@@ -525,7 +525,10 @@ fun PreferencesSettingsView(
                 ToolCallStrategy.SEQUENTIAL to stringResource(R.string.tool_call_strategy_sequential),
                 ToolCallStrategy.PARALLEL to stringResource(R.string.tool_call_strategy_parallel)
             )
-            SettingsSection(stringResource(R.string.tool_call_options)) {
+            SettingsSection(
+                title = stringResource(R.string.tool_call_options),
+                description = stringResource(R.string.tool_call_strategy_description)
+            ) {
                 ExposedDropdownMenuBox(strategyExpanded, { strategyExpanded = !strategyExpanded }) {
                     SelectableOutlinedTextField(
                         value = strategyLabels.getValue(appPreferences.toolCallStrategy),
@@ -543,11 +546,6 @@ fun PreferencesSettingsView(
                         }
                     }
                 }
-                Text(
-                    stringResource(R.string.tool_call_strategy_description),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
                 if (appPreferences.toolCallStrategy == ToolCallStrategy.PARALLEL) {
                     var limit by remember(appPreferences.toolCallConcurrentLimit) { mutableStateOf(appPreferences.toolCallConcurrentLimit.toString()) }
                     val parsed = limit.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_CALL_CONCURRENT_LIMIT }
