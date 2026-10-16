@@ -71,10 +71,13 @@ fun PromptLibraryDialog(initialLibrary: PromptLibrary, onChange: (PromptLibrary)
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text("Prompts", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                         IconButton(onClick = { creating = true }) { FluentIcon(Icons.Outlined.Add, "Add prompt") }
-                        IconButton(enabled = library.prompts.isNotEmpty(), onClick = {
-                            update(library.copy(selectedIds = if (allSelected) emptySet() else library.prompts.map { it.id }.toSet()))
-                        }) { FluentIcon(if (allSelected) Icons.Outlined.Deselect else Icons.Outlined.SelectAll,
-                            if (allSelected) "Deselect all prompts" else "Select all prompts") }
+                        Checkbox(
+                            checked = allSelected,
+                            onCheckedChange = { checked ->
+                                update(library.copy(selectedIds = if (checked) library.prompts.map { it.id }.toSet() else emptySet()))
+                            },
+                            enabled = library.prompts.isNotEmpty()
+                        )
                         IconButton(onClick = onDismiss) { FluentIcon(Icons.Outlined.Close, "Close prompts") }
                     }
                     LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(8.dp),

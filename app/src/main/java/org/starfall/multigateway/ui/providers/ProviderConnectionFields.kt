@@ -83,7 +83,7 @@ internal fun ProviderAuthField(
             Box {
                 IconButton(onClick = { expanded = true }) {
                     FluentIcon(
-                        if (expanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                        if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                         stringResource(R.string.provider_select_auth_type)
                     )
                 }

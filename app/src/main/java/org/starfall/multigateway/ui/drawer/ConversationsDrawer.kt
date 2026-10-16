@@ -141,9 +141,13 @@ fun ConversationsDrawer(
                     IconButton(onClick = ::stopSelecting) { FluentIcon(Icons.Default.Close, "Exit selection") }
                     Text("${selected.size}", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                     val allSelected = matchingIds.isNotEmpty() && selected.containsAll(matchingIds)
-                    IconButton(enabled = matchingIds.isNotEmpty(), onClick = {
-                        selected = if (allSelected) selected - matchingIds else selected + matchingIds
-                    }) { FluentIcon(if (allSelected) Icons.Outlined.Deselect else Icons.Outlined.SelectAll, if (allSelected) "Deselect all" else "Select all") }
+                    Checkbox(
+                        checked = allSelected,
+                        onCheckedChange = { checked ->
+                            selected = if (checked) selected + matchingIds else selected - matchingIds
+                        },
+                        enabled = matchingIds.isNotEmpty()
+                    )
                     IconButton(enabled = selected.isNotEmpty(), onClick = { folderName = ""; grouping = true }) { FluentIcon(Icons.Outlined.CreateNewFolder, "Move selected chats to folder") }
                     IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { FluentIcon(Icons.Outlined.Delete, "Delete selected chats", tint = MaterialTheme.colorScheme.error) }
                 }
@@ -234,7 +238,7 @@ fun ConversationsDrawer(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Spacer(Modifier.width(4.dp))
-                        IconButton(onClick = { promptDialog = true }, modifier = Modifier.size(40.dp)) { FluentIcon(Icons.Outlined.Description, "Prompts") }
+                        IconButton(onClick = { promptDialog = true }, modifier = Modifier.size(40.dp)) { FluentIcon(Icons.Outlined.DocumentSparkle, "Prompts") }
                         IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) { FluentIcon(Icons.Outlined.Settings, "General Settings") }
                     }
                 }

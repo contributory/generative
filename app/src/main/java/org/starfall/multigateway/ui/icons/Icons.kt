@@ -39,6 +39,7 @@ object Icons {
         val Delete: Int get() = R.drawable.ic_fluent_delete_24_regular
         val DeleteSweep: Int get() = R.drawable.ic_fluent_delete_24_regular
         val Description: Int get() = R.drawable.ic_fluent_document_24_regular
+        val DocumentSparkle: Int get() = R.drawable.ic_fluent_document_sparkle_24_regular
         val Deselect: Int get() = R.drawable.ic_fluent_checkmark_24_regular
         val Download: Int get() = R.drawable.ic_fluent_arrow_download_24_regular
         val Edit: Int get() = R.drawable.ic_fluent_edit_24_regular
