@@ -76,6 +76,9 @@ fun ConversationsDrawer(
     val providersById = remember(providers) { providers.associateBy { it.id } }
     var search by remember { mutableStateOf("") }
     var selecting by remember { mutableStateOf(false) }
+    // A long-pressed chat is temporarily highlighted while its context menu is open.
+    // Multi-select mode starts only when the user taps another chat.
+    var contextChatId by remember { mutableStateOf<String?>(null) }
     var selected by remember { mutableStateOf(emptySet<String>()) }
     var deleting by remember { mutableStateOf(emptySet<String>()) }
     var renaming by remember { mutableStateOf<Conversation?>(null) }
@@ -91,15 +94,39 @@ fun ConversationsDrawer(
         conversations.filter { search.isBlank() || it.title.contains(search, true) || organization.chatFolders[it.id] in matchingFolders }
     }
     val matchingIds = matches.map { it.id }.toSet()
-    fun stopSelecting() { selecting = false; selected = emptySet() }
-    fun toggle(id: String) { selected = if (id in selected) selected - id else selected + id }
+    fun stopSelecting() { selecting = false; selected = emptySet(); contextChatId = null }
+    fun dismissContextMenu() { contextChatId = null; selected = emptySet() }
+    fun onChatClick(id: String, chat: Conversation) {
+        when {
+            contextChatId != null && contextChatId == id -> stopSelecting()
+            contextChatId != null -> {
+                val first = contextChatId!!
+                contextChatId = null
+                selecting = true
+                selected = setOf(first, id)
+            }
+            selecting -> {
+                selected = if (id in selected) selected - id else selected + id
+                if (selected.isEmpty()) stopSelecting()
+            }
+            else -> { onSelectConversation(chat); onCloseDrawer() }
+        }
+    }
+    fun onChatLongClick(id: String) {
+        selecting = false
+        selected = setOf(id)
+        contextChatId = id
+    }
     fun moveToFolder(folderId: String?) {
         val ids = selected
         onUpdateOrganization { it.moveChats(ids, folderId) }
         grouping = false
         stopSelecting()
     }
-    LaunchedEffect(conversations) { selected = selected.intersect(conversations.map { it.id }.toSet()) }
+    LaunchedEffect(conversations) {
+        selected = selected.intersect(conversations.map { it.id }.toSet())
+        if (contextChatId != null && conversations.none { it.id == contextChatId }) stopSelecting()
+    }
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     var searchFocused by remember { mutableStateOf(false) }
@@ -188,8 +215,9 @@ fun ConversationsDrawer(
                             items(chats, key = { "chat:${it.id}" }) { chat ->
                                 DrawerChatRow(chat, currentConversationId, generatingConversationIds, selecting, chat.id in selected, chat.id in organization.pinnedChatIds,
                                     modelIcon = chat.lastModelIcon(providersById),
-                                    onClick = { if (selecting) toggle(chat.id) else { onSelectConversation(chat); onCloseDrawer() } },
-                                    onLongClick = { selecting = true; toggle(chat.id) },
+                                    onClick = { onChatClick(chat.id, chat) },
+                                    onLongClick = { onChatLongClick(chat.id) },
+                                    showContextMenu = contextChatId == chat.id, onContextMenuDismiss = ::dismissContextMenu,
                                     onPin = { onUpdateOrganization { it.copy(pinnedChatIds = if (chat.id in it.pinnedChatIds) it.pinnedChatIds - chat.id else it.pinnedChatIds + chat.id) } },
                                     onRename = { renaming = chat; title = chat.title }, onDelete = { deleting = setOf(chat.id) },
                                     onMove = { selecting = true; selected = setOf(chat.id); folderName = ""; grouping = true }, modifier = Modifier.padding(start = 14.dp))
@@ -202,8 +230,9 @@ fun ConversationsDrawer(
                 items(history, key = { "chat:${it.id}" }) { chat ->
                     DrawerChatRow(chat, currentConversationId, generatingConversationIds, selecting, chat.id in selected, chat.id in organization.pinnedChatIds,
                         modelIcon = chat.lastModelIcon(providersById),
-                        onClick = { if (selecting) toggle(chat.id) else { onSelectConversation(chat); onCloseDrawer() } },
-                        onLongClick = { selecting = true; toggle(chat.id) },
+                        onClick = { onChatClick(chat.id, chat) },
+                        onLongClick = { onChatLongClick(chat.id) },
+                        showContextMenu = contextChatId == chat.id, onContextMenuDismiss = ::dismissContextMenu,
                         onPin = { onUpdateOrganization { it.copy(pinnedChatIds = if (chat.id in it.pinnedChatIds) it.pinnedChatIds - chat.id else it.pinnedChatIds + chat.id) } },
                         onRename = { renaming = chat; title = chat.title }, onDelete = { deleting = setOf(chat.id) },
                         onMove = { selecting = true; selected = setOf(chat.id); folderName = ""; grouping = true })
@@ -303,10 +332,11 @@ private fun SidebarLabel(text: String) { Text(text, Modifier.padding(start = 8.d
 private fun DrawerChatRow(
     chat: Conversation, currentId: String?, generatingIds: Set<String>, selecting: Boolean, checked: Boolean, pinned: Boolean,
     onClick: () -> Unit, onLongClick: () -> Unit, onPin: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit, onMove: () -> Unit,
+    showContextMenu: Boolean, onContextMenuDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     modelIcon: ConversationModelIcon? = null
 ) {
-    var menu by remember { mutableStateOf(false) }
+    val menu = showContextMenu
     val active = chat.id == currentId
     // AMOLED: the open chat is outlined with a faint border instead of a tinted fill.
     val outlineActive = LocalAmoledMode.current && active && !checked
@@ -317,10 +347,10 @@ private fun DrawerChatRow(
         Row(Modifier.padding(start = 10.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (selecting) Checkbox(checked, onCheckedChange = { onClick() }, modifier = Modifier.size(36.dp))
             else if (modelIcon != null) EntityIcon(
-                modelIcon.image, Modifier.size(36.dp).clip(CircleShape),
+                modelIcon.image, Modifier.size(36.dp).clip(CircleShape).combinedClickable(onClick = onLongClick, onLongClick = onLongClick),
                 text = modelInitial(modelIcon.name), matchName = modelIcon.name, model = true,
                 backgroundColor = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
-            ) else Box(Modifier.size(36.dp).clip(CircleShape).background(if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest), contentAlignment = Alignment.Center) {
+            ) else Box(Modifier.size(36.dp).clip(CircleShape).background(if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest).combinedClickable(onClick = onLongClick, onLongClick = onLongClick), contentAlignment = Alignment.Center) {
                 Text(chat.title.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "#", color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
             }
             Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
@@ -329,13 +359,12 @@ private fun DrawerChatRow(
             }
             if (pinned) FluentIcon(Icons.Default.PushPin, "Pinned chat", Modifier.size(14.dp))
             if (chat.id in generatingIds) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 1.5.dp)
-            if (!selecting) Box {
-                IconButton(onClick = { menu = true }, modifier = Modifier.size(32.dp)) { FluentIcon(Icons.Default.MoreVert, "Chat options", Modifier.size(18.dp)) }
-                DropdownMenu(menu, { menu = false }) {
-                    DropdownMenuItem(text = { Text(if (pinned) "Unpin" else "Pin") }, leadingIcon = { FluentIcon(Icons.Outlined.PushPin, null) }, onClick = { menu = false; onPin() })
-                    DropdownMenuItem(text = { Text("Move to folder") }, leadingIcon = { FluentIcon(Icons.Outlined.Folder, null) }, onClick = { menu = false; onMove() })
-                    DropdownMenuItem(text = { Text("Rename") }, leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) }, onClick = { menu = false; onRename() })
-                    DropdownMenuItem(text = { Text("Delete", color = MaterialTheme.colorScheme.error) }, leadingIcon = { FluentIcon(Icons.Outlined.Delete, null) }, onClick = { menu = false; onDelete() })
+            if (!selecting) {
+                DropdownMenu(expanded = menu, onDismissRequest = onContextMenuDismiss) {
+                    DropdownMenuItem(text = { Text(if (pinned) "Unpin" else "Pin") }, leadingIcon = { FluentIcon(Icons.Outlined.PushPin, null) }, onClick = { onContextMenuDismiss(); onPin() })
+                    DropdownMenuItem(text = { Text("Move to folder") }, leadingIcon = { FluentIcon(Icons.Outlined.Folder, null) }, onClick = { onContextMenuDismiss(); onMove() })
+                    DropdownMenuItem(text = { Text("Rename") }, leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) }, onClick = { onContextMenuDismiss(); onRename() })
+                    DropdownMenuItem(text = { Text("Delete", color = MaterialTheme.colorScheme.error) }, leadingIcon = { FluentIcon(Icons.Outlined.Delete, null) }, onClick = { onContextMenuDismiss(); onDelete() })
                 }
             }
         }
