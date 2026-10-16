@@ -31,7 +31,8 @@ import org.starfall.multigateway.ui.icons.Icons
 
 @Composable
 fun McpUnifiedCard(server: McpInfo, isGrid: Boolean, modifier: Modifier = Modifier, toolCount: Int?, toolError: String?,
-    loading: Boolean, onToolErrorClick: (String) -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
+    loading: Boolean, isEnabled: Boolean, onToggleEnabled: () -> Unit,
+    onToolErrorClick: (String) -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
     val corner by animateDpAsState(if (isGrid) 20.dp else 16.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow), label = "mcpShapeCorner")
     Surface(shape = RoundedCornerShape(corner), color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -39,7 +40,16 @@ fun McpUnifiedCard(server: McpInfo, isGrid: Boolean, modifier: Modifier = Modifi
         AdaptiveCardLayout(isGrid = isGrid, modifier = Modifier.fillMaxWidth().padding(14.dp),
             icon = { EntityIcon(server.icon, Modifier.size(42.dp), text = providerInitials(server.name),
                 fallback = Icons.Outlined.Extension, matchName = server.name) },
-            actions = { ItemOverflowMenu(onEdit = onEdit, onDelete = onDelete, deleteColor = MaterialTheme.colorScheme.error) },
+            actions = {
+                ItemOverflowMenu(
+                    onEdit = onEdit,
+                    onDelete = onDelete,
+                    deleteColor = MaterialTheme.colorScheme.error,
+                    firstActionText = stringResource(if (isEnabled) R.string.mcp_enabled else R.string.mcp_enable),
+                    firstActionIcon = if (isEnabled) R.drawable.ic_checkbox_checked else R.drawable.ic_checkbox_unchecked,
+                    onFirstAction = onToggleEnabled
+                )
+            },
             content = {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(server.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),

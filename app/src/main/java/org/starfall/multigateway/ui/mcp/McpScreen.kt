@@ -45,6 +45,7 @@ fun McpScreen(
     mcpServers: List<McpInfo>, isGridView: Boolean = false, onToggleGridView: ((Boolean) -> Unit)? = null,
     toolsCache: Map<String, List<ToolDefinition>>, toolErrors: Map<String, String>, toolsLoading: Set<String>,
     toolSettings: ToolSettings, onSetToolEnabled: (String, String, Boolean) -> Unit,
+    onSetMcpEnabled: (String, Boolean) -> Unit,
     onSaveMcpServer: (McpInfo) -> Unit, onDeleteMcpServer: (String) -> Unit, onReorderMcpServers: (List<String>) -> Unit,
     onRefreshTools: suspend (McpInfo) -> Result<List<ToolDefinition>>, onAuthorizeOAuth: suspend (McpInfo) -> Result<McpInfo>,
     onClearOAuth: suspend (McpInfo) -> McpInfo, onBack: () -> Unit
@@ -100,6 +101,8 @@ fun McpScreen(
                                         onDragStopped = { onReorderMcpServers(orderedServers.map { it.id }) }
                                     ),
                                     toolCount = (toolsCache[server.id] ?: server.cachedTools)?.size, toolError = toolErrors[server.id], loading = server.id in toolsLoading,
+                                    isEnabled = toolSettings.quickMcp[server.id] != false,
+                                    onToggleEnabled = { onSetMcpEnabled(server.id, toolSettings.quickMcp[server.id] == false) },
                                     onToolErrorClick = { selectedToolError = server.name to it },
                                     onEdit = { editor = McpEditor(server, false) }, onDelete = { deletingServerId = server.id })
                             }

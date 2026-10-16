@@ -121,4 +121,6 @@
     <string name="choose_another_model_hint">모델 이름을 탭하여 다른 모델 선택</string>
     <string name="screen_wakelock_description">응답을 생성하는 동안 화면을 켜 둡니다.</string>
     <string name="context_window_compact_hint">원을 탭하여 컨텍스트 창 압축</string>
+    <string name="mcp_enable">사용 설정</string>
+    <string name="mcp_enabled">사용 설정됨</string>
 </resources>

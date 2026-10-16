@@ -20,7 +20,10 @@ import org.starfall.multigateway.ui.icons.Icons
 fun ItemOverflowMenu(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    deleteColor: Color
+    deleteColor: Color,
+    firstActionText: String? = null,
+    firstActionIcon: Int? = null,
+    onFirstAction: (() -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -43,6 +46,16 @@ fun ItemOverflowMenu(
                     MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                 )
             ) {
+                if (firstActionText != null && firstActionIcon != null && onFirstAction != null) {
+                    DropdownMenuItem(
+                        text = { Text(firstActionText) },
+                        leadingIcon = { FluentIcon(firstActionIcon, contentDescription = null) },
+                        onClick = {
+                            expanded = false
+                            onFirstAction()
+                        }
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text("Edit") },
                     leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },

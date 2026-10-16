@@ -646,4 +646,6 @@
     <string name="screen_wakelock_except_tool_calls">Auto</string>
     <string name="context_window_compact_hint">Tap the circle to compact the context window</string>
     <string name="headers" translatable="false">Headers</string>
+    <string name="mcp_enable">Enable</string>
+    <string name="mcp_enabled">Enabled</string>
 </resources>

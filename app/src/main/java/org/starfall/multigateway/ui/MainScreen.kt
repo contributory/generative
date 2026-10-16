@@ -491,6 +491,7 @@ fun MainScreen(
                             toolsLoading = mcpToolsLoading,
                             toolSettings = toolSettings,
                             onSetToolEnabled = viewModel::setMcpToolEnabled,
+                            onSetMcpEnabled = viewModel::setQuickMcp,
                             onSaveMcpServer = { configurationViewModel.saveMcpServer(it) },
                             onDeleteMcpServer = { configurationViewModel.deleteMcpServer(it) },
                             onReorderMcpServers = configurationViewModel::reorderMcpServers,
