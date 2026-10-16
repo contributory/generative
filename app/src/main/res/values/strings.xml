@@ -106,6 +106,10 @@
     <string name="provider_search_filter">Search filters</string>
     <string name="provider_search_name">Provider name</string>
     <string name="provider_search_folder">Folder name</string>
+    <string name="sidebar_create_folder">Create Folder</string>
+    <string name="sidebar_select">Select</string>
+    <string name="sidebar_folder_name">Folder name</string>
+    <string name="sidebar_create_action">Create</string>
     <string name="provider_search_model">Provider with matching model</string>
     <string name="search_providers">Search providers</string>
     <string name="close_provider_search">Close search</string>

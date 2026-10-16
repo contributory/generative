@@ -300,7 +300,7 @@ fun ConversationsDrawer(
             onDismissRequest = { blankContextMenu = false }
         ) {
             DropdownMenuItem(
-                text = { Text("Create Folder") },
+                text = { Text(stringResource(R.string.sidebar_create_folder)) },
                 leadingIcon = { FluentIcon(Icons.Outlined.CreateNewFolder, null) },
                 onClick = {
                     blankContextMenu = false
@@ -309,7 +309,7 @@ fun ConversationsDrawer(
                 }
             )
             DropdownMenuItem(
-                text = { Text("Select") },
+                text = { Text(stringResource(R.string.sidebar_select)) },
                 leadingIcon = { FluentIcon(Icons.Outlined.CheckCircle, null) },
                 onClick = {
                     blankContextMenu = false
@@ -321,16 +321,16 @@ fun ConversationsDrawer(
     }
     if (creatingFolder) AlertDialog(
         onDismissRequest = { creatingFolder = false },
-        title = { Text("Create Folder") },
-        text = { SelectableOutlinedTextField(folderName, { folderName = it }, label = { Text("Folder name") }, singleLine = true) },
+        title = { Text(stringResource(R.string.sidebar_create_folder)) },
+        text = { SelectableOutlinedTextField(folderName, { folderName = it }, label = { Text(stringResource(R.string.sidebar_folder_name)) }, singleLine = true) },
         confirmButton = {
             TextButton(enabled = folderName.isNotBlank(), onClick = {
                 val name = folderName.trim()
                 if (name.isNotEmpty()) onUpdateOrganization { it.copy(folders = it.folders + ChatFolder(UUID.randomUUID().toString(), name)) }
                 creatingFolder = false
-            }) { Text("Create") }
+            }) { Text(stringResource(R.string.sidebar_create_action)) }
         },
-        dismissButton = { TextButton(onClick = { creatingFolder = false }) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = { creatingFolder = false }) { Text(stringResource(R.string.common_cancel)) } }
     )
     if (grouping) AlertDialog(
         onDismissRequest = { grouping = false }, title = { Text("Move to folder") },
@@ -402,7 +402,7 @@ private fun DrawerChatRow(
             if (chat.id in generatingIds) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 1.5.dp)
             if (!selecting) {
                 DropdownMenu(expanded = menu, onDismissRequest = onContextMenuDismiss) {
-                    DropdownMenuItem(text = { Text("Select") }, leadingIcon = { FluentIcon(Icons.Outlined.CheckCircle, null) }, onClick = onSelect)
+                    DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_select)) }, leadingIcon = { FluentIcon(Icons.Outlined.CheckCircle, null) }, onClick = onSelect)
                     DropdownMenuItem(text = { Text(if (pinned) "Unpin" else "Pin") }, leadingIcon = { FluentIcon(Icons.Outlined.PushPin, null) }, onClick = { onContextMenuDismiss(); onPin() })
                     DropdownMenuItem(text = { Text("Move to folder") }, leadingIcon = { FluentIcon(Icons.Outlined.Folder, null) }, onClick = { onContextMenuDismiss(); onMove() })
                     DropdownMenuItem(text = { Text("Rename") }, leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) }, onClick = { onContextMenuDismiss(); onRename() })
