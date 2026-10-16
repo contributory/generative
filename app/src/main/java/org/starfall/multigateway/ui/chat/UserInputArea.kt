@@ -336,7 +336,7 @@ fun UserInputArea(
                 .fillMaxWidth()
                 .testTag("chat-input"),
             shape = RoundedCornerShape(36.dp),
-            color = if (amoledMode) MaterialTheme.colorScheme.surface.copy(alpha = 0.86f) else inputColor,
+            color = (if (amoledMode) MaterialTheme.colorScheme.surface else inputColor).copy(alpha = 0.86f),
             border = BorderStroke(1.dp, if (mediaKind != null) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                 else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
             tonalElevation = if (amoledMode) 0.dp else 2.dp,
