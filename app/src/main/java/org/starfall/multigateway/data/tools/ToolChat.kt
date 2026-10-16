@@ -720,7 +720,7 @@ class ToolChat(
                 val root=if(Regex("/v1(?:beta|alpha)?$").containsMatchIn(base)) base else "$base/v1beta"
                 val response=modelResponse("$root/models/$model:generateContent",buildJsonObject {
                     put("contents",JsonArray(native)); put("systemInstruction",obj("parts" to JsonArray(listOf(obj("text" to str(prompt))))))
-                    if(tools.isNotEmpty()) put("tools",JsonArray(listOf(obj("functionDeclarations" to JsonArray(tools.map { obj("name" to str(it.name),"description" to str(it.description),"parameters" to it.schema) })))))
+                    if(tools.isNotEmpty()) put("tools",JsonArray(listOf(obj("functionDeclarations" to JsonArray(tools.map { tool -> buildJsonObject { put("name", str(tool.name)); put("description", str(tool.description)); geminiFunctionParameters(tool.schema)?.let { put("parameters", it) } } })))))
                     put("generationConfig",buildJsonObject { put("maxOutputTokens",p.config.maxTokens); config.temperature?.let { put("temperature",it) }; config.topP?.let { put("topP",it) }; config.topK?.let { put("topK",it) }; config.googleThinkingConfig()?.let { put("thinkingConfig", it) } })
                 },wireProvider,p.streamEnabledFor(model),onText,onReasoning)
                 providerTurn(wireProvider.type, response)

@@ -165,3 +165,48 @@ internal fun safeError(value: JsonElement?, secrets: Collection<String> = emptyL
         .replace(Regex("(?i)(api[_-]?key|token|authorization|password)([\\s\"':=]+)[^\\s,}]+"), "$1=[redacted]")
     return text.filter { it >= ' ' }.take(500).ifBlank { "No safe error details provided" }
 }
+
+private val GEMINI_SCHEMA_KEYS = setOf(
+    "type", "format", "title", "description", "nullable", "enum", "maxItems", "minItems", "minProperties",
+    "maxProperties", "minLength", "maxLength", "pattern", "example", "propertyOrdering", "default",
+    "minimum", "maximum"
+)
+
+/**
+ * Gemini accepts only an OpenAPI-style subset of JSON Schema for function parameters and answers
+ * unknown fields (additionalProperties, $schema, $ref, const, ...) with HTTP 400. Returns the
+ * schema reduced to that subset, or null when there is nothing to declare (an object without
+ * properties is rejected too).
+ */
+internal fun geminiFunctionParameters(schema: JsonElement): JsonObject? =
+    (geminiSchema(schema) as? JsonObject)?.takeIf { (it["properties"] as? JsonObject)?.isNotEmpty() == true }
+
+private fun geminiSchema(element: JsonElement): JsonElement? {
+    val schema = element as? JsonObject ?: return null
+    val out = linkedMapOf<String, JsonElement>()
+    var nullable = false
+    schema.forEach { (key, value) ->
+        when {
+            key == "type" && value is JsonArray -> {
+                val types = value.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+                nullable = "null" in types
+                types.firstOrNull { it != "null" }?.let { out["type"] = JsonPrimitive(it) }
+            }
+            key == "type" && (value as? JsonPrimitive)?.contentOrNull == "null" -> nullable = true
+            key == "const" -> out["enum"] = JsonArray(listOf(value))
+            key == "properties" && value is JsonObject ->
+                out["properties"] = JsonObject(value.mapNotNull { (name, child) -> geminiSchema(child)?.let { name to it } }.toMap())
+            key == "items" -> geminiSchema(value)?.let { out["items"] = it }
+            key == "anyOf" || key == "oneOf" -> (value as? JsonArray)
+                ?.mapNotNull { geminiSchema(it) }?.filter { (it as JsonObject).isNotEmpty() }
+                ?.takeIf { it.isNotEmpty() }?.let { out["anyOf"] = JsonArray(it) }
+            key in GEMINI_SCHEMA_KEYS -> out[key] = value
+        }
+    }
+    if (nullable) out["nullable"] = JsonPrimitive(true)
+    val properties = out["properties"] as? JsonObject
+    (schema["required"] as? JsonArray)
+        ?.filter { required -> (required as? JsonPrimitive)?.contentOrNull in (properties?.keys ?: emptySet()) }
+        ?.takeIf { it.isNotEmpty() }?.let { out["required"] = JsonArray(it) }
+    return JsonObject(out)
+}
