@@ -22,7 +22,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -213,6 +212,12 @@ fun ConversationsDrawer(
                     leadingIcon = { Icon(Icons.Default.Search, "Search") },
                     trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { Icon(Icons.Default.Close, "Clear search") } },
                     shape = RoundedCornerShape(28.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    ),
                     modifier = Modifier.weight(1f).onFocusChanged { searchFocused = it.isFocused }
                 )
                 // Secondary actions step aside while the search field is expanded.
@@ -222,25 +227,27 @@ fun ConversationsDrawer(
                     exit = fadeOut() + shrinkHorizontally()
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Spacer(Modifier.width(8.dp))
-                        // Group the system prompt and settings buttons inside one outlined container.
-                        Row(
-                            modifier = Modifier
-                                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outline), RoundedCornerShape(24.dp))
-                                .padding(horizontal = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Spacer(Modifier.width(4.dp))
                         IconButton(onClick = { promptDialog = true }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.EditNote, "Default system prompt") }
                         IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.Settings, "General Settings") }
-                        }
                     }
                 }
                 Spacer(Modifier.width(8.dp))
-                OutlinedIconButton(
-                    onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                    colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-                ) { Icon(Icons.Outlined.Create, "New chat") }
+                if (LocalAmoledMode.current) {
+                    OutlinedIconButton(
+                        onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                        colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                    ) { Icon(Icons.Outlined.Create, "New chat") }
+                } else {
+                    FilledIconButton(
+                        onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    ) { Icon(Icons.Outlined.Create, "New chat") }
+                }
             }
         }
     }

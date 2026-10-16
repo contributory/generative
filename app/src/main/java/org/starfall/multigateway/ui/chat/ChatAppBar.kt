@@ -1,6 +1,5 @@
 package org.starfall.multigateway.ui.chat
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
@@ -59,7 +58,6 @@ fun ChatAppBar(
                 .clickable(onClick = onOpenDrawer),
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             shadowElevation = 4.dp,
             tonalElevation = 2.dp
         ) {
@@ -138,7 +136,6 @@ fun ChatAppBar(
                 .clickable(onClick = onOpenSettings),
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             shadowElevation = 4.dp,
             tonalElevation = 2.dp
         ) {
