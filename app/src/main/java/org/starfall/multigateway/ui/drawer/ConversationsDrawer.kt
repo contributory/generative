@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
 
 package org.starfall.multigateway.ui.drawer
@@ -10,6 +10,17 @@ import org.starfall.multigateway.ui.components.windowHeightIn
 import org.starfall.multigateway.ui.components.windowWidth
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -88,7 +99,18 @@ fun ConversationsDrawer(
         stopSelecting()
     }
     LaunchedEffect(conversations) { selected = selected.intersect(conversations.map { it.id }.toSet()) }
-    LaunchedEffect(isOpen) { if (!isOpen) stopSelecting() }
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    var searchFocused by remember { mutableStateOf(false) }
+    fun unfocusSearch() { focusManager.clearFocus(); keyboard?.hide() }
+    // Closing the keyboard (back gesture, IME close button) also leaves the search field.
+    val imeVisible = WindowInsets.isImeVisible
+    var imeWasVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(imeVisible) {
+        if (imeVisible) imeWasVisible = true
+        else if (imeWasVisible) { imeWasVisible = false; if (searchFocused) unfocusSearch() }
+    }
+    LaunchedEffect(isOpen) { if (!isOpen) { stopSelecting(); unfocusSearch() } }
     BackHandler(enabled = selecting && isOpen) { stopSelecting() }
 
     val drawerShape = RoundedCornerShape(topEnd = 32.dp, bottomEnd = 32.dp)
@@ -103,14 +125,12 @@ fun ConversationsDrawer(
         drawerShape = drawerShape,
         drawerContainerColor = MaterialTheme.colorScheme.surface
     ) {
-        Column(Modifier.fillMaxSize()) {
-            SelectableOutlinedTextField(
-                value = search, onValueChange = { search = it }, singleLine = true,
-                placeholder = { Text(stringResource(R.string.search_history)) },
-                leadingIcon = { Icon(Icons.Default.Search, "Search") },
-                trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { Icon(Icons.Default.Close, "Clear search") } },
-                shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth().padding(12.dp)
-            )
+        Column(
+            Modifier.fillMaxSize()
+                .imePadding()
+                // A tap on any non-interactive part of the drawer leaves the search field.
+                .pointerInput(Unit) { detectTapGestures(onTap = { unfocusSearch() }) }
+        ) {
             if (selecting) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = ::stopSelecting) { Icon(Icons.Default.Close, "Exit selection") }
@@ -123,7 +143,6 @@ fun ConversationsDrawer(
                     IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { Icon(Icons.Outlined.Delete, "Delete selected chats", tint = MaterialTheme.colorScheme.error) }
                 }
             }
-            HorizontalDivider()
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 val folders = organization.folders.sortedByDescending { it.pinned }
                 if (folders.isNotEmpty()) item(key = "folders-label") { SidebarLabel("Folders") }
@@ -183,20 +202,36 @@ fun ConversationsDrawer(
                 }
                 if (matches.isEmpty()) item { Text(if (search.isBlank()) stringResource(R.string.no_conversations_yet) else "No matching conversations", Modifier.padding(12.dp), color = MaterialTheme.colorScheme.outline) }
             }
-            HorizontalDivider()
-            // Primary action on its own row; the two secondary actions share the row below, labelled.
-            Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                FilledTonalButton(onClick = { stopSelecting(); onNewChat(); onCloseDrawer() }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Outlined.Create, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("New Chat", maxLines = 1)
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(onClick = { promptDialog = true }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) {
-                        Icon(Icons.Outlined.EditNote, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("System prompt", maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SelectableOutlinedTextField(
+                    value = search, onValueChange = { search = it }, singleLine = true,
+                    placeholder = { Text(stringResource(R.string.search_history), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    leadingIcon = { Icon(Icons.Default.Search, "Search") },
+                    trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { Icon(Icons.Default.Close, "Clear search") } },
+                    shape = RoundedCornerShape(28.dp),
+                    modifier = Modifier.weight(1f).onFocusChanged { searchFocused = it.isFocused }
+                )
+                // Secondary actions step aside while the search field is expanded.
+                AnimatedVisibility(
+                    visible = !searchFocused,
+                    enter = fadeIn() + expandHorizontally(),
+                    exit = fadeOut() + shrinkHorizontally()
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Spacer(Modifier.width(4.dp))
+                        IconButton(onClick = { promptDialog = true }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.EditNote, "Default system prompt") }
+                        IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.Settings, "General Settings") }
                     }
-                    TextButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) {
-                        Icon(Icons.Outlined.Settings, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Settings", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
                 }
+                Spacer(Modifier.width(8.dp))
+                OutlinedIconButton(
+                    onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                    colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                ) { Icon(Icons.Outlined.Create, "New chat") }
             }
         }
     }
