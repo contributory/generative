@@ -7,6 +7,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -14,6 +16,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.layout.Box
 import org.starfall.multigateway.R
 import org.starfall.multigateway.data.model.AuthMethod
@@ -68,6 +72,7 @@ internal fun ProviderAuthField(
     onFocusLost: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var revealed by remember(method) { mutableStateOf(false) }
     val hasKey = method !in listOf(AuthMethod.OAUTH, AuthMethod.NONE, AuthMethod.OTHER)
     SelectableOutlinedTextField(
         value = if (hasKey) value else "", onValueChange = onValueChange,
@@ -95,6 +100,13 @@ internal fun ProviderAuthField(
                 }
             }
         }) else null,
+        trailingIcon = if (hasKey) ({
+            IconButton(onClick = { revealed = !revealed }) {
+                Icon(if (revealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                    stringResource(if (revealed) R.string.provider_hide_api_key else R.string.provider_show_api_key))
+            }
+        }) else null,
+        visualTransformation = if (revealed || !hasKey) VisualTransformation.None else PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(
             capitalization = if (hasKey) KeyboardCapitalization.None else KeyboardCapitalization.Sentences
         ),

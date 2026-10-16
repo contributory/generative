@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +27,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.R
@@ -39,11 +43,12 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
     var editingId by remember { mutableStateOf<String?>(null) }
     var label by remember { mutableStateOf("") }
     var value by remember { mutableStateOf("") }
+    var revealed by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     fun edit(id: String?) {
         val entry = state.entries.firstOrNull { it.id == id }
         editingId = id; label = entry?.label.orEmpty(); value = entry?.value.orEmpty()
-        error = null; editing = true
+        revealed = false; error = null; editing = true
     }
     AppDialog(onDismissRequest = { if (editing) editing = false else onDismiss() }) {
         BackHandler(enabled = editing) { editing = false }
@@ -69,7 +74,11 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                         singleLine = true, modifier = Modifier.fillMaxWidth().testTag("provider_api_key_label"))
                     SelectableOutlinedTextField(value, { value = it; error = null }, label = { Text(stringResource(R.string.provider_api_key_value)) },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
-                        maxLines = 3, isError = error != null, modifier = Modifier.fillMaxWidth().testTag("provider_managed_api_key"))
+                        visualTransformation = if (revealed) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = { IconButton(onClick = { revealed = !revealed }) {
+                            Icon(if (revealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                                stringResource(if (revealed) R.string.provider_hide_api_key else R.string.provider_show_api_key))
+                        } }, maxLines = 3, isError = error != null, modifier = Modifier.fillMaxWidth().testTag("provider_managed_api_key"))
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 } else {
                     val selectedId = state.selectedId(identity)

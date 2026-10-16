@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.starfall.multigateway.data.model.LlmProviderInfo
@@ -629,7 +630,7 @@ private fun AddOrEditSpeechDialog(
                         label = { Text("API key override (optional)") },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
                          supportingText = { Text(stringResource(R.string.speech_api_key_help)) },
-                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(), singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
