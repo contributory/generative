@@ -69,7 +69,7 @@ fun PromptLibraryDialog(initialLibrary: PromptLibrary, onChange: (PromptLibrary)
                 } else {
                     val allSelected = library.prompts.isNotEmpty() && library.prompts.all { it.id in library.selectedIds }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("System prompts", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                        Text("Prompts", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                         IconButton(onClick = { creating = true }) { FluentIcon(Icons.Outlined.Add, "Add prompt") }
                         IconButton(enabled = library.prompts.isNotEmpty(), onClick = {
                             update(library.copy(selectedIds = if (allSelected) emptySet() else library.prompts.map { it.id }.toSet()))

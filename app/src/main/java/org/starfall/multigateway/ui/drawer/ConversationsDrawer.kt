@@ -234,7 +234,7 @@ fun ConversationsDrawer(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Spacer(Modifier.width(4.dp))
-                        IconButton(onClick = { promptDialog = true }, modifier = Modifier.size(40.dp)) { FluentIcon(Icons.Outlined.EditNote, "Default system prompt") }
+                        IconButton(onClick = { promptDialog = true }, modifier = Modifier.size(40.dp)) { FluentIcon(Icons.Outlined.Description, "Prompts") }
                         IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) { FluentIcon(Icons.Outlined.Settings, "General Settings") }
                     }
                 }
