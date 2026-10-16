@@ -182,4 +182,4 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for repository
 
 [![License: Starfall Org Contributor Commercial Copyleft](https://img.shields.io/badge/License-Starfall%20Org%20Copyleft%20v1.0-blue.svg)](https://raw.githubusercontent.com/starfall-org/multigateway/refs/heads/main/LICENSE)
 
-This project is licensed under the **Starfall Org Contributor Commercial Copyleft License v1.0**. See the [LICENSE](https://raw.githubusercontent.com/starfall-org/multigateway/refs/heads/main/LICENSE) file for details.
+This project is licensed under the **Starfall Org Contributor Commercial Copyleft License v1.0**. In brief, the app itself must remain non-commercial; an unmodified official APK built and released by Starfall Org may be included in an otherwise commercial product under the conditions in the license. Publishing or distributing the app through Google Play or another app store requires prior written permission from Starfall Org. Corresponding-source and attribution obligations still apply. See the [LICENSE](https://raw.githubusercontent.com/starfall-org/multigateway/refs/heads/main/LICENSE) for the complete terms.

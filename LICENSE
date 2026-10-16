@@ -4,10 +4,11 @@ Copyright (c) 2026 Starfall Org. All rights reserved.
 
 NOTICE
 
-This is a source-available, copyleft-style license with a contributor-only
-commercial-use permission. It is NOT the GNU General Public License (GPL), is
-NOT approved by the Open Source Initiative, and is NOT a Free Software license.
-The commercial-use restriction is intentionally different from GNU GPLv3.
+This is a source-available, copyleft-style license with limited permissions for
+official unmodified APK builds and a contributor-only general commercial-use
+permission. It is NOT the GNU General Public License (GPL), is NOT approved by
+the Open Source Initiative, and is NOT a Free Software license. The commercial-
+use and app-store restrictions are intentionally different from GNU GPLv3.
 
 1. Definitions
 
@@ -17,6 +18,15 @@ these terms.
 
 "Official Repository" means the repository maintained by Starfall Org from
 which this License is distributed.
+
+"Official Unmodified APK" means an APK built and released by Starfall Org,
+obtained directly from Starfall Org, and not modified, repackaged, or rebuilt by
+another party. An APK built or released by a Contributor or any other party is
+not an Official Unmodified APK. Merely signing, renaming, or repackaging an APK
+does not make it an Official Unmodified APK.
+
+"App Store" means Google Play or another third-party application marketplace
+or app-distribution catalog that lists or distributes apps to the public.
 
 "Qualifying Code Contribution" means a contribution that:
 
@@ -65,9 +75,13 @@ Subject to this License, any person or entity may, for Non-Commercial purposes:
 (c) redistribute the Software or modified versions of it, in source or object
     form, provided all requirements in Sections 4 through 7 are satisfied.
 
-No Commercial Use is permitted under this Section. Anyone who is not a
-Contributor and wants Commercial Use must first obtain a commercial license
-under Section 3A.
+Except for the narrow Official Unmodified APK permission in Section 3A, no
+Commercial Use is permitted under this Section. The Software itself must remain
+for non-commercial use: it may not be used as a business tool, monetized, or
+offered as a paid or advertising-supported app or service. The limited permission
+to include an Official Unmodified APK in a commercial product does not authorize
+commercial use of the app itself. Other Commercial Use requires written
+permission under Section 3A.
 
 3. Contributor Commercial Permission
 
@@ -89,25 +103,47 @@ The Contributor commercial permission:
 Starfall Org, as licensor, may use the Software commercially and may grant
 separate permissions to the extent it owns or controls the relevant rights.
 
-3A. Commercial Use by Non-Contributors
+3A. Limited Official APK Permission and Other Commercial Use
 
-A person or entity that is not a Contributor may not engage in Commercial Use
-of the Software unless they first contact Starfall Org (the author and
-licensor) to request or purchase commercial-use rights, and Starfall Org grants
-those rights in a written commercial license or agreement. Starfall Org may
-grant or refuse that permission at its discretion and may set a fee and other
-terms.
+A person or entity that is not a Contributor may include, bundle, provide, or
+redistribute an Official Unmodified APK as a component of an otherwise
+commercial product, without a separate commercial license, provided that:
 
-To request or purchase commercial-use rights, contact the maintainers through
-the Official Repository (for example, by opening an issue or using the contact
-details published on the maintainers' GitHub profile or organization page).
-Commercial Use before a written commercial license is granted is a violation
-of this License.
+(a) the APK and the app are not modified, repackaged, or presented as the
+    distributor's own app;
+(b) the app itself is made available and used only for non-commercial purposes,
+    and is not monetized, sold as a service, or used to provide a commercial
+    function or business service;
+(c) all copyright, attribution, and license notices are preserved, and a copy
+    of this License accompanies the APK;
+(d) the Corresponding Source is made available as required by Section 6; and
+(e) the APK is not published, submitted, or distributed through an App Store
+    without prior written permission from Starfall Org.
+
+This narrow permission applies only to an Official Unmodified APK obtained
+directly from Starfall Org. APKs built or released by Contributors or any other
+party are excluded from this permission. It does not grant commercial-use
+rights in the source code, modified builds, forks, or other versions of the
+Software. It does not allow a commercial product to use the app itself for
+commercial advantage.
+
+Except for the limited permission above, a person or entity that is not a
+Contributor may not engage in Commercial Use of the Software unless they first
+contact Starfall Org (the author and licensor) to request or purchase
+commercial-use rights, and Starfall Org grants those rights in a written
+commercial license or agreement. Starfall Org may grant or refuse that
+permission at its discretion and may set a fee and other terms.
+
+To request permission, contact the maintainers through the Official Repository
+(for example, by opening an issue or using the contact details published on the
+maintainers' GitHub profile or organization page). Commercial Use outside the
+limited permission above, before a written commercial license is granted, is a
+violation of this License.
 
 A commercial license granted under this Section applies only to the person or
 entity named in it and to the scope it states. It does not make that person or
 entity a Contributor, and it does not remove the copyleft, source-availability,
-notice, or attribution obligations of this License unless the written license
+notice, or attribution obligations in this License unless the written license
 expressly says so.
 
 4. Copyleft for Modified Versions
@@ -145,18 +181,34 @@ recipient at no additional charge, using one of these methods:
 
 The Corresponding Source must be provided under this same License.
 
+This Section applies to all object-code distributions, including an Official
+Unmodified APK distributed under the limited permission in Section 3A.
+
+6A. App Store Distribution Requires Permission
+
+No person or entity may publish, submit, list, or distribute the Software, an
+APK, or a modified version through Google Play or any other App Store without
+prior written permission from Starfall Org. This restriction applies even if
+the distribution would otherwise be non-commercial or is permitted under
+Section 3A. Permission to distribute through an App Store must be obtained
+separately and in writing; it is not implied by Contributor status or by access
+to an Official Unmodified APK built and released by Starfall Org.
+
 7. No Removal of Recipient Conditions
 
 Redistribution does not grant a recipient Contributor status. A recipient who
-is not independently a Contributor may exercise only the non-commercial rights
-in Section 2, even when the Software was distributed by a Contributor in a
-commercial transaction.
+is not independently a Contributor may exercise only the rights in Section 2
+and the limited Official Unmodified APK permission in Section 3A, even when the
+Software was distributed by a Contributor in a commercial transaction.
 
-You may charge for copies, hosting, support, or services only if you are a
-Contributor or hold a commercial license granted under Section 3A (or other
-separate written commercial permission from the relevant copyright holders).
-Charging a recipient does not itself grant that recipient Commercial Use
-rights.
+The limited permission to include an Official Unmodified APK in a commercial
+product does not permit charging specifically for the app, monetizing it, using
+it for business operations, or distributing it through an App Store without
+written permission. Except for the specific permission in Section 3A, you may
+charge for copies, hosting, support, or services only if you are a Contributor
+or hold a commercial license granted under Section 3A (or other separate
+written commercial permission from the relevant copyright holders). Charging a
+recipient does not itself grant that recipient Commercial Use rights.
 
 8. Network Use
 
