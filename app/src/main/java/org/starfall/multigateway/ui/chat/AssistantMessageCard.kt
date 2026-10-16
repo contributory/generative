@@ -271,7 +271,7 @@ private fun GenerationErrorBlock(
     val errorFontSize = (LocalCodeRenderingPreferences.current.effectiveMessageFontSize * 0.78f).sp
 
     Surface(
-        modifier = modifier.fillMaxWidth().clickable { expanded = !expanded },
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.errorContainer
     ) {
@@ -281,7 +281,10 @@ private fun GenerationErrorBlock(
                 .animateContentSize()
                 .padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 FluentIcon(
                     Icons.Outlined.ErrorOutline,
                     contentDescription = null,
@@ -320,18 +323,20 @@ private fun GenerationErrorBlock(
                     modifier = Modifier.size(20.dp)
                 )
             }
-            Text(
-                text = error,
-                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                style = MaterialTheme.typography.bodySmall.copy(
+            GatedSelectionContainer {
+                Text(
+                    text = error,
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.bodySmall.copy(
                     fontFamily = FontFamily.Monospace,
                     fontSize = errorFontSize,
                     lineHeight = errorFontSize * 1.44f
                 ),
-                maxLines = if (expanded) Int.MAX_VALUE else 3,
-                overflow = TextOverflow.Ellipsis
-            )
+                    maxLines = if (expanded) Int.MAX_VALUE else 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
