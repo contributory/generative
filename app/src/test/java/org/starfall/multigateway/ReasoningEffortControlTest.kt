@@ -6,7 +6,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.starfall.multigateway.data.model.DEFAULT_REASONING_EFFORTS
 import org.starfall.multigateway.data.model.ModelConfiguration
-import org.starfall.multigateway.data.model.ProviderType
 import org.starfall.multigateway.data.model.REASONING_EFFORT_ACTIVE
 import org.starfall.multigateway.data.model.SELECTABLE_REASONING_EFFORTS
 import org.starfall.multigateway.data.model.supportedReasoningEfforts
@@ -31,16 +30,15 @@ class ReasoningEffortControlTest {
     @Test fun everyModelStartsWithLowMediumAndHigh() {
         assertEquals(listOf("low", "medium", "high"), DEFAULT_REASONING_EFFORTS)
         assertEquals(DEFAULT_REASONING_EFFORTS, ModelConfiguration().supportedReasoningEfforts)
-        assertEquals(listOf("none", null, "low", "medium", "high"), efforts(reasoningEffortOptions()))
-        for (provider in ProviderType.entries) {
-            assertEquals(listOf(null, "low", "medium", "high"),
-                efforts(reasoningEffortOptions(provider)).filter { it != "none" })
-        }
+        assertEquals(
+            listOf("none", null, "low", "medium", "high"),
+            efforts(reasoningEffortOptions(DEFAULT_REASONING_EFFORTS))
+        )
     }
 
     @Test fun sliderOnlyShowsTheLevelsTheModelMarks() {
         val marked = listOf("minimal", "medium", "max")
-        val options = reasoningEffortOptions(ProviderType.OPENAI, supportedEfforts = marked)
+        val options = reasoningEffortOptions(marked)
         assertEquals(listOf("none", null, "minimal", "medium", "max"), efforts(options))
         assertEquals(listOf("None", "Default", "Minimal", "Medium", "Max"), options.map { it.label })
         assertEquals(listOf("minimal", "low", "medium", "high", "xhigh", "max"),
@@ -49,16 +47,12 @@ class ReasoningEffortControlTest {
 
     @Test fun labelsAreNeverRenamedPerProvider() {
         val all = SELECTABLE_REASONING_EFFORTS
-        for (provider in listOf(ProviderType.OPENAI, ProviderType.OPENAI_CODEX, ProviderType.OLLAMA, ProviderType.GOOGLE,
-            ProviderType.ANTIGRAVITY)) {
-            val levels = reasoningEffortOptions(provider, "some-model", supportedEfforts = all)
-                .filter { it.effort in all }
-            assertEquals(listOf("Minimal", "Low", "Medium", "High", "X-High", "Max"), levels.map { it.label })
-        }
+        val levels = reasoningEffortOptions(all).filter { it.effort in all }
+        assertEquals(listOf("Minimal", "Low", "Medium", "High", "X-High", "Max"), levels.map { it.label })
     }
 
     @Test fun unsupportedSavedValuesShowAsDefault() {
-        val options = reasoningEffortOptions()
+        val options = reasoningEffortOptions(DEFAULT_REASONING_EFFORTS)
         assertEquals(1, reasoningEffortIndex(null, options))
         assertEquals(0, reasoningEffortIndex("none", options))
         assertEquals(0, reasoningEffortIndex("off", options))
@@ -69,31 +63,9 @@ class ReasoningEffortControlTest {
         }
     }
 
-    @Test fun claudeLabelsMatchTheBudgetsSentByTheApp() {
-        val options = reasoningEffortOptions(ProviderType.ANTHROPIC, maxTokens = 3000)
-        assertEquals("2999", options.last().label)
-        assertEquals(listOf("None", "Default", "1024", "2048", "2999"), options.map { it.label })
-    }
-
-    @Test fun claudeOffOnlyAppearsWhereTheModelCanBeSwitchedOff() {
-        val all = SELECTABLE_REASONING_EFFORTS
-        assertEquals("none", reasoningEffortOptions(ProviderType.ANTHROPIC, "claude-opus-4-6", supportedEfforts = all).first().effort)
-        val alwaysOn = reasoningEffortOptions(ProviderType.ANTHROPIC, "claude-opus-5-5", supportedEfforts = all)
-        assertEquals(null, alwaysOn.first().effort)
-        assertEquals(reasoningEffortIndex(null, alwaysOn), reasoningEffortIndex("none", alwaysOn))
-        val sonnet = reasoningEffortOptions(ProviderType.ANTHROPIC, "claude-sonnet-5-5", supportedEfforts = all)
-        assertEquals("Between tools", sonnet.first().label)
-    }
-
-    @Test fun antigravityGeminiHasNoOffStep() {
-        assertEquals(listOf(null, "low", "medium", "high"),
-            efforts(reasoningEffortOptions(ProviderType.ANTIGRAVITY, "gemini-3-pro")))
-        assertEquals("none", reasoningEffortOptions(ProviderType.ANTIGRAVITY, "claude-sonnet-4-6").first().effort)
-    }
-
     @Test fun colourFollowsTheTwoHighestLevelsTheModelSupports() {
         // None, Default, then three levels: the lowest keeps its normal colour.
-        assertEquals(listOf(0, 1, 2, 5, 6), tiers(reasoningEffortOptions()))
+        assertEquals(listOf(0, 1, 2, 5, 6), tiers(reasoningEffortOptions(DEFAULT_REASONING_EFFORTS)))
         // Two levels: purple then red.
         assertEquals(listOf(0, 1, 5, 6), tiers(reasoningEffortOptions(supportedEfforts = listOf("high", "max"))))
         // Six levels: only the top two are tinted.
@@ -118,14 +90,10 @@ class ReasoningEffortControlTest {
         assertEquals(listOf(0, 5, 1), tiers(options))
         assertEquals(1, reasoningEffortIndex(REASONING_EFFORT_ACTIVE, options))
         assertEquals(2, reasoningEffortIndex(null, options))
-        // Models that cannot be switched off still get Active before Default.
-        val alwaysOn = reasoningEffortOptions(ProviderType.ANTHROPIC, "claude-opus-5-5", supportedEfforts = emptyList())
-        assertEquals(listOf(REASONING_EFFORT_ACTIVE, null), efforts(alwaysOn))
-        assertEquals(listOf(5, 1), tiers(alwaysOn))
     }
 
     @Test fun activeIsOnlyOfferedWhenThereAreNoLevels() {
-        assertFalse(efforts(reasoningEffortOptions()).contains(REASONING_EFFORT_ACTIVE))
+        assertFalse(efforts(reasoningEffortOptions(DEFAULT_REASONING_EFFORTS)).contains(REASONING_EFFORT_ACTIVE))
         assertFalse(efforts(reasoningEffortOptions(supportedEfforts = listOf("low"))).contains(REASONING_EFFORT_ACTIVE))
     }
 
