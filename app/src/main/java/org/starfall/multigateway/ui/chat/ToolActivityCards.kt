@@ -61,11 +61,33 @@ import kotlin.math.sin
 
 private val toolJson = Json { prettyPrint = true }
 
+/**
+ * Holds the tool whose details sheet is open for one assistant message. The message card owns it so
+ * the sheet survives the cards moving around underneath (a running tool finishing, the live
+ * preview being replaced by the final content, older items leaving the preview window).
+ */
+internal class ToolSheetState {
+    var selectedId by mutableStateOf<String?>(null)
+}
+
+internal val LocalToolSheetState = staticCompositionLocalOf<ToolSheetState?> { null }
+
+@Composable
+internal fun ToolDetailsSheetHost(state: ToolSheetState, activities: List<ToolActivity>) {
+    val activity = state.selectedId?.let { id -> activities.find { it.id == id } } ?: return
+    ToolDetailsSheet(activity = activity, onDismiss = { state.selectedId = null })
+}
+
 @Composable
 fun ToolActivityCards(activities: List<ToolActivity>) {
-    var selectedActivityId by remember { mutableStateOf<String?>(null) }
+    val hostedState = LocalToolSheetState.current
+    var localSelectedId by remember { mutableStateOf<String?>(null) }
+    fun select(id: String?) {
+        if (hostedState != null) hostedState.selectedId = id else localSelectedId = id
+    }
     val visibleActivities = activities.filterNot { it.name.endsWith(": connect") || it.name == "send_file" }
-    val selectedActivity = selectedActivityId?.let { id -> visibleActivities.find { it.id == id } }
+    val selectedActivity = if (hostedState != null) null
+        else localSelectedId?.let { id -> visibleActivities.find { it.id == id } }
 
     if (visibleActivities.isNotEmpty()) {
         Column(
@@ -76,7 +98,7 @@ fun ToolActivityCards(activities: List<ToolActivity>) {
                 key(activity.id) {
                     ToolActivityLabel(
                         activity = activity,
-                        onClick = { selectedActivityId = activity.id }
+                        onClick = { select(activity.id) }
                     )
                 }
             }
@@ -86,7 +108,7 @@ fun ToolActivityCards(activities: List<ToolActivity>) {
     selectedActivity?.let { activity ->
         ToolDetailsSheet(
             activity = activity,
-            onDismiss = { selectedActivityId = null }
+            onDismiss = { select(null) }
         )
     }
 }

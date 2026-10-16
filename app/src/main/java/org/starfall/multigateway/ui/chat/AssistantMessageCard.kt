@@ -77,6 +77,10 @@ fun AssistantMessageCard(
         activeVersion.timestamp.toLongOrNull()?.let { startedAt -> (finishedAt - startedAt).coerceAtLeast(0L) }
     }
 
+    val toolSheetState = remember(message.id) { ToolSheetState() }
+    ToolDetailsSheetHost(toolSheetState, activeVersion.toolActivity)
+
+    CompositionLocalProvider(LocalToolSheetState provides toolSheetState) {
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -256,6 +260,7 @@ fun AssistantMessageCard(
                 }
             }
         }
+    }
     }
 }
 
