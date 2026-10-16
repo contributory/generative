@@ -76,8 +76,7 @@ fun ConversationsDrawer(
     val providersById = remember(providers) { providers.associateBy { it.id } }
     var search by remember { mutableStateOf("") }
     var selecting by remember { mutableStateOf(false) }
-    // A long-pressed chat is temporarily highlighted while its context menu is open.
-    // Multi-select mode starts only when the user taps another chat.
+    // Long-press opens a chat's context menu; selection mode is entered explicitly via Select.
     var contextChatId by remember { mutableStateOf<String?>(null) }
     var selected by remember { mutableStateOf(emptySet<String>()) }
     var deleting by remember { mutableStateOf(emptySet<String>()) }
@@ -95,27 +94,23 @@ fun ConversationsDrawer(
     }
     val matchingIds = matches.map { it.id }.toSet()
     fun stopSelecting() { selecting = false; selected = emptySet(); contextChatId = null }
-    fun dismissContextMenu() { contextChatId = null; selected = emptySet() }
+    fun dismissContextMenu() { contextChatId = null }
     fun onChatClick(id: String, chat: Conversation) {
-        when {
-            contextChatId != null && contextChatId == id -> stopSelecting()
-            contextChatId != null -> {
-                val first = contextChatId!!
-                contextChatId = null
-                selecting = true
-                selected = setOf(first, id)
-            }
-            selecting -> {
-                selected = if (id in selected) selected - id else selected + id
-                if (selected.isEmpty()) stopSelecting()
-            }
-            else -> { onSelectConversation(chat); onCloseDrawer() }
+        if (selecting) {
+            selected = if (id in selected) selected - id else selected + id
+            if (selected.isEmpty()) stopSelecting()
+        } else {
+            onSelectConversation(chat)
+            onCloseDrawer()
         }
     }
     fun onChatLongClick(id: String) {
-        selecting = false
+        if (!selecting) contextChatId = id
+    }
+    fun selectChat(id: String) {
+        contextChatId = null
+        selecting = true
         selected = setOf(id)
-        contextChatId = id
     }
     fun moveToFolder(folderId: String?) {
         val ids = selected
@@ -218,6 +213,7 @@ fun ConversationsDrawer(
                                     onClick = { onChatClick(chat.id, chat) },
                                     onLongClick = { onChatLongClick(chat.id) },
                                     showContextMenu = contextChatId == chat.id, onContextMenuDismiss = ::dismissContextMenu,
+                                    onSelect = { selectChat(chat.id) },
                                     onPin = { onUpdateOrganization { it.copy(pinnedChatIds = if (chat.id in it.pinnedChatIds) it.pinnedChatIds - chat.id else it.pinnedChatIds + chat.id) } },
                                     onRename = { renaming = chat; title = chat.title }, onDelete = { deleting = setOf(chat.id) },
                                     onMove = { selecting = true; selected = setOf(chat.id); folderName = ""; grouping = true }, modifier = Modifier.padding(start = 14.dp))
@@ -233,6 +229,7 @@ fun ConversationsDrawer(
                         onClick = { onChatClick(chat.id, chat) },
                         onLongClick = { onChatLongClick(chat.id) },
                         showContextMenu = contextChatId == chat.id, onContextMenuDismiss = ::dismissContextMenu,
+                        onSelect = { selectChat(chat.id) },
                         onPin = { onUpdateOrganization { it.copy(pinnedChatIds = if (chat.id in it.pinnedChatIds) it.pinnedChatIds - chat.id else it.pinnedChatIds + chat.id) } },
                         onRename = { renaming = chat; title = chat.title }, onDelete = { deleting = setOf(chat.id) },
                         onMove = { selecting = true; selected = setOf(chat.id); folderName = ""; grouping = true })
@@ -331,7 +328,8 @@ private fun SidebarLabel(text: String) { Text(text, Modifier.padding(start = 8.d
 @Composable
 private fun DrawerChatRow(
     chat: Conversation, currentId: String?, generatingIds: Set<String>, selecting: Boolean, checked: Boolean, pinned: Boolean,
-    onClick: () -> Unit, onLongClick: () -> Unit, onPin: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit, onMove: () -> Unit,
+    onClick: () -> Unit, onLongClick: () -> Unit, onSelect: () -> Unit,
+    onPin: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit, onMove: () -> Unit,
     showContextMenu: Boolean, onContextMenuDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     modelIcon: ConversationModelIcon? = null
@@ -361,6 +359,7 @@ private fun DrawerChatRow(
             if (chat.id in generatingIds) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 1.5.dp)
             if (!selecting) {
                 DropdownMenu(expanded = menu, onDismissRequest = onContextMenuDismiss) {
+                    DropdownMenuItem(text = { Text("Select") }, leadingIcon = { FluentIcon(Icons.Outlined.CheckCircle, null) }, onClick = onSelect)
                     DropdownMenuItem(text = { Text(if (pinned) "Unpin" else "Pin") }, leadingIcon = { FluentIcon(Icons.Outlined.PushPin, null) }, onClick = { onContextMenuDismiss(); onPin() })
                     DropdownMenuItem(text = { Text("Move to folder") }, leadingIcon = { FluentIcon(Icons.Outlined.Folder, null) }, onClick = { onContextMenuDismiss(); onMove() })
                     DropdownMenuItem(text = { Text("Rename") }, leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) }, onClick = { onContextMenuDismiss(); onRename() })
