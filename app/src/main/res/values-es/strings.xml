@@ -86,6 +86,9 @@
     <string name="tool_select_model_hint">Toca para elegir un modelo</string>
     <string name="tool_generate_image_description">Generar imágenes a partir de prompts con el modelo seleccionado.</string>
     <string name="tool_generate_video_description">Generar vídeos a partir de prompts con el modelo seleccionado.</string>
+    <string name="tool_settings_other_tools_title">Otras herramientas</string>
+    <string name="tool_send_file_title">Enviar archivo</string>
+    <string name="tool_send_file_description">Permite que la IA muestre en el chat archivos de los resultados de las herramientas.</string>
     <string name="tool_select_compatible_model_hint">Selecciona un modelo compatible para activar esta herramienta.</string>
     <string name="mcp_add_servers_hint">Añade primero servidores en MCP Manage.</string>
     <string name="mcp_tool_list_not_cached_description">La lista de herramientas no está en caché. Guarda o actualiza primero este servidor en MCP Manage.</string>

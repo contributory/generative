@@ -86,6 +86,9 @@
     <string name="tool_select_model_hint">Нажмите, чтобы выбрать модель</string>
     <string name="tool_generate_image_description">Создавать изображения по промптам с помощью выбранной модели.</string>
     <string name="tool_generate_video_description">Создавать видео по промптам с помощью выбранной модели.</string>
+    <string name="tool_settings_other_tools_title">Другие инструменты</string>
+    <string name="tool_send_file_title">Отправить файл</string>
+    <string name="tool_send_file_description">Разрешить ИИ показывать в чате файлы из результатов инструментов.</string>
     <string name="tool_select_compatible_model_hint">Выберите совместимую модель, чтобы включить этот инструмент.</string>
     <string name="mcp_add_servers_hint">Сначала добавьте серверы в MCP Manage.</string>
     <string name="mcp_tool_list_not_cached_description">Список инструментов не кэширован. Сначала сохраните или обновите этот сервер в MCP Manage.</string>

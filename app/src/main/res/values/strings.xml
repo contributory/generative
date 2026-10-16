@@ -376,7 +376,7 @@
     <string name="settings_category_app_data_description">Conversation history &amp; application reset</string>
     <string name="settings_category_about">About</string>
     <string name="settings_category_about_description">App information, software updates &amp; license</string>
-    <string name="settings_default_models">Default Models</string>
+    <string name="settings_default_models">Default</string>
     <string name="settings_default_and_tools">Default &amp; Tools</string>
     <string name="settings_tools_tab">Tools</string>
     <string name="settings_default_models_description">Image, video &amp; conversation helpers</string>
@@ -581,6 +581,9 @@
     <string name="settings_universal_description">Universal AI Gateway for Android</string>
     <string name="tool_settings_media_label">Media tool settings</string>
     <string name="tool_settings_media_tools_title">Media tools</string>
+    <string name="tool_settings_other_tools_title">Other tools</string>
+    <string name="tool_send_file_title">Send File</string>
+    <string name="tool_send_file_description">Let the AI display files from tool results in the chat.</string>
     <string name="tool_settings_conversation_helpers_title">Conversation helpers</string>
     <string name="tool_title_generation_title">Title Generation</string>
     <string name="tool_chat_summary_title">Chat Summary</string>

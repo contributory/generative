@@ -86,6 +86,9 @@
     <string name="tool_select_model_hint">Nhấn để chọn model</string>
     <string name="tool_generate_image_description">Tạo ảnh từ prompt bằng model đã chọn.</string>
     <string name="tool_generate_video_description">Tạo video từ prompt bằng model đã chọn.</string>
+    <string name="tool_settings_other_tools_title">Công cụ khác</string>
+    <string name="tool_send_file_title">Gửi tệp</string>
+    <string name="tool_send_file_description">Cho phép AI hiển thị tệp từ kết quả công cụ trong cuộc trò chuyện.</string>
     <string name="tool_select_compatible_model_hint">Chọn model tương thích để bật công cụ này.</string>
     <string name="mcp_add_servers_hint">Trước tiên hãy thêm server trong MCP Manage.</string>
     <string name="mcp_tool_list_not_cached_description">Danh sách công cụ chưa được lưu trong bộ nhớ đệm. Trước tiên hãy lưu hoặc làm mới server này trong MCP Manage.</string>

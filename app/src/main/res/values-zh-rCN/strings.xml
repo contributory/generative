@@ -86,6 +86,9 @@
     <string name="tool_select_model_hint">点击以选择模型</string>
     <string name="tool_generate_image_description">使用选定模型根据提示生成图像。</string>
     <string name="tool_generate_video_description">使用选定模型根据提示生成视频。</string>
+    <string name="tool_settings_other_tools_title">其他工具</string>
+    <string name="tool_send_file_title">发送文件</string>
+    <string name="tool_send_file_description">允许 AI 在聊天中显示工具结果中的文件。</string>
     <string name="tool_select_compatible_model_hint">选择兼容的模型以启用此工具。</string>
     <string name="mcp_add_servers_hint">请先在 MCP Manage 中添加服务器。</string>
     <string name="mcp_tool_list_not_cached_description">工具列表尚未缓存。请先在 MCP Manage 中保存或刷新此服务器。</string>

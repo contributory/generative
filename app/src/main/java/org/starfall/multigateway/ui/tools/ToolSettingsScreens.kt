@@ -13,6 +13,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -51,6 +53,7 @@ fun SystemToolsScreen(
     providers: List<LlmProviderInfo>,
     settings: ToolSettings,
     onSave: (String, SystemToolConfig) -> Unit,
+    onSetSendFile: (Boolean) -> Unit = {},
     providerGroups: List<ProviderGroup> = emptyList(),
     collapsedGroupIds: Set<String> = emptySet(),
     collapsedProviderIds: Set<String> = emptySet(),
@@ -61,7 +64,8 @@ fun SystemToolsScreen(
     onEditProvider: (providerId: String) -> Unit = {},
     onBack: () -> Unit
 ) {
-    var selectedPage by rememberSaveable { mutableIntStateOf(0) }
+    val pager = rememberPagerState(pageCount = { 2 })
+    val coroutineScope = rememberCoroutineScope()
     var choosing by remember { mutableStateOf<String?>(null) }
     var editingPrompt by rememberSaveable { mutableStateOf<String?>(null) }
     var editingMedia by remember { mutableStateOf<String?>(null) }
@@ -98,13 +102,71 @@ fun SystemToolsScreen(
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-        TabRow(selectedTabIndex = selectedPage) {
-            Tab(selectedPage == 0, { selectedPage = 0 }, text = { Text(stringResource(R.string.settings_default_models), fontWeight = FontWeight.SemiBold) })
-            Tab(selectedPage == 1, { selectedPage = 1 }, text = { Text(stringResource(R.string.settings_tools_tab), fontWeight = FontWeight.SemiBold) })
+        TabRow(selectedTabIndex = pager.currentPage) {
+            Tab(
+                selected = pager.currentPage == 0,
+                onClick = { coroutineScope.launch { pager.animateScrollToPage(0) } },
+                text = { Text(stringResource(R.string.settings_default_models)) }
+            )
+            Tab(
+                selected = pager.currentPage == 1,
+                onClick = { coroutineScope.launch { pager.animateScrollToPage(1) } },
+                text = { Text(stringResource(R.string.settings_tools_tab)) }
+            )
         }
-        if (selectedPage == 1) {
-            // Tools tab: intentionally empty for now.
-            Box(Modifier.fillMaxSize())
+        HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
+        if (page == 1) LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Text(stringResource(R.string.tool_settings_media_tools_title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            }
+            items(listOf("generate_image", "generate_video")) { name ->
+                val config = settings.system[name] ?: SystemToolConfig()
+                val image = name == "generate_image"
+                SettingsCard {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                stringResource(if (image) R.string.tool_image_generation_title else R.string.tool_video_generation_title),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                stringResource(if (image) R.string.tool_generate_image_description else R.string.tool_generate_video_description),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = config.enabled,
+                            onCheckedChange = { onSave(name, config.copy(enabled = it)) }
+                        )
+                    }
+                }
+            }
+            item {
+                Text(stringResource(R.string.tool_settings_other_tools_title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            }
+            item {
+                SettingsCard {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.tool_send_file_title), style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                stringResource(R.string.tool_send_file_description),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = settings.sendFileEnabled,
+                            onCheckedChange = onSetSendFile
+                        )
+                    }
+                }
+            }
         } else LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
@@ -124,7 +186,6 @@ fun SystemToolsScreen(
                     provider = provider,
                     model = model,
                     available = available,
-                    onEnabledChange = { onSave(name, config.copy(enabled = it)) },
                     onChooseModel = { choosing = name },
                     onOpenSettings = { editingMedia = name }
                 )
@@ -156,6 +217,7 @@ fun SystemToolsScreen(
                     }
                 }
             }
+        }
         }
         }
     }
@@ -292,7 +354,6 @@ private fun MediaDefaultModelCard(
     provider: LlmProviderInfo?,
     model: ModelConfiguration?,
     available: Boolean,
-    onEnabledChange: (Boolean) -> Unit,
     onChooseModel: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
@@ -332,7 +393,6 @@ private fun MediaDefaultModelCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Switch(checked = config.enabled, onCheckedChange = onEnabledChange)
         }
         Spacer(Modifier.height(14.dp))
         DefaultModelSelector(provider, config.modelId, model, onClick = onChooseModel)

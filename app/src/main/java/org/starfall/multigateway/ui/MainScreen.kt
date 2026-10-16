@@ -524,6 +524,7 @@ fun MainScreen(
                             providers = providers,
                             settings = toolSettings,
                             onSave = viewModel::setSystemTool,
+                            onSetSendFile = viewModel::setSendFileEnabled,
                             providerGroups = providerGroups,
                              collapsedGroupIds = appPrefs.modelPickerCollapsedGroups,
                              collapsedProviderIds = appPrefs.modelPickerCollapsedProviders,
