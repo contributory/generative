@@ -53,7 +53,7 @@ if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
   echo "Release $tag already exists; tag moved to $short_commit and matching artifacts will be replaced."
 else
   gh release create "$tag" --repo "$repo" \
-    --title "MultiGateway $tag" --generate-notes --draft
+    --title "MultiGateway $tag" --generate-notes
 fi
 
 # Prefix GitHub's generated changelog with release metadata that makes the
