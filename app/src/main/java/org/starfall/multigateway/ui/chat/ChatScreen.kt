@@ -43,6 +43,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.unit.Velocity
 import kotlin.math.exp
 import kotlin.math.min
@@ -132,6 +135,7 @@ fun ChatScreen(
         )
     }
     var followBottom by remember(conversationKey) { mutableStateOf(true) }
+    var jumpingToBottom by remember(conversationKey) { mutableStateOf(false) }
     var openingAtBottom by remember(conversationKey) { mutableStateOf(true) }
     var openingLayoutRevision by remember(conversationKey) { mutableIntStateOf(0) }
     val settleTracker = remember(conversationKey) { ChatSettleTracker() }
@@ -225,6 +229,29 @@ fun ChatScreen(
             messageIndexOffset
         if (index < 0) return
         listState.scrollToItem(index, OPEN_AT_BOTTOM_OFFSET)
+    }
+    // Animated version used by the jump-to-latest button. Distant targets are first brought within
+    // a few items so the animation covers a short, visible distance instead of the whole history.
+    suspend fun animateScrollToBottom() {
+        val index = messages.lastIndex + messageIndexOffset
+        if (index < 0) return
+        if (index - listState.firstVisibleItemIndex > 6) listState.scrollToItem(index - 3)
+        // The last item can still grow while it is measured or streamed, so re-measure a few times.
+        repeat(4) {
+            val layout = listState.layoutInfo
+            val item = layout.visibleItemsInfo.firstOrNull { it.index == index }
+            if (item == null) {
+                listState.animateScrollToItem(index)
+                return@repeat
+            }
+            val remaining = item.offset + item.size - (layout.viewportEndOffset - layout.afterContentPadding)
+            if (remaining <= 1) return
+            listState.animateScrollBy(
+                remaining.toFloat(),
+                tween(durationMillis = 350, easing = FastOutSlowInEasing)
+            )
+        }
+        scrollToBottom()
     }
     val messageIds = remember(conversationMessages) { conversationMessages.map { it.id } }
     LaunchedEffect(conversation?.id, messageIds, autoScroll) {
@@ -581,12 +608,20 @@ fun ChatScreen(
                     }
                 }
             }
-            if (messages.isNotEmpty() && !followBottom) {
+            if (messages.isNotEmpty() && !followBottom && !jumpingToBottom) {
                 FilledTonalIconButton(
                     onClick = {
-                        followBottom = true
+                        // Resume following only after the animation finishes; setting it first
+                        // would trigger the instant jump in the auto-scroll effect.
+                        openingAtBottom = false
                         coroutineScope.launch {
-                            scrollToBottom()
+                            jumpingToBottom = true
+                            try {
+                                animateScrollToBottom()
+                                followBottom = true
+                            } finally {
+                                jumpingToBottom = false
+                            }
                         }
                     },
                     modifier = Modifier

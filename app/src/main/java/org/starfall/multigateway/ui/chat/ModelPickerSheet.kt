@@ -1111,13 +1111,18 @@ internal fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifie
         ModelBadge(
             label = when (config.modelType) {
                 ModelType.TEXT_GENERATION -> "Chat"
+                ModelType.IMAGE_GENERATION -> "Image"
+                ModelType.VIDEO_GENERATION -> "Video"
+                ModelType.TEXT_TO_SPEECH -> "TTS"
+                ModelType.SPEECH_TO_TEXT -> "STT"
                 else -> config.modelType.displayName
             },
             icon = when (config.modelType) {
                 ModelType.TEXT_GENERATION -> Icons.Outlined.ChatBubbleOutline
                 ModelType.IMAGE_GENERATION -> Icons.Outlined.Image
                 ModelType.VIDEO_GENERATION -> Icons.Outlined.Videocam
-                else -> Icons.Outlined.Audiotrack
+                ModelType.TEXT_TO_SPEECH, ModelType.SPEECH_TO_TEXT -> Icons.Outlined.Audiotrack
+                ModelType.EMBEDDING, ModelType.RERANKING -> null
             },
             colors = AssistChipDefaults.assistChipColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -1128,11 +1133,10 @@ internal fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifie
         if (config.modelType != ModelType.TEXT_GENERATION) return@Row
         ModelBadge(
             label = compactContextWindow(config.contextWindowTokens),
-            icon = Icons.Outlined.Memory,
             colors = AssistChipDefaults.assistChipColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                leadingIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
             )
         )
         if (config.supportsVision) {
@@ -1141,9 +1145,9 @@ internal fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifie
                 iconOnly = true,
                 icon = Icons.Outlined.Image,
                 colors = AssistChipDefaults.assistChipColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    labelColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    leadingIconContentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         }
@@ -1153,9 +1157,9 @@ internal fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifie
                 iconOnly = true,
                 icon = Icons.Outlined.Videocam,
                 colors = AssistChipDefaults.assistChipColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    labelColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    leadingIconContentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         }
@@ -1165,9 +1169,9 @@ internal fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifie
                 iconOnly = true,
                 icon = Icons.Outlined.Audiotrack,
                 colors = AssistChipDefaults.assistChipColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    labelColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    leadingIconContentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         }
@@ -1177,9 +1181,9 @@ internal fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifie
                 iconOnly = true,
                 icon = Icons.Outlined.Psychology,
                 colors = AssistChipDefaults.assistChipColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    leadingIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         }
@@ -1189,9 +1193,9 @@ internal fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifie
                 iconOnly = true,
                 icon = Icons.Outlined.Build,
                 colors = AssistChipDefaults.assistChipColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    leadingIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         }

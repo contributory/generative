@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,8 +49,12 @@ fun ChatAppBar(
         modifier = modifier
             .fillMaxWidth()
             .height(72.dp + statusBarHeight)
+            // Background first so it extends under the status bar, with rounded bottom corners.
+            .background(
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
+            )
             .padding(top = statusBarHeight)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.86f))
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Surface(

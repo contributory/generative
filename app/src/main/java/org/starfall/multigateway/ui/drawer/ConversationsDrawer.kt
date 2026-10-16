@@ -193,7 +193,6 @@ fun ConversationsDrawer(
                         }
                     }
                 }
-                item(key = "history-label") { SidebarLabel("History") }
                 val history = matches.filter { organization.chatFolders[it.id] !in folderIds }
                     .sortedWith(compareByDescending<Conversation> { it.id in organization.pinnedChatIds }.thenByDescending { it.updatedAt })
                 items(history, key = { "chat:${it.id}" }) { chat ->
@@ -305,7 +304,11 @@ private fun DrawerChatRow(
 ) {
     var menu by remember { mutableStateOf(false) }
     val active = chat.id == currentId
-    Surface(shape = RoundedCornerShape(12.dp), color = if (checked || active) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent,
+    // AMOLED: the open chat is outlined with a faint border instead of a tinted fill.
+    val outlineActive = LocalAmoledMode.current && active && !checked
+    Surface(shape = RoundedCornerShape(12.dp),
+        color = if (!outlineActive && (checked || active)) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent,
+        border = if (outlineActive) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)) else null,
         modifier = modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick)) {
         Row(Modifier.padding(start = 10.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (selecting) Checkbox(checked, onCheckedChange = { onClick() }, modifier = Modifier.size(36.dp))
