@@ -45,7 +45,7 @@ class ReasoningEffortControlTest {
             ModelConfiguration(reasoningEfforts = SELECTABLE_REASONING_EFFORTS.reversed()).supportedReasoningEfforts)
     }
 
-    @Test fun labelsAreNeverRenamedPerProvider() {
+    @Test fun labelsFollowTheCanonicalLevels() {
         val all = SELECTABLE_REASONING_EFFORTS
         val levels = reasoningEffortOptions(all).filter { it.effort in all }
         assertEquals(listOf("Minimal", "Low", "Medium", "High", "X-High", "Max"), levels.map { it.label })
@@ -83,13 +83,13 @@ class ReasoningEffortControlTest {
         assertTrue(tiers(options).none { it == 6 })
     }
 
-    @Test fun aThinkingModelWithoutLevelsGetsAnActiveStepLeftOfDefault() {
+    @Test fun aThinkingModelWithoutLevelsGetsAnActiveStepAfterDefault() {
         val options = reasoningEffortOptions(supportedEfforts = emptyList())
-        assertEquals(listOf("none", REASONING_EFFORT_ACTIVE, null), efforts(options))
-        assertEquals(listOf("None", "Active", "Default"), options.map { it.label })
-        assertEquals(listOf(0, 5, 1), tiers(options))
-        assertEquals(1, reasoningEffortIndex(REASONING_EFFORT_ACTIVE, options))
-        assertEquals(2, reasoningEffortIndex(null, options))
+        assertEquals(listOf("none", null, REASONING_EFFORT_ACTIVE), efforts(options))
+        assertEquals(listOf("None", "Default", "Active"), options.map { it.label })
+        assertEquals(listOf(0, 1, 5), tiers(options))
+        assertEquals(2, reasoningEffortIndex(REASONING_EFFORT_ACTIVE, options))
+        assertEquals(1, reasoningEffortIndex(null, options))
     }
 
     @Test fun activeIsOnlyOfferedWhenThereAreNoLevels() {
