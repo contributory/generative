@@ -41,8 +41,7 @@ class ChatInputBehaviorTest {
                     selectedProviderId = "",
                     onSelectModel = { _, _ -> },
                     conversationReasoningEffort = null,
-                    onSetReasoningEffort = {},
-                    onStartConversationSummary = { false }
+                    onSetReasoningEffort = {}
                 )
             }
         }

@@ -22,6 +22,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -221,9 +222,17 @@ fun ConversationsDrawer(
                     exit = fadeOut() + shrinkHorizontally()
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(8.dp))
+                        // Group the system prompt and settings buttons inside one outlined container.
+                        Row(
+                            modifier = Modifier
+                                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outline), RoundedCornerShape(24.dp))
+                                .padding(horizontal = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                         IconButton(onClick = { promptDialog = true }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.EditNote, "Default system prompt") }
                         IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.Settings, "General Settings") }
+                        }
                     }
                 }
                 Spacer(Modifier.width(8.dp))

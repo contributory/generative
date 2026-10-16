@@ -13,7 +13,6 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Psychology
-import androidx.compose.material.icons.outlined.Summarize
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -31,7 +30,6 @@ fun FilesActionSheet(
     onTakePhoto: () -> Unit,
     onCreateImage: () -> Unit,
     onCreateVideo: () -> Unit,
-    onOpenConversationSummary: () -> Unit,
     onOpenTools: () -> Unit,
     onOpenRemoteMachines: () -> Unit,
     onDismiss: () -> Unit
@@ -109,15 +107,6 @@ fun FilesActionSheet(
                 subtitle = "Choose which machines the model may use",
                 onClick = {
                     onOpenRemoteMachines()
-                    onDismiss()
-                }
-            )
-            AddActionRow(
-                icon = Icons.Outlined.Summarize,
-                title = "Summary",
-                subtitle = "Compress earlier context into a summary",
-                onClick = {
-                    onOpenConversationSummary()
                     onDismiss()
                 }
             )

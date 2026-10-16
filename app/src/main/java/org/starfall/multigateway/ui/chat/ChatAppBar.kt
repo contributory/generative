@@ -1,5 +1,6 @@
 package org.starfall.multigateway.ui.chat
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,6 +34,7 @@ fun ChatAppBar(
     onOpenDrawer: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenModelPicker: () -> Unit = {},
+    onOpenSummary: () -> Unit = {},
     contextWindowStatus: ContextWindowStatus? = null,
     modifier: Modifier = Modifier
 ) {
@@ -56,6 +59,7 @@ fun ChatAppBar(
                 .clickable(onClick = onOpenDrawer),
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             shadowElevation = 4.dp,
             tonalElevation = 2.dp
         ) {
@@ -113,7 +117,13 @@ fun ChatAppBar(
                             onDismissRequest = { contextMenuVisible = false },
                             modifier = Modifier.width(228.dp)
                         ) {
-                            ContextWindowDetails(status)
+                            ContextWindowDetails(
+                                status = status,
+                                onCompact = {
+                                    contextMenuVisible = false
+                                    onOpenSummary()
+                                }
+                            )
                         }
                     }
                 }
@@ -128,6 +138,7 @@ fun ChatAppBar(
                 .clickable(onClick = onOpenSettings),
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             shadowElevation = 4.dp,
             tonalElevation = 2.dp
         ) {
@@ -163,7 +174,7 @@ private fun ContextWindowIndicator(
 }
 
 @Composable
-private fun ContextWindowDetails(status: ContextWindowStatus) {
+private fun ContextWindowDetails(status: ContextWindowStatus, onCompact: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -171,8 +182,25 @@ private fun ContextWindowDetails(status: ContextWindowStatus) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text("Context window", style = MaterialTheme.typography.titleSmall)
-        ContextWindowRing(status, 96.dp)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text("Context window", style = MaterialTheme.typography.titleSmall)
+            Text(
+                text = stringResource(R.string.context_window_compact_hint),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center
+            )
+        }
+        Box(
+            modifier = Modifier
+                .clip(CircleShape)
+                .clickable(onClick = onCompact)
+        ) {
+            ContextWindowRing(status, 96.dp)
+        }
         Text(
             text = "${formatContextTokens(status.estimatedTokens)} / ${formatContextTokens(status.limit.toLong())} tokens",
             style = MaterialTheme.typography.bodyMedium,

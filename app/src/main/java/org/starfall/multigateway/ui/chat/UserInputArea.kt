@@ -65,7 +65,6 @@ import org.starfall.multigateway.data.model.ModelConfiguration
 import org.starfall.multigateway.data.model.DEFAULT_REASONING_EFFORTS
 import org.starfall.multigateway.data.model.supportedReasoningEfforts
 import org.starfall.multigateway.data.model.ProviderGroup
-import org.starfall.multigateway.data.model.ConversationSummaryRequest
 import org.starfall.multigateway.data.model.ModelType
 import org.starfall.multigateway.data.model.ProviderType
 import org.starfall.multigateway.data.model.ThinkingPassback
@@ -115,7 +114,6 @@ fun UserInputArea(
     onSetModelReasoningEffort: (providerId: String, modelId: String, effort: String?) -> Unit = { _, _, _ -> },
     onEditModel: (providerId: String, modelId: String) -> Unit = { _, _ -> },
     onEditProvider: (providerId: String) -> Unit = {},
-    onStartConversationSummary: (ConversationSummaryRequest) -> Boolean,
     onFetchOllamaModels: (suspend (String) -> List<String>)? = null,
     attachments: List<String> = emptyList(),
     onAttachmentsChange: (List<String>) -> Unit = {},
@@ -193,7 +191,6 @@ fun UserInputArea(
     var showSelectedModelOverview by remember { mutableStateOf(false) }
     var showQuickActions by remember { mutableStateOf(false) }
     var showRemoteMachines by remember { mutableStateOf(false) }
-    var showConversationSummary by remember { mutableStateOf(false) }
     var showAddMenu by remember { mutableStateOf(false) }
     var showFilesSheet by remember { mutableStateOf(false) }
     val selectedModelScreenBurst = rememberThinkingColorBurst()
@@ -580,7 +577,6 @@ fun UserInputArea(
             onTakePhoto = { showFilesSheet = true },
             onCreateImage = { onCancelEdit(); mediaKind = ModelType.IMAGE_GENERATION },
             onCreateVideo = { onCancelEdit(); mediaKind = ModelType.VIDEO_GENERATION },
-            onOpenConversationSummary = { showConversationSummary = true },
             onOpenTools = { showQuickActions = true },
             onOpenRemoteMachines = { showRemoteMachines = true },
             onDismiss = { showAddMenu = false }
@@ -671,13 +667,6 @@ fun UserInputArea(
 
     if (showRemoteMachines) {
         RemoteMachinesSheet(onDismiss = { showRemoteMachines = false })
-    }
-
-    if (showConversationSummary) {
-        ConversationSummarySheet(
-            onStart = onStartConversationSummary,
-            onDismiss = { showConversationSummary = false }
-        )
     }
 
     if (showFilesSheet) {

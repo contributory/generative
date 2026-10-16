@@ -661,7 +661,6 @@ fun ChatScreen(
                 onSetModelReasoningEffort = onSetModelReasoningEffort,
                 onEditModel = onEditModel,
                 onEditProvider = onEditProvider,
-                onStartConversationSummary = onStartConversationSummary,
                 onFetchOllamaModels = onFetchOllamaModels
             )
         }
@@ -674,6 +673,7 @@ fun ChatScreen(
             onOpenDrawer = onOpenDrawer,
             onOpenSettings = onOpenSettings,
             onOpenModelPicker = { modelPickerOpenRequest++ },
+            onOpenSummary = { showContextSummarySheet = true },
             modifier = Modifier.align(Alignment.TopCenter)
                 .onSizeChanged { appBarHeightPx = it.height }
         )

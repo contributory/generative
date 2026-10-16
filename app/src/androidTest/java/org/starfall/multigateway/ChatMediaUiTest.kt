@@ -199,8 +199,7 @@ class ChatMediaUiTest {
                     selectedProviderId = "text-provider",
                     onSelectModel = { _, _ -> },
                     conversationReasoningEffort = null,
-                    onSetReasoningEffort = {},
-                    onStartConversationSummary = { false }
+                    onSetReasoningEffort = {}
                 )
             }
         }
@@ -323,7 +322,6 @@ class ChatMediaUiTest {
                             onSelectModel = { _, _ -> },
                             conversationReasoningEffort = null,
                             onSetReasoningEffort = {},
-                            onStartConversationSummary = { false },
                             attachments = attachments,
                             onAttachmentsChange = { attachments = it },
                             modifier = Modifier.align(Alignment.BottomCenter)
