@@ -15,7 +15,8 @@ internal suspend fun awaitLoopbackAuthorizationCode(
 ): String = withContext(Dispatchers.IO) {
     val redirect = Uri.parse(redirectUri)
     val callbackPort = redirect.port
-    val callbackPath = redirect.path
+    // A redirect such as http://127.0.0.1:PORT has no path, but browsers request "/"; compare against "/".
+    val callbackPath = redirect.path?.takeIf { it.isNotEmpty() } ?: "/"
     ServerSocket().use { server ->
         server.reuseAddress = true
         server.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), callbackPort))

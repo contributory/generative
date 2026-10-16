@@ -73,7 +73,7 @@ class ChatOpeningScrollTest {
                     conversation = current.value, isGenerating = false,
                     generatingConversationId = null, chatError = null,
                     providers = emptyList(), selectedProviderId = "", selectedModelName = "",
-                    onSendMessage = { _, _ -> false }, onSendMedia = { false },
+                    onNewChat = {}, onSendMessage = { _, _ -> false }, onSendMedia = { false },
                     onStopGenerating = {}, onOpenDrawer = {}, onOpenSettings = {},
                     onRegenerate = {}, onEditMessage = { _, _, _ -> false },
                     onDeleteMessage = {}, onDeleteMessageVersion = {},

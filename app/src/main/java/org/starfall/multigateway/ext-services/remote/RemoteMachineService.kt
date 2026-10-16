@@ -552,7 +552,8 @@ class RemoteMachineService(
         val endpoint = environment.endpoint()
         val (host, _) = endpoint ?: error("Google Cloud Shell did not return an SSH endpoint.")
         val apiUsername = environment.firstText("sshUsername", "username", "user").orEmpty()
-        val username = machine.username.ifBlank { machine.gcloudUsername.ifBlank { apiUsername } }
+        // The Cloud Shell API is the source of truth for the SSH user; stored values are only a fallback.
+        val username = apiUsername.ifBlank { machine.username.ifBlank { machine.gcloudUsername } }
         val updated = machine.copy(
             host = host,
             port = 6_000,
@@ -571,7 +572,7 @@ class RemoteMachineService(
             val saved = current.machines.firstOrNull { it.id == machine.id }
                 ?.takeIf { it.type == RemoteMachineType.GCLOUD_SHELL }
             if (saved == null) current else {
-                val savedUsername = saved.username.ifBlank { username }
+                val savedUsername = username.ifBlank { saved.username }
                 val savedMachine = saved.copy(
                     host = host,
                     port = 6_000,
@@ -581,7 +582,7 @@ class RemoteMachineService(
                     password = updated.password,
                     identityPassphrase = updated.identityPassphrase
                 )
-                val config = if (saved.username.isBlank() && savedUsername.isNotBlank()) {
+                val config = if (saved.username != savedUsername && savedUsername.isNotBlank()) {
                     SshConfigParser.upsertMachine(current.sshConfig, savedMachine.copy(host = "", port = 6_000))
                 } else current.sshConfig
                 current.copy(
@@ -593,6 +594,19 @@ class RemoteMachineService(
         updated
     }
 
+    /**
+     * Reads the Cloud Shell SSH user from the Google API without starting or modifying the
+     * environment (a plain GET), so the editor can fill it in as soon as Google is authorized.
+     */
+    suspend fun fetchGCloudUsername(machine: RemoteMachine): Result<String> = result {
+        require(machine.type == RemoteMachineType.GCLOUD_SHELL) { "Only Cloud Shell machines have an API user." }
+        val client = clientFor(machine)
+        val api = CloudShellApi(accessToken(client))
+        api.getEnvironment(machine.environmentName)
+            .firstText("sshUsername", "username", "user")
+            ?: error("Google Cloud Shell did not return an SSH user.")
+    }
+
     private fun cachedCloudEndpoint(machine: RemoteMachine): RemoteMachine? = synchronized(endpointCacheLock) {
         val cached = cloudEndpointCache[machine.id] ?: return@synchronized null
         val now = SystemClock.elapsedRealtime()
@@ -601,7 +615,7 @@ class RemoteMachineService(
             return@synchronized null
         }
         cloudEndpointCache[machine.id] = cached.copy(lastUsedAtElapsedRealtime = now)
-        val username = machine.username.ifBlank { cached.username }
+        val username = cached.username.ifBlank { machine.username }
         machine.copy(
             host = cached.host,
             port = 6_000,

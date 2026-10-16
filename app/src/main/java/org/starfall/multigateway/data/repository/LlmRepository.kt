@@ -250,6 +250,8 @@ class LlmRepository(private val db: AppDatabase, private val service: LlmService
         }
     }
 
+    suspend fun providerExists(id: String): Boolean = providerDao.getProviderById(id) != null
+
     suspend fun saveProvider(draft: LlmProviderInfo) {
         val provider = draft.copy(config = draft.config.normalizedForStorage())
         state.mutate({ it.saveProviderDraft(provider) }) {

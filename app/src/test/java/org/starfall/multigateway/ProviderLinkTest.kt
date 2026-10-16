@@ -25,7 +25,9 @@ class ProviderLinkTest {
         assertEquals("test+a/b=c&d%value", provider.auth.token)
         assertEquals("https://example.com/icon.png?size=128&theme=dark", provider.icon)
         assertEquals("Bearer test+a/b=c&d%value", provider.auth.requestHeaders(provider.type)["Authorization"])
-        assertNotEquals(provider.id, parseProviderLink(uri).id)
+        // The same link always resolves to the same provider so re-delivery cannot duplicate it.
+        assertEquals(provider.id, parseProviderLink(uri).id)
+        assertNotEquals(provider.id, parseProviderLink(Uri.parse("mg://provider?name=Other&key=test")).id)
     }
 
     @Test fun explicitTypeAndAuthUseTheirWireSemantics() {

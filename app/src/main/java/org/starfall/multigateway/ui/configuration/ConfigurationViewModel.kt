@@ -32,7 +32,8 @@ class ConfigurationViewModel(
     fun importProvider(provider: LlmProviderInfo) {
         viewModelScope.launch(LocalWriteErrors.handler) {
             try {
-                llmRepo.saveProvider(provider)
+                // A link that was already imported just opens the existing provider.
+                if (!llmRepo.providerExists(provider.id)) llmRepo.saveProvider(provider)
                 _importedProviderId.value = provider.id
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e

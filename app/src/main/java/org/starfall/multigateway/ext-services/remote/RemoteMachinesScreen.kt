@@ -60,7 +60,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -185,6 +184,7 @@ fun RemoteMachinesScreen(
                 },
                 onBack = { editor = null },
                 onRefreshIp = { viewModel.refreshIp(it) },
+                onFetchUsername = { viewModel.fetchGCloudUsername(it) },
                 onAuthorizeOAuth = { viewModel.authorize(it) }
             )
             selected == RemoteMachinesPage.SETTINGS -> RemoteMachineSettings(
@@ -428,6 +428,7 @@ private fun RemoteMachineEditor(
     onSave: (RemoteMachine) -> Unit,
     onBack: () -> Unit,
     onRefreshIp: suspend (RemoteMachine) -> Result<RemoteMachine>,
+    onFetchUsername: suspend (RemoteMachine) -> Result<String>,
     onAuthorizeOAuth: suspend (GCloudOAuthClient) -> Result<Unit>
 ) {
     var name by remember(initial.id) { mutableStateOf(initial.name) }
@@ -459,7 +460,19 @@ private fun RemoteMachineEditor(
     var error by remember { mutableStateOf<String?>(null) }
     var loadingIp by remember { mutableStateOf(false) }
     var authorizing by remember { mutableStateOf(false) }
+    var authorizeJob by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
+    val oauthAuthorized = state.oauthTokens.containsKey(oauthClientId)
+    var fetchingUsername by remember { mutableStateOf(false) }
+    // Cloud Shell's SSH user comes from the Google API: fetch it whenever the account/environment changes.
+    LaunchedEffect(type, oauthClientId, oauthAuthorized, environment) {
+        if (type != RemoteMachineType.GCLOUD_SHELL || oauthClientId.isBlank() || !oauthAuthorized) return@LaunchedEffect
+        delay(400) // debounce typing in the environment field
+        fetchingUsername = true
+        onFetchUsername(initial.copy(type = type, environmentName = environment, oauthClientId = oauthClientId))
+            .onSuccess { username = it }
+        fetchingUsername = false
+    }
 
     Scaffold(
         topBar = {
@@ -506,11 +519,15 @@ private fun RemoteMachineEditor(
         ) {
             RemoteSection(stringResource(R.string.remote_machine_basic_section)) {
                 RemoteTextField(name, { name = it }, stringResource(R.string.common_name))
-                Text(stringResource(R.string.remote_machine_type_label), style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(type == RemoteMachineType.SSH, { type = RemoteMachineType.SSH }, label = { Text(stringResource(R.string.remote_machine_type_ssh)) })
-                    FilterChip(type == RemoteMachineType.GCLOUD_SHELL, { type = RemoteMachineType.GCLOUD_SHELL }, label = { Text(stringResource(R.string.remote_machine_type_gcloud)) })
-                }
+                RemoteDropdownField(
+                    label = stringResource(R.string.remote_machine_type_label),
+                    options = listOf(
+                        RemoteMachineType.SSH to stringResource(R.string.remote_machine_type_ssh),
+                        RemoteMachineType.GCLOUD_SHELL to stringResource(R.string.remote_machine_type_gcloud)
+                    ),
+                    selected = type,
+                    onSelect = { type = it }
+                )
             }
             RemoteSection(stringResource(R.string.remote_machine_connection_section)) {
                 if (type == RemoteMachineType.SSH) {
@@ -550,12 +567,28 @@ private fun RemoteMachineEditor(
                         }
                     }
                 }
-                RemoteTextField(username, { username = it }, stringResource(R.string.remote_machine_username))
-                Text(stringResource(R.string.remote_machine_authentication), style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(auth == RemoteAuthentication.PRIVATE_KEY, { auth = RemoteAuthentication.PRIVATE_KEY }, label = { Text(stringResource(R.string.remote_machine_private_key)) })
-                    FilterChip(auth == RemoteAuthentication.PASSWORD, { auth = RemoteAuthentication.PASSWORD }, label = { Text(stringResource(R.string.remote_machine_password)) })
+                if (type == RemoteMachineType.GCLOUD_SHELL) {
+                    // Cloud Shell reports its own SSH user, so it is filled in when the endpoint is loaded.
+                    RemoteTextField(
+                        username, {}, stringResource(R.string.remote_machine_username),
+                        readOnly = true,
+                        supporting = stringResource(R.string.remote_machine_username_auto),
+                        trailingIcon = if (fetchingUsername) {
+                            { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) }
+                        } else null
+                    )
+                } else {
+                    RemoteTextField(username, { username = it }, stringResource(R.string.remote_machine_username))
                 }
+                RemoteDropdownField(
+                    label = stringResource(R.string.remote_machine_authentication),
+                    options = listOf(
+                        RemoteAuthentication.PRIVATE_KEY to stringResource(R.string.remote_machine_private_key),
+                        RemoteAuthentication.PASSWORD to stringResource(R.string.remote_machine_password)
+                    ),
+                    selected = auth,
+                    onSelect = { auth = it }
+                )
                 if (auth == RemoteAuthentication.PASSWORD) {
                     RemoteTextField(
                         value = password,
@@ -647,10 +680,14 @@ private fun RemoteMachineEditor(
                             onClick = {
                                 val client = selectedOAuthClient ?: return@OutlinedButton
                                 authorizing = true
-                                scope.launch {
-                                    onAuthorizeOAuth(client)
-                                        .onFailure { error = it.message }
-                                    authorizing = false
+                                authorizeJob = scope.launch {
+                                    try {
+                                        onAuthorizeOAuth(client)
+                                            .onFailure { error = it.message }
+                                    } finally {
+                                        authorizing = false
+                                        authorizeJob = null
+                                    }
                                 }
                             }
                         ) {
@@ -658,6 +695,12 @@ private fun RemoteMachineEditor(
                             else FluentIcon(Icons.Outlined.Key, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.remote_machine_oauth_sign_in))
+                        }
+                        if (authorizing) {
+                            // Cancelling stops the loopback listener and closes its port.
+                            TextButton(onClick = { authorizeJob?.cancel() }) {
+                                Text(stringResource(R.string.remote_machine_oauth_cancel))
+                            }
                         }
                         if (state.oauthTokens.containsKey(oauthClientId)) {
                             Text(
@@ -1944,6 +1987,34 @@ private fun RemoteTextField(
         singleLine = singleLine,
         textStyle = if (font == null) LocalTextStyle.current else LocalTextStyle.current.copy(fontFamily = font)
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun <T> RemoteDropdownField(
+    label: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded, { expanded = !expanded }, modifier) {
+        SelectableOutlinedTextField(
+            value = options.firstOrNull { it.first == selected }?.second.orEmpty(),
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            label = { Text(label) },
+            trailingIcon = { TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor()
+        )
+        ExposedDropdownMenu(expanded, { expanded = false }) {
+            options.forEach { (value, text) ->
+                DropdownMenuItem(text = { Text(text) }, onClick = { onSelect(value); expanded = false })
+            }
+        }
+    }
 }
 
 @Composable

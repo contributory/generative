@@ -67,7 +67,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         createdLocaleTag = AppLocale.overrideTag(this)
-        handleIntent(intent)
+        // A recreated Activity (rotation, locale change, process restore) still carries the original
+        // launch intent; only a fresh launch may import its provider link.
+        if (savedInstanceState == null) handleIntent(intent)
         enableEdgeToEdge()
 
         lifecycleScope.launch {

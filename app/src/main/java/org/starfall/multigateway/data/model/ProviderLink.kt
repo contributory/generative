@@ -59,8 +59,16 @@ fun parseProviderLink(uri: Uri): LlmProviderInfo {
             "Icon URL must be an HTTP or HTTPS address."
         }
     }
+    val key = if (method in listOf(AuthMethod.NONE, AuthMethod.OAUTH)) "" else uri.getQueryParameter("key").orEmpty()
+    // The ID is derived from the link's resolved contents, so delivering the same link again
+    // (Activity recreation, a browser firing the intent twice) addresses the same provider
+    // instead of creating a duplicate.
+    val id = UUID.nameUUIDFromBytes(
+        listOf(type.name, method.name, url, name, iconUrl.orEmpty(), key)
+            .joinToString("\u0000").toByteArray(Charsets.UTF_8)
+    ).toString()
     return LlmProviderInfo(
-        id = UUID.randomUUID().toString(),
+        id = id,
         name = name,
         type = type,
         baseUrl = url,
@@ -72,7 +80,7 @@ fun parseProviderLink(uri: Uri): LlmProviderInfo {
                 AuthMethod.QUERY_PARAM -> "key"
                 else -> null
             },
-            value = if (method in listOf(AuthMethod.NONE, AuthMethod.OAUTH)) "" else uri.getQueryParameter("key").orEmpty()
+            value = key
         )
     )
 }

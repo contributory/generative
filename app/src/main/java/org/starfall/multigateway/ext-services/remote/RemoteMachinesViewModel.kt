@@ -76,6 +76,8 @@ class RemoteMachinesViewModel(
 
     suspend fun refreshIp(machine: RemoteMachine): Result<RemoteMachine> = service.refreshGCloudIp(machine)
 
+    suspend fun fetchGCloudUsername(machine: RemoteMachine): Result<String> = service.fetchGCloudUsername(machine)
+
     suspend fun startMachine(machine: RemoteMachine): Result<RemoteMachine> = service.startGCloudMachine(machine)
 
     suspend fun openTerminal(

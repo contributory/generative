@@ -517,6 +517,8 @@
     <string name="remote_machine_oauth_client" translatable="false">OAuth client</string>
     <string name="remote_machine_select_oauth" translatable="false">Select an OAuth client</string>
     <string name="remote_machine_oauth_sign_in" translatable="false">Sign in with Google</string>
+    <string name="remote_machine_oauth_cancel" translatable="false">Cancel</string>
+    <string name="remote_machine_username_auto" translatable="false">Fetched automatically from the Google Cloud Shell API once Google is authorized.</string>
     <string name="remote_machine_oauth_authorized" translatable="false">Google account connected</string>
     <string name="remote_machine_add_oauth_hint" translatable="false">Add an OAuth client in settings, select it here, then sign in before connecting.</string>
     <string name="remote_machine_tools_section" translatable="false">AI tools</string>

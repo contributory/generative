@@ -74,7 +74,7 @@ fun ConversationSummaryDivider(
                         modifier = Modifier.size(40.dp)
                     ) {
                         FluentIcon(
-                            Icons.Outlined.StopCircle,
+                            Icons.Outlined.Close,
                             contentDescription = stringResource(R.string.common_cancel),
                             modifier = Modifier.size(20.dp)
                         )
