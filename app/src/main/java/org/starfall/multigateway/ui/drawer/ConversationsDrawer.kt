@@ -83,6 +83,8 @@ fun ConversationsDrawer(
     var renaming by remember { mutableStateOf<Conversation?>(null) }
     var title by remember { mutableStateOf("") }
     var grouping by remember { mutableStateOf(false) }
+    var blankContextMenu by remember { mutableStateOf(false) }
+    var creatingFolder by remember { mutableStateOf(false) }
     var folderName by remember { mutableStateOf("") }
     var editingFolder by remember { mutableStateOf<ChatFolder?>(null) }
     var deletingFolder by remember { mutableStateOf<ChatFolder?>(null) }
@@ -156,7 +158,12 @@ fun ConversationsDrawer(
             Modifier.fillMaxSize()
                 .imePadding()
                 // A tap on any non-interactive part of the drawer leaves the search field.
-                .pointerInput(Unit) { detectTapGestures(onTap = { unfocusSearch() }) }
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { unfocusSearch() },
+                        onLongPress = { blankContextMenu = true }
+                    )
+                }
         ) {
             if (selecting) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -288,7 +295,43 @@ fun ConversationsDrawer(
                 }
             }
         }
+        DropdownMenu(
+            expanded = blankContextMenu,
+            onDismissRequest = { blankContextMenu = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Create Folder") },
+                leadingIcon = { FluentIcon(Icons.Outlined.CreateNewFolder, null) },
+                onClick = {
+                    blankContextMenu = false
+                    folderName = ""
+                    creatingFolder = true
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Select") },
+                leadingIcon = { FluentIcon(Icons.Outlined.CheckCircle, null) },
+                onClick = {
+                    blankContextMenu = false
+                    selecting = true
+                    selected = emptySet()
+                }
+            )
+        }
     }
+    if (creatingFolder) AlertDialog(
+        onDismissRequest = { creatingFolder = false },
+        title = { Text("Create Folder") },
+        text = { SelectableOutlinedTextField(folderName, { folderName = it }, label = { Text("Folder name") }, singleLine = true) },
+        confirmButton = {
+            TextButton(enabled = folderName.isNotBlank(), onClick = {
+                val name = folderName.trim()
+                if (name.isNotEmpty()) onUpdateOrganization { it.copy(folders = it.folders + ChatFolder(UUID.randomUUID().toString(), name)) }
+                creatingFolder = false
+            }) { Text("Create") }
+        },
+        dismissButton = { TextButton(onClick = { creatingFolder = false }) { Text("Cancel") } }
+    )
     if (grouping) AlertDialog(
         onDismissRequest = { grouping = false }, title = { Text("Move to folder") },
         text = {
