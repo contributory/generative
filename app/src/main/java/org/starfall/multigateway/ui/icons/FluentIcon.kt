@@ -1,16 +1,12 @@
 package org.starfall.multigateway.ui.icons
 
-import org.starfall.multigateway.ui.icons.FluentIcon
-
 import androidx.annotation.DrawableRes
-import androidx.compose.material.Icon as MaterialIcon
+import androidx.compose.material3.Icon as MaterialIcon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.material.LocalContentColor
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.res.painterResource
 
 /** Compose adapter for Microsoft's official Fluent System Icons Android VectorDrawables. */
