@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Binary test argument dialog -->
+    <string name="remote_machine_binary_test_parameters_title">バイナリのテスト引数 · %1$s</string>
+    <string name="remote_machine_binary_test_arguments">引数（省略可）</string>
+    <string name="remote_machine_binary_test_arguments_help">引数は空白で区切ってください。各項目は個別の引数として渡され、引用符は特別に解釈されません。</string>
+    <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
+
+    <!-- Executable binary upload security confirmation -->
+    <string name="remote_machine_binary_upload_warning_title">セキュリティ警告</string>
+    <string name="remote_machine_binary_upload_warning_message">実行ファイルはこのアプリから隔離されていません。実行すると、アプリがアクセスできるデータやファイルにアクセスしたり、アプリのネットワーク接続を利用したりする可能性があります。信頼できる入手元の実行ファイルのみアップロードしてください。</string>
+    <string name="remote_machine_binary_upload_confirm">アップロードして信頼する</string>
+
     <string name="thinking">思考中</string>
     <string name="thinking_streaming">思考中...</string>
     <string name="thought_process">思考プロセス</string>

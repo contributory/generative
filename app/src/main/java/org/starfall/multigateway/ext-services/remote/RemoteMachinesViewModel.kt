@@ -52,8 +52,8 @@ class RemoteMachinesViewModel(
 
     suspend fun importBinary(uri: Uri): Result<ExecutableBinary> = runCatching { service.importBinary(uri) }
 
-    suspend fun testBinary(id: String): Result<RemoteBinaryTestResult> =
-        runCatching { service.testBinary(id) }
+    suspend fun testBinary(id: String, arguments: List<String> = emptyList()): Result<RemoteBinaryTestResult> =
+        runCatching { service.testBinary(id, arguments) }
 
     fun deleteBinary(id: String) {
         viewModelScope.launch(LocalWriteErrors.handler) { service.deleteBinary(id) }

@@ -5,6 +5,7 @@ package org.starfall.multigateway.extservices.remote
 import org.starfall.multigateway.ui.icons.FluentIcon
 
 import android.content.ClipData
+import android.net.Uri
 import android.content.ClipboardManager
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -64,6 +65,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -755,7 +757,10 @@ private fun RemoteMachineSettings(
     var sshConfig by remember(state.sshConfig) { mutableStateOf(state.sshConfig) }
     var clientEditor by remember { mutableStateOf<GCloudOAuthClient?>(null) }
     var binaryError by remember { mutableStateOf<String?>(null) }
+    var pendingBinaryUri by remember { mutableStateOf<Uri?>(null) }
     var testingBinaryId by remember { mutableStateOf<String?>(null) }
+    var binaryToTest by remember { mutableStateOf<ExecutableBinary?>(null) }
+    var binaryTestArguments by remember { mutableStateOf("") }
     var binaryTestNotice by remember { mutableStateOf<BinaryTestNotice?>(null) }
     var identityError by remember { mutableStateOf<String?>(null) }
     var oauthError by remember { mutableStateOf<String?>(null) }
@@ -783,10 +788,7 @@ private fun RemoteMachineSettings(
         }
     }
     val binaryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri ?: return@rememberLauncherForActivityResult
-        scope.launch {
-            viewModel.importBinary(uri).onFailure { binaryError = it.message }
-        }
+        pendingBinaryUri = uri
     }
     val oauthLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri ?: return@rememberLauncherForActivityResult
@@ -942,33 +944,8 @@ private fun RemoteMachineSettings(
                         IconButton(
                             enabled = testingBinaryId == null,
                             onClick = {
-                                testingBinaryId = binary.id
-                                scope.launch {
-                                    viewModel.testBinary(binary.id).fold(
-                                        onSuccess = { result ->
-                                            val status = if (result.timedOut) {
-                                                context.getString(R.string.remote_machine_binary_test_timeout)
-                                            } else {
-                                                context.getString(R.string.remote_machine_binary_test_exit, result.exitCode)
-                                            }
-                                            binaryTestNotice = BinaryTestNotice(
-                                                binaryName = binary.name,
-                                                status = status,
-                                                output = result.output.ifBlank {
-                                                    context.getString(R.string.remote_machine_binary_test_no_output)
-                                                }
-                                            )
-                                        },
-                                        onFailure = { error ->
-                                            binaryTestNotice = BinaryTestNotice(
-                                                binaryName = binary.name,
-                                                status = context.getString(R.string.remote_machine_binary_test_failed),
-                                                output = error.message ?: error.toString()
-                                            )
-                                        }
-                                    )
-                                    testingBinaryId = null
-                                }
+                                binaryToTest = binary
+                                binaryTestArguments = ""
                             }
                         ) {
                             if (testingBinaryId == binary.id) {
@@ -988,6 +965,95 @@ private fun RemoteMachineSettings(
                 binaryError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
         }
+    }
+
+    binaryToTest?.let { binary ->
+        AlertDialog(
+            onDismissRequest = { if (testingBinaryId == null) binaryToTest = null },
+            title = { Text(stringResource(R.string.remote_machine_binary_test_parameters_title, binary.name)) },
+            text = {
+                OutlinedTextField(
+                    value = binaryTestArguments,
+                    onValueChange = { binaryTestArguments = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.remote_machine_binary_test_arguments)) },
+                    placeholder = { Text(stringResource(R.string.remote_machine_binary_test_arguments_hint)) },
+                    supportingText = { Text(stringResource(R.string.remote_machine_binary_test_arguments_help)) },
+                    singleLine = false,
+                    minLines = 2,
+                    maxLines = 4,
+                    enabled = testingBinaryId == null
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = testingBinaryId == null,
+                    onClick = {
+                        val args = binaryTestArguments.trim().takeIf { it.isNotEmpty() }
+                            ?.split(Regex("\\s+")) ?: emptyList()
+                        testingBinaryId = binary.id
+                        binaryToTest = null
+                        scope.launch {
+                            viewModel.testBinary(binary.id, args).fold(
+                                onSuccess = { result ->
+                                    val status = if (result.timedOut) {
+                                        context.getString(R.string.remote_machine_binary_test_timeout)
+                                    } else {
+                                        context.getString(R.string.remote_machine_binary_test_exit, result.exitCode)
+                                    }
+                                    binaryTestNotice = BinaryTestNotice(
+                                        binaryName = binary.name,
+                                        status = status,
+                                        output = result.output.ifBlank {
+                                            context.getString(R.string.remote_machine_binary_test_no_output)
+                                        }
+                                    )
+                                },
+                                onFailure = { error ->
+                                    binaryTestNotice = BinaryTestNotice(
+                                        binaryName = binary.name,
+                                        status = context.getString(R.string.remote_machine_binary_test_failed),
+                                        output = error.message ?: error.toString()
+                                    )
+                                }
+                            )
+                            testingBinaryId = null
+                        }
+                    }
+                ) {
+                    Text(stringResource(R.string.remote_machine_test_binary))
+                }
+            },
+            dismissButton = {
+                TextButton(enabled = testingBinaryId == null, onClick = { binaryToTest = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
+    pendingBinaryUri?.let { uri ->
+        AlertDialog(
+            onDismissRequest = { pendingBinaryUri = null },
+            title = { Text(stringResource(R.string.remote_machine_binary_upload_warning_title)) },
+            text = { Text(stringResource(R.string.remote_machine_binary_upload_warning_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingBinaryUri = null
+                    binaryError = null
+                    scope.launch {
+                        viewModel.importBinary(uri).onFailure { binaryError = it.message }
+                    }
+                }) {
+                    Text(stringResource(R.string.remote_machine_binary_upload_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingBinaryUri = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
     }
 
     binaryTestNotice?.let { notice ->

@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Binary test argument dialog -->
+    <string name="remote_machine_binary_test_parameters_title">测试可执行文件参数 · %1$s</string>
+    <string name="remote_machine_binary_test_arguments">参数（可选）</string>
+    <string name="remote_machine_binary_test_arguments_help">使用空格分隔参数。每个项目都会作为独立参数传递；引号不会被特殊解析。</string>
+    <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
+
+    <!-- Executable binary upload security confirmation -->
+    <string name="remote_machine_binary_upload_warning_title">安全警告</string>
+    <string name="remote_machine_binary_upload_warning_message">可执行文件不会与此应用隔离。运行时，它们可能访问应用可访问的数据和文件，也可能使用应用的网络连接。请仅上传来自可信来源的可执行文件。</string>
+    <string name="remote_machine_binary_upload_confirm">上传并信任</string>
+
     <string name="thinking">思考中</string>
     <string name="thinking_streaming">思考中...</string>
     <string name="thought_process">思考过程</string>

@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Binary test argument dialog -->
+    <string name="remote_machine_binary_test_parameters_title">Paramètres de test du binaire · %1$s</string>
+    <string name="remote_machine_binary_test_arguments">Arguments (facultatif)</string>
+    <string name="remote_machine_binary_test_arguments_help">Séparez les arguments par des espaces. Chaque élément est transmis séparément ; les guillemets ne sont pas interprétés.</string>
+    <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
+
+    <!-- Executable binary upload security confirmation -->
+    <string name="remote_machine_binary_upload_warning_title">Avertissement de sécurité</string>
+    <string name="remote_machine_binary_upload_warning_message">Les fichiers exécutables ne sont pas isolés de cette application. Lorsqu’ils sont exécutés, ils peuvent accéder aux données et fichiers accessibles à l’application et utiliser sa connexion réseau. Ne téléversez que des fichiers exécutables provenant de sources fiables.</string>
+    <string name="remote_machine_binary_upload_confirm">Téléverser et faire confiance</string>
+
     <string name="thinking">Réflexion</string>
     <string name="thinking_streaming">Réflexion...</string>
     <string name="thought_process">Processus de réflexion</string>

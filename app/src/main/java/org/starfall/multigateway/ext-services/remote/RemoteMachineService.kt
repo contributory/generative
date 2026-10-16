@@ -277,13 +277,13 @@ class RemoteMachineService(
 
     suspend fun importBinary(uri: Uri): ExecutableBinary = executableBinaries.import(uri)
 
-    suspend fun testBinary(id: String): RemoteBinaryTestResult = withContext(Dispatchers.IO) {
+    suspend fun testBinary(id: String, arguments: List<String> = emptyList()): RemoteBinaryTestResult = withContext(Dispatchers.IO) {
         val binary = executableBinaries.binaries.value.firstOrNull { it.id == id } ?: error("Binary not found.")
         val file = File(binary.path)
         require(file.isFile) { "The imported binary file no longer exists." }
         require(file.canExecute()) { "The imported file does not have execute permission." }
         val header = readHeader(file)
-        val invocation = binaryInvocation(file)
+        val invocation = binaryInvocation(file) + arguments
         require(invocation.size == 1 || !isStaticNonPieElf(header)) {
             "This is a statically linked, non-PIE executable. Android 10+ blocks running files from app " +
                 "storage directly, and the system linker cannot load such a file. Use a PIE build made " +

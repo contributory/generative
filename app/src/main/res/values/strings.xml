@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Binary test argument dialog -->
+    <string name="remote_machine_binary_test_parameters_title">Test binary parameters · %1$s</string>
+    <string name="remote_machine_binary_test_arguments">Arguments (optional)</string>
+    <string name="remote_machine_binary_test_arguments_help">Separate arguments with spaces. Each space-delimited item is passed as a separate argument; quotes are not interpreted.</string>
+    <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
+
     <string name="app_name">MultiGateway</string>
     <string name="message_text_size">Message text size</string>
     <string name="message_text_size_hint">%1$d sp</string>
@@ -545,6 +551,9 @@
     <string name="remote_machine_client_secret" translatable="false">Client secret</string>
     <string name="remote_machine_binaries" translatable="false">Executable binaries</string>
     <string name="remote_machine_binaries_help" translatable="false">Imported files are copied into app storage, made executable, and can be used by name in ProxyCommand or LocalCommand.</string>
+    <string name="remote_machine_binary_upload_warning_title">Security warning</string>
+    <string name="remote_machine_binary_upload_warning_message">Executable binaries are not isolated from this app. When run, they can access data and files available to the app and may use its network access. Only upload binaries from sources you trust.</string>
+    <string name="remote_machine_binary_upload_confirm">Upload and trust</string>
     <string name="remote_machine_binary_used_by" translatable="false">Referenced by %1$d machine(s)</string>
     <string name="remote_machine_test_binary" translatable="false">Test binary</string>
     <string name="remote_machine_binary_test_title" translatable="false">Binary test · %1$s</string>
