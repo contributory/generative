@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -104,16 +105,13 @@ internal fun ProcessingDropdown(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val runningTools = items.filterIsInstance<ProcessingDropdownItem.Tool>()
-        .map { it.activity }.filter { it.status == "running" && !it.name.endsWith(": connect") && it.name != "send_file" }
+    // Keep running tool calls in the timeline too. Filtering them out here could leave the
+    // dropdown with no header at all, making the action steps impossible to inspect.
     val visibleItems = items.filterNot {
         it is ProcessingDropdownItem.Tool &&
-            (it.activity.name.endsWith(": connect") || it.activity.status == "running" || it.activity.name == "send_file")
+            (it.activity.name.endsWith(": connect") || it.activity.name == "send_file")
     }
-    if (visibleItems.isEmpty()) {
-        Box(modifier) { ToolActivityCards(runningTools) }
-        return
-    }
+    if (visibleItems.isEmpty()) return
 
     val onlyThinking = visibleItems.all { it is ProcessingDropdownItem.Thinking }
     val onlyTools = visibleItems.all { it is ProcessingDropdownItem.Tool }
@@ -137,7 +135,7 @@ internal fun ProcessingDropdown(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = !expanded }
+                .clickable(role = Role.Button) { expanded = !expanded }
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -225,9 +223,9 @@ internal fun ProcessingDropdown(
                 }
             }
         }
-        ToolActivityCards(runningTools)
     }
 }
+
 @Composable
 private fun CollapsibleThinkingText(
     reasoning: String,
