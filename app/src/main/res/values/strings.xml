@@ -119,7 +119,7 @@
     <string name="provider_default_url">Default: %1$s</string>
     <string name="http_unencrypted_provider_warning">HTTP is unencrypted. API keys, headers and messages can be read on the network. Use HTTPS outside a trusted local network.</string>
     <string name="authorization">Authorization</string>
-    <string name="stream">Stream</string>
+    <string name="stream" translatable="false">Stream Response</string>
     <string name="custom_headers">Custom Headers</string>
     <string name="add_header">Add header</string>
     <string name="delete_header">Delete header</string>
@@ -168,7 +168,7 @@
     <string name="model_reasoning_levels">Supported reasoning levels</string>
     <string name="send_thinking_content_back">Passback Thinking</string>
     <string name="send_thinking_content_back_hint">Auto sends earlier thinking back only in chats that use tool calls. On always sends it; Off never does.</string>
-    <string name="streaming">Streaming</string>
+    <string name="streaming" translatable="false">Stream Response</string>
     <string name="common_default">Default</string>
     <string name="use_provider_stream_setting">Use provider stream setting</string>
     <string name="provider_stream_state">Provider: %1$s</string>
@@ -629,4 +629,5 @@
     <string name="screen_wakelock_all">On</string>
     <string name="screen_wakelock_except_tool_calls">Auto</string>
     <string name="context_window_compact_hint">Tap the circle to compact the context window</string>
+    <string name="headers">Headers</string>
 </resources>

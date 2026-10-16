@@ -153,18 +153,17 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         )
     }
 
-    @Test fun customHeadersExpandOnlyWhenClicked() {
+    @Test fun headersDialogOpensOnlyWhenButtonClicked() {
         compose.setContent { MaterialTheme {
             ProviderEditScreen(provider.copy(config = provider.config.copy(headers = mapOf("X-Test" to "value"))), false,
                 onSaveModels = { _, _ -> }, onReorderModels = { _, _ -> }, onDismiss = {}, onSave = {})
         } }
-        compose.onNodeWithText("Custom Headers").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Headers").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("X-Test").assertDoesNotExist()
-        compose.onNodeWithContentDescription("Add header").assertDoesNotExist()
-        compose.onNodeWithText("Custom Headers").performClick()
+        compose.onNodeWithText("Headers").performClick()
         compose.onNodeWithText("X-Test").assertExists()
         compose.onNodeWithContentDescription("Add header").assertExists()
-        compose.onNodeWithText("Custom Headers").performClick()
+        compose.onNodeWithContentDescription("Close").performClick()
         compose.onNodeWithText("X-Test").assertDoesNotExist()
     }
 

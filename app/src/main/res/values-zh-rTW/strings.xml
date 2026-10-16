@@ -107,4 +107,5 @@
     <string name="choose_another_model_hint">點選模型名稱以選擇其他模型</string>
     <string name="screen_wakelock_description">產生回覆時保持螢幕開啟。</string>
     <string name="context_window_compact_hint">點選圓環以壓縮上下文視窗</string>
+    <string name="headers">請求標頭</string>
 </resources>

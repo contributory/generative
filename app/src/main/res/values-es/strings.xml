@@ -107,4 +107,5 @@
     <string name="choose_another_model_hint">Toca el nombre del modelo para elegir otro modelo</string>
     <string name="screen_wakelock_description">Mantener la pantalla encendida mientras se genera una respuesta.</string>
     <string name="context_window_compact_hint">Toca el círculo para compactar la ventana de contexto</string>
+    <string name="headers">Encabezados</string>
 </resources>

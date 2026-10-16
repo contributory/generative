@@ -103,7 +103,7 @@ fun ProviderEditScreen(
     LaunchedEffect(initialProvider.id) { initialProvider.config.modelConfigs.forEach { (id, config) -> memory.remember(id, config, onlyIfMissing = true) } }
     var typeExpanded by remember { mutableStateOf(false) }
     var supportStream by remember { mutableStateOf(initialProvider.config.supportStream) }
-    var headersExpanded by rememberSaveable { mutableStateOf(false) }
+    var showHeaders by rememberSaveable { mutableStateOf(false) }
     val headerRows = remember { mutableStateListOf<Pair<String, String>>().apply { addAll(initialProvider.config.headers.entries.map { it.key to it.value }) } }
     val pager = rememberPagerState(pageCount = { 2 })
     // This state outlives the nested model editor, retaining its scroll position.
@@ -283,20 +283,10 @@ fun ProviderEditScreen(
                                 Switch(supportStream, onCheckedChange = { supportStream = it })
                             }
                             HorizontalDivider()
-                            Row(Modifier.fillMaxWidth().clickable { headersExpanded = !headersExpanded }
-                                .semantics { stateDescription = if (headersExpanded) "Expanded" else "Collapsed" }, verticalAlignment = Alignment.CenterVertically) {
-                                Icon(if (headersExpanded) Icons.Default.ExpandMore else Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                                Text(stringResource(R.string.custom_headers), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                if (headersExpanded) IconButton(onClick = { headerRows.add("" to "") }) { Icon(Icons.Default.Add, stringResource(R.string.add_header)) }
+                            OutlinedButton(onClick = { showHeaders = true }, modifier = Modifier.fillMaxWidth()) {
+                                Text(stringResource(R.string.headers))
                             }
-                            if (headersExpanded) headerRows.forEachIndexed { index, row -> Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                SelectableOutlinedTextField(row.first, { headerRows[index] = it to headerRows[index].second }, label = { Text(stringResource(R.string.common_key)) }, singleLine = true, modifier = Modifier.weight(1f))
-                                SelectableOutlinedTextField(row.second, { headerRows[index] = headerRows[index].first to it }, label = { Text(stringResource(R.string.common_value)) }, singleLine = true, modifier = Modifier.weight(1f))
-                                IconButton(onClick = { headerRows.removeAt(index) }) { Icon(Icons.Outlined.Delete, stringResource(R.string.delete_header)) }
-                            } }
-                            if (!headersValid) Text("Header names and values must be valid and header names must be unique.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            if (!headersValid && !showHeaders) Text("Header names and values must be valid and header names must be unique.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                         } else ProviderModelsPane(order, models, modelList, onMove = { from, to -> order = order.moved(from, to) },
                             onDrop = { if (providerPersisted) onReorderModels(initialProvider.id, order) }, onEdit = { editingModel = it },
                             onDelete = { updateModels(models - it) }, onOpenCatalog = { showCatalog = true })
@@ -312,6 +302,7 @@ fun ProviderEditScreen(
                 onCancelAuthorization = { activeOAuthRequest?.let { onCancelProviderAuthorization?.invoke(it) } },
                 onDelete = { removeOAuthAccount(it) }, onDismiss = { showOAuthAccounts = false }
             )
+            if (showHeaders) ProviderHeadersDialog(headerRows, headersValid, onDismiss = { showHeaders = false })
             if (showApiKeys) ProviderApiKeysDialog(apiKeys, ::keyIdentity, onDismiss = { showApiKeys = false })
             if (showTestDialog) ModelConnectionDialog(draft().copy(name = name.trim().ifEmpty { "Provider" }), tests, onTestConnection != null,
                 onRemoveModels = { updateModels(models - it) }, onDismiss = { showTestDialog = false })
