@@ -27,6 +27,15 @@ class MathSplitterTest {
         assertEquals(listOf(text("a \$x^2\$ b")), split("a \$x^2\$ b", "off"))
     }
 
+    @Test fun latexFormulaInsideMarkdownTableCellIsDetected() {
+        val cell = "\$E = -G\\dfrac{mM}{r}\$"
+        val pieces = split(cell)
+        assertEquals(1, pieces.size)
+        val formula = pieces.single() as MathPiece.Math
+        assertEquals("E = -G\\dfrac{mM}{r}", formula.formula)
+        assertEquals(cell, formula.source)
+    }
+
     @Test fun inlineFormulaInsideVietnameseProse() {
         assertEquals(
             listOf(text("Giá trị của "), inline("x_1"), text(" là "), inline("\\frac{1}{2}"), text(".")),

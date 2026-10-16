@@ -23,6 +23,7 @@ import com.mikepenz.markdown.annotator.annotatorSettings
 import com.mikepenz.markdown.annotator.buildMarkdownAnnotatedString
 import com.mikepenz.markdown.compose.components.MarkdownComponentModel
 import org.intellij.markdown.ast.ASTNode
+import org.intellij.markdown.ast.getTextInNode
 import org.intellij.markdown.flavours.gfm.GFMElementTypes
 import org.intellij.markdown.flavours.gfm.GFMTokenTypes
 
@@ -30,6 +31,11 @@ private val MaxTableColumnWidth = 260.dp
 private val TableCellHorizontalPadding = 10.dp
 
 private class TableRow(val header: Boolean, val cells: List<ASTNode>)
+
+private data class TableCellContent(
+    val annotated: AnnotatedString?,
+    val mathPieces: List<MathPiece>?
+)
 
 private fun tableRows(node: ASTNode): List<TableRow> = node.children
     .filter { it.type == GFMElementTypes.HEADER || it.type == GFMElementTypes.ROW }
@@ -61,7 +67,19 @@ internal fun RenderMarkdownTable(model: MarkdownComponentModel) {
     )
     val headerStyle = baseStyle.copy(fontWeight = FontWeight.SemiBold)
     val cells = rows.map { row ->
-        row.cells.map { cell -> buildAnnotatedString { buildMarkdownAnnotatedString(content, cell, settings) }.trimmed() }
+        row.cells.map { cell ->
+            val source = cell.getTextInNode(content).toString().trim()
+            val mathPieces = MathSplitter.split(source, preferences.latexMode)
+                .takeIf { pieces -> pieces.any { it is MathPiece.Math } }
+            TableCellContent(
+                annotated = if (mathPieces == null) {
+                    buildAnnotatedString { buildMarkdownAnnotatedString(content, cell, settings) }.trimmed()
+                } else {
+                    null
+                },
+                mathPieces = mathPieces
+            )
+        }
     }
     val columnCount = cells.maxOf { it.size }
     val density = LocalDensity.current
@@ -69,9 +87,15 @@ internal fun RenderMarkdownTable(model: MarkdownComponentModel) {
     val maxColumnPx = with(density) { (MaxTableColumnWidth - TableCellHorizontalPadding * 2).toPx() }
     val columnWidths = (0 until columnCount).map { column ->
         val natural = cells.indices.maxOf { rowIndex ->
-            val text = cells[rowIndex].getOrNull(column) ?: return@maxOf 0f
+            val cell = cells[rowIndex].getOrNull(column) ?: return@maxOf 0f
             val style = if (rows[rowIndex].header) headerStyle else baseStyle
-            measurer.measure(text, style, softWrap = false).size.width.toFloat()
+            val text = cell.annotated?.text ?: cell.mathPieces.orEmpty().joinToString("") { piece ->
+                when (piece) {
+                    is MathPiece.Text -> piece.text
+                    is MathPiece.Math -> piece.source
+                }
+            }
+            measurer.measure(AnnotatedString(text), style, softWrap = false).size.width.toFloat()
         }
         with(density) { natural.coerceIn(24f, maxColumnPx).toDp() } + TableCellHorizontalPadding * 2 + 1.dp
     }
@@ -91,12 +115,25 @@ internal fun RenderMarkdownTable(model: MarkdownComponentModel) {
                                     .border(0.5.dp, border)
                                     .padding(horizontal = TableCellHorizontalPadding, vertical = 8.dp)
                             ) {
-                                val text = cells[rowIndex].getOrNull(column)
-                                if (text != null) MarkdownClickableText(
-                                    text = text,
-                                    style = if (row.header) headerStyle else baseStyle,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
+                                val cell = cells[rowIndex].getOrNull(column)
+                                if (cell != null) {
+                                    val style = if (row.header) headerStyle else baseStyle
+                                    if (cell.mathPieces != null) {
+                                        RenderMathParagraph(
+                                            pieces = cell.mathPieces,
+                                            style = style,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    } else {
+                                        cell.annotated?.let { text ->
+                                            MarkdownClickableText(
+                                                text = text,
+                                                style = style,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
