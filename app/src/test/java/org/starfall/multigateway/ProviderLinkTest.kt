@@ -12,7 +12,7 @@ import org.starfall.multigateway.data.model.*
 @Config(sdk = [28])
 class ProviderLinkTest {
     @Test fun defaultsAndEncodedValuesPopulateProviderCredentials() {
-        val uri = Uri.Builder().scheme("multigateway").authority("provider")
+        val uri = Uri.Builder().scheme("mg").authority("provider")
             .appendQueryParameter("name", "Gateway ảnh & video")
             .appendQueryParameter("url", "https://example.com/v1?route=a&mode=b")
             .appendQueryParameter("key", "test+a/b=c&d%value")
@@ -29,23 +29,31 @@ class ProviderLinkTest {
     }
 
     @Test fun explicitTypeAndAuthUseTheirWireSemantics() {
-        val google = parseProviderLink(Uri.parse("multigateway://provider?type=gemini&auth=platform&key=test"))
+        val google = parseProviderLink(Uri.parse("mg://provider?provider_type=gemini&auth_type=platform&key=test"))
         assertEquals(ProviderType.GOOGLE, google.type)
         assertEquals(ProviderType.GOOGLE.defaultBaseUrl, google.baseUrl)
         assertEquals(mapOf("x-goog-api-key" to "test"), google.auth.requestHeaders(google.type))
-        val bearer = parseProviderLink(Uri.parse("multigateway://provider?type=openai_responses&auth=bearer-token&key=test"))
+        val bearer = parseProviderLink(Uri.parse("mg://provider?provider_type=openai_responses&auth_type=bearer-token&key=test"))
         assertEquals(ProviderType.OPENAI_RESPONSES, bearer.type)
         assertEquals(AuthMethod.BEARER_TOKEN, bearer.auth.method)
         assertEquals("Authorization", bearer.auth.key)
         assertEquals("test", bearer.auth.token)
-        val query = parseProviderLink(Uri.parse("multigateway://provider?auth=query&key=test"))
+        val query = parseProviderLink(Uri.parse("mg://provider?auth_type=query&key=test"))
         assertEquals(AuthMethod.QUERY_PARAM, query.auth.method)
         assertEquals("key", query.auth.key)
         assertEquals("test", query.auth.value)
     }
 
+    @Test fun legacySchemeAndParameterNamesRemainCompatible() {
+        val provider = parseProviderLink(Uri.parse(
+            "multigateway://provider?type=gemini&auth=bearer&key=test"
+        ))
+        assertEquals(ProviderType.GOOGLE, provider.type)
+        assertEquals(AuthMethod.BEARER_TOKEN, provider.auth.method)
+    }
+
     @Test fun blankOptionsUseDefaultsAndIncompleteProvidersCanBeEdited() {
-        val provider = parseProviderLink(Uri.parse("multigateway://provider?type=&name=&url=&auth=&key="))
+        val provider = parseProviderLink(Uri.parse("mg://provider?provider_type=&name=&url=&auth_type=&key="))
         assertEquals(ProviderType.OPENAI, provider.type)
         assertEquals(AuthMethod.PLATFORM_DEFAULT, provider.auth.method)
         assertEquals("New provider", provider.name)
@@ -56,9 +64,9 @@ class ProviderLinkTest {
     @Test fun invalidLinksAreRejectedWithoutLeakingCredentialValues() {
         listOf(
             "https://provider?key=secret", "multigateway://oauth?key=secret",
-            "multigateway://provider?type=secret", "multigateway://provider?auth=secret",
-            "multigateway://provider?url=file%3A%2F%2Fsecret&key=secret",
-            "multigateway://provider?icon_url=content%3A%2F%2Fsecret&key=secret"
+            "mg://oauth?key=secret", "mg://provider?provider_type=secret",
+            "mg://provider?auth_type=secret", "mg://provider?url=file%3A%2F%2Fsecret&key=secret",
+            "mg://provider?icon_url=content%3A%2F%2Fsecret&key=secret"
         ).forEach { link ->
             val error = runCatching { parseProviderLink(Uri.parse(link)) }.exceptionOrNull()
             assertTrue(error is IllegalArgumentException)

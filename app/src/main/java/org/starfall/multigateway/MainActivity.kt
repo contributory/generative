@@ -214,7 +214,8 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntent(intent: Intent?) {
         val data = intent?.data ?: return
-        if (data.scheme.equals("multigateway", true) && data.host.equals("provider", true)) {
+        if ((data.scheme.equals("mg", true) || data.scheme.equals("multigateway", true)) &&
+            data.host.equals("provider", true)) {
             // Consume the launch URI before saving; Activity recreation must not import it again.
             intent.data = null
             runCatching { parseProviderLink(data) }

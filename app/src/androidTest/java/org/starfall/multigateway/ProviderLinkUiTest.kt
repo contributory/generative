@@ -28,7 +28,7 @@ class ProviderLinkUiTest {
         val firstName = "Link test ${UUID.randomUUID()}"
         val secondName = "Link test ${UUID.randomUUID()}"
         fun intent(name: String) = Intent(Intent.ACTION_VIEW, Uri.Builder()
-            .scheme("multigateway").authority("provider")
+            .scheme("mg").authority("provider")
             .appendQueryParameter("name", name)
             .appendQueryParameter("url", "https://example.com/v1")
             .appendQueryParameter("key", "test-link-key").build(), context, MainActivity::class.java)
