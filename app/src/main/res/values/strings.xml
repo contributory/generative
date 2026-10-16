@@ -413,6 +413,15 @@
     <string name="settings_persist_selected_model_description">Use the selected model for each chat when you return to it</string>
     <string name="settings_auto_scroll">Auto scroll</string>
     <string name="settings_auto_scroll_description">Follow new responses as they generate</string>
+        <string name="tool_call_strategy_description">Choose whether tool calls run one at a time or concurrently.</string>
+    <string name="tool_call_concurrent_limit_description">Maximum number of tool calls that may run at the same time.</string>
+<string name="tool_call_options">Tool Call Options</string>
+    <string name="tool_call_strategy">Tool Call Strategy</string>
+    <string name="tool_call_strategy_sequential">Sequential</string>
+    <string name="tool_call_strategy_parallel">Parallel</string>
+    <string name="tool_call_concurrent_limit">Concurrent limit</string>
+    <string name="tool_call_concurrent_limit_invalid">Enter a number from 1 to %1$d.</string>
+    <string name="tool_call_concurrent_limit_default">Default is %1$d.</string>
     <string name="settings_tool_calls">Tool calls</string>
     <string name="settings_limit_tool_rounds">Limit tool rounds</string>
     <string name="settings_limit_tool_rounds_description">Off: the model can call tools without a round limit. On: stop after the number of rounds below.</string>

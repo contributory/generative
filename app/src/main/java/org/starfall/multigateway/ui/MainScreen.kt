@@ -585,6 +585,8 @@ fun MainScreen(
                             onToolRoundLimitEnabledChange = settingsViewModel::setToolRoundLimitEnabled,
                             onAppLanguageChange = settingsViewModel::setAppLanguage,
                              onToolRoundLimitChange = settingsViewModel::setToolRoundLimit,
+                            onToolCallStrategyChange = settingsViewModel::setToolCallStrategy,
+                            onToolCallConcurrentLimitChange = settingsViewModel::setToolCallConcurrentLimit,
                              onScreenWakelockModeChange = settingsViewModel::setScreenWakelockMode,
                             onEnableVibrationChange = { value ->
                                 settingsViewModel.setEnableVibration(value)

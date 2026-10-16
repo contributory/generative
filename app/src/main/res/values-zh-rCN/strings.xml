@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="tool_call_strategy_description">选择按顺序执行工具调用，还是并行执行。</string>
+    <string name="tool_call_concurrent_limit_description">允许同时执行的工具调用最大数量。</string>
+
     <!-- Binary test argument dialog -->
     <string name="remote_machine_binary_test_parameters_title">测试可执行文件参数 · %1$s</string>
     <string name="remote_machine_binary_test_arguments">参数（可选）</string>

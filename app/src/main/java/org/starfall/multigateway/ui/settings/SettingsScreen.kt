@@ -49,11 +49,14 @@ import org.starfall.multigateway.data.local.preferences.CodeBlockDisplayMode
 import org.starfall.multigateway.data.local.preferences.AppPreferences
 import org.starfall.multigateway.data.local.preferences.AppLanguage
 import org.starfall.multigateway.data.local.preferences.ScreenWakelockMode
+import org.starfall.multigateway.data.local.preferences.ToolCallStrategy
 import org.starfall.multigateway.R
 import androidx.compose.ui.res.stringResource
 import android.content.res.Resources
 import org.starfall.multigateway.data.local.preferences.DEFAULT_TOOL_ROUND_LIMIT
 import org.starfall.multigateway.data.local.preferences.MAX_TOOL_ROUND_LIMIT
+import org.starfall.multigateway.data.local.preferences.DEFAULT_TOOL_CALL_CONCURRENT_LIMIT
+import org.starfall.multigateway.data.local.preferences.MAX_TOOL_CALL_CONCURRENT_LIMIT
 import org.starfall.multigateway.data.service.JsonExportKind
 import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -110,6 +113,8 @@ fun SettingsScreen(
     onMessageFontFamilyChange: (MessageFontFamily) -> Unit = {},
     onToolRoundLimitEnabledChange: (Boolean) -> Unit = {},
     onToolRoundLimitChange: (Int) -> Unit = {},
+    onToolCallStrategyChange: (ToolCallStrategy) -> Unit = {},
+    onToolCallConcurrentLimitChange: (Int) -> Unit = {},
     onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit = {},
     onAppLanguageChange: (useSystem: Boolean, tag: String) -> Unit = { _, _ -> }
 ) {
@@ -208,6 +213,8 @@ fun SettingsScreen(
                             onTtsReadCodeBlocksChange = onTtsReadCodeBlocksChange,
                             onToolRoundLimitEnabledChange = onToolRoundLimitEnabledChange,
                             onToolRoundLimitChange = onToolRoundLimitChange,
+                            onToolCallStrategyChange = onToolCallStrategyChange,
+                            onToolCallConcurrentLimitChange = onToolCallConcurrentLimitChange,
                             onScreenWakelockModeChange = onScreenWakelockModeChange,
                             onAppLanguageChange = onAppLanguageChange
                         )
@@ -269,6 +276,8 @@ private fun AppSettingsView(
     onTtsReadCodeBlocksChange: (Boolean) -> Unit,
     onToolRoundLimitEnabledChange: (Boolean) -> Unit,
     onToolRoundLimitChange: (Int) -> Unit,
+    onToolCallStrategyChange: (ToolCallStrategy) -> Unit,
+    onToolCallConcurrentLimitChange: (Int) -> Unit,
     onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit,
     onAppLanguageChange: (Boolean, String) -> Unit
 ) {
@@ -300,6 +309,8 @@ private fun AppSettingsView(
                     onTtsReadCodeBlocksChange = onTtsReadCodeBlocksChange,
                     onToolRoundLimitEnabledChange = onToolRoundLimitEnabledChange,
                     onToolRoundLimitChange = onToolRoundLimitChange,
+                    onToolCallStrategyChange = onToolCallStrategyChange,
+                    onToolCallConcurrentLimitChange = onToolCallConcurrentLimitChange,
                     onScreenWakelockModeChange = onScreenWakelockModeChange,
                     onAppLanguageChange = onAppLanguageChange
                 )
@@ -430,6 +441,8 @@ fun PreferencesSettingsView(
     onTtsReadCodeBlocksChange: (Boolean) -> Unit = {},
     onToolRoundLimitEnabledChange: (Boolean) -> Unit = {},
     onToolRoundLimitChange: (Int) -> Unit = {},
+    onToolCallStrategyChange: (ToolCallStrategy) -> Unit = {},
+    onToolCallConcurrentLimitChange: (Int) -> Unit = {},
     onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit = {},
     onAppLanguageChange: (useSystem: Boolean, tag: String) -> Unit = { _, _ -> }
 ) {
@@ -504,6 +517,63 @@ fun PreferencesSettingsView(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 PreferenceToggle(stringResource(R.string.settings_auto_scroll), stringResource(R.string.settings_auto_scroll_description),
                     appPreferences.autoScroll, onAutoScrollChange)
+            }
+        }
+        item {
+            var strategyExpanded by remember { mutableStateOf(false) }
+            val strategyLabels = mapOf(
+                ToolCallStrategy.SEQUENTIAL to stringResource(R.string.tool_call_strategy_sequential),
+                ToolCallStrategy.PARALLEL to stringResource(R.string.tool_call_strategy_parallel)
+            )
+            SettingsSection(stringResource(R.string.tool_call_options)) {
+                ExposedDropdownMenuBox(strategyExpanded, { strategyExpanded = !strategyExpanded }) {
+                    SelectableOutlinedTextField(
+                        value = strategyLabels.getValue(appPreferences.toolCallStrategy),
+                        onValueChange = {}, readOnly = true,
+                        label = { Text(stringResource(R.string.tool_call_strategy)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(strategyExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor().testTag("tool-call-strategy")
+                    )
+                    Text(
+                        stringResource(R.string.tool_call_strategy_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    ExposedDropdownMenu(strategyExpanded, { strategyExpanded = false }) {
+                        strategyLabels.forEach { (strategy, label) ->
+                            DropdownMenuItem(text = { Text(label) }, onClick = {
+                                onToolCallStrategyChange(strategy)
+                                strategyExpanded = false
+                            })
+                        }
+                    }
+                }
+                if (appPreferences.toolCallStrategy == ToolCallStrategy.PARALLEL) {
+                    var limit by remember(appPreferences.toolCallConcurrentLimit) { mutableStateOf(appPreferences.toolCallConcurrentLimit.toString()) }
+                    val parsed = limit.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_CALL_CONCURRENT_LIMIT }
+                    Text(
+                        stringResource(R.string.tool_call_concurrent_limit_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    SelectableOutlinedTextField(
+                        value = limit,
+                        onValueChange = { text ->
+                            if (text.length <= 2 && text.all(Char::isDigit)) {
+                                limit = text
+                                text.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_CALL_CONCURRENT_LIMIT }?.let(onToolCallConcurrentLimitChange)
+                            }
+                        },
+                        label = { Text(stringResource(R.string.tool_call_concurrent_limit)) },
+                        supportingText = { Text(stringResource(
+                            if (parsed == null) R.string.tool_call_concurrent_limit_invalid else R.string.tool_call_concurrent_limit_default,
+                            if (parsed == null) MAX_TOOL_CALL_CONCURRENT_LIMIT else DEFAULT_TOOL_CALL_CONCURRENT_LIMIT
+                        )) },
+                        isError = parsed == null, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth().testTag("tool-call-concurrent-limit")
+                    )
+                }
             }
         }
         item {

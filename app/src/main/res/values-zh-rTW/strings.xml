@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="tool_call_strategy_description">選擇依序執行工具呼叫，或同時並行執行。</string>
+    <string name="tool_call_concurrent_limit_description">可同時執行的工具呼叫數量上限。</string>
+
     <!-- Binary test argument dialog -->
     <string name="remote_machine_binary_test_parameters_title">測試可執行檔參數 · %1$s</string>
     <string name="remote_machine_binary_test_arguments">參數（選填）</string>

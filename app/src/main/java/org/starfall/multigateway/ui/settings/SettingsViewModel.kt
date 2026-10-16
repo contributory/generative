@@ -4,6 +4,7 @@ import org.starfall.multigateway.data.local.preferences.WordWrapMode
 import org.starfall.multigateway.data.local.preferences.CodeBlockDisplayMode
 import org.starfall.multigateway.data.local.preferences.MessageFontFamily
 import org.starfall.multigateway.data.local.preferences.ScreenWakelockMode
+import org.starfall.multigateway.data.local.preferences.ToolCallStrategy
 import org.starfall.multigateway.data.model.SidebarOrganization
 import org.starfall.multigateway.data.repository.LocalWriteErrors
 import androidx.lifecycle.ViewModel
@@ -98,6 +99,12 @@ class SettingsViewModel(
     }
     fun setToolRoundLimit(value: Int) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setToolRoundLimit(value) }
+    }
+    fun setToolCallStrategy(value: ToolCallStrategy) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setToolCallStrategy(value) }
+    }
+    fun setToolCallConcurrentLimit(value: Int) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setToolCallConcurrentLimit(value) }
     }
     fun setScreenWakelockMode(value: ScreenWakelockMode) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setScreenWakelockMode(value) }

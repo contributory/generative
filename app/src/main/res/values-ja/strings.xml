@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="tool_call_strategy_description">ツール呼び出しを順番に実行するか、並行して実行するかを選択します。</string>
+    <string name="tool_call_concurrent_limit_description">同時に実行できるツール呼び出しの最大数です。</string>
+
     <!-- Binary test argument dialog -->
     <string name="remote_machine_binary_test_parameters_title">バイナリのテスト引数 · %1$s</string>
     <string name="remote_machine_binary_test_arguments">引数（省略可）</string>

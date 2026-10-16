@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="tool_call_strategy_description">도구 호출을 순차적으로 실행할지 동시에 실행할지 선택합니다.</string>
+    <string name="tool_call_concurrent_limit_description">동시에 실행할 수 있는 도구 호출의 최대 개수입니다.</string>
+
     <!-- Binary test argument dialog -->
     <string name="remote_machine_binary_test_parameters_title">바이너리 테스트 인수 · %1$s</string>
     <string name="remote_machine_binary_test_arguments">인수(선택 사항)</string>

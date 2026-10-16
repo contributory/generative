@@ -37,6 +37,14 @@ enum class CodeBlockDisplayMode(val value: String) {
     }
 }
 
+enum class ToolCallStrategy(val value: String) {
+    SEQUENTIAL("sequential"), PARALLEL("parallel");
+
+    companion object {
+        fun fromValue(value: String?) = entries.firstOrNull { it.value == value } ?: SEQUENTIAL
+    }
+}
+
 enum class ScreenWakelockMode(val value: String) {
     NONE("none"), ALL("all"), EXCEPT_TOOL_CALLS("except_tool_calls");
 
@@ -50,6 +58,8 @@ const val DEFAULT_MESSAGE_FONT_SIZE = 16
 const val DEFAULT_CODE_BLOCK_MAX_LINES = 15
 const val DEFAULT_TOOL_ROUND_LIMIT = 12
 const val MAX_TOOL_ROUND_LIMIT = 1000
+const val DEFAULT_TOOL_CALL_CONCURRENT_LIMIT = 2
+const val MAX_TOOL_CALL_CONCURRENT_LIMIT = 16
 
 data class AppPreferences(
     val sidebar: SidebarOrganization = SidebarOrganization(),
@@ -97,6 +107,8 @@ data class AppPreferences(
     val messageFontFamily: MessageFontFamily = MessageFontFamily.DEFAULT,
     val toolRoundLimitEnabled: Boolean = false,
     val toolRoundLimit: Int = DEFAULT_TOOL_ROUND_LIMIT,
+    val toolCallStrategy: ToolCallStrategy = ToolCallStrategy.SEQUENTIAL,
+    val toolCallConcurrentLimit: Int = DEFAULT_TOOL_CALL_CONCURRENT_LIMIT,
     val screenWakelockMode: ScreenWakelockMode = ScreenWakelockMode.EXCEPT_TOOL_CALLS
 ) {
     /** Size in sp used for chat text. sp already follows the system font scale. */
@@ -153,6 +165,8 @@ class AppPreferencesRepository(private val context: Context) {
         val MESSAGE_FONT_FAMILY = stringPreferencesKey("message_font_family")
         val TOOL_ROUND_LIMIT_ENABLED = booleanPreferencesKey("tool_round_limit_enabled")
         val TOOL_ROUND_LIMIT = intPreferencesKey("tool_round_limit")
+        val TOOL_CALL_STRATEGY = stringPreferencesKey("tool_call_strategy")
+        val TOOL_CALL_CONCURRENT_LIMIT = intPreferencesKey("tool_call_concurrent_limit")
         val SCREEN_WAKELOCK_MODE = stringPreferencesKey("screen_wakelock_mode")
     }
 
@@ -210,6 +224,8 @@ class AppPreferencesRepository(private val context: Context) {
                 messageFontFamily = MessageFontFamily.fromValue(preferences[PreferenceKeys.MESSAGE_FONT_FAMILY]),
                 toolRoundLimitEnabled = preferences[PreferenceKeys.TOOL_ROUND_LIMIT_ENABLED] ?: false,
                 toolRoundLimit = preferences[PreferenceKeys.TOOL_ROUND_LIMIT]?.coerceIn(1, MAX_TOOL_ROUND_LIMIT) ?: DEFAULT_TOOL_ROUND_LIMIT,
+                toolCallStrategy = ToolCallStrategy.fromValue(preferences[PreferenceKeys.TOOL_CALL_STRATEGY]),
+                toolCallConcurrentLimit = preferences[PreferenceKeys.TOOL_CALL_CONCURRENT_LIMIT]?.coerceIn(1, MAX_TOOL_CALL_CONCURRENT_LIMIT) ?: DEFAULT_TOOL_CALL_CONCURRENT_LIMIT,
                 screenWakelockMode = ScreenWakelockMode.fromValue(preferences[PreferenceKeys.SCREEN_WAKELOCK_MODE])
             )
         }
@@ -543,6 +559,19 @@ class AppPreferencesRepository(private val context: Context) {
         require(limit in 1..MAX_TOOL_ROUND_LIMIT)
         state.mutate({ it.copy(toolRoundLimit = limit) }) {
             context.dataStore.edit { it[PreferenceKeys.TOOL_ROUND_LIMIT] = limit }
+        }
+    }
+
+    suspend fun setToolCallStrategy(strategy: ToolCallStrategy) {
+        state.mutate({ it.copy(toolCallStrategy = strategy) }) {
+            context.dataStore.edit { it[PreferenceKeys.TOOL_CALL_STRATEGY] = strategy.value }
+        }
+    }
+
+    suspend fun setToolCallConcurrentLimit(limit: Int) {
+        require(limit in 1..MAX_TOOL_CALL_CONCURRENT_LIMIT)
+        state.mutate({ it.copy(toolCallConcurrentLimit = limit) }) {
+            context.dataStore.edit { it[PreferenceKeys.TOOL_CALL_CONCURRENT_LIMIT] = limit }
         }
     }
 
