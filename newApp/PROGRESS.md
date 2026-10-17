@@ -34,3 +34,11 @@ Only `newApp/` was edited; `app/` remains untouched as fallback/reference. Compi
 - [!] Build was not re-run successfully after the split because Gradle still references legacy source paths that are absent from the requested target structure; those out-of-structure files were not restored or modified.
 - [x] Group related shared models into `api/`, `auth/`, `generation/`, `language/`, and `provider/` subpackages; update the packages/imports in the target integration files and keep the tree aligned with `structure.md`.
 - Move `OAuthBrowserActivity` from `ui/auth/` to root `shared/ui/`, update its Kotlin package and auth-helper imports, and align the manifest and `OAuthBrowser` reference with the new location.
+
+## Settings / About screen
+
+- [x] Added `features/settings/about/screen/AboutScreen.kt` following `structure.md`; its Kotlin package is `org.starfall.multigateway.features.settings.about.screen`.
+- [x] Migrated About information, installed version/version code, GitHub source link, license details, and GitHub release checking/APK links from `app/` into the new feature.
+- [x] Added the small GitHub release API service used by the About screen under `data/service/GitHubReleaseService.kt`.
+- [!] `AboutScreen` is not wired into settings/navigation because `newApp/` does not yet contain the settings/navigation flow or the destination screens described by `structure.md`.
+- [!] `:newApp:compileDebugKotlin` remains blocked by existing rewrite-wide missing packages/types and stale imports in other files; this run did not provide a clean whole-module verification.

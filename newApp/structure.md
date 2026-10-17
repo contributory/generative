@@ -9,7 +9,7 @@
 ├── 📁 navigation/
 │   └── 📄 AppNavigation.kt
 ├── 📁 home/
-│   ├── 📁 chat-screen/
+│   ├── 📁 chat/screen/
 │   │   ├── 📄 ChatScreen.kt
 │   │   ├── 📄 ChatViewModel.kt
 │   │   ├── 📁 ChatAppbar/
@@ -20,58 +20,58 @@
 │   │   ├── 📄 InputArea.kt
 │   │   ├── 📄 MessageList.kt
 │   │   └── 📄 QuickActionsLink.kt
-│   ├── 📁 leftside-drawer/
+│   ├── 📁 leftside/drawer/
 │   │   ├── 📄 LeftSideDrawer.kt
 │   │   └── 📄 ConversationItem.kt
-│   ├── 📁 modelpicker-sheet/
+│   ├── 📁 modelpicker/sheet/
 │   │   └── 📄 ModelPickerSheet.kt
-│   └── 📁 quickactions-sheet/
+│   └── 📁 quickactions/sheet/
 │       └── 📄 QuickActionsSheet.kt
 ├── 📁 features/
 │   ├── 📁 defaultmodelsandtools/
-│   │   ├── 📁 defaultmodels-screen/
+│   │   ├── 📁 defaultmodels/screen/
 │   │   │   └── 📄 DefaultModelsScreen.kt
-│   │   ├── 📁 systemtools-screen/
+│   │   ├── 📁 systemtools/screen/
 │   │   │   └── 📄 SystemToolsScreen.kt
 │   │   └── 📁 shared/
 │   ├── 📁 providers/
-│   │   ├── 📁 providerlist-screen/
+│   │   ├── 📁 providerlist/screen/
 │   │   │   ├── 📄 ProviderListScreen.kt
 │   │   │   ├── 📄 ProviderCard.kt
 │   │   │   └── 📄 ProviderFolder.kt
-│   │   ├── 📁 providereditor-screen/
+│   │   ├── 📁 providereditor/screen/
 │   │   │   └── 📄 ProviderEditorScreen.kt
-│   │   ├── 📁 modeleditor-screen/
+│   │   ├── 📁 modeleditor/screen/
 │   │   │   └── 📄 ModelEditorScreen.kt
 │   │   └── 📁 shared/
 │   ├── 📁 mcp/
-│   │   ├── 📁 serverlist-screen/
+│   │   ├── 📁 serverlist/screen/
 │   │   │   └── 📄 ServerListScreen.kt
-│   │   ├── 📁 servereditor-screen/
+│   │   ├── 📁 servereditor/screen/
 │   │   │   └── 📄 ServerEditorScreen.kt
 │   │   └── 📁 shared/
 │   ├── 📁 speechservices/
-│   │   ├── 📁 speechservices-screen/
+│   │   ├── 📁 speechservices/screen/
 │   │   │   └── 📄 SpeechServicesScreen.kt
 │   │   └── 📁 shared/
 │   ├── 📁 remotemachines/
-│   │   ├── 📁 remotemachines-screen/
+│   │   ├── 📁 remotemachines/screen/
 │   │   │   └── 📄 RemoteMachinesScreen.kt
-│   │   ├── 📁 machinedetails-screen/
+│   │   ├── 📁 machinedetails/screen/
 │   │   │   └── 📄 MachineDetailsScreen.kt
 │   │   └── 📁 shared/
 │   ├── 📁 storage/
-│   │   ├── 📁 storage-screen/
+│   │   ├── 📁 storage/screen/
 │   │   │   └── 📄 StorageScreen.kt
 │   │   └── 📁 shared/
 │   └── 📁 settings/
-│       ├── 📁 appsettings-screen/
+│       ├── 📁 appsettings/screen/
 │       │   └── 📄 AppSettingsScreen.kt
-│       ├── 📁 icons-screen/
+│       ├── 📁 icons/screen/
 │       │   └── 📄 IconsScreen.kt
-│       ├── 📁 appdata-screen/
+│       ├── 📁 appdata/screen/
 │       │   └── 📄 AppDataScreen.kt
-│       ├── 📁 about-screen/
+│       ├── 📁 about/screen/
 │       │   └── 📄 AboutScreen.kt
 │       └── 📁 shared/
 │           └── 📄 MainAppbar.kt
@@ -171,9 +171,10 @@
 
 ## Rules
 
+- Keep each source file at 500 lines or fewer, counting every line including blank lines and comments. This is a soft limit, not a strict rule: a file may exceed 500 lines when splitting it would not provide a meaningful benefit or would create unnecessary fragmentation.
 - Only `Screen`, `BottomSheet`, `Dialog`, `SideDrawer`, and `Cover` always get dedicated view folders. Ordinary components stay as files inside their owning view unless their UI or logic becomes too long or complex to justify a component folder.
 - When a component gets its own folder, `ui.kt` is its main UI file and `logic.kt` is its main logic file. If either grows too long, split out additional files with descriptive names such as `ContextWindowMenuUi.kt` and `ContextWindowMenuLogic.kt`. Add only the files needed.
-- Folder names use one hyphen only before the type suffix: `chat-screen/`, `modelpicker-sheet/`, `leftside-drawer/`. Do not hyphenate words within the component name or repeat the type.
+- Folder paths separate the component name and its type with `/`, for example `chat/screen/`, `modelpicker/sheet/`, `leftside/drawer/`, and `about/screen/`. Each path segment maps to a valid Kotlin package identifier; do not use hyphens in Kotlin package names.
 - A file containing navigation or link-handling logic for opening another component uses the `Link` suffix (for example, `QuickActionsLink.kt`); the destination view keeps its own type suffix (for example, `QuickActionsSheet.kt`).
 - `feature/shared/` is for components shared inside that feature; root `shared/` is for cross-feature code. App-wide UI belongs in root `shared/`.
 - Provider UI belongs in `ui/providers/`; model API protocol adapters and catalog parsing belong in `integrations/modelapis/`. Account-provider OAuth adapters are kept under `integrations/modelapis/account/` for now. Kotlin package declarations use the valid identifier `integrations.modelapis`. Shared model packages use `shared.model.api`, `shared.model.auth`, `shared.model.generation`, `shared.model.language`, and `shared.model.provider`.
