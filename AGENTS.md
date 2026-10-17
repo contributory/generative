@@ -1,5 +1,7 @@
 # MultiGateway Structure
 
+> **Migration in progress:** the tree and rules below describe the target structure. The Kotlin sources have not been moved yet and still use the old layout (`home/chat_screen/`, `*_sheet/`, `features/*/screen/`, ...). Remove this note when the migration is finished.
+
 ```text
 📦 org.starfall.multigateway/
 ├── 📄 MainActivity.kt
@@ -9,237 +11,252 @@
 │   └── 📄 DefaultDataInitializer.kt
 ├── 📁 features/
 │   ├── 📁 about/
-│   │   ├── 📁 screen/
-│   │   │   └── 📄 AboutScreen.kt
-│   │   └── 📁 service/
-│   │       └── 📄 GitHubReleaseService.kt
+│   │   ├── 📁 logic/
+│   │   │   └── 📄 GitHubReleaseService.kt
+│   │   └── 📁 ui/
+│   │       └── 📄 AboutScreen.kt
 │   ├── 📁 appdata/
+│   │   ├── 📁 logic/
+│   │   │   └── 📄 JsonDataTransfer.kt
 │   │   ├── 📁 model/
 │   │   │   ├── 📄 JsonExportKind.kt
 │   │   │   └── 📄 ProvidersExport.kt
-│   │   ├── 📁 screen/
-│   │   │   └── 📄 AppDataScreen.kt
-│   │   └── 📁 service/
-│   │       └── 📄 JsonDataTransfer.kt
-│   ├── 📁 defaultmodelsandtools/
-│   │   ├── 📁 defaultmodels/
-│   │   │   └── 📁 screen/
-│   │   │       └── 📄 DefaultModelsScreen.kt
-│   │   ├── 📁 shared/
-│   │   │   ├── 📄 AgnesMedia.kt
-│   │   │   ├── 📄 ContentApiMedia.kt
-│   │   │   ├── 📄 ImageEditRequests.kt
-│   │   │   ├── 📄 ImageGenerationOptions.kt
-│   │   │   ├── 📄 ImageStreaming.kt
-│   │   │   ├── 📄 ImageToolSettingsScreen.kt
-│   │   │   ├── 📄 MediaInputReference.kt
-│   │   │   ├── 📄 ProfileMcpPermissions.kt
-│   │   │   ├── 📄 SystemMediaTools.kt
-│   │   │   ├── 📄 ToolControls.kt
-│   │   │   ├── 📄 ToolSwitch.kt
-│   │   │   ├── 📄 VideoGeneration.kt
-│   │   │   ├── 📄 VideoGenerationOptions.kt
-│   │   │   └── 📄 VideoRequests.kt
-│   │   └── 📁 systemtools/
-│   │       └── 📁 screen/
-│   │           └── 📄 SystemToolsScreen.kt
+│   │   └── 📁 ui/
+│   │       └── 📄 AppDataScreen.kt
+│   ├── 📁 defaults/
+│   │   ├── 📁 logic/
+│   │   │   └── 📄 ToolControls.kt
+│   │   └── 📁 ui/
+│   │       ├── 📄 DefaultModelsScreen.kt
+│   │       ├── 📄 ImageToolSettingsScreen.kt
+│   │       ├── 📄 ProfileMcpPermissions.kt
+│   │       ├── 📄 SystemToolsScreen.kt
+│   │       └── 📄 ToolSwitch.kt
 │   ├── 📁 icons/
-│   │   └── 📁 screen/
+│   │   └── 📁 ui/
 │   │       └── 📄 IconsScreen.kt
-│   ├── 📁 main/
-│   │   └── 📁 screen/
-│   │       └── 📄 FeaturesScreen.kt
-│   ├── 📁 mcp/
-│   │   ├── 📁 servereditor/
-│   │   │   └── 📁 screen/
-│   │   │       └── 📄 ServerEditorScreen.kt
-│   │   ├── 📁 serverlist/
-│   │   │   └── 📁 screen/
-│   │   │       └── 📄 ServerListScreen.kt
-│   │   └── 📁 shared/
-│   │       ├── 📄 McpConnectionSettings.kt
-│   │       ├── 📄 McpOAuthFields.kt
-│   │       ├── 📄 McpOAuthService.kt
-│   │       ├── 📄 McpOAuthTokenStore.kt
-│   │       ├── 📄 McpServerCard.kt
-│   │       ├── 📄 McpService.kt
-│   │       └── 📄 McpToolsTab.kt
-│   ├── 📁 providers/
-│   │   ├── 📁 fetchmodels/
-│   │   │   └── 📁 sheet/
-│   │   │       └── 📄 ProviderModelCatalogSheet.kt
-│   │   ├── 📁 modeleditor/
-│   │   │   └── 📁 screen/
-│   │   │       └── 📄 ModelEditorScreen.kt
-│   │   ├── 📁 providereditor/
-│   │   │   └── 📁 screen/
-│   │   │       └── 📄 ProviderEditorScreen.kt
-│   │   ├── 📁 providers/
-│   │   │   └── 📁 screen/
-│   │   │       ├── 📄 ProviderCard.kt
-│   │   │       ├── 📄 ProviderDragDrop.kt
-│   │   │       ├── 📄 ProviderDragLayout.kt
-│   │   │       ├── 📄 ProviderFolder.kt
-│   │   │       ├── 📄 ProviderGroupDialogs.kt
-│   │   │       ├── 📄 ProviderListParts.kt
-│   │   │       ├── 📄 ProviderRootItem.kt
-│   │   │       ├── 📄 ProviderScreenModels.kt
-│   │   │       ├── 📄 ProviderScreenTopBar.kt
-│   │   │       ├── 📄 ProviderSearch.kt
-│   │   │       └── 📄 ProvidersScreen.kt
-│   │   └── 📁 shared/
-│   │       ├── 📄 CatalogMetadataFormatting.kt
-│   │       ├── 📄 ConfigurationViewModel.kt
-│   │       ├── 📄 ModelConfigDialog.kt
-│   │       ├── 📄 ModelConnectionDialog.kt
-│   │       ├── 📄 ModelConnectionRemovals.kt
-│   │       ├── 📄 ModelConnectionTests.kt
-│   │       ├── 📄 OAuthAccountCard.kt
-│   │       ├── 📄 OAuthAuthorizations.kt
-│   │       ├── 📄 ProfileScreen.kt
-│   │       ├── 📄 ProviderApiKeysDialog.kt
-│   │       ├── 📄 ProviderApiKeysState.kt
-│   │       ├── 📄 ProviderConnectionFields.kt
-│   │       ├── 📄 ProviderHeadersDialog.kt
-│   │       ├── 📄 ProviderModelsPane.kt
-│   │       └── 📄 ProviderOAuthAccountsDialog.kt
-│   ├── 📁 remotemachines/
-│   │   ├── 📁 machinedetails/
-│   │   │   └── 📁 screen/
+│   ├── 📁 machines/
+│   │   ├── 📁 details/
+│   │   │   └── 📁 ui/
 │   │   │       ├── 📄 MachineDetailsScreen.kt
 │   │   │       ├── 📄 RemoteMachineSettings.kt
 │   │   │       └── 📄 RemoteTerminalScreen.kt
-│   │   ├── 📁 remotemachines/
-│   │   │   └── 📁 screen/
-│   │   │       ├── 📄 RemoteMachinesScreen.kt
-│   │   │       └── 📄 RemoteMachinesViewModel.kt
+│   │   ├── 📁 list/
+│   │   │   └── 📁 ui/
+│   │   │       └── 📄 RemoteMachinesScreen.kt
 │   │   └── 📁 shared/
-│   │       └── 📄 RemoteMachineComponents.kt
+│   │       ├── 📁 logic/
+│   │       │   └── 📄 RemoteMachinesViewModel.kt
+│   │       └── 📁 ui/
+│   │           ├── 📄 BinaryTestNotice.kt
+│   │           └── 📄 RemoteMachineComponents.kt
+│   ├── 📁 main/
+│   │   └── 📁 ui/
+│   │       └── 📄 FeaturesScreen.kt
+│   ├── 📁 mcp/
+│   │   ├── 📁 editor/
+│   │   │   └── 📁 ui/
+│   │   │       └── 📄 ServerEditorScreen.kt
+│   │   ├── 📁 list/
+│   │   │   └── 📁 ui/
+│   │   │       └── 📄 ServerListScreen.kt
+│   │   └── 📁 shared/
+│   │       └── 📁 ui/
+│   │           ├── 📄 McpConnectionSettings.kt
+│   │           ├── 📄 McpOAuthFields.kt
+│   │           ├── 📄 McpServerCard.kt
+│   │           └── 📄 McpToolsTab.kt
+│   ├── 📁 providers/
+│   │   ├── 📁 editor/
+│   │   │   └── 📁 ui/
+│   │   │       ├── 📄 ModelEditorScreen.kt
+│   │   │       ├── 📄 ProviderEditorScreen.kt
+│   │   │       └── 📄 ProviderModelCatalogSheet.kt
+│   │   ├── 📁 list/
+│   │   │   ├── 📁 logic/
+│   │   │   │   ├── 📄 ProviderDragLayout.kt
+│   │   │   │   ├── 📄 ProviderRootItem.kt
+│   │   │   │   └── 📄 ProviderSearch.kt
+│   │   │   ├── 📁 model/
+│   │   │   │   └── 📄 ProviderScreenModels.kt
+│   │   │   └── 📁 ui/
+│   │   │       ├── 📄 ProviderCard.kt
+│   │   │       ├── 📄 ProviderDragDrop.kt
+│   │   │       ├── 📄 ProviderFolder.kt
+│   │   │       ├── 📄 ProviderGroupDialogs.kt
+│   │   │       ├── 📄 ProviderListParts.kt
+│   │   │       ├── 📄 ProviderScreenTopBar.kt
+│   │   │       └── 📄 ProvidersScreen.kt
+│   │   └── 📁 shared/
+│   │       ├── 📁 logic/
+│   │       │   ├── 📄 CatalogMetadataFormatting.kt
+│   │       │   ├── 📄 ConfigurationViewModel.kt
+│   │       │   ├── 📄 IntSizeExtensions.kt
+│   │       │   ├── 📄 ModelConnectionRemovals.kt
+│   │       │   ├── 📄 ModelConnectionTests.kt
+│   │       │   └── 📄 OAuthAuthorizations.kt
+│   │       ├── 📁 model/
+│   │       │   └── 📄 ProviderApiKeysState.kt
+│   │       └── 📁 ui/
+│   │           ├── 📄 ModelConfigDialog.kt
+│   │           ├── 📄 ModelConnectionDialog.kt
+│   │           ├── 📄 OAuthAccountCard.kt
+│   │           ├── 📄 ProfileScreen.kt
+│   │           ├── 📄 ProviderApiKeysDialog.kt
+│   │           ├── 📄 ProviderConnectionFields.kt
+│   │           ├── 📄 ProviderHeadersDialog.kt
+│   │           ├── 📄 ProviderModelsPane.kt
+│   │           └── 📄 ProviderOAuthAccountsDialog.kt
 │   ├── 📁 settings/
-│   │   ├── 📁 appsettings/
-│   │   │   └── 📁 screen/
-│   │   │       ├── 📄 AppSettingsScreen.kt
-│   │   │       ├── 📄 CodeRenderingPreferences.kt
-│   │   │       └── 📄 SettingsViewModel.kt
-│   │   └── 📁 shared/
-│   │       ├── 📄 MainAppbar.kt
-│   │       └── 📄 SettingsComponents.kt
-│   ├── 📁 speechservices/
-│   │   └── 📁 speechservices/
-│   │       └── 📁 screen/
-│   │           └── 📄 SpeechServicesScreen.kt
+│   │   ├── 📁 logic/
+│   │   │   └── 📄 SettingsViewModel.kt
+│   │   └── 📁 ui/
+│   │       ├── 📄 AppSettingsScreen.kt
+│   │       └── 📄 CodeRenderingPreferences.kt
+│   ├── 📁 speech/
+│   │   └── 📁 ui/
+│   │       └── 📄 SpeechServicesScreen.kt
 │   └── 📁 storage/
-│       └── 📁 storage/
-│           └── 📁 screen/
-│               └── 📄 StorageScreen.kt
+│       └── 📁 ui/
+│           └── 📄 StorageScreen.kt
 ├── 📁 home/
 │   ├── 📁 chat/
-│   │   ├── 📄 ChatBackgroundService.kt
-│   │   └── 📁 screen/
+│   │   ├── 📁 logic/
+│   │   │   ├── 📄 ChatGeneration.kt
+│   │   │   ├── 📄 ChatSpeechCoordinator.kt
+│   │   │   ├── 📄 ChatViewModel.kt
+│   │   │   ├── 📄 ConversationSummaryCoordinator.kt
+│   │   │   ├── 📄 SendFileTool.kt
+│   │   │   ├── 📄 UserMessageRetry.kt
+│   │   │   ├── 📁 input/
+│   │   │   │   └── 📄 ChatInputAreaViewModel.kt
+│   │   │   ├── 📁 markdown/
+│   │   │   │   ├── 📄 LatexDetector.kt
+│   │   │   │   ├── 📄 MarkdownLibrary.kt
+│   │   │   │   └── 📄 MathSplitter.kt
+│   │   │   └── 📁 tool/
+│   │   │       ├── 📄 ToolAttachmentsViewModel.kt
+│   │   │       ├── 📄 ToolChatViewModel.kt
+│   │   │       └── 📄 ToolResultsViewModel.kt
+│   │   └── 📁 ui/
 │   │       ├── 📄 AssistantMessageCard.kt
 │   │       ├── 📄 AttachmentPreview.kt
+│   │       ├── 📄 BottomSheetsLink.kt
 │   │       ├── 📄 ChatAppbar.kt
-│   │       ├── 📄 ChatContextSheets.kt
-│   │       ├── 📄 ChatGeneration.kt
 │   │       ├── 📄 ChatOpeningVeil.kt
 │   │       ├── 📄 ChatRenderCaches.kt
 │   │       ├── 📄 ChatScreen.kt
-│   │       ├── 📄 ChatSpeechCoordinator.kt
-│   │       ├── 📄 ChatViewModel.kt
-│   │       ├── 📄 CodeSyntaxHighlighting.kt
-│   │       ├── 📄 ConversationSummaryCoordinator.kt
 │   │       ├── 📄 ConversationSummaryUi.kt
-│   │       ├── 📄 FilesActionSheet.kt
 │   │       ├── 📄 GlyphSelectionGate.kt
-│   │       ├── 📄 InputArea.kt
-│   │       ├── 📄 InputBar.kt
-│   │       ├── 📄 LatexDetector.kt
-│   │       ├── 📄 LatexFormulaRenderer.kt
-│   │       ├── 📄 LazyCodeBlock.kt
 │   │       ├── 📄 LiveThinkingBlock.kt
-│   │       ├── 📄 MarkdownCodeBlock.kt
-│   │       ├── 📄 MarkdownInlineText.kt
-│   │       ├── 📄 MarkdownLatexBlock.kt
-│   │       ├── 📄 MarkdownLibrary.kt
-│   │       ├── 📄 MarkdownMathParagraph.kt
-│   │       ├── 📄 MarkdownRenderer.kt
-│   │       ├── 📄 MarkdownTable.kt
-│   │       ├── 📄 MathSplitter.kt
 │   │       ├── 📄 MessageBubble.kt
-│   │       ├── 📄 QuickActionsLink.kt
 │   │       ├── 📄 ReasoningDropdown.kt
-│   │       ├── 📄 ReasoningEffortControl.kt
-│   │       ├── 📄 RemoteMachinesSheet.kt
-│   │       ├── 📄 SendFileTool.kt
 │   │       ├── 📄 StreamingTextFade.kt
-│   │       ├── 📄 ThinkingColorBurst.kt
-│   │       ├── 📄 ToolActivityCards.kt
-│   │       ├── 📄 ToolAttachments.kt
-│   │       ├── 📄 ToolChat.kt
-│   │       ├── 📄 ToolResults.kt
 │   │       ├── 📄 UserMessageCard.kt
-│   │       └── 📄 UserMessageRetry.kt
-│   ├── 📁 leftside/
-│   │   └── 📁 drawer/
+│   │       ├── 📁 input/
+│   │       │   ├── 📄 ChatInputAreaUi.kt
+│   │       │   └── 📄 InputBar.kt
+│   │       ├── 📁 markdown/
+│   │       │   ├── 📄 LatexFormulaRenderer.kt
+│   │       │   ├── 📄 LazyCodeBlock.kt
+│   │       │   ├── 📄 MarkdownCodeBlock.kt
+│   │       │   ├── 📄 MarkdownInlineText.kt
+│   │       │   ├── 📄 MarkdownLatexBlock.kt
+│   │       │   ├── 📄 MarkdownMathParagraph.kt
+│   │       │   ├── 📄 MarkdownRenderer.kt
+│   │       │   └── 📄 MarkdownTable.kt
+│   │       └── 📁 tool/
+│   │           └── 📄 ToolActivityCards.kt
+│   ├── 📁 drawer/
+│   │   ├── 📁 logic/
+│   │   │   └── 📄 ConversationModelIcon.kt
+│   │   └── 📁 ui/
 │   │       ├── 📄 ConversationItem.kt
-│   │       ├── 📄 ConversationModelIcon.kt
 │   │       ├── 📄 LeftSideDrawer.kt
 │   │       └── 📄 PromptLibraryDialog.kt
-│   ├── 📁 modelpicker/
-│   │   └── 📁 sheet/
-│   │       └── 📄 ModelPickerSheet.kt
-│   └── 📁 quickactions/
-│       └── 📁 sheet/
-│           └── 📄 QuickActionsSheet.kt
+│   ├── 📁 shared/
+│   │   ├── 📁 logic/
+│   │   │   ├── 📄 ChatBackgroundService.kt
+│   │   │   ├── 📄 ToolExecutionService.kt
+│   │   │   ├── 📄 ToolMediaGenerationService.kt
+│   │   │   ├── 📄 ToolRequestService.kt
+│   │   │   └── 📄 ToolSheetState.kt
+│   │   └── 📁 ui/
+│   │       ├── 📄 ReasoningEffortControl.kt
+│   │       └── 📄 ThinkingColorBurst.kt
+│   └── 📁 sheets/
+│       └── 📁 ui/
+│           ├── 📄 ConversationSummaryBottomSheet.kt
+│           ├── 📄 QuickActionsBottomSheet.kt
+│           ├── 📄 ReasoningEffortBottomSheet.kt
+│           ├── 📄 RemoteMachinesBottomSheet.kt
+│           ├── 📄 SelectedModelOverviewBottomSheet.kt
+│           ├── 📄 ToolDetailsBottomSheet.kt
+│           └── 📄 ToolsManageBottomSheet.kt
 ├── 📁 integrations/
-│   ├── 📁 remote/
-│   │   ├── 📄 AndroidEdDSA.kt
-│   │   ├── 📄 CloudShellApi.kt
-│   │   ├── 📄 ExecutableBinaryStore.kt
-│   │   ├── 📄 RemoteBinarySupport.kt
-│   │   ├── 📄 RemoteMachineService.kt
-│   │   ├── 📄 RemoteMachineStore.kt
-│   │   ├── 📄 RemoteTerminal.kt
-│   │   ├── 📄 RemoteTerminalBridge.kt
-│   │   ├── 📄 SshConfigParser.kt
-│   │   └── 📄 SshConnectionSupport.kt
-│   └── 📁 modelapis/
-│       ├── 📄 AiService.kt
-│       ├── 📄 ModelApiAdapter.kt
-│       ├── 📄 ModelApiAdapterRegistry.kt
-│       ├── 📄 ModelCatalogAdapter.kt
-│       ├── 📄 ModelCatalogMetadata.kt
-│       ├── 📁 account/
-│       │   ├── 📄 AccountProviderAdapter.kt
-│       │   ├── 📄 AccountProviderAdapterRegistry.kt
-│       │   ├── 📄 AccountTokenResponse.kt
-│       │   ├── 📄 AccountTokenStore.kt
-│       │   └── 📄 OAuthAccountAdapter.kt
-│       ├── 📁 anthropic/
-│       │   └── 📄 AnthropicMessagesAdapter.kt
-│       ├── 📁 antigravity/
-│       │   ├── 📄 AntigravityAdapter.kt
-│       │   └── 📄 AntigravityModels.kt
-│       ├── 📁 claudecode/
-│       │   └── 📄 ClaudeCodeAdapter.kt
-│       ├── 📁 gemini/
-│       │   └── 📄 GeminiAdapter.kt
-│       ├── 📁 githubcopilot/
-│       │   └── 📄 GitHubCopilotAdapter.kt
-│       ├── 📁 ollama/
-│       │   ├── 📄 OllamaAdapter.kt
-│       │   └── 📄 OllamaModelCache.kt
-│       ├── 📁 openai/
-│       │   └── 📄 OpenAIChatCompletionsAdapter.kt
-│       ├── 📁 openaicodex/
-│       │   ├── 📄 CodexTokenParser.kt
-│       │   ├── 📄 CodexTokenStore.kt
-│       │   └── 📄 OpenAICodexAdapter.kt
-│       ├── 📁 openairesponses/
-│       │   └── 📄 OpenAIResponsesAdapter.kt
-│       └── 📁 sdk/
-│           ├── 📄 OfficialProviderSdk.kt
-│           └── 📄 SdkAttachmentContent.kt
+│   ├── 📁 mcp/
+│   │   ├── 📄 McpOAuthService.kt
+│   │   ├── 📄 McpOAuthTokenStore.kt
+│   │   └── 📄 McpService.kt
+│   ├── 📁 media/
+│   │   ├── 📄 AgnesMedia.kt
+│   │   ├── 📄 ContentApiMedia.kt
+│   │   ├── 📄 ImageEditRequests.kt
+│   │   ├── 📄 ImageGenerationOptions.kt
+│   │   ├── 📄 ImageStreaming.kt
+│   │   ├── 📄 MediaInputReference.kt
+│   │   ├── 📄 SystemMediaTools.kt
+│   │   ├── 📄 VideoGeneration.kt
+│   │   ├── 📄 VideoGenerationOptions.kt
+│   │   └── 📄 VideoRequests.kt
+│   ├── 📁 modelapis/
+│   │   ├── 📄 AiService.kt
+│   │   ├── 📄 ModelApiAdapter.kt
+│   │   ├── 📄 ModelApiAdapterRegistry.kt
+│   │   ├── 📄 ModelCatalogAdapter.kt
+│   │   ├── 📄 ModelCatalogMetadata.kt
+│   │   ├── 📁 account/
+│   │   │   ├── 📄 AccountProviderAdapter.kt
+│   │   │   ├── 📄 AccountProviderAdapterRegistry.kt
+│   │   │   ├── 📄 AccountTokenResponse.kt
+│   │   │   ├── 📄 AccountTokenStore.kt
+│   │   │   └── 📄 OAuthAccountAdapter.kt
+│   │   ├── 📁 anthropic/
+│   │   │   └── 📄 AnthropicMessagesAdapter.kt
+│   │   ├── 📁 antigravity/
+│   │   │   ├── 📄 AntigravityAdapter.kt
+│   │   │   └── 📄 AntigravityModels.kt
+│   │   ├── 📁 claudecode/
+│   │   │   └── 📄 ClaudeCodeAdapter.kt
+│   │   ├── 📁 gemini/
+│   │   │   └── 📄 GeminiAdapter.kt
+│   │   ├── 📁 githubcopilot/
+│   │   │   └── 📄 GitHubCopilotAdapter.kt
+│   │   ├── 📁 ollama/
+│   │   │   ├── 📄 OllamaAdapter.kt
+│   │   │   └── 📄 OllamaModelCache.kt
+│   │   ├── 📁 openai/
+│   │   │   └── 📄 OpenAIChatCompletionsAdapter.kt
+│   │   ├── 📁 openaicodex/
+│   │   │   ├── 📄 CodexTokenParser.kt
+│   │   │   ├── 📄 CodexTokenStore.kt
+│   │   │   └── 📄 OpenAICodexAdapter.kt
+│   │   ├── 📁 openairesponses/
+│   │   │   └── 📄 OpenAIResponsesAdapter.kt
+│   │   └── 📁 sdk/
+│   │       ├── 📄 OfficialProviderSdk.kt
+│   │       └── 📄 SdkAttachmentContent.kt
+│   └── 📁 remote/
+│       ├── 📄 AndroidEdDSA.kt
+│       ├── 📄 CloudShellApi.kt
+│       ├── 📄 ExecutableBinaryStore.kt
+│       ├── 📄 RemoteBinarySupport.kt
+│       ├── 📄 RemoteMachineService.kt
+│       ├── 📄 RemoteMachineStore.kt
+│       ├── 📄 RemoteTerminal.kt
+│       ├── 📄 RemoteTerminalBridge.kt
+│       ├── 📄 SshConfigParser.kt
+│       └── 📄 SshConnectionSupport.kt
 ├── 📁 navigation/
 │   └── 📄 AppNavigation.kt
 ├── 📁 preview/
@@ -253,6 +270,8 @@
     │   ├── 📄 OAuthCallbackService.kt
     │   ├── 📄 OAuthLoopbackCompatibility.kt
     │   └── 📄 StandardAppAuthAuthorization.kt
+    ├── 📁 code/
+    │   └── 📄 CodeSyntaxHighlighting.kt
     ├── 📁 files/
     │   ├── 📄 AttachmentResolver.kt
     │   ├── 📄 CrashReports.kt
@@ -347,6 +366,8 @@
         │   ├── 📄 AppAuthResultActivity.kt
         │   ├── 📄 OAuthBrowserActivity.kt
         │   └── 📄 OAuthNotificationPermission.kt
+        ├── 📁 code/
+        │   └── 📄 CodeBlockSurface.kt
         ├── 📁 dialogs/
         │   ├── 📄 AppDialogs.kt
         │   ├── 📄 CrashReportDialog.kt
@@ -358,7 +379,9 @@
         ├── 📁 layout/
         │   ├── 📄 AdaptiveCardLayout.kt
         │   ├── 📄 AmoledBorder.kt
+        │   ├── 📄 MainAppbar.kt
         │   ├── 📄 ResponsiveLayout.kt
+        │   ├── 📄 SettingsComponents.kt
         │   └── 📄 SlideScreenContent.kt
         ├── 📁 lists/
         │   ├── 📄 FadeGridListContent.kt
@@ -366,12 +389,17 @@
         ├── 📁 media/
         │   ├── 📄 ChatAttachmentSelection.kt
         │   ├── 📄 ChatFilePreview.kt
+        │   ├── 📄 MediaFileCard.kt
         │   ├── 📄 MediaPlaybackState.kt
         │   ├── 📄 MediaPreview.kt
+        │   ├── 📄 MediaViewer.kt
         │   └── 📄 MediaViewerToolbar.kt
         ├── 📁 menus/
         │   ├── 📄 ItemOverflowMenu.kt
         │   └── 📄 RoundedDropdownMenuItem.kt
+        ├── 📁 model/
+        │   ├── 📄 ModelInitial.kt
+        │   └── 📄 ModelPickerBottomSheet.kt
         ├── 📁 sheets/
         │   ├── 📄 AppBottomSheet.kt
         │   └── 📄 BottomSheetHeight.kt
@@ -392,8 +420,54 @@
 
 - Keep each source file at 500 lines or fewer, counting every line including blank lines and comments. This is a soft limit, not a strict rule: a file may exceed 500 lines when splitting it would not provide a meaningful benefit or would create unnecessary fragmentation.
 
+### Layers
+
+- Dependency direction: `shared` ← `integrations` ← `features` and `home` ← `navigation` ← `appwiring`. A layer may import only the layers to its left.
+- `shared/` and `integrations/` never import `features/` or `home/`.
+- `features/` and `home/` never import each other, and a feature never imports another feature. Code needed by both moves down to `shared/` (UI, models) or `integrations/` (non-UI services, API clients).
+- Moving between screens goes through callbacks wired in `navigation/AppNavigation.kt`, never through a direct import of another screen.
+
+### features/
+
+- Every folder directly under `features/` except `main/` matches exactly one entry in `FeaturesScreen`; `main/` is that screen itself. Folder names are short, lowercase, a single word, with no underscores.
+
+| FeaturesScreen entry | Folder |
+| --- | --- |
+| Default models & tools | `defaults/` |
+| Providers | `providers/` |
+| MCP | `mcp/` |
+| Speech services | `speech/` |
+| Remote machines | `machines/` |
+| Storage | `storage/` |
+| App settings | `settings/` |
+| Icons | `icons/` |
+| App data | `appdata/` |
+| About | `about/` |
+
+- A feature has either flat `ui/`, `logic/`, `model/` folders, or sub-features (for example `list/`, `editor/`, `details/`), each with its own `ui/`, `logic/`, `model/`, plus a `shared/` folder.
+- Sub-features never import each other. Code used by more than one sub-feature goes in that feature's `shared/`.
+- Do not repeat the feature name as a nested folder (no `storage/storage/`).
+
+### home/
+
+- `home/` is the chat screen only. It is split into `chat/` (messages, input, markdown, tool UI), `drawer/`, `sheets/` (chat bottom sheets) and `shared/` (code used by more than one of them).
+- The same rules as sub-features apply: `chat/`, `drawer/` and `sheets/` never import each other; common code goes in `home/shared/`.
+
+### ui/, logic/, model/
+
+| Folder | Contains | Rule |
+| --- | --- | --- |
+| `ui/` | Screens, sheets, dialogs, cards | Composable code only. Imports `logic/` and `model/` of the same feature. |
+| `logic/` | ViewModels, coordinators, services, parsers | No `@Composable` and no `androidx.compose.material3` import. |
+| `model/` | Data classes, enums, UI state | Never imports `ui/` or `logic/`. |
+
+- Direction inside a feature: `ui` → `logic` → `model`. Never the other way.
+- Sub-folders of `ui/` and `logic/` mirror each other (`chat/ui/markdown/` ↔ `chat/logic/markdown/`).
+- If a `logic/` folder grows past about 10 files, split it into `viewmodel/` and `service/`.
+- `shared/ui/` holds reusable UI; the other `shared/` and `integrations/` folders are named by role (`storage`, `networking`, `modelapis`...) and have no `ui/`/`logic/` split.
+
 ## Main feature
 
-- `features/main/screen/FeaturesScreen.kt` is the untitled feature directory; its header displays the appropriate light/dark app logo.
+- `features/main/ui/FeaturesScreen.kt` is the untitled feature directory; its header displays the appropriate light/dark app logo.
 
 - Theme-specific feature header assets are `drawable-nodpi/multigateway_logo_light.png` and `drawable-nodpi/multigateway_logo_dark.png`.
