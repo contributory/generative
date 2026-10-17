@@ -710,6 +710,12 @@ fun ProviderScreen(
                         },
                         actions = {
                             if (openGroup != null && !searching) {
+                                IconButton(
+                                    onClick = { createProvider(openGroup.id) },
+                                    modifier = Modifier.testTag("add_provider")
+                                ) {
+                                    FluentIcon(Icons.Default.Add, stringResource(R.string.add_provider))
+                                }
                                 IconButton(onClick = { onToggleGridView?.invoke(!isGridView) }) {
                                     FluentIcon(
                                         imageVector = if (isGridView) Icons.Default.List else Icons.Default.GridView,
@@ -717,12 +723,6 @@ fun ProviderScreen(
                                             if (isGridView) R.string.switch_to_list_view else R.string.switch_to_grid_view
                                         )
                                     )
-                                }
-                                IconButton(
-                                    onClick = { createProvider(openGroup.id) },
-                                    modifier = Modifier.testTag("add_provider")
-                                ) {
-                                    FluentIcon(Icons.Default.Add, stringResource(R.string.add_provider))
                                 }
                                 ProviderGroupOverflowMenu(
                                     onEdit = { groupToRename = openGroup },
