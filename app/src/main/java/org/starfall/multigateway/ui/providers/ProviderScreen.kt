@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.fadeIn
@@ -630,7 +631,9 @@ fun ProviderScreen(
         } else {
             Scaffold(
                 topBar = {
-                    TopAppBar(
+                    Crossfade(targetState = openGroup?.id, label = "provider_app_bar") { targetGroupId ->
+                        val appBarGroup = sortedGroups.firstOrNull { it.id == targetGroupId }
+                        TopAppBar(
                         title = {
                             if (searching) {
                                 LaunchedEffect(Unit) { searchFocus.requestFocus() }
@@ -674,14 +677,14 @@ fun ProviderScreen(
                                         unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
                                     )
                                 )
-                            } else if (openGroup != null) {
-                                val members = orderedProviders.filter { it.groupId == openGroup.id }
+                            } else if (appBarGroup != null) {
+                                val members = orderedProviders.filter { it.groupId == appBarGroup.id }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    ProviderFolderPreview(group = openGroup, providers = members, modifier = Modifier.size(40.dp))
+                                    ProviderFolderPreview(group = appBarGroup, providers = members, modifier = Modifier.size(40.dp))
                                     Spacer(Modifier.width(12.dp))
                                     Column {
                                         Text(
-                                            text = openGroup.name,
+                                            text = appBarGroup.name,
                                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
@@ -710,14 +713,14 @@ fun ProviderScreen(
                             }
                         },
                         navigationIcon = {
-                            if (openGroup == null || searching) IconButton(onClick = onBack) {
+                            if (appBarGroup == null || searching) IconButton(onClick = onBack) {
                                 FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                             }
                         },
                         actions = {
-                            if (openGroup != null && !searching) {
+                            if (appBarGroup != null && !searching) {
                                 IconButton(
-                                    onClick = { createProvider(openGroup.id) },
+                                    onClick = { createProvider(appBarGroup.id) },
                                     modifier = Modifier.testTag("add_provider")
                                 ) {
                                     FluentIcon(Icons.Default.Add, stringResource(R.string.add_provider))
@@ -731,8 +734,8 @@ fun ProviderScreen(
                                     )
                                 }
                                 ProviderGroupOverflowMenu(
-                                    onEdit = { groupToRename = openGroup },
-                                    onDelete = { deletingGroup = openGroup; openGroupId = null },
+                                    onEdit = { groupToRename = appBarGroup },
+                                    onDelete = { deletingGroup = appBarGroup; openGroupId = null },
                                     compact = false
                                 )
                                 IconButton(onClick = { openGroupId = null }) {
@@ -765,7 +768,8 @@ fun ProviderScreen(
                                 }
                             }
                         }
-                    )
+                        )
+                    }
                 }
             ) { padding ->
                 Box(
