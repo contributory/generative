@@ -579,28 +579,18 @@ fun AppNavigation(
                          )
                      }
                     composable(AppDestination.SETTINGS.route) {
-                        Scaffold(
-                            topBar = {
-                                MainAppbar(
-                                    title = stringResource(R.string.settings_general),
-                                    onBack = { navController.popBackStack() }
-                                )
-                            }
-                        ) { padding ->
-                            FeaturesScreen(
-                                modifier = Modifier.padding(padding),
-                                onNavigateToDefaultModels = { openConfiguration(AppDestination.SYSTEM_TOOLS) },
-                                onNavigateToProviders = { openConfiguration(AppDestination.PROVIDERS) },
-                                onNavigateToMcp = { openConfiguration(AppDestination.MCP) },
-                                onNavigateToSpeech = { openConfiguration(AppDestination.SPEECH) },
-                                onNavigateToRemoteMachines = { openConfiguration(AppDestination.REMOTE_MACHINES) },
-                                onNavigateToStorage = { openConfiguration(AppDestination.STORAGE) },
-                                onNavigateToAppSettings = { openConfiguration(AppDestination.APP_SETTINGS) },
-                                onNavigateToIcons = { openConfiguration(AppDestination.ICONS) },
-                                onNavigateToAppData = { openConfiguration(AppDestination.APP_DATA) },
-                                onNavigateToAbout = { openConfiguration(AppDestination.ABOUT) }
-                            )
-                        }
+                        FeaturesScreen(
+                            onNavigateToDefaultModels = { openConfiguration(AppDestination.SYSTEM_TOOLS) },
+                            onNavigateToProviders = { openConfiguration(AppDestination.PROVIDERS) },
+                            onNavigateToMcp = { openConfiguration(AppDestination.MCP) },
+                            onNavigateToSpeech = { openConfiguration(AppDestination.SPEECH) },
+                            onNavigateToRemoteMachines = { openConfiguration(AppDestination.REMOTE_MACHINES) },
+                            onNavigateToStorage = { openConfiguration(AppDestination.STORAGE) },
+                            onNavigateToAppSettings = { openConfiguration(AppDestination.APP_SETTINGS) },
+                            onNavigateToIcons = { openConfiguration(AppDestination.ICONS) },
+                            onNavigateToAppData = { openConfiguration(AppDestination.APP_DATA) },
+                            onNavigateToAbout = { openConfiguration(AppDestination.ABOUT) }
+                        )
                     }
 
                     composable(AppDestination.APP_SETTINGS.route) {

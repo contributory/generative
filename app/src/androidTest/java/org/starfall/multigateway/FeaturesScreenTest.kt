@@ -27,11 +27,11 @@ import org.starfall.multigateway.shared.storage.preferences.AppPreferences
 import org.starfall.multigateway.navigation.AppNavigation
 import org.starfall.multigateway.home.chat_screen.ChatAppBar
 
-class GeneralSettingsTest {
+class FeaturesScreenTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     /** Mirrors the AppNavigation settings destinations: Features landing plus App Settings / About pages. */
-    private fun showSettings(destinations: MutableList<String> = mutableListOf(), autoScroll: (Boolean) -> Unit = {}) {
+    private fun showFeatures(destinations: MutableList<String> = mutableListOf(), autoScroll: (Boolean) -> Unit = {}) {
         compose.setContent {
             MaterialTheme {
                 var page by remember { mutableStateOf("features") }
@@ -78,25 +78,15 @@ class GeneralSettingsTest {
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
-                    else -> Scaffold(
-                        topBar = {
-                            MainAppbar(
-                                title = stringResource(R.string.settings_general),
-                                onBack = { destinations.add("Back") }
-                            )
-                        }
-                    ) { padding ->
-                        FeaturesScreen(
-                            modifier = Modifier.padding(padding),
-                            onNavigateToDefaultModels = { destinations.add("Default Models") },
-                            onNavigateToProviders = { destinations.add("Providers") },
-                            onNavigateToMcp = { destinations.add("MCP Manage") },
-                            onNavigateToSpeech = { destinations.add("Speech Services") },
-                            onNavigateToStorage = { destinations.add("Storage") },
-                            onNavigateToAppSettings = { page = "AppSettings" },
-                            onNavigateToAbout = { page = "About" }
-                        )
-                    }
+                    else -> FeaturesScreen(
+                        onNavigateToDefaultModels = { destinations.add("Default Models") },
+                        onNavigateToProviders = { destinations.add("Providers") },
+                        onNavigateToMcp = { destinations.add("MCP Manage") },
+                        onNavigateToSpeech = { destinations.add("Speech Services") },
+                        onNavigateToStorage = { destinations.add("Storage") },
+                        onNavigateToAppSettings = { page = "AppSettings" },
+                        onNavigateToAbout = { page = "About" }
+                    )
                 }
             }
         }
@@ -106,10 +96,9 @@ class GeneralSettingsTest {
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
     }
 
-    @Test fun unifiedSettingsRoutesEveryConfigurationItem() {
+    @Test fun featuresLandingRoutesEveryConfigurationItem() {
         val destinations = mutableListOf<String>()
-        showSettings(destinations)
-        compose.onNodeWithText("General Settings").assertIsDisplayed()
+        showFeatures(destinations)
         compose.onNodeWithText("Configuration").assertIsDisplayed()
         val items = listOf("Default & Tools", "Providers", "MCP Manage", "Speech Services", "Storage")
         items.forEach { scrollListTo(it); compose.onNodeWithText(it).performClick() }
@@ -118,9 +107,9 @@ class GeneralSettingsTest {
         compose.runOnIdle { assertEquals(expected, destinations) }
     }
 
-    @Test fun aboutContainsUpdatesAndBackReturnsToGeneralSettings() {
+    @Test fun aboutContainsUpdatesAndBackReturnsToFeatures() {
         val destinations = mutableListOf<String>()
-        showSettings(destinations)
+        showFeatures(destinations)
         compose.onNodeWithText("Software Update").assertDoesNotExist()
         scrollListTo("About")
         compose.onNodeWithText("About").performClick()
@@ -129,15 +118,12 @@ class GeneralSettingsTest {
         compose.onNodeWithText("Checking GitHub Releases...").assertDoesNotExist()
         compose.onNodeWithText("License").performScrollTo().assertIsDisplayed()
         compose.onNodeWithContentDescription("Back").performClick()
-        compose.onNodeWithText("General Settings").assertIsDisplayed()
         compose.runOnIdle { assertEquals(emptyList<String>(), destinations) }
-        compose.onNodeWithContentDescription("Back").performClick()
-        compose.runOnIdle { assertEquals(listOf("Back"), destinations) }
     }
 
     @Test fun preferenceRowTogglesOnce() {
         val updates = mutableListOf<Boolean>()
-        showSettings(autoScroll = { updates.add(it) })
+        showFeatures(autoScroll = { updates.add(it) })
         scrollListTo("App Settings")
         compose.onNodeWithText("App Settings").performClick()
         compose.onNodeWithText("Preferences").performClick()
@@ -148,9 +134,9 @@ class GeneralSettingsTest {
     @Test fun chatToolbarOpensDrawerOnLeftAndSettingsOnRight() {
         var drawer = 0
         var settings = 0
-        compose.setContent { MaterialTheme { ChatAppBar("Selected model", "Provider", { drawer++ }, { settings++ }) } }
+        compose.setContent { MaterialTheme { ChatAppBar("Selected model", "Provider", { drawer++ }, {}, { settings++ }) } }
         val left = compose.onNodeWithContentDescription("Open side navigation")
-        val right = compose.onNodeWithContentDescription("General Settings")
+        val right = compose.onNodeWithContentDescription("Settings")
         assertTrue(left.fetchSemanticsNode().boundsInRoot.left < right.fetchSemanticsNode().boundsInRoot.left)
         left.performClick()
         right.performClick()

@@ -179,7 +179,7 @@ fun ChatAppBar(
                     Box(contentAlignment = Alignment.Center) {
                         FluentIcon(
                             imageVector = Icons.Outlined.Settings,
-                            contentDescription = "General Settings",
+                            contentDescription = "Settings",
                             tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(22.dp)
                         )

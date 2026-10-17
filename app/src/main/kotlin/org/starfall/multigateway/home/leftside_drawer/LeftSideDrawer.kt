@@ -275,7 +275,7 @@ fun LeftSideDrawer(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Spacer(Modifier.width(4.dp))
                         IconButton(onClick = { promptDialog = true }, modifier = Modifier.size(40.dp)) { FluentIcon(Icons.Outlined.DocumentSparkle, "Prompts") }
-                        IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) { FluentIcon(Icons.Outlined.Settings, "General Settings") }
+                        IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) { FluentIcon(Icons.Outlined.Settings, "Settings") }
                     }
                 }
                 Spacer(Modifier.width(8.dp))

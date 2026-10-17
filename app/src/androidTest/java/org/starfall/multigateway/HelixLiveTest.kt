@@ -32,7 +32,7 @@ class HelixLiveTest {
             config = owner[ConfigurationViewModel::class.java]
             settings = owner[SettingsViewModel::class.java]
         }
-        val gear = hasContentDescription("General Settings") and SemanticsMatcher("chat toolbar settings") {
+        val gear = hasContentDescription("Settings") and SemanticsMatcher("chat toolbar settings") {
             it.boundsInRoot.left > compose.activity.resources.displayMetrics.widthPixels / 2
         }
         for (attempt in 0..8) {

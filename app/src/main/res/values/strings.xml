@@ -363,7 +363,6 @@
     <string name="use_system_language_desc">Follow the language of your device. Turn off to choose a language for this app.</string>
     <string name="app_language">App language</string>
 
-    <string name="settings_general">General Settings</string>
     <string name="settings_back">Back</string>
     <string name="settings_category">Settings category</string>
     <string name="settings_group_configuration">Configuration</string>
