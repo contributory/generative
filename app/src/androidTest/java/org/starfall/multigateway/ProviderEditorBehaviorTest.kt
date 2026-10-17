@@ -93,7 +93,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
             androidx.compose.foundation.layout.Column {
                 org.starfall.multigateway.shared.ui.icons.EntityIcon(null, text =
                     org.starfall.multigateway.shared.ui.icons.providerInitials("My Provider Name"))
-                org.starfall.multigateway.home.modelpicker.sheet.ModelCapabilityBadges(config)
+                org.starfall.multigateway.home.modelpicker_sheet.ModelCapabilityBadges(config)
             }
         } }
         compose.onNodeWithText("MP").assertIsDisplayed()

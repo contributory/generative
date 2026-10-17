@@ -20,8 +20,8 @@ import org.starfall.multigateway.shared.storage.database.AppDatabase
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.storage.ModelRepository
 import org.starfall.multigateway.integrations.modelapis.AiService
-import org.starfall.multigateway.home.modelpicker.sheet.ModelPickerItem
-import org.starfall.multigateway.home.modelpicker.sheet.computeModelPickerItems
+import org.starfall.multigateway.home.modelpicker_sheet.ModelPickerItem
+import org.starfall.multigateway.home.modelpicker_sheet.computeModelPickerItems
 import org.starfall.multigateway.features.providers.providers.screen.newProviderId
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.language.ModelConfiguration

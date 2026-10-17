@@ -114,17 +114,7 @@
 │   │   │       ├── 📄 RemoteMachinesScreen.kt
 │   │   │       └── 📄 RemoteMachinesViewModel.kt
 │   │   └── 📁 shared/
-│   │       ├── 📄 AndroidEdDSA.kt
-│   │       ├── 📄 CloudShellApi.kt
-│   │       ├── 📄 ExecutableBinaryStore.kt
-│   │       ├── 📄 RemoteBinarySupport.kt
-│   │       ├── 📄 RemoteMachineComponents.kt
-│   │       ├── 📄 RemoteMachineService.kt
-│   │       ├── 📄 RemoteMachineStore.kt
-│   │       ├── 📄 RemoteTerminal.kt
-│   │       ├── 📄 RemoteTerminalBridge.kt
-│   │       ├── 📄 SshConfigParser.kt
-│   │       └── 📄 SshConnectionSupport.kt
+│   │       └── 📄 RemoteMachineComponents.kt
 │   ├── 📁 settings/
 │   │   ├── 📁 appsettings/
 │   │   │   └── 📁 screen/
@@ -202,6 +192,17 @@
 │       └── 📁 sheet/
 │           └── 📄 QuickActionsSheet.kt
 ├── 📁 integrations/
+│   ├── 📁 remote/
+│   │   ├── 📄 AndroidEdDSA.kt
+│   │   ├── 📄 CloudShellApi.kt
+│   │   ├── 📄 ExecutableBinaryStore.kt
+│   │   ├── 📄 RemoteBinarySupport.kt
+│   │   ├── 📄 RemoteMachineService.kt
+│   │   ├── 📄 RemoteMachineStore.kt
+│   │   ├── 📄 RemoteTerminal.kt
+│   │   ├── 📄 RemoteTerminalBridge.kt
+│   │   ├── 📄 SshConfigParser.kt
+│   │   └── 📄 SshConnectionSupport.kt
 │   └── 📁 modelapis/
 │       ├── 📄 AiService.kt
 │       ├── 📄 ModelApiAdapter.kt

@@ -1,5 +1,7 @@
 package org.starfall.multigateway
 
+import org.starfall.multigateway.home.chat_screen.Tool.*
+
 import android.graphics.Bitmap
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Box
@@ -18,9 +20,8 @@ import org.junit.Test
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.features.providers.shared.*
-import org.starfall.multigateway.home.chat.screen.*
-import org.starfall.multigateway.home.modelpicker.sheet.*
-import org.starfall.multigateway.home.quickactions.sheet.*
+import org.starfall.multigateway.home.chat_screen.*
+import org.starfall.multigateway.home.modelpicker_sheet.*
 import org.starfall.multigateway.shared.ui.media.MediaPreviewDialog
 import org.starfall.multigateway.features.storage.storage.screen.MediaFileCard
 import org.starfall.multigateway.shared.ui.media.ChatFilePreview

@@ -17,8 +17,8 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.home.modelpicker.sheet.ModelPickerSheet
-import org.starfall.multigateway.home.chat.screen.FilesActionSheet
+import org.starfall.multigateway.home.modelpicker_sheet.ModelPickerBottomSheet
+import org.starfall.multigateway.home.quickactions_sheet.QuickActionsBottomSheet
 import org.starfall.multigateway.shared.ui.media.InlineVideoPreview
 import org.starfall.multigateway.shared.ui.media.mediaThumbnail
 import java.io.File
@@ -33,7 +33,7 @@ class DeviceRegressionTest {
     @Test fun addSheetStartsHalfHeightExpandsAndShowsToolsBeforeSummary() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         compose.setContent { MaterialTheme {
-            FilesActionSheet({}, {}, {}, {}, {}, {}, {}, {})
+            QuickActionsBottomSheet({}, {}, {}, {}, {}, {}, {}, {})
         } }
         compose.waitForIdle()
         val photos = compose.onNodeWithText("Photos")
@@ -57,7 +57,7 @@ class DeviceRegressionTest {
             baseUrl = "https://example.com/v1",
             config = ProviderConfiguration(modelConfigs = configs))
         compose.setContent { MaterialTheme {
-            ModelPickerSheet(listOf(provider), selectedProviderId = "test", selectedModelId = "test-model-40",
+            ModelPickerBottomSheet(listOf(provider), selectedProviderId = "test", selectedModelId = "test-model-40",
                 conversationReasoningEffort = null, onSelectModel = { _, _ -> },
                 onSetReasoningEffort = {}, onDismiss = { dismissed = true })
         } }

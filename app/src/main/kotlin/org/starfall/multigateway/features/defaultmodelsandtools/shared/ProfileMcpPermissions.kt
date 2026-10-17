@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 import org.starfall.multigateway.R
 import androidx.compose.ui.res.stringResource
 import org.starfall.multigateway.features.settings.shared.SettingsCard
-import org.starfall.multigateway.home.modelpicker.sheet.ModelPickerSheet
+import org.starfall.multigateway.home.modelpicker_sheet.ModelPickerBottomSheet
 import org.starfall.multigateway.shared.model.McpAccess
 import org.starfall.multigateway.shared.model.McpInfo
 import org.starfall.multigateway.shared.model.ToolDefinition

@@ -7,16 +7,15 @@ import org.junit.Test
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.integrations.modelapis.discoveredModel
 import org.starfall.multigateway.features.providers.shared.*
-import org.starfall.multigateway.home.chat.screen.*
-import org.starfall.multigateway.home.modelpicker.sheet.*
-import org.starfall.multigateway.home.quickactions.sheet.*
+import org.starfall.multigateway.home.chat_screen.*
+import org.starfall.multigateway.home.modelpicker_sheet.*
 import org.starfall.multigateway.shared.model.language.DEFAULT_CONTEXT_WINDOW_TOKENS
 import org.starfall.multigateway.shared.model.language.DiscoveredModel
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
-import org.starfall.multigateway.home.chat.screen.ContextWindowStatus
-import org.starfall.multigateway.home.chat.screen.chunkSummaryMessages
-import org.starfall.multigateway.home.chat.screen.contextWindowStatus
-import org.starfall.multigateway.home.chat.screen.estimateMessageTokens
+import org.starfall.multigateway.home.chat_screen.ContextWindowStatus
+import org.starfall.multigateway.home.chat_screen.chunkSummaryMessages
+import org.starfall.multigateway.home.chat_screen.contextWindowStatus
+import org.starfall.multigateway.home.chat_screen.estimateMessageTokens
 
 class ContextWindowTest {
     @Test fun discoveryKeepsApiMetadataForCatalogDisplay() {

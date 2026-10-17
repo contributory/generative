@@ -20,13 +20,14 @@ import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.files.AttachmentResolver
 import org.starfall.multigateway.features.mcp.shared.*
 import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.integrations.remote.*
 import org.starfall.multigateway.home.chat.*
 import org.starfall.multigateway.integrations.modelapis.*
 import org.starfall.multigateway.shared.files.*
 import org.starfall.multigateway.shared.icons.*
 import org.starfall.multigateway.shared.media.*
 import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
-import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.home.chat_screen.*
 import org.starfall.multigateway.shared.networking.*
 import org.starfall.multigateway.shared.storage.preferences.*
 import java.util.concurrent.TimeUnit

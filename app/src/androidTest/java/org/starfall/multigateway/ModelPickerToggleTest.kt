@@ -12,7 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.home.modelpicker.sheet.ModelPickerSheet
+import org.starfall.multigateway.home.modelpicker_sheet.ModelPickerBottomSheet
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.provider.ModelProvider
@@ -31,7 +31,7 @@ class ModelPickerToggleTest {
         compose.setContent {
             var currentEffort by remember { mutableStateOf(effort) }
             MaterialTheme {
-                ModelPickerSheet(providers = listOf(provider), providerGroups = listOf(ProviderGroup("folder", "Work")),
+                ModelPickerBottomSheet(providers = listOf(provider), providerGroups = listOf(ProviderGroup("folder", "Work")),
                     collapsedGroupIdsState = setOf("folder"), collapsedProviderIdsState = setOf("p"),
                     selectedProviderId = "p", selectedModelId = "alpha", conversationReasoningEffort = currentEffort,
                     onSelectModel = { _, _ -> }, onSetReasoningEffort = { effort = it; currentEffort = it }, onDismiss = {})
@@ -68,7 +68,7 @@ class ModelPickerToggleTest {
         compose.setContent {
             MaterialTheme {
                 outlineColor = MaterialTheme.colorScheme.outline
-                ModelPickerSheet(
+                ModelPickerBottomSheet(
                     providers = listOf(provider("grouped", "Primary", "alpha", group.id), provider("root", "Root", "gamma")),
                     providerGroups = listOf(group), selectedProviderId = "", selectedModelId = "",
                     conversationReasoningEffort = null, onSelectModel = { _, _ -> }, onSetReasoningEffort = {}, onDismiss = {},
@@ -147,7 +147,7 @@ class ModelPickerToggleTest {
         val providers = listOf(provider("first", group.id, (0..29).map { "model-$it" })) +
             (0..19).map { provider("middle-$it") } + provider("selected")
         compose.setContent { MaterialTheme {
-            ModelPickerSheet(providers = providers, providerGroups = listOf(group),
+            ModelPickerBottomSheet(providers = providers, providerGroups = listOf(group),
                 selectedProviderId = "selected", selectedModelId = "model-selected",
                 conversationReasoningEffort = null, onSelectModel = { _, _ -> }, onSetReasoningEffort = {}, onDismiss = {})
         } }
@@ -185,7 +185,7 @@ class ModelPickerToggleTest {
 
         compose.setContent {
             MaterialTheme {
-                ModelPickerSheet(
+                ModelPickerBottomSheet(
                     providers = providers,
                     providerGroups = listOf(group),
                     selectedProviderId = "grouped",
@@ -221,7 +221,7 @@ class ModelPickerToggleTest {
     @Test fun lateDynamicDiscoveryAppearsWithoutReopeningThePicker() {
         val models = mutableStateMapOf<String, List<String>>()
         compose.setContent { MaterialTheme {
-            ModelPickerSheet(providers = listOf(ModelProvider("local", "Local", ModelApiType.OLLAMA, baseUrl = "")),
+            ModelPickerBottomSheet(providers = listOf(ModelProvider("local", "Local", ModelApiType.OLLAMA, baseUrl = "")),
                 selectedProviderId = "", selectedModelId = "", dynamicModelsMap = models.toMap(),
                 conversationReasoningEffort = null, onSelectModel = { _, _ -> }, onSetReasoningEffort = {}, onDismiss = {})
         } }

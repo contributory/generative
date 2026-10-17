@@ -3,7 +3,7 @@ package org.starfall.multigateway
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.home.leftside.drawer.lastModelIcon
+import org.starfall.multigateway.home.leftside_drawer.lastModelIcon
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.provider.ModelProvider

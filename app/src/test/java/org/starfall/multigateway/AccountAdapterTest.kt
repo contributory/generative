@@ -1,5 +1,7 @@
 package org.starfall.multigateway
 
+import org.starfall.multigateway.home.chat_screen.Tool.*
+
 import org.starfall.multigateway.integrations.modelapis.account.*
 
 import android.content.Context
@@ -22,7 +24,7 @@ import org.starfall.multigateway.integrations.modelapis.claudecode.ClaudeCodeAda
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.files.AttachmentResolver
 import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
-import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.home.chat_screen.*
 import org.starfall.multigateway.shared.files.*
 import org.starfall.multigateway.shared.networking.*
 import org.starfall.multigateway.shared.storage.preferences.*

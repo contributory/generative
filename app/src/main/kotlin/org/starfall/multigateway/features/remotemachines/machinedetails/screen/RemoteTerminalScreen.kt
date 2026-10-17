@@ -123,20 +123,20 @@ import com.termux.view.TerminalViewClient
 import java.io.ByteArrayOutputStream
 import org.starfall.multigateway.R
 import org.starfall.multigateway.features.remotemachines.remotemachines.screen.RemoteMachinesViewModel
-import org.starfall.multigateway.features.remotemachines.shared.ExecutableBinary
-import org.starfall.multigateway.features.remotemachines.shared.REMOTE_TERMINAL_UI_PREFERENCES
-import org.starfall.multigateway.features.remotemachines.shared.RemoteSecretRequest
-import org.starfall.multigateway.features.remotemachines.shared.RemoteTerminal
-import org.starfall.multigateway.features.remotemachines.shared.RemoteTerminalBridge
+import org.starfall.multigateway.integrations.remote.ExecutableBinary
+import org.starfall.multigateway.integrations.remote.REMOTE_TERMINAL_UI_PREFERENCES
+import org.starfall.multigateway.integrations.remote.RemoteSecretRequest
+import org.starfall.multigateway.integrations.remote.RemoteTerminal
+import org.starfall.multigateway.integrations.remote.RemoteTerminalBridge
 import org.starfall.multigateway.features.remotemachines.shared.RemoteTextField
-import org.starfall.multigateway.features.remotemachines.shared.remoteTerminalInputModePreferenceKey
+import org.starfall.multigateway.integrations.remote.remoteTerminalInputModePreferenceKey
 import org.starfall.multigateway.shared.model.RemoteMachine
 import org.starfall.multigateway.shared.ui.dialogs.AppAlertDialog
 import org.starfall.multigateway.shared.ui.icons.FluentIcon
 import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.multigateway.shared.ui.layout.SlideScreenContent
-import org.starfall.multigateway.features.remotemachines.shared.TerminalInputMode
+import org.starfall.multigateway.integrations.remote.TerminalInputMode
 
 private val TERMINAL_BACKGROUND = Color(0xFF101214)
 

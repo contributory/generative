@@ -1,5 +1,7 @@
 package org.starfall.multigateway.appwiring
 
+import org.starfall.multigateway.home.chat_screen.Tool.*
+
 import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -12,11 +14,11 @@ import org.starfall.multigateway.features.mcp.shared.McpOAuthService
 import org.starfall.multigateway.features.mcp.shared.McpService
 import org.starfall.multigateway.features.providers.shared.ConfigurationViewModel
 import org.starfall.multigateway.features.remotemachines.remotemachines.screen.RemoteMachinesViewModel
-import org.starfall.multigateway.features.remotemachines.shared.ExecutableBinaryStore
-import org.starfall.multigateway.features.remotemachines.shared.RemoteMachineService
+import org.starfall.multigateway.integrations.remote.ExecutableBinaryStore
+import org.starfall.multigateway.integrations.remote.RemoteMachineService
 import org.starfall.multigateway.features.settings.appsettings.screen.SettingsViewModel
-import org.starfall.multigateway.home.chat.screen.ChatViewModel
-import org.starfall.multigateway.home.chat.screen.ToolChat
+import org.starfall.multigateway.home.chat_screen.ChatViewModel
+import org.starfall.multigateway.home.chat_screen.Tool.ToolChatViewModel
 import org.starfall.multigateway.integrations.modelapis.AiService
 import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.icons.IconStore
@@ -78,7 +80,7 @@ class AppContainer(context: Context) {
                 providers,
                 mcp,
                 preferences,
-                ToolChat(toolHttp, mcpService, aiService, remoteMachineService),
+                ToolChatViewModel(toolHttp, mcpService, aiService, remoteMachineService),
                 toolSettings,
                 speech,
                 TtsHelper(appContext),

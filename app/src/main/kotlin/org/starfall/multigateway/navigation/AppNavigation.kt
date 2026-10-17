@@ -46,9 +46,9 @@ import org.starfall.multigateway.features.remotemachines.remotemachines.screen.R
 import org.starfall.multigateway.features.settings.appsettings.screen.SettingsViewModel
 import org.starfall.multigateway.features.speechservices.speechservices.screen.SpeechServicesScreen
 import org.starfall.multigateway.features.storage.storage.screen.StorageScreen
-import org.starfall.multigateway.home.chat.screen.ChatScreen
-import org.starfall.multigateway.home.chat.screen.ChatViewModel
-import org.starfall.multigateway.home.leftside.drawer.LeftSideDrawer
+import org.starfall.multigateway.home.chat_screen.ChatScreen
+import org.starfall.multigateway.home.chat_screen.ChatViewModel
+import org.starfall.multigateway.home.leftside_drawer.LeftSideDrawer
 import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.model.Conversation
 import org.starfall.multigateway.shared.model.McpInfo
@@ -254,7 +254,7 @@ fun AppNavigation(
     }
 
 
-    CompositionLocalProvider(org.starfall.multigateway.home.chat.screen.LocalCodeRenderingPreferences provides appPrefs, LocalChatAttachmentSelection provides chatAttachments, LocalToolControls provides ToolControls(
+    CompositionLocalProvider(org.starfall.multigateway.home.chat_screen.LocalCodeRenderingPreferences provides appPrefs, LocalChatAttachmentSelection provides chatAttachments, LocalToolControls provides ToolControls(
         servers = mcpServers,
         machines = remoteMachineState.machines,
         settings = toolSettings,

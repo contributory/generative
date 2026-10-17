@@ -9,7 +9,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.home.chat.screen.ChatViewModel
+import org.starfall.multigateway.home.chat_screen.ChatViewModel
 import org.starfall.multigateway.features.providers.shared.ConfigurationViewModel
 import org.starfall.multigateway.features.settings.appsettings.screen.SettingsViewModel
 import java.util.UUID

@@ -9,15 +9,15 @@ import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.language.REASONING_EFFORT_ACTIVE
 import org.starfall.multigateway.shared.model.language.SELECTABLE_REASONING_EFFORTS
 import org.starfall.multigateway.shared.model.language.supportedReasoningEfforts
-import org.starfall.multigateway.home.chat.screen.reasoningEffortBurstDuration
-import org.starfall.multigateway.home.chat.screen.reasoningEffortEnabled
-import org.starfall.multigateway.home.chat.screen.reasoningEffortIndex
-import org.starfall.multigateway.home.chat.screen.reasoningEffortOptions
-import org.starfall.multigateway.home.chat.screen.reasoningEffortTier
+import org.starfall.multigateway.home.shared.ui.reasoningEffortBurstDuration
+import org.starfall.multigateway.home.shared.ui.reasoningEffortEnabled
+import org.starfall.multigateway.home.shared.ui.reasoningEffortIndex
+import org.starfall.multigateway.home.shared.ui.reasoningEffortOptions
+import org.starfall.multigateway.home.shared.ui.reasoningEffortTier
 
 class ReasoningEffortControlTest {
-    private fun efforts(options: List<org.starfall.multigateway.home.chat.screen.ReasoningEffortOption>) = options.map { it.effort }
-    private fun tiers(options: List<org.starfall.multigateway.home.chat.screen.ReasoningEffortOption>) =
+    private fun efforts(options: List<org.starfall.multigateway.home.shared.ui.ReasoningEffortOption>) = options.map { it.effort }
+    private fun tiers(options: List<org.starfall.multigateway.home.shared.ui.ReasoningEffortOption>) =
         options.indices.map { reasoningEffortTier(it, options) }
 
     @Test fun disabledValuesAreRecognized() {

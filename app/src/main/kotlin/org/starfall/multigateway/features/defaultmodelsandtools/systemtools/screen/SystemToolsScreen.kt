@@ -28,7 +28,7 @@ import androidx.compose.ui.res.stringResource
 import org.starfall.multigateway.features.defaultmodelsandtools.shared.ImageToolSettingsScreen
 import org.starfall.multigateway.features.defaultmodelsandtools.shared.videoOptionFields
 import org.starfall.multigateway.features.settings.shared.SettingsCard
-import org.starfall.multigateway.home.modelpicker.sheet.ModelPickerSheet
+import org.starfall.multigateway.home.modelpicker_sheet.ModelPickerBottomSheet
 import org.starfall.multigateway.shared.model.DEFAULT_CHAT_SUMMARY_PROMPT
 import org.starfall.multigateway.shared.model.DEFAULT_TITLE_GENERATION_PROMPT
 import org.starfall.multigateway.shared.model.SystemToolConfig
@@ -221,7 +221,7 @@ fun SystemToolsScreen(
             else -> ModelType.TEXT_GENERATION
         }
         val current = settings.system[name] ?: SystemToolConfig()
-        ModelPickerSheet(
+        ModelPickerBottomSheet(
             providers = providers,
             providerGroups = providerGroups,
             collapsedGroupIdsState = collapsedGroupIds,

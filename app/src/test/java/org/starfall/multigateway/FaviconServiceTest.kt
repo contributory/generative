@@ -15,6 +15,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.starfall.multigateway.features.mcp.shared.*
 import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.integrations.remote.*
 import org.starfall.multigateway.home.chat.*
 import org.starfall.multigateway.integrations.modelapis.*
 import org.starfall.multigateway.shared.files.*

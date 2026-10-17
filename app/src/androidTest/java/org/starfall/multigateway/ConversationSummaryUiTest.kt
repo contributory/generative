@@ -9,7 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.multigateway.shared.model.ConversationSummaryProgress
-import org.starfall.multigateway.home.chat.screen.ConversationSummaryDivider
+import org.starfall.multigateway.home.chat_screen.ConversationSummaryDivider
 
 class ConversationSummaryUiTest {
     @get:Rule

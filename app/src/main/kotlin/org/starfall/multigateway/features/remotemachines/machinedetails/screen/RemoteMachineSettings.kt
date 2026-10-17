@@ -124,12 +124,12 @@ import java.io.ByteArrayOutputStream
 import org.starfall.multigateway.R
 import org.starfall.multigateway.features.remotemachines.remotemachines.screen.BinaryTestNotice
 import org.starfall.multigateway.features.remotemachines.remotemachines.screen.RemoteMachinesViewModel
-import org.starfall.multigateway.features.remotemachines.shared.ExecutableBinary
+import org.starfall.multigateway.integrations.remote.ExecutableBinary
 import org.starfall.multigateway.features.remotemachines.shared.RemoteSection
 import org.starfall.multigateway.features.remotemachines.shared.RemoteTextField
-import org.starfall.multigateway.features.remotemachines.shared.SshConfigParser
-import org.starfall.multigateway.features.remotemachines.shared.binaryLauncher
-import org.starfall.multigateway.features.remotemachines.shared.remoteMachineSshConfigFile
+import org.starfall.multigateway.integrations.remote.SshConfigParser
+import org.starfall.multigateway.integrations.remote.binaryLauncher
+import org.starfall.multigateway.integrations.remote.remoteMachineSshConfigFile
 import org.starfall.multigateway.shared.model.GCloudOAuthClient
 import org.starfall.multigateway.shared.model.GoogleOAuthClientType
 import org.starfall.multigateway.shared.model.RemoteMachineState

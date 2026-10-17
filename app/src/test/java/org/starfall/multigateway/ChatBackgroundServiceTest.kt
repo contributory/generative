@@ -4,7 +4,6 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
-import android.os.PowerManager
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -13,7 +12,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowPowerManager
-import org.starfall.multigateway.home.chat.ChatBackgroundService
+import org.starfall.multigateway.home.shared.service.ChatBackgroundService
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

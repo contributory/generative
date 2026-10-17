@@ -35,6 +35,8 @@ android {
 
     buildTypes {
         debug {
+            // Temporary package suffix for side-by-side device testing.
+            applicationIdSuffix = ".testinstall"
             // Use Android Gradle Plugin's default debug signing config; it creates the key when needed.
         }
         release {

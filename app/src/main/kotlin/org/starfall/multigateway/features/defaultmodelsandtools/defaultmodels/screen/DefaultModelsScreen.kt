@@ -25,7 +25,7 @@ import org.starfall.multigateway.R
 import androidx.compose.ui.res.stringResource
 import org.starfall.multigateway.features.defaultmodelsandtools.shared.videoOptionFields
 import org.starfall.multigateway.features.settings.shared.SettingsCard
-import org.starfall.multigateway.home.modelpicker.sheet.ModelPickerSheet
+import org.starfall.multigateway.home.modelpicker_sheet.ModelPickerBottomSheet
 import org.starfall.multigateway.shared.model.SystemToolConfig
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.language.ModelType
@@ -38,6 +38,7 @@ import org.starfall.multigateway.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.multigateway.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.multigateway.shared.ui.layout.SlideScreenContent
 import org.starfall.multigateway.shared.model.ToolSettings
+import org.starfall.multigateway.shared.model.systemMediaToolAvailable
 
 @Composable
 fun DefaultModelsScreen(

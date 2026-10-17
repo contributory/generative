@@ -15,9 +15,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.features.providers.shared.*
-import org.starfall.multigateway.home.chat.screen.*
-import org.starfall.multigateway.home.modelpicker.sheet.*
-import org.starfall.multigateway.home.quickactions.sheet.*
+import org.starfall.multigateway.home.chat_screen.*
+import org.starfall.multigateway.home.shared.ui.*
+import org.starfall.multigateway.home.modelpicker_sheet.*
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.provider.ModelProvider
@@ -43,7 +43,7 @@ class ReasoningEffectsLifecycleTest {
                     Button(onClick = { clicks++ }) { Text("Underlying action") }
                     if (sheetVisible) {
                         ThinkingScreenBurstLayer(screenBurst)
-                        SelectedModelOverviewSheet(
+                        SelectedModelOverviewBottomSheet(
                             provider = provider,
                             folderName = null,
                             modelId = "Effect model",
@@ -90,7 +90,7 @@ class ReasoningEffectsLifecycleTest {
                 var effort by remember { mutableStateOf<String?>(null) }
                 CompositionLocalProvider(LocalThinkingScreenBurst provides screenBurst) {
                     ThinkingScreenBurstLayer(screenBurst)
-                    SelectedModelOverviewSheet(
+                    SelectedModelOverviewBottomSheet(
                         provider = provider,
                         folderName = null,
                         modelId = "Effect model",

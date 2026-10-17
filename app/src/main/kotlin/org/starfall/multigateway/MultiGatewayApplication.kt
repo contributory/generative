@@ -11,7 +11,7 @@ import org.starfall.multigateway.shared.storage.preferences.AppLocale
 import org.starfall.multigateway.appwiring.AppContainer
 import org.starfall.multigateway.shared.files.CrashReportStore
 import org.starfall.multigateway.shared.files.CrashRecordingHandler
-import org.starfall.multigateway.home.chat.screen.ChatRenderCaches
+import org.starfall.multigateway.home.chat_screen.ChatRenderCaches
 import java.io.File
 
 class MultiGatewayApplication : Application(), coil3.SingletonImageLoader.Factory {

@@ -1,5 +1,7 @@
 package org.starfall.multigateway
 
+import org.starfall.multigateway.home.chat_screen.Tool.*
+
 import androidx.room.Room
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.lifecycle.ViewModelProvider
@@ -11,24 +13,25 @@ import org.starfall.multigateway.appwiring.*
 import org.starfall.multigateway.shared.storage.*
 import org.starfall.multigateway.features.mcp.shared.*
 import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.integrations.remote.*
 import org.starfall.multigateway.home.chat.*
 import org.starfall.multigateway.integrations.modelapis.*
 import org.starfall.multigateway.shared.files.*
 import org.starfall.multigateway.shared.icons.*
 import org.starfall.multigateway.shared.media.*
 import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
-import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.home.chat_screen.*
 import org.starfall.multigateway.shared.networking.*
 import org.starfall.multigateway.shared.storage.preferences.*
 import org.starfall.multigateway.shared.model.ChatRole
-import org.starfall.multigateway.home.chat.screen.ChatViewModel
+import org.starfall.multigateway.home.chat_screen.ChatViewModel
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.home.chat.screen.UserInputArea
+import org.starfall.multigateway.home.chat_screen.UserInputArea
 
 class ChatInputBehaviorTest {
     @get:Rule val compose = createComposeRule()
@@ -88,7 +91,7 @@ class ChatInputBehaviorTest {
                         return ChatViewModel(
                             repository, ModelRepository(database, ai),
                             McpRepository(database, mcp), AppPreferencesRepository(context),
-                            ToolChat(http, mcp, ai), ToolSettingsStore(context),
+                            ToolChatViewModel(http, mcp, ai), ToolSettingsStore(context),
                             SpeechRepository(database), tts, SpeechSynthesisService(),
                             SpeechAudioPlayer(context)
                         ) as T

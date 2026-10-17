@@ -34,8 +34,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.layout.ContentScale
 import java.io.File
-import org.starfall.multigateway.home.chat.screen.CodeBlockSurface
-import org.starfall.multigateway.home.chat.screen.codeLanguage
+import org.starfall.multigateway.home.chat_screen.CodeBlockSurface
+import org.starfall.multigateway.home.chat_screen.codeLanguage
 import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.multigateway.shared.ui.dialogs.AppDialog as Dialog

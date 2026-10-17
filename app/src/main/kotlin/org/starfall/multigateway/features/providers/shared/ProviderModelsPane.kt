@@ -18,8 +18,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.R
 import org.starfall.multigateway.features.providers.providers.screen.isEmpty
-import org.starfall.multigateway.home.modelpicker.sheet.ModelCapabilityBadges
-import org.starfall.multigateway.home.modelpicker.sheet.modelInitial
+import org.starfall.multigateway.home.modelpicker_sheet.ModelCapabilityBadges
+import org.starfall.multigateway.home.shared.ui.modelInitial
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.ui.icons.EntityIcon
 import org.starfall.multigateway.shared.ui.icons.FluentIcon

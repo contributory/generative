@@ -5,12 +5,10 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
-import android.net.Uri
 import android.widget.Toast
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
-import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -36,9 +34,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.starfall.multigateway.shared.storage.preferences.AppLocale
 import org.starfall.multigateway.shared.storage.preferences.ScreenWakelockMode
-import org.starfall.multigateway.home.chat.ChatBackgroundService
+import org.starfall.multigateway.home.shared.service.ChatBackgroundService
 import org.starfall.multigateway.shared.theme.MultiGatewayTheme
-import org.starfall.multigateway.home.chat.screen.ChatViewModel
+import org.starfall.multigateway.home.chat_screen.ChatViewModel
 import org.starfall.multigateway.features.providers.shared.ConfigurationViewModel
 import org.starfall.multigateway.features.settings.appsettings.screen.SettingsViewModel
 import org.starfall.multigateway.features.remotemachines.remotemachines.screen.RemoteMachinesViewModel

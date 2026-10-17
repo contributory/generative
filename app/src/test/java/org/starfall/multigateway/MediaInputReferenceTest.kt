@@ -1,5 +1,7 @@
 package org.starfall.multigateway
 
+import org.starfall.multigateway.home.chat_screen.Tool.*
+
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import okhttp3.mockwebserver.*
@@ -7,7 +9,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
-import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.home.chat_screen.*
 import org.starfall.multigateway.shared.files.*
 import org.starfall.multigateway.shared.networking.*
 import org.starfall.multigateway.shared.storage.preferences.*

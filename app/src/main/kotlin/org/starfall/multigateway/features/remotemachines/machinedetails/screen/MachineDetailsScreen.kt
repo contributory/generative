@@ -122,13 +122,13 @@ import com.termux.view.TerminalView
 import com.termux.view.TerminalViewClient
 import java.io.ByteArrayOutputStream
 import org.starfall.multigateway.R
-import org.starfall.multigateway.features.remotemachines.shared.ExecutableBinary
+import org.starfall.multigateway.integrations.remote.ExecutableBinary
 import org.starfall.multigateway.features.remotemachines.shared.RemoteDropdownField
-import org.starfall.multigateway.features.remotemachines.shared.RemoteMachineService
+import org.starfall.multigateway.integrations.remote.RemoteMachineService
 import org.starfall.multigateway.features.remotemachines.shared.RemoteSection
 import org.starfall.multigateway.features.remotemachines.shared.RemoteTextField
 import org.starfall.multigateway.features.remotemachines.shared.RemoteToggle
-import org.starfall.multigateway.features.remotemachines.shared.endpoint
+import org.starfall.multigateway.integrations.remote.endpoint
 import org.starfall.multigateway.shared.model.GCloudOAuthClient
 import org.starfall.multigateway.shared.model.GoogleOAuthClientType
 import org.starfall.multigateway.shared.model.REMOTE_TOOL_DISCONNECT

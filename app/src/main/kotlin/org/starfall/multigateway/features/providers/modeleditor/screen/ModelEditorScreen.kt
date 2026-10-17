@@ -20,7 +20,8 @@ import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.R
 import org.starfall.multigateway.features.providers.shared.ModelConfigDialog
 import org.starfall.multigateway.features.providers.shared.displayName
-import org.starfall.multigateway.home.chat.screen.RenderCodeBlock
+import org.starfall.multigateway.home.chat_screen.RenderCodeBlock
+import org.starfall.multigateway.home.shared.ui.modelInitial
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.language.ModelType
 import org.starfall.multigateway.shared.model.language.SELECTABLE_REASONING_EFFORTS
@@ -123,7 +124,7 @@ fun ModelEditorScreen(
             IconPickerRow(
                 config.icon,
                 onChange = { config = config.copy(icon = it) },
-                text = org.starfall.multigateway.home.modelpicker.sheet.modelInitial(modelId),
+                text = modelInitial(modelId),
                 onBusyChange = { iconImporting = it },
                 matchName = config.displayName.ifBlank { modelId },
                 model = true,

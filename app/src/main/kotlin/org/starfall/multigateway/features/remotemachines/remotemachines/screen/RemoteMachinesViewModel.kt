@@ -9,10 +9,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
-import org.starfall.multigateway.features.remotemachines.shared.ExecutableBinary
-import org.starfall.multigateway.features.remotemachines.shared.RemoteMachineService
-import org.starfall.multigateway.features.remotemachines.shared.RemoteSecretPrompt
-import org.starfall.multigateway.features.remotemachines.shared.RemoteTerminal
+import org.starfall.multigateway.integrations.remote.ExecutableBinary
+import org.starfall.multigateway.integrations.remote.RemoteMachineService
+import org.starfall.multigateway.integrations.remote.RemoteSecretPrompt
+import org.starfall.multigateway.integrations.remote.RemoteTerminal
 import org.starfall.multigateway.shared.model.GCloudOAuthClient
 import org.starfall.multigateway.shared.model.RemoteBinaryTestResult
 import org.starfall.multigateway.shared.model.RemoteIdentityKey

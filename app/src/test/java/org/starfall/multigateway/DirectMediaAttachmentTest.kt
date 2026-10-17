@@ -1,5 +1,7 @@
 package org.starfall.multigateway
 
+import org.starfall.multigateway.home.chat_screen.Tool.*
+
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
@@ -14,13 +16,14 @@ import org.robolectric.annotation.Config
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.features.mcp.shared.*
 import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.integrations.remote.*
 import org.starfall.multigateway.home.chat.*
 import org.starfall.multigateway.integrations.modelapis.*
 import org.starfall.multigateway.shared.files.*
 import org.starfall.multigateway.shared.icons.*
 import org.starfall.multigateway.shared.media.*
 import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
-import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.home.chat_screen.*
 import org.starfall.multigateway.shared.networking.*
 import org.starfall.multigateway.shared.storage.preferences.*
 import java.nio.file.Files
@@ -174,8 +177,8 @@ class DirectMediaAttachmentTest {
         } finally { server.shutdown(); root.deleteRecursively(); attachment.delete() }
     }
 
-    private fun engine(files: ToolFiles): ToolChat {
+    private fun engine(files: ToolFiles): ToolChatViewModel {
         val http = ToolHttp(files, agnesTestClient())
-        return ToolChat(http, McpService(http), AiService(ApplicationProvider.getApplicationContext<Context>()))
+        return ToolChatViewModel(http, McpService(http), AiService(ApplicationProvider.getApplicationContext<Context>()))
     }
 }

@@ -125,7 +125,7 @@ import org.starfall.multigateway.R
 import org.starfall.multigateway.features.remotemachines.machinedetails.screen.MachineDetailsScreen
 import org.starfall.multigateway.features.remotemachines.machinedetails.screen.RemoteMachineSettings
 import org.starfall.multigateway.features.remotemachines.machinedetails.screen.RemoteTerminalScreen
-import org.starfall.multigateway.features.remotemachines.shared.ExecutableBinary
+import org.starfall.multigateway.integrations.remote.ExecutableBinary
 import org.starfall.multigateway.shared.model.RemoteMachine
 import org.starfall.multigateway.shared.model.RemoteMachineType
 import org.starfall.multigateway.shared.ui.dialogs.AppAlertDialog

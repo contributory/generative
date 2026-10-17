@@ -83,7 +83,7 @@
         </service>
 
         <service
-            android:name="org.starfall.multigateway.home.chat.ChatBackgroundService"
+            android:name="org.starfall.multigateway.home.shared.service.ChatBackgroundService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse">
