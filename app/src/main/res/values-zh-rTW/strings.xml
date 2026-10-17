@@ -126,4 +126,5 @@
     <string name="context_window_compact_hint">點選圓環以壓縮上下文視窗</string>
     <string name="mcp_enable">啟用</string>
     <string name="mcp_enabled">已啟用</string>
+    <string name="drag_to_exit_folder_hint">拖曳到頂端應用程式列或底部導覽列即可移出資料夾</string>
 </resources>

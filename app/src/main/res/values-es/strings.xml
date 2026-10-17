@@ -126,4 +126,5 @@
     <string name="context_window_compact_hint">Toca el círculo para compactar la ventana de contexto</string>
     <string name="mcp_enable">Habilitar</string>
     <string name="mcp_enabled">Habilitado</string>
+    <string name="drag_to_exit_folder_hint">Arrastra hacia la barra superior o la barra de navegación para salir de la carpeta</string>
 </resources>

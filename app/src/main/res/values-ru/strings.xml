@@ -126,4 +126,5 @@
     <string name="context_window_compact_hint">Нажмите на круг, чтобы сжать контекстное окно</string>
     <string name="mcp_enable">Включить</string>
     <string name="mcp_enabled">Включено</string>
+    <string name="drag_to_exit_folder_hint">Перетащите вверх к панели приложения или вниз к панели навигации, чтобы выйти из папки</string>
 </resources>

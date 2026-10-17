@@ -131,4 +131,5 @@
     <string name="remote_machine_oauth_type_android">Ứng dụng Android</string>
     <string name="remote_machine_google_no_access_token">Google không trả về access token.</string>
     <string name="remote_machine_google_missing_resolution">Google yêu cầu tương tác để cấp quyền nhưng không trả về bước xử lý tiếp theo.</string>
+    <string name="drag_to_exit_folder_hint">Kéo lên thanh ứng dụng hoặc xuống thanh điều hướng để thoát khỏi thư mục</string>
 </resources>

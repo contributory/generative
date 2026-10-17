@@ -666,4 +666,5 @@
     <string name="headers" translatable="false">Headers</string>
     <string name="mcp_enable">Enable</string>
     <string name="mcp_enabled">Enabled</string>
+    <string name="drag_to_exit_folder_hint">Drag up to the app bar or down to the navigation bar to leave the folder</string>
 </resources>

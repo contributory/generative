@@ -51,10 +51,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -92,7 +93,6 @@ import org.starfall.multigateway.data.model.defaultAuthorization
 import org.starfall.multigateway.ui.components.AppBottomSheet
 import org.starfall.multigateway.ui.components.EntityIcon
 import org.starfall.multigateway.ui.components.FadeGridListContent
-import org.starfall.multigateway.ui.components.WordWrappedFadeText
 import org.starfall.multigateway.ui.components.providerInitials
 import org.starfall.multigateway.ui.components.IconPickerRow
 import org.starfall.multigateway.ui.components.ItemOverflowMenu
@@ -209,6 +209,8 @@ fun ProviderScreen(
     var deletingGroup by remember { mutableStateOf<ProviderGroup?>(null) }
     var movingProvider by remember { mutableStateOf<LlmProviderInfo?>(null) }
     var openGroupId by remember { mutableStateOf<String?>(null) }
+    // Keep the last opened folder composed until its reverse exit animation finishes.
+    var renderedFolderGroup by remember { mutableStateOf<ProviderGroup?>(null) }
     var creatingGroup by remember { mutableStateOf(false) }
     var searching by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -247,6 +249,10 @@ fun ProviderScreen(
     }
     val validGroupIds = remember(providerGroups) { providerGroups.mapTo(hashSetOf()) { it.id } }
     val openGroup = sortedGroups.firstOrNull { it.id == openGroupId }
+    LaunchedEffect(openGroup?.id) {
+        if (openGroup != null) renderedFolderGroup = openGroup
+    }
+    val folderOverlayGroup = openGroup ?: renderedFolderGroup
 
     fun createProvider(groupId: String? = null) {
         editor = ProviderEditor(
@@ -836,22 +842,31 @@ fun ProviderScreen(
                         }
                     }
 
-                    openGroup?.let { group ->
+                    folderOverlayGroup?.let { group ->
                         val members = orderedProviders.filter { it.groupId == group.id }
                         val folderMatches = query.isEmpty() || matchesFolderSearch(group.name, query, searchFields)
-                        ProviderFolderOverlay(
-                            group = group,
-                            providers = if (folderMatches) members else members.filter(::matches),
-                            isGrid = isGridView,
-                            surfaces = surfaces,
-                            draggingKey = dragSession?.key,
-                            onDismiss = { openGroupId = null },
-                            onEditGroup = { groupToRename = group },
-                            onDeleteGroup = { deletingGroup = group; openGroupId = null },
-                            onEditProvider = { editor = ProviderEditor(it, false) },
-                            onMoveProvider = { movingProvider = it },
-                            onDeleteProvider = { deletingProviderId = it }
-                        )
+                        key(group.id) {
+                            ProviderFolderOverlay(
+                                group = group,
+                                providers = if (folderMatches) members else members.filter(::matches),
+                                isGrid = isGridView,
+                                surfaces = surfaces,
+                                draggingKey = dragSession?.key,
+                                showExitHint = dragSession?.fromFolderId != null,
+                                visible = openGroupId == group.id && openGroup != null,
+                                onDismiss = { openGroupId = null },
+                                onExitFinished = {
+                                    if ((openGroupId == null || openGroup == null) && renderedFolderGroup?.id == group.id) {
+                                        renderedFolderGroup = null
+                                    }
+                                },
+                                onEditGroup = { groupToRename = group },
+                                onDeleteGroup = { deletingGroup = group; openGroupId = null },
+                                onEditProvider = { editor = ProviderEditor(it, false) },
+                                onMoveProvider = { movingProvider = it },
+                                onDeleteProvider = { deletingProviderId = it }
+                            )
+                        }
                     }
 
                     dragSession?.let { session ->
@@ -1174,7 +1189,10 @@ private fun ProviderFolderOverlay(
     isGrid: Boolean,
     surfaces: ProviderDragSurfaces,
     draggingKey: String?,
+    showExitHint: Boolean,
+    visible: Boolean,
     onDismiss: () -> Unit,
+    onExitFinished: () -> Unit,
     onEditGroup: () -> Unit,
     onDeleteGroup: () -> Unit,
     onEditProvider: (LlmProviderInfo) -> Unit,
@@ -1190,10 +1208,15 @@ private fun ProviderFolderOverlay(
             surfaces.panelBounds = null
         }
     }
+    val visibility = remember { MutableTransitionState(false) }
+    LaunchedEffect(visible) { visibility.targetState = visible }
+    LaunchedEffect(visibility.isIdle, visibility.currentState, visible) {
+        if (!visible && visibility.isIdle && !visibility.currentState) onExitFinished()
+    }
     AnimatedVisibility(
-        visibleState = remember { MutableTransitionState(false).apply { targetState = true } },
-        enter = fadeIn() + scaleIn(initialScale = 0.94f),
-        exit = ExitTransition.None
+        visibleState = visibility,
+        enter = fadeIn() + scaleIn(initialScale = 0.5f),
+        exit = fadeOut() + scaleOut(targetScale = 0.5f)
     ) {
         Box(Modifier.fillMaxSize().zIndex(5f)) {
             Box(
@@ -1221,7 +1244,14 @@ private fun ProviderFolderOverlay(
                 border = null
             ) {
                 val panelColor = (if (amoled) Color.Black else MaterialTheme.colorScheme.surfaceContainerHigh).copy(alpha = 0.6f)
-                Box(Modifier.fillMaxSize()) {
+                // Tapping empty space inside the panel closes the folder; the cards consume their own taps.
+                Box(
+                    Modifier.fillMaxSize().clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismiss
+                    )
+                ) {
                 Box(Modifier.matchParentSize().featheredPanel(panelColor, 28.dp, 24.dp))
                 Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     if (providers.isEmpty()) {
@@ -1276,8 +1306,35 @@ private fun ProviderFolderOverlay(
                 }
                 }
             }
+            AnimatedVisibility(
+                visible = showExitHint,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) { ProviderFolderExitHint() }
         }
     }
+}
+
+/**
+ * Hint shown just above the nav bar while a folder member is dragged. It is a plain translucent label
+ * (no Surface, no click handling), so it never intercepts touches meant for what sits behind it.
+ */
+@Composable
+private fun ProviderFolderExitHint() {
+    Text(
+        text = stringResource(R.string.drag_to_exit_folder_hint),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSecondaryContainer,
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+            .padding(horizontal = 24.dp, vertical = 12.dp)
+            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.75f), RoundedCornerShape(16.dp))
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .testTag("provider_folder_exit_hint")
+    )
 }
 
 /** Rounded panel whose edges fade out to transparent instead of ending in a hard boundary. */
@@ -1301,6 +1358,7 @@ private fun Modifier.featheredPanel(color: Color, corner: androidx.compose.ui.un
             )
         }
 
+/** A provider inside an open folder: the very same card as outside, only with its own test tag. */
 @Composable
 private fun ProviderFolderProviderTile(
     provider: LlmProviderInfo,
@@ -1311,55 +1369,16 @@ private fun ProviderFolderProviderTile(
     testTag: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    val taggedModifier = modifier.then(
-        if (testTag) Modifier.testTag("provider_folder_provider_${provider.id}") else Modifier
+    ProviderUnifiedCard(
+        provider = provider,
+        isGrid = isGrid,
+        modifier = modifier.then(
+            if (testTag) Modifier.testTag("provider_folder_provider_${provider.id}") else Modifier
+        ),
+        onEdit = onEdit,
+        onMoveToGroup = onMoveToGroup,
+        onDelete = onDelete
     )
-    if (!isGrid) {
-        ProviderUnifiedCard(
-            provider = provider,
-            isGrid = false,
-            modifier = taggedModifier,
-            onEdit = onEdit,
-            onMoveToGroup = onMoveToGroup,
-            onDelete = onDelete,
-            compact = true
-        )
-        return
-    }
-    Surface(
-        modifier = taggedModifier.fillMaxWidth().height(132.dp),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        onClick = onEdit
-    ) {
-        Box(Modifier.fillMaxSize().padding(12.dp)) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                EntityIcon(
-                    image = provider.icon,
-                    modifier = Modifier.size(52.dp),
-                    text = providerInitials(provider.name),
-                    matchName = provider.name
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = provider.name,
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            Box(Modifier.align(Alignment.TopEnd)) {
-                ProviderOverflowMenu(onEdit, onMoveToGroup, onDelete)
-            }
-        }
-    }
 }
 
 @Composable
@@ -1568,8 +1587,7 @@ fun ProviderUnifiedCard(
     modifier: Modifier = Modifier,
     onEdit: () -> Unit,
     onMoveToGroup: () -> Unit,
-    onDelete: () -> Unit,
-    compact: Boolean = false
+    onDelete: () -> Unit
 ) {
     val shapeCorner by animateDpAsState(
         targetValue = if (isGrid) 20.dp else 16.dp,
@@ -1586,67 +1604,47 @@ fun ProviderUnifiedCard(
         border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier
             .fillMaxWidth()
-            .then(if (compact) Modifier.height(ProviderListCardHeight)
-                else Modifier.heightIn(min = if (isGrid) ProviderGridCardHeight else ProviderListCardHeight))
+            .heightIn(min = if (isGrid) ProviderGridCardHeight else ProviderListCardHeight)
             .clickable { onEdit() }
     ) {
-        if (compact) {
-            // The first list member shares an 88dp row with the folder logo. Keep
-            // its title and actions; metadata remains available in the editor.
-            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        AdaptiveCardLayout(
+            isGrid = isGrid,
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            icon = {
                 EntityIcon(provider.icon, Modifier.size(42.dp), text = providerInitials(provider.name), matchName = provider.name)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    WordWrappedFadeText(
-                        text = provider.name,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.fillMaxWidth().testTag("provider_title_${provider.id}")
-                    )
-                    if (provider.type.isAccountProvider) ProviderOAuthStatus(provider)
-                }
+            },
+            actions = {
                 ProviderOverflowMenu(onEdit, onMoveToGroup, onDelete)
-            }
-        } else {
-            AdaptiveCardLayout(
-                isGrid = isGrid,
-                modifier = Modifier.fillMaxWidth().padding(14.dp),
-                icon = {
-                    EntityIcon(provider.icon, Modifier.size(42.dp), text = providerInitials(provider.name), matchName = provider.name)
-                },
-                actions = {
-                    ProviderOverflowMenu(onEdit, onMoveToGroup, onDelete)
-                },
-                content = {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                            Text(
-                                text = provider.name,
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                                Text(
-                                    text = provider.type.displayName,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                        if (provider.type.isAccountProvider || provider.auth.method == AuthMethod.OAUTH) ProviderOAuthStatus(provider)
-                        if (!provider.type.isAccountProvider) Text(
-                            text = provider.baseUrl,
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                            color = MaterialTheme.colorScheme.outline,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+            },
+            content = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                        Text(
+                            text = provider.name,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.fillMaxWidth()
                         )
-                    }
+                            Text(
+                                text = provider.type.displayName,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                    if (provider.type.isAccountProvider || provider.auth.method == AuthMethod.OAUTH) ProviderOAuthStatus(provider)
+                    if (!provider.type.isAccountProvider) Text(
+                        text = provider.baseUrl,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                        color = MaterialTheme.colorScheme.outline,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
-            )
-        }
+            }
+        )
     }
 }
 

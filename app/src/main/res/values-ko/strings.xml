@@ -126,4 +126,5 @@
     <string name="context_window_compact_hint">원을 탭하여 컨텍스트 창 압축</string>
     <string name="mcp_enable">사용 설정</string>
     <string name="mcp_enabled">사용 설정됨</string>
+    <string name="drag_to_exit_folder_hint">위쪽 앱바 또는 아래쪽 내비게이션 바로 끌면 폴더에서 나갑니다</string>
 </resources>

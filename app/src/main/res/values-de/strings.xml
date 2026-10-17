@@ -126,4 +126,5 @@
     <string name="context_window_compact_hint">Tippe auf den Kreis, um das Kontextfenster zu verdichten</string>
     <string name="mcp_enable">Aktivieren</string>
     <string name="mcp_enabled">Aktiviert</string>
+    <string name="drag_to_exit_folder_hint">Zur App-Leiste oder zur Navigationsleiste ziehen, um den Ordner zu verlassen</string>
 </resources>
