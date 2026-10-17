@@ -404,7 +404,7 @@
 - Provider UI belongs in `features/providers/`; model API protocol adapters and catalog parsing belong in `integrations/modelapis/`. Account-provider OAuth adapters are kept under `integrations/modelapis/account/` for now. Kotlin package declarations use the valid identifier `integrations.modelapis`. Shared model packages use `shared.model.api`, `shared.model.auth`, `shared.model.generation`, `shared.model.language`, and `shared.model.provider`.
 - Cross-feature attachment metadata and file access belongs in `shared/files/`; generic domain models belong in `shared/model/` grouped by API, auth, generation, language-model, and provider concerns; app-wide OAuth browser/session plumbing belongs in `shared/auth/`.
 - Cross-feature icon caching, remote icon lookup, image decoding, and icon records belong in `shared/icons/`; feature screens consume this shared API rather than duplicating icon storage or lookup behavior.
-- `app/` remains untouched as fallback. `newApp/` is a rewrite workspace; copied code is reference material.
+- `legacyApp/` preserves the original implementation as a fallback. `app/` is the refactored implementation and active module.
 - No forced `ui/domain/data` layers or separate Gradle modules per feature.
 
 ## Main feature

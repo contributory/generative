@@ -13,11 +13,11 @@ import androidx.compose.ui.unit.dp
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.data.local.preferences.AppPreferences
-import org.starfall.multigateway.data.local.preferences.WordWrapMode
-import org.starfall.multigateway.ui.chat.LocalCodeRenderingPreferences
-import org.starfall.multigateway.ui.chat.RenderCodeBlock
-import org.starfall.multigateway.ui.settings.CodeRenderingPreferences
+import org.starfall.multigateway.shared.storage.preferences.AppPreferences
+import org.starfall.multigateway.shared.storage.preferences.WordWrapMode
+import org.starfall.multigateway.home.chat.screen.LocalCodeRenderingPreferences
+import org.starfall.multigateway.home.chat.screen.RenderCodeBlock
+import org.starfall.multigateway.features.settings.appsettings.screen.CodeRenderingPreferences
 
 class CodeRenderingBehaviorTest {
     @get:Rule val compose = createComposeRule()

@@ -1,5 +1,7 @@
 package org.starfall.multigateway
 
+import org.starfall.multigateway.integrations.modelapis.account.*
+
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -11,18 +13,22 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.adapter.common.*
-import org.starfall.multigateway.data.local.db.AppDatabase
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.repository.LlmRepository
-import org.starfall.multigateway.data.service.LlmService
+import org.starfall.multigateway.shared.auth.*
+import org.starfall.multigateway.shared.storage.database.AppDatabase
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.storage.ModelRepository
+import org.starfall.multigateway.integrations.modelapis.AiService
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class ProviderOAuthAccountsTest {
     private val marker = "account:antigravity:v1"
-    private val legacy = LlmProviderInfo("provider", "Antigravity", ProviderType.ANTIGRAVITY,
-        baseUrl = ProviderType.ANTIGRAVITY.defaultBaseUrl,
+    private val legacy = ModelProvider("provider", "Antigravity", ModelApiType.ANTIGRAVITY,
+        baseUrl = ModelApiType.ANTIGRAVITY.defaultBaseUrl,
         auth = Authorization(AuthMethod.OAUTH, "first@example.test", marker))
 
     @Test fun legacyAccountIsImportedAndAccountsRoundTripWithoutTokens() {
@@ -35,7 +41,7 @@ class ProviderOAuthAccountsTest {
         assertEquals("provider:second", second.oauthCredentialId)
         val json = Json.encodeToString(second)
         assertFalse(json.contains("accessToken")); assertFalse(json.contains("refreshToken"))
-        assertEquals(second, Json.decodeFromString<LlmProviderInfo>(json))
+        assertEquals(second, Json.decodeFromString<ModelProvider>(json))
         assertEquals(second, second.recordOAuthAccount())
     }
 
@@ -58,7 +64,7 @@ class ProviderOAuthAccountsTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
-            val repository = LlmRepository(db, LlmService(context))
+            val repository = ModelRepository(db, AiService(context))
             val store = AccountTokenStore(context, "antigravity")
             val first = legacy.recordOAuthAccount()
             val second = first.copy(auth = Authorization(AuthMethod.OAUTH, "second@example.test", marker, "provider:second"))

@@ -2,11 +2,19 @@ package org.starfall.multigateway
 
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.ui.providers.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.providers.fetchmodels.sheet.*
+import org.starfall.multigateway.features.providers.modeleditor.screen.*
+import org.starfall.multigateway.features.providers.providereditor.screen.*
+import org.starfall.multigateway.features.providers.providers.screen.*
+import org.starfall.multigateway.features.providers.shared.*
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
 
 class ProviderSearchTest {
-    private val provider = LlmProviderInfo("p", "Ollama Cloud", ProviderType.OPENAI,
+    private val provider = ModelProvider("p", "Ollama Cloud", ModelApiType.OPENAI,
         baseUrl = "https://api.example.com", groupId = "folder",
         config = ProviderConfiguration(modelIds = listOf("qwen-3", "custom"), modelConfigs = mapOf(
             "custom" to ModelConfiguration(displayName = "My Vision Model"),

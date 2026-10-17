@@ -12,11 +12,11 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.data.local.db.AppDatabase
-import org.starfall.multigateway.data.model.AuthMethod
-import org.starfall.multigateway.data.model.ProviderType
-import org.starfall.multigateway.data.repository.LlmRepository
-import org.starfall.multigateway.data.service.LlmService
+import org.starfall.multigateway.shared.storage.database.AppDatabase
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.storage.ModelRepository
+import org.starfall.multigateway.integrations.modelapis.AiService
 import java.util.UUID
 
 class ProviderLinkUiTest {
@@ -24,7 +24,7 @@ class ProviderLinkUiTest {
 
     @Test fun coldAndWarmLinksSaveProvidersOpenEditorAndDoNotRepeatOnRecreation() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val repository = LlmRepository(AppDatabase.getInstance(context), LlmService(context))
+        val repository = ModelRepository(AppDatabase.getInstance(context), AiService(context))
         val firstName = "Link test ${UUID.randomUUID()}"
         val secondName = "Link test ${UUID.randomUUID()}"
         fun intent(name: String) = Intent(Intent.ACTION_VIEW, Uri.Builder()
@@ -54,7 +54,7 @@ class ProviderLinkUiTest {
                 compose.waitUntil(10_000) { imported().size == 1 }
                 compose.onNode(hasSetTextAction() and hasText(firstName)).assertExists()
                 val saved = imported().single()
-                assertEquals(ProviderType.OPENAI, saved.type)
+                assertEquals(ModelApiType.OPENAI, saved.type)
                 assertEquals(AuthMethod.PLATFORM_DEFAULT, saved.auth.method)
                 assertEquals("test-link-key", saved.auth.token)
                 recreate()

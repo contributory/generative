@@ -5,11 +5,19 @@ import kotlinx.serialization.json.*
 import okhttp3.mockwebserver.*
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.service.McpService
-import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.mcp.shared.McpService
+import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
+import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
 import java.io.StringReader
 import java.nio.file.Files
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 class ToolHardeningTest {
     private fun json(text: String) = Json.parseToJsonElement(text).jsonObject
@@ -21,26 +29,26 @@ class ToolHardeningTest {
     }
     @Test fun malformedProvidersFailClearly() {
         listOf("{}", "{\"choices\":[]}", "{\"choices\":[{}]}", "{\"choices\":[null]}", "{\"error\":{\"message\":\"denied\"}}")
-            .forEach { rejected { providerTurn(ProviderType.OPENAI,json(it)) } }
-        rejected { providerTurn(ProviderType.OLLAMA,json("{\"message\":false}")) }
-        rejected { providerTurn(ProviderType.ANTHROPIC,json("{\"content\":{}}")) }
-        rejected { providerTurn(ProviderType.GOOGLE,json("{\"candidates\":[]}")) }
-        rejected { providerTurn(ProviderType.GOOGLE,json("{\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":null}]}}]}")) }
+            .forEach { rejected { providerTurn(ModelApiType.OPENAI,json(it)) } }
+        rejected { providerTurn(ModelApiType.OLLAMA,json("{\"message\":false}")) }
+        rejected { providerTurn(ModelApiType.ANTHROPIC,json("{\"content\":{}}")) }
+        rejected { providerTurn(ModelApiType.GOOGLE,json("{\"candidates\":[]}")) }
+        rejected { providerTurn(ModelApiType.GOOGLE,json("{\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":null}]}}]}")) }
     }
     @Test fun malformedCallsNeverExecute() {
         listOf("{}", "{\"function\":{}}", "{\"id\":\"a\",\"function\":{\"name\":\"x\",\"arguments\":[]}}",
             "{\"id\":\"a\",\"function\":{\"name\":\"x\",\"arguments\":\"broken\"}}")
-            .forEach { rejected { providerTurn(ProviderType.OPENAI,json("{\"choices\":[{\"message\":{\"tool_calls\":[$it]}}]}")) } }
+            .forEach { rejected { providerTurn(ModelApiType.OPENAI,json("{\"choices\":[{\"message\":{\"tool_calls\":[$it]}}]}")) } }
     }
     @Test fun ollamaCallsReceiveIdsAndArgumentsStayObjects() {
-        val turn = providerTurn(ProviderType.OLLAMA,json("{\"message\":{\"tool_calls\":[{\"function\":{\"name\":\"x\",\"arguments\":{}}}]}}"))
+        val turn = providerTurn(ModelApiType.OLLAMA,json("{\"message\":{\"tool_calls\":[{\"function\":{\"name\":\"x\",\"arguments\":{}}}]}}"))
         assertTrue(turn.requireArray("tool_calls").single().requireObject().text("id").isNotBlank())
     }
     @Test fun baseUrlsPreserveCustomPrefixes() {
         listOf("https://api.openai.com/v1", "https://host/foo/v1", "https://host/v1beta", "http://localhost:11434/api")
-            .forEach { base -> assertEquals(base,providerBase(LlmProviderInfo("p","p",ProviderType.OPENAI,baseUrl="$base/"))) }
-        assertEquals("https://host/foo/v1",providerBase(LlmProviderInfo("p","p",ProviderType.OPENAI,baseUrl="https://host/foo/v1/chat/completions")))
-        rejected { providerBase(LlmProviderInfo("p","p",ProviderType.OPENAI,baseUrl="file:///tmp")) }
+            .forEach { base -> assertEquals(base,providerBase(ModelProvider("p","p",ModelApiType.OPENAI,baseUrl="$base/"))) }
+        assertEquals("https://host/foo/v1",providerBase(ModelProvider("p","p",ModelApiType.OPENAI,baseUrl="https://host/foo/v1/chat/completions")))
+        rejected { providerBase(ModelProvider("p","p",ModelApiType.OPENAI,baseUrl="file:///tmp")) }
     }
     @Test fun budgetsIncludeTotalAndMedia() {
         val total = ToolBudget(); repeat(24) { total.consume(null) }; rejected { total.consume(null) }
@@ -86,7 +94,7 @@ class ToolHardeningTest {
     }
     @Test fun authKeepsLegacyTokenAndNamedHeaderDistinct() {
         assertEquals("old",Authorization(key="old").token)
-        val p=LlmProviderInfo("p","p",ProviderType.OPENAI,Authorization(AuthMethod.CUSTOM_HEADER,"X-Token","secret"),baseUrl="https://host")
+        val p=ModelProvider("p","p",ModelApiType.OPENAI,Authorization(AuthMethod.CUSTOM_HEADER,"X-Token","secret"),baseUrl="https://host")
         assertEquals("secret",ToolHttp().request(p.baseUrl,p).build().header("X-Token"))
         assertNull(ToolHttp().request(p.baseUrl,p).build().header("Authorization"))
     }
@@ -94,7 +102,7 @@ class ToolHardeningTest {
         val server=MockWebServer();server.start()
         try {
             server.enqueue(MockResponse().setResponseCode(401).setBody("{\"error\":{\"message\":\"Invalid token supersecret\"}}"))
-            val http=ToolHttp(); val p=LlmProviderInfo("p","p",ProviderType.OPENAI,Authorization(value="supersecret"),baseUrl=server.url("/").toString())
+            val http=ToolHttp(); val p=ModelProvider("p","p",ModelApiType.OPENAI,Authorization(value="supersecret"),baseUrl=server.url("/").toString())
             val e=runCatching { http.json(http.request(p.baseUrl,p).build()) }.exceptionOrNull()
             assertNotNull(e); assertFalse(e!!.message.orEmpty().contains("supersecret")); assertTrue(e.message.orEmpty().contains("401"))
         } finally {server.shutdown()}

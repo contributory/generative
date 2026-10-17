@@ -143,7 +143,7 @@ On Windows, use `gradlew.bat` instead of `./gradlew`.
 ## Project Structure
 
 ```text
-app/src/main/java/org/starfall/multigateway/
+legacyApp/src/main/java/org/starfall/multigateway/
 ├── di/              # Application dependency container and ViewModel factories
 ├── data/
 │   ├── local/        # Room database, preferences, local security helpers
@@ -165,8 +165,8 @@ app/src/main/java/org/starfall/multigateway/
 ```
 
 See [Android architecture](docs/architecture.md) for dependency ownership, state lifetimes,
-and navigation behavior. Raw assets live in `app/src/main/assets/`; Android resources
-live in `app/src/main/res/`.
+and navigation behavior. Raw assets live in `legacyApp/src/main/assets/`; Android resources
+live in `legacyApp/src/main/res/`.
 
 ## Security Notes
 

@@ -16,5 +16,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "MultiGateway"
+include(":legacyApp")
 include(":app")
-include(":newApp")

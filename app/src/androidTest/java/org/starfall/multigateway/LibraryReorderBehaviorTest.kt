@@ -9,9 +9,9 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.data.model.ModelConfiguration
-import org.starfall.multigateway.ui.components.moved
-import org.starfall.multigateway.ui.providers.ProviderModelsPane
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.ui.lists.moved
+import org.starfall.multigateway.features.providers.shared.ProviderModelsPane
 
 class LibraryReorderBehaviorTest {
     @get:Rule val compose = createComposeRule()

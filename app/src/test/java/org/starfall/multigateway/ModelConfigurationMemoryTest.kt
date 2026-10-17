@@ -9,9 +9,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.local.preferences.ModelConfigurationMemory
-import org.starfall.multigateway.data.local.preferences.rememberedModelName
-import org.starfall.multigateway.data.model.*
+import org.starfall.multigateway.shared.storage.preferences.ModelConfigurationMemory
+import org.starfall.multigateway.shared.storage.preferences.rememberedModelName
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.model.language.DEFAULT_CONTEXT_WINDOW_TOKENS
+import org.starfall.multigateway.shared.model.language.DiscoveredModel
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.language.ModelType
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

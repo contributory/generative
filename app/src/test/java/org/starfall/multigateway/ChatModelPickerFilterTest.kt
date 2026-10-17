@@ -2,12 +2,22 @@ package org.starfall.multigateway
 
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.ui.chat.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.providers.shared.*
+import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.home.chat.screen.ChatAppbar.*
+import org.starfall.multigateway.home.modelpicker.sheet.*
+import org.starfall.multigateway.home.quickactions.sheet.*
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.language.ModelType
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
 
 class ChatModelPickerFilterTest {
     private val configs = ModelType.entries.associate { it.name to ModelConfiguration(modelType = it, displayName = "Shared Name") }
-    private val mixed = LlmProviderInfo("mixed", "Mixed", ProviderType.OPENAI, baseUrl = "", groupId = "g",
+    private val mixed = ModelProvider("mixed", "Mixed", ModelApiType.OPENAI, baseUrl = "", groupId = "g",
         config = ProviderConfiguration(modelIds = configs.keys.toList(), modelConfigs = configs))
     private val mediaOnly = mixed.copy(id = "media", name = "Media", groupId = null,
         config = ProviderConfiguration(modelIds = listOf("image"), modelConfigs = mapOf("image" to ModelConfiguration(modelType = ModelType.IMAGE_GENERATION))))

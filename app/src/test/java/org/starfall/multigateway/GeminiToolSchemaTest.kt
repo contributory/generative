@@ -3,7 +3,7 @@ package org.starfall.multigateway
 import kotlinx.serialization.json.*
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.tools.geminiFunctionParameters
+import org.starfall.multigateway.shared.networking.geminiFunctionParameters
 
 class GeminiToolSchemaTest {
     private fun parse(text: String) = Json.parseToJsonElement(text)

@@ -5,10 +5,16 @@ import kotlinx.serialization.json.*
 import okhttp3.mockwebserver.*
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
+import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
 import java.nio.file.Files
 import java.util.Base64
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 internal val referencePng: ByteArray get() = Base64.getDecoder().decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=")
@@ -65,7 +71,7 @@ class MediaInputReferenceTest {
                 val video = ByteArray(32).also { "ftyp".toByteArray().copyInto(it, 4) }
                 server.enqueue(MockResponse().setHeader("Content-Type", "video/mp4").setBody(okio.Buffer().write(video)))
                 val result = SystemMediaTools(http).generate("generate_video",
-                    LlmProviderInfo("p", "test", ProviderType.OPENAI, baseUrl = server.url("/v1").toString()),
+                    ModelProvider("p", "test", ModelApiType.OPENAI, baseUrl = server.url("/v1").toString()),
                     model, "animate", inputImage = if (model == "text-video") null else "tool-file:$name")
                 val request = server.takeRequest()
                 val body = request.body.readByteArray()
@@ -101,7 +107,7 @@ class MediaInputReferenceTest {
             server.enqueue(MockResponse().setHeader("Content-Type", "video/mp4").setBody(okio.Buffer().write(
                 ByteArray(32).also { "ftyp".toByteArray().copyInto(it, 4) })))
             val result = SystemMediaTools(ToolHttp(files)).generate("generate_video",
-                LlmProviderInfo("p", "test", ProviderType.GOOGLE, baseUrl = server.url("/v1beta").toString()),
+                ModelProvider("p", "test", ModelApiType.GOOGLE, baseUrl = server.url("/v1beta").toString()),
                 "veo-3.1", "animate", inputImage = "tool-file:$name")
             val sent = server.takeRequest()
             assertEquals("/v1beta/models/veo-3.1:predictLongRunning", sent.path)
@@ -110,7 +116,7 @@ class MediaInputReferenceTest {
             assertTrue(result["files"]!!.jsonArray.isNotEmpty())
             val error = runCatching {
                 SystemMediaTools(ToolHttp(files)).generate("generate_video",
-                    LlmProviderInfo("p", "test", ProviderType.ANTHROPIC, baseUrl = server.url("/").toString()),
+                    ModelProvider("p", "test", ModelApiType.ANTHROPIC, baseUrl = server.url("/").toString()),
                     "video", "animate", inputImage = "tool-file:$name")
             }.exceptionOrNull()
             assertTrue(error!!.message!!.contains("image-to-video"))

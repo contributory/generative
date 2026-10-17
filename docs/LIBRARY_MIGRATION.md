@@ -94,12 +94,12 @@ next operation after a missing session, without replaying the failed tool call.
 Validated with Android SDK 36 and JDK 21:
 
 ```sh
-ANDROID_HOME=/opt/android-sdk ./gradlew :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin :app:assembleDebug --console=plain
+ANDROID_HOME=/opt/android-sdk ./gradlew :legacyApp:testDebugUnitTest :legacyApp:compileDebugAndroidTestKotlin :legacyApp:assembleDebug --console=plain
 ```
 
 Migration validation result: **BUILD SUCCESSFUL**, 302 unit tests, zero failures/errors/skips.
 Instrumentation tests compiled successfully; they were not executed on a device.
-The debug APK is `app/build/outputs/apk/debug/app-debug.apk`.
+The debug APK is `legacyApp/build/outputs/apk/debug/app-debug.apk`.
 
 At that validation run, the pre-existing debug APK was 52,640,694 bytes; the resulting APK was 57,775,808
 bytes, an aggregate increase of 5,135,114 bytes (9.75%). This comparison includes

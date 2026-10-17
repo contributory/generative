@@ -8,11 +8,18 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
+import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
 import java.net.InetAddress
 import java.nio.file.Files
 import java.util.Base64
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 // Route the documented Agnes hostname to the mock server, preserving URL selection.
 internal fun agnesTestClient(): OkHttpClient = ToolHttp().client.newBuilder().dns(object : Dns {
@@ -20,15 +27,15 @@ internal fun agnesTestClient(): OkHttpClient = ToolHttp().client.newBuilder().dn
         if (hostname == "apihub.agnes-ai.com") listOf(InetAddress.getByName("127.0.0.1")) else Dns.SYSTEM.lookup(hostname)
 }).build()
 
-internal fun agnesTestProvider(server: MockWebServer, path: String = "/v1") = LlmProviderInfo(
-    "p", "Agnes", ProviderType.OPENAI,
+internal fun agnesTestProvider(server: MockWebServer, path: String = "/v1") = ModelProvider(
+    "p", "Agnes", ModelApiType.OPENAI,
     baseUrl = server.url(path).newBuilder().host("apihub.agnes-ai.com").build().toString(),
     auth = Authorization(value = "test-secret")
 )
 
 class AgnesMediaTest {
     @Test fun bothProtocolsAndSettingsAreSelectedByUrlOnly() {
-        val agnes = LlmProviderInfo("p", "Agnes", ProviderType.OPENAI, baseUrl = " https://apihub.agnes-ai.com/v1/ ")
+        val agnes = ModelProvider("p", "Agnes", ModelApiType.OPENAI, baseUrl = " https://apihub.agnes-ai.com/v1/ ")
         val generic = agnes.copy(baseUrl = "https://proxy.example/v1")
         for (model in listOf("custom", "agnes-image-2.5-flash", "agnes-video-2.5")) {
             assertTrue(isAgnesProvider(agnes))

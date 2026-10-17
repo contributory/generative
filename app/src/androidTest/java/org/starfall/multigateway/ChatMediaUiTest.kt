@@ -15,18 +15,27 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.tools.ToolFiles
-import org.starfall.multigateway.ui.chat.*
-import org.starfall.multigateway.ui.components.MediaPreviewDialog
-import org.starfall.multigateway.ui.tools.MediaFileCard
-import org.starfall.multigateway.ui.components.ChatFilePreview
-import org.starfall.multigateway.ui.components.InlineVideoPreview
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.files.ToolFiles
+import org.starfall.multigateway.features.providers.shared.*
+import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.home.chat.screen.ChatAppbar.*
+import org.starfall.multigateway.home.modelpicker.sheet.*
+import org.starfall.multigateway.home.quickactions.sheet.*
+import org.starfall.multigateway.shared.ui.media.MediaPreviewDialog
+import org.starfall.multigateway.features.storage.storage.screen.MediaFileCard
+import org.starfall.multigateway.shared.ui.media.ChatFilePreview
+import org.starfall.multigateway.shared.ui.media.InlineVideoPreview
 import androidx.compose.ui.graphics.asImageBitmap
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.language.ModelType
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
 
 class ChatMediaUiTest {
     @Test fun assistantFilesKeepTheirLargePreview() {
@@ -180,7 +189,7 @@ class ChatMediaUiTest {
     @Test fun mediaModesKeepComposerSizeAndSendDirectly() {
         var submitted: DirectMediaRequest? = null
         var textSubmissions = 0
-        val provider = LlmProviderInfo("media", "Media", ProviderType.OPENAI, baseUrl = "https://example.com/v1",
+        val provider = ModelProvider("media", "Media", ModelApiType.OPENAI, baseUrl = "https://example.com/v1",
             config = ProviderConfiguration(modelIds = listOf("image", "video"), modelConfigs = mapOf(
                 "image" to ModelConfiguration(modelType = ModelType.IMAGE_GENERATION),
                 "video" to ModelConfiguration(modelType = ModelType.VIDEO_GENERATION))))

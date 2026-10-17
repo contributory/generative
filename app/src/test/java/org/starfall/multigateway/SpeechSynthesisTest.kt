@@ -6,11 +6,22 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.service.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.mcp.shared.*
+import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.home.chat.*
+import org.starfall.multigateway.integrations.modelapis.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.icons.*
+import org.starfall.multigateway.shared.media.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Base64
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
 
 class SpeechSynthesisTest {
     @Test fun codeBlocksAreSkippedByDefaultAndCanBeEnabled() {
@@ -24,8 +35,8 @@ class SpeechSynthesisTest {
         assertTrue(speechText(markdown, includeCodeBlocks = true).contains("indented_code"))
         assertEquals("", speechText("```\nonly_code()\n```"))
     }
-    private fun provider(type: ProviderType = ProviderType.OPENAI, url: String = "https://example.test/v1") =
-        LlmProviderInfo("p", "Speech", type, baseUrl = url, auth = Authorization(value = "secret"),
+    private fun provider(type: ModelApiType = ModelApiType.OPENAI, url: String = "https://example.test/v1") =
+        ModelProvider("p", "Speech", type, baseUrl = url, auth = Authorization(value = "secret"),
             config = ProviderConfiguration(modelConfigs = mapOf("gemini-tts" to ModelConfiguration(temperature = 0.7))))
 
     @Test fun readsMarkdownContentWithoutFormattingOrLinkTargets() {
@@ -67,7 +78,7 @@ class SpeechSynthesisTest {
     }
 
     @Test fun geminiUsesNativeSpeechConfigAndModelTemperature() {
-        val payload = speechPayload(provider(ProviderType.GOOGLE),
+        val payload = speechPayload(provider(ModelApiType.GOOGLE),
             SpeechService("s", "Voice", modelId = "gemini-tts", instructions = "Speak slowly", languageCode = "vi-VN"), "Xin chào")
         val config = payload["generationConfig"]!!.jsonObject
         assertEquals("AUDIO", config["responseModalities"]!!.jsonArray.single().jsonPrimitive.content)
@@ -107,7 +118,7 @@ class SpeechSynthesisTest {
         try {
             val pcm = byteArrayOf(1, 2, 3, 4)
             server.enqueue(MockResponse().setBody("""{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"audio/L16;rate=24000","data":"${Base64.getEncoder().encodeToString(pcm)}"}}]}}]}"""))
-            val audio = SpeechSynthesisService().synthesize(provider(ProviderType.GOOGLE, server.url("/v1beta").toString()),
+            val audio = SpeechSynthesisService().synthesize(provider(ModelApiType.GOOGLE, server.url("/v1beta").toString()),
                 SpeechService("s", "Voice", modelId = "models/gemini-tts"), "Hello")
             assertEquals("RIFF", audio.copyOfRange(0, 4).toString(Charsets.US_ASCII))
             assertEquals(24_000, ByteBuffer.wrap(audio, 24, 4).order(ByteOrder.LITTLE_ENDIAN).int)

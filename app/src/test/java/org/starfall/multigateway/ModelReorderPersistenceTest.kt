@@ -2,7 +2,9 @@ package org.starfall.multigateway
 
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
 
 class ModelReorderPersistenceTest {
     private val configs = linkedMapOf(

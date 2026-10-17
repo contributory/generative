@@ -26,13 +26,13 @@ The current facade intentionally centralizes all mapping decisions. `Icons.Outli
 
 ## Verification
 
-- `./gradlew :app:compileDebugKotlin --no-daemon` — **passed**.
-- `./gradlew :app:testDebugUnitTest --no-daemon` — currently blocked by a pre-existing test compilation error in `ChatOpeningScrollTest.kt:72`: the test call to `ChatScreen` omits the required `onNewChat` parameter. This is unrelated to icon migration and was not changed here.
+- `./gradlew :legacyApp:compileDebugKotlin --no-daemon` — **passed**.
+- `./gradlew :legacyApp:testDebugUnitTest --no-daemon` — currently blocked by a pre-existing test compilation error in `ChatOpeningScrollTest.kt:72`: the test call to `ChatScreen` omits the required `onNewChat` parameter. This is unrelated to icon migration and was not changed here.
 - Before release, visually inspect common actions, back/forward arrows, settings, file/media icons, and RTL layouts. Some Material-to-Fluent matches are semantic approximations, not pixel-identical substitutions.
 
 ## Icon inventory
 
-`Fluent candidate` records the original proposed semantic match. The implemented mapping lives in `app/src/main/java/org/starfall/multigateway/ui/icons/Icons.kt`; a `?` means the semantic match needs visual review. The file list below records where each Material icon currently occurred.
+`Fluent candidate` records the original proposed semantic match. The implemented mapping lives in `legacyApp/src/main/java/org/starfall/multigateway/ui/icons/Icons.kt`; a `?` means the semantic match needs visual review. The file list below records where each Material icon currently occurred.
 
 | Material icon | Style | Uses | Fluent candidate |
 | --- | --- | ---: | --- |
@@ -163,329 +163,329 @@ Each entry maps an old Material icon to its proposed Fluent name and lists the K
 
 ### `Add` → `Add`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/UserInputArea.kt`, `app/src/main/java/org/starfall/multigateway/ui/mcp/McpConnectionSettings.kt`, `app/src/main/java/org/starfall/multigateway/ui/mcp/McpScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderEditorScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderHeadersDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/settings/IconSettingsView.kt`, `app/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/tools/ToolSettingsScreens.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/UserInputArea.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpConnectionSettings.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderEditorScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderHeadersDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/settings/IconSettingsView.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/tools/ToolSettingsScreens.kt`
 
 ### `AddPhotoAlternate` → `ImageAdd`
 
-`app/src/main/java/org/starfall/multigateway/ui/settings/IconSettingsView.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/settings/IconSettingsView.kt`
 
 ### `ArrowBack` → `ArrowLeft`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/AssistantMessageCard.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/UserMessageCard.kt`, `app/src/main/java/org/starfall/multigateway/ui/drawer/PromptLibraryDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/mcp/McpScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/mcp/McpServerEditor.kt`, `app/src/main/java/org/starfall/multigateway/ui/preview/CodePreviewActivity.kt`, `app/src/main/java/org/starfall/multigateway/ui/profiles/ProfileScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ModelEditScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderEditorScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderOAuthAccountsDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/settings/SettingsScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/tools/ImageToolSettingsScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/tools/ToolSettingsScreens.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/AssistantMessageCard.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/UserMessageCard.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/drawer/PromptLibraryDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpServerEditor.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/preview/CodePreviewActivity.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/profiles/ProfileScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ModelEditScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderEditorScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderOAuthAccountsDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/settings/SettingsScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/tools/ImageToolSettingsScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/tools/ToolSettingsScreens.kt`
 
 ### `ArrowDropDown` → `CaretDown`
 
-`app/src/main/java/org/starfall/multigateway/ui/providers/ProviderConnectionFields.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderConnectionFields.kt`
 
 ### `ArrowDropUp` → `CaretUp`
 
-`app/src/main/java/org/starfall/multigateway/ui/providers/ProviderConnectionFields.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderConnectionFields.kt`
 
 ### `ArrowForward` → `ArrowRight`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/AssistantMessageCard.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/UserMessageCard.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/AssistantMessageCard.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/UserMessageCard.kt`
 
 ### `ArrowForwardIos` → `ChevronRight`
 
-`app/src/main/java/org/starfall/multigateway/ui/settings/SettingsComponents.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/settings/SettingsComponents.kt`
 
 ### `ArrowUpward` → `ArrowUp`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/InputBar.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/UserInputArea.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/InputBar.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/UserInputArea.kt`
 
 ### `AttachFile` → `Attach`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/InputBar.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/InputBar.kt`
 
 ### `Audiotrack` → `MusicNote1`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/AttachmentPreview.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ModelEditScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/AttachmentPreview.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ModelEditScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`
 
 ### `BrokenImage` → `ImageOff`
 
-`app/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`
 
 ### `Build` → `Wrench`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`
 
 ### `CameraAlt` → `Camera`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/FilesActionSheet.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/FilesActionSheet.kt`
 
 ### `ChatBubbleOutline` → `ChatBubblesQuestion?`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/MessageBubble.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/MessageBubble.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`
 
 ### `Check` → `Checkmark`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/MarkdownCodeBlock.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ModelConfigDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/tools/ImageToolSettingsScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/MarkdownCodeBlock.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelConfigDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/tools/ImageToolSettingsScreen.kt`
 
 ### `CheckCircle` → `CheckmarkCircle`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/AttachmentPreview.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/AttachmentPreview.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`
 
 ### `Close` → `Dismiss`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/ChatScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/MarkdownCodeBlock.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/UserInputArea.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/UserMessageCard.kt`, `app/src/main/java/org/starfall/multigateway/ui/components/EntityIcon.kt`, `app/src/main/java/org/starfall/multigateway/ui/components/MediaPreview.kt`, `app/src/main/java/org/starfall/multigateway/ui/components/MediaViewerToolbar.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderHeadersDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/settings/IconSettingsView.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ChatScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/MarkdownCodeBlock.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/UserInputArea.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/UserMessageCard.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/components/EntityIcon.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/components/MediaPreview.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/components/MediaViewerToolbar.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderHeadersDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/settings/IconSettingsView.kt`
 
 ### `Cloud` → `Cloud`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/RemoteMachinesSheet.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/RemoteMachinesSheet.kt`
 
 ### `Code` → `Code`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`
 
 ### `Computer` → `Desktop`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/FilesActionSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/RemoteMachinesSheet.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/FilesActionSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/RemoteMachinesSheet.kt`
 
 ### `ContentCopy` → `Copy`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/MarkdownCodeBlock.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/MarkdownLatexBlock.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/MarkdownRenderer.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/MessageBubble.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ToolActivityCards.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/UserMessageCard.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/MarkdownCodeBlock.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/MarkdownLatexBlock.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/MarkdownRenderer.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/MessageBubble.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ToolActivityCards.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/UserMessageCard.kt`
 
 ### `Create` → `Compose`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/ChatAppBar.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ChatAppBar.kt`
 
 ### `Delete` → `Delete`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/ConversationSummaryUi.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/UserMessageCard.kt`, `app/src/main/java/org/starfall/multigateway/ui/components/ItemOverflowMenu.kt`, `app/src/main/java/org/starfall/multigateway/ui/components/MediaViewerToolbar.kt`, `app/src/main/java/org/starfall/multigateway/ui/mcp/McpConnectionSettings.kt`, `app/src/main/java/org/starfall/multigateway/ui/profiles/ProfileScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderEditorScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderHeadersDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ConversationSummaryUi.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/UserMessageCard.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/components/ItemOverflowMenu.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/components/MediaViewerToolbar.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpConnectionSettings.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/profiles/ProfileScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderEditorScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderHeadersDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`
 
 ### `DeleteSweep` → `DeleteLines?`
 
-`app/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`
 
 ### `Description` → `Document`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/FilesActionSheet.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/FilesActionSheet.kt`
 
 ### `Download` → `ArrowDownload`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/MarkdownCodeBlock.kt`, `app/src/main/java/org/starfall/multigateway/ui/components/ChatFilePreview.kt`, `app/src/main/java/org/starfall/multigateway/ui/components/EntityIcon.kt`, `app/src/main/java/org/starfall/multigateway/ui/components/MediaViewerToolbar.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/MarkdownCodeBlock.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/components/ChatFilePreview.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/components/EntityIcon.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/components/MediaViewerToolbar.kt`
 
 ### `Edit` → `Edit`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/UserMessageCard.kt`, `app/src/main/java/org/starfall/multigateway/ui/components/ItemOverflowMenu.kt`, `app/src/main/java/org/starfall/multigateway/ui/profiles/ProfileScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderModelsPane.kt`, `app/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/UserMessageCard.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/components/ItemOverflowMenu.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/profiles/ProfileScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderModelsPane.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`
 
 ### `Error` → `ErrorCircle`
 
-`app/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`
 
 ### `ErrorOutline` → `ErrorCircle`
 
-`app/src/main/java/org/starfall/multigateway/ui/mcp/McpServerCard.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpServerCard.kt`
 
 ### `ExpandLess` → `ChevronUp`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/AssistantMessageCard.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/LiveThinkingBlock.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ReasoningDropdown.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/AssistantMessageCard.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/LiveThinkingBlock.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ReasoningDropdown.kt`
 
 ### `ExpandMore` → `ChevronDown`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/AssistantMessageCard.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/LiveThinkingBlock.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ReasoningDropdown.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ModelEditScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderEditorScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/AssistantMessageCard.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/LiveThinkingBlock.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ReasoningDropdown.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ModelEditScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderEditorScreen.kt`
 
 ### `Extension` → `PuzzlePiece`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/FilesActionSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/QuickActionsSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/mcp/McpConnectionSettings.kt`, `app/src/main/java/org/starfall/multigateway/ui/mcp/McpScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/mcp/McpServerCard.kt`, `app/src/main/java/org/starfall/multigateway/ui/mcp/McpToolsTab.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/FilesActionSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/QuickActionsSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpConnectionSettings.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpServerCard.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpToolsTab.kt`
 
 ### `Folder` → `Folder`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`
 
 ### `FolderOpen` → `FolderOpen`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`
 
 ### `FormatListBulleted` → `TextBulletList`
 
-`app/src/main/java/org/starfall/multigateway/ui/providers/ProviderEditorScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderModelsPane.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderEditorScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderModelsPane.kt`
 
 ### `Fullscreen` → `FullScreenMaximize`
 
-`app/src/main/java/org/starfall/multigateway/ui/components/MediaPreview.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/components/MediaPreview.kt`
 
 ### `FullscreenExit` → `FullScreenMinimize`
 
-`app/src/main/java/org/starfall/multigateway/ui/components/MediaPreview.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/components/MediaPreview.kt`
 
 ### `GridView` → `Grid`
 
-`app/src/main/java/org/starfall/multigateway/ui/mcp/McpScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`
 
 ### `Image` → `Image`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/FilesActionSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/QuickActionsSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/UserInputArea.kt`, `app/src/main/java/org/starfall/multigateway/ui/components/EntityIcon.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ModelEditScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/tools/ToolSettingsScreens.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/FilesActionSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/QuickActionsSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/UserInputArea.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/components/EntityIcon.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ModelEditScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/tools/ToolSettingsScreens.kt`
 
 ### `InsertDriveFile` → `Document`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/AttachmentPreview.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/QuickActionsSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ToolActivityCards.kt`, `app/src/main/java/org/starfall/multigateway/ui/components/ChatFilePreview.kt`, `app/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/AttachmentPreview.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/QuickActionsSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ToolActivityCards.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/components/ChatFilePreview.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`
 
 ### `Key` → `Key`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`
 
 ### `Keyboard` → `Keyboard`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`
 
 ### `KeyboardArrowDown` → `ChevronDown`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/ChatScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ReasoningDropdown.kt`, `app/src/main/java/org/starfall/multigateway/ui/mcp/McpOAuthFields.kt`, `app/src/main/java/org/starfall/multigateway/ui/mcp/McpToolsTab.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderModelCatalogSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ChatScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ReasoningDropdown.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpOAuthFields.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpToolsTab.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderModelCatalogSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`
 
 ### `KeyboardArrowRight` → `ChevronRight`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ReasoningDropdown.kt`, `app/src/main/java/org/starfall/multigateway/ui/mcp/McpOAuthFields.kt`, `app/src/main/java/org/starfall/multigateway/ui/mcp/McpToolsTab.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ModelEditScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderEditorScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/tools/ToolSettingsScreens.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ReasoningDropdown.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpOAuthFields.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpToolsTab.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ModelEditScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderEditorScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/tools/ToolSettingsScreens.kt`
 
 ### `KeyboardArrowUp` → `ChevronUp`
 
-`app/src/main/java/org/starfall/multigateway/ui/providers/ProviderModelCatalogSheet.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderModelCatalogSheet.kt`
 
 ### `Language` → `Globe`
 
-`app/src/main/java/org/starfall/multigateway/ui/providers/ProviderConnectionFields.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderConnectionFields.kt`
 
 ### `Lightbulb` → `Lightbulb`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/ReasoningDropdown.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ReasoningDropdown.kt`
 
 ### `LinkOff` → `LinkDismiss`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`
 
 ### `List` → `TextBulletList`
 
-`app/src/main/java/org/starfall/multigateway/ui/mcp/McpScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`
 
 ### `Lock` → `LockClosed`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`
 
 ### `Logout` → `SignOut`
 
-`app/src/main/java/org/starfall/multigateway/ui/providers/OAuthAccountCard.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/providers/OAuthAccountCard.kt`
 
 ### `Memory` → `DeveloperBoard`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`
 
 ### `Menu` → `Navigation`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/ChatAppBar.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ChatAppBar.kt`
 
 ### `MoreHoriz` → `MoreHorizontal`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/AssistantMessageCard.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/AssistantMessageCard.kt`
 
 ### `MoreVert` → `MoreVertical`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/components/ItemOverflowMenu.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/settings/IconSettingsView.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/components/ItemOverflowMenu.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/settings/IconSettingsView.kt`
 
 ### `NetworkCheck` → `Wifi1?`
 
-`app/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderEditorScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderEditorScreen.kt`
 
 ### `Pause` → `Pause`
 
-`app/src/main/java/org/starfall/multigateway/ui/components/MediaPreview.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/components/MediaPreview.kt`
 
 ### `PersonOff` → `REVIEW`
 
-`app/src/main/java/org/starfall/multigateway/ui/profiles/ProfileScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/profiles/ProfileScreen.kt`
 
 ### `PlayArrow` → `Play`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/AttachmentPreview.kt`, `app/src/main/java/org/starfall/multigateway/ui/components/ChatFilePreview.kt`, `app/src/main/java/org/starfall/multigateway/ui/components/MediaPreview.kt`, `app/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/AttachmentPreview.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/components/ChatFilePreview.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/components/MediaPreview.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`
 
 ### `Psychology` → `Brain?`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/FilesActionSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/FilesActionSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`
 
 ### `RadioButtonUnchecked` → `Circle`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/AttachmentPreview.kt`, `app/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/AttachmentPreview.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`
 
 ### `RecordVoiceOver` → `PersonVoice`
 
-`app/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`
 
 ### `Refresh` → `ArrowClockwise`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/preview/CodePreviewActivity.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderModelCatalogSheet.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/preview/CodePreviewActivity.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderModelCatalogSheet.kt`
 
 ### `RestartAlt` → `ArrowCounterclockwise`
 
-`app/src/main/java/org/starfall/multigateway/ui/settings/CodeRenderingPreferences.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/settings/CodeRenderingPreferences.kt`
 
 ### `Restore` → `History`
 
-`app/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`
 
 ### `Save` → `Save`
 
-`app/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderOAuthAccountsDialog.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderOAuthAccountsDialog.kt`
 
 ### `Search` → `Search`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/settings/IconSettingsView.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/settings/IconSettingsView.kt`
 
 ### `Send` → `Send`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/UserMessageCard.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/UserMessageCard.kt`
 
 ### `Settings` → `Settings`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ChatAppBar.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ChatAppBar.kt`
 
 ### `Share` → `Share`
 
-`app/src/main/java/org/starfall/multigateway/ui/components/MediaViewerToolbar.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/components/MediaViewerToolbar.kt`
 
 ### `Stop` → `Stop`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/InputBar.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/UserInputArea.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/InputBar.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/UserInputArea.kt`
 
 ### `StopCircle` → `RecordStop?`
 
-`app/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ModelConnectionDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/speech/SpeechScreen.kt`
 
 ### `Summarize` → `TextDescription`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/ConversationSummaryUi.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ConversationSummaryUi.kt`
 
 ### `Terminal` → `WindowConsole`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`
 
 ### `Tune` → `Options`
 
-`app/src/main/java/org/starfall/multigateway/ui/profiles/ProfileScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/profiles/ProfileScreen.kt`
 
 ### `UnfoldLess` → `REVIEW`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`
 
 ### `UnfoldMore` → `REVIEW`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`
 
 ### `UploadFile` → `DocumentArrowUp`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`
 
 ### `Videocam` → `Video`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/FilesActionSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/QuickActionsSheet.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/UserInputArea.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ModelEditScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/tools/ToolSettingsScreens.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/FilesActionSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ModelPickerSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/QuickActionsSheet.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/UserInputArea.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ModelEditScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/tools/StorageScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/tools/ToolSettingsScreens.kt`
 
 ### `Visibility` → `Eye`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/MarkdownCodeBlock.kt`, `app/src/main/java/org/starfall/multigateway/ui/mcp/McpConnectionSettings.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderConnectionFields.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/MarkdownCodeBlock.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpConnectionSettings.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderConnectionFields.kt`
 
 ### `VisibilityOff` → `EyeOff`
 
-`app/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `app/src/main/java/org/starfall/multigateway/ui/mcp/McpConnectionSettings.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `app/src/main/java/org/starfall/multigateway/ui/providers/ProviderConnectionFields.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ext-services/remote/RemoteMachinesScreen.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/mcp/McpConnectionSettings.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderApiKeysDialog.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/providers/ProviderConnectionFields.kt`
 
 ### `WrapText` → `TextWrap`
 
-`app/src/main/java/org/starfall/multigateway/ui/chat/MarkdownCodeBlock.kt`, `app/src/main/java/org/starfall/multigateway/ui/chat/ToolActivityCards.kt`
+`legacyApp/src/main/java/org/starfall/multigateway/ui/chat/MarkdownCodeBlock.kt`, `legacyApp/src/main/java/org/starfall/multigateway/ui/chat/ToolActivityCards.kt`
 

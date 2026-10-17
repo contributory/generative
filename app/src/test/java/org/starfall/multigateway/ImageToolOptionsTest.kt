@@ -7,9 +7,15 @@ import kotlinx.serialization.json.*
 import okhttp3.mockwebserver.*
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
+import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
 import java.nio.file.Files
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 class ImageToolOptionsTest {
     @Test fun settingsSurviveSerializationAndRemainSeparateForEachModel() {
@@ -25,12 +31,12 @@ class ImageToolOptionsTest {
 
     @Test fun googleOptionsMergeWithoutLosingPromptOrImageModality() {
         val options = Json.parseToJsonElement("""{"generationConfig":{"imageConfig":{"aspectRatio":"16:9","imageSize":"2K"},"temperature":0.8},"safetySettings":[]}""").jsonObject
-        val request = imageGenerationRequest(ProviderType.GOOGLE, "gemini-image", "landscape", options)
+        val request = imageGenerationRequest(ModelApiType.GOOGLE, "gemini-image", "landscape", options)
         assertEquals("16:9", request.optionAt("generationConfig.imageConfig.aspectRatio")!!.jsonPrimitive.content)
         assertTrue(request.optionAt("generationConfig.responseModalities")!!.jsonArray.contains(str("IMAGE")))
         assertTrue(request["contents"].toString().contains("landscape"))
         assertEquals(JsonArray(emptyList()), request["safetySettings"])
-        val imagen = imageGenerationRequest(ProviderType.GOOGLE, "imagen-4", "tree",
+        val imagen = imageGenerationRequest(ModelApiType.GOOGLE, "imagen-4", "tree",
             Json.parseToJsonElement("""{"parameters":{"sampleCount":4,"aspectRatio":"3:4","outputOptions":{"mimeType":"image/jpeg"}}}""").jsonObject)
         assertEquals(4, imagen.optionAt("parameters.sampleCount")!!.jsonPrimitive.int)
         assertEquals("image/jpeg", imagen.optionAt("parameters.outputOptions.mimeType")!!.jsonPrimitive.content)
@@ -41,7 +47,7 @@ class ImageToolOptionsTest {
         listOf("""{"n":11}""", """{"n":"2"}""", """{"output_compression":101}""",
             """{"background":"transparent","output_format":"jpeg"}""", """{"partial_images":2}""",
             """{"model":"unexpected"}""").forEach { json ->
-            assertTrue(json, runCatching { validateImageOptions(ProviderType.OPENAI, "image", Json.parseToJsonElement(json).jsonObject) }.isFailure)
+            assertTrue(json, runCatching { validateImageOptions(ModelApiType.OPENAI, "image", Json.parseToJsonElement(json).jsonObject) }.isFailure)
         }
     }
 
@@ -57,7 +63,7 @@ class ImageToolOptionsTest {
                 "event: image_generation.completed\r\ndata: {\"type\":\"image_generation.completed\",\"b64_json\":\"$encoded\"}\r\n\r\n" +
                 "data: [DONE]\r\n\r\n"))
             val store = ToolFiles(root)
-            val provider = LlmProviderInfo("p", "test", ProviderType.OPENAI, baseUrl = server.url("/v1").toString())
+            val provider = ModelProvider("p", "test", ModelApiType.OPENAI, baseUrl = server.url("/v1").toString())
             val result = SystemMediaTools(ToolHttp(store)).generate("generate_image", provider, "image", "tree",
                 obj("stream" to JsonPrimitive(true), "partial_images" to JsonPrimitive(1), "quality" to str("high"), "custom_option" to obj("enabled" to JsonPrimitive(true))))
             val request = Json.parseToJsonElement(server.takeRequest().body.readUtf8()).jsonObject
@@ -79,7 +85,7 @@ class ImageToolOptionsTest {
         try {
             server.enqueue(MockResponse().addHeader("Content-Type", "text/event-stream")
                 .setBody("data: [DONE]\n\n").setBodyDelay(5, java.util.concurrent.TimeUnit.SECONDS))
-            val provider = LlmProviderInfo("p", "test", ProviderType.OPENAI, baseUrl = server.url("/v1").toString())
+            val provider = ModelProvider("p", "test", ModelApiType.OPENAI, baseUrl = server.url("/v1").toString())
             val job = launch {
                 SystemMediaTools(ToolHttp(ToolFiles(root))).generate("generate_image", provider, "image", "tree",
                     obj("stream" to JsonPrimitive(true)))

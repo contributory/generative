@@ -3,11 +3,15 @@ package org.starfall.multigateway
 import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.ui.configuration.OAuthAuthorizations
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.providers.shared.OAuthAuthorizations
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 class OAuthAuthorizationsTest {
-    private val provider = LlmProviderInfo("first-login", "Account", ProviderType.ANTIGRAVITY, baseUrl = ProviderType.ANTIGRAVITY.defaultBaseUrl)
+    private val provider = ModelProvider("first-login", "Account", ModelApiType.ANTIGRAVITY, baseUrl = ModelApiType.ANTIGRAVITY.defaultBaseUrl)
 
     @Test fun screenCancellationDoesNotLoseAuthorizationAndRetryJoinsTheSameRequest() = runBlocking {
         val owner = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)

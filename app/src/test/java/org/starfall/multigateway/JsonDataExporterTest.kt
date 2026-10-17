@@ -9,27 +9,27 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.multigateway.data.model.Authorization
-import org.starfall.multigateway.data.model.AuthMethod
-import org.starfall.multigateway.data.model.Conversation
-import org.starfall.multigateway.data.model.LlmProviderInfo
-import org.starfall.multigateway.data.model.McpInfo
-import org.starfall.multigateway.data.model.SpeechService
-import org.starfall.multigateway.data.model.ProviderType
-import org.starfall.multigateway.data.model.ProviderGroup
-import org.starfall.multigateway.data.service.JsonExportKind
-import org.starfall.multigateway.data.service.buildJsonExport
-import org.starfall.multigateway.data.service.parseConversationsExport
-import org.starfall.multigateway.data.service.parseMcpExport
-import org.starfall.multigateway.data.service.parseProvidersExport
-import org.starfall.multigateway.data.service.parseSpeechServicesExport
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.Conversation
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.McpInfo
+import org.starfall.multigateway.shared.model.SpeechService
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
+import org.starfall.multigateway.features.appdata.model.JsonExportKind
+import org.starfall.multigateway.features.appdata.service.buildJsonExport
+import org.starfall.multigateway.features.appdata.service.parseConversationsExport
+import org.starfall.multigateway.features.appdata.service.parseMcpExport
+import org.starfall.multigateway.features.appdata.service.parseProvidersExport
+import org.starfall.multigateway.features.appdata.service.parseSpeechServicesExport
 
 class JsonDataExporterTest {
     @Test fun exportsEachCollectionAsVersionedJsonWithItsType() {
-        val provider = LlmProviderInfo(
+        val provider = ModelProvider(
             id = "provider-1",
             name = "Test provider",
-            type = ProviderType.OPENAI,
+            type = ModelApiType.OPENAI,
             auth = Authorization(AuthMethod.PLATFORM_DEFAULT, value = "api-key"),
             baseUrl = "https://example.com"
         )
@@ -56,7 +56,7 @@ class JsonDataExporterTest {
     }
 
     @Test fun exportedCollectionsCanBeParsedBackIntoTheirOriginalModels() {
-        val provider = LlmProviderInfo("p", "Provider", ProviderType.OPENAI, baseUrl = "https://example.com", groupId = "g", sortOrder = 2)
+        val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI, baseUrl = "https://example.com", groupId = "g", sortOrder = 2)
         val groups = listOf(ProviderGroup("g", "Work", 1, "folder.png"), ProviderGroup("empty", "Empty folder", 3))
         val mcp = McpInfo("m", "MCP", url = "https://example.com/mcp")
         val speech = SpeechService("s", "Speech")

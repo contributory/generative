@@ -88,8 +88,8 @@ merely because a previous local write is pending.
 - `ui/settings/`: settings rendering and its ViewModel.
 - `ui/navigation/`: stable app destinations.
 - Other `ui/<feature>/` packages: feature screens and reusable components.
-- `app/src/main/assets/`: raw brand artwork and its manifest.
-- `app/src/main/res/`: Android resources, launcher icons and platform configuration.
+- `legacyApp/src/main/assets/`: raw brand artwork and its manifest.
+- `legacyApp/src/main/res/`: Android resources, launcher icons and platform configuration.
 
 Media previews and Android document/share launchers remain Compose platform adapters
 in `ui/tools`. They use IO dispatchers for file reads/writes; a dedicated storage

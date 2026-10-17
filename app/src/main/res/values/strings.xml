@@ -650,7 +650,7 @@
     <string name="select_model">Select a model</string>
     <string name="search_history">Search history...</string>
     <string name="no_conversations_yet">No conversations yet</string>
-    <string name="connect_providers_description">Connect to multiple LLM providers and agents seamlessly.</string>
+    <string name="connect_providers_description">Connect to multiple AI providers and agents seamlessly.</string>
     <string name="choose_another_model_hint">Tap the model name to choose another model</string>
     <string name="settings_source_code">Source code</string>
     <string name="settings_license">License</string>

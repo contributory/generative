@@ -4,20 +4,20 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.multigateway.data.model.DEFAULT_REASONING_EFFORTS
-import org.starfall.multigateway.data.model.ModelConfiguration
-import org.starfall.multigateway.data.model.REASONING_EFFORT_ACTIVE
-import org.starfall.multigateway.data.model.SELECTABLE_REASONING_EFFORTS
-import org.starfall.multigateway.data.model.supportedReasoningEfforts
-import org.starfall.multigateway.ui.chat.reasoningEffortBurstDuration
-import org.starfall.multigateway.ui.chat.reasoningEffortEnabled
-import org.starfall.multigateway.ui.chat.reasoningEffortIndex
-import org.starfall.multigateway.ui.chat.reasoningEffortOptions
-import org.starfall.multigateway.ui.chat.reasoningEffortTier
+import org.starfall.multigateway.shared.model.language.DEFAULT_REASONING_EFFORTS
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.language.REASONING_EFFORT_ACTIVE
+import org.starfall.multigateway.shared.model.language.SELECTABLE_REASONING_EFFORTS
+import org.starfall.multigateway.shared.model.language.supportedReasoningEfforts
+import org.starfall.multigateway.home.chat.screen.reasoningEffortBurstDuration
+import org.starfall.multigateway.home.chat.screen.reasoningEffortEnabled
+import org.starfall.multigateway.home.chat.screen.reasoningEffortIndex
+import org.starfall.multigateway.home.chat.screen.reasoningEffortOptions
+import org.starfall.multigateway.home.chat.screen.reasoningEffortTier
 
 class ReasoningEffortControlTest {
-    private fun efforts(options: List<org.starfall.multigateway.ui.chat.ReasoningEffortOption>) = options.map { it.effort }
-    private fun tiers(options: List<org.starfall.multigateway.ui.chat.ReasoningEffortOption>) =
+    private fun efforts(options: List<org.starfall.multigateway.home.chat.screen.ReasoningEffortOption>) = options.map { it.effort }
+    private fun tiers(options: List<org.starfall.multigateway.home.chat.screen.ReasoningEffortOption>) =
         options.indices.map { reasoningEffortTier(it, options) }
 
     @Test fun disabledValuesAreRecognized() {

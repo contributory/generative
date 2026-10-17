@@ -4,10 +4,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.multigateway.data.model.CONTENT_API_MCP_ENDPOINT
-import org.starfall.multigateway.data.model.McpInfo
-import org.starfall.multigateway.data.model.isContentApiName
-import org.starfall.multigateway.data.model.resolvedUrl
+import org.starfall.multigateway.shared.model.CONTENT_API_MCP_ENDPOINT
+import org.starfall.multigateway.shared.model.McpInfo
+import org.starfall.multigateway.shared.model.isContentApiName
+import org.starfall.multigateway.shared.model.resolvedUrl
 
 class ContentApiMcpTest {
     @Test

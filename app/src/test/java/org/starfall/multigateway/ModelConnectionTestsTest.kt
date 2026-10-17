@@ -3,11 +3,13 @@ package org.starfall.multigateway
 import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.ui.providers.ModelConnectionTests
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.providers.shared.ModelConnectionTests
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 class ModelConnectionTestsTest {
-    private val provider = LlmProviderInfo("p", "Provider", ProviderType.OPENAI, baseUrl = "https://example.test/v1")
+    private val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI, baseUrl = "https://example.test/v1")
 
     @Test fun testsAtMostFourModelsInParallelAndDeduplicatesPendingRequests() = runBlocking {
         val gate = CompletableDeferred<Unit>()

@@ -11,11 +11,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.model.LlmProviderInfo
-import org.starfall.multigateway.data.model.ProviderGroup
-import org.starfall.multigateway.data.model.ProviderPlacement
-import org.starfall.multigateway.data.model.ProviderType
-import org.starfall.multigateway.ui.providers.ProviderScreen
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
+import org.starfall.multigateway.shared.model.provider.ProviderPlacement
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.features.providers.providers.screen.ProvidersScreen
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi")
@@ -24,21 +24,21 @@ class ProviderAutoscrollRobolectricTest {
     val compose = createComposeRule()
 
     private fun provider(id: String, group: String? = null, order: Int = 0) =
-        LlmProviderInfo(id, id, ProviderType.OPENAI, baseUrl = "", groupId = group, sortOrder = order)
+        ModelProvider(id, id, ModelApiType.OPENAI, baseUrl = "", groupId = group, sortOrder = order)
 
     private val manyRoot = (0..39).map { provider("p$it", order = it) }
     private val longFolder = listOf(provider("outside", order = 0)) +
         (0..35).map { provider("member-$it", "long", it) }
 
     private fun show(
-        providers: List<LlmProviderInfo>,
+        providers: List<ModelProvider>,
         groups: List<ProviderGroup>,
         grid: Boolean,
         writes: MutableList<ProviderPlacement> = mutableListOf()
     ) {
         compose.setContent {
             MaterialTheme {
-                ProviderScreen(
+                ProvidersScreen(
                     providers = providers,
                     providerGroups = groups,
                     isGridView = grid,

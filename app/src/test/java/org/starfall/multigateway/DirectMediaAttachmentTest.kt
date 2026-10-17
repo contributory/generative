@@ -11,11 +11,24 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.service.*
-import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.mcp.shared.*
+import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.home.chat.*
+import org.starfall.multigateway.integrations.modelapis.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.icons.*
+import org.starfall.multigateway.shared.media.*
+import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
+import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
 import java.nio.file.Files
 import java.util.Base64
+import org.starfall.multigateway.shared.model.generation.GenerationEvent
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.language.ModelType
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)
@@ -76,7 +89,7 @@ class DirectMediaAttachmentTest {
         try {
             server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody(
                 "data: {\"type\":\"image_edit.completed\",\"b64_json\":\"${Base64.getEncoder().encodeToString(referencePng)}\"}\n\ndata: [DONE]\n\n"))
-            val provider = LlmProviderInfo("p", "local", ProviderType.OPENAI, baseUrl = server.url("/v1").toString())
+            val provider = ModelProvider("p", "local", ModelApiType.OPENAI, baseUrl = server.url("/v1").toString())
             val files = ToolFiles(root)
             val events = engine(files).generateMedia(provider, "gpt-image-1", ModelType.IMAGE_GENERATION, "edit",
                 obj("quality" to str("high"), "stream" to JsonPrimitive(true)), listOf(attachment.absolutePath, attachment.absolutePath)).toList()
@@ -105,7 +118,7 @@ class DirectMediaAttachmentTest {
             server.enqueue(MockResponse().setBody("""{"id":"v1","status":"completed"}"""))
             server.enqueue(MockResponse().setHeader("Content-Type", "video/mp4").setBody(okio.Buffer().write(
                 ByteArray(32).also { "ftyp".toByteArray().copyInto(it, 4) })))
-            val provider = LlmProviderInfo("p", "local", ProviderType.OPENAI_RESPONSES, baseUrl = server.url("/v1").toString())
+            val provider = ModelProvider("p", "local", ModelApiType.OPENAI_RESPONSES, baseUrl = server.url("/v1").toString())
             val events = engine(ToolFiles(root)).generateMedia(provider, "MiniMax-H3", ModelType.VIDEO_GENERATION,
                 "animate", attachments = listOf(attachment.absolutePath)).toList()
             val sent = server.takeRequest()
@@ -129,7 +142,7 @@ class DirectMediaAttachmentTest {
             val output = referencePng + ByteArray(64)
             server.enqueue(MockResponse().setBody(obj("candidates" to JsonArray(listOf(obj("content" to obj("parts" to JsonArray(listOf(
                 obj("inlineData" to obj("mimeType" to str("image/png"), "data" to str(Base64.getEncoder().encodeToString(output))))))))))).toString()))
-            val provider = LlmProviderInfo("p", "local", ProviderType.GOOGLE, baseUrl = server.url("/v1beta").toString())
+            val provider = ModelProvider("p", "local", ModelApiType.GOOGLE, baseUrl = server.url("/v1beta").toString())
             val options = obj("generationConfig" to obj("imageConfig" to obj("aspectRatio" to str("16:9"))))
             val events = engine(ToolFiles(root)).generateMedia(provider, "gemini-image", ModelType.IMAGE_GENERATION,
                 "edit", options, listOf(attachment.absolutePath)).toList()
@@ -152,7 +165,7 @@ class DirectMediaAttachmentTest {
         val attachment = Files.createTempFile("user-document", ".txt").toFile().apply { writeText("not an image") }
         val server = MockWebServer().apply { start() }
         try {
-            val provider = LlmProviderInfo("p", "local", ProviderType.OPENAI, baseUrl = server.url("/v1").toString())
+            val provider = ModelProvider("p", "local", ModelApiType.OPENAI, baseUrl = server.url("/v1").toString())
             assertTrue(runCatching { engine(ToolFiles(root)).generateMedia(provider, "image", ModelType.IMAGE_GENERATION,
                 "edit", attachments = listOf(attachment.absolutePath)).toList() }.exceptionOrNull()!!.message!!.contains("PNG"))
             assertTrue(runCatching { engine(ToolFiles(root)).generateMedia(provider, "video", ModelType.VIDEO_GENERATION,
@@ -163,6 +176,6 @@ class DirectMediaAttachmentTest {
 
     private fun engine(files: ToolFiles): ToolChat {
         val http = ToolHttp(files, agnesTestClient())
-        return ToolChat(http, McpService(http), LlmService(ApplicationProvider.getApplicationContext<Context>()))
+        return ToolChat(http, McpService(http), AiService(ApplicationProvider.getApplicationContext<Context>()))
     }
 }

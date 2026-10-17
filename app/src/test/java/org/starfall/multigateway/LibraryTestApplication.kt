@@ -5,7 +5,7 @@ import android.content.Context
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import okhttp3.OkHttp
-import org.starfall.multigateway.data.service.AppImages
+import org.starfall.multigateway.shared.icons.AppImages
 
 /** Real image/network assets without production database initialization in each test. */
 class LibraryTestApplication : Application(), SingletonImageLoader.Factory {

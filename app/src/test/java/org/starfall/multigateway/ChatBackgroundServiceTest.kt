@@ -13,7 +13,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowPowerManager
-import org.starfall.multigateway.data.service.ChatBackgroundService
+import org.starfall.multigateway.home.chat.ChatBackgroundService
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

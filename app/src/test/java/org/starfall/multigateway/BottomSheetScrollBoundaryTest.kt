@@ -6,7 +6,7 @@ import androidx.compose.ui.unit.Velocity
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.starfall.multigateway.ui.components.bottomSheetListScrollBoundary
+import org.starfall.multigateway.shared.ui.sheets.bottomSheetListScrollBoundary
 
 class BottomSheetScrollBoundaryTest {
     @Test fun flingCanStopAtRealListEdgesAndRegularListMotionIsNotConsumed() = runBlocking {

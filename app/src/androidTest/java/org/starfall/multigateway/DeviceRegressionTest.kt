@@ -16,12 +16,16 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.ui.chat.ModelPickerSheet
-import org.starfall.multigateway.ui.chat.FilesActionSheet
-import org.starfall.multigateway.ui.components.InlineVideoPreview
-import org.starfall.multigateway.ui.components.mediaThumbnail
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.home.modelpicker.sheet.ModelPickerSheet
+import org.starfall.multigateway.home.chat.screen.FilesActionSheet
+import org.starfall.multigateway.shared.ui.media.InlineVideoPreview
+import org.starfall.multigateway.shared.ui.media.mediaThumbnail
 import java.io.File
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
 
 class DeviceRegressionTest {
     @get:Rule val compose = createComposeRule()
@@ -49,7 +53,7 @@ class DeviceRegressionTest {
     @Test fun modelPickerDoesNotDismissWhenFlingReachesTop() {
         var dismissed = false
         val configs = (0..79).associate { "test-model-$it" to ModelConfiguration() }
-        val provider = LlmProviderInfo("test", "Test Provider", ProviderType.OPENAI,
+        val provider = ModelProvider("test", "Test Provider", ModelApiType.OPENAI,
             baseUrl = "https://example.com/v1",
             config = ProviderConfiguration(modelConfigs = configs))
         compose.setContent { MaterialTheme {

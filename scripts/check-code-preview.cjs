@@ -4,7 +4,7 @@ const path = require('path');
 const assert = require('assert');
 const {execFileSync} = require('child_process');
 const assets = path.resolve(__dirname, '../app/src/main/assets/code-preview');
-const documentSource = fs.readFileSync(path.resolve(__dirname, '../app/src/main/java/org/starfall/multigateway/ui/preview/CodePreviewDocument.kt'), 'utf8');
+const documentSource = fs.readFileSync(path.resolve(__dirname, '../app/src/main/kotlin/org/starfall/multigateway/ui/preview/CodePreviewDocument.kt'), 'utf8');
 const libraryUrls = [...documentSource.matchAll(/"(https:\/\/unpkg\.com\/[^"]+)"/g)].map(match => match[1]);
 assert.equal(libraryUrls.length, 3);
 // Fetch the exact CDN versions in memory for browser checks; no vendor files live in app assets.
