@@ -9,6 +9,7 @@ import coil3.toBitmap
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.size.Scale
+import coil3.svg.SvgDecoder
 import coil3.size.Precision
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
@@ -21,7 +22,10 @@ import java.nio.ByteBuffer
 /** All image consumers share Coil's request lifecycle and caches. */
 internal object AppImages {
     fun createLoader(context: Context): ImageLoader = ImageLoader.Builder(context)
-        .components { add(VideoFrameDecoder.Factory()) }
+        .components {
+            add(VideoFrameDecoder.Factory())
+            add(SvgDecoder.Factory())
+        }
         .build()
 
     fun loader(context: Context) = SingletonImageLoader.get(context)

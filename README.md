@@ -87,8 +87,6 @@ Antigravity offers Gemini 3 Flash and Gemini 3.1 Pro, provisions the account's C
 
 Antigravity uses the native-app OAuth client defaults from the protocol reference; no additional build secrets or separate OAuth application are required.
 
-Protocol reference: [smallmain/vscode-unify-chat-provider](https://github.com/smallmain/vscode-unify-chat-provider), especially its auth providers and Claude Code, Code Assist, and Copilot clients.
-
 ## MCP
 
 MultiGateway supports remote MCP servers using:

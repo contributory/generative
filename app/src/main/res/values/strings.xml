@@ -562,6 +562,11 @@
     <string name="remote_machine_import_oauth_json" translatable="false">Import JSON</string>
     <string name="remote_machine_client_id" translatable="false">Client ID</string>
     <string name="remote_machine_client_secret" translatable="false">Client secret</string>
+    <string name="remote_machine_oauth_client_type">OAuth client type</string>
+    <string name="remote_machine_oauth_type_desktop">Desktop app</string>
+    <string name="remote_machine_oauth_type_android">Android app</string>
+    <string name="remote_machine_google_no_access_token">Google did not return an access token.</string>
+    <string name="remote_machine_google_missing_resolution">Google authorization requires interaction, but no resolution was returned.</string>
     <string name="remote_machine_binaries" translatable="false">Executable binaries</string>
     <string name="remote_machine_binaries_help" translatable="false">Imported files are copied into app storage, made executable, and can be used by name in ProxyCommand or LocalCommand.</string>
     <string name="remote_machine_binary_upload_warning_title">Security warning</string>

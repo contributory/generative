@@ -126,4 +126,9 @@
     <string name="context_window_compact_hint">Nhấn vào vòng tròn để nén cửa sổ ngữ cảnh</string>
     <string name="mcp_enable">Bật</string>
     <string name="mcp_enabled">Đã bật</string>
+    <string name="remote_machine_oauth_client_type">Loại OAuth client</string>
+    <string name="remote_machine_oauth_type_desktop">Ứng dụng máy tính (Desktop)</string>
+    <string name="remote_machine_oauth_type_android">Ứng dụng Android</string>
+    <string name="remote_machine_google_no_access_token">Google không trả về access token.</string>
+    <string name="remote_machine_google_missing_resolution">Google yêu cầu tương tác để cấp quyền nhưng không trả về bước xử lý tiếp theo.</string>
 </resources>

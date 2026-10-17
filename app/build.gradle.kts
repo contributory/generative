@@ -14,8 +14,8 @@ android {
         applicationId = "org.starfall.multigateway"
         minSdk = 26
         targetSdk = 36
-        versionCode = 44
-        versionName = "1.4.10"
+        versionCode = 45
+        versionName = "1.4.11"
 
         manifestPlaceholders["appAuthRedirectScheme"] = "multigateway-oauth"
 
@@ -101,6 +101,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.browser:browser:1.8.0")
+    implementation("com.google.android.gms:play-services-auth:22.0.0")
 
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
@@ -117,6 +118,7 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:$coilVersion")
     implementation("io.coil-kt.coil3:coil-network-okhttp:$coilVersion")
     implementation("io.coil-kt.coil3:coil-video:$coilVersion")
+    implementation("io.coil-kt.coil3:coil-svg:$coilVersion")
 
     // GFM parsing/rendering; code toolbar and streaming presentation remain app-owned.
     implementation("com.mikepenz:multiplatform-markdown-renderer-m3:0.45.0")

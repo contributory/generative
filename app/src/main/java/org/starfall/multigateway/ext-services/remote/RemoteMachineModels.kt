@@ -60,11 +60,15 @@ data class RemoteMachine(
 }
 
 @Serializable
+enum class GoogleOAuthClientType { DESKTOP, ANDROID }
+
+@Serializable
 data class GCloudOAuthClient(
     val id: String,
     val name: String,
     val clientId: String,
-    val clientSecret: String = ""
+    val clientSecret: String = "",
+    val type: GoogleOAuthClientType = GoogleOAuthClientType.DESKTOP
 )
 
 @Serializable

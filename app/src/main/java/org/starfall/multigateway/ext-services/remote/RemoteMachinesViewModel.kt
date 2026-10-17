@@ -74,6 +74,9 @@ class RemoteMachinesViewModel(
 
     suspend fun authorize(client: GCloudOAuthClient): Result<Unit> = service.authorizeGCloud(client)
 
+    suspend fun storeAndroidOAuthToken(client: GCloudOAuthClient, accessToken: String): Result<Unit> =
+        runCatching { service.storeAndroidOAuthToken(client, accessToken) }
+
     suspend fun refreshIp(machine: RemoteMachine): Result<RemoteMachine> = service.refreshGCloudIp(machine)
 
     suspend fun fetchGCloudUsername(machine: RemoteMachine): Result<String> = service.fetchGCloudUsername(machine)

@@ -5,6 +5,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
 import android.system.Os
+import com.google.android.gms.auth.api.identity.AuthorizationRequest
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.common.api.Scope
 import com.jcraft.jsch.ChannelExec
 import com.jcraft.jsch.ChannelShell
 import com.jcraft.jsch.JSch
@@ -34,6 +37,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -67,6 +71,8 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.Properties
 import java.util.UUID
 import kotlin.math.roundToInt
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 internal const val REMOTE_TERMINAL_UI_PREFERENCES = "remote_terminal_ui"
 internal fun remoteTerminalInputModePreferenceKey(machineId: String) = "input_mode:$machineId"
@@ -351,7 +357,8 @@ class RemoteMachineService(
             id = UUID.randomUUID().toString(),
             name = displayName,
             clientId = clientId,
-            clientSecret = installed["client_secret"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+            clientSecret = installed["client_secret"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty(),
+            type = GoogleOAuthClientType.DESKTOP
         )
     }
 
@@ -516,6 +523,20 @@ class RemoteMachineService(
             )
         )
         val token = tokenFromPayload(payload, null)
+        store.update { it.copy(oauthTokens = it.oauthTokens + (client.id to token)) }
+    }
+
+    /** Stores the short-lived access token issued by Android Google Identity authorization. */
+    suspend fun storeAndroidOAuthToken(client: GCloudOAuthClient, accessToken: String) {
+        require(client.type == GoogleOAuthClientType.ANDROID) { "The selected OAuth client is not an Android client." }
+        require(accessToken.isNotBlank()) { "Google did not return an access token." }
+        val token = RemoteOAuthToken(
+            accessToken = accessToken,
+            // AuthorizationClient returns a short-lived access token, not a refresh token.
+            // accessToken() calls authorize() again at expiry; Google silently returns a fresh
+            // token while the requested scope remains granted. Desktop clients use OAuth refresh tokens.
+            expiresAt = System.currentTimeMillis() + ANDROID_ACCESS_TOKEN_LIFETIME_MS
+        )
         store.update { it.copy(oauthTokens = it.oauthTokens + (client.id to token)) }
     }
 
@@ -1151,6 +1172,33 @@ class RemoteMachineService(
         if (existing != null && existing.accessToken.isNotBlank() &&
             (existing.expiresAt == null || existing.expiresAt > System.currentTimeMillis() + 60_000)
         ) return existing.accessToken
+
+        // Android OAuth clients use Google Identity's authorization cache, not an OAuth refresh
+        // token stored by this app. Calling authorize() again returns a fresh access token silently
+        // while the user has already granted this scope. Only a result with a resolution needs UI.
+        if (client.type == GoogleOAuthClientType.ANDROID) {
+            val request = AuthorizationRequest.builder()
+                .setRequestedScopes(listOf(Scope(GOOGLE_SCOPE)))
+                .build()
+            val result = suspendCancellableCoroutine { continuation ->
+                Identity.getAuthorizationClient(appContext).authorize(request)
+                    .addOnSuccessListener { value ->
+                        if (continuation.isActive) continuation.resume(value)
+                    }
+                    .addOnFailureListener { error ->
+                        if (continuation.isActive) continuation.resumeWithException(error)
+                    }
+            }
+            if (result.hasResolution()) {
+                error("Google Cloud access needs authorization. Open this OAuth client's settings and tap Authorize; later token renewals should happen automatically.")
+            }
+            val refreshedAccessToken = result.accessToken
+                ?.takeIf(String::isNotBlank)
+                ?: error("Google Identity did not return an access token.")
+            storeAndroidOAuthToken(client, refreshedAccessToken)
+            return refreshedAccessToken
+        }
+
         val refresh = existing?.refreshToken?.takeIf(String::isNotBlank)
             ?: error("Authorize the Google OAuth client before connecting.")
         val payload = AppAuthTransactions.exchange(
@@ -1322,7 +1370,8 @@ class RemoteMachineService(
         const val CONNECTION_POLL_MILLIS = 5_000L
         const val GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
         const val GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
-        const val GOOGLE_SCOPE = "openid email profile https://www.googleapis.com/auth/cloud-platform"
+        const val GOOGLE_SCOPE = "https://www.googleapis.com/auth/cloud-platform"
+        const val ANDROID_ACCESS_TOKEN_LIFETIME_MS = 3_300_000L
         val CLOUD_SHELL_SUPPORTED_KEY_ALGORITHMS = setOf(
             "ssh-rsa",
             "ecdsa-sha2-nistp256",

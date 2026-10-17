@@ -124,7 +124,7 @@ internal class FaviconService(private val context: Context, private val http: To
         for (url in (links + faviconFallbackUrls(homepage)).distinct()) {
             try {
                 val resource = download(url)
-                val bitmap = decodeFavicon(context, resource.bytes) ?: error("Not a supported PNG, JPEG, WebP, GIF, or ICO image.")
+                val bitmap = decodeFavicon(context, resource.bytes) ?: error("Not a supported SVG, PNG, JPEG, WebP, GIF, or ICO image.")
                 return@withContext FaviconResult(bitmap, resource.url)
             } catch (error: CancellationException) { throw error }
             catch (error: Exception) { failures += "${url.host}${url.encodedPath}: ${error.message ?: "could not load the icon"}" }

@@ -4,6 +4,7 @@ package org.starfall.multigateway.extservices.remote
 
 import org.starfall.multigateway.ui.icons.FluentIcon
 
+import android.app.Activity
 import android.content.ClipData
 import android.net.Uri
 import android.content.ClipboardManager
@@ -13,6 +14,7 @@ import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.IntentSenderRequest
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
@@ -113,6 +115,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.withContext
+import com.google.android.gms.auth.api.identity.AuthorizationRequest
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.common.api.Scope
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
 import com.termux.view.TerminalView
@@ -187,7 +192,8 @@ fun RemoteMachinesScreen(
                 onBack = { editor = null },
                 onRefreshIp = { viewModel.refreshIp(it) },
                 onFetchUsername = { viewModel.fetchGCloudUsername(it) },
-                onAuthorizeOAuth = { viewModel.authorize(it) }
+                onAuthorizeOAuth = { viewModel.authorize(it) },
+                onStoreAndroidOAuthToken = { client, token -> viewModel.storeAndroidOAuthToken(client, token) }
             )
             selected == RemoteMachinesPage.SETTINGS -> RemoteMachineSettings(
                 state = state,
@@ -431,7 +437,8 @@ private fun RemoteMachineEditor(
     onBack: () -> Unit,
     onRefreshIp: suspend (RemoteMachine) -> Result<RemoteMachine>,
     onFetchUsername: suspend (RemoteMachine) -> Result<String>,
-    onAuthorizeOAuth: suspend (GCloudOAuthClient) -> Result<Unit>
+    onAuthorizeOAuth: suspend (GCloudOAuthClient) -> Result<Unit>,
+    onStoreAndroidOAuthToken: suspend (GCloudOAuthClient, String) -> Result<Unit>
 ) {
     var name by remember(initial.id) { mutableStateOf(initial.name) }
     var type by remember(initial.id) { mutableStateOf(initial.type) }
@@ -464,6 +471,32 @@ private fun RemoteMachineEditor(
     var authorizing by remember { mutableStateOf(false) }
     var authorizeJob by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var pendingAndroidOAuthClient by remember { mutableStateOf<GCloudOAuthClient?>(null) }
+    val androidOAuthLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        val client = pendingAndroidOAuthClient
+        pendingAndroidOAuthClient = null
+        if (client != null && result.resultCode == Activity.RESULT_OK) {
+            runCatching {
+                Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(result.data)
+            }.onSuccess { authResult ->
+                val accessToken = authResult.accessToken
+                if (accessToken.isNullOrBlank()) {
+                    error = context.getString(R.string.remote_machine_google_no_access_token)
+                    authorizing = false
+                }
+                else scope.launch {
+                    onStoreAndroidOAuthToken(client, accessToken).onFailure { error = it.message }
+                    authorizing = false
+                }
+            }.onFailure {
+                error = it.message
+                authorizing = false
+            }
+        } else {
+            authorizing = false
+        }
+    }
     val oauthAuthorized = state.oauthTokens.containsKey(oauthClientId)
     var fetchingUsername by remember { mutableStateOf(false) }
     // Cloud Shell's SSH user comes from the Google API: fetch it whenever the account/environment changes.
@@ -682,13 +715,44 @@ private fun RemoteMachineEditor(
                             onClick = {
                                 val client = selectedOAuthClient ?: return@OutlinedButton
                                 authorizing = true
-                                authorizeJob = scope.launch {
-                                    try {
-                                        onAuthorizeOAuth(client)
-                                            .onFailure { error = it.message }
-                                    } finally {
-                                        authorizing = false
-                                        authorizeJob = null
+                                if (client.type == GoogleOAuthClientType.ANDROID) {
+                                    val request = AuthorizationRequest.builder()
+                                        .setRequestedScopes(listOf(Scope(RemoteMachineService.GOOGLE_SCOPE)))
+                                        .build()
+                                    Identity.getAuthorizationClient(context).authorize(request)
+                                        .addOnSuccessListener { result ->
+                                            if (result.hasResolution()) {
+                                                val pendingIntent = result.pendingIntent
+                                                if (pendingIntent == null) {
+                                                    error = context.getString(R.string.remote_machine_google_missing_resolution)
+                                                    authorizing = false
+                                                } else {
+                                                    pendingAndroidOAuthClient = client
+                                                    androidOAuthLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                                                }
+                                            } else {
+                                                val accessToken = result.accessToken
+                                                if (accessToken.isNullOrBlank()) {
+                                                    error = context.getString(R.string.remote_machine_google_no_access_token)
+                                                    authorizing = false
+                                                } else scope.launch {
+                                                    onStoreAndroidOAuthToken(client, accessToken).onFailure { error = it.message }
+                                                    authorizing = false
+                                                }
+                                            }
+                                        }
+                                        .addOnFailureListener { exception ->
+                                            error = exception.message
+                                            authorizing = false
+                                        }
+                                } else {
+                                    authorizeJob = scope.launch {
+                                        try {
+                                            onAuthorizeOAuth(client).onFailure { error = it.message }
+                                        } finally {
+                                            authorizing = false
+                                            authorizeJob = null
+                                        }
                                     }
                                 }
                             }
@@ -1106,6 +1170,8 @@ private fun OAuthClientDialog(
     var name by remember(initial.id) { mutableStateOf(initial.name) }
     var clientId by remember(initial.id) { mutableStateOf(initial.clientId) }
     var secret by remember(initial.id) { mutableStateOf(initial.clientSecret) }
+    var clientType by remember(initial.id) { mutableStateOf(initial.type) }
+    var typeMenuExpanded by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.remote_machine_oauth_client)) },
@@ -1113,11 +1179,27 @@ private fun OAuthClientDialog(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 RemoteTextField(name, { name = it }, stringResource(R.string.common_name))
                 RemoteTextField(clientId, { clientId = it }, stringResource(R.string.remote_machine_client_id))
-                RemoteTextField(secret, { secret = it }, stringResource(R.string.remote_machine_client_secret), visual = PasswordVisualTransformation())
+                ExposedDropdownMenuBox(typeMenuExpanded, { typeMenuExpanded = !typeMenuExpanded }) {
+                    SelectableOutlinedTextField(
+                        value = stringResource(if (clientType == GoogleOAuthClientType.ANDROID) R.string.remote_machine_oauth_type_android else R.string.remote_machine_oauth_type_desktop),
+                        onValueChange = {}, readOnly = true,
+                        label = { Text(stringResource(R.string.remote_machine_oauth_client_type)) },
+                        trailingIcon = { TrailingIcon(typeMenuExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(typeMenuExpanded, { typeMenuExpanded = false }) {
+                        GoogleOAuthClientType.entries.forEach { option ->
+                            DropdownMenuItem(text = { Text(stringResource(if (option == GoogleOAuthClientType.ANDROID) R.string.remote_machine_oauth_type_android else R.string.remote_machine_oauth_type_desktop)) }, onClick = { clientType = option; typeMenuExpanded = false })
+                        }
+                    }
+                }
+                if (clientType == GoogleOAuthClientType.DESKTOP) {
+                    RemoteTextField(secret, { secret = it }, stringResource(R.string.remote_machine_client_secret), visual = PasswordVisualTransformation())
+                }
             }
         },
         confirmButton = {
-            Button(onClick = { onSave(GCloudOAuthClient(initial.id, name, clientId, secret)) }) {
+            Button(onClick = { onSave(GCloudOAuthClient(initial.id, name, clientId, secret, clientType)) }) {
                 Text(stringResource(R.string.common_save))
             }
         },
