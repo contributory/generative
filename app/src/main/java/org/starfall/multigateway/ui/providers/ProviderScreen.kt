@@ -64,6 +64,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -708,6 +710,14 @@ fun ProviderScreen(
                         },
                         actions = {
                             if (openGroup != null && !searching) {
+                                IconButton(onClick = { onToggleGridView?.invoke(!isGridView) }) {
+                                    FluentIcon(
+                                        imageVector = if (isGridView) Icons.Default.List else Icons.Default.GridView,
+                                        contentDescription = stringResource(
+                                            if (isGridView) R.string.switch_to_list_view else R.string.switch_to_grid_view
+                                        )
+                                    )
+                                }
                                 IconButton(
                                     onClick = { createProvider(openGroup.id) },
                                     modifier = Modifier.testTag("add_provider")
@@ -766,8 +776,10 @@ fun ProviderScreen(
                             onCancel = ::cancelDrag
                         )
                 ) {
+                    // Folder open: blur what sits behind the translucent folder panel (API 31+; no-op below).
+                    val backdropBlur = if (openGroup != null) 20.dp else 0.dp
                     if (visibleRootItems.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.fillMaxSize().blur(backdropBlur), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 FluentIcon(
                                     imageVector = Icons.Outlined.Hub,
@@ -786,7 +798,7 @@ fun ProviderScreen(
                     } else {
                         FadeGridListContent(
                             isGrid = isGridView,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize().blur(backdropBlur)
                         ) { gridMode ->
                             val gridState = rememberLazyGridState()
                             if (gridMode == isGridView) SideEffect { surfaces.rootGrid = gridState }
@@ -1197,19 +1209,20 @@ private fun ProviderFolderOverlay(
             Surface(
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .fillMaxWidth(0.92f)
+                    .fillMaxWidth()
                     .fillMaxHeight()
-                    .padding(vertical = 12.dp)
                     .widthIn(max = 520.dp)
                     .onGloballyPositioned { surfaces.panelBounds = it.boundsInRoot() }
                     .testTag("provider_folder_dialog_${group.id}"),
                 shape = RoundedCornerShape(28.dp),
-                // AMOLED: true black with the same 1dp outline as dialogs. Tonal elevation must be off,
-                // otherwise Surface tints the black (it equals colorScheme.surface) and lifts it to gray.
-                color = if (amoled) Color.Black else MaterialTheme.colorScheme.surfaceContainerHigh,
-                tonalElevation = if (amoled) 0.dp else 6.dp,
-                border = if (amoled) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null
+                // The panel background is drawn by the feathered layer below (40% transparent, soft edges,
+                // no outline even in AMOLED); the Surface itself only provides bounds, clipping and content color.
+                color = Color.Transparent,
+                border = null
             ) {
+                val panelColor = (if (amoled) Color.Black else MaterialTheme.colorScheme.surfaceContainerHigh).copy(alpha = 0.6f)
+                Box(Modifier.fillMaxSize()) {
+                Box(Modifier.matchParentSize().featheredPanel(panelColor, 28.dp, 24.dp))
                 Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     if (providers.isEmpty()) {
                         Column(
@@ -1261,10 +1274,32 @@ private fun ProviderFolderOverlay(
                     }
 
                 }
+                }
             }
         }
     }
 }
+
+/** Rounded panel whose edges fade out to transparent instead of ending in a hard boundary. */
+private fun Modifier.featheredPanel(color: Color, corner: androidx.compose.ui.unit.Dp, fade: androidx.compose.ui.unit.Dp): Modifier =
+    this.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawRoundRect(color, cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner.toPx()))
+            val fx = (fade.toPx() / size.width).coerceIn(0f, 0.5f)
+            val fy = (fade.toPx() / size.height).coerceIn(0f, 0.5f)
+            drawRect(
+                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                    0f to Color.Transparent, fx to Color.Black, 1f - fx to Color.Black, 1f to Color.Transparent
+                ),
+                blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
+            )
+            drawRect(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    0f to Color.Transparent, fy to Color.Black, 1f - fy to Color.Black, 1f to Color.Transparent
+                ),
+                blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
+            )
+        }
 
 @Composable
 private fun ProviderFolderProviderTile(
