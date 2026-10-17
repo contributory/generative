@@ -81,7 +81,7 @@ fun ModelEditScreen(
                     displayName = config.displayName.trim(),
                     reasoningEffort = config.reasoningEffort?.trim()?.ifEmpty { null },
                     reasoningEfforts = config.supportedReasoningEfforts
-                ).normalizedForStorage()
+                )
             )
             onBack()
         }

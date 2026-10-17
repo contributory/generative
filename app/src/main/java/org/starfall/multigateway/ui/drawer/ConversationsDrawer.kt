@@ -152,7 +152,7 @@ fun ConversationsDrawer(
     ModalDrawerSheet(
         modifier = drawerModifier,
         drawerShape = drawerShape,
-        drawerContainerColor = MaterialTheme.colorScheme.surface
+        drawerContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
     ) {
         Column(
             Modifier.fillMaxSize()

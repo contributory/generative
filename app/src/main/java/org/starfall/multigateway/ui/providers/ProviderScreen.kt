@@ -1,174 +1,53 @@
 package org.starfall.multigateway.ui.providers
 
-import org.starfall.multigateway.ui.icons.FluentIcon
-
-import org.starfall.multigateway.ui.components.AppAlertDialog as AlertDialog
-import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
-import org.starfall.multigateway.ui.components.RoundedDropdownMenuItem as DropdownMenuItem
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.platform.LocalContext
-import org.starfall.multigateway.ui.components.windowHeightIn
-
 import android.widget.Toast
-import kotlinx.coroutines.launch
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.BorderStroke
-import org.starfall.multigateway.ui.theme.LocalAmoledMode
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.zIndex
-import kotlin.math.roundToInt
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.delay
 import java.util.UUID
-import org.starfall.multigateway.R
-import org.starfall.multigateway.data.model.AuthMethod
-import org.starfall.multigateway.data.model.LlmProviderInfo
+import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import org.starfall.multigateway.data.model.defaultAuthorization
 import org.starfall.multigateway.data.model.DiscoveredModel
+import org.starfall.multigateway.data.model.LlmProviderInfo
 import org.starfall.multigateway.data.model.ModelConfiguration
 import org.starfall.multigateway.data.model.ProviderGroup
 import org.starfall.multigateway.data.model.ProviderPlacement
 import org.starfall.multigateway.data.model.ProviderRootOrderItem
 import org.starfall.multigateway.data.model.ProviderType
-import org.starfall.multigateway.data.model.defaultAuthorization
-import org.starfall.multigateway.ui.components.AppBottomSheet
-import org.starfall.multigateway.ui.components.EntityIcon
+import org.starfall.multigateway.R
 import org.starfall.multigateway.ui.components.FadeGridListContent
-import org.starfall.multigateway.ui.components.providerInitials
-import org.starfall.multigateway.ui.components.IconPickerRow
-import org.starfall.multigateway.ui.components.ItemOverflowMenu
-import org.starfall.multigateway.ui.components.AdaptiveCardLayout
 import org.starfall.multigateway.ui.components.moved
 import org.starfall.multigateway.ui.navigation.LocalScreenTransitionActive
 import org.starfall.multigateway.ui.navigation.SlideScreenContent
-import org.starfall.multigateway.ui.icons.Icons
 
-
-private data class ProviderEditor(val provider: LlmProviderInfo, val isNew: Boolean)
-/** A tile being dragged. [fromFolderId] is set while it is still a member of the open folder container. */
-private data class ProviderDragSession(
-    val key: String,
-    val size: IntSize,
-    val grab: Offset,
-    val fromFolderId: String? = null,
-    val folderTile: Boolean = fromFolderId != null,
-    val isGrid: Boolean = true
-)
-
-/** Where the drag surface and the folder container sit; read from gesture callbacks, never from composition. */
-private class ProviderDragSurfaces {
-    var rootGrid: LazyGridState? = null
-    var folderGrid: LazyGridState? = null
-    var boxOrigin = Offset.Zero
-    var panelBounds: Rect? = null
-    var folderGridOrigin = Offset.Zero
-    var layoutGate = 0
-}
-
-private const val UNGROUPED_SECTION = "__ungrouped__"
 internal fun newProviderId(): String = "custom_${UUID.randomUUID()}"
-private val ProviderListCardHeight = 88.dp
-private val ProviderGridCardHeight = 152.dp
 
-private sealed interface ProviderRootItem {
-    val id: String
-    val sortOrder: Int
-
-    data class GroupItem(val group: ProviderGroup) : ProviderRootItem {
-        override val id: String get() = group.id
-        override val sortOrder: Int get() = group.sortOrder
-    }
-
-    data class ProviderItem(val provider: LlmProviderInfo) : ProviderRootItem {
-        override val id: String get() = provider.id
-        override val sortOrder: Int get() = provider.sortOrder
-    }
-}
-
-private fun providerRootItems(
-    providers: List<LlmProviderInfo>,
-    groups: List<ProviderGroup>
-): List<ProviderRootItem> {
-    val groupIds = groups.mapTo(hashSetOf()) { it.id }
-    return buildList {
-        groups.forEach { add(ProviderRootItem.GroupItem(it)) }
-        providers
-            .filter { it.groupId == null || it.groupId !in groupIds }
-            .forEach { add(ProviderRootItem.ProviderItem(it)) }
-    }.sortedWith(
-        compareBy<ProviderRootItem> { it.sortOrder }
-            .thenBy { if (it is ProviderRootItem.GroupItem) 0 else 1 }
-            .thenBy { it.id }
-    )
-}
-
-private fun ProviderRootItem.toOrderItem(): ProviderRootOrderItem =
-    ProviderRootOrderItem(id = id, isGroup = this is ProviderRootItem.GroupItem)
-
-private fun ProviderRootItem.cellKey(): String =
-    if (this is ProviderRootItem.GroupItem) "group_$id" else "provider_$id"
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProviderScreen(
     providers: List<LlmProviderInfo>,
@@ -631,145 +510,30 @@ fun ProviderScreen(
         } else {
             Scaffold(
                 topBar = {
-                    Crossfade(targetState = openGroup?.id, label = "provider_app_bar") { targetGroupId ->
-                        val appBarGroup = sortedGroups.firstOrNull { it.id == targetGroupId }
-                        TopAppBar(
-                        title = {
-                            if (searching) {
-                                LaunchedEffect(Unit) { searchFocus.requestFocus() }
-                                TextField(
-                                    value = searchQuery,
-                                    onValueChange = { searchQuery = it },
-                                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                                    placeholder = { Text(stringResource(R.string.search_providers)) },
-                                    singleLine = true,
-                                    trailingIcon = {
-                                        Box {
-                                            IconButton(onClick = { searchFilterOpen = true }) {
-                                                FluentIcon(Icons.Outlined.FilterList, stringResource(R.string.provider_search_filter),
-                                                    tint = if (searchFields == setOf(ProviderSearchField.PROVIDER_NAME))
-                                                        MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary)
-                                            }
-                                            DropdownMenu(expanded = searchFilterOpen, onDismissRequest = { searchFilterOpen = false }) {
-                                                listOf(
-                                                    ProviderSearchField.PROVIDER_NAME to R.string.provider_search_name,
-                                                    ProviderSearchField.FOLDER_NAME to R.string.provider_search_folder,
-                                                    ProviderSearchField.MODEL_NAME to R.string.provider_search_model
-                                                ).forEach { (field, label) ->
-                                                    val selected = field in searchFields
-                                                    DropdownMenuItem(
-                                                        text = { Text(stringResource(label)) },
-                                                        leadingIcon = { Checkbox(checked = selected, onCheckedChange = null) },
-                                                        enabled = !selected || searchFields.size > 1,
-                                                        onClick = {
-                                                            searchFields = if (selected) searchFields - field else searchFields + field
-                                                        }
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth().focusRequester(searchFocus).testTag("provider_search"),
-                                    colors = TextFieldDefaults.colors(
-                                        focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                                        unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                                        focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
-                                        unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
-                                    )
-                                )
-                            } else if (appBarGroup != null) {
-                                val members = orderedProviders.filter { it.groupId == appBarGroup.id }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    ProviderFolderPreview(group = appBarGroup, providers = members, modifier = Modifier.size(40.dp))
-                                    Spacer(Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            text = appBarGroup.name,
-                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Text(
-                                            text = stringResource(R.string.provider_count, members.size),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.outline,
-                                            maxLines = 1
-                                        )
-                                    }
-                                }
-                            } else Column {
-                                Text(
-                                    text = stringResource(R.string.providers_title),
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                    maxLines = 1
-                                )
-                                Text(
-                                    text = stringResource(R.string.providers_description),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.outline,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        },
-                        navigationIcon = {
-                            if (appBarGroup == null || searching) IconButton(onClick = onBack) {
-                                FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                            }
-                        },
-                        actions = {
-                            if (appBarGroup != null && !searching) {
-                                IconButton(
-                                    onClick = { createProvider(appBarGroup.id) },
-                                    modifier = Modifier.testTag("add_provider")
-                                ) {
-                                    FluentIcon(Icons.Default.Add, stringResource(R.string.add_provider))
-                                }
-                                IconButton(onClick = { onToggleGridView?.invoke(!isGridView) }) {
-                                    FluentIcon(
-                                        imageVector = if (isGridView) Icons.Default.List else Icons.Default.GridView,
-                                        contentDescription = stringResource(
-                                            if (isGridView) R.string.switch_to_list_view else R.string.switch_to_grid_view
-                                        )
-                                    )
-                                }
-                                ProviderGroupOverflowMenu(
-                                    onEdit = { groupToRename = appBarGroup },
-                                    onDelete = { deletingGroup = appBarGroup; openGroupId = null },
-                                    compact = false
-                                )
-                                IconButton(onClick = { openGroupId = null }) {
-                                    FluentIcon(Icons.Default.Close, stringResource(R.string.common_close))
-                                }
-                            } else if (searching) {
-                                IconButton(onClick = ::closeSearch) {
-                                    FluentIcon(Icons.Default.Close, stringResource(R.string.close_provider_search))
-                                }
-                            } else {
-                                IconButton(onClick = { openGroupId = null; searching = true }) {
-                                    FluentIcon(Icons.Default.Search, stringResource(R.string.search_providers))
-                                }
-                                IconButton(onClick = { onToggleGridView?.invoke(!isGridView) }) {
-                                    FluentIcon(
-                                        imageVector = if (isGridView) Icons.Default.List else Icons.Default.GridView,
-                                        contentDescription = stringResource(
-                                            if (isGridView) R.string.switch_to_list_view else R.string.switch_to_grid_view
-                                        )
-                                    )
-                                }
-                                IconButton(onClick = { creatingGroup = true }) {
-                                    FluentIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.add_provider_group))
-                                }
-                                IconButton(
-                                    onClick = { createProvider(openGroupId) },
-                                    modifier = Modifier.testTag("add_provider")
-                                ) {
-                                    FluentIcon(Icons.Default.Add, stringResource(R.string.add_provider))
-                                }
-                            }
-                        }
-                        )
-                    }
+                    ProviderScreenTopBar(
+                        visibleGroupId = openGroup?.id,
+                        sortedGroups = sortedGroups,
+                        orderedProviders = orderedProviders,
+                        isGridView = isGridView,
+                        searching = searching,
+                        searchQuery = searchQuery,
+                        searchFields = searchFields,
+                        searchFilterOpen = searchFilterOpen,
+                        searchFocus = searchFocus,
+                        onSearchQueryChange = { searchQuery = it },
+                        onSearchFieldsChange = { searchFields = it },
+                        onSearchFilterOpenChange = { searchFilterOpen = it },
+                        onBack = onBack,
+                        onToggleGridView = onToggleGridView,
+                        onAddProvider = { createProvider(openGroupId) },
+                        onAddProviderToGroup = { createProvider(it) },
+                        onCreateGroup = { creatingGroup = true },
+                        onOpenSearch = { openGroupId = null; searching = true },
+                        onCloseSearch = ::closeSearch,
+                        onCloseGroup = { openGroupId = null },
+                        onEditGroup = { groupToRename = it },
+                        onDeleteGroup = { deletingGroup = it; openGroupId = null }
+                    )
                 }
             ) { padding ->
                 Box(
@@ -789,22 +553,7 @@ fun ProviderScreen(
                     // Folder open: blur what sits behind the translucent folder panel (API 31+; no-op below).
                     val backdropBlur = if (openGroup != null) 20.dp else 0.dp
                     if (visibleRootItems.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize().blur(backdropBlur), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                FluentIcon(
-                                    imageVector = Icons.Outlined.Hub,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.size(64.dp)
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(
-                                    text = stringResource(if (query.isNotEmpty()) R.string.no_provider_search_results else R.string.no_providers_added),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.outline
-                                )
-                            }
-                        }
+                        ProviderEmptyState(hasSearchQuery = query.isNotEmpty(), backdropBlur = backdropBlur)
                     } else {
                         FadeGridListContent(
                             isGrid = isGridView,
@@ -874,49 +623,12 @@ fun ProviderScreen(
                     }
 
                     dragSession?.let { session ->
-                        val provider = if (session.key.startsWith("provider_"))
-                            orderedProviders.firstOrNull { it.id == session.key.removePrefix("provider_") } else null
-                        val groupItem = if (session.key.startsWith("group_"))
-                            rootItems.firstOrNull { it.cellKey() == session.key } as? ProviderRootItem.GroupItem else null
-                        Box(
-                            Modifier
-                                .offset {
-                                    IntOffset(
-                                        (dragPointer.x - session.grab.x).roundToInt(),
-                                        (dragPointer.y - session.grab.y).roundToInt()
-                                    )
-                                }
-                                 .size(with(density) { session.size.width.toDp() }, with(density) { session.size.height.toDp() })
-                                 .zIndex(10f)
-                                 .graphicsLayer {
-                                     // Keep the drag ghost the same size and shape as the source
-                                     // tile; only its z-order distinguishes it while dragging.
-                                     alpha = 1f
-                                 }
-                                .then(if (provider != null) Modifier.testTag("dragged_provider") else Modifier)
-                        ) {
-                             when {
-                                 provider != null && session.folderTile ->
-                                     ProviderFolderProviderTile(
-                                         provider = provider,
-                                         isGrid = session.isGrid,
-                                         onEdit = {},
-                                         onMoveToGroup = {},
-                                         onDelete = {},
-                                         testTag = false
-                                     )
-                                provider != null || groupItem != null -> Box(Modifier.fillMaxSize().padding(6.dp)) {
-                            ProviderRootCard(
-                                        item = groupItem ?: ProviderRootItem.ProviderItem(provider!!),
-                                        members = groupItem?.let { g -> orderedProviders.filter { it.groupId == g.id } }.orEmpty(),
-                                         isGrid = session.isGrid,
-                                        isDropTarget = false,
-                                        testTag = false,
-                                        onEditProvider = {}, onMoveProvider = {}, onDeleteProvider = {}, onOpenGroup = {}
-                                    )
-                                }
-                            }
-                        }
+                        ProviderDragGhost(
+                            session = session,
+                            pointer = { dragPointer },
+                            orderedProviders = orderedProviders,
+                            rootItems = rootItems
+                        )
                     }
                 }
             }
@@ -955,24 +667,12 @@ fun ProviderScreen(
             }
 
             deletingGroup?.let { group ->
-                AlertDialog(
-                    onDismissRequest = { deletingGroup = null },
-                    title = { Text(stringResource(R.string.delete_provider_group)) },
-                    text = { Text(stringResource(R.string.delete_provider_group_message)) },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                onDeleteGroup(group.id)
-                                setCollapsedSections(collapsedSections - group.id)
-                                deletingGroup = null
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                        ) { Text(stringResource(R.string.common_delete)) }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { deletingGroup = null }) {
-                            Text(stringResource(R.string.common_cancel))
-                        }
+                ProviderDeleteGroupDialog(
+                    onDismiss = { deletingGroup = null },
+                    onConfirm = {
+                        onDeleteGroup(group.id)
+                        setCollapsedSections(collapsedSections - group.id)
+                        deletingGroup = null
                     }
                 )
             }
@@ -990,755 +690,15 @@ fun ProviderScreen(
             }
 
             if (deletingProviderId != null) {
-                AlertDialog(
-                    onDismissRequest = { deletingProviderId = null },
-                    title = { Text(stringResource(R.string.delete_provider_title)) },
-                    text = { Text(stringResource(R.string.delete_provider_message)) },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                deletingProviderId?.let { onDeleteProvider(it) }
-                                deletingProviderId = null
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Text(stringResource(R.string.common_delete))
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { deletingProviderId = null }) {
-                            Text(stringResource(R.string.common_cancel))
-                        }
+                ProviderDeleteDialog(
+                    onDismiss = { deletingProviderId = null },
+                    onConfirm = {
+                        deletingProviderId?.let { onDeleteProvider(it) }
+                        deletingProviderId = null
                     }
                 )
             }
 
-        }
-    }
-}
-
-/** One root tile: a provider card or a folder card. Shared by the grid cell and the drag ghost. */
-@Composable
-private fun ProviderRootCard(
-    item: ProviderRootItem,
-    members: List<LlmProviderInfo>,
-    isGrid: Boolean,
-    isDropTarget: Boolean,
-    testTag: Boolean = true,
-    onEditProvider: (LlmProviderInfo) -> Unit,
-    onMoveProvider: (LlmProviderInfo) -> Unit,
-    onDeleteProvider: (String) -> Unit,
-    onOpenGroup: (String) -> Unit
-) {
-    when (item) {
-        is ProviderRootItem.ProviderItem -> ProviderUnifiedCard(
-            provider = item.provider,
-            isGrid = isGrid,
-            modifier = Modifier.then(if (testTag) Modifier.testTag("provider_${item.provider.id}") else Modifier),
-            onEdit = { onEditProvider(item.provider) },
-            onMoveToGroup = { onMoveProvider(item.provider) },
-            onDelete = { onDeleteProvider(item.provider.id) }
-        )
-        is ProviderRootItem.GroupItem -> ProviderGroupCollapsedCard(
-            group = item.group,
-            isGrid = isGrid,
-            providers = members,
-            isDropTarget = isDropTarget,
-            modifier = Modifier.then(if (testTag) Modifier.testTag("provider_group_${item.group.id}") else Modifier),
-            onOpen = { onOpenGroup(item.group.id) }
-        )
-    }
-}
-
-@Composable
-private fun ProviderGroupCollapsedCard(
-    group: ProviderGroup,
-    isGrid: Boolean,
-    providers: List<LlmProviderInfo>,
-    isDropTarget: Boolean = false,
-    modifier: Modifier = Modifier,
-    onOpen: () -> Unit
-) {
-    val corner by animateDpAsState(
-        targetValue = if (isGrid) 20.dp else 16.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "providerGroupCorner"
-    )
-    val height = if (isGrid) ProviderGridCardHeight else ProviderListCardHeight
-
-    Surface(
-        shape = RoundedCornerShape(corner),
-        color = if (isDropTarget) MaterialTheme.colorScheme.primaryContainer
-            else MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(
-            width = if (isDropTarget) 2.dp else 1.5.dp,
-            color = if (isDropTarget) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.outlineVariant
-        ),
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height)
-            .clickable(onClick = onOpen)
-    ) {
-        val titleColor = if (isDropTarget) MaterialTheme.colorScheme.onPrimaryContainer else LocalContentColor.current
-        if (isGrid) {
-            Column(Modifier.fillMaxSize().padding(14.dp)) {
-                ProviderFolderPreview(
-                    group,
-                    providers,
-                    Modifier.size(52.dp).testTag("provider_group_icon_${group.id}")
-                )
-                Spacer(Modifier.weight(1f))
-                Text(
-                    text = group.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = titleColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Text(
-                    text = stringResource(R.string.provider_count, providers.size),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-            }
-        } else {
-            Row(
-                Modifier.fillMaxSize().padding(horizontal = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ProviderFolderPreview(
-                    group,
-                    providers,
-                    Modifier.size(46.dp).testTag("provider_group_icon_${group.id}")
-                )
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = group.name,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = titleColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = stringResource(R.string.provider_count, providers.size),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * A folder shows its own logo when it has one (picked, or recognised from the folder name).
- * Only a folder without a logo falls back to a 2x2 preview of its first four providers.
- */
-@Composable
-private fun ProviderFolderPreview(
-    group: ProviderGroup,
-    providers: List<LlmProviderInfo>,
-    modifier: Modifier = Modifier
-) {
-    val previewProviders = providers.take(4)
-    EntityIcon(
-        image = group.icon,
-        modifier = modifier,
-        fallback = Icons.Outlined.Folder,
-        matchName = group.name,
-        fallbackContent = if (previewProviders.isEmpty()) null else ({ ProviderFolderMiniGrid(group.id, previewProviders) })
-    )
-}
-
-@Composable
-private fun ProviderFolderMiniGrid(groupId: String, providers: List<LlmProviderInfo>) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(4.dp).testTag("provider_group_preview_$groupId"),
-        verticalArrangement = Arrangement.spacedBy(3.dp)
-    ) {
-        providers.chunked(2).forEach { row ->
-            Row(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                row.forEach { provider ->
-                    EntityIcon(
-                        image = provider.icon,
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                        text = providerInitials(provider.name),
-                        matchName = provider.name
-                    )
-                }
-                if (row.size == 1) Spacer(Modifier.weight(1f))
-            }
-        }
-    }
-}
-
-/**
- * The open folder: an in-window overlay (not a Dialog) so the screen-level drag gesture keeps
- * receiving the finger when a member is dragged out of it.
- */
-@Composable
-private fun ProviderFolderOverlay(
-    group: ProviderGroup,
-    providers: List<LlmProviderInfo>,
-    isGrid: Boolean,
-    surfaces: ProviderDragSurfaces,
-    draggingKey: String?,
-    showExitHint: Boolean,
-    visible: Boolean,
-    onDismiss: () -> Unit,
-    onExitFinished: () -> Unit,
-    onEditGroup: () -> Unit,
-    onDeleteGroup: () -> Unit,
-    onEditProvider: (LlmProviderInfo) -> Unit,
-    onMoveProvider: (LlmProviderInfo) -> Unit,
-    onDeleteProvider: (String) -> Unit
-) {
-    val amoled = LocalAmoledMode.current
-    val gridState = rememberLazyGridState()
-    SideEffect { surfaces.folderGrid = gridState }
-    DisposableEffect(Unit) {
-        onDispose {
-            surfaces.folderGrid = null
-            surfaces.panelBounds = null
-        }
-    }
-    val visibility = remember { MutableTransitionState(false) }
-    LaunchedEffect(visible) { visibility.targetState = visible }
-    LaunchedEffect(visibility.isIdle, visibility.currentState, visible) {
-        if (!visible && visibility.isIdle && !visibility.currentState) onExitFinished()
-    }
-    AnimatedVisibility(
-        visibleState = visibility,
-        enter = fadeIn() + scaleIn(initialScale = 0.5f),
-        exit = fadeOut() + scaleOut(targetScale = 0.5f)
-    ) {
-        Box(Modifier.fillMaxSize().zIndex(5f)) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDismiss
-                    )
-            )
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth()
-                    .fillMaxHeight()
-                    .widthIn(max = 520.dp)
-                    .onGloballyPositioned { surfaces.panelBounds = it.boundsInRoot() }
-                    .testTag("provider_folder_dialog_${group.id}"),
-                shape = RoundedCornerShape(28.dp),
-                // The panel background is drawn by the feathered layer below (40% transparent, soft edges,
-                // no outline even in AMOLED); the Surface itself only provides bounds, clipping and content color.
-                color = Color.Transparent,
-                border = null
-            ) {
-                val panelColor = (if (amoled) Color.Black else MaterialTheme.colorScheme.surfaceContainerHigh).copy(alpha = 0.6f)
-                // Tapping empty space inside the panel closes the folder; the cards consume their own taps.
-                Box(
-                    Modifier.fillMaxSize().clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDismiss
-                    )
-                ) {
-                Box(Modifier.matchParentSize().featheredPanel(panelColor, 28.dp, 24.dp))
-                Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    if (providers.isEmpty()) {
-                        Column(
-                            modifier = Modifier.weight(1f).fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            FluentIcon(
-                                imageVector = Icons.Outlined.FolderOpen,
-                                contentDescription = null,
-                                modifier = Modifier.size(52.dp),
-                                tint = MaterialTheme.colorScheme.outline
-                            )
-                            Spacer(Modifier.height(10.dp))
-                            Text(
-                                text = stringResource(R.string.empty_provider_group),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else {
-                        LazyVerticalGrid(
-                            state = gridState,
-                            columns = GridCells.Fixed(if (isGrid) 2 else 1),
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .onGloballyPositioned { surfaces.folderGridOrigin = it.positionInRoot() }
-                                .testTag("provider_folder_grid_${group.id}"),
-                            contentPadding = PaddingValues(vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(providers, key = { "provider_${it.id}" }) { provider ->
-                                ProviderFolderProviderTile(
-                                    provider = provider,
-                                    isGrid = isGrid,
-                                    onEdit = { onEditProvider(provider) },
-                                    onMoveToGroup = { onMoveProvider(provider) },
-                                    onDelete = { onDeleteProvider(provider.id) },
-                                    testTag = true,
-                                    modifier = Modifier
-                                        .animateItem()
-                                        .graphicsLayer {
-                                            alpha = if (draggingKey == "provider_${provider.id}") 0.25f else 1f
-                                        }
-                                )
-                            }
-                        }
-                    }
-
-                }
-                }
-            }
-            AnimatedVisibility(
-                visible = showExitHint,
-                modifier = Modifier.align(Alignment.BottomCenter),
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) { ProviderFolderExitHint() }
-        }
-    }
-}
-
-/**
- * Hint shown just above the nav bar while a folder member is dragged. It is a plain translucent label
- * (no Surface, no click handling), so it never intercepts touches meant for what sits behind it.
- */
-@Composable
-private fun ProviderFolderExitHint() {
-    Text(
-        text = stringResource(R.string.drag_to_exit_folder_hint),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSecondaryContainer,
-        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier
-            .padding(horizontal = 24.dp, vertical = 12.dp)
-            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.75f), RoundedCornerShape(16.dp))
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-            .testTag("provider_folder_exit_hint")
-    )
-}
-
-/** Rounded panel whose edges fade out to transparent instead of ending in a hard boundary. */
-private fun Modifier.featheredPanel(color: Color, corner: androidx.compose.ui.unit.Dp, fade: androidx.compose.ui.unit.Dp): Modifier =
-    this.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
-        .drawWithContent {
-            drawRoundRect(color, cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner.toPx()))
-            val fx = (fade.toPx() / size.width).coerceIn(0f, 0.5f)
-            val fy = (fade.toPx() / size.height).coerceIn(0f, 0.5f)
-            drawRect(
-                androidx.compose.ui.graphics.Brush.horizontalGradient(
-                    0f to Color.Transparent, fx to Color.Black, 1f - fx to Color.Black, 1f to Color.Transparent
-                ),
-                blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
-            )
-            drawRect(
-                androidx.compose.ui.graphics.Brush.verticalGradient(
-                    0f to Color.Transparent, fy to Color.Black, 1f - fy to Color.Black, 1f to Color.Transparent
-                ),
-                blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
-            )
-        }
-
-/** A provider inside an open folder: the very same card as outside, only with its own test tag. */
-@Composable
-private fun ProviderFolderProviderTile(
-    provider: LlmProviderInfo,
-    isGrid: Boolean,
-    onEdit: () -> Unit,
-    onMoveToGroup: () -> Unit,
-    onDelete: () -> Unit,
-    testTag: Boolean = true,
-    modifier: Modifier = Modifier
-) {
-    ProviderUnifiedCard(
-        provider = provider,
-        isGrid = isGrid,
-        modifier = modifier.then(
-            if (testTag) Modifier.testTag("provider_folder_provider_${provider.id}") else Modifier
-        ),
-        onEdit = onEdit,
-        onMoveToGroup = onMoveToGroup,
-        onDelete = onDelete
-    )
-}
-
-@Composable
-private fun ProviderGroupIconTile(
-    group: ProviderGroup,
-    modifier: Modifier = Modifier,
-    tileHeight: Dp = ProviderGridCardHeight,
-    fillFrame: Boolean = true,
-    onClick: () -> Unit
-) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = modifier
-            .height(tileHeight)
-            .clickable(onClick = onClick)
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            EntityIcon(
-                image = group.icon,
-                modifier = if (fillFrame) Modifier.fillMaxSize() else Modifier.size(72.dp),
-                fallback = Icons.Outlined.Folder,
-                matchName = group.name
-            )
-        }
-    }
-}
-
-@Composable
-private fun ProviderGroupOverflowMenu(onEdit: () -> Unit, onDelete: () -> Unit, compact: Boolean = true) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(
-            onClick = { expanded = true },
-            modifier = if (compact) Modifier.size(36.dp) else Modifier
-        ) {
-            FluentIcon(
-                Icons.Default.MoreVert,
-                contentDescription = stringResource(R.string.more_options),
-                modifier = if (compact) Modifier.size(20.dp) else Modifier
-            )
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.common_edit)) },
-                leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
-                onClick = { expanded = false; onEdit() }
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.delete_group), color = MaterialTheme.colorScheme.error) },
-                leadingIcon = {
-                    FluentIcon(
-                        Icons.Outlined.Delete,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                },
-                onClick = { expanded = false; onDelete() }
-            )
-        }
-    }
-}
-
-@Composable
-private fun ProviderGroupNameDialog(
-    title: String,
-    initialName: String,
-    initialIcon: String?,
-    onDismiss: () -> Unit,
-    onSave: (String, String?) -> Unit
-) {
-    var name by remember(initialName) { mutableStateOf(initialName) }
-    var icon by remember(initialIcon) { mutableStateOf(initialIcon) }
-    var iconImporting by remember { mutableStateOf(false) }
-    val trimmed = name.trim()
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                IconPickerRow(
-                    image = icon,
-                    onChange = { icon = it },
-                    fallback = Icons.Outlined.Folder,
-                    onBusyChange = { iconImporting = it },
-                    matchName = trimmed.ifBlank { name }
-                )
-                SelectableOutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.provider_group_name)) },
-                    supportingText = {
-                        if (name.isNotEmpty() && trimmed.isEmpty()) {
-                            Text(stringResource(R.string.provider_group_name_required))
-                        }
-                    },
-                    isError = name.isNotEmpty() && trimmed.isEmpty(),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                enabled = trimmed.isNotEmpty() && !iconImporting,
-                onClick = { onSave(trimmed, icon) }
-            ) {
-                Text(stringResource(R.string.common_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-        }
-    )
-}
-
-@Composable
-private fun ProviderGroupPickerDialog(
-    provider: LlmProviderInfo,
-    groups: List<ProviderGroup>,
-    onDismiss: () -> Unit,
-    onSelect: (String?) -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.move_to_group)) },
-        text = {
-            LazyColumn(Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.6f)) {
-                item(key = UNGROUPED_SECTION) {
-                    ProviderGroupChoiceCard(
-                        title = stringResource(R.string.ungrouped),
-                        icon = null,
-                        selected = provider.groupId == null,
-                        onClick = { onSelect(null) }
-                    )
-                }
-                items(groups, key = { it.id }) { group ->
-                    ProviderGroupChoiceCard(
-                        title = group.name,
-                        icon = group.icon,
-                        selected = provider.groupId == group.id,
-                        onClick = { onSelect(group.id) }
-                    )
-                }
-            }
-        },
-        confirmButton = {}
-    )
-}
-
-@Composable
-private fun ProviderGroupChoiceCard(
-    title: String,
-    icon: String?,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer
-            else MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(
-            1.dp,
-            if (selected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.outlineVariant
-        )
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            EntityIcon(
-                image = icon,
-                modifier = Modifier.size(44.dp),
-                text = title.take(2).uppercase(),
-                fallback = Icons.Outlined.Folder,
-                matchName = title
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
-                else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-            if (selected) {
-                FluentIcon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun ProviderUnifiedCard(
-    provider: LlmProviderInfo,
-    isGrid: Boolean,
-    modifier: Modifier = Modifier,
-    onEdit: () -> Unit,
-    onMoveToGroup: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val shapeCorner by animateDpAsState(
-        targetValue = if (isGrid) 20.dp else 16.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "providerCorner"
-    )
-
-    Surface(
-        shape = RoundedCornerShape(shapeCorner),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = if (isGrid) ProviderGridCardHeight else ProviderListCardHeight)
-            .clickable { onEdit() }
-    ) {
-        AdaptiveCardLayout(
-            isGrid = isGrid,
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
-            icon = {
-                EntityIcon(provider.icon, Modifier.size(42.dp), text = providerInitials(provider.name), matchName = provider.name)
-            },
-            actions = {
-                ProviderOverflowMenu(onEdit, onMoveToGroup, onDelete)
-            },
-            content = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                        Text(
-                            text = provider.name,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                            Text(
-                                text = provider.type.displayName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                    if (provider.type.isAccountProvider || provider.auth.method == AuthMethod.OAUTH) ProviderOAuthStatus(provider)
-                    if (!provider.type.isAccountProvider) Text(
-                        text = provider.baseUrl,
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = MaterialTheme.colorScheme.outline,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        )
-    }
-}
-
-@Composable
-private fun ProviderOAuthStatus(provider: LlmProviderInfo) {
-    val signedIn = provider.auth.method == AuthMethod.OAUTH && !provider.auth.value.isNullOrBlank()
-    val color = if (signedIn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        FluentIcon(if (signedIn) Icons.Outlined.CheckCircle else Icons.Outlined.AccountCircle,
-            contentDescription = null, modifier = Modifier.size(14.dp), tint = color)
-        Text(stringResource(if (signedIn) R.string.oauth_signed_in else R.string.oauth_signed_out),
-            style = MaterialTheme.typography.labelSmall, color = color)
-    }
-}
-
-@Composable
-private fun ProviderOverflowMenu(
-    onEdit: () -> Unit,
-    onMoveToGroup: () -> Unit,
-    onDelete: () -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            FluentIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more_options))
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.common_edit)) },
-                leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
-                onClick = { expanded = false; onEdit() }
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.move_to_group)) },
-                leadingIcon = { FluentIcon(Icons.Outlined.Folder, contentDescription = null) },
-                onClick = { expanded = false; onMoveToGroup() }
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
-                leadingIcon = { FluentIcon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-                onClick = { expanded = false; onDelete() }
-            )
-        }
-    }
-}
-
-
-@Composable
-private fun ProviderGroupGridHeading(
-    group: ProviderGroup,
-    modifier: Modifier,
-    detached: Boolean = false,
-    onCollapse: () -> Unit,
-    onAddProvider: () -> Unit,
-    onEditGroup: () -> Unit,
-    onDeleteGroup: () -> Unit
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth().height(ProviderGridCardHeight).clickable(onClick = onCollapse),
-        shape = RoundedCornerShape(20.dp),
-        color = if (detached) MaterialTheme.colorScheme.surfaceContainerLow
-            else androidx.compose.ui.graphics.Color.Transparent,
-        border = if (detached) BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant) else null
-    ) {
-        Column(Modifier.fillMaxSize()) {
-            Row(
-                Modifier.fillMaxWidth().height(36.dp).clickable(onClick = onCollapse),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    group.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).padding(start = 6.dp)
-                )
-                IconButton(
-                    onClick = onAddProvider,
-                    modifier = Modifier.size(32.dp).testTag("add_provider_to_group_${group.id}")
-                ) {
-                    FluentIcon(Icons.Default.Add, stringResource(R.string.add_provider), modifier = Modifier.size(20.dp))
-                }
-                ProviderGroupOverflowMenu(onEditGroup, onDeleteGroup)
-            }
-            ProviderGroupIconTile(
-                group,
-                Modifier.fillMaxWidth().testTag("provider_group_icon_${group.id}"),
-                tileHeight = ProviderGridCardHeight - 36.dp,
-                onClick = onCollapse
-            )
         }
     }
 }

@@ -29,7 +29,7 @@ import org.starfall.multigateway.ui.providers.newProviderId
 class ProviderGroupTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
-    @Test fun repositoryOmitsSmallContextOverridesAndPersistsRawModelJson() = runBlocking {
+    @Test fun repositoryPersistsSmallContextOverridesAndRawModelJson() = runBlocking {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
@@ -43,12 +43,12 @@ class ProviderGroupTest {
                 ))))
             val entity = db.llmProviderDao().getProviderById("json-test")!!
             val stored = Json.parseToJsonElement(SecretCipher.decrypt(entity.configJson)).jsonObject.getValue("modelConfigs").jsonObject
-            assertFalse(stored.getValue("small").jsonObject.containsKey("contextWindowTokens"))
+            assertEquals(32000, stored.getValue("small").jsonObject.getValue("contextWindowTokens").jsonPrimitive.int)
             assertFalse(stored.getValue("default").jsonObject.containsKey("contextWindowTokens"))
             assertEquals(128001, stored.getValue("large").jsonObject.getValue("contextWindowTokens").jsonPrimitive.int)
             val reopened = LlmRepository(db, LlmService(context)).getProviderById("json-test")!!
             assertEquals(raw, reopened.config.modelConfigs.getValue("small").modelJson)
-            assertEquals(DEFAULT_CONTEXT_WINDOW_TOKENS, reopened.config.modelConfigs.getValue("small").contextWindowTokens)
+            assertEquals(32000, reopened.config.modelConfigs.getValue("small").contextWindowTokens)
         } finally { db.close() }
     }
 

@@ -42,7 +42,7 @@ import org.starfall.multigateway.ui.theme.MultiGatewayTheme
 import org.starfall.multigateway.ui.chat.ChatViewModel
 import org.starfall.multigateway.ui.configuration.ConfigurationViewModel
 import org.starfall.multigateway.ui.settings.SettingsViewModel
-import org.starfall.multigateway.extservices.remote.RemoteMachinesViewModel
+import org.starfall.multigateway.ui.remote.RemoteMachinesViewModel
 import org.starfall.multigateway.data.model.parseProviderLink
 import org.starfall.multigateway.ui.components.CrashReportDialog
 

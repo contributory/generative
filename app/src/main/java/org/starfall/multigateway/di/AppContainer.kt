@@ -16,8 +16,8 @@ import org.starfall.multigateway.data.tools.*
 import org.starfall.multigateway.ui.chat.ChatViewModel
 import org.starfall.multigateway.ui.configuration.ConfigurationViewModel
 import org.starfall.multigateway.ui.settings.SettingsViewModel
-import org.starfall.multigateway.extservices.remote.RemoteMachineService
-import org.starfall.multigateway.extservices.remote.RemoteMachinesViewModel
+import org.starfall.multigateway.data.service.RemoteMachineService
+import org.starfall.multigateway.ui.remote.RemoteMachinesViewModel
 
 /** Application-scoped dependencies. ViewModels receive only their required dependencies. */
 class AppContainer(context: Context) {

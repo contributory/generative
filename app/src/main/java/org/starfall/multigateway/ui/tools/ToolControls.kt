@@ -2,7 +2,7 @@ package org.starfall.multigateway.ui.tools
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.extservices.remote.RemoteMachine
+import org.starfall.multigateway.data.model.RemoteMachine
 
 data class ToolControls(
     val servers: List<McpInfo> = emptyList(),

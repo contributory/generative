@@ -307,7 +307,7 @@ fun ProviderEditScreen(
                     updateModels(models.mapValues { (id, config) -> val metadata = catalog[id]
                         config.copy(modelJson = metadata?.metadata ?: config.modelJson,
                             contextWindowTokens = metadata?.contextWindowTokens ?: config.contextWindowTokens,
-                            displayName = config.displayName.ifBlank { metadata?.displayName.orEmpty() }).normalizedForStorage() })
+                            displayName = config.displayName.ifBlank { metadata?.displayName.orEmpty() }) })
                 }, onToggle = { id -> updateModels(if (id in models) models - id else models + (id to memory.configurationFor(catalog[id] ?: DiscoveredModel(id)))) },
                 onSetSelection = { ids, selected -> updateModels(if (selected) models + ids.associateWith { models[it] ?: memory.configurationFor(catalog[it] ?: DiscoveredModel(it)) } else models - ids.toSet()) },
                 onDismiss = { showCatalog = false })

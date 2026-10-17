@@ -4,17 +4,17 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_DISCONNECT
-import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_EXECUTE
-import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_START_MACHINE
-import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_UPDATE_IP
-import org.starfall.multigateway.extservices.remote.RemoteMachine
-import org.starfall.multigateway.extservices.remote.RemoteMachineType
-import org.starfall.multigateway.extservices.remote.RemoteSecretRequest
+import org.starfall.multigateway.data.model.REMOTE_TOOL_DISCONNECT
+import org.starfall.multigateway.data.model.REMOTE_TOOL_EXECUTE
+import org.starfall.multigateway.data.model.REMOTE_TOOL_START_MACHINE
+import org.starfall.multigateway.data.model.REMOTE_TOOL_UPDATE_IP
+import org.starfall.multigateway.data.model.RemoteMachine
+import org.starfall.multigateway.data.model.RemoteMachineType
+import org.starfall.multigateway.data.service.RemoteSecretRequest
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.starfall.multigateway.extservices.remote.PasswordKeyboardInteractiveUserInfo
-import org.starfall.multigateway.extservices.remote.SshConfigParser
+import org.starfall.multigateway.data.service.PasswordKeyboardInteractiveUserInfo
+import org.starfall.multigateway.data.service.SshConfigParser
 import org.starfall.multigateway.data.model.ToolSettings
 import org.starfall.multigateway.data.model.remoteMachineToolEnabled
 
@@ -164,7 +164,7 @@ class RemoteMachineTest {
             RemoteMachine(
                 id = "password",
                 name = "Password",
-                authentication = org.starfall.multigateway.extservices.remote.RemoteAuthentication.PASSWORD
+                authentication = org.starfall.multigateway.data.model.RemoteAuthentication.PASSWORD
             ).keyboardInteractive
         )
     }
@@ -226,10 +226,10 @@ class RemoteMachineTest {
         val blob = java.util.Base64.getEncoder().encodeToString(
             byteArrayOf(0, 0, 0, 7) + "ssh-rsa".toByteArray() + byteArrayOf(1, 2, 3)
         )
-        assertEquals("ssh-rsa $blob", org.starfall.multigateway.extservices.remote.normalizeOpenSshPublicKey("# note\nssh-rsa $blob user@host\n"))
-        assertTrue(runCatching { org.starfall.multigateway.extservices.remote.normalizeOpenSshPublicKey("ecdsa-sha2-nistp256 $blob") }.isFailure)
-        assertTrue(runCatching { org.starfall.multigateway.extservices.remote.normalizeOpenSshPublicKey("-----BEGIN OPENSSH PRIVATE KEY-----") }.isFailure)
-        assertTrue(runCatching { org.starfall.multigateway.extservices.remote.normalizeOpenSshPublicKey("") }.isFailure)
+        assertEquals("ssh-rsa $blob", org.starfall.multigateway.data.service.normalizeOpenSshPublicKey("# note\nssh-rsa $blob user@host\n"))
+        assertTrue(runCatching { org.starfall.multigateway.data.service.normalizeOpenSshPublicKey("ecdsa-sha2-nistp256 $blob") }.isFailure)
+        assertTrue(runCatching { org.starfall.multigateway.data.service.normalizeOpenSshPublicKey("-----BEGIN OPENSSH PRIVATE KEY-----") }.isFailure)
+        assertTrue(runCatching { org.starfall.multigateway.data.service.normalizeOpenSshPublicKey("") }.isFailure)
     }
 
     @Test
@@ -239,7 +239,7 @@ class RemoteMachineTest {
             it[4] = bits.toByte(); it[5] = 1; it[16] = type.toByte()
         }
         fun run(header: ByteArray, sdk: Int, target: Int = 36, exists: (String) -> Boolean = { true }): List<String> =
-            org.starfall.multigateway.extservices.remote.binaryLauncher(header, sdk, target, exists)
+            org.starfall.multigateway.data.service.binaryLauncher(header, sdk, target, exists)
         assertEquals(listOf("/system/bin/linker64"), run(elf(2, 3), 34))
         assertEquals(listOf("/system/bin/linker"), run(elf(1, 3), 34))
         assertEquals(emptyList<String>(), run(elf(2, 3), 28))

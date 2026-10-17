@@ -51,7 +51,7 @@ fun ChatAppBar(
             .height(72.dp + statusBarHeight)
             // Background first so it extends under the status bar, with rounded bottom corners.
             .background(
-                MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
                 RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
             )
             .padding(top = statusBarHeight)

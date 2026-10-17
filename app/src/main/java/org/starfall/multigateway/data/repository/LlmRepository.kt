@@ -253,7 +253,7 @@ class LlmRepository(private val db: AppDatabase, private val service: LlmService
     suspend fun providerExists(id: String): Boolean = providerDao.getProviderById(id) != null
 
     suspend fun saveProvider(draft: LlmProviderInfo) {
-        val provider = draft.copy(config = draft.config.normalizedForStorage())
+        val provider = draft
         state.mutate({ it.saveProviderDraft(provider) }) {
             val previous = providerDao.getProviderById(provider.id)?.let(::providerEntityToModel)
             if (
@@ -277,7 +277,7 @@ class LlmRepository(private val db: AppDatabase, private val service: LlmService
 
     /** Restore the exported layout directly; editor saves append providers when their group changes. */
     suspend fun importProviders(providers: List<LlmProviderInfo>, groups: List<ProviderGroup>?) {
-        val importedProviders = providers.map { it.copy(config = it.config.normalizedForStorage()) }
+        val importedProviders = providers
         val importedGroups = groups?.map { it.copy(name = it.name.trim()) }
         val importedIds = importedProviders.mapTo(hashSetOf()) { it.id }
         state.mutate({ it.mergeImport(importedProviders, importedGroups) }) {
@@ -404,7 +404,7 @@ class LlmRepository(private val db: AppDatabase, private val service: LlmService
             auth = auth,
             icon = entity.icon,
             baseUrl = SecretCipher.decrypt(entity.baseUrl),
-            config = config.normalizedForStorage(),
+            config = config,
             sortOrder = entity.sortOrder,
             groupId = entity.groupId
         )
@@ -417,7 +417,7 @@ class LlmRepository(private val db: AppDatabase, private val service: LlmService
             type = provider.type.name,
             baseUrl = SecretCipher.encrypt(provider.baseUrl),
             authJson = SecretCipher.encrypt(json.encodeToString(provider.auth)),
-            configJson = SecretCipher.encrypt(json.encodeToString(provider.config.normalizedForStorage())),
+            configJson = SecretCipher.encrypt(json.encodeToString(provider.config)),
             icon = provider.icon,
             sortOrder = provider.sortOrder,
             groupId = provider.groupId

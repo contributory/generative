@@ -39,7 +39,7 @@ class ProviderEditorBehaviorTest {
         compose.onNodeWithText("Save").performClick()
         compose.runOnIdle {
             assertEquals(raw, saved!!.modelJson)
-            assertEquals(DEFAULT_CONTEXT_WINDOW_TOKENS, saved!!.contextWindowTokens)
+            assertEquals(32000, saved!!.contextWindowTokens)
         }
     }
 

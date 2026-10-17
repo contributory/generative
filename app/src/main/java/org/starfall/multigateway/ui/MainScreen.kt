@@ -31,8 +31,8 @@ import org.starfall.multigateway.ui.speech.SpeechScreen
 import org.starfall.multigateway.ui.chat.ChatViewModel
 import org.starfall.multigateway.ui.configuration.ConfigurationViewModel
 import org.starfall.multigateway.ui.settings.SettingsViewModel
-import org.starfall.multigateway.extservices.remote.RemoteMachinesViewModel
-import org.starfall.multigateway.extservices.remote.RemoteMachinesScreen
+import org.starfall.multigateway.ui.remote.RemoteMachinesViewModel
+import org.starfall.multigateway.ui.remote.RemoteMachinesScreen
 import org.starfall.multigateway.data.tools.ToolFiles
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput

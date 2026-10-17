@@ -1,0 +1,110 @@
+package org.starfall.multigateway.integrations.languagemodels.openairesponses
+
+import kotlinx.coroutines.flow.Flow
+import com.openai.models.responses.EasyInputMessage
+import com.openai.models.responses.ResponseCreateParams
+import com.openai.models.responses.ResponseInputItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.integrations.languagemodels.sdk.useClient
+import org.starfall.multigateway.shared.model.GenerationEvent
+import org.starfall.multigateway.shared.model.ProviderType
+import org.starfall.multigateway.integrations.languagemodels.LanguageModelAdapter
+import org.starfall.multigateway.integrations.languagemodels.LanguageModelRequest
+import org.starfall.multigateway.integrations.languagemodels.sdk.OfficialProviderSdk
+
+internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : LanguageModelAdapter {
+    override val providerType = ProviderType.OPENAI_RESPONSES
+
+
+    override suspend fun testConnection(provider: ModelProvider): Result<String> = sdk.connectionResult(provider) {
+        sdk.sdkCall { sdk.openAi(provider).useClient { it.models().list() } }
+    }
+
+    override fun stream(request: LanguageModelRequest): Flow<GenerationEvent> = streamResponses(
+        request.provider, request.modelName, request.messages, request.systemPrompt,
+        request.temperature, request.topP, request.maxTokens, request.reasoningEffort, request.sendThinkingContent
+    )
+
+    private fun streamResponses(
+        provider: ModelProvider,
+        modelName: String,
+        messages: List<StoredMessage>,
+        systemPrompt: String,
+        temperature: Double?,
+        topP: Double?,
+        maxTokens: Int,
+        reasoningEffort: String? = null,
+        sendThinkingContent: Boolean = false
+    ): Flow<GenerationEvent> = flow {
+        sdk.openAi(provider).useClient { client ->
+            val inputItems = buildList {
+                messages.forEach { message ->
+                    if (message.role == ChatRole.MODEL && sendThinkingContent) {
+                        message.reasoningContent?.takeIf { it.isNotBlank() }?.let { reasoning ->
+                            val content = com.openai.models.responses.ResponseReasoningItem.Content.builder()
+                                .text(reasoning)
+                                .build()
+                            val reasoningItem = com.openai.models.responses.ResponseReasoningItem.builder()
+                                .id("rs_${message.id}")
+                                .summary(emptyList())
+                                .content(listOf(content))
+                                .build()
+                            add(ResponseInputItem.ofReasoning(reasoningItem))
+                        }
+                    }
+                    val easy = EasyInputMessage.builder()
+                        .role(if (message.role == ChatRole.MODEL) EasyInputMessage.Role.ASSISTANT else EasyInputMessage.Role.USER)
+                    if (message.role == ChatRole.USER && message.files.isNotEmpty()) {
+                        easy.contentOfResponseInputMessageContentList(sdk.openAiResponseContent(message))
+                    } else {
+                        easy.content(message.content)
+                    }
+                    add(ResponseInputItem.ofEasyInputMessage(easy.build()))
+                }
+            }
+            val params = ResponseCreateParams.builder().model(modelName).maxOutputTokens(maxTokens.toLong()).store(false)
+                .inputOfResponse(inputItems)
+            if (systemPrompt.isNotBlank()) params.instructions(systemPrompt)
+            temperature?.let { params.temperature(it) }
+            topP?.let { params.topP(it) }
+            reasoningEffort?.trim()?.takeIf { it.isNotEmpty() }?.let { effort ->
+                params.putAdditionalBodyProperty(
+                    "reasoning",
+                    com.openai.core.JsonValue.from(mapOf("effort" to effort))
+                )
+            }
+            if (!provider.config.supportStream) {
+                val response = sdk.sdkCall { client.responses().create(params.build()) }
+                check(!response.error().isPresent) { "OpenAI Responses request failed" }
+                response.output().forEach { item ->
+                    item.reasoning().orElse(null)?.content()?.orElse(emptyList())?.forEach { part ->
+                        part.text().takeIf { it.isNotBlank() }?.let { emit(GenerationEvent.Reasoning(it)) }
+                    }
+                    item.message().orElse(null)?.content()?.forEach { content ->
+                        content.outputText().orElse(null)?.text()?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
+                    }
+                }
+                return@useClient
+            }
+            sdk.sdkCall { client.responses().createStreaming(params.build()) }.use { response ->
+                val iterator = response.stream().iterator()
+                var finished = false
+                while (sdk.sdkCall { iterator.hasNext() }) {
+                    val event = iterator.next()
+                    check(!event.error().isPresent && !event.failed().isPresent) { "OpenAI Responses stream failed" }
+                    event.reasoningTextDelta().orElse(null)?.delta()?.takeIf { it.isNotEmpty() }?.let {
+                        emit(GenerationEvent.Reasoning(it))
+                    }
+                    event.outputTextDelta().orElse(null)?.delta()?.takeIf { it.isNotEmpty() }?.let {
+                        emit(GenerationEvent.Text(it))
+                    }
+                    if (event.completed().isPresent || event.incomplete().isPresent) finished = true
+                }
+                check(finished) { "OpenAI Responses stream ended without a final response" }
+            }
+        }
+    }.flowOn(Dispatchers.IO)
+}

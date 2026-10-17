@@ -119,7 +119,7 @@ sealed interface GenerationEvent {
 fun globalMcpToolEnabled(settings: ToolSettings, serverId: String, name: String): Boolean =
     settings.mcpTools[serverId]?.get(name) != false
 
-fun remoteMachineEnabled(settings: ToolSettings, machine: org.starfall.multigateway.extservices.remote.RemoteMachine): Boolean =
+fun remoteMachineEnabled(settings: ToolSettings, machine: org.starfall.multigateway.data.model.RemoteMachine): Boolean =
     if (settings.enabledMachines.isNotEmpty()) {
         settings.enabledMachines[machine.id] == true
     } else {
@@ -128,7 +128,7 @@ fun remoteMachineEnabled(settings: ToolSettings, machine: org.starfall.multigate
 
 fun remoteMachineToolEnabled(
     settings: ToolSettings,
-    machine: org.starfall.multigateway.extservices.remote.RemoteMachine,
+    machine: org.starfall.multigateway.data.model.RemoteMachine,
     toolName: String
 ): Boolean = remoteMachineEnabled(settings, machine) &&
     machine.isToolEnabled(toolName)

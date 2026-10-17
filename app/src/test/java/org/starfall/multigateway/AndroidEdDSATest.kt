@@ -4,8 +4,8 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.multigateway.extservices.remote.AndroidKeyPairGenEdDSA
-import org.starfall.multigateway.extservices.remote.AndroidSignatureEd25519
+import org.starfall.multigateway.data.service.AndroidKeyPairGenEdDSA
+import org.starfall.multigateway.data.service.AndroidSignatureEd25519
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 

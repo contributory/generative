@@ -282,13 +282,14 @@ data class ModelConfiguration(
     val modelJson: kotlinx.serialization.json.JsonObject = kotlinx.serialization.json.JsonObject(emptyMap())
 )
 
-/** Only context windows above the app default need an explicit stored override. */
-fun ModelConfiguration.normalizedForStorage(): ModelConfiguration =
+/**
+ * Only for reusable model templates (ModelConfigurationMemory): context windows at or below the
+ * app default collapse to the default. Never apply this to a model the user has edited or to a
+ * limit reported by the provider API, or a deliberately smaller context window would be lost.
+ */
+fun ModelConfiguration.normalizedForTemplate(): ModelConfiguration =
     if (contextWindowTokens > DEFAULT_CONTEXT_WINDOW_TOKENS) this
     else copy(contextWindowTokens = DEFAULT_CONTEXT_WINDOW_TOKENS)
-
-fun ProviderConfiguration.normalizedForStorage(): ProviderConfiguration =
-    copy(modelConfigs = modelConfigs.mapValues { (_, config) -> config.normalizedForStorage() })
 
 /** The effective passback mode; saved configs without the new field migrate from the old switch. */
 val ModelConfiguration.passbackMode: ThinkingPassback
@@ -403,6 +404,6 @@ data class DiscoveredModel(
             supportsThinking = thinking ?: true,
             supportsToolCalls = supported("tool_calls") ?: true,
             supportStream = supported("streaming"),
-            modelJson = metadata).normalizedForStorage()
+            modelJson = metadata)
     }
 }

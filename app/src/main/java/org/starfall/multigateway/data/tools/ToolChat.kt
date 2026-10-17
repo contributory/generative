@@ -5,13 +5,13 @@ import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.*
 import org.starfall.multigateway.data.model.*
 import org.starfall.multigateway.data.service.*
-import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_DISCONNECT
-import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_EXECUTE
-import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_START_MACHINE
-import org.starfall.multigateway.extservices.remote.REMOTE_TOOL_UPDATE_IP
-import org.starfall.multigateway.extservices.remote.RemoteMachine
-import org.starfall.multigateway.extservices.remote.RemoteMachineService
-import org.starfall.multigateway.extservices.remote.RemoteMachineType
+import org.starfall.multigateway.data.model.REMOTE_TOOL_DISCONNECT
+import org.starfall.multigateway.data.model.REMOTE_TOOL_EXECUTE
+import org.starfall.multigateway.data.model.REMOTE_TOOL_START_MACHINE
+import org.starfall.multigateway.data.model.REMOTE_TOOL_UPDATE_IP
+import org.starfall.multigateway.data.model.RemoteMachine
+import org.starfall.multigateway.data.service.RemoteMachineService
+import org.starfall.multigateway.data.model.RemoteMachineType
 import java.util.UUID
 
 private fun sentFileNames(result: JsonObject): List<String> {

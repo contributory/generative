@@ -17,19 +17,32 @@ class ContextWindowTest {
         assertEquals(32000, discovered.contextWindowTokens)
         assertEquals(listOf("chat", "speech"), discovered.metadata["supported_endpoints"]!!.jsonArray.map { it.jsonPrimitive.content })
     }
-    @Test fun onlyContextWindowsAbove128kAreStoredEvenWhenEncodingDefaults() {
+    @Test fun editedContextWindowBelowDefaultIsEncodedAndSurvivesRoundTrip() {
         val json = Json { encodeDefaults = true }
-        for (limit in listOf(32000, 127999, 128000)) {
-            val config = DiscoveredModel("model", contextWindowTokens = limit).configuration()
-            assertEquals(DEFAULT_CONTEXT_WINDOW_TOKENS, config.contextWindowTokens)
-            assertFalse(json.parseToJsonElement(json.encodeToString(config)).jsonObject.containsKey("contextWindowTokens"))
-        }
-        for (limit in listOf(128001, 262144)) {
-            val config = ModelConfiguration(contextWindowTokens = limit).normalizedForStorage()
+        for (limit in listOf(1000, 32000, 127999)) {
+            val config = ModelConfiguration(contextWindowTokens = limit)
             val stored = json.parseToJsonElement(json.encodeToString(config)).jsonObject
             assertEquals(limit, stored.getValue("contextWindowTokens").jsonPrimitive.int)
             assertEquals(limit, json.decodeFromString<ModelConfiguration>(stored.toString()).contextWindowTokens)
         }
+    }
+
+    @Test fun apiContextWindowIsKeptAsIsAndDefaultOnlyWhenMissing() {
+        val json = Json { encodeDefaults = true }
+        for (limit in listOf(32000, 127999, 128001, 262144)) {
+            val config = DiscoveredModel("model", contextWindowTokens = limit).configuration()
+            assertEquals(limit, config.contextWindowTokens)
+            assertEquals(limit, json.decodeFromString<ModelConfiguration>(json.encodeToString(config)).contextWindowTokens)
+        }
+        assertEquals(DEFAULT_CONTEXT_WINDOW_TOKENS, DiscoveredModel("model").configuration().contextWindowTokens)
+        assertFalse(json.parseToJsonElement(json.encodeToString(DiscoveredModel("model").configuration())).jsonObject.containsKey("contextWindowTokens"))
+    }
+
+    @Test fun templateNormalizationCollapsesOnlyContextWindowsAtOrBelowDefault() {
+        for (limit in listOf(32000, 127999, 128000))
+            assertEquals(DEFAULT_CONTEXT_WINDOW_TOKENS, ModelConfiguration(contextWindowTokens = limit).normalizedForTemplate().contextWindowTokens)
+        for (limit in listOf(128001, 262144))
+            assertEquals(limit, ModelConfiguration(contextWindowTokens = limit).normalizedForTemplate().contextWindowTokens)
     }
 
     @Test fun rawApiModelJsonSurvivesConfigurationRoundTrip() {
@@ -37,7 +50,7 @@ class ContextWindowTest {
         val configuration = discoveredModel("m", raw).configuration()
         val decoded = Json.decodeFromString<ModelConfiguration>(Json.encodeToString(configuration))
         assertEquals(raw, decoded.modelJson)
-        assertEquals(DEFAULT_CONTEXT_WINDOW_TOKENS, decoded.contextWindowTokens)
+        assertEquals(32000, decoded.contextWindowTokens)
         assertEquals(JsonObject(emptyMap()), ModelConfiguration().modelJson)
         assertEquals(JsonObject(emptyMap()), Json.decodeFromString<ModelConfiguration>("{}").modelJson)
     }

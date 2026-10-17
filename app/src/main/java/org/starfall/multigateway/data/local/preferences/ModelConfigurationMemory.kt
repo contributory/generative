@@ -5,7 +5,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.Json
 import org.starfall.multigateway.data.model.DiscoveredModel
-import org.starfall.multigateway.data.model.normalizedForStorage
+import org.starfall.multigateway.data.model.normalizedForTemplate
 import org.starfall.multigateway.data.model.ModelConfiguration
 import java.util.Locale
 
@@ -18,19 +18,19 @@ class ModelConfigurationMemory(context: Context) {
     private val json = Json { ignoreUnknownKeys = true }
 
     fun get(modelId: String): ModelConfiguration? = preferences.getString(rememberedModelName(modelId), null)?.let {
-        runCatching { json.decodeFromString<ModelConfiguration>(it) }.getOrNull()?.copy(modelJson = JsonObject(emptyMap()))?.normalizedForStorage()
+        runCatching { json.decodeFromString<ModelConfiguration>(it) }.getOrNull()?.copy(modelJson = JsonObject(emptyMap()))?.normalizedForTemplate()
     }
 
     fun remember(modelId: String, configuration: ModelConfiguration, onlyIfMissing: Boolean = false) {
         val key = rememberedModelName(modelId)
         if (key.isBlank() || (onlyIfMissing && preferences.contains(key))) return
-        preferences.edit().putString(key, json.encodeToString(configuration.copy(displayName = "", icon = null, modelJson = JsonObject(emptyMap())).normalizedForStorage())).apply()
+        preferences.edit().putString(key, json.encodeToString(configuration.copy(displayName = "", icon = null, modelJson = JsonObject(emptyMap())).normalizedForTemplate())).apply()
     }
 
     fun configurationFor(model: DiscoveredModel): ModelConfiguration {
         val saved = get(model.id) ?: return model.configuration()
         return saved.copy(displayName = model.displayName,
             contextWindowTokens = model.contextWindowTokens ?: saved.contextWindowTokens,
-            modelJson = model.metadata).normalizedForStorage()
+            modelJson = model.metadata)
     }
 }
