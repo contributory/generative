@@ -35,14 +35,15 @@
 │   │   │   └── 📄 SystemToolsScreen.kt
 │   │   └── 📁 shared/
 │   ├── 📁 providers/
-│   │   ├── 📁 providerlist/screen/
-│   │   │   ├── 📄 ProviderListScreen.kt
+│   │   ├── 📁 providers/screen/
+│   │   │   ├── 📄 ProvidersScreen.kt
 │   │   │   ├── 📄 ProviderCard.kt
 │   │   │   └── 📄 ProviderFolder.kt
 │   │   ├── 📁 providereditor/screen/
 │   │   │   └── 📄 ProviderEditorScreen.kt
 │   │   ├── 📁 modeleditor/screen/
 │   │   │   └── 📄 ModelEditorScreen.kt
+        ├── 📁 fetchmodels/sheet
 │   │   └── 📁 shared/
 │   ├── 📁 mcp/
 │   │   ├── 📁 serverlist/screen/
@@ -64,15 +65,21 @@
 │   │   ├── 📁 storage/screen/
 │   │   │   └── 📄 StorageScreen.kt
 │   │   └── 📁 shared/
+│   ├── 📁 about/screen/
+│   │   └── 📄 AboutScreen.kt
+│   ├── 📁 appdata/
+│   │   ├── 📁 model/
+│   │   │   ├── 📄 JsonExportKind.kt
+│   │   │   └── 📄 ProvidersExport.kt
+│   │   ├── 📁 screen/
+│   │   │   └── 📄 AppDataScreen.kt
+│   │   └── 📁 service/
+│   │       └── 📄 JsonDataTransfer.kt
+│   ├── 📁 icons/screen/
+│   │   └── 📄 IconsScreen.kt
 │   └── 📁 settings/
 │       ├── 📁 appsettings/screen/
 │       │   └── 📄 AppSettingsScreen.kt
-│       ├── 📁 icons/screen/
-│       │   └── 📄 IconsScreen.kt
-│       ├── 📁 appdata/screen/
-│       │   └── 📄 AppDataScreen.kt
-│       ├── 📁 about/screen/
-│       │   └── 📄 AboutScreen.kt
 │       └── 📁 shared/
 │           └── 📄 MainAppbar.kt
 ├── 📁 integrations/
@@ -115,6 +122,13 @@
 │   ├── 📁 ui/
 │   │   └── 📄 OAuthBrowserActivity.kt
 │   ├── 📁 icons/
+│   │   ├── 📄 IconStore.kt
+│   │   ├── 📄 LobeIconSource.kt
+│   │   ├── 📄 LobeModelIconResolver.kt
+│   │   ├── 📄 AppImages.kt
+│   │   └── 📁 model/
+│   │       ├── 📄 IconRule.kt
+│   │       └── 📄 StoredIcon.kt
 │   ├── 📁 theme/
 │   ├── 📁 networking/
 │   ├── 📁 files/
@@ -177,7 +191,15 @@
 - Folder paths separate the component name and its type with `/`, for example `chat/screen/`, `modelpicker/sheet/`, `leftside/drawer/`, and `about/screen/`. Each path segment maps to a valid Kotlin package identifier; do not use hyphens in Kotlin package names.
 - A file containing navigation or link-handling logic for opening another component uses the `Link` suffix (for example, `QuickActionsLink.kt`); the destination view keeps its own type suffix (for example, `QuickActionsSheet.kt`).
 - `feature/shared/` is for components shared inside that feature; root `shared/` is for cross-feature code. App-wide UI belongs in root `shared/`.
+- A feature `service/` must not depend on that feature’s `screen/` or any other feature-local package except its own `model/`. It may use `shared/` and other allowed cross-feature code. If feature-specific logic needs to call or depend on a non-model component from the same feature, that logic belongs in `screen/`, not `service/`. Keep dependencies flowing from screens toward services/models, never from services back into screens.
 - Provider UI belongs in `ui/providers/`; model API protocol adapters and catalog parsing belong in `integrations/modelapis/`. Account-provider OAuth adapters are kept under `integrations/modelapis/account/` for now. Kotlin package declarations use the valid identifier `integrations.modelapis`. Shared model packages use `shared.model.api`, `shared.model.auth`, `shared.model.generation`, `shared.model.language`, and `shared.model.provider`.
 - Cross-feature attachment metadata and file access belongs in `shared/files/`; generic domain models belong in `shared/model/` grouped by API, auth, generation, language-model, and provider concerns; app-wide OAuth browser/session plumbing belongs in `shared/auth/`.
+- Cross-feature icon caching, remote icon lookup, image decoding, and icon records belong in `shared/icons/`; feature screens consume this shared API rather than duplicating icon storage or lookup behavior.
 - `app/` remains untouched as fallback. `newApp/` is a rewrite workspace; copied code is reference material.
 - No forced `ui/domain/data` layers or separate Gradle modules per feature.
+
+## Main feature
+
+- `features/main/screen/FeaturesScreen.kt` is the untitled feature directory; its header displays the appropriate light/dark app logo.
+
+- Theme-specific feature header assets are `drawable-nodpi/multigateway_logo_light.png` and `drawable-nodpi/multigateway_logo_dark.png`.

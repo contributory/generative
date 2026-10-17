@@ -1,3 +1,9 @@
+## Main / Features screen
+
+- [x] Migrated the former General Settings landing menu into `features/main/screen/FeaturesScreen.kt`; it is now named Features and no longer renders a page title.
+- [x] Added a centered app-logo header that selects the light or dark logo using the active Compose background luminance.
+- [!] Navigation callbacks are exposed, but the new rewrite still lacks the complete navigation host needed to connect all destinations.
+
 # Progress
 
 ## Integrations / AI models
@@ -35,10 +41,26 @@ Only `newApp/` was edited; `app/` remains untouched as fallback/reference. Compi
 - [x] Group related shared models into `api/`, `auth/`, `generation/`, `language/`, and `provider/` subpackages; update the packages/imports in the target integration files and keep the tree aligned with `structure.md`.
 - Move `OAuthBrowserActivity` from `ui/auth/` to root `shared/ui/`, update its Kotlin package and auth-helper imports, and align the manifest and `OAuthBrowser` reference with the new location.
 
-## Settings / About screen
+## About feature
 
-- [x] Added `features/settings/about/screen/AboutScreen.kt` following `structure.md`; its Kotlin package is `org.starfall.multigateway.features.settings.about.screen`.
+- [x] Added `features/about/screen/AboutScreen.kt` following `structure.md`; its Kotlin package is `org.starfall.multigateway.features.about.screen`.
 - [x] Migrated About information, installed version/version code, GitHub source link, license details, and GitHub release checking/APK links from `app/` into the new feature.
 - [x] Added the small GitHub release API service used by the About screen under `data/service/GitHubReleaseService.kt`.
 - [!] `AboutScreen` is not wired into settings/navigation because `newApp/` does not yet contain the settings/navigation flow or the destination screens described by `structure.md`.
 - [!] `:newApp:compileDebugKotlin` remains blocked by existing rewrite-wide missing packages/types and stale imports in other files; this run did not provide a clean whole-module verification.
+
+## Icons feature
+
+- [x] Migrated the icon management screen to `features/icons/screen/IconsScreen.kt`: search, image import, cache listing, edit/delete, regex match rules, and optional light/dark variants.
+- [x] Migrated shared icon storage, LobeHub icon lookup, model-family matching, and image decoding into `shared/icons/`; moved `IconRule` and `StoredIcon` into `shared/icons/model/` because icon lookup and management are cross-feature concerns.
+- [!] Settings navigation is not wired in `newApp` yet; the rewrite's settings/navigation host is still missing. The icon screen is implemented but cannot be opened through the new app shell until that migration lands.
+- [x] Ran `:newApp:compileDebugKotlin`; the compile emitted no diagnostics for `IconsScreen.kt` or `shared/icons/`, but the module still fails on existing rewrite-wide missing packages and symbols in `MainActivity`, `MultiGatewayApplication`, and other integrations.
+
+## App data feature
+
+- [x] Added a dependency rule to `structure.md`: feature `service/` may depend on its own `model/` and shared code, but not on feature `screen/` or other feature-local components.
+
+- [x] Added `features/appdata/screen/AppDataScreen.kt` with data counts, clear-chat and factory-reset confirmations, and JSON import/export actions for providers, MCP servers, speech services, and conversations.
+- [x] Added feature-local `model/JsonExportKind.kt` and `model/ProvidersExport.kt`, plus `service/JsonDataTransfer.kt` migrated from the old app and adapted to `shared.model` types.
+- [!] The screen and JSON transfer service are not wired into settings/navigation or the new persistence/view-model layer because those dependencies are not yet migrated into `newApp/`.
+- [!] Whole-module compile remains blocked by existing rewrite-wide missing packages and symbols; this compile reported no further error in `AppDataScreen.kt` after its Material 3 opt-in was added.

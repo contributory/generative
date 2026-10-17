@@ -16,7 +16,7 @@ import java.io.File
 
 class MultiGatewayApplication : Application(), coil3.SingletonImageLoader.Factory {
     override fun newImageLoader(context: android.content.Context): coil3.ImageLoader =
-        org.starfall.multigateway.data.service.AppImages.createLoader(context)
+        org.starfall.multigateway.shared.icons.AppImages.createLoader(context)
 
     val container by lazy { AppContainer(this) }
     internal val crashReports by lazy { CrashReportStore(File(filesDir, "last_crash.json")) }

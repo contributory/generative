@@ -1,4 +1,4 @@
-package org.starfall.multigateway.features.settings.about.screen
+package org.starfall.multigateway.features.about.screen
 
 import android.content.Intent
 import android.net.Uri
