@@ -3,7 +3,7 @@ package org.starfall.multigateway
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.multigateway.data.local.preferences.ScreenWakelockMode
+import org.starfall.multigateway.shared.storage.preferences.ScreenWakelockMode
 
 class ScreenWakelockPolicyTest {
     @Test fun automaticModeKeepsScreenOnWhileWaitingForApiResponse() {

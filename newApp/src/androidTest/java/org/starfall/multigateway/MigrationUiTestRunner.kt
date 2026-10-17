@@ -12,5 +12,5 @@ class MigrationUiTestRunner : AndroidJUnitRunner() {
 
 class MigrationUiApplication : Application(), coil3.SingletonImageLoader.Factory {
     override fun newImageLoader(context: Context): coil3.ImageLoader =
-        org.starfall.multigateway.data.service.AppImages.createLoader(context)
+        org.starfall.multigateway.shared.icons.AppImages.createLoader(context)
 }

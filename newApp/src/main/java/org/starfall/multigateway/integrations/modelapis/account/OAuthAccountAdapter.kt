@@ -8,7 +8,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.*
 import org.starfall.multigateway.integrations.modelapis.account.AccountProviderAdapter
-import org.starfall.multigateway.data.adapter.common.AppAuthTransactions
+import org.starfall.multigateway.shared.auth.AppAuthTransactions
 import org.starfall.multigateway.shared.auth.*
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.model.api.*
@@ -17,8 +17,13 @@ import org.starfall.multigateway.shared.model.generation.*
 import org.starfall.multigateway.shared.model.language.*
 import org.starfall.multigateway.shared.model.provider.*
 import org.starfall.multigateway.shared.files.AttachmentResolver
-import org.starfall.multigateway.data.tools.*
 import org.starfall.multigateway.R
+import org.starfall.multigateway.shared.networking.ToolHttp
+import org.starfall.multigateway.shared.networking.obj
+import org.starfall.multigateway.shared.networking.str
+import org.starfall.multigateway.shared.networking.text
+import org.starfall.multigateway.shared.networking.providerBase
+import org.starfall.multigateway.shared.networking.modelResponse
 
 /** Shared PKCE and encrypted persistence; protocol details stay in each adapter. */
 internal abstract class OAuthAccountAdapter(

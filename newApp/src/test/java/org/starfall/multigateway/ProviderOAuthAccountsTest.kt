@@ -13,11 +13,15 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.adapter.common.*
-import org.starfall.multigateway.data.local.db.AppDatabase
+import org.starfall.multigateway.shared.auth.*
+import org.starfall.multigateway.shared.storage.database.AppDatabase
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.data.repository.ModelRepository
-import org.starfall.multigateway.data.service.AiService
+import org.starfall.multigateway.shared.storage.ModelRepository
+import org.starfall.multigateway.integrations.modelapis.AiService
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

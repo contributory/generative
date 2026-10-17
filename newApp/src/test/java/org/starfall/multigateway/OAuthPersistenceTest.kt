@@ -15,9 +15,13 @@ import org.starfall.multigateway.integrations.modelapis.antigravity.AntigravityA
 import org.starfall.multigateway.integrations.modelapis.openaicodex.CodexTokenStore
 import org.starfall.multigateway.integrations.modelapis.openaicodex.CodexTokenState
 import org.starfall.multigateway.integrations.modelapis.openaicodex.OpenAICodexAdapter
-import org.starfall.multigateway.data.adapter.common.*
+import org.starfall.multigateway.shared.auth.*
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.files.AttachmentResolver
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)

@@ -8,8 +8,8 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.local.db.AppDatabase
-import org.starfall.multigateway.data.local.db.SecretCipher
+import org.starfall.multigateway.shared.storage.database.AppDatabase
+import org.starfall.multigateway.shared.storage.database.SecretCipher
 import java.util.UUID
 
 /** Run on Android: real Room schema validation and real Keystore, never a fake cipher. */

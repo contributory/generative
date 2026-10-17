@@ -1,6 +1,8 @@
 package org.starfall.multigateway.shared.model
 
 import kotlinx.serialization.json.*
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.language.REASONING_EFFORT_ACTIVE
 
 /** Known API capabilities; unknown/custom aliases retain manual thinking. */
 data class ClaudeThinkingCapabilities(

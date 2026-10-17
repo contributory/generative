@@ -4,7 +4,11 @@ import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.ui.configuration.OAuthAuthorizations
+import org.starfall.multigateway.features.providers.shared.OAuthAuthorizations
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 class OAuthAuthorizationsTest {
     private val provider = ModelProvider("first-login", "Account", ModelApiType.ANTIGRAVITY, baseUrl = ModelApiType.ANTIGRAVITY.defaultBaseUrl)

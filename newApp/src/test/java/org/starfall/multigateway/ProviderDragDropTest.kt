@@ -10,12 +10,12 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.shared.model.ModelProvider
-import org.starfall.multigateway.shared.model.ProviderGroup
-import org.starfall.multigateway.shared.model.ProviderPlacement
-import org.starfall.multigateway.shared.model.ProviderRootOrderItem
-import org.starfall.multigateway.shared.model.ModelApiType
-import org.starfall.multigateway.ui.providers.ProviderScreen
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
+import org.starfall.multigateway.shared.model.provider.ProviderPlacement
+import org.starfall.multigateway.shared.model.provider.ProviderRootOrderItem
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.features.providers.providers.screen.ProvidersScreen
 
 /** Phone-launcher style drag and drop on the Providers screen. */
 @RunWith(RobolectricTestRunner::class)
@@ -35,7 +35,7 @@ class ProviderDragDropTest {
     ) {
         compose.setContent {
             MaterialTheme {
-                ProviderScreen(
+                ProvidersScreen(
                     providers = providers,
                     providerGroups = groups,
                     isGridView = grid,

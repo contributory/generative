@@ -4,8 +4,13 @@ import kotlinx.serialization.json.Json
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.ui.providers.ProviderApiKeysState
-import org.starfall.multigateway.ui.providers.maskedProviderApiKey
+import org.starfall.multigateway.features.providers.shared.ProviderApiKeysState
+import org.starfall.multigateway.features.providers.shared.maskedProviderApiKey
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderApiKey
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
 
 class ProviderApiKeysTest {
     private val identity: (String) -> String = { bearerHeaderValue("Authorization", it) }

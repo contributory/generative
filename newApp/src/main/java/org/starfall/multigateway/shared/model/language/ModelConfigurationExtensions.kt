@@ -1,5 +1,6 @@
 package org.starfall.multigateway.shared.model.language
 
+
 /**
  * Only for reusable model templates (ModelConfigurationMemory): context windows at or below the
  * app default collapse to the default. Never apply this to a model the user has edited or to a

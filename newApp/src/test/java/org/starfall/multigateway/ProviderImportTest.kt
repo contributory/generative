@@ -12,13 +12,16 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.local.db.AppDatabase
+import org.starfall.multigateway.shared.storage.database.AppDatabase
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.data.repository.ModelRepository
-import org.starfall.multigateway.data.service.JsonExportKind
-import org.starfall.multigateway.data.service.AiService
-import org.starfall.multigateway.data.service.buildJsonExport
-import org.starfall.multigateway.data.service.parseProvidersExport
+import org.starfall.multigateway.shared.storage.ModelRepository
+import org.starfall.multigateway.features.appdata.model.JsonExportKind
+import org.starfall.multigateway.integrations.modelapis.AiService
+import org.starfall.multigateway.features.appdata.service.buildJsonExport
+import org.starfall.multigateway.features.appdata.service.parseProvidersExport
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)

@@ -15,8 +15,10 @@ import org.starfall.multigateway.shared.model.language.*
 import org.starfall.multigateway.shared.model.provider.*
 import org.starfall.multigateway.shared.files.AttachmentResolver
 import org.starfall.multigateway.integrations.modelapis.discoveredModel
-import org.starfall.multigateway.data.tools.*
 import java.util.UUID
+import org.starfall.multigateway.shared.networking.obj
+import org.starfall.multigateway.shared.networking.str
+import org.starfall.multigateway.shared.networking.text
 
 internal class AntigravityAdapter(context: Context, attachments: AttachmentResolver) : OAuthAccountAdapter(
     context, attachments, ModelApiType.ANTIGRAVITY,

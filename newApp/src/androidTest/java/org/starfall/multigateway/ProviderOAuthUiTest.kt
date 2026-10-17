@@ -8,7 +8,16 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.ui.providers.*
+import org.starfall.multigateway.features.providers.fetchmodels.sheet.*
+import org.starfall.multigateway.features.providers.modeleditor.screen.*
+import org.starfall.multigateway.features.providers.providereditor.screen.*
+import org.starfall.multigateway.features.providers.providers.screen.*
+import org.starfall.multigateway.features.providers.shared.*
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderOAuthAccount
 
 class ProviderOAuthUiTest {
     @get:Rule val compose = createComposeRule()
@@ -38,7 +47,7 @@ class ProviderOAuthUiTest {
     @Test fun accountProviderEditorsHideBaseUrlAndAllowMultipleAccounts() {
         var type by mutableStateOf(accountTypes.first())
         compose.setContent { MaterialTheme { key(type) {
-            ProviderEditScreen(ModelProvider("p", "Provider", type, baseUrl = type.defaultBaseUrl,
+            ProviderEditorScreen(ModelProvider("p", "Provider", type, baseUrl = type.defaultBaseUrl,
                 auth = type.defaultAuthorization()), isNew = false, onSaveModels = { _, _ -> },
                 onReorderModels = { _, _ -> }, onDismiss = {}, onSave = {})
         } } }

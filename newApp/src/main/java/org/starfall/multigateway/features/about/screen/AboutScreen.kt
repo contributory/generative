@@ -38,8 +38,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
 import org.starfall.multigateway.R
-import org.starfall.multigateway.data.service.GitHubReleaseInfo
-import org.starfall.multigateway.data.service.fetchLatestGitHubRelease
+import org.starfall.multigateway.features.about.service.GitHubReleaseInfo
+import org.starfall.multigateway.features.about.service.fetchLatestGitHubRelease
 
 @Composable
 fun AboutScreen(modifier: Modifier = Modifier) {

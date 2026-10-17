@@ -8,8 +8,8 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.service.CrashRecordingHandler
-import org.starfall.multigateway.data.service.CrashReportStore
+import org.starfall.multigateway.shared.files.CrashRecordingHandler
+import org.starfall.multigateway.shared.files.CrashReportStore
 import java.io.File
 
 @RunWith(RobolectricTestRunner::class)

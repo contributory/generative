@@ -6,11 +6,11 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.shared.model.ModelProvider
-import org.starfall.multigateway.shared.model.ProviderGroup
-import org.starfall.multigateway.shared.model.ProviderPlacement
-import org.starfall.multigateway.shared.model.ModelApiType
-import org.starfall.multigateway.ui.providers.ProviderScreen
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
+import org.starfall.multigateway.shared.model.provider.ProviderPlacement
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.features.providers.providers.screen.ProvidersScreen
 
 /** Phone-style drag and drop: reorder, drop into a folder, drag out of an open folder. */
 class ProviderDragBehaviorTest {
@@ -24,7 +24,7 @@ class ProviderDragBehaviorTest {
     ) {
         compose.setContent {
             MaterialTheme {
-                ProviderScreen(
+                ProvidersScreen(
                     providers = providers,
                     providerGroups = listOf(group),
                     isGridView = true,

@@ -9,20 +9,20 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.multigateway.shared.model.Authorization
-import org.starfall.multigateway.shared.model.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.auth.AuthMethod
 import org.starfall.multigateway.shared.model.Conversation
-import org.starfall.multigateway.shared.model.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.McpInfo
 import org.starfall.multigateway.shared.model.SpeechService
-import org.starfall.multigateway.shared.model.ModelApiType
-import org.starfall.multigateway.shared.model.ProviderGroup
-import org.starfall.multigateway.data.service.JsonExportKind
-import org.starfall.multigateway.data.service.buildJsonExport
-import org.starfall.multigateway.data.service.parseConversationsExport
-import org.starfall.multigateway.data.service.parseMcpExport
-import org.starfall.multigateway.data.service.parseProvidersExport
-import org.starfall.multigateway.data.service.parseSpeechServicesExport
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
+import org.starfall.multigateway.features.appdata.model.JsonExportKind
+import org.starfall.multigateway.features.appdata.service.buildJsonExport
+import org.starfall.multigateway.features.appdata.service.parseConversationsExport
+import org.starfall.multigateway.features.appdata.service.parseMcpExport
+import org.starfall.multigateway.features.appdata.service.parseProvidersExport
+import org.starfall.multigateway.features.appdata.service.parseSpeechServicesExport
 
 class JsonDataExporterTest {
     @Test fun exportsEachCollectionAsVersionedJsonWithItsType() {

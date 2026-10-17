@@ -12,8 +12,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.adapter.common.AppAuthTransactions
-import org.starfall.multigateway.data.tools.ToolHttp
+import org.starfall.multigateway.shared.auth.AppAuthTransactions
+import org.starfall.multigateway.shared.networking.ToolHttp
+import org.starfall.multigateway.shared.model.auth.Authorization
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

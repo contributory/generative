@@ -1,6 +1,7 @@
 package org.starfall.multigateway.shared.model
 
 import kotlinx.serialization.Serializable
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 @Serializable
 data class SpeechService(

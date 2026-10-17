@@ -5,20 +5,30 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import kotlinx.coroutines.runBlocking
-import org.starfall.multigateway.data.local.db.AppDatabase
-import org.starfall.multigateway.data.local.preferences.AppPreferencesRepository
-import org.starfall.multigateway.data.repository.*
-import org.starfall.multigateway.data.service.*
-import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.shared.storage.database.AppDatabase
+import org.starfall.multigateway.shared.storage.preferences.AppPreferencesRepository
+import org.starfall.multigateway.appwiring.*
+import org.starfall.multigateway.shared.storage.*
+import org.starfall.multigateway.features.mcp.shared.*
+import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.home.chat.*
+import org.starfall.multigateway.integrations.modelapis.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.icons.*
+import org.starfall.multigateway.shared.media.*
+import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
+import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
 import org.starfall.multigateway.shared.model.ChatRole
-import org.starfall.multigateway.ui.chat.ChatViewModel
+import org.starfall.multigateway.home.chat.screen.ChatViewModel
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.ui.chat.UserInputArea
+import org.starfall.multigateway.home.chat.screen.UserInputArea
 
 class ChatInputBehaviorTest {
     @get:Rule val compose = createComposeRule()

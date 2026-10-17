@@ -12,11 +12,11 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.data.local.db.AppDatabase
-import org.starfall.multigateway.shared.model.AuthMethod
-import org.starfall.multigateway.shared.model.ModelApiType
-import org.starfall.multigateway.data.repository.ModelRepository
-import org.starfall.multigateway.data.service.AiService
+import org.starfall.multigateway.shared.storage.database.AppDatabase
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.storage.ModelRepository
+import org.starfall.multigateway.integrations.modelapis.AiService
 import java.util.UUID
 
 class ProviderLinkUiTest {

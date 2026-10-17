@@ -9,9 +9,9 @@ import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.ui.chat.ChatViewModel
-import org.starfall.multigateway.ui.configuration.ConfigurationViewModel
-import org.starfall.multigateway.ui.settings.SettingsViewModel
+import org.starfall.multigateway.home.chat.screen.ChatViewModel
+import org.starfall.multigateway.features.providers.shared.ConfigurationViewModel
+import org.starfall.multigateway.features.settings.appsettings.screen.SettingsViewModel
 import java.util.UUID
 import android.os.ParcelFileDescriptor
 import kotlinx.serialization.json.*

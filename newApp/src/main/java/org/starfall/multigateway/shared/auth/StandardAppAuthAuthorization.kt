@@ -13,7 +13,7 @@ import net.openid.appauth.AuthorizationException
 import net.openid.appauth.AuthorizationRequest
 import net.openid.appauth.AuthorizationResponse
 import net.openid.appauth.AuthorizationService
-import org.starfall.multigateway.ui.auth.AppAuthResultActivity
+import org.starfall.multigateway.shared.ui.auth.AppAuthResultActivity
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.resume

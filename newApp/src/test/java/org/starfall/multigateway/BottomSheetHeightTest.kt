@@ -2,7 +2,7 @@ package org.starfall.multigateway
 
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.ui.components.bottomSheetHeightBounds
+import org.starfall.multigateway.shared.ui.sheets.bottomSheetHeightBounds
 
 class BottomSheetHeightTest {
     @Test fun openingFitsContentWithinOneThirdAndTheExistingSafeMaximum() {

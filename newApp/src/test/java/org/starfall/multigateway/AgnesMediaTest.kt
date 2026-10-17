@@ -9,10 +9,17 @@ import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
+import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
 import java.net.InetAddress
 import java.nio.file.Files
 import java.util.Base64
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 // Route the documented Agnes hostname to the mock server, preserving URL selection.
 internal fun agnesTestClient(): OkHttpClient = ToolHttp().client.newBuilder().dns(object : Dns {

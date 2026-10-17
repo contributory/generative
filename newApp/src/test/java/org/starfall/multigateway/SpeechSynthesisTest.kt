@@ -7,10 +7,21 @@ import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.data.service.*
+import org.starfall.multigateway.features.mcp.shared.*
+import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.home.chat.*
+import org.starfall.multigateway.integrations.modelapis.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.icons.*
+import org.starfall.multigateway.shared.media.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Base64
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
 
 class SpeechSynthesisTest {
     @Test fun codeBlocksAreSkippedByDefaultAndCanBeEnabled() {

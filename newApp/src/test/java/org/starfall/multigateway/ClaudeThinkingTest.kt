@@ -4,6 +4,9 @@ import kotlinx.serialization.json.*
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.model.language.ACTIVE_THINKING_BUDGET
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.language.SELECTABLE_REASONING_EFFORTS
 
 class ClaudeThinkingTest {
     private fun parameters(model: String, effort: String?, limit: Int = 16000) =

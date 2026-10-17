@@ -14,13 +14,26 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.multigateway.integrations.modelapis.antigravity.AntigravityAdapter
-import org.starfall.multigateway.data.adapter.common.*
+import org.starfall.multigateway.shared.auth.*
 import org.starfall.multigateway.integrations.modelapis.githubcopilot.GitHubCopilotAdapter
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.files.AttachmentResolver
-import org.starfall.multigateway.data.service.*
-import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.features.mcp.shared.*
+import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.home.chat.*
+import org.starfall.multigateway.integrations.modelapis.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.icons.*
+import org.starfall.multigateway.shared.media.*
+import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
+import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
 import java.util.concurrent.TimeUnit
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

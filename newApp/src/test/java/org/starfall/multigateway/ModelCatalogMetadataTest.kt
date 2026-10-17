@@ -3,7 +3,7 @@ package org.starfall.multigateway
 import kotlinx.serialization.json.*
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.ui.providers.formatCatalogMetadata
+import org.starfall.multigateway.features.providers.shared.formatCatalogMetadata
 import java.time.ZoneId
 
 class ModelCatalogMetadataTest {

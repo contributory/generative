@@ -1,7 +1,7 @@
 package org.starfall.multigateway.integrations.modelapis.account
 
 import kotlinx.serialization.json.*
-import org.starfall.multigateway.data.tools.text
+import org.starfall.multigateway.shared.networking.text
 
 /** Refresh responses may rotate credentials while omitting account metadata. */
 internal fun accountTokenFromResponse(

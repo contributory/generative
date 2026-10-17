@@ -12,13 +12,25 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.local.db.AppDatabase
-import org.starfall.multigateway.data.local.db.entities.McpServerEntity
+import org.starfall.multigateway.shared.storage.database.AppDatabase
+import org.starfall.multigateway.shared.storage.database.entities.McpServerEntity
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.data.repository.ModelRepository
-import org.starfall.multigateway.data.repository.McpRepository
-import org.starfall.multigateway.data.service.*
+import org.starfall.multigateway.shared.storage.ModelRepository
+import org.starfall.multigateway.shared.storage.McpRepository
+import org.starfall.multigateway.features.mcp.shared.*
+import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.home.chat.*
+import org.starfall.multigateway.integrations.modelapis.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.icons.*
+import org.starfall.multigateway.shared.media.*
 import java.io.File
+import org.starfall.multigateway.shared.icons.model.IconRule
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

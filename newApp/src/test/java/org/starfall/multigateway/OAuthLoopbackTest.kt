@@ -18,12 +18,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.adapter.common.*
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.files.AttachmentResolver
-import org.starfall.multigateway.data.tools.text
+import org.starfall.multigateway.shared.networking.text
 import java.net.ServerSocket
 import java.net.Socket
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)

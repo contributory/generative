@@ -30,7 +30,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.ui.components.AppBottomSheet
+import org.starfall.multigateway.shared.ui.sheets.AppBottomSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 class BottomSheetInsetsTest {

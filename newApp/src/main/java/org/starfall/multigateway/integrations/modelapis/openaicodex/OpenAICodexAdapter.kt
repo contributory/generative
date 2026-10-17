@@ -40,7 +40,7 @@ import org.starfall.multigateway.integrations.modelapis.account.AccountProviderA
 import org.starfall.multigateway.shared.model.auth.AuthMethod
 import org.starfall.multigateway.shared.model.provider.oauthCredentialId
 import org.starfall.multigateway.shared.model.language.DiscoveredModel
-import org.starfall.multigateway.data.adapter.common.AppAuthTransactions
+import org.starfall.multigateway.shared.auth.AppAuthTransactions
 import org.starfall.multigateway.shared.auth.OAuthBrowser
 import org.starfall.multigateway.shared.model.auth.Authorization
 import org.starfall.multigateway.shared.model.ChatRole

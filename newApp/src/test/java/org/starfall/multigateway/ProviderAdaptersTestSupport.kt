@@ -3,9 +3,9 @@ package org.starfall.multigateway
 import android.content.Context
 import kotlinx.coroutines.flow.Flow
 import org.starfall.multigateway.shared.files.AttachmentResolver
-import org.starfall.multigateway.shared.model.GenerationEvent
-import org.starfall.multigateway.shared.model.ModelProvider
-import org.starfall.multigateway.shared.model.ModelApiType
+import org.starfall.multigateway.shared.model.generation.GenerationEvent
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.StoredMessage
 import org.starfall.multigateway.integrations.modelapis.ModelApiAdapter
 import org.starfall.multigateway.integrations.modelapis.ModelApiRequest

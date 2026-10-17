@@ -5,7 +5,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.repository.ImmediateState
+import org.starfall.multigateway.shared.storage.ImmediateState
 
 class ImmediateStateTest {
     @Test fun queuedEditsAreVisibleBeforeDiskAndNeverRebound() = runBlocking {

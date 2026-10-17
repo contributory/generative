@@ -16,8 +16,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Robolectric
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import org.starfall.multigateway.ui.components.acquireAmoledDialogBackdrop
-import org.starfall.multigateway.ui.components.amoledDialogBackdropHost
+import org.starfall.multigateway.shared.ui.dialogs.acquireAmoledDialogBackdrop
+import org.starfall.multigateway.shared.ui.dialogs.amoledDialogBackdropHost
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

@@ -3,6 +3,10 @@ package org.starfall.multigateway.shared.model
 import android.net.Uri
 import java.util.Locale
 import java.util.UUID
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 /** Import a new provider; query parameter `key` is the credential value, not a header name. */
 fun parseProviderLink(uri: Uri): ModelProvider {

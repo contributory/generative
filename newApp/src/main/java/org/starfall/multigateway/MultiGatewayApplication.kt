@@ -7,11 +7,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import org.starfall.multigateway.data.local.preferences.AppLocale
-import org.starfall.multigateway.di.AppContainer
-import org.starfall.multigateway.data.service.CrashReportStore
-import org.starfall.multigateway.data.service.CrashRecordingHandler
-import org.starfall.multigateway.ui.chat.ChatRenderCaches
+import org.starfall.multigateway.shared.storage.preferences.AppLocale
+import org.starfall.multigateway.appwiring.AppContainer
+import org.starfall.multigateway.shared.files.CrashReportStore
+import org.starfall.multigateway.shared.files.CrashRecordingHandler
+import org.starfall.multigateway.home.chat.screen.ChatRenderCaches
 import java.io.File
 
 class MultiGatewayApplication : Application(), coil3.SingletonImageLoader.Factory {

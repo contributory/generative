@@ -2,7 +2,7 @@ package org.starfall.multigateway
 
 import android.content.Context
 import kotlinx.serialization.json.*
-import org.starfall.multigateway.data.local.db.SecretCipher
+import org.starfall.multigateway.shared.storage.database.SecretCipher
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.first
@@ -16,13 +16,20 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.local.db.AppDatabase
+import org.starfall.multigateway.shared.storage.database.AppDatabase
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.data.repository.ModelRepository
-import org.starfall.multigateway.data.service.AiService
-import org.starfall.multigateway.ui.chat.ModelPickerItem
-import org.starfall.multigateway.ui.chat.computeModelPickerItems
-import org.starfall.multigateway.ui.providers.newProviderId
+import org.starfall.multigateway.shared.storage.ModelRepository
+import org.starfall.multigateway.integrations.modelapis.AiService
+import org.starfall.multigateway.home.modelpicker.sheet.ModelPickerItem
+import org.starfall.multigateway.home.modelpicker.sheet.computeModelPickerItems
+import org.starfall.multigateway.features.providers.providers.screen.newProviderId
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
+import org.starfall.multigateway.shared.model.provider.ProviderPlacement
+import org.starfall.multigateway.shared.model.provider.ProviderRootOrderItem
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -153,7 +160,7 @@ class ProviderGroupTest {
             val repo = ModelRepository(db, AiService(context))
             repo.saveGroup(ProviderGroup("g", "Work", 0))
             for (id in listOf("z-legacy", "a-legacy")) {
-                db.modelProviderDao().insertOrUpdate(org.starfall.multigateway.data.local.db.entities.ModelProviderEntity(
+                db.modelProviderDao().insertOrUpdate(org.starfall.multigateway.shared.storage.database.entities.ModelProviderEntity(
                     id, id, ModelApiType.OPENAI.name, "https://example.test/v1", "{}", "{}", null, Int.MAX_VALUE, "g"))
             }
             repo.saveProvider(ModelProvider("moving", "Moving", ModelApiType.OPENAI, baseUrl = "https://example.test/v1"))

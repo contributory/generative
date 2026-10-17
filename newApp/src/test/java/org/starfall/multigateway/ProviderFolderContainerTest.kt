@@ -9,11 +9,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.shared.model.ModelProvider
-import org.starfall.multigateway.shared.model.ProviderGroup
-import org.starfall.multigateway.shared.model.ProviderPlacement
-import org.starfall.multigateway.shared.model.ModelApiType
-import org.starfall.multigateway.ui.providers.ProviderScreen
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
+import org.starfall.multigateway.shared.model.provider.ProviderPlacement
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.features.providers.providers.screen.ProvidersScreen
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h1000dp-xhdpi")
@@ -34,7 +34,7 @@ class ProviderFolderContainerTest {
     ) {
         compose.setContent {
             MaterialTheme {
-                ProviderScreen(
+                ProvidersScreen(
                     providers = source,
                     providerGroups = listOf(group),
                     isGridView = true,

@@ -18,7 +18,7 @@ import androidx.core.view.WindowCompat
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.ui.components.AppBottomSheet
+import org.starfall.multigateway.shared.ui.sheets.AppBottomSheet
 
 class BottomSheetResizeBehaviorTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()

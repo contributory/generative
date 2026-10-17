@@ -24,7 +24,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import org.starfall.multigateway.ui.components.PlatformTextSelection
+import org.starfall.multigateway.shared.ui.text.PlatformTextSelection
 
 @RunWith(RobolectricTestRunner::class)
 // API 27 avoids the native magnifier, which needs a real Android Surface.

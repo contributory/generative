@@ -34,17 +34,17 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.starfall.multigateway.data.local.preferences.AppLocale
-import org.starfall.multigateway.data.local.preferences.ScreenWakelockMode
-import org.starfall.multigateway.data.service.ChatBackgroundService
-import org.starfall.multigateway.ui.MainScreen
-import org.starfall.multigateway.ui.theme.MultiGatewayTheme
-import org.starfall.multigateway.ui.chat.ChatViewModel
-import org.starfall.multigateway.ui.configuration.ConfigurationViewModel
-import org.starfall.multigateway.ui.settings.SettingsViewModel
-import org.starfall.multigateway.ui.remote.RemoteMachinesViewModel
+import org.starfall.multigateway.shared.storage.preferences.AppLocale
+import org.starfall.multigateway.shared.storage.preferences.ScreenWakelockMode
+import org.starfall.multigateway.home.chat.ChatBackgroundService
+import org.starfall.multigateway.shared.theme.MultiGatewayTheme
+import org.starfall.multigateway.home.chat.screen.ChatViewModel
+import org.starfall.multigateway.features.providers.shared.ConfigurationViewModel
+import org.starfall.multigateway.features.settings.appsettings.screen.SettingsViewModel
+import org.starfall.multigateway.features.remotemachines.remotemachines.screen.RemoteMachinesViewModel
 import org.starfall.multigateway.shared.model.parseProviderLink
-import org.starfall.multigateway.ui.components.CrashReportDialog
+import org.starfall.multigateway.shared.ui.dialogs.CrashReportDialog
+import org.starfall.multigateway.navigation.AppNavigation
 
 private const val SERVICE_STOP_GRACE_MS = 5_000L
 
@@ -134,7 +134,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                     MainScreen(viewModel, configurationViewModel, settingsViewModel, remoteMachinesViewModel, container.toolFiles)
+                     AppNavigation(viewModel, configurationViewModel, settingsViewModel, remoteMachinesViewModel, container.toolFiles)
                 }
                 pendingCrash?.let { report ->
                     CrashReportDialog(report,

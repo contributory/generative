@@ -6,10 +6,18 @@ import okhttp3.mockwebserver.*
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.data.service.McpService
-import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.features.mcp.shared.McpService
+import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
+import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
 import java.io.StringReader
 import java.nio.file.Files
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 class ToolHardeningTest {
     private fun json(text: String) = Json.parseToJsonElement(text).jsonObject

@@ -13,11 +13,18 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import org.starfall.multigateway.data.service.*
-import org.starfall.multigateway.data.tools.ToolHttp
+import org.starfall.multigateway.features.mcp.shared.*
+import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.home.chat.*
+import org.starfall.multigateway.integrations.modelapis.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.icons.*
+import org.starfall.multigateway.shared.media.*
+import org.starfall.multigateway.shared.networking.ToolHttp
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import org.starfall.multigateway.shared.model.auth.Authorization
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

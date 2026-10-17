@@ -15,7 +15,7 @@ import org.starfall.multigateway.shared.model.generation.*
 import org.starfall.multigateway.shared.model.language.*
 import org.starfall.multigateway.shared.model.provider.*
 import org.starfall.multigateway.shared.files.AttachmentResolver
-import org.starfall.multigateway.data.tools.text
+import org.starfall.multigateway.shared.networking.text
 import org.starfall.multigateway.integrations.modelapis.discoveredModel
 
 internal class GitHubCopilotAdapter(context: Context, attachments: AttachmentResolver) : OAuthAccountAdapter(

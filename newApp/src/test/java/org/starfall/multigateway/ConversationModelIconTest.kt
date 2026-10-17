@@ -3,7 +3,11 @@ package org.starfall.multigateway
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.ui.drawer.lastModelIcon
+import org.starfall.multigateway.home.leftside.drawer.lastModelIcon
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
 
 class ConversationModelIconTest {
     private val providers = listOf(

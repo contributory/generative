@@ -12,9 +12,25 @@ import org.robolectric.annotation.Config
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.data.tools.*
-import org.starfall.multigateway.data.service.*
+import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
+import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
+import org.starfall.multigateway.features.mcp.shared.*
+import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.home.chat.*
+import org.starfall.multigateway.integrations.modelapis.*
+import org.starfall.multigateway.shared.icons.*
+import org.starfall.multigateway.shared.media.*
 import java.nio.file.Files
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.generation.GenerationEvent
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.language.ModelType
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)

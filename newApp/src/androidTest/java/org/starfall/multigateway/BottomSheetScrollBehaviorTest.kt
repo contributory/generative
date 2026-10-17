@@ -12,7 +12,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
-import org.starfall.multigateway.ui.components.AppBottomSheet
+import org.starfall.multigateway.shared.ui.sheets.AppBottomSheet
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
@@ -20,10 +20,10 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.shared.model.DiscoveredModel
-import org.starfall.multigateway.shared.model.ModelProvider
-import org.starfall.multigateway.shared.model.ModelApiType
-import org.starfall.multigateway.ui.providers.ProviderModelCatalogSheet
+import org.starfall.multigateway.shared.model.language.DiscoveredModel
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.features.providers.fetchmodels.sheet.ProviderModelCatalogSheet
 
 class BottomSheetScrollBehaviorTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()

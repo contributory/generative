@@ -9,15 +9,23 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.ui.providers.ProviderEditScreen
-import org.starfall.multigateway.ui.providers.ModelEditScreen
+import org.starfall.multigateway.features.providers.providereditor.screen.ProviderEditorScreen
+import org.starfall.multigateway.features.providers.modeleditor.screen.ModelEditorScreen
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.language.DiscoveredModel
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.language.ModelType
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
 
 class ProviderEditorBehaviorTest {
     @Test fun modelJsonExpandsAndManualModelsShowEmptyObject() {
         compose.setContent { MaterialTheme {
-            ModelEditScreen(provider, "", emptySet(), onSave = { _, _ -> }, onBack = {})
+            ModelEditorScreen(provider, "", emptySet(), onSave = { _, _ -> }, onBack = {})
         } }
         compose.onNodeWithTag("model-json-code").assertDoesNotExist()
         compose.onNodeWithTag("model-json-toggle").performScrollTo().performClick()
@@ -30,7 +38,7 @@ class ProviderEditorBehaviorTest {
         val raw = buildJsonObject { put("id", "custom-model"); put("context_window", 32000); put("owned_by", "vendor") }
         var saved: ModelConfiguration? = null
         compose.setContent { MaterialTheme {
-            ModelEditScreen(provider.copy(config = ProviderConfiguration(modelConfigs = mapOf(
+            ModelEditorScreen(provider.copy(config = ProviderConfiguration(modelConfigs = mapOf(
                 "custom-model" to ModelConfiguration(modelJson = raw, contextWindowTokens = 32000)
             ))), "custom-model", setOf("custom-model"), onSave = { _, config -> saved = config }, onBack = {})
         } }
@@ -45,7 +53,7 @@ class ProviderEditorBehaviorTest {
 
     @Test fun faviconDialogShowsUrlValidationResetAndClose() {
         compose.setContent { MaterialTheme {
-            org.starfall.multigateway.ui.components.IconPickerRow(null, onChange = {})
+            org.starfall.multigateway.shared.ui.icons.IconPickerRow(null, onChange = {})
         } }
         compose.onNodeWithContentDescription("Get logo automatically").performClick()
         compose.onNode(hasSetTextAction() and hasText("Custom homepage URL")).assertIsDisplayed()
@@ -63,7 +71,7 @@ class ProviderEditorBehaviorTest {
     @Test fun streamingSegmentsAndPassbackFollowReasoning() {
         var saved: ModelConfiguration? = null
         compose.setContent { MaterialTheme {
-            ModelEditScreen(provider, "custom-model", setOf("custom-model"),
+            ModelEditorScreen(provider, "custom-model", setOf("custom-model"),
                 onSave = { _, config -> saved = config }, onBack = {})
         } }
         compose.onNodeWithText("Passback Thinking").performScrollTo().assertIsDisplayed()
@@ -83,9 +91,9 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         var config by androidx.compose.runtime.mutableStateOf(ModelConfiguration(contextWindowTokens = 128_000))
         compose.setContent { MaterialTheme {
             androidx.compose.foundation.layout.Column {
-                org.starfall.multigateway.ui.components.EntityIcon(null, text =
-                    org.starfall.multigateway.ui.components.providerInitials("My Provider Name"))
-                org.starfall.multigateway.ui.chat.ModelCapabilityBadges(config)
+                org.starfall.multigateway.shared.ui.icons.EntityIcon(null, text =
+                    org.starfall.multigateway.shared.ui.icons.providerInitials("My Provider Name"))
+                org.starfall.multigateway.home.modelpicker.sheet.ModelCapabilityBadges(config)
             }
         } }
         compose.onNodeWithText("MP").assertIsDisplayed()
@@ -110,7 +118,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
     @Test fun connectionFieldsRestoreUrlSelectAuthAndToggleKeyVisibility() {
         var saved: ModelProvider? = null
         compose.setContent { MaterialTheme {
-            ProviderEditScreen(provider, false, onSaveModels = { _, _ -> }, onReorderModels = { _, _ -> },
+            ProviderEditorScreen(provider, false, onSaveModels = { _, _ -> }, onReorderModels = { _, _ -> },
                 onDismiss = {}, onSave = { saved = it })
         } }
         compose.onNodeWithContentDescription("Restore default URL").performScrollTo().performClick()
@@ -132,7 +140,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
 
     @Test fun apiKeyGrowsToThreeLinesAndThenStopsGrowing() {
         compose.setContent { MaterialTheme {
-            ProviderEditScreen(provider, false, onSaveModels = { _, _ -> }, onReorderModels = { _, _ -> },
+            ProviderEditorScreen(provider, false, onSaveModels = { _, _ -> }, onReorderModels = { _, _ -> },
                 onDismiss = {}, onSave = {})
         } }
         val field = compose.onNodeWithTag("provider_api_key").performScrollTo()
@@ -155,7 +163,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
 
     @Test fun headersDialogOpensOnlyWhenButtonClicked() {
         compose.setContent { MaterialTheme {
-            ProviderEditScreen(provider.copy(config = provider.config.copy(headers = mapOf("X-Test" to "value"))), false,
+            ProviderEditorScreen(provider.copy(config = provider.config.copy(headers = mapOf("X-Test" to "value"))), false,
                 onSaveModels = { _, _ -> }, onReorderModels = { _, _ -> }, onDismiss = {}, onSave = {})
         } }
         compose.onNodeWithText("Headers").performScrollTo().assertIsDisplayed()
@@ -170,7 +178,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
     @Test fun multipleApiKeysImportExistingKeyAddSelectEditAndDelete() {
         var saved: ModelProvider? = null
         compose.setContent { MaterialTheme {
-            ProviderEditScreen(provider.copy(auth = Authorization(value = "sk-existing-0123456789")), false,
+            ProviderEditorScreen(provider.copy(auth = Authorization(value = "sk-existing-0123456789")), false,
                 onSaveModels = { _, _ -> }, onReorderModels = { _, _ -> }, onDismiss = {}, onSave = { saved = it })
         } }
         compose.onNodeWithText("Manage API Keys").assertDoesNotExist()
@@ -214,7 +222,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         val models = mapOf("text-ok" to ModelConfiguration(), "text-bad" to ModelConfiguration(),
             "image-only" to ModelConfiguration(modelType = ModelType.IMAGE_GENERATION))
         compose.setContent { MaterialTheme {
-            ProviderEditScreen(provider.copy(config = ProviderConfiguration(modelConfigs = models)), false,
+            ProviderEditorScreen(provider.copy(config = ProviderConfiguration(modelConfigs = models)), false,
                 onSaveModels = { _, value -> saved = value }, onReorderModels = { _, _ -> },
                 onDismiss = {}, onSave = {}, onTestConnection = { _, id ->
                     calls += id
@@ -239,7 +247,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
     @Test fun modelCatalogShowsApiMetadataAndCheckboxSelection() {
         var saved = emptyMap<String, ModelConfiguration>()
         compose.setContent { MaterialTheme {
-            ProviderEditScreen(provider.copy(config = ProviderConfiguration()), false,
+            ProviderEditorScreen(provider.copy(config = ProviderConfiguration()), false,
                 onSaveModels = { _, value -> saved = value }, onReorderModels = { _, _ -> },
                 onDismiss = {}, onSave = {}, onFetchModels = {
                     listOf(DiscoveredModel("catalog-test-model", displayName = "Catalog Model", metadata = buildJsonObject {
@@ -275,7 +283,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
     @Test fun providerTabsSwipeAndModelCardOpensEditor() {
         compose.setContent {
             MaterialTheme {
-                ProviderEditScreen(provider, false,
+                ProviderEditorScreen(provider, false,
                     onSaveModels = { _, _ -> }, onReorderModels = { _, _ -> },
                     onDismiss = {}, onSave = {})
             }
@@ -295,7 +303,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
     @Test fun providerTitleReflectsNameEdits() {
         compose.setContent {
             MaterialTheme {
-                ProviderEditScreen(provider, false,
+                ProviderEditorScreen(provider, false,
                     onSaveModels = { _, _ -> }, onReorderModels = { _, _ -> },
                     onDismiss = {}, onSave = {})
             }

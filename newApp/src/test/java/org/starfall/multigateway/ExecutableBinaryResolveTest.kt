@@ -2,8 +2,8 @@ package org.starfall.multigateway
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.starfall.multigateway.data.service.ExecutableBinary
-import org.starfall.multigateway.data.service.resolveExecutableCommand
+import org.starfall.multigateway.features.remotemachines.shared.ExecutableBinary
+import org.starfall.multigateway.features.remotemachines.shared.resolveExecutableCommand
 
 class ExecutableBinaryResolveTest {
     private val binaries = listOf(
@@ -36,21 +36,21 @@ class ExecutableLaunchCommandTest {
 
     @Test
     fun runsDirectlyWhenExecutionIsNotBlocked() {
-        assertEquals("/p/bin", org.starfall.multigateway.data.service.launchCommandFor("/p/bin", elf(2), false, allExist))
+        assertEquals("/p/bin", org.starfall.multigateway.features.remotemachines.shared.launchCommandFor("/p/bin", elf(2), false, allExist))
     }
 
     @Test
     fun elfGoesThroughTheMatchingLinker() {
-        assertEquals("/system/bin/linker64 /p/bin", org.starfall.multigateway.data.service.launchCommandFor("/p/bin", elf(2), true, allExist))
-        assertEquals("/system/bin/linker /p/bin", org.starfall.multigateway.data.service.launchCommandFor("/p/bin", elf(1), true, allExist))
-        assertEquals("/p/bin", org.starfall.multigateway.data.service.launchCommandFor("/p/bin", elf(2), true) { false })
+        assertEquals("/system/bin/linker64 /p/bin", org.starfall.multigateway.features.remotemachines.shared.launchCommandFor("/p/bin", elf(2), true, allExist))
+        assertEquals("/system/bin/linker /p/bin", org.starfall.multigateway.features.remotemachines.shared.launchCommandFor("/p/bin", elf(1), true, allExist))
+        assertEquals("/p/bin", org.starfall.multigateway.features.remotemachines.shared.launchCommandFor("/p/bin", elf(2), true) { false })
     }
 
     @Test
     fun scriptsUseTheirInterpreterOrTheSystemShell() {
         val sh = "#!/system/bin/sh\necho hi".toByteArray()
-        assertEquals("/system/bin/sh /p/s", org.starfall.multigateway.data.service.launchCommandFor("/p/s", sh, true, allExist))
+        assertEquals("/system/bin/sh /p/s", org.starfall.multigateway.features.remotemachines.shared.launchCommandFor("/p/s", sh, true, allExist))
         val env = "#!/usr/bin/env python3\n".toByteArray()
-        assertEquals("/system/bin/sh /p/s", org.starfall.multigateway.data.service.launchCommandFor("/p/s", env, true) { it == "/system/bin/sh" })
+        assertEquals("/system/bin/sh /p/s", org.starfall.multigateway.features.remotemachines.shared.launchCommandFor("/p/s", env, true) { it == "/system/bin/sh" })
     }
 }

@@ -10,7 +10,7 @@ import org.starfall.multigateway.shared.model.generation.*
 import org.starfall.multigateway.shared.model.language.*
 import org.starfall.multigateway.shared.model.provider.*
 import org.starfall.multigateway.shared.files.AttachmentResolver
-import org.starfall.multigateway.data.tools.text
+import org.starfall.multigateway.shared.networking.text
 
 internal class ClaudeCodeAdapter(context: Context, attachments: AttachmentResolver) : OAuthAccountAdapter(
     context, attachments, ModelApiType.CLAUDE_CODE,

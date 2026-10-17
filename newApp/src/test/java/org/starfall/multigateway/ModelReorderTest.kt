@@ -2,7 +2,7 @@ package org.starfall.multigateway
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.starfall.multigateway.ui.components.moved
+import org.starfall.multigateway.shared.ui.lists.moved
 
 class ModelReorderTest {
     @Test

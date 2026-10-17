@@ -3,6 +3,9 @@ package org.starfall.multigateway.shared.model
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import java.util.UUID
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.language.ModelType
 
 @Serializable
 data class McpAccess(val enabled: Boolean = false, val tools: Map<String, Boolean> = emptyMap())

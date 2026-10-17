@@ -14,7 +14,14 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.ui.chat.*
+import org.starfall.multigateway.features.providers.shared.*
+import org.starfall.multigateway.home.chat.screen.*
+import org.starfall.multigateway.home.chat.screen.ChatAppbar.*
+import org.starfall.multigateway.home.modelpicker.sheet.*
+import org.starfall.multigateway.home.quickactions.sheet.*
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi")

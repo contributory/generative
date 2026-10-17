@@ -9,7 +9,7 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
-import org.starfall.multigateway.shared.ui.OAuthBrowserActivity
+import org.starfall.multigateway.shared.ui.auth.OAuthBrowserActivity
 
 /** A browser window belongs to one cancellable authorization, including device-code polling. */
 internal object OAuthBrowser {

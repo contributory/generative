@@ -10,8 +10,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.starfall.multigateway.shared.model.McpInfo
 import org.starfall.multigateway.shared.model.McpProtocol
-import org.starfall.multigateway.data.service.McpService
-import org.starfall.multigateway.data.tools.ToolHttp
+import org.starfall.multigateway.features.mcp.shared.McpService
+import org.starfall.multigateway.shared.networking.ToolHttp
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.Executors
