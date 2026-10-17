@@ -8,7 +8,7 @@ import org.starfall.multigateway.ui.providers.ModelConnectionRemovals
 import org.starfall.multigateway.ui.providers.ModelConnectionTests
 
 class ModelConnectionRemovalsTest {
-    private val provider = ModelProvider("p", "Provider", ProviderType.OPENAI, baseUrl = "https://example.test/v1")
+    private val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI, baseUrl = "https://example.test/v1")
 
     @Test fun removeAndRestoreWhileTestingKeepRowsAndOnlyCommitOnClose() = runBlocking {
         val gate = CompletableDeferred<Unit>()

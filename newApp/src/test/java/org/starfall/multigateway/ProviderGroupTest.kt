@@ -35,7 +35,7 @@ class ProviderGroupTest {
         try {
             val repo = ModelRepository(db, AiService(context))
             val raw = Json.parseToJsonElement("""{"id":"small","context_window":32000,"vendor":{"extra":true}}""").jsonObject
-            repo.saveProvider(ModelProvider("json-test", "Provider", ProviderType.OPENAI, baseUrl = "",
+            repo.saveProvider(ModelProvider("json-test", "Provider", ModelApiType.OPENAI, baseUrl = "",
                 config = ProviderConfiguration(modelConfigs = mapOf(
                     "small" to ModelConfiguration(contextWindowTokens = 32000, modelJson = raw),
                     "default" to ModelConfiguration(contextWindowTokens = 128000),
@@ -59,7 +59,7 @@ class ProviderGroupTest {
             val repo = ModelRepository(db, AiService(context))
             repo.saveGroup(ProviderGroup("g", "Folder", 1))
             for ((id, group) in listOf("outside" to null, "a" to "g", "b" to "g", "tail" to null))
-                repo.saveProvider(ModelProvider(id, id, ProviderType.OPENAI, baseUrl = "", groupId = group))
+                repo.saveProvider(ModelProvider(id, id, ModelApiType.OPENAI, baseUrl = "", groupId = group))
             val root = listOf(ProviderRootOrderItem("g", true), ProviderRootOrderItem("tail", false))
             repo.placeProvider(ProviderPlacement("outside", "g", root, mapOf("g" to listOf("a", "outside", "b"))))
             assertEquals("g", repo.getProviderById("outside")!!.groupId)
@@ -92,7 +92,7 @@ class ProviderGroupTest {
                 ModelProvider(
                     id = "p1",
                     name = "Provider",
-                    type = ProviderType.OPENAI,
+                    type = ModelApiType.OPENAI,
                     baseUrl = "https://example.test/v1",
                     groupId = group.id
                 )
@@ -117,7 +117,7 @@ class ProviderGroupTest {
         try {
             val repo = ModelRepository(db, AiService(context))
             repo.saveGroup(ProviderGroup("g", "Work", 0))
-            fun provider(id: String, group: String? = "g") = ModelProvider(id, id, ProviderType.OPENAI,
+            fun provider(id: String, group: String? = "g") = ModelProvider(id, id, ModelApiType.OPENAI,
                 baseUrl = "https://example.test/v1", groupId = group)
             repo.saveProvider(provider("z-first"))
             repo.saveProvider(provider("a-second"))
@@ -154,9 +154,9 @@ class ProviderGroupTest {
             repo.saveGroup(ProviderGroup("g", "Work", 0))
             for (id in listOf("z-legacy", "a-legacy")) {
                 db.modelProviderDao().insertOrUpdate(org.starfall.multigateway.data.local.db.entities.ModelProviderEntity(
-                    id, id, ProviderType.OPENAI.name, "https://example.test/v1", "{}", "{}", null, Int.MAX_VALUE, "g"))
+                    id, id, ModelApiType.OPENAI.name, "https://example.test/v1", "{}", "{}", null, Int.MAX_VALUE, "g"))
             }
-            repo.saveProvider(ModelProvider("moving", "Moving", ProviderType.OPENAI, baseUrl = "https://example.test/v1"))
+            repo.saveProvider(ModelProvider("moving", "Moving", ModelApiType.OPENAI, baseUrl = "https://example.test/v1"))
             repo.moveProviderToGroup("moving", "g")
             val members = ModelRepository(db, AiService(context)).allProviders.first().filter { it.groupId == "g" }
             assertEquals(listOf("a-legacy", "z-legacy", "moving"), members.map { it.id })
@@ -173,7 +173,7 @@ class ProviderGroupTest {
         fun provider(id: String, groupId: String?, sortOrder: Int) = ModelProvider(
             id = id,
             name = id,
-            type = ProviderType.OPENAI,
+            type = ModelApiType.OPENAI,
             baseUrl = "",
             groupId = groupId,
             sortOrder = sortOrder,
@@ -205,7 +205,7 @@ class ProviderGroupTest {
         val grouped = ModelProvider(
             id = "p1",
             name = "Primary",
-            type = ProviderType.OPENAI,
+            type = ModelApiType.OPENAI,
             baseUrl = "https://example.test/v1",
             groupId = group.id,
             config = ProviderConfiguration(
@@ -216,7 +216,7 @@ class ProviderGroupTest {
         val root = ModelProvider(
             id = "p2",
             name = "Root",
-            type = ProviderType.ANTHROPIC,
+            type = ModelApiType.ANTHROPIC,
             baseUrl = "https://example.test/v1",
             config = ProviderConfiguration(
                 modelIds = listOf("gamma"),
@@ -278,7 +278,7 @@ class ProviderGroupTest {
                 ModelProvider(
                     id = "root",
                     name = "Root",
-                    type = ProviderType.OPENAI,
+                    type = ModelApiType.OPENAI,
                     baseUrl = "https://example.test/v1",
                     sortOrder = 2
                 )
@@ -287,7 +287,7 @@ class ProviderGroupTest {
                 ModelProvider(
                     id = "child",
                     name = "Child",
-                    type = ProviderType.OPENAI,
+                    type = ModelApiType.OPENAI,
                     baseUrl = "https://example.test/v1",
                     sortOrder = 0,
                     groupId = g1.id
@@ -338,7 +338,7 @@ class ProviderGroupTest {
                 ModelProvider(
                     id = firstId,
                     name = "First",
-                    type = ProviderType.OPENAI,
+                    type = ModelApiType.OPENAI,
                     baseUrl = "https://first.example/v1"
                 )
             )
@@ -346,7 +346,7 @@ class ProviderGroupTest {
                 ModelProvider(
                     id = secondId,
                     name = "Second",
-                    type = ProviderType.OPENAI,
+                    type = ModelApiType.OPENAI,
                     baseUrl = "https://second.example/v1"
                 )
             )

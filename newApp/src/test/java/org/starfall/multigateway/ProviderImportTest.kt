@@ -39,7 +39,7 @@ class ProviderImportTest {
     )
 
     private fun provider(id: String, group: String?, order: Int) = ModelProvider(
-        id, id, ProviderType.OPENAI, baseUrl = "https://example.test/v1", groupId = group, sortOrder = order
+        id, id, ModelApiType.OPENAI, baseUrl = "https://example.test/v1", groupId = group, sortOrder = order
     )
 
     @Before fun setUp() {

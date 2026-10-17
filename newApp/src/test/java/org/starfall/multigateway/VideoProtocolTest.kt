@@ -13,14 +13,14 @@ import java.nio.file.Files
 
 class VideoProtocolTest {
     @Test fun protocolsAreDetectedByApiHost() {
-        val proxy = ModelProvider("p", "proxy", ProviderType.OPENAI, baseUrl = "https://proxy.example/v1")
+        val proxy = ModelProvider("p", "proxy", ModelApiType.OPENAI, baseUrl = "https://proxy.example/v1")
         assertEquals(VideoApi.OPENAI, videoApi(proxy))
         assertEquals(VideoApi.OPENAI, videoApi(proxy.copy(baseUrl = "https://h3video.cc.cd/v1")))
         assertEquals(VideoApi.AGNES, videoApi(proxy.copy(baseUrl = "https://apihub.agnes-ai.com/v1")))
     }
 
     private fun provider(server: MockWebServer, path: String = "/v1") = ModelProvider(
-        "p", "video", ProviderType.OPENAI, baseUrl = server.url(path).toString(),
+        "p", "video", ModelApiType.OPENAI, baseUrl = server.url(path).toString(),
         auth = Authorization(value = "test-secret")
     )
     private fun response(body: String) = MockResponse().setBody(body)
@@ -132,7 +132,7 @@ class VideoProtocolTest {
     }
 
     @Test fun referenceModesAndFlashLimitsAreValidated() {
-        val p = ModelProvider("p", "Agnes", ProviderType.OPENAI, baseUrl = "https://apihub.agnes-ai.com/v1")
+        val p = ModelProvider("p", "Agnes", ModelApiType.OPENAI, baseUrl = "https://apihub.agnes-ai.com/v1")
         val images = JsonArray(listOf(str("https://example.com/image.png")))
         val options = obj("images" to images, "seconds" to str("8"))
         validateVideoOptions(p, "agnes-video-2.5-flash", options)

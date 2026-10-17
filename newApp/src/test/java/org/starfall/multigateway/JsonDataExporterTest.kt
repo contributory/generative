@@ -15,7 +15,7 @@ import org.starfall.multigateway.shared.model.Conversation
 import org.starfall.multigateway.shared.model.ModelProvider
 import org.starfall.multigateway.shared.model.McpInfo
 import org.starfall.multigateway.shared.model.SpeechService
-import org.starfall.multigateway.shared.model.ProviderType
+import org.starfall.multigateway.shared.model.ModelApiType
 import org.starfall.multigateway.shared.model.ProviderGroup
 import org.starfall.multigateway.data.service.JsonExportKind
 import org.starfall.multigateway.data.service.buildJsonExport
@@ -29,7 +29,7 @@ class JsonDataExporterTest {
         val provider = ModelProvider(
             id = "provider-1",
             name = "Test provider",
-            type = ProviderType.OPENAI,
+            type = ModelApiType.OPENAI,
             auth = Authorization(AuthMethod.PLATFORM_DEFAULT, value = "api-key"),
             baseUrl = "https://example.com"
         )
@@ -56,7 +56,7 @@ class JsonDataExporterTest {
     }
 
     @Test fun exportedCollectionsCanBeParsedBackIntoTheirOriginalModels() {
-        val provider = ModelProvider("p", "Provider", ProviderType.OPENAI, baseUrl = "https://example.com", groupId = "g", sortOrder = 2)
+        val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI, baseUrl = "https://example.com", groupId = "g", sortOrder = 2)
         val groups = listOf(ProviderGroup("g", "Work", 1, "folder.png"), ProviderGroup("empty", "Empty folder", 3))
         val mcp = McpInfo("m", "MCP", url = "https://example.com/mcp")
         val speech = SpeechService("s", "Speech")

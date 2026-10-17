@@ -21,14 +21,14 @@ internal fun agnesTestClient(): OkHttpClient = ToolHttp().client.newBuilder().dn
 }).build()
 
 internal fun agnesTestProvider(server: MockWebServer, path: String = "/v1") = ModelProvider(
-    "p", "Agnes", ProviderType.OPENAI,
+    "p", "Agnes", ModelApiType.OPENAI,
     baseUrl = server.url(path).newBuilder().host("apihub.agnes-ai.com").build().toString(),
     auth = Authorization(value = "test-secret")
 )
 
 class AgnesMediaTest {
     @Test fun bothProtocolsAndSettingsAreSelectedByUrlOnly() {
-        val agnes = ModelProvider("p", "Agnes", ProviderType.OPENAI, baseUrl = " https://apihub.agnes-ai.com/v1/ ")
+        val agnes = ModelProvider("p", "Agnes", ModelApiType.OPENAI, baseUrl = " https://apihub.agnes-ai.com/v1/ ")
         val generic = agnes.copy(baseUrl = "https://proxy.example/v1")
         for (model in listOf("custom", "agnes-image-2.5-flash", "agnes-video-2.5")) {
             assertTrue(isAgnesProvider(agnes))

@@ -60,7 +60,7 @@ class ProviderApiKeysTest {
         val legacy = Json.decodeFromString<ProviderConfiguration>("""{"headers":{"X-Client":"app"}}""")
         assertFalse(legacy.multipleApiKeys)
         assertTrue(legacy.apiKeys.isEmpty())
-        val provider = ModelProvider("p", "Provider", ProviderType.OPENAI,
+        val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI,
             baseUrl = "https://example.com/v1", auth = Authorization(value = "active-key"),
             config = legacy.copy(multipleApiKeys = true, apiKeys = listOf(
                 ProviderApiKey("a", "", "active-key"), ProviderApiKey("b", "Backup", "backup-key"))))

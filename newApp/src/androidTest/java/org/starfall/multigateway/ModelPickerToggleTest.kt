@@ -19,7 +19,7 @@ class ModelPickerToggleTest {
 
     @Test fun selectedModelSurvivesCollapsedParentsAndReasoningCanBeDisabledIndependently() {
         val config = ModelConfiguration(supportsThinking = true)
-        val provider = ModelProvider("p", "Primary", ProviderType.OPENAI, baseUrl = "",
+        val provider = ModelProvider("p", "Primary", ModelApiType.OPENAI, baseUrl = "",
             groupId = "folder", config = ProviderConfiguration(modelIds = listOf("alpha", "beta"),
                 modelConfigs = mapOf("alpha" to config)))
         var effort: String? = "high"
@@ -54,7 +54,7 @@ class ModelPickerToggleTest {
     @Test fun toggleControlsGroupedAndRootProvidersIncludingSearchResults() {
         val group = ProviderGroup("folder", "Work", 0)
         fun provider(id: String, name: String, model: String, groupId: String? = null) = ModelProvider(
-            id = id, name = name, type = ProviderType.OPENAI, baseUrl = "https://example.test", groupId = groupId,
+            id = id, name = name, type = ModelApiType.OPENAI, baseUrl = "https://example.test", groupId = groupId,
             config = ProviderConfiguration(modelIds = listOf(model), modelConfigs = mapOf(model to ModelConfiguration()))
         )
         val groups = mutableListOf<Set<String>>()
@@ -137,7 +137,7 @@ class ModelPickerToggleTest {
     @Test fun togglingBranchesKeepsTheViewportInsteadOfReturningToTheSelectedModel() {
         val group = ProviderGroup("folder", "Work")
         fun provider(id: String, groupId: String? = null, models: List<String> = listOf("model-$id")) =
-            ModelProvider(id, "Provider $id", ProviderType.OPENAI, baseUrl = "", groupId = groupId,
+            ModelProvider(id, "Provider $id", ModelApiType.OPENAI, baseUrl = "", groupId = groupId,
                 config = ProviderConfiguration(modelIds = models))
         val providers = listOf(provider("first", group.id, (0..29).map { "model-$it" })) +
             (0..19).map { provider("middle-$it") } + provider("selected")
@@ -167,7 +167,7 @@ class ModelPickerToggleTest {
             ModelProvider(
                 id = id,
                 name = "Provider $id",
-                type = ProviderType.OPENAI,
+                type = ModelApiType.OPENAI,
                 baseUrl = "",
                 groupId = groupId,
                 config = ProviderConfiguration(modelIds = models)
@@ -216,7 +216,7 @@ class ModelPickerToggleTest {
     @Test fun lateDynamicDiscoveryAppearsWithoutReopeningThePicker() {
         val models = mutableStateMapOf<String, List<String>>()
         compose.setContent { MaterialTheme {
-            ModelPickerSheet(providers = listOf(ModelProvider("local", "Local", ProviderType.OLLAMA, baseUrl = "")),
+            ModelPickerSheet(providers = listOf(ModelProvider("local", "Local", ModelApiType.OLLAMA, baseUrl = "")),
                 selectedProviderId = "", selectedModelId = "", dynamicModelsMap = models.toMap(),
                 conversationReasoningEffort = null, onSelectModel = { _, _ -> }, onSetReasoningEffort = {}, onDismiss = {})
         } }

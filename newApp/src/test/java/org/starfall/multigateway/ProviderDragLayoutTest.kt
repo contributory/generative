@@ -6,7 +6,7 @@ import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.ui.providers.*
 
 class ProviderDragLayoutTest {
-    private fun p(id: String, group: String? = null) = ModelProvider(id, id, ProviderType.OPENAI, baseUrl = "", groupId = group)
+    private fun p(id: String, group: String? = null) = ModelProvider(id, id, ModelApiType.OPENAI, baseUrl = "", groupId = group)
     private fun slot(id: String, group: Boolean = false) = ProviderRootOrderItem(id, group)
     private val original = ProviderDragLayout(listOf(p("outside"), p("a", "g"), p("b", "g"), p("tail")),
         listOf(slot("outside"), slot("g", true), slot("tail")))

@@ -25,14 +25,18 @@ fun claudeThinkingCapabilities(modelId: String): ClaudeThinkingCapabilities {
     }
     val preview = id.contains("mythos-preview")
     val adaptive = preview || (family == "opus" && version in listOf("4-6", "4-7", "4-8", "5", "5-5")) ||
-        (family == "sonnet" && version in listOf("4-6", "5", "5-5")) ||
-        (family in listOf("fable", "mythos") && version in listOf("5", "5-1"))
+            (family == "sonnet" && version in listOf("4-6", "5", "5-5")) ||
+            (family in listOf("fable", "mythos") && version in listOf("5", "5-1"))
     if (!adaptive) return ClaudeThinkingCapabilities()
-    val xhigh = !preview && !(version == "4-6")
+    val xhigh = !preview && version != "4-6"
     val alwaysOn = preview || family in listOf("fable", "mythos") || (family == "opus" && version == "5-5")
     val betweenTools = family == "sonnet" && version == "5-5"
     return ClaudeThinkingCapabilities(
-        efforts = listOf("low", "medium", "high") + (if (xhigh) listOf("xhigh") else emptyList()) + "max",
+        efforts = buildList {
+            addAll(listOf("low", "medium", "high"))
+            addAll(if (xhigh) listOf("xhigh") else emptyList())
+            add("max")
+        },
         adaptive = true,
         canDisable = !alwaysOn && !betweenTools,
         betweenTools = betweenTools
@@ -50,6 +54,7 @@ fun ModelConfiguration.claudeThinkingParameters(modelId: String, maxTokens: Int)
                 put("thinking", buildJsonObject { put("type", "between_tools") })
                 put("output_config", buildJsonObject { put("effort", "low") })
             }
+
             capabilities.canDisable -> put("thinking", buildJsonObject { put("type", "disabled") })
             // This model cannot be switched off, so Off sends nothing instead of another level.
         }
@@ -72,4 +77,4 @@ fun ModelConfiguration.claudeThinkingParameters(modelId: String, maxTokens: Int)
 /** Keep sampling options out of adaptive and manual thinking requests. */
 fun ModelConfiguration.claudeAllowsSampling(modelId: String, maxTokens: Int): Boolean =
     !claudeThinkingCapabilities(modelId).adaptive &&
-        (!supportsThinking || requestReasoningEffort == null || reasoningEffortDisabled || maxTokens <= 1024)
+            (!supportsThinking || requestReasoningEffort == null || reasoningEffortDisabled || maxTokens <= 1024)

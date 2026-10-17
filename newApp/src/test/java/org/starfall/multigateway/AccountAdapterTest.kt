@@ -1,11 +1,13 @@
 package org.starfall.multigateway
 
+import org.starfall.multigateway.integrations.modelapis.account.*
+
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.toList
 import org.starfall.multigateway.data.adapter.common.*
-import org.starfall.multigateway.integrations.languagemodels.githubcopilot.copilotProtocol
+import org.starfall.multigateway.integrations.modelapis.githubcopilot.copilotProtocol
 import org.robolectric.annotation.Config
 import kotlinx.serialization.json.*
 import okhttp3.mockwebserver.MockResponse
@@ -15,8 +17,8 @@ import org.junit.Test
 import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.starfall.multigateway.integrations.languagemodels.account.AccountProviderAdapterRegistry
-import org.starfall.multigateway.integrations.languagemodels.claudecode.ClaudeCodeAdapter
+import org.starfall.multigateway.integrations.modelapis.account.AccountProviderAdapterRegistry
+import org.starfall.multigateway.integrations.modelapis.claudecode.ClaudeCodeAdapter
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.files.AttachmentResolver
 import org.starfall.multigateway.data.tools.*
@@ -28,7 +30,7 @@ class AccountAdapterTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
     @Test fun antigravityResolvesCanonicalIdsToBackendRoutes() {
-        val models = org.starfall.multigateway.integrations.languagemodels.antigravity.AntigravityModels
+        val models = org.starfall.multigateway.integrations.modelapis.antigravity.AntigravityModels
         assertEquals(listOf("gemini-3-flash", "gemini-3.1-pro"), models.available)
         assertEquals("gemini-pro-agent", models.resolve("gemini-3.1-pro"))
         assertEquals("gemini-3.1-pro-low", models.resolve("gemini-3.1-pro", "low"))
@@ -46,7 +48,7 @@ class AccountAdapterTest {
 
     @Test fun allAccountProvidersUseOAuthAndAreRegistered() {
         val registry = AccountProviderAdapterRegistry(context, AttachmentResolver(context))
-        for (type in listOf(ProviderType.OPENAI_CODEX, ProviderType.CLAUDE_CODE, ProviderType.ANTIGRAVITY, ProviderType.GITHUB_COPILOT)) {
+        for (type in listOf(ModelApiType.OPENAI_CODEX, ModelApiType.CLAUDE_CODE, ModelApiType.ANTIGRAVITY, ModelApiType.GITHUB_COPILOT)) {
             assertTrue(type.isAccountProvider)
             assertEquals(AuthMethod.OAUTH, type.defaultAuthorization().method)
             assertNotNull(registry.get(type))
@@ -56,7 +58,7 @@ class AccountAdapterTest {
 
     @Test fun claudeNormalizationPreservesUserSystemAndTools() {
         val adapter = ClaudeCodeAdapter(context, AttachmentResolver(context))
-        val provider = ModelProvider("test", "Claude", ProviderType.CLAUDE_CODE, baseUrl = ProviderType.CLAUDE_CODE.defaultBaseUrl)
+        val provider = ModelProvider("test", "Claude", ModelApiType.CLAUDE_CODE, baseUrl = ModelApiType.CLAUDE_CODE.defaultBaseUrl)
         val body = obj("system" to str("User instructions"), "tools" to JsonArray(listOf(obj("name" to str("lookup")))))
         val result = adapter.normalizeToolRequest(provider, provider, body, "User instructions")
         assertEquals(body["tools"], result["tools"])
@@ -66,9 +68,9 @@ class AccountAdapterTest {
     }
 
     @Test fun copilotSetsInitiatorAndVisionHeadersFromRequest() {
-        val adapter = org.starfall.multigateway.integrations.languagemodels.githubcopilot.GitHubCopilotAdapter(context, AttachmentResolver(context))
-        val source = ModelProvider("copilot", "Copilot", ProviderType.GITHUB_COPILOT, baseUrl = ProviderType.GITHUB_COPILOT.defaultBaseUrl)
-        val wire = source.copy(type = ProviderType.OPENAI)
+        val adapter = org.starfall.multigateway.integrations.modelapis.githubcopilot.GitHubCopilotAdapter(context, AttachmentResolver(context))
+        val source = ModelProvider("copilot", "Copilot", ModelApiType.GITHUB_COPILOT, baseUrl = ModelApiType.GITHUB_COPILOT.defaultBaseUrl)
+        val wire = source.copy(type = ModelApiType.OPENAI)
         val userBody = obj("messages" to JsonArray(listOf(obj("role" to str("user"), "content" to JsonArray(listOf(
             obj("type" to str("image_url"), "image_url" to obj("url" to str("data:image/png;base64,aA==")))
         ))))))
@@ -78,7 +80,7 @@ class AccountAdapterTest {
         val tool = adapter.prepareRequestProvider(source, wire, obj("messages" to JsonArray(listOf(obj("role" to str("tool"))))))
         assertEquals("agent", tool.config.headers["x-initiator"])
         assertNull(tool.config.headers["Copilot-Vision-Request"])
-        val responses = adapter.normalizeToolRequest(source, wire.copy(type = ProviderType.OPENAI_RESPONSES), obj(), "User prompt")
+        val responses = adapter.normalizeToolRequest(source, wire.copy(type = ModelApiType.OPENAI_RESPONSES), obj(), "User prompt")
         assertEquals("User prompt", responses.text("instructions"))
         assertEquals(false, responses.getValue("store").jsonPrimitive.boolean)
     }
@@ -87,7 +89,7 @@ class AccountAdapterTest {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody(
                 "data: {\"response\":{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"plan\",\"thought\":true},{\"text\":\"hello\"},{\"functionCall\":{\"name\":\"lookup\",\"args\":{}}}]}}]}}\n\n"))
-            val provider = ModelProvider("test", "Test", ProviderType.GOOGLE, baseUrl = server.url("/").toString(),
+            val provider = ModelProvider("test", "Test", ModelApiType.GOOGLE, baseUrl = server.url("/").toString(),
                 auth = Authorization(AuthMethod.CUSTOM_HEADER, "Authorization", "Bearer test"))
             val text = StringBuilder(); val reasoning = StringBuilder()
             val response = ToolHttp().modelResponse(server.url("/v1internal:generateContent").toString(), obj(), provider, true,
@@ -144,13 +146,13 @@ class AccountAdapterTest {
     }
 
     @Test fun copilotSelectsProtocolsAndRecognizesToolResultContinuation() {
-        assertEquals(ProviderType.ANTHROPIC, copilotProtocol("claude-test", listOf("/v1/messages")))
-        assertEquals(ProviderType.OPENAI_RESPONSES, copilotProtocol("gpt-10.1", emptyList()))
-        assertEquals(ProviderType.OPENAI, copilotProtocol("gpt-5-mini", listOf("/chat/completions")))
-        assertEquals(ProviderType.OPENAI_RESPONSES, copilotProtocol("custom", listOf("/responses")))
-        val adapter = org.starfall.multigateway.integrations.languagemodels.githubcopilot.GitHubCopilotAdapter(context, AttachmentResolver(context))
-        val source = ModelProvider("copilot", "Copilot", ProviderType.GITHUB_COPILOT, baseUrl = "https://api.githubcopilot.com")
-        val result = adapter.prepareRequestProvider(source, source.copy(type = ProviderType.ANTHROPIC),
+        assertEquals(ModelApiType.ANTHROPIC, copilotProtocol("claude-test", listOf("/v1/messages")))
+        assertEquals(ModelApiType.OPENAI_RESPONSES, copilotProtocol("gpt-10.1", emptyList()))
+        assertEquals(ModelApiType.OPENAI, copilotProtocol("gpt-5-mini", listOf("/chat/completions")))
+        assertEquals(ModelApiType.OPENAI_RESPONSES, copilotProtocol("custom", listOf("/responses")))
+        val adapter = org.starfall.multigateway.integrations.modelapis.githubcopilot.GitHubCopilotAdapter(context, AttachmentResolver(context))
+        val source = ModelProvider("copilot", "Copilot", ModelApiType.GITHUB_COPILOT, baseUrl = "https://api.githubcopilot.com")
+        val result = adapter.prepareRequestProvider(source, source.copy(type = ModelApiType.ANTHROPIC),
             obj("messages" to JsonArray(listOf(obj("role" to str("user"), "content" to JsonArray(listOf(
                 obj("type" to str("tool_result"), "tool_use_id" to str("call"), "content" to str("result"))
             )))))))
@@ -161,21 +163,21 @@ class AccountAdapterTest {
     @Test fun attachmentsUseSelectedWireContentTypes() {
         val message = obj("content" to str("look"), "_attachments" to JsonArray(listOf(
             obj("mimeType" to str("image/png"), "data" to str("aA==")))))
-        val response = toolMessageContent(message, ProviderType.OPENAI_RESPONSES).jsonArray
+        val response = toolMessageContent(message, ModelApiType.OPENAI_RESPONSES).jsonArray
         assertEquals("input_text", response[0].jsonObject.text("type"))
         assertEquals("input_image", response[1].jsonObject.text("type"))
         assertEquals("data:image/png;base64,aA==", response[1].jsonObject.text("image_url"))
-        assertEquals("image", toolAttachmentParts(message, ProviderType.ANTHROPIC)[0].jsonObject.text("type"))
-        assertNotNull(toolAttachmentParts(message, ProviderType.GOOGLE)[0].jsonObject["inlineData"])
-        assertEquals("image_url", toolAttachmentParts(message, ProviderType.OPENAI)[0].jsonObject.text("type"))
+        assertEquals("image", toolAttachmentParts(message, ModelApiType.ANTHROPIC)[0].jsonObject.text("type"))
+        assertNotNull(toolAttachmentParts(message, ModelApiType.GOOGLE)[0].jsonObject["inlineData"])
+        assertEquals("image_url", toolAttachmentParts(message, ModelApiType.OPENAI)[0].jsonObject.text("type"))
         val pdf = obj("_attachments" to JsonArray(listOf(obj("mimeType" to str("application/pdf"), "data" to str("aA==")))))
-        assertEquals("document", toolAttachmentParts(pdf, ProviderType.ANTHROPIC)[0].jsonObject.text("type"))
+        assertEquals("document", toolAttachmentParts(pdf, ModelApiType.ANTHROPIC)[0].jsonObject.text("type"))
     }
 
     @Test fun nonStreamingEnvelopePreservesReasoningSignatureAndTools() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setBody("""{"response":{"candidates":[{"content":{"parts":[{"thought":true,"text":"plan"},{"functionCall":{"name":"lookup","args":{}},"thoughtSignature":"signed"}]}}]}}"""))
-            val provider = ModelProvider("test", "Test", ProviderType.GOOGLE, baseUrl = server.url("/").toString())
+            val provider = ModelProvider("test", "Test", ModelApiType.GOOGLE, baseUrl = server.url("/").toString())
             val response = ToolHttp().modelResponse(server.url("/generate").toString(), obj(), provider, false,
                 {}, {}, { it.getValue("response").jsonObject })
             val parts = response["candidates"]!!.jsonArray[0].jsonObject["content"]!!.jsonObject["parts"]!!.jsonArray
@@ -197,27 +199,27 @@ class AccountAdapterTest {
     }
 
     @Test fun accountAdaptersGenerateRegularChatWithAndWithoutStreaming() = runBlocking {
-        for (type in listOf(ProviderType.CLAUDE_CODE, ProviderType.ANTIGRAVITY, ProviderType.GITHUB_COPILOT)) {
+        for (type in listOf(ModelApiType.CLAUDE_CODE, ModelApiType.ANTIGRAVITY, ModelApiType.GITHUB_COPILOT)) {
             for (stream in listOf(false, true)) {
                 MockWebServer().use { server ->
                     val id = "regular-${type.name}-$stream"
                     AccountTokenStore(context, type.name.lowercase()).save(id,
                         AccountTokenState("test-access", "test-refresh", projectId = "test-project"))
                     val body = when (type) {
-                        ProviderType.CLAUDE_CODE -> """{"content":[{"type":"thinking","thinking":"plan","signature":"signed"},{"type":"text","text":"hello"}]}"""
-                        ProviderType.ANTIGRAVITY -> """{"response":{"candidates":[{"content":{"parts":[{"thought":true,"text":"plan"},{"text":"hello"}]}}]}}"""
+                        ModelApiType.CLAUDE_CODE -> """{"content":[{"type":"thinking","thinking":"plan","signature":"signed"},{"type":"text","text":"hello"}]}"""
+                        ModelApiType.ANTIGRAVITY -> """{"response":{"candidates":[{"content":{"parts":[{"thought":true,"text":"plan"},{"text":"hello"}]}}]}}"""
                         else -> """{"choices":[{"message":{"role":"assistant","content":"hello","reasoning_content":"plan"}}]}"""
                     }
                     val eventBody = when (type) {
-                        ProviderType.CLAUDE_CODE -> listOf(
+                        ModelApiType.CLAUDE_CODE -> listOf(
                             """{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"plan"}}""",
                             """{"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"signed"}}""",
                             """{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"hello"}}"""
                         ).joinToString("") { "data: $it\n\n" }
-                        ProviderType.ANTIGRAVITY -> "data: $body\n\n"
+                        ModelApiType.ANTIGRAVITY -> "data: $body\n\n"
                         else -> """data: {"choices":[{"delta":{"content":"hello","reasoning_content":"plan"}}]}""" + "\n\ndata: [DONE]\n\n"
                     }
-                    if (type == ProviderType.GITHUB_COPILOT)
+                    if (type == ModelApiType.GITHUB_COPILOT)
                         server.enqueue(MockResponse().setBody("""{"data":[{"id":"chat","supported_endpoints":["/chat/completions"]}]}"""))
                     server.enqueue(MockResponse().setHeader("Content-Type",
                         if (stream) "text/event-stream" else "application/json").setBody(if (stream) eventBody else body))
@@ -232,14 +234,14 @@ class AccountAdapterTest {
                         events.filterIsInstance<GenerationEvent.Text>().joinToString("") { it.text })
                     assertEquals("$type stream=$stream", "plan",
                         events.filterIsInstance<GenerationEvent.Reasoning>().joinToString("") { it.text })
-                    if (type == ProviderType.GITHUB_COPILOT) server.takeRequest()
+                    if (type == ModelApiType.GITHUB_COPILOT) server.takeRequest()
                     val request = server.takeRequest()
                     assertEquals("Bearer test-access", request.getHeader("Authorization"))
                     assertNull(request.getHeader("x-api-key")); assertNull(request.getHeader("x-goog-api-key"))
                     assertTrue(request.body.readUtf8().contains("User instructions"))
-                    if (type == ProviderType.CLAUDE_CODE)
+                    if (type == ModelApiType.CLAUDE_CODE)
                         assertTrue(events.filterIsInstance<GenerationEvent.Reasoning>().any { it.signature == "signed" })
-                    if (type == ProviderType.ANTIGRAVITY)
+                    if (type == ModelApiType.ANTIGRAVITY)
                         assertEquals(if (stream) "/v1/v1internal:streamGenerateContent?alt=sse"
                             else "/v1/v1internal:generateContent", request.path)
                 }
@@ -248,12 +250,12 @@ class AccountAdapterTest {
     }
 
     private fun refreshingAdapter(tokenUrl: String) = object : OAuthAccountAdapter(
-        context, AttachmentResolver(context), ProviderType.CLAUDE_CODE, "test-client",
+        context, AttachmentResolver(context), ModelApiType.CLAUDE_CODE, "test-client",
         "https://example.com/authorize", tokenUrl, "scope", 0, "/callback", jsonTokens = true
     ) {
         override suspend fun prepareAuthenticatedProvider(provider: ModelProvider): ModelProvider {
             val token = ensureToken(provider)
-            return provider.copy(type = ProviderType.ANTHROPIC,
+            return provider.copy(type = ModelApiType.ANTHROPIC,
                 auth = Authorization(AuthMethod.CUSTOM_HEADER, "Authorization", "Bearer ${token.accessToken}"))
         }
         override suspend fun fetchModels(provider: ModelProvider) = listOf("chat")
@@ -265,7 +267,7 @@ class AccountAdapterTest {
             store.save("refresh", AccountTokenState("expired", "old-refresh", expiresAt = 1,
                 accountId = "account", email = "user@example.com", projectId = "project"))
             server.enqueue(MockResponse().setBody("""{"access_token":"fresh","refresh_token":"rotated","expires_in":3600}"""))
-            val provider = ModelProvider("refresh", "Claude", ProviderType.CLAUDE_CODE,
+            val provider = ModelProvider("refresh", "Claude", ModelApiType.CLAUDE_CODE,
                 auth = Authorization(AuthMethod.OAUTH, value = "account:claude_code:v1"), baseUrl = "https://example.com")
             val adapter = refreshingAdapter(server.url("/token").toString())
             val prepared = (1..10).map { async { adapter.prepareAuthenticatedProvider(provider) } }.awaitAll()
@@ -287,7 +289,7 @@ class AccountAdapterTest {
             val store = AccountTokenStore(context, "claude_code")
             store.save("cancel-refresh", original)
             server.enqueue(MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.NO_RESPONSE))
-            val provider = ModelProvider("cancel-refresh", "Claude", ProviderType.CLAUDE_CODE,
+            val provider = ModelProvider("cancel-refresh", "Claude", ModelApiType.CLAUDE_CODE,
                 auth = Authorization(AuthMethod.OAUTH, value = "account:claude_code:v1"), baseUrl = "https://example.com")
             val adapter = refreshingAdapter(server.url("/token").toString())
             val job = async { adapter.prepareAuthenticatedProvider(provider) }

@@ -5,7 +5,7 @@ import kotlinx.serialization.json.*
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.integrations.languagemodels.discoveredModel
+import org.starfall.multigateway.integrations.modelapis.discoveredModel
 import org.starfall.multigateway.ui.chat.*
 
 class ContextWindowTest {

@@ -25,7 +25,7 @@ class ReasoningEffectsLifecycleTest {
         var clicks = 0
         lateinit var burst: ThinkingColorBurst
         lateinit var reopenSheet: () -> Unit
-        val provider = ModelProvider("p", "Provider", ProviderType.OPENAI, baseUrl = "")
+        val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI, baseUrl = "")
         compose.setContent {
             MaterialTheme {
                 val screenBurst = rememberThinkingColorBurst()
@@ -76,7 +76,7 @@ class ReasoningEffectsLifecycleTest {
         compose.runOnIdle { assertEquals(1f, burst.progress.value, 0.001f) }
     }
     private fun setUpSheet(onBurst: (ThinkingColorBurst) -> Unit) {
-        val provider = ModelProvider("p", "Provider", ProviderType.OPENAI, baseUrl = "")
+        val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI, baseUrl = "")
         compose.setContent {
             MaterialTheme {
                 val screenBurst = rememberThinkingColorBurst()

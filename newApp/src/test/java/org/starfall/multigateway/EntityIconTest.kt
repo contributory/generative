@@ -79,7 +79,7 @@ class EntityIconTest {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
-            val provider = ModelProvider("p", "Provider", ProviderType.OPENAI,
+            val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI,
                 baseUrl = "https://example.test/v1", icon = "icon-a.png", sortOrder = 0, config = ProviderConfiguration(
                     modelConfigs = mapOf("model" to ModelConfiguration(icon = "icon-b.png", temperature = 0.4))))
             ModelRepository(db, AiService(context)).saveProvider(provider)
@@ -106,7 +106,7 @@ class EntityIconTest {
         context.getSharedPreferences("named-entity-icons", Context.MODE_PRIVATE).edit().clear().commit()
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
-            val source = ModelProvider("first", " My Provider ", ProviderType.OPENAI,
+            val source = ModelProvider("first", " My Provider ", ModelApiType.OPENAI,
                 baseUrl = "https://example.test", icon = "icon-a.png",
                 config = ProviderConfiguration(modelConfigs = mapOf("m" to ModelConfiguration(displayName = "My Model", icon = "icon-b.png"))))
             ModelRepository(db, AiService(context), IconStore(context)).saveProvider(source)

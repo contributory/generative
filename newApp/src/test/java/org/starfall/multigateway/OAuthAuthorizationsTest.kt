@@ -7,7 +7,7 @@ import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.ui.configuration.OAuthAuthorizations
 
 class OAuthAuthorizationsTest {
-    private val provider = ModelProvider("first-login", "Account", ProviderType.ANTIGRAVITY, baseUrl = ProviderType.ANTIGRAVITY.defaultBaseUrl)
+    private val provider = ModelProvider("first-login", "Account", ModelApiType.ANTIGRAVITY, baseUrl = ModelApiType.ANTIGRAVITY.defaultBaseUrl)
 
     @Test fun screenCancellationDoesNotLoseAuthorizationAndRetryJoinsTheSameRequest() = runBlocking {
         val owner = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)

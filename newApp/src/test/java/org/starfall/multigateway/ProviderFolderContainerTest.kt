@@ -12,7 +12,7 @@ import org.robolectric.annotation.Config
 import org.starfall.multigateway.shared.model.ModelProvider
 import org.starfall.multigateway.shared.model.ProviderGroup
 import org.starfall.multigateway.shared.model.ProviderPlacement
-import org.starfall.multigateway.shared.model.ProviderType
+import org.starfall.multigateway.shared.model.ModelApiType
 import org.starfall.multigateway.ui.providers.ProviderScreen
 
 @RunWith(RobolectricTestRunner::class)
@@ -22,10 +22,10 @@ class ProviderFolderContainerTest {
 
     private val group = ProviderGroup("g", "Folder", sortOrder = 1)
     private val providers = listOf(
-        ModelProvider("root", "Root", ProviderType.OPENAI, baseUrl = "", sortOrder = 0),
-        ModelProvider("member-a", "Member A", ProviderType.OPENAI, baseUrl = "", groupId = "g", sortOrder = 0),
-        ModelProvider("member-b", "Member B", ProviderType.OPENAI, baseUrl = "", groupId = "g", sortOrder = 1),
-        ModelProvider("tail", "Tail", ProviderType.OPENAI, baseUrl = "", sortOrder = 2)
+        ModelProvider("root", "Root", ModelApiType.OPENAI, baseUrl = "", sortOrder = 0),
+        ModelProvider("member-a", "Member A", ModelApiType.OPENAI, baseUrl = "", groupId = "g", sortOrder = 0),
+        ModelProvider("member-b", "Member B", ModelApiType.OPENAI, baseUrl = "", groupId = "g", sortOrder = 1),
+        ModelProvider("tail", "Tail", ModelApiType.OPENAI, baseUrl = "", sortOrder = 2)
     )
 
     private fun showFolder(
@@ -103,8 +103,8 @@ class ProviderFolderContainerTest {
         val writes = mutableListOf<ProviderPlacement>()
         showFolder(
             source = listOf(
-                ModelProvider("source", "Source", ProviderType.OPENAI, baseUrl = "", sortOrder = 0),
-                ModelProvider("member", "Member", ProviderType.OPENAI, baseUrl = "", groupId = "g", sortOrder = 0)
+                ModelProvider("source", "Source", ModelApiType.OPENAI, baseUrl = "", sortOrder = 0),
+                ModelProvider("member", "Member", ModelApiType.OPENAI, baseUrl = "", groupId = "g", sortOrder = 0)
             ),
             writes = writes
         )

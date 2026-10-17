@@ -1,5 +1,7 @@
 package org.starfall.multigateway
 
+import org.starfall.multigateway.integrations.modelapis.account.*
+
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -21,8 +23,8 @@ import org.starfall.multigateway.data.service.AiService
 @Config(sdk = [28])
 class ProviderOAuthAccountsTest {
     private val marker = "account:antigravity:v1"
-    private val legacy = ModelProvider("provider", "Antigravity", ProviderType.ANTIGRAVITY,
-        baseUrl = ProviderType.ANTIGRAVITY.defaultBaseUrl,
+    private val legacy = ModelProvider("provider", "Antigravity", ModelApiType.ANTIGRAVITY,
+        baseUrl = ModelApiType.ANTIGRAVITY.defaultBaseUrl,
         auth = Authorization(AuthMethod.OAUTH, "first@example.test", marker))
 
     @Test fun legacyAccountIsImportedAndAccountsRoundTripWithoutTokens() {

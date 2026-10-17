@@ -14,7 +14,7 @@ import org.starfall.multigateway.shared.model.ModelProvider
 import org.starfall.multigateway.shared.model.ProviderGroup
 import org.starfall.multigateway.shared.model.ProviderPlacement
 import org.starfall.multigateway.shared.model.ProviderRootOrderItem
-import org.starfall.multigateway.shared.model.ProviderType
+import org.starfall.multigateway.shared.model.ModelApiType
 import org.starfall.multigateway.ui.providers.ProviderScreen
 
 /** Phone-launcher style drag and drop on the Providers screen. */
@@ -24,7 +24,7 @@ class ProviderDragDropTest {
     @get:Rule val compose = createComposeRule()
 
     private fun provider(id: String, group: String? = null, order: Int = 0, icon: String? = null) =
-        ModelProvider(id, id, ProviderType.OPENAI, baseUrl = "", groupId = group, sortOrder = order, icon = icon)
+        ModelProvider(id, id, ModelApiType.OPENAI, baseUrl = "", groupId = group, sortOrder = order, icon = icon)
 
     private fun show(
         providers: List<ModelProvider>,

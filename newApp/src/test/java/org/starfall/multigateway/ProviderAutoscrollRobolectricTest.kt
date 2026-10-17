@@ -14,7 +14,7 @@ import org.robolectric.annotation.Config
 import org.starfall.multigateway.shared.model.ModelProvider
 import org.starfall.multigateway.shared.model.ProviderGroup
 import org.starfall.multigateway.shared.model.ProviderPlacement
-import org.starfall.multigateway.shared.model.ProviderType
+import org.starfall.multigateway.shared.model.ModelApiType
 import org.starfall.multigateway.ui.providers.ProviderScreen
 
 @RunWith(RobolectricTestRunner::class)
@@ -24,7 +24,7 @@ class ProviderAutoscrollRobolectricTest {
     val compose = createComposeRule()
 
     private fun provider(id: String, group: String? = null, order: Int = 0) =
-        ModelProvider(id, id, ProviderType.OPENAI, baseUrl = "", groupId = group, sortOrder = order)
+        ModelProvider(id, id, ModelApiType.OPENAI, baseUrl = "", groupId = group, sortOrder = order)
 
     private val manyRoot = (0..39).map { provider("p$it", order = it) }
     private val longFolder = listOf(provider("outside", order = 0)) +

@@ -180,7 +180,7 @@ class ChatMediaUiTest {
     @Test fun mediaModesKeepComposerSizeAndSendDirectly() {
         var submitted: DirectMediaRequest? = null
         var textSubmissions = 0
-        val provider = ModelProvider("media", "Media", ProviderType.OPENAI, baseUrl = "https://example.com/v1",
+        val provider = ModelProvider("media", "Media", ModelApiType.OPENAI, baseUrl = "https://example.com/v1",
             config = ProviderConfiguration(modelIds = listOf("image", "video"), modelConfigs = mapOf(
                 "image" to ModelConfiguration(modelType = ModelType.IMAGE_GENERATION),
                 "video" to ModelConfiguration(modelType = ModelType.VIDEO_GENERATION))))

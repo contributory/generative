@@ -67,7 +67,7 @@ class MediaToolChainingTest {
                 }
             }
             try {
-                val provider = ModelProvider("p", "local", ProviderType.OPENAI, baseUrl = server.url("/v1").toString(),
+                val provider = ModelProvider("p", "local", ModelApiType.OPENAI, baseUrl = server.url("/v1").toString(),
                     config = ProviderConfiguration(supportStream = false, modelIds = listOf("chat", "image"), modelConfigs = mapOf(
                         "chat" to ModelConfiguration(supportsToolCalls = true), "image" to ModelConfiguration(modelType = ModelType.IMAGE_GENERATION))))
                 val http = ToolHttp(ToolFiles(root))
@@ -136,7 +136,7 @@ class MediaToolChainingTest {
                 }
             }
             try {
-                val provider = ModelProvider("p", "local", ProviderType.OPENAI, baseUrl = server.url("/v1").toString(),
+                val provider = ModelProvider("p", "local", ModelApiType.OPENAI, baseUrl = server.url("/v1").toString(),
                     config = ProviderConfiguration(supportStream = false, modelIds = listOf("chat", "image", "video"),
                         modelConfigs = mapOf("chat" to ModelConfiguration(supportsToolCalls = true),
                             "image" to ModelConfiguration(modelType = ModelType.IMAGE_GENERATION),

@@ -9,7 +9,7 @@ import org.junit.Test
 import org.starfall.multigateway.shared.model.ModelProvider
 import org.starfall.multigateway.shared.model.ProviderGroup
 import org.starfall.multigateway.shared.model.ProviderPlacement
-import org.starfall.multigateway.shared.model.ProviderType
+import org.starfall.multigateway.shared.model.ModelApiType
 import org.starfall.multigateway.ui.providers.ProviderScreen
 
 /** Phone-style drag and drop: reorder, drop into a folder, drag out of an open folder. */
@@ -48,8 +48,8 @@ class ProviderDragBehaviorTest {
     fun folderOpensAsDialogInsteadOfExpandingInsideTheGrid() {
         setScreen(
             listOf(
-                ModelProvider("root", "Root", ProviderType.OPENAI, baseUrl = "", sortOrder = 0),
-                ModelProvider("member", "Member", ProviderType.OPENAI, baseUrl = "", groupId = "g")
+                ModelProvider("root", "Root", ModelApiType.OPENAI, baseUrl = "", sortOrder = 0),
+                ModelProvider("member", "Member", ModelApiType.OPENAI, baseUrl = "", groupId = "g")
             )
         )
 
@@ -64,8 +64,8 @@ class ProviderDragBehaviorTest {
         val writes = mutableListOf<ProviderPlacement>()
         setScreen(
             listOf(
-                ModelProvider("root", "Root", ProviderType.OPENAI, baseUrl = "", sortOrder = 0),
-                ModelProvider("member", "Member", ProviderType.OPENAI, baseUrl = "", groupId = "g")
+                ModelProvider("root", "Root", ModelApiType.OPENAI, baseUrl = "", sortOrder = 0),
+                ModelProvider("member", "Member", ModelApiType.OPENAI, baseUrl = "", groupId = "g")
             ),
             writes
         )

@@ -7,9 +7,9 @@ import org.starfall.multigateway.ui.drawer.lastModelIcon
 
 class ConversationModelIconTest {
     private val providers = listOf(
-        ModelProvider("first", "First", ProviderType.OPENAI, baseUrl = "", config = ProviderConfiguration(modelConfigs = mapOf(
+        ModelProvider("first", "First", ModelApiType.OPENAI, baseUrl = "", config = ProviderConfiguration(modelConfigs = mapOf(
             "old" to ModelConfiguration(icon = "old.png"), "same-id" to ModelConfiguration(icon = "first.png")))),
-        ModelProvider("last", "Last", ProviderType.OPENAI, baseUrl = "", config = ProviderConfiguration(modelConfigs = mapOf(
+        ModelProvider("last", "Last", ModelApiType.OPENAI, baseUrl = "", config = ProviderConfiguration(modelConfigs = mapOf(
             "new" to ModelConfiguration(icon = "new.png", displayName = "Latest Model"),
             "same-id" to ModelConfiguration(icon = "last.png"))))
     ).associateBy { it.id }

@@ -14,7 +14,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.starfall.multigateway.data.local.db.AppDatabase
 import org.starfall.multigateway.shared.model.AuthMethod
-import org.starfall.multigateway.shared.model.ProviderType
+import org.starfall.multigateway.shared.model.ModelApiType
 import org.starfall.multigateway.data.repository.ModelRepository
 import org.starfall.multigateway.data.service.AiService
 import java.util.UUID
@@ -54,7 +54,7 @@ class ProviderLinkUiTest {
                 compose.waitUntil(10_000) { imported().size == 1 }
                 compose.onNode(hasSetTextAction() and hasText(firstName)).assertExists()
                 val saved = imported().single()
-                assertEquals(ProviderType.OPENAI, saved.type)
+                assertEquals(ModelApiType.OPENAI, saved.type)
                 assertEquals(AuthMethod.PLATFORM_DEFAULT, saved.auth.method)
                 assertEquals("test-link-key", saved.auth.token)
                 recreate()

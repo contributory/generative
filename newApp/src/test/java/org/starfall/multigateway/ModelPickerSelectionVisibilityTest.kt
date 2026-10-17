@@ -7,7 +7,7 @@ import org.starfall.multigateway.ui.chat.*
 
 class ModelPickerSelectionVisibilityTest {
     private val group = ProviderGroup("folder", "Work")
-    private val selected = ModelProvider("selected", "Selected provider", ProviderType.OPENAI,
+    private val selected = ModelProvider("selected", "Selected provider", ModelApiType.OPENAI,
         baseUrl = "", groupId = group.id,
         config = ProviderConfiguration(modelIds = listOf("alpha", "beta")))
     private val other = selected.copy(id = "other")

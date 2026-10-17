@@ -12,8 +12,8 @@ import org.starfall.multigateway.ui.providers.*
 
 class ProviderOAuthUiTest {
     @get:Rule val compose = createComposeRule()
-    private val accountTypes = listOf(ProviderType.OPENAI_CODEX, ProviderType.CLAUDE_CODE,
-        ProviderType.GITHUB_COPILOT, ProviderType.ANTIGRAVITY)
+    private val accountTypes = listOf(ModelApiType.OPENAI_CODEX, ModelApiType.CLAUDE_CODE,
+        ModelApiType.GITHUB_COPILOT, ModelApiType.ANTIGRAVITY)
 
     @Test fun accountProviderCardsShowSignInStatusInsteadOfUrlInBothLayouts() {
         var type by mutableStateOf(accountTypes.first())
@@ -31,7 +31,7 @@ class ProviderOAuthUiTest {
             compose.runOnIdle { signedIn = true }
             compose.onNodeWithText("Signed in").assertIsDisplayed()
         }
-        compose.runOnIdle { type = ProviderType.OPENAI; signedIn = false }
+        compose.runOnIdle { type = ModelApiType.OPENAI; signedIn = false }
         compose.onNodeWithText("https://hidden.example/v1").assertIsDisplayed()
     }
 

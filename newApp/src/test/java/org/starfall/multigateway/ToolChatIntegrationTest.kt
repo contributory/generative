@@ -72,7 +72,7 @@ class ToolChatIntegrationTest {
             }
         }
         try {
-            val provider = ModelProvider("p", "Chat", ProviderType.OPENAI, baseUrl = server.url("/v1").toString(),
+            val provider = ModelProvider("p", "Chat", ModelApiType.OPENAI, baseUrl = server.url("/v1").toString(),
                 config = ProviderConfiguration(supportStream = false))
             val preset = McpInfo("content-api", "Content API", url = server.url("/mcp").toString())
             val store = ToolFiles(root)
@@ -105,7 +105,7 @@ class ToolChatIntegrationTest {
         server.enqueue(MockResponse().addHeader("Content-Type", "application/json")
             .setBody("{\"data\":[{\"b64_json\":\"$b64\"}]}"))
         try {
-            val provider = ModelProvider("p", "local", ProviderType.OPENAI,
+            val provider = ModelProvider("p", "local", ModelApiType.OPENAI,
                 baseUrl = server.url("/v1").toString())
             val http = ToolHttp(ToolFiles(root))
             val engine = ToolChat(http, McpService(http), AiService(context))
@@ -170,7 +170,7 @@ data: [DONE]
         }
         try {
             val provider = ModelProvider(
-                "p", "local", ProviderType.OPENAI,
+                "p", "local", ModelApiType.OPENAI,
                 baseUrl = server.url("/v1").toString(),
                 config = ProviderConfiguration(
                     modelIds = listOf("chat", "image"),
@@ -246,7 +246,7 @@ data: [DONE]
             }
         }
         try {
-            val provider=ModelProvider("p","local",ProviderType.OPENAI,baseUrl=server.url("/v1").toString(),config=ProviderConfiguration(
+            val provider=ModelProvider("p","local",ModelApiType.OPENAI,baseUrl=server.url("/v1").toString(),config=ProviderConfiguration(
                 modelIds=listOf("chat","image"),modelConfigs=mapOf("chat" to ModelConfiguration(supportsToolCalls=true),"image" to ModelConfiguration(modelType=ModelType.IMAGE_GENERATION))))
             val files=ToolFiles(root);val http=ToolHttp(files)
             val engine=ToolChat(http,McpService(http),AiService(context))

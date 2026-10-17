@@ -7,7 +7,7 @@ import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.ui.providers.ModelConnectionTests
 
 class ModelConnectionTestsTest {
-    private val provider = ModelProvider("p", "Provider", ProviderType.OPENAI, baseUrl = "https://example.test/v1")
+    private val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI, baseUrl = "https://example.test/v1")
 
     @Test fun testsAtMostFourModelsInParallelAndDeduplicatesPendingRequests() = runBlocking {
         val gate = CompletableDeferred<Unit>()

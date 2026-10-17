@@ -103,7 +103,7 @@ fun systemMediaToolAvailable(
         else -> return false
     }
     val provider = providers.find { it.id == config.providerId } ?: return false
-    if (!provider.type.isOpenAi && provider.type != ProviderType.GOOGLE) return false
+    if (!provider.type.isOpenAi && provider.type != ModelApiType.GOOGLE) return false
     val model = provider.config.modelConfigs[config.modelId] ?: return false
     return model.modelType == requiredType && provider.config.modelIds?.contains(config.modelId) != false
 }

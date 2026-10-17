@@ -1,5 +1,7 @@
 package org.starfall.multigateway
 
+import org.starfall.multigateway.shared.auth.*
+
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.async
 import kotlinx.serialization.json.jsonPrimitive

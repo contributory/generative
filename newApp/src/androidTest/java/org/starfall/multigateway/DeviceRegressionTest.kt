@@ -49,7 +49,7 @@ class DeviceRegressionTest {
     @Test fun modelPickerDoesNotDismissWhenFlingReachesTop() {
         var dismissed = false
         val configs = (0..79).associate { "test-model-$it" to ModelConfiguration() }
-        val provider = ModelProvider("test", "Test Provider", ProviderType.OPENAI,
+        val provider = ModelProvider("test", "Test Provider", ModelApiType.OPENAI,
             baseUrl = "https://example.com/v1",
             config = ProviderConfiguration(modelConfigs = configs))
         compose.setContent { MaterialTheme {

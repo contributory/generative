@@ -22,7 +22,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.starfall.multigateway.shared.model.DiscoveredModel
 import org.starfall.multigateway.shared.model.ModelProvider
-import org.starfall.multigateway.shared.model.ProviderType
+import org.starfall.multigateway.shared.model.ModelApiType
 import org.starfall.multigateway.ui.providers.ProviderModelCatalogSheet
 
 class BottomSheetScrollBehaviorTest {
@@ -128,7 +128,7 @@ class BottomSheetScrollBehaviorTest {
         val models = (0 until 150).map { DiscoveredModel(id = "scroll-model-$it", displayName = "Catalog model $it") }
         compose.setContent { MaterialTheme {
             ProviderModelCatalogSheet(
-                provider = ModelProvider("test", "Test", ProviderType.OPENAI, baseUrl = "https://example.test"),
+                provider = ModelProvider("test", "Test", ModelApiType.OPENAI, baseUrl = "https://example.test"),
                 selectedModels = emptySet(), onFetchModels = { models }, onCatalogLoaded = {},
                 onToggle = {}, onSetSelection = { _, _ -> }, onDismiss = {}
             )

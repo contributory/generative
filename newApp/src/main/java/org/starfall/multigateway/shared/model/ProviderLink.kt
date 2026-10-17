@@ -22,15 +22,15 @@ fun parseProviderLink(uri: Uri): ModelProvider {
     }
 
     val type = when (option("provider_type", "type", "chat-completions")) {
-        "chat-completions", "openai", "openai-chat-completions" -> ProviderType.OPENAI
-        "responses", "openai-responses" -> ProviderType.OPENAI_RESPONSES
-        "anthropic", "messages", "anthropic-messages" -> ProviderType.ANTHROPIC
-        "google", "gemini", "google-gemini" -> ProviderType.GOOGLE
-        "ollama" -> ProviderType.OLLAMA
-        "antigravity" -> ProviderType.ANTIGRAVITY
-        "github-copilot" -> ProviderType.GITHUB_COPILOT
-        "openai-codex" -> ProviderType.OPENAI_CODEX
-        "claude-code" -> ProviderType.CLAUDE_CODE
+        "chat-completions", "openai", "openai-chat-completions" -> ModelApiType.OPENAI
+        "responses", "openai-responses" -> ModelApiType.OPENAI_RESPONSES
+        "anthropic", "messages", "anthropic-messages" -> ModelApiType.ANTHROPIC
+        "google", "gemini", "google-gemini" -> ModelApiType.GOOGLE
+        "ollama" -> ModelApiType.OLLAMA
+        "antigravity" -> ModelApiType.ANTIGRAVITY
+        "github-copilot" -> ModelApiType.GITHUB_COPILOT
+        "openai-codex" -> ModelApiType.OPENAI_CODEX
+        "claude-code" -> ModelApiType.CLAUDE_CODE
         else -> throw IllegalArgumentException("Unsupported provider type in link.")
     }
     val method = when (option("auth_type", "auth", "platform")) {

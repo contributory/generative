@@ -76,11 +76,10 @@
 │       └── 📁 shared/
 │           └── 📄 MainAppbar.kt
 ├── 📁 integrations/
-│   └── 📁 languagemodels/
-│       ├── 📄 LanguageModelAdapter.kt
-│       ├── 📄 LanguageModelAdapterRegistry.kt
+│   └── 📁 modelapis/
+│       ├── 📄 ModelApiAdapter.kt
+│       ├── 📄 ModelApiAdapterRegistry.kt
 │       ├── 📄 ModelCatalogAdapter.kt
-│       ├── 📄 ModelCatalogMetadata.kt
 │       ├── 📄 ModelCatalogMetadata.kt
 │       ├── 📁 account/
 │       │   ├── 📄 AccountProviderAdapter.kt
@@ -114,17 +113,53 @@
 │           └── 📄 AntigravityModels.kt
 ├── 📁 shared/
 │   ├── 📁 ui/
+│   │   └── 📄 OAuthBrowserActivity.kt
 │   ├── 📁 icons/
 │   ├── 📁 theme/
 │   ├── 📁 networking/
 │   ├── 📁 files/
 │   │   └── 📄 AttachmentResolver.kt
+│   ├── 📁 auth/
+│   │   ├── 📄 OAuthBrowser.kt
+│   │   ├── 📄 OAuthBrowserKeepAliveService.kt
+│   │   ├── 📄 OAuthCallbackService.kt
+│   │   ├── 📄 OAuthLoopbackCompatibility.kt
+│   │   └── 📄 StandardAppAuthAuthorization.kt
 │   ├── 📁 storage/
 │   │   ├── 📁 database/
 │   │   └── 📁 preferences/
 │   ├── 📁 media/
-│   ├── 📁 files/
-|   └── 📁 model/
+│   └── 📁 model/
+│       ├── 📁 api/
+│       │   └── 📄 ModelApiType.kt
+│       ├── 📁 auth/
+│       │   ├── 📄 AuthMethod.kt
+│       │   ├── 📄 Authorization.kt
+│       │   └── 📄 AuthorizationExtensions.kt
+│       ├── 📁 generation/
+│       │   ├── 📄 GenerationEvent.kt
+│       │   └── 📄 StoredMessageExtensions.kt
+│       ├── 📁 language/
+│       │   ├── 📄 Capabilities.kt
+│       │   ├── 📄 DiscoveredModel.kt
+│       │   ├── 📄 LanguageModel.kt
+│       │   ├── 📄 ModelConfiguration.kt
+│       │   ├── 📄 ModelConfigurationConstants.kt
+│       │   ├── 📄 ModelConfigurationExtensions.kt
+│       │   ├── 📄 ModelConfigurationReasoning.kt
+│       │   ├── 📄 ModelType.kt
+│       │   └── 📄 ThinkingPassback.kt
+│       └── 📁 provider/
+│           ├── 📄 ModelProvider.kt
+│           ├── 📄 ModelProviderExtensions.kt
+│           ├── 📄 ProviderApiKey.kt
+│           ├── 📄 ProviderConfiguration.kt
+│           ├── 📄 ProviderConfigurationExtensions.kt
+│           ├── 📄 ProviderGroup.kt
+│           ├── 📄 ProviderModels.kt
+│           ├── 📄 ProviderOAuthAccount.kt
+│           ├── 📄 ProviderPlacement.kt
+│           └── 📄 ProviderRootOrderItem.kt
 └── 📁 preview/
 ```
 
@@ -141,7 +176,7 @@
 - Folder names use one hyphen only before the type suffix: `chat-screen/`, `modelpicker-sheet/`, `leftside-drawer/`. Do not hyphenate words within the component name or repeat the type.
 - A file containing navigation or link-handling logic for opening another component uses the `Link` suffix (for example, `QuickActionsLink.kt`); the destination view keeps its own type suffix (for example, `QuickActionsSheet.kt`).
 - `feature/shared/` is for components shared inside that feature; root `shared/` is for cross-feature code. App-wide UI belongs in root `shared/`.
-- Provider UI belongs in `features/providers/`; provider API adapters, provider metadata parsing, and account-provider OAuth code belong in `integrations/languagemodels/`.
-- Cross-feature attachment metadata and file access belongs in `shared/files/`; generic domain models and events belong in `shared/model/`.
+- Provider UI belongs in `ui/providers/`; model API protocol adapters and catalog parsing belong in `integrations/modelapis/`. Account-provider OAuth adapters are kept under `integrations/modelapis/account/` for now. Kotlin package declarations use the valid identifier `integrations.modelapis`. Shared model packages use `shared.model.api`, `shared.model.auth`, `shared.model.generation`, `shared.model.language`, and `shared.model.provider`.
+- Cross-feature attachment metadata and file access belongs in `shared/files/`; generic domain models belong in `shared/model/` grouped by API, auth, generation, language-model, and provider concerns; app-wide OAuth browser/session plumbing belongs in `shared/auth/`.
 - `app/` remains untouched as fallback. `newApp/` is a rewrite workspace; copied code is reference material.
 - No forced `ui/domain/data` layers or separate Gradle modules per feature.

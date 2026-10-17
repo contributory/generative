@@ -7,7 +7,7 @@ import org.starfall.multigateway.ui.chat.*
 
 class ChatModelPickerFilterTest {
     private val configs = ModelType.entries.associate { it.name to ModelConfiguration(modelType = it, displayName = "Shared Name") }
-    private val mixed = ModelProvider("mixed", "Mixed", ProviderType.OPENAI, baseUrl = "", groupId = "g",
+    private val mixed = ModelProvider("mixed", "Mixed", ModelApiType.OPENAI, baseUrl = "", groupId = "g",
         config = ProviderConfiguration(modelIds = configs.keys.toList(), modelConfigs = configs))
     private val mediaOnly = mixed.copy(id = "media", name = "Media", groupId = null,
         config = ProviderConfiguration(modelIds = listOf("image"), modelConfigs = mapOf("image" to ModelConfiguration(modelType = ModelType.IMAGE_GENERATION))))

@@ -6,7 +6,7 @@ import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.ui.providers.*
 
 class ProviderSearchTest {
-    private val provider = ModelProvider("p", "Ollama Cloud", ProviderType.OPENAI,
+    private val provider = ModelProvider("p", "Ollama Cloud", ModelApiType.OPENAI,
         baseUrl = "https://api.example.com", groupId = "folder",
         config = ProviderConfiguration(modelIds = listOf("qwen-3", "custom"), modelConfigs = mapOf(
             "custom" to ModelConfiguration(displayName = "My Vision Model"),

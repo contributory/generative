@@ -24,7 +24,7 @@ class OAuthLoopbackDeviceTest {
     private val context: Context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     private fun adapter(port: Int, tokenUrl: String, browser: CompletableDeferred<String>) =
-        object : OAuthAccountAdapter(context, AttachmentResolver(context), ProviderType.ANTIGRAVITY,
+        object : OAuthAccountAdapter(context, AttachmentResolver(context), ModelApiType.ANTIGRAVITY,
             "test-client", "https://example.com/authorize", tokenUrl, "scope",
             port, "/oauth-callback", callbackHost = "127.0.0.1") {
             override suspend fun openBrowser(url: String) { browser.complete(url) }
@@ -32,8 +32,8 @@ class OAuthLoopbackDeviceTest {
             override suspend fun fetchModels(provider: ModelProvider) = listOf("chat")
         }
 
-    private fun provider() = ModelProvider("loopback-device-test", "Test", ProviderType.ANTIGRAVITY,
-        baseUrl = ProviderType.ANTIGRAVITY.defaultBaseUrl, auth = ProviderType.ANTIGRAVITY.defaultAuthorization())
+    private fun provider() = ModelProvider("loopback-device-test", "Test", ModelApiType.ANTIGRAVITY,
+        baseUrl = ModelApiType.ANTIGRAVITY.defaultBaseUrl, auth = ModelApiType.ANTIGRAVITY.defaultAuthorization())
 
     private suspend fun request(port: Int, path: String): String = withContext(Dispatchers.IO) {
         Socket("127.0.0.1", port).use { socket ->
@@ -113,7 +113,7 @@ class OAuthLoopbackDeviceTest {
             MockWebServer().use { tokenServer ->
                 tokenServer.enqueue(MockResponse().setBody("""{"access_token":"test-browser-access","refresh_token":"test-refresh","expires_in":3600}"""))
                 val port = 51121
-                val adapter = object : OAuthAccountAdapter(context, AttachmentResolver(context), ProviderType.ANTIGRAVITY,
+                val adapter = object : OAuthAccountAdapter(context, AttachmentResolver(context), ModelApiType.ANTIGRAVITY,
                     "test-client", "https://example.com/authorize", tokenServer.url("/token").toString(),
                     "scope", port, "/oauth-callback", callbackHost = "127.0.0.1") {
                     override suspend fun openBrowser(url: String) {

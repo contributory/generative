@@ -76,7 +76,7 @@ class DirectMediaAttachmentTest {
         try {
             server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody(
                 "data: {\"type\":\"image_edit.completed\",\"b64_json\":\"${Base64.getEncoder().encodeToString(referencePng)}\"}\n\ndata: [DONE]\n\n"))
-            val provider = ModelProvider("p", "local", ProviderType.OPENAI, baseUrl = server.url("/v1").toString())
+            val provider = ModelProvider("p", "local", ModelApiType.OPENAI, baseUrl = server.url("/v1").toString())
             val files = ToolFiles(root)
             val events = engine(files).generateMedia(provider, "gpt-image-1", ModelType.IMAGE_GENERATION, "edit",
                 obj("quality" to str("high"), "stream" to JsonPrimitive(true)), listOf(attachment.absolutePath, attachment.absolutePath)).toList()
@@ -105,7 +105,7 @@ class DirectMediaAttachmentTest {
             server.enqueue(MockResponse().setBody("""{"id":"v1","status":"completed"}"""))
             server.enqueue(MockResponse().setHeader("Content-Type", "video/mp4").setBody(okio.Buffer().write(
                 ByteArray(32).also { "ftyp".toByteArray().copyInto(it, 4) })))
-            val provider = ModelProvider("p", "local", ProviderType.OPENAI_RESPONSES, baseUrl = server.url("/v1").toString())
+            val provider = ModelProvider("p", "local", ModelApiType.OPENAI_RESPONSES, baseUrl = server.url("/v1").toString())
             val events = engine(ToolFiles(root)).generateMedia(provider, "MiniMax-H3", ModelType.VIDEO_GENERATION,
                 "animate", attachments = listOf(attachment.absolutePath)).toList()
             val sent = server.takeRequest()
@@ -129,7 +129,7 @@ class DirectMediaAttachmentTest {
             val output = referencePng + ByteArray(64)
             server.enqueue(MockResponse().setBody(obj("candidates" to JsonArray(listOf(obj("content" to obj("parts" to JsonArray(listOf(
                 obj("inlineData" to obj("mimeType" to str("image/png"), "data" to str(Base64.getEncoder().encodeToString(output))))))))))).toString()))
-            val provider = ModelProvider("p", "local", ProviderType.GOOGLE, baseUrl = server.url("/v1beta").toString())
+            val provider = ModelProvider("p", "local", ModelApiType.GOOGLE, baseUrl = server.url("/v1beta").toString())
             val options = obj("generationConfig" to obj("imageConfig" to obj("aspectRatio" to str("16:9"))))
             val events = engine(ToolFiles(root)).generateMedia(provider, "gemini-image", ModelType.IMAGE_GENERATION,
                 "edit", options, listOf(attachment.absolutePath)).toList()
@@ -152,7 +152,7 @@ class DirectMediaAttachmentTest {
         val attachment = Files.createTempFile("user-document", ".txt").toFile().apply { writeText("not an image") }
         val server = MockWebServer().apply { start() }
         try {
-            val provider = ModelProvider("p", "local", ProviderType.OPENAI, baseUrl = server.url("/v1").toString())
+            val provider = ModelProvider("p", "local", ModelApiType.OPENAI, baseUrl = server.url("/v1").toString())
             assertTrue(runCatching { engine(ToolFiles(root)).generateMedia(provider, "image", ModelType.IMAGE_GENERATION,
                 "edit", attachments = listOf(attachment.absolutePath)).toList() }.exceptionOrNull()!!.message!!.contains("PNG"))
             assertTrue(runCatching { engine(ToolFiles(root)).generateMedia(provider, "video", ModelType.VIDEO_GENERATION,

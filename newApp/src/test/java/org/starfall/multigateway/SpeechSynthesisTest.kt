@@ -24,7 +24,7 @@ class SpeechSynthesisTest {
         assertTrue(speechText(markdown, includeCodeBlocks = true).contains("indented_code"))
         assertEquals("", speechText("```\nonly_code()\n```"))
     }
-    private fun provider(type: ProviderType = ProviderType.OPENAI, url: String = "https://example.test/v1") =
+    private fun provider(type: ModelApiType = ModelApiType.OPENAI, url: String = "https://example.test/v1") =
         ModelProvider("p", "Speech", type, baseUrl = url, auth = Authorization(value = "secret"),
             config = ProviderConfiguration(modelConfigs = mapOf("gemini-tts" to ModelConfiguration(temperature = 0.7))))
 
@@ -67,7 +67,7 @@ class SpeechSynthesisTest {
     }
 
     @Test fun geminiUsesNativeSpeechConfigAndModelTemperature() {
-        val payload = speechPayload(provider(ProviderType.GOOGLE),
+        val payload = speechPayload(provider(ModelApiType.GOOGLE),
             SpeechService("s", "Voice", modelId = "gemini-tts", instructions = "Speak slowly", languageCode = "vi-VN"), "Xin chào")
         val config = payload["generationConfig"]!!.jsonObject
         assertEquals("AUDIO", config["responseModalities"]!!.jsonArray.single().jsonPrimitive.content)
@@ -107,7 +107,7 @@ class SpeechSynthesisTest {
         try {
             val pcm = byteArrayOf(1, 2, 3, 4)
             server.enqueue(MockResponse().setBody("""{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"audio/L16;rate=24000","data":"${Base64.getEncoder().encodeToString(pcm)}"}}]}}]}"""))
-            val audio = SpeechSynthesisService().synthesize(provider(ProviderType.GOOGLE, server.url("/v1beta").toString()),
+            val audio = SpeechSynthesisService().synthesize(provider(ModelApiType.GOOGLE, server.url("/v1beta").toString()),
                 SpeechService("s", "Voice", modelId = "models/gemini-tts"), "Hello")
             assertEquals("RIFF", audio.copyOfRange(0, 4).toString(Charsets.US_ASCII))
             assertEquals(24_000, ByteBuffer.wrap(audio, 24, 4).order(ByteOrder.LITTLE_ENDIAN).int)

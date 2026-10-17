@@ -268,7 +268,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         compose.runOnIdle { assertFalse("catalog-test-model" in saved) }
     }
     @get:Rule val compose = createComposeRule()
-    private val provider = ModelProvider("p", "Primary", ProviderType.OPENAI,
+    private val provider = ModelProvider("p", "Primary", ModelApiType.OPENAI,
         baseUrl = "https://example.com/v1",
         config = ProviderConfiguration(modelConfigs = mapOf("custom-model" to ModelConfiguration())))
 

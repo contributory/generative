@@ -12,7 +12,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.LooperMode
-import org.starfall.multigateway.data.adapter.common.OAuthBrowser
+import org.starfall.multigateway.shared.auth.OAuthBrowser
 import org.starfall.multigateway.ui.auth.OAuthBrowserActivity
 
 @RunWith(RobolectricTestRunner::class)

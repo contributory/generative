@@ -1,5 +1,9 @@
 package org.starfall.multigateway
 
+import org.starfall.multigateway.shared.auth.*
+
+import org.starfall.multigateway.integrations.modelapis.account.*
+
 import android.content.Context
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
@@ -28,7 +32,7 @@ class OAuthLoopbackTest {
     @Before fun prepareKeystore() = installTestAndroidKeyStore()
 
     private fun adapter(port: Int, tokenUrl: String, browser: CompletableDeferred<String>) =
-        object : OAuthAccountAdapter(context, AttachmentResolver(context), ProviderType.ANTIGRAVITY,
+        object : OAuthAccountAdapter(context, AttachmentResolver(context), ModelApiType.ANTIGRAVITY,
             "test-client", "https://example.com/authorize", tokenUrl, "scope",
             port, "/oauth-callback", callbackHost = "127.0.0.1") {
             override suspend fun openBrowser(url: String) { browser.complete(url) }
@@ -36,8 +40,8 @@ class OAuthLoopbackTest {
             override suspend fun fetchModels(provider: ModelProvider) = listOf("chat")
         }
 
-    private fun provider() = ModelProvider("loopback", "Test", ProviderType.ANTIGRAVITY,
-        baseUrl = ProviderType.ANTIGRAVITY.defaultBaseUrl, auth = ProviderType.ANTIGRAVITY.defaultAuthorization())
+    private fun provider() = ModelProvider("loopback", "Test", ModelApiType.ANTIGRAVITY,
+        baseUrl = ModelApiType.ANTIGRAVITY.defaultBaseUrl, auth = ModelApiType.ANTIGRAVITY.defaultAuthorization())
 
     private suspend fun request(port: Int, path: String): String = withContext(Dispatchers.IO) {
         Socket("127.0.0.1", port).use { socket ->

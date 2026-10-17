@@ -65,7 +65,7 @@ class MediaInputReferenceTest {
                 val video = ByteArray(32).also { "ftyp".toByteArray().copyInto(it, 4) }
                 server.enqueue(MockResponse().setHeader("Content-Type", "video/mp4").setBody(okio.Buffer().write(video)))
                 val result = SystemMediaTools(http).generate("generate_video",
-                    ModelProvider("p", "test", ProviderType.OPENAI, baseUrl = server.url("/v1").toString()),
+                    ModelProvider("p", "test", ModelApiType.OPENAI, baseUrl = server.url("/v1").toString()),
                     model, "animate", inputImage = if (model == "text-video") null else "tool-file:$name")
                 val request = server.takeRequest()
                 val body = request.body.readByteArray()
@@ -101,7 +101,7 @@ class MediaInputReferenceTest {
             server.enqueue(MockResponse().setHeader("Content-Type", "video/mp4").setBody(okio.Buffer().write(
                 ByteArray(32).also { "ftyp".toByteArray().copyInto(it, 4) })))
             val result = SystemMediaTools(ToolHttp(files)).generate("generate_video",
-                ModelProvider("p", "test", ProviderType.GOOGLE, baseUrl = server.url("/v1beta").toString()),
+                ModelProvider("p", "test", ModelApiType.GOOGLE, baseUrl = server.url("/v1beta").toString()),
                 "veo-3.1", "animate", inputImage = "tool-file:$name")
             val sent = server.takeRequest()
             assertEquals("/v1beta/models/veo-3.1:predictLongRunning", sent.path)
@@ -110,7 +110,7 @@ class MediaInputReferenceTest {
             assertTrue(result["files"]!!.jsonArray.isNotEmpty())
             val error = runCatching {
                 SystemMediaTools(ToolHttp(files)).generate("generate_video",
-                    ModelProvider("p", "test", ProviderType.ANTHROPIC, baseUrl = server.url("/").toString()),
+                    ModelProvider("p", "test", ModelApiType.ANTHROPIC, baseUrl = server.url("/").toString()),
                     "video", "animate", inputImage = "tool-file:$name")
             }.exceptionOrNull()
             assertTrue(error!!.message!!.contains("image-to-video"))
