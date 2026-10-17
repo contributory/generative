@@ -7,7 +7,6 @@ import org.junit.Test
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.features.providers.shared.*
 import org.starfall.multigateway.home.chat.screen.*
-import org.starfall.multigateway.home.chat.screen.ChatAppbar.*
 import org.starfall.multigateway.home.modelpicker.sheet.*
 import org.starfall.multigateway.home.quickactions.sheet.*
 import org.starfall.multigateway.shared.model.generation.GenerationEvent

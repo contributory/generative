@@ -46,9 +46,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
-import org.starfall.multigateway.home.chat.screen.ChatAppbar.ChatAppBar
-import org.starfall.multigateway.home.chat.screen.ChatAppbar.ContextWindowStatus
-import org.starfall.multigateway.home.chat.screen.ChatAppbar.contextWindowStatus
 import org.starfall.multigateway.shared.model.ChatRole
 import org.starfall.multigateway.shared.model.Conversation
 import org.starfall.multigateway.shared.model.ConversationSummaryProgress

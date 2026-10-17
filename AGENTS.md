@@ -148,6 +148,7 @@
 │   │   └── 📁 screen/
 │   │       ├── 📄 AssistantMessageCard.kt
 │   │       ├── 📄 AttachmentPreview.kt
+│   │       ├── 📄 ChatAppbar.kt
 │   │       ├── 📄 ChatContextSheets.kt
 │   │       ├── 📄 ChatGeneration.kt
 │   │       ├── 📄 ChatOpeningVeil.kt
@@ -187,12 +188,7 @@
 │   │       ├── 📄 ToolChat.kt
 │   │       ├── 📄 ToolResults.kt
 │   │       ├── 📄 UserMessageCard.kt
-│   │       ├── 📄 UserMessageRetry.kt
-│   │       └── 📁 ChatAppbar/
-│   │           ├── 📄 ContextWindowMenuLogic.kt
-│   │           ├── 📄 ContextWindowMenuUi.kt
-│   │           ├── 📄 logic.kt
-│   │           └── 📄 ui.kt
+│   │       └── 📄 UserMessageRetry.kt
 │   ├── 📁 leftside/
 │   │   └── 📁 drawer/
 │   │       ├── 📄 ConversationItem.kt

@@ -24,8 +24,8 @@ import org.starfall.multigateway.features.main.screen.FeaturesScreen
 import org.starfall.multigateway.features.settings.appsettings.screen.AppSettingsScreen
 import org.starfall.multigateway.features.settings.shared.MainAppbar
 import org.starfall.multigateway.shared.storage.preferences.AppPreferences
-import org.starfall.multigateway.home.chat.screen.ChatAppbar.ChatAppBar
 import org.starfall.multigateway.navigation.AppNavigation
+import org.starfall.multigateway.home.chat.screen.ChatAppBar
 
 class GeneralSettingsTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()

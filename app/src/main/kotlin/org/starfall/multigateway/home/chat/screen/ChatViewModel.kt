@@ -7,10 +7,6 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.UUID
-import org.starfall.multigateway.home.chat.screen.ChatAppbar.ContextWindowStatus
-import org.starfall.multigateway.home.chat.screen.ChatAppbar.contextWindowStatus
-import org.starfall.multigateway.home.chat.screen.ChatAppbar.effectiveContext
-import org.starfall.multigateway.home.chat.screen.ChatAppbar.estimateMessageTokens
 import org.starfall.multigateway.shared.media.SpeechAudioPlayer
 import org.starfall.multigateway.shared.media.SpeechSynthesisService
 import org.starfall.multigateway.shared.media.TtsHelper
@@ -319,7 +315,7 @@ class ChatViewModel(
             }
         ContextEstimate(conversation, prefs, config,
             if (conversation == null || config == null || config.modelType != ModelType.TEXT_GENERATION) null
-            else org.starfall.multigateway.home.chat.screen.ChatAppbar.contextWindowStatus(conversation, prefs.effectiveSystemPrompt, config, prefs.promptRoleMessages()))
+            else org.starfall.multigateway.home.chat.screen.contextWindowStatus(conversation, prefs.effectiveSystemPrompt, config, prefs.promptRoleMessages()))
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val contextWindowStatus: StateFlow<ContextWindowStatus?> = contextEstimate.map { it?.status }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -343,7 +339,7 @@ class ChatViewModel(
         val status = contextEstimate.value?.takeIf {
             it.conversation === current && it.preferences == prefs && it.model == model
         }?.status ?: if (incoming != null) {
-            org.starfall.multigateway.home.chat.screen.ChatAppbar.contextWindowStatus(current, prefs.effectiveSystemPrompt, model, prefs.promptRoleMessages())
+            org.starfall.multigateway.home.chat.screen.contextWindowStatus(current, prefs.effectiveSystemPrompt, model, prefs.promptRoleMessages())
         } else return false
         val projected = status.copy(estimatedTokens = status.estimatedTokens + (incoming?.let { estimateMessageTokens(it, false) } ?: 0))
         if (model.modelType != ModelType.TEXT_GENERATION || !projected.shouldAutoSummarize) return false
