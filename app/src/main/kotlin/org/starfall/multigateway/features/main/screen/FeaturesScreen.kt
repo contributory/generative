@@ -3,6 +3,8 @@ package org.starfall.multigateway.features.main.screen
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -34,6 +37,7 @@ import org.starfall.multigateway.R
 @Composable
 fun FeaturesScreen(
     modifier: Modifier = Modifier,
+    onBack: () -> Unit = {},
     onNavigateToDefaultModels: () -> Unit = {},
     onNavigateToProviders: () -> Unit = {},
     onNavigateToMcp: () -> Unit = {},
@@ -51,8 +55,40 @@ fun FeaturesScreen(
         R.drawable.multigateway_logo_light
     }
 
+    val edgeSwipeStarted = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val edgeSwipeDistance = androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    val edgeWidthPx = with(androidx.compose.ui.platform.LocalDensity.current) { 24.dp.toPx() }
+    val backThresholdPx = with(androidx.compose.ui.platform.LocalDensity.current) { 80.dp.toPx() }
+
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .pointerInput(onBack, edgeWidthPx, backThresholdPx) {
+                detectHorizontalDragGestures(
+                    onDragStart = { offset ->
+                        edgeSwipeStarted.value = offset.x <= edgeWidthPx
+                        edgeSwipeDistance.floatValue = 0f
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        if (edgeSwipeStarted.value && dragAmount > 0f) {
+                            edgeSwipeDistance.floatValue += dragAmount
+                            if (edgeSwipeDistance.floatValue >= backThresholdPx) {
+                                change.consume()
+                                edgeSwipeStarted.value = false
+                                onBack()
+                            }
+                        }
+                    },
+                    onDragEnd = {
+                        edgeSwipeStarted.value = false
+                        edgeSwipeDistance.floatValue = 0f
+                    },
+                    onDragCancel = {
+                        edgeSwipeStarted.value = false
+                        edgeSwipeDistance.floatValue = 0f
+                    }
+                )
+            },
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
