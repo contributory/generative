@@ -1,4 +1,4 @@
-package org.starfall.multigateway.home.chat.ui
+package org.starfall.multigateway.shared.ui.text
 
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown

@@ -1,5 +1,6 @@
 package org.starfall.multigateway.home.chat.ui.markdown
 
+import org.starfall.multigateway.shared.ui.code.LocalCodeRenderingPreferences
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -42,13 +43,13 @@ import org.starfall.multigateway.home.chat.logic.markdown.MathSplitter
 import org.starfall.multigateway.home.chat.logic.markdown.markdownFence
 import org.starfall.multigateway.home.chat.logic.markdown.parseLibraryMarkdown
 import org.starfall.multigateway.home.chat.ui.AssetKey
-import org.starfall.multigateway.home.chat.ui.GatedSelectionContainer
-import org.starfall.multigateway.home.chat.ui.LocalStreamingTextFade
+import org.starfall.multigateway.shared.ui.text.GatedSelectionContainer
+import org.starfall.multigateway.shared.ui.text.LocalStreamingTextFade
 import org.starfall.multigateway.home.chat.ui.MarkdownParseCache
-import org.starfall.multigateway.home.chat.ui.STREAM_FADE_DURATION_MS
+import org.starfall.multigateway.shared.ui.text.STREAM_FADE_DURATION_MS
 import org.starfall.multigateway.home.chat.ui.TrackPendingWork
 import org.starfall.multigateway.home.chat.ui.TrackReadyAssets
-import org.starfall.multigateway.home.chat.ui.rememberStreamingTextPresentation
+import org.starfall.multigateway.shared.ui.text.rememberStreamingTextPresentation
 
 /** Library primitives with app-owned code toolbar, error/LaTeX UI and streaming fades. */
 @Composable

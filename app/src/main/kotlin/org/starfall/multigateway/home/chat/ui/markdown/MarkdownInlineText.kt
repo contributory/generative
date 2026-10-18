@@ -19,9 +19,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.TextUnit
-import org.starfall.multigateway.home.chat.ui.rememberGlyphTarget
-import org.starfall.multigateway.home.chat.ui.rememberStreamingTextPresentation
-import org.starfall.multigateway.home.chat.ui.glyphTarget
+import org.starfall.multigateway.shared.ui.text.rememberGlyphTarget
+import org.starfall.multigateway.shared.ui.text.rememberStreamingTextPresentation
+import org.starfall.multigateway.shared.ui.text.glyphTarget
 
 @Composable
 internal fun MarkdownClickableText(

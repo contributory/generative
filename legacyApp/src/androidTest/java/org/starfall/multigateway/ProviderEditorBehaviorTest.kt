@@ -66,11 +66,11 @@ class ProviderEditorBehaviorTest {
             ModelEditScreen(provider, "custom-model", setOf("custom-model"),
                 onSave = { _, config -> saved = config }, onBack = {})
         } }
-        compose.onNodeWithText("Passback Thinking").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Send Thinking Content").performScrollTo().assertIsDisplayed()
 compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
-        compose.onNodeWithText("Passback Thinking").assertDoesNotExist()
+        compose.onNodeWithText("Send Thinking Content").assertDoesNotExist()
         compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
-        compose.onNodeWithText("Passback Thinking").assertExists()
+        compose.onNodeWithText("Send Thinking Content").assertExists()
         listOf("On" to true, "Off" to false, "Default" to null).forEach { (label, value) ->
             compose.onNode(hasText(label) and hasAnyAncestor(hasTestTag("streaming-mode")))
                 .performScrollTo().performClick().assertIsSelected()

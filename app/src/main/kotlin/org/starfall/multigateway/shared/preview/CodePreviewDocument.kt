@@ -1,4 +1,4 @@
-package org.starfall.multigateway.preview
+package org.starfall.multigateway.shared.preview
 
 import java.util.Base64
 import org.starfall.multigateway.shared.code.codeLanguage

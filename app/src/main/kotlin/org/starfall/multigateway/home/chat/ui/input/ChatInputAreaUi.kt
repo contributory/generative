@@ -104,6 +104,7 @@ fun UserInputArea(
     onSetReasoningEffort: (String?) -> Unit,
     onSetThinkingPassback: (providerId: String, modelId: String, mode: ThinkingPassback) -> Unit = { _, _, _ -> },
     onSetModelReasoningEffort: (providerId: String, modelId: String, effort: String?) -> Unit = { _, _, _ -> },
+    onSetModelTools: (providerId: String, modelId: String, tools: List<String>) -> Unit = { _, _, _ -> },
     onEditModel: (providerId: String, modelId: String) -> Unit = { _, _ -> },
     onEditProvider: (providerId: String) -> Unit = {},
     onFetchOllamaModels: (suspend (String) -> List<String>)? = null,
@@ -264,39 +265,6 @@ fun UserInputArea(
             modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-        if (mediaKind != null) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.92f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
-            ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FluentIcon(
-                    if (mediaKind == ModelType.IMAGE_GENERATION) Icons.Outlined.Image else Icons.Outlined.Videocam,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    "$mediaLabel generation mode · $mediaHint",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (textState.length > 32000 || attachments.size > (if (mediaKind == ModelType.VIDEO_GENERATION) 1 else 16))
-                        MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = { mediaKind = null }) {
-                    FluentIcon(Icons.Outlined.Close, contentDescription = "Exit $mediaLabel generation mode")
-                }
-            }
-            }
-        }
         Surface(
             modifier = Modifier
                 .widthIn(max = 720.dp)
@@ -310,6 +278,51 @@ fun UserInputArea(
             shadowElevation = if (amoledMode) 0.dp else 3.dp
         ) {
             Column(modifier = Modifier.fillMaxWidth().heightIn(max = maxInputHeight)) {
+                if (mediaKind != null) {
+                    // Mode chip lives inside the input; tapping it leaves the generation mode.
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f))
+                                .clickable { mediaKind = null }
+                                .semantics { contentDescription = "Exit $mediaLabel generation mode" }
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            FluentIcon(
+                                if (mediaKind == ModelType.IMAGE_GENERATION) Icons.Outlined.Image else Icons.Outlined.Videocam,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                mediaLabel,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                maxLines = 1
+                            )
+                        }
+                        // Only surface the hint when something blocks sending.
+                        val mediaInvalid = mediaModel == null || textState.length > 32000 ||
+                            attachments.size > (if (mediaKind == ModelType.VIDEO_GENERATION) 1 else 16)
+                        if (mediaInvalid) {
+                            Text(
+                                mediaHint,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.error,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
                 if (editDraft != null) {
                     Row(
                         modifier = Modifier
@@ -543,6 +556,7 @@ fun UserInputArea(
         onSelectModel = onSelectModel,
         onSetThinkingPassback = onSetThinkingPassback,
         onSetModelReasoningEffort = onSetModelReasoningEffort,
+        onSetModelTools = onSetModelTools,
         onEditModel = onEditModel,
         onEditProvider = onEditProvider,
         modelPickerCollapsedGroups = modelPickerCollapsedGroups,

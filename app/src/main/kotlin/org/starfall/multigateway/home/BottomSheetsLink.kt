@@ -79,6 +79,7 @@ internal fun BottomSheetsLink(
     onSelectModel: (providerId: String, modelId: String) -> Unit,
     onSetThinkingPassback: (providerId: String, modelId: String, mode: ThinkingPassback) -> Unit,
     onSetModelReasoningEffort: (providerId: String, modelId: String, effort: String?) -> Unit,
+    onSetModelTools: (providerId: String, modelId: String, tools: List<String>) -> Unit,
     onEditModel: (providerId: String, modelId: String) -> Unit,
     onEditProvider: (providerId: String) -> Unit,
     modelPickerCollapsedGroups: Set<String>,
@@ -183,6 +184,13 @@ internal fun BottomSheetsLink(
                 },
                 // Available as soon as the sheet opens; a model without a saved configuration gets one
                 // created when the choice is stored.
+                onSetModelTools = (selectedConfigEntry?.key ?: selectedModelName).takeIf {
+                    selectedProvider != null && it.isNotBlank() && selectedConfig.supportedModelTools.isNotEmpty()
+                }?.let { configKey ->
+                    val providerId = selectedProvider!!.id
+                    val setTools: (List<String>) -> Unit = { tools -> onSetModelTools(providerId, configKey, tools) }
+                    setTools
+                },
                 onSetThinkingPassback = (selectedConfigEntry?.key ?: selectedModelName).takeIf {
                     selectedProvider != null && it.isNotBlank()
                 }?.let { configKey ->

@@ -10,5 +10,6 @@ data class LanguageModel(
     val icon: String? = null,
     @SerialName("provider_id") val providerId: String,
     @SerialName("input_capabilities") val inputCapabilities: Capabilities = Capabilities(),
-    @SerialName("output_capabilities") val outputCapabilities: Capabilities = Capabilities()
+    @SerialName("output_capabilities") val outputCapabilities: Capabilities = Capabilities(),
+    @SerialName("model_tools") val modelTools: List<String> = emptyList()
 )

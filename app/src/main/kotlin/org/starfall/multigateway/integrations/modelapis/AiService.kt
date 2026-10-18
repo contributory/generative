@@ -248,7 +248,8 @@ class AiService(context: Context) {
             topK = topK,
             maxTokens = maxTokens,
             reasoningEffort = modelConfig.wireReasoningEffort,
-            sendThinkingContent = sendThinking
+            sendThinkingContent = sendThinking,
+            enabledModelTools = modelConfig.enabledModelTools.filter { it in modelConfig.supportedModelTools }.distinct()
         )))
     }
 

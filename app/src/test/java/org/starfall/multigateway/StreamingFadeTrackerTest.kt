@@ -3,8 +3,8 @@ package org.starfall.multigateway
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.multigateway.home.chat.ui.StreamingFadeRange
-import org.starfall.multigateway.home.chat.ui.StreamingFadeTracker
+import org.starfall.multigateway.shared.ui.text.StreamingFadeRange
+import org.starfall.multigateway.shared.ui.text.StreamingFadeTracker
 
 class StreamingFadeTrackerTest {
     @Test

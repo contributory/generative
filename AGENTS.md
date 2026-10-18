@@ -146,18 +146,15 @@
 │   │       ├── 📄 ChatRenderCaches.kt
 │   │       ├── 📄 ChatScreen.kt
 │   │       ├── 📄 ConversationSummaryUi.kt
-│   │       ├── 📄 GlyphSelectionGate.kt
 │   │       ├── 📄 LiveThinkingBlock.kt
 │   │       ├── 📄 MessageBubble.kt
 │   │       ├── 📄 ReasoningDropdown.kt
-│   │       ├── 📄 StreamingTextFade.kt
 │   │       ├── 📄 UserMessageCard.kt
 │   │       ├── 📁 input/
 │   │       │   ├── 📄 ChatInputAreaUi.kt
 │   │       │   └── 📄 InputBar.kt
 │   │       ├── 📁 markdown/
 │   │       │   ├── 📄 LatexFormulaRenderer.kt
-│   │       │   ├── 📄 LazyCodeBlock.kt
 │   │       │   ├── 📄 MarkdownCodeBlock.kt
 │   │       │   ├── 📄 MarkdownInlineText.kt
 │   │       │   ├── 📄 MarkdownLatexBlock.kt
@@ -257,9 +254,6 @@
 │       └── 📄 SshConnectionSupport.kt
 ├── 📁 navigation/
 │   └── 📄 AppNavigation.kt
-├── 📁 preview/
-│   ├── 📄 CodePreviewActivity.kt
-│   └── 📄 CodePreviewDocument.kt
 └── 📁 shared/
     ├── 📁 auth/
     │   ├── 📄 AppAuthTransactions.kt
@@ -348,6 +342,9 @@
     │   ├── 📄 ProviderParsing.kt
     │   ├── 📄 ToolHttp.kt
     │   └── 📄 ToolStreaming.kt
+    ├── 📁 preview/
+    │   ├── 📄 CodePreviewActivity.kt
+    │   └── 📄 CodePreviewDocument.kt
     ├── 📁 storage/
     │   ├── 📄 ConversationRepository.kt
     │   ├── 📄 ImmediateState.kt
@@ -379,7 +376,10 @@
         │   ├── 📄 OAuthBrowserActivity.kt
         │   └── 📄 OAuthNotificationPermission.kt
         ├── 📁 code/
-        │   └── 📄 CodeBlockSurface.kt
+        │   ├── 📄 CodeBlockHeader.kt
+        │   ├── 📄 CodeBlockSurface.kt
+        │   ├── 📄 CodeRendering.kt
+        │   └── 📄 LazyCodeBlock.kt
         ├── 📁 dialogs/
         │   ├── 📄 AppDialogs.kt
         │   ├── 📄 CrashReportDialog.kt
@@ -418,8 +418,10 @@
         │   └── 📄 BottomSheetHeight.kt
         └── 📁 text/
             ├── 📄 ApiKeyMask.kt
+            ├── 📄 GlyphSelectionGate.kt
             ├── 📄 PlatformTextSelection.kt
             ├── 📄 SelectableTextFields.kt
+            ├── 📄 StreamingTextFade.kt
             └── 📄 WordWrappedFadeText.kt
 ```
 

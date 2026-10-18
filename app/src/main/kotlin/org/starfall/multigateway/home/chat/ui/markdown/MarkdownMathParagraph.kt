@@ -40,7 +40,7 @@ import org.starfall.multigateway.home.chat.logic.markdown.groupMathBlocks
 import org.starfall.multigateway.home.chat.logic.markdown.mathPlaceholder
 import org.starfall.multigateway.home.chat.logic.markdown.placeholderMarkdown
 import org.starfall.multigateway.home.chat.ui.AssetKey
-import org.starfall.multigateway.home.chat.ui.GatedSelectionContainer
+import org.starfall.multigateway.shared.ui.text.GatedSelectionContainer
 import org.starfall.multigateway.home.chat.ui.TrackPendingWork
 import org.starfall.multigateway.home.chat.ui.TrackReadyAssets
 

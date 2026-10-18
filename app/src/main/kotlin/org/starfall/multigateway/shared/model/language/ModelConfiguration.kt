@@ -33,6 +33,8 @@ data class ModelConfiguration(
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val thinkingLevel: String? = null,
     val supportsToolCalls: Boolean = true,
+    @SerialName("model_tools") val modelTools: List<String> = emptyList(),
+    @SerialName("enabled_model_tools") val enabledModelTools: List<String> = emptyList(),
     // Legacy on/off switch, read only to migrate saved configs (true -> On, anything else -> Auto).
     // Never written again once [thinkingPassback] is set.
     @SerialName("send_thinking_content")
@@ -45,4 +47,7 @@ data class ModelConfiguration(
     @SerialName("model_json")
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val modelJson: kotlinx.serialization.json.JsonObject = kotlinx.serialization.json.JsonObject(emptyMap())
-)
+) {
+    val supportedModelTools: List<String>
+        get() = modelTools.ifEmpty { modelToolsFromMetadata(modelJson) }
+}

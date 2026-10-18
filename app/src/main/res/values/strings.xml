@@ -176,7 +176,10 @@
     <string name="reasoning_effort">Effort</string>
     <string name="tool_calls">Tools</string>
     <string name="model_reasoning_levels">Supported reasoning levels</string>
-    <string name="send_thinking_content_back">Passback Thinking</string>
+    <string name="model_options_title">Model Options</string>
+    <string name="model_tools_title">Model tools</string>
+    <string name="model_tools_hint">Enable built-in tools supported by this model. These are sent directly in the model API request.</string>
+    <string name="send_thinking_content_back">Send Thinking Content</string>
     <string name="send_thinking_content_back_hint">Auto sends earlier thinking back only in chats that use tool calls. On always sends it; Off never does.</string>
     <string name="streaming" translatable="false">Stream Response</string>
     <string name="common_default">Default</string>
@@ -184,6 +187,12 @@
     <string name="provider_stream_state">Provider: %1$s</string>
     <string name="stream_responses">Stream responses</string>
     <string name="sampling_settings">Temperature / Top-p / Top-k</string>
+    <string name="model_arguments">Arguments</string>
+    <string name="model_tool_name">Tool name</string>
+    <string name="model_tool_custom">Custom tool</string>
+    <string name="model_tool_add">Add</string>
+    <string name="model_tools_editor_hint">Choose default tools, add custom tool names, and toggle each tool on or off.</string>
+    <string name="model_tools_unsupported_provider">This provider API does not expose built-in model tools in MultiGateway yet.</string>
 
     <string name="mcp_servers_title">MCP Servers</string>
     <string name="mcp_servers_description">Model Context Protocol tools</string>

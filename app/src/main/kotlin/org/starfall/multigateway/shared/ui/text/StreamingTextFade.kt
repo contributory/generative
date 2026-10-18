@@ -1,4 +1,4 @@
-package org.starfall.multigateway.home.chat.ui
+package org.starfall.multigateway.shared.ui.text
 
 import android.os.SystemClock
 import androidx.compose.animation.core.FastOutSlowInEasing

@@ -30,7 +30,7 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
 
     override fun stream(request: ModelApiRequest): Flow<GenerationEvent> = streamResponses(
         request.provider, request.modelName, request.messages, request.systemPrompt,
-        request.temperature, request.topP, request.maxTokens, request.reasoningEffort, request.sendThinkingContent
+        request.temperature, request.topP, request.maxTokens, request.reasoningEffort, request.sendThinkingContent, request.enabledModelTools
     )
 
     private fun streamResponses(
@@ -42,7 +42,8 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
         topP: Double?,
         maxTokens: Int,
         reasoningEffort: String? = null,
-        sendThinkingContent: Boolean = false
+        sendThinkingContent: Boolean = false,
+        enabledModelTools: List<String> = emptyList()
     ): Flow<GenerationEvent> = flow {
         sdk.openAi(provider).useClient { client ->
             val inputItems = buildList {
@@ -72,6 +73,8 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
             }
             val params = ResponseCreateParams.builder().model(modelName).maxOutputTokens(maxTokens.toLong()).store(false)
                 .inputOfResponse(inputItems)
+            val nativeTools = requestToolsForOpenAIResponses(enabledModelTools)
+            if (nativeTools.isNotEmpty()) params.putAdditionalBodyProperty("tools", com.openai.core.JsonValue.from(nativeTools))
             if (systemPrompt.isNotBlank()) params.instructions(systemPrompt)
             temperature?.let { params.temperature(it) }
             topP?.let { params.topP(it) }
@@ -113,3 +116,14 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
         }
     }.flowOn(Dispatchers.IO)
 }
+
+
+private fun requestToolsForOpenAIResponses(enabled: List<String>): List<Map<String, Any>> =
+    enabled.distinct().mapNotNull { tool ->
+        when (tool) {
+            "web_search" -> mapOf("type" to "web_search")
+            "code_interpreter" -> mapOf("type" to "code_interpreter", "container" to mapOf("type" to "auto"))
+            "image_generation" -> mapOf("type" to "image_generation")
+            else -> null
+        }
+    }

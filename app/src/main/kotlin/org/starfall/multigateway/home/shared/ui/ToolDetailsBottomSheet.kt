@@ -38,8 +38,8 @@ import org.starfall.multigateway.shared.model.ToolActivity
 import org.starfall.multigateway.shared.ui.sheets.AppBottomSheet
 import org.starfall.multigateway.shared.ui.icons.FluentIcon
 import org.starfall.multigateway.shared.ui.icons.Icons
-import org.starfall.multigateway.shared.ui.code.SharedCodeBlock
-import org.starfall.multigateway.shared.ui.code.SharedLazyCodeBlock
+import org.starfall.multigateway.shared.ui.code.CodeBlockSurface
+import org.starfall.multigateway.shared.ui.code.LazyCodeBlock
 import org.starfall.multigateway.home.shared.ui.ToolSheetState
 
 private val toolJson = Json { prettyPrint = true }
@@ -137,12 +137,14 @@ internal fun ToolDetailsBottomSheet(
             )
             Spacer(Modifier.height(10.dp))
             // Lazy chunked rendering: no character cap, only visible chunks are composed and highlighted.
-            SharedLazyCodeBlock(
+            LazyCodeBlock(
                 language = if (responseIsJson) "json" else "text",
-                code = responseText.ifBlank {
+                text = responseText.ifBlank {
                     if (activity.status == "running") "Waiting for tool response…" else "No response"
                 },
-                modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp)
+                modifier = Modifier.fillMaxWidth(),
+                maxHeight = 440.dp,
+                onDownload = if (canDownload) downloadResponse else null
             )
 
             if (fileNames.isNotEmpty()) {
@@ -314,7 +316,7 @@ private fun PrettyArguments(raw: String) {
 @Composable
 private fun RawValueBlock(value: String) {
     val language = remember(value) { if (looksLikeJson(value)) "json" else "text" }
-    SharedCodeBlock(language = language, code = value)
+    CodeBlockSurface(language = language, code = value)
 }
 
 private class ResponseSource(val text: String)

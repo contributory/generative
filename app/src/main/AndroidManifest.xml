@@ -46,7 +46,7 @@
         <service android:name=".shared.auth.OAuthBrowserKeepAliveService"
             android:exported="true" />
         <activity
-            android:name=".preview.CodePreviewActivity"
+            android:name=".shared.preview.CodePreviewActivity"
             android:exported="false"
             android:theme="@style/Theme.MultiGateway" />
         <activity

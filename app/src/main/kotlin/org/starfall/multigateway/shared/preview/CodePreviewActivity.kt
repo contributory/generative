@@ -1,4 +1,4 @@
-package org.starfall.multigateway.preview
+package org.starfall.multigateway.shared.preview
 
 import android.content.Context
 import android.content.Intent

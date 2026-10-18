@@ -5,8 +5,8 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.storage.preferences.WordWrapMode
 import org.starfall.multigateway.features.providers.shared.ui.*
-import org.starfall.multigateway.preview.*
-import org.starfall.multigateway.home.chat.ui.markdown.codeWrapWidth
+import org.starfall.multigateway.shared.preview.*
+import org.starfall.multigateway.shared.ui.code.codeWrapWidth
 import org.starfall.multigateway.shared.code.CodeTokenKind
 import org.starfall.multigateway.shared.code.codeTokens
 import org.starfall.multigateway.shared.code.highlightedCode

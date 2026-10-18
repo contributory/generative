@@ -176,7 +176,7 @@
     <string name="reasoning_effort">Effort</string>
     <string name="tool_calls">Tools</string>
     <string name="model_reasoning_levels">Supported reasoning levels</string>
-    <string name="send_thinking_content_back">Passback Thinking</string>
+    <string name="send_thinking_content_back">Send Thinking Content</string>
     <string name="send_thinking_content_back_hint">Auto sends earlier thinking back only in chats that use tool calls. On always sends it; Off never does.</string>
     <string name="streaming" translatable="false">Stream Response</string>
     <string name="common_default">Default</string>

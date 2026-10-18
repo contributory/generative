@@ -9,11 +9,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.R
 import androidx.compose.ui.res.stringResource
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Switch
+import androidx.compose.ui.Alignment
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.multigateway.shared.ui.text.SelectableOutlinedTextField
@@ -67,5 +72,108 @@ fun ModelConfigDialog(
             }) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+
+@Composable
+fun ModelToolsDialog(
+    provider: ModelProvider,
+    modelId: String,
+    config: ModelConfiguration,
+    onSave: (ModelConfiguration) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val defaultTools = listOf(
+        "google_search", "google_maps", "url_context", "code_execution",
+        "web_search", "code_interpreter", "image_generation", "web_fetch"
+    )
+    val modelName = modelId.lowercase()
+    val presetTools = when {
+        modelName.contains("gemini") -> listOf("google_search", "google_maps", "url_context", "code_execution")
+        modelName.contains("gpt") -> listOf("web_search", "code_interpreter", "image_generation")
+        modelName.contains("claude") -> listOf("web_search", "web_fetch", "code_execution")
+        else -> emptyList()
+    }
+    val initialTools = remember(modelId, config.modelTools, config.modelJson) {
+        (config.modelTools.ifEmpty { presetTools.ifEmpty { config.supportedModelTools } } + defaultTools)
+            .distinct()
+    }
+    val toolNames = remember(modelId, config.modelTools, config.modelJson) {
+        mutableStateListOf<String>().apply { addAll(initialTools) }
+    }
+    val enabledTools = remember(modelId, config.enabledModelTools, config.modelTools, config.modelJson) {
+        mutableStateOf(
+            config.enabledModelTools.toSet().ifEmpty {
+                (config.modelTools.ifEmpty { presetTools }).toSet()
+            }
+        )
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.model_tools_title)) },
+        text = {
+            Column(
+                Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(modelId, style = MaterialTheme.typography.labelLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(provider.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.model_tools_editor_hint), style = MaterialTheme.typography.bodySmall)
+                toolNames.forEachIndexed { index, tool ->
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (tool !in defaultTools) {
+                            androidx.compose.material3.OutlinedTextField(
+                                value = tool,
+                                onValueChange = { toolNames[index] = it },
+                                modifier = Modifier.weight(1f),
+                                label = { Text(stringResource(R.string.model_tool_name)) },
+                                singleLine = true
+                            )
+                        } else {
+                            Text(tool, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                        }
+                        Switch(
+                            checked = tool.isNotBlank() && tool in enabledTools.value,
+                            enabled = tool.isNotBlank(),
+                            onCheckedChange = { checked ->
+                                enabledTools.value = if (checked) enabledTools.value + tool else enabledTools.value - tool
+                            },
+                            modifier = Modifier.testTag("editor-model-tool-$index")
+                        )
+                        IconButton(onClick = {
+                            enabledTools.value = enabledTools.value - tool
+                            toolNames.removeAt(index)
+                        }) {
+                            Text("×", style = MaterialTheme.typography.titleLarge)
+                        }
+                    }
+                }
+                OutlinedButton(
+                    onClick = { toolNames.add("") },
+                    modifier = Modifier.fillMaxWidth().testTag("model-tool-add-button")
+                ) {
+                    Text(stringResource(R.string.model_tool_add))
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val available = toolNames.map(String::trim).filter(String::isNotEmpty).distinct()
+                onSave(config.copy(
+                    modelTools = available,
+                    enabledModelTools = enabledTools.value.intersect(available.toSet()).toList()
+                ))
+                onDismiss()
+            }) { Text(stringResource(R.string.common_save)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+        }
     )
 }

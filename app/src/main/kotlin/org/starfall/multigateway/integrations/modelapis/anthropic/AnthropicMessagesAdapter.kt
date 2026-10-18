@@ -31,7 +31,7 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
 
     override fun stream(request: ModelApiRequest): Flow<GenerationEvent> = streamAnthropic(
         request.provider, request.modelName, request.messages, request.systemPrompt,
-        request.temperature, request.topP, request.maxTokens, request.topK, request.sendThinkingContent
+        request.temperature, request.topP, request.maxTokens, request.topK, request.sendThinkingContent, request.enabledModelTools
     )
 
     private fun streamAnthropic(
@@ -43,10 +43,13 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
         topP: Double?,
         maxTokens: Int,
         topK: Int? = null,
-        sendThinkingContent: Boolean = false
+        sendThinkingContent: Boolean = false,
+        enabledModelTools: List<String> = emptyList()
     ): Flow<GenerationEvent> = flow {
         sdk.anthropic(provider).useClient { client ->
             val params = MessageCreateParams.builder().model(modelName).maxTokens(maxTokens.toLong())
+            val nativeTools = requestToolsForAnthropic(enabledModelTools)
+            if (nativeTools.isNotEmpty()) params.putAdditionalBodyProperty("tools", com.anthropic.core.JsonValue.from(nativeTools))
             val modelConfig = provider.config.modelConfigs[modelName]
             modelConfig?.claudeThinkingParameters(modelName, maxTokens)?.forEach { (key, value) ->
                 params.putAdditionalBodyProperty(key, com.anthropic.core.JsonValue.from(
@@ -121,3 +124,14 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
         }
     }.flowOn(Dispatchers.IO)
 }
+
+
+private fun requestToolsForAnthropic(enabled: List<String>): List<Map<String, Any>> =
+    enabled.distinct().mapNotNull { tool ->
+        when (tool) {
+            "web_search" -> mapOf("type" to "web_search_20250305", "name" to "web_search")
+            "web_fetch" -> mapOf("type" to "web_fetch_20250910", "name" to "web_fetch")
+            "code_execution" -> mapOf("type" to "code_execution_20250825", "name" to "code_execution")
+            else -> null
+        }
+    }

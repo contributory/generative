@@ -1,5 +1,10 @@
 package org.starfall.multigateway.home.chat.ui
 
+import org.starfall.multigateway.shared.ui.text.GlyphHitRegistry
+import org.starfall.multigateway.shared.ui.text.LocalGlyphHitRegistry
+import org.starfall.multigateway.shared.ui.text.LocalSelectionBlocked
+import org.starfall.multigateway.shared.ui.text.GatedSelectionContainer
+import org.starfall.multigateway.shared.ui.text.glyphSelectionGate
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context

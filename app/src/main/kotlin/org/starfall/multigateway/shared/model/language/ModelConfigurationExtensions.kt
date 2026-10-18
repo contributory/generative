@@ -13,7 +13,7 @@ fun ModelConfiguration.normalizedForTemplate(): ModelConfiguration =
 /** The effective passback mode; saved configs without the new field migrate from the old switch. */
 val ModelConfiguration.passbackMode: ThinkingPassback
     get() = thinkingPassback
-        ?: if (legacySendThinkingContent == true) ThinkingPassback.ON else ThinkingPassback.AUTO
+        ?: if (legacySendThinkingContent == true) ThinkingPassback.ON else ThinkingPassback.OFF
 
 fun ModelConfiguration.withThinkingPassback(mode: ThinkingPassback): ModelConfiguration =
     copy(thinkingPassback = mode, legacySendThinkingContent = null)

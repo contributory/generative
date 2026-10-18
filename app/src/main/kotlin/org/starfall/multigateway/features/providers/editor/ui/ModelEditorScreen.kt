@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.R
 import org.starfall.multigateway.features.providers.shared.ui.ModelConfigDialog
+import org.starfall.multigateway.features.providers.shared.ui.ModelToolsDialog
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.language.ModelType
 import org.starfall.multigateway.shared.model.language.SELECTABLE_REASONING_EFFORTS
@@ -35,7 +36,7 @@ import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.multigateway.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import org.starfall.multigateway.shared.ui.text.SelectableOutlinedTextField
-import org.starfall.multigateway.shared.ui.code.SharedCodeBlock
+import org.starfall.multigateway.shared.ui.code.CodeBlockSurface
 import org.starfall.multigateway.shared.ui.model.modelInitial
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,6 +57,7 @@ fun ModelEditorScreen(
     var iconImporting by remember { mutableStateOf(false) }
     var typeExpanded by remember { mutableStateOf(false) }
     var showSampling by remember { mutableStateOf(false) }
+    var showModelTools by remember { mutableStateOf(false) }
     var modelJsonExpanded by remember { mutableStateOf(false) }
     val trimmedId = modelId.trim()
     val modelJson = if (initialModelId.isNotBlank() && trimmedId == initialModelId) config.modelJson else JsonObject(emptyMap())
@@ -286,8 +288,22 @@ fun ModelEditorScreen(
                         }
                     }
                 }
-                OutlinedButton(onClick = { showSampling = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.sampling_settings))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { showModelTools = true },
+                        modifier = Modifier.weight(1f).testTag("model-tools-button")
+                    ) {
+                        Text(stringResource(R.string.model_tools_title), maxLines = 1)
+                    }
+                    OutlinedButton(
+                        onClick = { showSampling = true },
+                        modifier = Modifier.weight(1f).testTag("model-arguments-button")
+                    ) {
+                        Text(stringResource(R.string.model_arguments), maxLines = 1)
+                    }
                 }
             }
             Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
@@ -306,12 +322,21 @@ fun ModelEditorScreen(
                     }
                     if (modelJsonExpanded) {
                         Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 12.dp).testTag("model-json-code")) {
-                            SharedCodeBlock(language = "json", code = modelJsonCode)
+                            CodeBlockSurface(language = "json", code = modelJsonCode)
                         }
                     }
                 }
             }
         }
+    }
+    if (showModelTools) {
+        ModelToolsDialog(
+            provider = provider,
+            modelId = initialModelId.ifBlank { trimmedId },
+            config = config,
+            onSave = { config = it },
+            onDismiss = { showModelTools = false }
+        )
     }
     if (showSampling) {
         ModelConfigDialog(

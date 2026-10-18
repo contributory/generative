@@ -1,6 +1,8 @@
 package org.starfall.multigateway.home.shared.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,6 +26,7 @@ import org.starfall.multigateway.shared.model.language.ThinkingPassback
 import org.starfall.multigateway.shared.model.language.passbackMode
 import org.starfall.multigateway.shared.model.language.supportedReasoningEfforts
 import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.ui.sheets.AppBottomSheet
 import org.starfall.multigateway.shared.ui.icons.FluentIcon
 import org.starfall.multigateway.shared.ui.icons.Icons
@@ -39,11 +42,23 @@ internal fun SelectedModelOverviewBottomSheet(
     conversationReasoningEffort: String?,
     onSetReasoningEffort: (String?) -> Unit,
     onSetThinkingPassback: ((ThinkingPassback) -> Unit)? = null,
+    onSetModelTools: ((List<String>) -> Unit)? = null,
     onEditModel: (() -> Unit)? = null,
     onOpenModelPicker: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val supportedEfforts = config.supportedReasoningEfforts
+    var modelOptionsExpanded by remember(modelId) { mutableStateOf(false) }
+    val visibleModelTools = remember(config.supportedModelTools, provider?.type) {
+        config.supportedModelTools.filter { tool ->
+            when (provider?.type) {
+                ModelApiType.GOOGLE -> tool in setOf("google_search", "google_maps", "url_context", "code_execution")
+                ModelApiType.OPENAI_RESPONSES -> tool in setOf("web_search", "code_interpreter", "image_generation")
+                ModelApiType.ANTHROPIC -> tool in setOf("web_search", "web_fetch", "code_execution")
+                else -> false
+            }
+        }
+    }
     val effortOptions = remember(supportedEfforts) {
         reasoningEffortOptions(supportedEfforts)
     }
@@ -120,60 +135,140 @@ internal fun SelectedModelOverviewBottomSheet(
                   drawBackground = false,
                  onPreviewTierChange = { previewTier = it }
             )
-            // Every reasoning-capable model has this setting; it does not wait for a saved configuration.
-            if (config.supportsThinking) {
-                val modes = listOf(ThinkingPassback.AUTO, ThinkingPassback.ON, ThinkingPassback.OFF)
-                val labels = listOf(
-                    stringResource(R.string.common_auto),
-                    stringResource(R.string.common_on),
-                    stringResource(R.string.common_off)
-                )
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.1f),
-                    modifier = Modifier.fillMaxWidth().testTag("selected-model-passback-thinking")
+            // Keep optional model controls tucked away until the user opens Model Options.
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.1f),
+                modifier = Modifier.fillMaxWidth().testTag("model-options-dropdown")
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .animateContentSize()
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { modelOptionsExpanded = !modelOptionsExpanded }
+                            .testTag("model-options-toggle")
+                            .padding(horizontal = 14.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        Text(
+                            stringResource(R.string.model_options_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.weight(1f)
+                        )
+                        FluentIcon(
+                            imageVector = if (modelOptionsExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    if (modelOptionsExpanded) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            FluentIcon(
-                                Icons.Outlined.Psychology,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Text(
-                                stringResource(R.string.send_thinking_content_back),
-                                style = MaterialTheme.typography.titleSmall,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("passback-thinking-mode")) {
-                            modes.forEachIndexed { index, mode ->
-                                SegmentedButton(
-                                    selected = config.passbackMode == mode,
-                                    onClick = { onSetThinkingPassback?.invoke(mode) },
-                                    enabled = onSetThinkingPassback != null,
-                                    shape = SegmentedButtonDefaults.itemShape(index, modes.size),
-                                    modifier = Modifier.testTag("passback-thinking-${mode.name.lowercase()}")
-                                ) {
-                                    Text(labels[index], maxLines = 1)
+                            if (visibleModelTools.isNotEmpty()) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                                Text(
+                                    stringResource(R.string.model_tools_title),
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                                Text(
+                                    stringResource(R.string.model_tools_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                visibleModelTools.distinct().forEach { tool ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().testTag("model-tool-$tool"),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Text(
+                                            modelToolDisplayName(tool),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Switch(
+                                            checked = tool in config.enabledModelTools,
+                                            onCheckedChange = { enabled ->
+                                                val current = config.enabledModelTools.filter { it in visibleModelTools }.toSet()
+                                                val updated = if (enabled) current + tool else current - tool
+                                                onSetModelTools?.invoke(updated.toList())
+                                            },
+                                            enabled = onSetModelTools != null,
+                                            modifier = Modifier.testTag("model-tool-switch-$tool")
+                                        )
+                                    }
                                 }
                             }
+                            if (config.supportsThinking) {
+                                if (visibleModelTools.isNotEmpty()) {
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                                }
+                                val modes = listOf(ThinkingPassback.AUTO, ThinkingPassback.ON, ThinkingPassback.OFF)
+                                val labels = listOf(
+                                    stringResource(R.string.common_auto),
+                                    stringResource(R.string.common_on),
+                                    stringResource(R.string.common_off)
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    FluentIcon(
+                                        Icons.Outlined.Psychology,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        stringResource(R.string.send_thinking_content_back),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("passback-thinking-mode")) {
+                                    modes.forEachIndexed { index, mode ->
+                                        SegmentedButton(
+                                            selected = config.passbackMode == mode,
+                                            onClick = { onSetThinkingPassback?.invoke(mode) },
+                                            enabled = onSetThinkingPassback != null,
+                                            shape = SegmentedButtonDefaults.itemShape(index, modes.size),
+                                            modifier = Modifier.testTag("passback-thinking-${mode.name.lowercase()}")
+                                        ) {
+                                            Text(labels[index], maxLines = 1)
+                                        }
+                                    }
+                                }
+                                Text(
+                                    stringResource(R.string.send_thinking_content_back_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
-                        Text(
-                            stringResource(R.string.send_thinking_content_back_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
             }
         }
     }
+}
+
+
+private fun modelToolDisplayName(tool: String): String = when (tool.lowercase()) {
+    "google_search", "web_search" -> "Web Search"
+    "google_maps" -> "Google Maps"
+    "url_context", "web_fetch" -> "URL Context"
+    "code_execution", "code_interpreter" -> "Code Execution"
+    "file_search" -> "File Search"
+    "image_generation" -> "Image Generation"
+    "computer_use", "computer" -> "Computer Use"
+    else -> tool.split('_', '-', '.').filter { it.isNotBlank() }
+        .joinToString(" ") { it.replaceFirstChar(Char::uppercase) }
 }

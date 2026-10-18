@@ -16,7 +16,7 @@ import org.junit.Test
 import org.starfall.multigateway.shared.storage.preferences.AppPreferences
 import org.starfall.multigateway.shared.storage.preferences.WordWrapMode
 import org.starfall.multigateway.features.settings.ui.CodeRenderingPreferences
-import org.starfall.multigateway.home.chat.ui.markdown.LocalCodeRenderingPreferences
+import org.starfall.multigateway.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.multigateway.home.chat.ui.markdown.RenderCodeBlock
 
 class CodeRenderingBehaviorTest {

@@ -57,7 +57,7 @@ import org.starfall.multigateway.features.storage.ui.StorageScreen
 import org.starfall.multigateway.home.chat.logic.ChatViewModel
 import org.starfall.multigateway.home.chat.logic.contextWindowStatus
 import org.starfall.multigateway.home.chat.ui.ChatScreen
-import org.starfall.multigateway.home.chat.ui.markdown.LocalCodeRenderingPreferences
+import org.starfall.multigateway.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.multigateway.home.drawer.ui.LeftSideDrawer
 import org.starfall.multigateway.home.drawer.ui.recordDrawerBackdrop
 import org.starfall.multigateway.home.drawer.ui.rememberDrawerBackdrop
@@ -278,7 +278,7 @@ fun AppNavigation(
 
 
     CompositionLocalProvider(
-        org.starfall.multigateway.home.chat.ui.markdown.LocalCodeRenderingPreferences provides appPrefs,
+        org.starfall.multigateway.shared.ui.code.LocalCodeRenderingPreferences provides appPrefs,
         LocalChatAttachmentSelection provides chatAttachments,
         LocalToolControls provides ToolControls(
             servers = mcpServers,
@@ -428,6 +428,7 @@ fun AppNavigation(
                         onSetReasoningEffort = viewModel::setConversationReasoningEffort,
                         onSetThinkingPassback = configurationViewModel::setThinkingPassback,
                         onSetModelReasoningEffort = configurationViewModel::setModelReasoningEffort,
+                        onSetModelTools = configurationViewModel::setModelTools,
                         onEditModel = { providerId, modelId ->
                             navController.navigate(
                                 "providers/edit/${Uri.encode(providerId)}?modelId=${

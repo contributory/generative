@@ -22,7 +22,31 @@ data class DiscoveredModel(
             supportsVision = supported("vision") ?: true,
             supportsThinking = thinking ?: true,
             supportsToolCalls = supported("tool_calls") ?: true,
+            modelTools = modelToolsFromMetadata(metadata),
             supportStream = supported("streaming"),
             modelJson = metadata)
     }
+}
+
+
+internal fun modelToolsFromMetadata(metadata: JsonObject): List<String> {
+    val value = metadata["model_tools"]
+        ?: (metadata["metadata"] as? JsonObject)?.get("model_tools")
+        ?: (metadata["capabilities"] as? JsonObject)?.get("model_tools")
+    return (value as? JsonArray).orEmpty().mapNotNull { entry ->
+        when (entry) {
+            is JsonPrimitive -> entry.contentOrNull?.takeIf { it.isNotBlank() }?.let(::canonicalModelToolName)
+            is JsonObject -> ((entry["name"] ?: entry["type"] ?: entry["id"]) as? JsonPrimitive)
+                ?.contentOrNull?.takeIf { it.isNotBlank() }?.let(::canonicalModelToolName)
+            else -> null
+        }
+    }.distinct()
+}
+
+private fun canonicalModelToolName(name: String): String = when {
+    name.startsWith("web_search_") -> "web_search"
+    name.startsWith("web_fetch_") -> "web_fetch"
+    name.startsWith("code_execution_") -> "code_execution"
+    name == "google_search_retrieval" -> "google_search"
+    else -> name
 }

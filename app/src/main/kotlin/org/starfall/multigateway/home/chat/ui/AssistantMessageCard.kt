@@ -1,6 +1,7 @@
 package org.starfall.multigateway.home.chat.ui
 
 
+import org.starfall.multigateway.shared.ui.text.GatedSelectionContainer
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -40,7 +41,7 @@ import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import org.starfall.multigateway.shared.ui.media.mediaMimeType
 import org.starfall.multigateway.home.chat.ui.tool.ToolActivityCards
-import org.starfall.multigateway.home.chat.ui.markdown.LocalCodeRenderingPreferences
+import org.starfall.multigateway.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.multigateway.home.chat.ui.markdown.MarkdownRenderer
 import org.starfall.multigateway.home.chat.ui.markdown.StreamingMarkdownRenderer
 import org.starfall.multigateway.home.shared.ui.LocalToolSheetState

@@ -30,7 +30,7 @@ internal class GeminiAdapter(private val sdk: OfficialProviderSdk) : ModelApiAda
 
     override fun stream(request: ModelApiRequest): Flow<GenerationEvent> = streamGoogle(
         request.provider, request.modelName, request.messages, request.systemPrompt,
-        request.temperature, request.topP, request.maxTokens, request.topK, request.sendThinkingContent
+        request.temperature, request.topP, request.maxTokens, request.topK, request.sendThinkingContent, request.enabledModelTools
     )
 
     private fun streamGoogle(
@@ -42,7 +42,8 @@ internal class GeminiAdapter(private val sdk: OfficialProviderSdk) : ModelApiAda
         topP: Double?,
         maxTokens: Int,
         topK: Int? = null,
-        sendThinkingContent: Boolean = false
+        sendThinkingContent: Boolean = false,
+        enabledModelTools: List<String> = emptyList()
     ): Flow<GenerationEvent> = flow {
         sdk.google(provider).use { client ->
             val contents = mutableListOf<Content>()
@@ -53,6 +54,8 @@ internal class GeminiAdapter(private val sdk: OfficialProviderSdk) : ModelApiAda
                     .build()
             }
             val config = GenerateContentConfig.builder().maxOutputTokens(maxTokens)
+            val nativeTools = requestToolsForGemini(enabledModelTools)
+            if (nativeTools.isNotEmpty()) config.tools(nativeTools)
             provider.config.modelConfigs[modelName]?.let { modelConfig ->
                 if (modelConfig.reasoningEffortDisabled) {
                     config.thinkingConfig(com.google.genai.types.ThinkingConfig.builder().thinkingBudget(0).includeThoughts(false).build())
@@ -80,3 +83,19 @@ internal class GeminiAdapter(private val sdk: OfficialProviderSdk) : ModelApiAda
         }
     }.flowOn(Dispatchers.IO)
 }
+
+
+private fun requestToolsForGemini(enabled: List<String>): List<com.google.genai.types.Tool> =
+    enabled.distinct().mapNotNull { tool ->
+        when (tool) {
+            "google_search" -> com.google.genai.types.Tool.builder()
+                .googleSearch(com.google.genai.types.GoogleSearch.builder().build()).build()
+            "google_maps" -> com.google.genai.types.Tool.builder()
+                .googleMaps(com.google.genai.types.GoogleMaps.builder().build()).build()
+            "url_context" -> com.google.genai.types.Tool.builder()
+                .urlContext(com.google.genai.types.UrlContext.builder().build()).build()
+            "code_execution" -> com.google.genai.types.Tool.builder()
+                .codeExecution(com.google.genai.types.ToolCodeExecution.builder().build()).build()
+            else -> null
+        }
+    }

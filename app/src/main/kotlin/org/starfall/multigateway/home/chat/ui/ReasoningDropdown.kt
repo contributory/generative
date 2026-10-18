@@ -29,7 +29,7 @@ import org.starfall.multigateway.R
 import org.starfall.multigateway.shared.ui.icons.FluentIcon
 import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.home.chat.ui.tool.ToolActivityCards
-import org.starfall.multigateway.home.chat.ui.markdown.LocalCodeRenderingPreferences
+import org.starfall.multigateway.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.multigateway.home.chat.ui.markdown.toComposeFontFamily
 
 @Composable

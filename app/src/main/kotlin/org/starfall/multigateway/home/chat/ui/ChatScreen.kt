@@ -68,7 +68,7 @@ import org.starfall.multigateway.home.chat.logic.input.ChatInputEditDraft
 import org.starfall.multigateway.home.chat.logic.input.DirectMediaRequest
 import org.starfall.multigateway.home.chat.logic.unansweredUserMessageIds
 import org.starfall.multigateway.home.chat.ui.input.UserInputArea
-import org.starfall.multigateway.home.chat.ui.markdown.LocalCodeRenderingPreferences
+import org.starfall.multigateway.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.multigateway.home.shared.ui.ConversationSummaryBottomSheet
 import org.starfall.multigateway.home.chat.model.ContextWindowStatus
 
@@ -112,6 +112,7 @@ fun ChatScreen(
     onSetReasoningEffort: (String?) -> Unit,
     onSetThinkingPassback: (providerId: String, modelId: String, mode: ThinkingPassback) -> Unit = { _, _, _ -> },
     onSetModelReasoningEffort: (providerId: String, modelId: String, effort: String?) -> Unit = { _, _, _ -> },
+    onSetModelTools: (providerId: String, modelId: String, tools: List<String>) -> Unit = { _, _, _ -> },
     onEditModel: (providerId: String, modelId: String) -> Unit = { _, _ -> },
     onEditProvider: (providerId: String) -> Unit = {},
     onStartConversationSummary: (ConversationSummaryRequest) -> Boolean,
@@ -691,7 +692,7 @@ fun ChatScreen(
             var summarySuggestionDismissed by remember(conversation?.id, conversation?.summary?.id) { mutableStateOf(false) }
             if (contextWindowStatus?.shouldSuggestSummary == true && !streamingHere && summaryProgress == null &&
                 !summarySuggestionDismissed &&
-                org.starfall.multigateway.home.chat.ui.markdown.LocalCodeRenderingPreferences.current.summarySuggestionEnabled) {
+                org.starfall.multigateway.shared.ui.code.LocalCodeRenderingPreferences.current.summarySuggestionEnabled) {
                 Surface(color = MaterialTheme.colorScheme.secondaryContainer,
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
@@ -759,6 +760,7 @@ fun ChatScreen(
                 onSetReasoningEffort = onSetReasoningEffort,
                 onSetThinkingPassback = onSetThinkingPassback,
                 onSetModelReasoningEffort = onSetModelReasoningEffort,
+                onSetModelTools = onSetModelTools,
                 onEditModel = onEditModel,
                 onEditProvider = onEditProvider,
                 onFetchOllamaModels = onFetchOllamaModels

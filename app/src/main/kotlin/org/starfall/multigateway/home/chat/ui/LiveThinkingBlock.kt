@@ -1,5 +1,7 @@
 package org.starfall.multigateway.home.chat.ui
 
+import org.starfall.multigateway.shared.ui.text.LocalStreamingTextFade
+import org.starfall.multigateway.shared.ui.text.rememberStreamingTextPresentation
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -27,7 +29,7 @@ import kotlinx.coroutines.flow.collectLatest
 import org.starfall.multigateway.R
 import org.starfall.multigateway.shared.ui.icons.FluentIcon
 import org.starfall.multigateway.shared.ui.icons.Icons
-import org.starfall.multigateway.home.chat.ui.markdown.LocalCodeRenderingPreferences
+import org.starfall.multigateway.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.multigateway.home.chat.ui.markdown.toComposeFontFamily
 
 /** Follow measured new lines; tokens that stay on the same line do not restart scrolling. */

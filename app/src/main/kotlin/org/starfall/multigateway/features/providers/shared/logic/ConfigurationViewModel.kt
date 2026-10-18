@@ -144,6 +144,20 @@ class ConfigurationViewModel(
         }
     }
 
+    fun setModelTools(providerId: String, modelId: String, enabledTools: List<String>) {
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            val provider = modelRepo.getProviderById(providerId) ?: return@launch
+            val existing = provider.config.modelConfigs[modelId] ?: ModelConfiguration()
+            val enabled = enabledTools.filter { it in existing.supportedModelTools }.distinct()
+            if (existing.enabledModelTools == enabled) return@launch
+            val modelIds = provider.config.modelIds
+            modelRepo.saveProvider(provider.copy(config = provider.config.copy(
+                modelIds = if (modelIds != null && modelId !in modelIds) modelIds + modelId else modelIds,
+                modelConfigs = provider.config.modelConfigs + (modelId to existing.copy(enabledModelTools = enabled))
+            )))
+        }
+    }
+
     fun setThinkingPassback(providerId: String, modelId: String, mode: ThinkingPassback) {
         viewModelScope.launch(LocalWriteErrors.handler) {
             val provider = modelRepo.getProviderById(providerId) ?: return@launch

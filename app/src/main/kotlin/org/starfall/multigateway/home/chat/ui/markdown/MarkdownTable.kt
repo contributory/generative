@@ -1,5 +1,6 @@
 package org.starfall.multigateway.home.chat.ui.markdown
 
+import org.starfall.multigateway.shared.ui.code.LocalCodeRenderingPreferences
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -28,7 +29,7 @@ import org.intellij.markdown.flavours.gfm.GFMElementTypes
 import org.intellij.markdown.flavours.gfm.GFMTokenTypes
 import org.starfall.multigateway.home.chat.logic.markdown.MathPiece
 import org.starfall.multigateway.home.chat.logic.markdown.MathSplitter
-import org.starfall.multigateway.home.chat.ui.GatedSelectionContainer
+import org.starfall.multigateway.shared.ui.text.GatedSelectionContainer
 
 private val MaxTableColumnWidth = 260.dp
 private val TableCellHorizontalPadding = 10.dp

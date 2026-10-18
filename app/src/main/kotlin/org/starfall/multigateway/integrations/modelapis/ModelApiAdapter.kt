@@ -16,7 +16,8 @@ internal data class ModelApiRequest(
     val topK: Int?,
     val maxTokens: Int,
     val reasoningEffort: String? = null,
-    val sendThinkingContent: Boolean = false
+    val sendThinkingContent: Boolean = false,
+    val enabledModelTools: List<String> = emptyList()
 )
 
 internal interface ModelApiAdapter {
