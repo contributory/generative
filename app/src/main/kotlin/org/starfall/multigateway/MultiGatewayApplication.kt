@@ -34,6 +34,7 @@ class MultiGatewayApplication : Application(), coil3.SingletonImageLoader.Factor
         // The chat render caches are a convenience only: give the RAM back as soon as Android asks.
         registerComponentCallbacks(object : ComponentCallbacks2 {
             override fun onTrimMemory(level: Int) = ChatRenderCaches.onTrimMemory(level)
+            @Suppress("OVERRIDE_DEPRECATION")
             override fun onLowMemory() = ChatRenderCaches.clearAll()
             override fun onConfigurationChanged(newConfig: Configuration) = Unit
         })

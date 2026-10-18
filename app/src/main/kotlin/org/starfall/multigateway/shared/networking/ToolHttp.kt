@@ -39,7 +39,7 @@ class ToolHttp(
         call.enqueue(object: Callback {
             override fun onFailure(call: Call, e: java.io.IOException) { if (cont.isActive) cont.resumeWithException(e) }
             override fun onResponse(call: Call, response: Response) {
-                cont.resume(response) { response.close() }
+                cont.resume(response) { _, value, _ -> value.close() }
             }
         })
     }
@@ -80,7 +80,7 @@ class ToolHttp(
         request.url.queryParameterNames.mapNotNull { request.url.queryParameter(it) }
     internal fun requireSuccess(response: Response) {
         if (response.isSuccessful) return
-        val body = response.body?.source()?.let { source ->
+        val body = response.body.source().let { source ->
             source.request(4096)
             source.buffer.clone().readUtf8(minOf(source.buffer.size, 4096L))
         }.orEmpty()
@@ -91,7 +91,7 @@ class ToolHttp(
         error("HTTP ${response.code}: $detail")
     }
     internal suspend fun readJson(response: Response): String {
-        val body = response.body ?: error("Empty response (HTTP ${response.code})")
+        val body = response.body
         return body.charStream().use { reader ->
             files?.sanitize(reader) ?: run {
                 val buffer = CharArray(8192); val out = StringBuilder()
@@ -122,7 +122,7 @@ class ToolHttp(
                     val mime = response.header("Content-Type").orEmpty().substringBefore(';').lowercase()
                     check(mime.isEmpty() || mime.startsWith("image/") || mime.startsWith("video/") || mime.startsWith("audio/") || mime == "application/octet-stream") { "Download did not return media content" }
                     val store = requireFiles()
-                    val name = store.save((response.body ?: error("Empty media response (HTTP ${response.code})")).byteStream(), mime)
+                    val name = store.save(response.body.byteStream(), mime)
                     if (name.endsWith(".bin")) { store.delete(listOf(name)); error("Downloaded content is not supported media") }
                     name
                 }

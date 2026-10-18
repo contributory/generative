@@ -20,7 +20,7 @@ internal fun resolveInputImage(reference: String, files: ToolFiles, maxBytes: Lo
     val header = ByteArray(12)
     val count = file.inputStream().use { it.read(header) }
     val mime = when {
-        count >= 8 && header.take(8) == listOf(0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a).map { it.toByte() } -> "image/png"
+        count >= 8 && header.take(8) == listOf(0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a) -> "image/png"
         count >= 3 && header[0] == 0xff.toByte() && header[1] == 0xd8.toByte() && header[2] == 0xff.toByte() -> "image/jpeg"
         count == 12 && String(header, 0, 4, Charsets.US_ASCII) == "RIFF" &&
             String(header, 8, 4, Charsets.US_ASCII) == "WEBP" -> "image/webp"

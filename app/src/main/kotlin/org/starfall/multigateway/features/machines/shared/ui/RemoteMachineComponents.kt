@@ -101,6 +101,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.withStyle
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -189,7 +190,7 @@ internal fun <T> RemoteDropdownField(
             singleLine = true,
             label = { Text(label) },
             trailingIcon = { TrailingIcon(expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor()
+            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
         )
         ExposedDropdownMenu(expanded, { expanded = false }) {
             options.forEach { (value, text) ->

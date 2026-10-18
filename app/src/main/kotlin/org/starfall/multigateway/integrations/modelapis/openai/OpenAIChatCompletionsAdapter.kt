@@ -44,7 +44,7 @@ internal class OpenAIChatCompletionsAdapter(private val sdk: OfficialProviderSdk
         sendThinkingContent: Boolean = false
     ): Flow<GenerationEvent> = flow {
         sdk.openAi(provider).useClient { client ->
-            val params = ChatCompletionCreateParams.builder().model(modelName).maxTokens(maxTokens.toLong())
+            val params = ChatCompletionCreateParams.builder().model(modelName).maxCompletionTokens(maxTokens.toLong())
             if (systemPrompt.isNotBlank()) params.addSystemMessage(systemPrompt)
             messages.forEach { message ->
                 if (message.role == ChatRole.MODEL) {

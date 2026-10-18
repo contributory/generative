@@ -57,7 +57,7 @@ internal suspend fun awaitLoopbackAuthorizationCode(
                 val body = if (success) "Authorization complete. Return to MultiGateway." else "Invalid authorization callback."
                 runCatching { it.getOutputStream().write("HTTP/1.1 ${if (success) "200 OK" else "400 Bad Request"}\r\nContent-Type: text/plain\r\nContent-Length: ${body.toByteArray().size}\r\nConnection: close\r\n\r\n$body".toByteArray()) }
                 if (valid && uri.getQueryParameter("error") != null) error("OAuth authorization was denied")
-                if (success) return@withContext code!!
+                if (success) return@withContext code
             }
         }
         error("Authorization timed out")

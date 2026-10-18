@@ -2,7 +2,9 @@
 
 package org.starfall.multigateway.features.machines.shared.ui
 
+import android.app.Activity
 import android.content.ClipData
+import android.content.ContextWrapper
 import android.content.ClipboardManager
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -14,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
@@ -437,12 +440,23 @@ internal class RemoteTerminalBridge(
         return scale
     }
 
+    private fun windowFor(view: android.view.View): android.view.Window? {
+        var current = view.context
+        while (true) {
+            if (current is Activity) return current.window
+            if (current !is ContextWrapper) return null
+            current = current.baseContext
+        }
+    }
+
     private fun focusAndShowKeyboard() {
         val terminalView = view ?: return
         terminalView.post {
             if (closed) return@post
             terminalView.requestFocus()
-            ViewCompat.getWindowInsetsController(terminalView)?.show(WindowInsetsCompat.Type.ime())
+            windowFor(terminalView)?.let { window ->
+                WindowCompat.getInsetsController(window, terminalView).show(WindowInsetsCompat.Type.ime())
+            }
             context.getSystemService(InputMethodManager::class.java)?.showSoftInput(terminalView, 0)
         }
     }
@@ -451,9 +465,13 @@ internal class RemoteTerminalBridge(
         val terminalView = view ?: return
         val visible = ViewCompat.getRootWindowInsets(terminalView)?.isVisible(WindowInsetsCompat.Type.ime()) == true
         if (visible) {
-            ViewCompat.getWindowInsetsController(terminalView)?.hide(WindowInsetsCompat.Type.ime())
-                ?: context.getSystemService(InputMethodManager::class.java)
+            val window = windowFor(terminalView)
+            if (window != null) {
+                WindowCompat.getInsetsController(window, terminalView).hide(WindowInsetsCompat.Type.ime())
+            } else {
+                context.getSystemService(InputMethodManager::class.java)
                     ?.hideSoftInputFromWindow(terminalView.windowToken, 0)
+            }
         } else {
             focusAndShowKeyboard()
         }

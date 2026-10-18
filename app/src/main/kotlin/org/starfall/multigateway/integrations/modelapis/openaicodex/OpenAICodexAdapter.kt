@@ -14,7 +14,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
-import io.ktor.utils.io.readUTF8Line
+import io.ktor.utils.io.readLine
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -245,7 +245,7 @@ internal class OpenAICodexAdapter(
         val eventData = StringBuilder()
         while (!channel.isClosedForRead) {
             currentCoroutineContext().ensureActive()
-            val line = channel.readUTF8Line() ?: break
+            val line = channel.readLine() ?: break
             if (line.startsWith("data:")) {
                 eventData.append(line.substringAfter("data:").trimStart()).append('\n')
             }

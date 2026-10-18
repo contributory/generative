@@ -266,7 +266,7 @@ class ChatViewModel(
         val provider = conversationProvider
             ?: providers.value.find { it.id == preferences.selectedProviderId }
         val modelId = if (conversationProvider != null) {
-            conversation?.modelId.orEmpty()
+            conversation.modelId
         } else {
             preferences.selectedModelId
         }
@@ -313,7 +313,7 @@ class ChatViewModel(
             }
         }
         val provider = conversationProvider ?: available.find { it.id == prefs.selectedProviderId }
-        val modelId = conversationProvider?.let { conversation?.modelId } ?: prefs.selectedModelId
+        val modelId = conversationProvider?.let { conversation.modelId } ?: prefs.selectedModelId
         val config = provider?.config?.modelConfigs?.get(modelId)
             ?: provider?.takeIf { modelId.isNotBlank() }?.let {
                 // Discovered/custom models may not have a persisted configuration yet. Keep the
@@ -843,7 +843,7 @@ class ChatViewModel(
             createdAt = now,
             updatedAt = now
         )).copy(
-            title = if (firstMessage) fallbackTitle else existing?.title ?: fallbackTitle,
+            title = if (firstMessage) fallbackTitle else existing.title,
             messages = (existing?.messages ?: emptyList()) + user +
                 if (canGenerate) listOf(assistant) else emptyList(),
             updatedAt = now,
@@ -900,7 +900,7 @@ class ChatViewModel(
             id = UUID.randomUUID().toString(), title = request.prompt.take(30),
             createdAt = now, updatedAt = now
         )).copy(
-            title = if (isFirstMessage) request.prompt.take(30) else existing?.title ?: request.prompt.take(30),
+            title = if (isFirstMessage) request.prompt.take(30) else existing.title,
             messages = existing?.messages.orEmpty() + user + assistant,
             updatedAt = now
         )

@@ -54,11 +54,13 @@ class TtsHelper(context: Context) {
             override fun onDone(utteranceId: String?) { handler.post {
                 if (utteranceId == lastUtteranceId && utteranceId != null) finishActive()
             } }
+            @Suppress("OVERRIDE_DEPRECATION")
             override fun onError(utteranceId: String?) { handler.post {
                 if (activePrefix?.let { utteranceId?.startsWith(it) } == true) {
                     notifyError(); tts?.stop(); finishActive()
                 }
             } }
+            @Suppress("OVERRIDE_DEPRECATION")
             override fun onStop(utteranceId: String?, interrupted: Boolean) { handler.post {
                 if (activePrefix?.let { utteranceId?.startsWith(it) } == true) finishActive()
             } }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import androidx.compose.material3.*
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,11 +80,11 @@ fun ModelEditorScreen(
 
     fun saveAndBack() {
         if (idError == null && contextWindow != null) {
-            modelMemory.remember(trimmedId, config.copy(contextWindowTokens = contextWindow!!))
+            modelMemory.remember(trimmedId, config.copy(contextWindowTokens = contextWindow))
             onSave(
                 trimmedId,
                 config.copy(
-                    contextWindowTokens = contextWindow!!,
+                    contextWindowTokens = contextWindow,
                     modelJson = modelJson,
                     displayName = config.displayName.trim(),
                     reasoningEffort = config.reasoningEffort?.trim()?.ifEmpty { null },
@@ -153,7 +154,7 @@ fun ModelEditorScreen(
                     readOnly = true,
                     label = { Text(stringResource(R.string.model_type)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).fillMaxWidth()
                 )
                 ExposedDropdownMenu(expanded = typeExpanded, onDismissRequest = { typeExpanded = false }) {
                     ModelType.entries.forEach { type ->

@@ -99,7 +99,7 @@ private fun ZoomableMediaImage(reference: String, mime: String) {
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     Box(Modifier.fillMaxWidth().windowHeightIn(minFraction = 0.22f, maxFraction = 0.6f).clipToBounds()
         .onSizeChanged { viewportSize = it }
-        .transformable(rememberTransformableState { zoom, pan, _ ->
+        .transformable(rememberTransformableState { _, zoom, pan, _ ->
             scale = (scale * zoom).coerceIn(1f, 5f)
             val boundX = viewportSize.width * (scale - 1f) / 2f
             val boundY = viewportSize.height * (scale - 1f) / 2f
@@ -215,7 +215,7 @@ private fun VideoPlayback(reference: String, inline: Boolean = false,
     // Inline playback must use the already bounded frame, not remeasure itself
     // from the full width: a portrait aspect ratio would push controls below it.
     Column(if (fullscreen || inline) Modifier.fillMaxSize() else Modifier.fillMaxWidth()) {
-    val zoomModifier = if (inline) Modifier else Modifier.transformable(rememberTransformableState { zoom, pan, _ ->
+    val zoomModifier = if (inline) Modifier else Modifier.transformable(rememberTransformableState { _, zoom, pan, _ ->
         scale = (scale * zoom).coerceIn(1f, 5f)
         val boundX = viewportSize.width * (scale - 1f) / 2f
         val boundY = viewportSize.height * (scale - 1f) / 2f

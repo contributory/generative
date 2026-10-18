@@ -3,7 +3,7 @@ package org.starfall.multigateway.shared.ui.sheets
 import android.view.View
 import android.view.Window
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.LocalOverscrollConfiguration
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -191,7 +191,7 @@ fun AppBottomSheet(
                     // Android stretch overscroll can consume edge deltas before the
                     // sheet receives them and retain a stretch between gestures.
                     // Give the list and sheet a single, continuous scroll handoff.
-                    CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
+                    CompositionLocalProvider(LocalOverscrollFactory provides null) {
                         Column(Modifier.fillMaxWidth().nestedScroll(scrollBoundary), content = content)
                     }
                 }
@@ -227,6 +227,8 @@ private data class ResizeDrag(
 /** Plain holder written while drawing; deliberately not snapshot state, so it never triggers redraws. */
 private class SettledBrush { var brush: Brush? = null }
 
+// Dialog navigation-bar color/divider setters have no direct replacement on older Android versions.
+@Suppress("DEPRECATION")
 @Composable
 private fun ConfigureBottomSheetWindow(navigationBarColor: Color) {
     var view: View? = LocalView.current

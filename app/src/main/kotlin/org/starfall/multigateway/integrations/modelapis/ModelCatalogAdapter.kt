@@ -58,7 +58,7 @@ internal class ModelCatalogAdapter(private val httpClient: HttpClient, private v
                     body["last_id"]?.jsonPrimitive?.contentOrNull
                 else -> null
             }?.takeIf { it.isNotBlank() }
-            check(cursor == null || seenCursors.add(cursor!!)) { "The models endpoint repeated a page." }
+            cursor?.let { check(seenCursors.add(it)) { "The models endpoint repeated a page." } }
         } while (cursor != null)
         return models.values.toList()
     }

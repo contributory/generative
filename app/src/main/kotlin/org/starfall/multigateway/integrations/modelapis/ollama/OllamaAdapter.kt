@@ -116,7 +116,7 @@ internal class OllamaAdapter(
             check(response.status.isSuccess()) { "Ollama request failed: HTTP ${response.status.value}" }
             val channel = response.bodyAsChannel()
             while (!channel.isClosedForRead) {
-                val line = channel.readUTF8Line() ?: break
+                val line = channel.readLine() ?: break
                 if (line.isBlank()) continue
                 val parsed = runCatching { json.parseToJsonElement(line).jsonObject }.getOrNull() ?: continue
                 parsed["message"]?.jsonObject?.get("content")?.jsonPrimitive?.contentOrNull

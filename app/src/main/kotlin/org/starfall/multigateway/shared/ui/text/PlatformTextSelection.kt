@@ -15,8 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.ClipboardManager
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.Clipboard
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.LocalView
@@ -29,12 +30,12 @@ import kotlin.math.roundToInt
 @Composable
 fun PlatformTextSelection(content: @Composable () -> Unit) {
     val view = LocalView.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
     val selectionClipboard = remember(clipboard) { SelectionClipboard(clipboard) }
     val toolbar = remember(view, selectionClipboard) { PlatformSelectionToolbar(view, selectionClipboard) }
     val focusManager = LocalFocusManager.current
     DisposableEffect(toolbar) { onDispose { toolbar.hide() } }
-    CompositionLocalProvider(LocalClipboardManager provides selectionClipboard, LocalTextToolbar provides toolbar) {
+    CompositionLocalProvider(LocalClipboard provides selectionClipboard, LocalTextToolbar provides toolbar) {
         Box(Modifier.fillMaxSize().pointerInput(toolbar, focusManager) {
             awaitEachGesture {
                 awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
@@ -52,12 +53,19 @@ fun PlatformTextSelection(content: @Composable () -> Unit) {
     }
 }
 
-internal class SelectionClipboard(private val delegate: ClipboardManager) : ClipboardManager by delegate {
+internal class SelectionClipboard(private val delegate: Clipboard) : Clipboard {
     private var capturing = false
     private var selection: AnnotatedString? = null
 
-    override fun setText(annotatedString: AnnotatedString) {
-        if (capturing) selection = annotatedString else delegate.setText(annotatedString)
+    override suspend fun getClipEntry(): ClipEntry? = delegate.getClipEntry()
+
+    override suspend fun setClipEntry(clipEntry: ClipEntry?) {
+        if (capturing) {
+            selection = clipEntry?.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text
+                ?.toString()?.let(::AnnotatedString)
+        } else {
+            delegate.setClipEntry(clipEntry)
+        }
     }
 
     fun selectedText(copy: () -> Unit): String? {

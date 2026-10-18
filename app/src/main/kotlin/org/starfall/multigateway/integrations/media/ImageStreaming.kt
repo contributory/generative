@@ -28,7 +28,7 @@ internal suspend fun ToolHttp.postMedia(url: String, body: RequestBody, provider
             try {
                 requireSuccess(response)
                 val store = requireFiles()
-                val reader = response.body?.charStream() ?: error("Empty image response")
+                val reader = response.body.charStream()
                 if (response.header("Content-Type").orEmpty().contains("text/event-stream", true)) {
                     readImageEvents(reader, store)
                 } else Json.parseToJsonElement(store.sanitize(reader)).jsonObject

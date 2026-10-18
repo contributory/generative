@@ -100,7 +100,7 @@ fun SystemToolsScreen(
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-        TabRow(selectedTabIndex = pager.currentPage) {
+        PrimaryTabRow(selectedTabIndex = pager.currentPage) {
             Tab(
                 selected = pager.currentPage == 0,
                 onClick = { coroutineScope.launch { pager.animateScrollToPage(0) } },

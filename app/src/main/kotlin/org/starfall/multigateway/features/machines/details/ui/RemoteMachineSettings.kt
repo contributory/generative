@@ -101,6 +101,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.withStyle
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -513,7 +514,7 @@ internal fun OAuthClientDialog(
                         onValueChange = {}, readOnly = true,
                         label = { Text(stringResource(R.string.remote_machine_oauth_client_type)) },
                         trailingIcon = { TrailingIcon(typeMenuExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                        modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
                     )
                     ExposedDropdownMenu(typeMenuExpanded, { typeMenuExpanded = false }) {
                         GoogleOAuthClientType.entries.forEach { option ->

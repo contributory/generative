@@ -133,15 +133,15 @@ private fun Modifier.folderOutline(first: Boolean, last: Boolean, color: Color):
         val path = Path().apply {
             if (first) {
                 moveTo(left, top + radius)
-                quadraticBezierTo(left, top, left + radius, top)
+                quadraticTo(left, top, left + radius, top)
                 lineTo(right - radius, top)
-                quadraticBezierTo(right, top, right, top + radius)
+                quadraticTo(right, top, right, top + radius)
             }
             if (last) {
                 moveTo(left, bottom - radius)
-                quadraticBezierTo(left, bottom, left + radius, bottom)
+                quadraticTo(left, bottom, left + radius, bottom)
                 lineTo(right - radius, bottom)
-                quadraticBezierTo(right, bottom, right, bottom - radius)
+                quadraticTo(right, bottom, right, bottom - radius)
             }
         }
         drawPath(path, color, style = Stroke(stroke))
@@ -467,7 +467,7 @@ fun ModelPickerBottomSheet(
             }
 
             if (folderTabs.size > 1) {
-                ScrollableTabRow(
+                PrimaryScrollableTabRow(
                     selectedTabIndex = selectedTabIndex,
                     edgePadding = 12.dp,
                     containerColor = Color.Transparent,

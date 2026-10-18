@@ -5,6 +5,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -48,7 +49,7 @@ internal fun CodeRenderingPreferences(
             value = labels.getValue(preferences.wordWrapMode), onValueChange = {}, readOnly = true,
             label = { Text(stringResource(R.string.word_wrap)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor().testTag("word-wrap-mode")
+            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("word-wrap-mode")
         )
         ExposedDropdownMenu(expanded, { expanded = false }) {
             labels.forEach { (mode, label) ->
@@ -90,7 +91,7 @@ internal fun CodeRenderingPreferences(
             label = { Text(stringResource(R.string.code_block_display)) },
             supportingText = { Text(stringResource(R.string.code_block_display_hint)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(codeBlockExpanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor().testTag("code-block-display-mode")
+            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("code-block-display-mode")
         )
         ExposedDropdownMenu(codeBlockExpanded, { codeBlockExpanded = false }) {
             codeBlockLabels.forEach { (mode, label) ->
@@ -188,7 +189,7 @@ internal fun TextAppearancePreferences(
             value = fontLabels.getValue(preferences.messageFontFamily), onValueChange = {}, readOnly = true,
             label = { Text(stringResource(R.string.font_family_label)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(fontExpanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor().testTag("message-font-family")
+            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("message-font-family")
         )
         ExposedDropdownMenu(fontExpanded, { fontExpanded = false }) {
             fontLabels.forEach { (family, label) ->

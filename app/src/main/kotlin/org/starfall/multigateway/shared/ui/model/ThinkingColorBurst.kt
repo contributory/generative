@@ -211,7 +211,7 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
             }
             override fun setAlpha(alpha: Int) = Unit
             override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) = Unit
-            @Suppress("DEPRECATION")
+            @Suppress("OVERRIDE_DEPRECATION")
             override fun getOpacity(): Int = android.graphics.PixelFormat.TRANSLUCENT
         }
     }

@@ -114,13 +114,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 val darkBars = MaterialTheme.colorScheme.background.luminance() < 0.5f
                 SideEffect {
-                    val transparent = android.graphics.Color.TRANSPARENT
-                    window.statusBarColor = transparent
-                    window.navigationBarColor = transparent
-                    if (android.os.Build.VERSION.SDK_INT >= 29) {
-                        window.isNavigationBarContrastEnforced = false
-                        window.isStatusBarContrastEnforced = false
-                    }
+                    // enableEdgeToEdge() configures transparent system bars without deprecated color setters.
                     WindowCompat.getInsetsController(window, window.decorView).apply {
                         isAppearanceLightStatusBars = !darkBars
                         isAppearanceLightNavigationBars = !darkBars

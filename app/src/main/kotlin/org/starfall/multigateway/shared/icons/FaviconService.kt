@@ -80,7 +80,7 @@ internal class FaviconService(private val context: Context, private val http: To
                     null
                 } else {
                     check(response.isSuccessful) { "HTTP ${response.code}" }
-                    val body = response.body ?: error("Empty response.")
+                    val body = response.body
                     val limit = if (html) 1024 * 1024 else 2 * 1024 * 1024
                     require(body.contentLength() <= limit) { "Response exceeds ${limit / 1024} KB." }
                     val bytes = body.byteStream().use { input ->

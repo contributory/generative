@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.semantics.Role
@@ -204,7 +205,7 @@ fun PreferencesSettingsView(
                             onValueChange = {}, readOnly = true,
                             label = { Text(stringResource(R.string.app_language)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                            modifier = Modifier.fillMaxWidth().menuAnchor().testTag("app-language")
+                            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("app-language")
                         )
                         ExposedDropdownMenu(expanded, { expanded = false }) {
                             AppLanguage.entries.forEach { language ->
@@ -234,7 +235,7 @@ fun PreferencesSettingsView(
                         onValueChange = {}, readOnly = true,
                         label = { Text(stringResource(R.string.screen_wakelock_title)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(wakelockExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                        modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
                     )
                     ExposedDropdownMenu(wakelockExpanded, { wakelockExpanded = false }) {
                         wakelockLabels.forEach { (mode, label) ->
@@ -275,7 +276,7 @@ fun PreferencesSettingsView(
                         onValueChange = {}, readOnly = true,
                         label = { Text(stringResource(R.string.tool_call_strategy)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(strategyExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor().testTag("tool-call-strategy")
+                        modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("tool-call-strategy")
                     )
                     ExposedDropdownMenu(strategyExpanded, { strategyExpanded = false }) {
                         strategyLabels.forEach { (strategy, label) ->
@@ -436,7 +437,7 @@ fun AppSettingsScreen(
     val pager = rememberPagerState(pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize()) {
-        TabRow(selectedTabIndex = pager.currentPage) {
+        PrimaryTabRow(selectedTabIndex = pager.currentPage) {
             Tab(
                 selected = pager.currentPage == 0,
                 onClick = { coroutineScope.launch { pager.animateScrollToPage(0) } },

@@ -27,7 +27,6 @@ internal fun generatedMediaReferences(response: JsonElement, baseUrl: String): L
                     references += GeneratedMediaReference(text, isRemoteUrl = true, useProviderAuth = sameOrigin)
                 }
             }
-            else -> Unit
         }
     }
     collect(response)

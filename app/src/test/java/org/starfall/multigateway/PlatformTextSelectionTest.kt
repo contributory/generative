@@ -1,13 +1,16 @@
 package org.starfall.multigateway
 
 import android.app.Activity
+import android.content.ClipData
 import android.content.Intent
 import android.view.*
 import android.widget.PopupMenu
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.Clipboard as ComposeClipboard
+import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.ui.text.AnnotatedString
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -21,10 +24,12 @@ import org.starfall.multigateway.shared.ui.text.SelectionClipboard
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class PlatformTextSelectionTest {
-    private class Clipboard : ClipboardManager {
+    private class Clipboard : ComposeClipboard {
         var content = AnnotatedString("Existing clipboard")
-        override fun getText() = content
-        override fun setText(annotatedString: AnnotatedString) { content = annotatedString }
+        override suspend fun getClipEntry() = ClipEntry(ClipData.newPlainText("text", content.text))
+        override suspend fun setClipEntry(clipEntry: ClipEntry?) {
+            content = AnnotatedString(clipEntry?.clipData?.getItemAt(0)?.text?.toString().orEmpty())
+        }
     }
 
     private class SelectionView(activity: Activity) : View(activity) {
@@ -63,7 +68,7 @@ class PlatformTextSelectionTest {
         val clipboard = Clipboard()
         val selection = SelectionClipboard(clipboard)
         val toolbar = PlatformSelectionToolbar(view, selection)
-        toolbar.showMenu(Rect(10f, 20f, 100f, 50f), { selection.setText(AnnotatedString("Selected text")) }, null, null, {})
+        toolbar.showMenu(Rect(10f, 20f, 100f, 50f), { runBlocking { selection.setClipEntry(ClipEntry(ClipData.newPlainText("text", "Selected text"))) } }, null, null, {})
         assertEquals(ActionMode.TYPE_FLOATING, view.requestedType)
         assertEquals(TextToolbarStatus.Shown, toolbar.status)
         assertNotNull(view.actionMode.menu.findItem(android.R.id.selectAll))
@@ -81,7 +86,7 @@ class PlatformTextSelectionTest {
         val selection = SelectionClipboard(clipboard)
         val toolbar = PlatformSelectionToolbar(view, selection)
         toolbar.showMenu(Rect.Zero, {
-            selection.setText(AnnotatedString("Only the selected words"))
+            runBlocking { selection.setClipEntry(ClipEntry(ClipData.newPlainText("text", "Only the selected words"))) }
             toolbar.hide()
         }, null, null, null)
         val share = (0 until view.actionMode.menu.size()).map { view.actionMode.menu.getItem(it) }

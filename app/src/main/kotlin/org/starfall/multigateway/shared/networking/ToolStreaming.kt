@@ -130,7 +130,7 @@ internal suspend fun ToolHttp.modelResponse(
                 check(calls.size <= 16 && googleParts.size <= 16) { "Too many tool calls" }
             }
 
-            val reader = (response.body ?: error("Empty provider stream (HTTP ${response.code})")).charStream().buffered()
+            val reader = response.body.charStream().buffered()
             val event = StringBuilder()
             while (true) {
                 currentCoroutineContext().ensureActive()

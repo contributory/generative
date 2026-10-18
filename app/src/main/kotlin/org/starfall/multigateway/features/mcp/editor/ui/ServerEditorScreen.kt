@@ -90,7 +90,7 @@ fun ServerEditorScreen(
             )
         }) { padding ->
             Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
-                TabRow(selectedTabIndex = selectedTab) {
+                PrimaryTabRow(selectedTabIndex = selectedTab) {
                     Tab(selectedTab == 0, { selectedTab = 0 }, text = { Text(stringResource(R.string.mcp_basic_settings), fontWeight = FontWeight.SemiBold) })
                     Tab(selectedTab == 1, { selectedTab = 1 }, text = { Text(stringResource(R.string.mcp_tools), fontWeight = FontWeight.SemiBold) })
                 }

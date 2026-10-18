@@ -33,7 +33,6 @@ internal fun prepareContentApiResult(result: JsonObject): PreparedContentApiResu
             }
             is JsonArray -> element.forEach(::collect)
             is JsonPrimitive -> embedded(element)?.let(::collect)
-            else -> Unit
         }
     }
     collect(result)
@@ -46,7 +45,6 @@ internal fun prepareContentApiResult(result: JsonObject): PreparedContentApiResu
             if (parsed != null) JsonPrimitive(redact(parsed).toString())
             else JsonPrimitive(replacements.fold(element.content) { text, url -> text.replace(url, "[media URL hidden by app]") })
         }
-        else -> element
     }
     return PreparedContentApiResult(redact(result).jsonObject, media.values.take(32))
 }

@@ -105,7 +105,7 @@ internal fun ToolDetailsBottomSheet(
             )
             Spacer(Modifier.height(10.dp))
 
-            TabRow(
+            PrimaryTabRow(
                 selectedTabIndex = argsTab,
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                 divider = {}
