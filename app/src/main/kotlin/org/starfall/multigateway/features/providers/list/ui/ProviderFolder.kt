@@ -112,6 +112,7 @@ internal fun ProviderFolderOverlay(
     draggingKey: String?,
     showExitHint: Boolean,
     visible: Boolean,
+    animateEnter: Boolean = true,
     onDismiss: () -> Unit,
     onExitFinished: () -> Unit,
     onEditGroup: () -> Unit,
@@ -129,7 +130,7 @@ internal fun ProviderFolderOverlay(
             surfaces.panelBounds = null
         }
     }
-    val visibility = remember { MutableTransitionState(false) }
+    val visibility = remember { MutableTransitionState(!animateEnter && visible) }
     LaunchedEffect(visible) { visibility.targetState = visible }
     LaunchedEffect(visibility.isIdle, visibility.currentState, visible) {
         if (!visible && visibility.isIdle && !visibility.currentState) onExitFinished()

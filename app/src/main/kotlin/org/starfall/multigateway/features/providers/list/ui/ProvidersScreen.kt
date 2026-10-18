@@ -70,6 +70,7 @@ fun ProvidersScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val screenTransitionActive = LocalScreenTransitionActive.current
     var deletingProviderId by remember { mutableStateOf<String?>(null) }
     var orderedProviders by remember { mutableStateOf(providers) }
     var rootItems by remember { mutableStateOf(providerRootItems(providers, providerGroups)) }
@@ -83,6 +84,12 @@ fun ProvidersScreen(
     var movingProvider by remember { mutableStateOf<ModelProvider?>(null) }
     // Preserve the opened folder when navigation temporarily disposes this screen for provider editing.
     var openGroupId by rememberSaveable { mutableStateOf<String?>(null) }
+    var skipNextFolderEnterAnimation by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(skipNextFolderEnterAnimation, screenTransitionActive) {
+        if (skipNextFolderEnterAnimation && !screenTransitionActive) {
+            skipNextFolderEnterAnimation = false
+        }
+    }
     // Keep the last opened folder composed until its reverse exit animation finishes.
     var renderedFolderGroup by remember { mutableStateOf<ProviderGroup?>(null) }
     var creatingGroup by remember { mutableStateOf(false) }
@@ -578,6 +585,7 @@ fun ProvidersScreen(
                             draggingKey = dragSession?.key,
                             showExitHint = dragSession?.fromFolderId != null,
                             visible = openGroupId == group.id && openGroup != null,
+                            animateEnter = !skipNextFolderEnterAnimation,
                             onDismiss = { openGroupId = null },
                             onExitFinished = {
                                 if ((openGroupId == null || openGroup == null) && renderedFolderGroup?.id == group.id) {
@@ -586,7 +594,10 @@ fun ProvidersScreen(
                             },
                             onEditGroup = { groupToRename = group },
                             onDeleteGroup = { deletingGroup = group; openGroupId = null },
-                            onEditProvider = { onOpenProviderEditor(it, false) },
+                            onEditProvider = {
+                                skipNextFolderEnterAnimation = true
+                                onOpenProviderEditor(it, false)
+                            },
                             onMoveProvider = { movingProvider = it },
                             onDeleteProvider = { deletingProviderId = it }
                         )
