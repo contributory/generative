@@ -68,8 +68,6 @@ internal fun ConversationItem(
         color = if (!outlineActive && (checked || active)) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent,
         border = if (outlineActive) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)) else null,
         modifier = modifier.fillMaxWidth()
-            // Blur what shows through behind this item so its text stays readable; the empty sheet is untouched.
-            .drawerBackdropBlur(backdrop, itemShape, MaterialTheme.colorScheme.surface.copy(alpha = DrawerContainerAlpha))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)) {
         Row(Modifier.padding(start = 10.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (selecting) Checkbox(checked, onCheckedChange = { onClick() }, modifier = Modifier.size(36.dp))

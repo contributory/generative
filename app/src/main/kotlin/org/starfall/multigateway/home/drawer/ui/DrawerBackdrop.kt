@@ -79,15 +79,15 @@ fun rememberDrawerBackdrop(drawerState: DrawerState, scrimColor: Color): DrawerB
 fun Modifier.recordDrawerBackdrop(backdrop: DrawerBackdrop, blurRadius: Dp = DrawerBackdropBlurRadius): Modifier = this
     .onGloballyPositioned { backdrop.contentOrigin = it.positionInWindow() }
     .drawWithContent {
-        if (backdrop.openFraction() <= 0f) {
+        if (backdrop.openFraction() <= 0f || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             drawContent()
             return@drawWithContent
         }
         backdrop.content.record { this@drawWithContent.drawContent() }
-        drawLayer(backdrop.content)
         val radius = blurRadius.toPx()
         backdrop.blurred.renderEffect = BlurEffect(radius, radius, TileMode.Clamp)
         backdrop.blurred.record { drawLayer(backdrop.content) }
+        drawLayer(backdrop.blurred)
     }
 
 /**
