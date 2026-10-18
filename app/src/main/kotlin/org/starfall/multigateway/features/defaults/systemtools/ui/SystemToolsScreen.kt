@@ -24,7 +24,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.starfall.multigateway.R
 import androidx.compose.ui.res.stringResource
-import org.starfall.multigateway.integrations.media.videoOptionFields
+import org.starfall.multigateway.shared.helpers.media.videoOptionFields
 import org.starfall.multigateway.shared.ui.layout.SettingsCard
 import org.starfall.multigateway.shared.model.DEFAULT_CHAT_SUMMARY_PROMPT
 import org.starfall.multigateway.shared.model.DEFAULT_TITLE_GENERATION_PROMPT

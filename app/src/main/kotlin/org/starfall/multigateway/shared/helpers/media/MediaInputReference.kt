@@ -1,4 +1,6 @@
-package org.starfall.multigateway.integrations.media
+package org.starfall.multigateway.shared.helpers.media
+
+import org.starfall.multigateway.shared.model.media.MediaInputImage
 
 import kotlinx.serialization.json.*
 import java.io.File
@@ -6,9 +8,6 @@ import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.networking.obj
 import org.starfall.multigateway.shared.networking.str
 import org.starfall.multigateway.shared.networking.text
-
-/** References supplied by the model never go through the Android attachment/path resolver. */
-internal data class MediaInputImage(val file: File, val mimeType: String)
 
 internal const val MAX_MEDIA_INPUT_BYTES = 20L * 1024 * 1024
 

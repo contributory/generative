@@ -23,7 +23,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.starfall.multigateway.R
 import androidx.compose.ui.res.stringResource
-import org.starfall.multigateway.integrations.media.videoOptionFields
+import org.starfall.multigateway.shared.helpers.media.videoOptionFields
 import org.starfall.multigateway.shared.ui.layout.SettingsCard
 import org.starfall.multigateway.shared.model.SystemToolConfig
 import org.starfall.multigateway.shared.model.language.ModelConfiguration

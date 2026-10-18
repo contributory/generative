@@ -129,9 +129,14 @@
 │   │   │   │   ├── 📄 MarkdownLibrary.kt
 │   │   │   │   └── 📄 MathSplitter.kt
 │   │   │   └── 📁 tool/
+│   │   │       ├── 📄 ContentApiMedia.kt
+│   │   │       ├── 📄 ContentApiMediaDownloader.kt
 │   │   │       ├── 📄 ToolAttachmentsViewModel.kt
 │   │   │       ├── 📄 ToolChatViewModel.kt
 │   │   │       └── 📄 ToolResultsViewModel.kt
+│   │   ├── 📁 model/
+│   │   │   ├── 📄 ContentApiMedia.kt
+│   │   │   └── 📄 ContextWindowStatus.kt
 │   │   └── 📁 ui/
 │   │       ├── 📄 AssistantMessageCard.kt
 │   │       ├── 📄 AttachmentPreview.kt
@@ -192,15 +197,12 @@
 │   │   ├── 📄 McpOAuthUrlUtils.kt
 │   │   └── 📄 McpService.kt
 │   ├── 📁 media/
-│   │   ├── 📄 AgnesMedia.kt
-│   │   ├── 📄 ContentApiMedia.kt
+│   │   ├── 📄 GeneratedMediaReference.kt
+│   │   ├── 📄 GeneratedMediaResponses.kt
 │   │   ├── 📄 ImageEditRequests.kt
-│   │   ├── 📄 ImageGenerationOptions.kt
 │   │   ├── 📄 ImageStreaming.kt
-│   │   ├── 📄 MediaInputReference.kt
 │   │   ├── 📄 SystemMediaTools.kt
 │   │   ├── 📄 VideoGeneration.kt
-│   │   ├── 📄 VideoGenerationOptions.kt
 │   │   └── 📄 VideoRequests.kt
 │   ├── 📁 modelapis/
 │   │   ├── 📄 AiService.kt
@@ -271,6 +273,12 @@
     │   ├── 📄 AttachmentResolver.kt
     │   ├── 📄 CrashReports.kt
     │   └── 📄 ToolFiles.kt
+    ├── 📁 helpers/
+    │   └── 📁 media/
+    │       ├── 📄 AgnesMedia.kt
+    │       ├── 📄 ImageGenerationOptions.kt
+    │       ├── 📄 MediaInputReference.kt
+    │       └── 📄 VideoGenerationOptions.kt
     ├── 📁 icons/
     │   ├── 📄 AppImages.kt
     │   ├── 📄 FaviconService.kt
@@ -320,6 +328,10 @@
     │   │   ├── 📄 ModelConfigurationReasoning.kt
     │   │   ├── 📄 ModelType.kt
     │   │   └── 📄 SendThinkingContent.kt
+    │   ├── 📁 media/
+    │   │   ├── 📄 ImageOptionField.kt
+    │   │   ├── 📄 MediaInputImage.kt
+    │   │   └── 📄 VideoApi.kt
     │   └── 📁 provider/
     │       ├── 📄 ModelProvider.kt
     │       ├── 📄 ModelProviderExtensions.kt
@@ -424,7 +436,12 @@
 
 - Dependency direction: `shared` ← `integrations` ← `features` and `home` ← `navigation` ← `appwiring`. A layer may import only the layers to its left.
 - `shared/` and `integrations/` never import `features/` or `home/`.
-- `features/` and `home/` never import each other, and a feature never imports another feature. Code needed by both moves down to `shared/` (UI, models) or `integrations/` (non-UI services, API clients).
+- `features/` and `home/` never import each other, and a feature never imports another feature. Code needed by both moves down to `shared/` (UI, models, helpers) or `integrations/` (API clients).
+- `integrations/` holds code that calls an external API or service: HTTP clients, streaming/SSE readers, polling loops, OAuth flows, remote connections. A folder also keeps, next to its call files, the request builders, response parsers and small data types that only those files use.
+- Place code by who uses it, as close to its users as possible. Code used by one layer stays in that layer (a builder used only by `integrations/media/` lives in `integrations/media/`; code used only by the chat tool flow lives in `home/chat/logic/tool/`). Only code needed by at least two of `features/`, `home/` and `integrations/` moves down to `shared/`.
+- `shared/helpers/<topic>/` holds those multi-layer helpers: option validation and field descriptors, provider detection, tool schemas and argument parsers, input-file resolution. Their main job is preparing inputs or interpreting outputs, not I/O. Small, incidental I/O that is not worth its own integration (for example fetching a URL that a response returned, through the injected `ToolHttp` from `shared/networking`, or reading a file via `shared/files`) is tolerated in a helper as a stopgap. Once that I/O grows its own endpoint, authentication, streaming or polling protocol, or becomes the main purpose of the file, move that part into `integrations/`. Helpers never import `integrations/`.
+- Plain data types (data classes, enums) follow the same rule: they sit in `shared/model/<topic>/` only when at least two layers use them (for example `ImageOptionField`, `VideoApi`); otherwise they stay in the single layer's own `model/` or next to the code that uses them. Helpers import models; models never import helpers or integrations.
+- Rule of thumb: count the layers that import a file. One layer means it stays there; two or more means `shared/`. Inside `integrations/`, only the files that perform the call are clients; the builders and parsers beside them belong to that integration and are not helpers. A little incidental I/O does not turn a helper into an integration; I/O that is the file's purpose does.
 - Moving between screens goes through callbacks wired in `navigation/AppNavigation.kt`, never through a direct import of another screen.
 
 ### features/
@@ -464,7 +481,7 @@
 - Direction inside a feature: `ui` → `logic` → `model`. Never the other way.
 - Sub-folders of `ui/` and `logic/` mirror each other (`chat/ui/markdown/` ↔ `chat/logic/markdown/`).
 - If a `logic/` folder grows past about 10 files, split it into `viewmodel/` and `service/`.
-- `shared/ui/` holds reusable UI; the other `shared/` and `integrations/` folders are named by role (`storage`, `networking`, `modelapis`...) and have no `ui/`/`logic/` split.
+- `shared/ui/` holds reusable UI; the other `shared/` and `integrations/` folders are named by role (`storage`, `networking`, `helpers`, `modelapis`...) and have no `ui/`/`logic/` split.
 
 ## Main feature
 

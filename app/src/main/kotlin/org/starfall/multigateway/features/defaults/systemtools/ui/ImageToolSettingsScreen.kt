@@ -23,16 +23,16 @@ import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.multigateway.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import org.starfall.multigateway.shared.ui.text.SelectableOutlinedTextField
-import org.starfall.multigateway.integrations.media.isAgnesProvider
-import org.starfall.multigateway.integrations.media.ImageOptionField
-import org.starfall.multigateway.integrations.media.imageOptionFields
-import org.starfall.multigateway.integrations.media.validateImageOptions
-import org.starfall.multigateway.integrations.media.optionAt
-import org.starfall.multigateway.integrations.media.withOption
-import org.starfall.multigateway.integrations.media.VideoApi
-import org.starfall.multigateway.integrations.media.videoApi
-import org.starfall.multigateway.integrations.media.videoOptionFields
-import org.starfall.multigateway.integrations.media.validateVideoOptions
+import org.starfall.multigateway.shared.helpers.media.isAgnesProvider
+import org.starfall.multigateway.shared.model.media.ImageOptionField
+import org.starfall.multigateway.shared.helpers.media.imageOptionFields
+import org.starfall.multigateway.shared.helpers.media.validateImageOptions
+import org.starfall.multigateway.shared.helpers.media.optionAt
+import org.starfall.multigateway.shared.helpers.media.withOption
+import org.starfall.multigateway.shared.model.media.VideoApi
+import org.starfall.multigateway.shared.helpers.media.videoApi
+import org.starfall.multigateway.shared.helpers.media.videoOptionFields
+import org.starfall.multigateway.shared.helpers.media.validateVideoOptions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -1,11 +1,12 @@
-package org.starfall.multigateway.integrations.media
+package org.starfall.multigateway.shared.helpers.media
+
+import org.starfall.multigateway.shared.model.media.ImageOptionField
+import org.starfall.multigateway.shared.model.media.VideoApi
 
 import kotlinx.serialization.json.*
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.networking.text
-
-internal enum class VideoApi { OPENAI, AGNES }
 
 internal fun videoApi(provider: ModelProvider): VideoApi = when {
     isAgnesProvider(provider) -> VideoApi.AGNES

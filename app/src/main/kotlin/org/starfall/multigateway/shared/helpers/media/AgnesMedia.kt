@@ -1,4 +1,7 @@
-package org.starfall.multigateway.integrations.media
+package org.starfall.multigateway.shared.helpers.media
+
+import org.starfall.multigateway.shared.model.media.ImageOptionField
+import org.starfall.multigateway.shared.model.media.MediaInputImage
 
 import kotlinx.serialization.json.*
 import okhttp3.HttpUrl.Companion.toHttpUrl

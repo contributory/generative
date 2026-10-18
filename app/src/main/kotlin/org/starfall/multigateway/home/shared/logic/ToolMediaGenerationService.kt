@@ -9,9 +9,9 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.UUID
-import org.starfall.multigateway.integrations.media.MAX_MEDIA_INPUT_BYTES
+import org.starfall.multigateway.shared.helpers.media.MAX_MEDIA_INPUT_BYTES
 import org.starfall.multigateway.integrations.media.SystemMediaTools
-import org.starfall.multigateway.integrations.media.isAgnesProvider
+import org.starfall.multigateway.shared.helpers.media.isAgnesProvider
 import org.starfall.multigateway.integrations.modelapis.AiService
 import org.starfall.multigateway.shared.model.ToolActivity
 import org.starfall.multigateway.shared.model.generation.GenerationEvent

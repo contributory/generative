@@ -1,5 +1,8 @@
 package org.starfall.multigateway.integrations.media
 
+import org.starfall.multigateway.shared.model.media.VideoApi
+import org.starfall.multigateway.shared.model.media.MediaInputImage
+import org.starfall.multigateway.shared.helpers.media.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.*
@@ -10,6 +13,7 @@ import org.starfall.multigateway.shared.networking.obj
 import org.starfall.multigateway.shared.networking.providerBase
 import org.starfall.multigateway.shared.networking.str
 import org.starfall.multigateway.shared.networking.text
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class VideoGeneration(
     private val http: ToolHttp,
@@ -34,20 +38,19 @@ internal class VideoGeneration(
                 http.post("$base/videos", agnesVideoRequest(model, prompt, options, imageUrl), provider)
             }
         }
-        val id = if (api == VideoApi.AGNES) job.text("video_id") else job.text("id").ifBlank { job.text("task_id") }
-        require(id.isEmpty() || id.matches(Regex("[A-Za-z0-9_-]+"))) { "Invalid video job ID." }
-        fun terminal(state: JsonObject) = state.text("status").lowercase() in setOf("completed", "failed", "cancelled", "canceled")
-        if (!terminal(job)) {
+        val id = videoJobId(job, api)
+        validateVideoJobId(id)
+        if (!isTerminalVideoJob(job)) {
             if (id.isBlank() && api == VideoApi.OPENAI && job.text("status").isBlank()) return job
             require(id.isNotBlank()) { "Video API returned no ${if (api == VideoApi.AGNES) "video_id" else "job ID"} to retrieve the result." }
             val pollUrl = if (api == VideoApi.AGNES) {
                 "${base.removeSuffix("/v1")}/agnesapi".toHttpUrl().newBuilder()
                     .addQueryParameter("video_id", id).addQueryParameter("model_name", model).build().toString()
             } else "$base/videos/$id"
-            job = withTimeout(pollingTimeoutMillis) {
+            job = withTimeout(pollingTimeoutMillis.milliseconds) {
                 var state = job
-                while (!terminal(state)) {
-                    delay(pollIntervalMillis)
+                while (!isTerminalVideoJob(state)) {
+                    delay(pollIntervalMillis.milliseconds)
                     state = http.json(http.request(pollUrl, provider).get().build())
                 }
                 state
@@ -55,17 +58,14 @@ internal class VideoGeneration(
         }
         check(job.text("status").equals("completed", true)) { "Video generation failed or was cancelled." }
         if (api == VideoApi.AGNES) {
-            val url = resultUrl(job)
+            val url = videoResultUrl(job)
             check(url.isNotBlank()) { "Agnes completed the task without a video download URL." }
             return obj("url" to str(url))
         }
         // OpenAI-compatible gateways may provide a CDN URL for the common media collector.
-        if (resultUrl(job).isNotBlank()) return obj("url" to str(resultUrl(job)))
+        if (videoResultUrl(job).isNotBlank()) return obj("url" to str(videoResultUrl(job)))
         if (id.isBlank()) return job
         return obj("file" to str("tool-file:" + http.download("$base/videos/$id/content", provider)))
     }
 
-    private fun resultUrl(job: JsonObject): String = job.text("url").ifBlank {
-        job.text("video_url").ifBlank { (job["metadata"] as? JsonObject)?.text("url").orEmpty() }
-    }
 }

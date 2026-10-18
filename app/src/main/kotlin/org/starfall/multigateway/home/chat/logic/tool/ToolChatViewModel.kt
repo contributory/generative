@@ -1,5 +1,6 @@
 package org.starfall.multigateway.home.chat.logic.tool
 
+import org.starfall.multigateway.shared.model.media.ContentApiMediaResult
 import org.starfall.multigateway.home.shared.logic.summarizeToolResult
 import org.starfall.multigateway.home.shared.logic.ToolSummary
 
@@ -7,12 +8,11 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.*
 import java.util.UUID
-import org.starfall.multigateway.integrations.media.mediaInputImageArgument
-import org.starfall.multigateway.integrations.media.mediaInputImageUrlArgument
-import org.starfall.multigateway.integrations.media.mediaInputImagesArgument
-import org.starfall.multigateway.integrations.media.mediaToolSchema
-import org.starfall.multigateway.integrations.media.resolveContentApiMedia
-import org.starfall.multigateway.integrations.media.toolAttachmentReferences
+import org.starfall.multigateway.shared.helpers.media.mediaInputImageArgument
+import org.starfall.multigateway.shared.helpers.media.mediaInputImageUrlArgument
+import org.starfall.multigateway.shared.helpers.media.mediaInputImagesArgument
+import org.starfall.multigateway.shared.helpers.media.mediaToolSchema
+import org.starfall.multigateway.shared.helpers.media.toolAttachmentReferences
 import org.starfall.multigateway.integrations.mcp.McpService
 import org.starfall.multigateway.integrations.mcp.McpSession
 import org.starfall.multigateway.integrations.remote.RemoteMachineService

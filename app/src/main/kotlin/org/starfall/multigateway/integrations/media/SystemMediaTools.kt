@@ -1,5 +1,8 @@
 package org.starfall.multigateway.integrations.media
 
+import org.starfall.multigateway.shared.model.media.VideoApi
+import org.starfall.multigateway.shared.model.media.MediaInputImage
+import org.starfall.multigateway.shared.helpers.media.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import org.starfall.multigateway.shared.model.api.ModelApiType
@@ -52,38 +55,25 @@ class SystemMediaTools(private val http: ToolHttp) {
                 } else {
                     require(videoOptions.isEmpty() && inputImageUrl == null) { "Google video generation uses attached images and provider defaults." }
                     var job = http.post("$root/models/$model:predictLongRunning", googleVideoRequest(prompt, image), provider)
-                    val name = job.text("name")
-                    require(name.matches(Regex("[A-Za-z0-9_./-]+")) && !name.contains("..")) { "Invalid video operation" }
+                    val name = googleVideoOperationName(job)
                     job = withTimeout(15*60*1000L) {
                         var state = job
-                        while((state["done"] as? JsonPrimitive)?.booleanOrNull != true) {
-                            delay(3000); state = http.json(http.request("$root/$name",provider).get().build())
-                        }; state
+                        while (!googleVideoOperationDone(state)) {
+                            delay(3000)
+                            state = http.json(http.request("$root/$name", provider).get().build())
+                        }
+                        state
                     }
-                    check(job["error"] == null) { "Video generation failed" }
+                    validateGoogleVideoOperation(job)
                     job
                 }
             }
             else -> error("This provider has no supported image/video generation API. Use an OpenAI-compatible or Google provider.")
         }
-        val names = mutableListOf<String>()
-        suspend fun collect(value: JsonElement, key: String = "") {
-            when(value) {
-                is JsonObject -> value.forEach { (k,v) -> collect(v,k) }
-                is JsonArray -> value.forEach { collect(it,key) }
-                is JsonPrimitive -> {
-                    val s = value.contentOrNull.orEmpty()
-                    if(s.startsWith("tool-file:")) names += s.removePrefix("tool-file:")
-                    else if(key in listOf("url","uri") && s.startsWith("http")) {
-                        check(names.size < 10) { "Too many media files in response" }
-                        val sameOrigin = runCatching { java.net.URI(s).let { target -> java.net.URI(base).let { origin -> target.scheme == origin.scheme && target.host == origin.host && target.port == origin.port } } }.getOrDefault(false)
-                        names += http.download(s, if(sameOrigin) provider else null)
-                    }
-                }
-                else -> Unit
-            }
+        val names = generatedMediaReferences(response, base).map { reference ->
+            if (!reference.isRemoteUrl) reference.value
+            else http.download(reference.value, if (reference.useProviderAuth) provider else null)
         }
-        collect(response)
         check(names.isNotEmpty()) { "Provider returned no supported media. Check the selected model and endpoint." }
         obj("files" to JsonArray(names.distinct().map { str("tool-file:$it") }), "message" to str("Media saved and displayed to the user. Reuse these tool-file: URIs directly as inputs to compatible tools; send_file is not required."))
     }

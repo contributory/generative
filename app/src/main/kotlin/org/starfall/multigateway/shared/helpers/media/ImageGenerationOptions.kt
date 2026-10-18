@@ -1,4 +1,6 @@
-package org.starfall.multigateway.integrations.media
+package org.starfall.multigateway.shared.helpers.media
+
+import org.starfall.multigateway.shared.model.media.ImageOptionField
 
 import kotlinx.serialization.json.*
 import org.starfall.multigateway.shared.model.api.ModelApiType
@@ -6,11 +8,6 @@ import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.networking.obj
 import org.starfall.multigateway.shared.networking.str
 import org.starfall.multigateway.shared.networking.text
-
-data class ImageOptionField(
-    val path: String, val label: String, val kind: String = "string",
-    val choices: List<String> = emptyList(), val min: Double? = null, val max: Double? = null
-)
 
 fun imageOptionFields(provider: ModelProvider, model: String): List<ImageOptionField> =
     if (isAgnesProvider(provider)) agnesImageOptionFields() else imageOptionFields(provider.type, model)

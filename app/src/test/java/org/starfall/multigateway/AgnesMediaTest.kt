@@ -10,6 +10,8 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.integrations.media.*
+import org.starfall.multigateway.shared.helpers.media.*
+import org.starfall.multigateway.shared.model.media.*
 import org.starfall.multigateway.shared.files.*
 import org.starfall.multigateway.shared.networking.*
 import org.starfall.multigateway.shared.storage.preferences.*
