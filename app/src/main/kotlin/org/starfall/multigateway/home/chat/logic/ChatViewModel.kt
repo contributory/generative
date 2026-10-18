@@ -391,11 +391,18 @@ class ChatViewModel(
             val preferences = prefsRepo.appPreferencesFlow.first()
             if (!preferences.continueLastConversation || _currentConversation.value != null) return@launch
 
-            val lastConversation = conversationRepo.allConversations.first()
-                .asSequence()
-                .filter { it.messages.isNotEmpty() }
-                .maxWithOrNull(compareBy<Conversation> { it.updatedAt }.thenBy { it.createdAt })
-                ?: return@launch
+            val storedId = preferences.lastActiveConversationId
+            // An explicitly empty ID means the previous session was on a blank New Chat.
+            // A missing ID is a legacy install, so preserve the old latest-history fallback once.
+            if (storedId == "") return@launch
+            val allConversations = conversationRepo.allConversations.first()
+            val lastConversation = if (storedId != null) {
+                allConversations.firstOrNull { it.id == storedId && it.messages.isNotEmpty() }
+            } else {
+                allConversations.asSequence()
+                    .filter { it.messages.isNotEmpty() }
+                    .maxWithOrNull(compareBy<Conversation> { it.updatedAt }.thenBy { it.createdAt })
+            } ?: return@launch
 
             // Do not replace a selection made while Room was loading.
             if (_currentConversation.value == null &&
@@ -493,6 +500,9 @@ class ChatViewModel(
         val selected = existingGeneration(conversation.id)?.snapshot ?: conversation
         if (selected.id != _currentConversation.value?.id) toolChat.disconnectRemoteMachines()
         _currentConversation.value = selected
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            prefsRepo.setLastActiveConversationId(selected.id)
+        }
         drainQueuedMessages()
         if (!appPreferences.value.persistSelectedModel) return
         conversationModelProvider(selected)?.let { provider ->
@@ -511,6 +521,10 @@ class ChatViewModel(
             createdAt = now,
             updatedAt = now
         )
+        // Do not restore a previous history chat if this blank draft is still active at shutdown.
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            prefsRepo.setLastActiveConversationId(null)
+        }
     }
 
     fun deleteConversation(id: String) = deleteConversations(setOf(id))
@@ -523,6 +537,9 @@ class ChatViewModel(
         if (previous != null) {
             _currentConversation.value = null
             _queuedMessages.update { queued -> queued - targets }
+            viewModelScope.launch(LocalWriteErrors.handler) {
+                prefsRepo.setLastActiveConversationId(null)
+            }
         }
         writeConversation(serialize = true) {
             var deleted = false
@@ -570,6 +587,9 @@ class ChatViewModel(
         deletingAllConversations.value = true
         _currentConversation.value = null
         _queuedMessages.value = emptyMap()
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            prefsRepo.setLastActiveConversationId(null)
+        }
         writeConversation(serialize = true) {
             var deleted = false
             try {
@@ -852,6 +872,9 @@ class ChatViewModel(
             profileId = null
         )
         _currentConversation.value = conv
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            prefsRepo.setLastActiveConversationId(conv.id)
+        }
 
         if (!canGenerate) {
             writeConversation { conversationRepo.saveConversation(conv) }
@@ -909,6 +932,9 @@ class ChatViewModel(
             it.providerId == provider.id && it.modelId == request.modelId
         }
         _currentConversation.value = conversation
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            prefsRepo.setLastActiveConversationId(conversation.id)
+        }
         return generationFor(conversation.id).startEvents(conversation, assistant.id,
             toolChat.generateMedia(provider, request.modelId, request.kind, request.prompt,
                 config?.imageOptions ?: obj(), request.attachments,

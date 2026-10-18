@@ -152,7 +152,6 @@
     <string name="model_tool_name">Название инструмента</string>
     <string name="model_tools_editor_hint">Выберите инструменты по умолчанию, добавьте названия пользовательских инструментов и включайте или выключайте каждый инструмент.</string>
     <string name="model_tools_hint">Включите встроенные инструменты, поддерживаемые этой моделью. Они передаются напрямую в запрос к API модели.</string>
-    <string name="model_tools_title">Инструменты модели</string>
     <string name="model_tools_unsupported_provider">API этого провайдера пока не поддерживает встроенные инструменты модели в MultiGateway.</string>
     <string name="remote_machine_google_missing_resolution">Для авторизации Google требуется взаимодействие, но следующий шаг не был возвращён.</string>
     <string name="remote_machine_google_no_access_token">Google не вернул токен доступа.</string>

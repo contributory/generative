@@ -13,8 +13,6 @@
     <string name="remote_machine_binary_upload_warning_title">Cảnh báo bảo mật</string>
     <string name="remote_machine_binary_upload_warning_message">Các tệp thực thi không được cách ly khỏi ứng dụng này. Khi chạy, chúng có thể truy cập dữ liệu và tệp mà ứng dụng được phép sử dụng, đồng thời có thể dùng kết nối mạng của ứng dụng. Chỉ tải lên các tệp thực thi từ nguồn mà bạn tin tưởng.</string>
     <string name="remote_machine_binary_upload_confirm">Tải lên và tin tưởng</string>
-
-    <string name="model_tools_title">Công cụ của model</string>
     <string name="model_tools_hint">Bật các công cụ tích hợp mà model này hỗ trợ. Các công cụ được gửi trực tiếp trong yêu cầu API.</string>
     <string name="model_arguments">Arguments</string>
     <string name="model_tool_name">Tên tool</string>

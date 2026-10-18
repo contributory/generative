@@ -152,7 +152,6 @@
     <string name="model_tool_name">Toolname</string>
     <string name="model_tools_editor_hint">Wähle Standardtools aus, füge benutzerdefinierte Toolnamen hinzu und aktiviere oder deaktiviere einzelne Tools.</string>
     <string name="model_tools_hint">Aktiviere integrierte Tools, die dieses Modell unterstützt. Sie werden direkt mit der Modell-API-Anfrage gesendet.</string>
-    <string name="model_tools_title">Modelltools</string>
     <string name="model_tools_unsupported_provider">Diese Provider-API unterstützt integrierte Modelltools in MultiGateway derzeit nicht.</string>
     <string name="remote_machine_google_missing_resolution">Google erfordert eine Interaktion zur Autorisierung, hat aber keinen nächsten Schritt zurückgegeben.</string>
     <string name="remote_machine_google_no_access_token">Google hat kein Zugriffstoken zurückgegeben.</string>

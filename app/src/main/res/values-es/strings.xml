@@ -152,7 +152,6 @@
     <string name="model_tool_name">Nombre de la herramienta</string>
     <string name="model_tools_editor_hint">Elige las herramientas predeterminadas, añade nombres de herramientas personalizadas y activa o desactiva cada una.</string>
     <string name="model_tools_hint">Activa las herramientas integradas compatibles con este modelo. Se envían directamente en la solicitud a la API del modelo.</string>
-    <string name="model_tools_title">Herramientas del modelo</string>
     <string name="model_tools_unsupported_provider">La API de este proveedor aún no admite herramientas integradas del modelo en MultiGateway.</string>
     <string name="remote_machine_google_missing_resolution">Google requiere interacción para autorizar, pero no devolvió el siguiente paso.</string>
     <string name="remote_machine_google_no_access_token">Google no devolvió un token de acceso.</string>

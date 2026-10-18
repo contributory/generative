@@ -146,11 +146,13 @@ fun ModelToolsDialog(
                             },
                             modifier = Modifier.testTag("editor-model-tool-$index")
                         )
-                        IconButton(onClick = {
-                            enabledTools.value = enabledTools.value - tool
-                            toolNames.removeAt(index)
-                        }) {
-                            Text("×", style = MaterialTheme.typography.titleLarge)
+                        if (tool !in defaultTools) {
+                            IconButton(onClick = {
+                                enabledTools.value = enabledTools.value - tool
+                                toolNames.removeAt(index)
+                            }) {
+                                Text("×", style = MaterialTheme.typography.titleLarge)
+                            }
                         }
                     }
                 }

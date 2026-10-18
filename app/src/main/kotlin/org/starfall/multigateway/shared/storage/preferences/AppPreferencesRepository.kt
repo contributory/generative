@@ -77,6 +77,8 @@ data class AppPreferences(
     val defaultSystemPrompt: String = "",
     val promptLibrary: org.starfall.multigateway.shared.model.PromptLibrary? = null,
     val continueLastConversation: Boolean = false,
+    /** Null means not recorded yet; an empty string explicitly means no chat should be restored. */
+    val lastActiveConversationId: String? = null,
     val persistSelectedModel: Boolean = true,
     val autoScroll: Boolean = false,
     val ttsReadCodeBlocks: Boolean = false,
@@ -142,6 +144,7 @@ class AppPreferencesRepository(private val context: Context) {
         val DEFAULT_SYSTEM_PROMPT = stringPreferencesKey("default_system_prompt")
         val PROMPT_LIBRARY = stringPreferencesKey("prompt_library")
         val CONTINUE_LAST_CONVERSATION = booleanPreferencesKey("continue_last_conversation")
+        val LAST_ACTIVE_CONVERSATION_ID = stringPreferencesKey("last_active_conversation_id")
         val PERSIST_SELECTED_MODEL = booleanPreferencesKey("persist_chat_selection")
         val AUTO_SCROLL = booleanPreferencesKey("auto_scroll")
         val TTS_READ_CODE_BLOCKS = booleanPreferencesKey("tts_read_code_blocks")
@@ -201,6 +204,7 @@ class AppPreferencesRepository(private val context: Context) {
                     runCatching { Json.decodeFromString<org.starfall.multigateway.shared.model.PromptLibrary>(it) }.getOrNull()
                 },
                 continueLastConversation = preferences[PreferenceKeys.CONTINUE_LAST_CONVERSATION] ?: false,
+                lastActiveConversationId = preferences[PreferenceKeys.LAST_ACTIVE_CONVERSATION_ID],
                 persistSelectedModel = preferences[PreferenceKeys.PERSIST_SELECTED_MODEL] ?: true,
                 autoScroll = preferences[PreferenceKeys.AUTO_SCROLL] ?: false,
                 ttsReadCodeBlocks = preferences[PreferenceKeys.TTS_READ_CODE_BLOCKS] ?: false,
@@ -339,6 +343,15 @@ class AppPreferencesRepository(private val context: Context) {
         state.mutate({ it.copy(continueLastConversation = enable) }) {
             context.dataStore.edit { preferences ->
                 preferences[PreferenceKeys.CONTINUE_LAST_CONVERSATION] = enable
+            }
+        }
+    }
+
+    suspend fun setLastActiveConversationId(conversationId: String?) {
+        val storedId = conversationId.orEmpty()
+        state.mutate({ it.copy(lastActiveConversationId = storedId) }) {
+            context.dataStore.edit { preferences ->
+                preferences[PreferenceKeys.LAST_ACTIVE_CONVERSATION_ID] = storedId
             }
         }
     }

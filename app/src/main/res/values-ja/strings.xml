@@ -152,7 +152,6 @@
     <string name="model_tool_name">ツール名</string>
     <string name="model_tools_editor_hint">既定のツールを選択し、カスタムツール名を追加して、各ツールのオン・オフを切り替えます。</string>
     <string name="model_tools_hint">このモデルが対応する組み込みツールを有効にします。ツールはモデル API リクエストに直接送信されます。</string>
-    <string name="model_tools_title">モデルツール</string>
     <string name="model_tools_unsupported_provider">このプロバイダー API は、MultiGateway の組み込みモデルツールにまだ対応していません。</string>
     <string name="remote_machine_google_missing_resolution">Google の認証には操作が必要ですが、次の処理情報が返されませんでした。</string>
     <string name="remote_machine_google_no_access_token">Google からアクセストークンが返されませんでした。</string>

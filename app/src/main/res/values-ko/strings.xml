@@ -152,7 +152,6 @@
     <string name="model_tool_name">도구 이름</string>
     <string name="model_tools_editor_hint">기본 도구를 선택하고 사용자 지정 도구 이름을 추가한 다음 각 도구를 켜거나 끄세요.</string>
     <string name="model_tools_hint">이 모델이 지원하는 기본 제공 도구를 활성화합니다. 도구는 모델 API 요청에 직접 포함됩니다.</string>
-    <string name="model_tools_title">모델 도구</string>
     <string name="model_tools_unsupported_provider">이 제공업체 API는 아직 MultiGateway의 기본 제공 모델 도구를 지원하지 않습니다.</string>
     <string name="remote_machine_google_missing_resolution">Google에서 인증을 위해 사용자 상호작용이 필요하지만 다음 단계 정보를 반환하지 않았습니다.</string>
     <string name="remote_machine_google_no_access_token">Google에서 액세스 토큰을 반환하지 않았습니다.</string>

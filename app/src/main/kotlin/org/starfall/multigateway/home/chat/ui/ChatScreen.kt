@@ -248,6 +248,14 @@ fun ChatScreen(
         }
     }
     val messageIndexOffset = if (isGenerating && !streamingHere) 1 else 0
+    // The jump-to-latest button is only needed when the newest message is outside the viewport.
+    // Keep this independent of followBottom, which controls scrolling behavior.
+    val latestMessageVisible by remember(listState, messages.size, messageIndexOffset) {
+        derivedStateOf {
+            val latestIndex = messages.lastIndex + messageIndexOffset
+            latestIndex >= 0 && listState.layoutInfo.visibleItemsInfo.any { it.index == latestIndex }
+        }
+    }
     suspend fun scrollToBottom(includeQueued: Boolean = true) {
         // Derive the target from the current data rather than layoutInfo: a message added in
         // this frame may not have been measured yet.
@@ -663,7 +671,7 @@ fun ChatScreen(
                     }
                 }
             }
-            if (messages.isNotEmpty() && !followBottom && !jumpingToBottom) {
+            if (messages.isNotEmpty() && !latestMessageVisible && !jumpingToBottom) {
                 FilledTonalIconButton(
                     onClick = {
                         // Resume following only after the animation finishes; setting it first

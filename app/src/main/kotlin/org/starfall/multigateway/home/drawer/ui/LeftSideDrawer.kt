@@ -188,7 +188,7 @@ fun LeftSideDrawer(
                     IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { FluentIcon(Icons.Outlined.Delete, "Delete selected chats", tint = MaterialTheme.colorScheme.error) }
                 }
             }
-            LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Bottom)) {
                 val folders = organization.folders.sortedByDescending { it.pinned }
                 if (folders.isNotEmpty()) item(key = "folders-label") { SidebarLabel("Folders") }
                 folders.forEach { folder ->

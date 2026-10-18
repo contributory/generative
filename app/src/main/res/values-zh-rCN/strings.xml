@@ -152,7 +152,6 @@
     <string name="model_tool_name">工具名称</string>
     <string name="model_tools_editor_hint">选择默认工具、添加自定义工具名称，并分别启用或停用各个工具。</string>
     <string name="model_tools_hint">启用此模型支持的内置工具。这些工具会直接随模型 API 请求发送。</string>
-    <string name="model_tools_title">模型工具</string>
     <string name="model_tools_unsupported_provider">此提供商的 API 暂不支持 MultiGateway 中的内置模型工具。</string>
     <string name="remote_machine_google_missing_resolution">Google 授权需要用户交互，但未返回后续处理步骤。</string>
     <string name="remote_machine_google_no_access_token">Google 未返回访问令牌。</string>
