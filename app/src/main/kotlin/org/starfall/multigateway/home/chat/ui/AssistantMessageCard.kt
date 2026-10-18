@@ -89,16 +89,28 @@ fun AssistantMessageCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        if (isStreaming && message.content.isBlank() && activeVersion.toolActivity.none { it.files.isNotEmpty() }) {
-            StreamingProcessingPreview(activeVersion)
-        } else {
-            CompletedAssistantContent(
-                version = activeVersion,
-                processingDurationMillis = processingDurationMillis.takeUnless { isStreaming },
-                animateStreamingContent = isStreaming,
-                selectedImageAttachments = selectedImageAttachments,
-                onToggleChatImage = onToggleChatImage
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = if (isStreaming && message.content.isBlank()) 220.dp else 0.dp)
+        ) {
+            if (isStreaming) {
+                CloudGenerationBackdrop(
+                    modifier = Modifier.matchParentSize(),
+                    revealProgress = (message.content.length / 360f).coerceIn(0f, 1f)
+                )
+            }
+            if (isStreaming && message.content.isBlank() && activeVersion.toolActivity.none { it.files.isNotEmpty() }) {
+                StreamingProcessingPreview(activeVersion)
+            } else {
+                CompletedAssistantContent(
+                    version = activeVersion,
+                    processingDurationMillis = processingDurationMillis.takeUnless { isStreaming },
+                    animateStreamingContent = isStreaming,
+                    selectedImageAttachments = selectedImageAttachments,
+                    onToggleChatImage = onToggleChatImage
+                )
+            }
         }
         activeVersion.generationError?.let { error ->
             GenerationErrorBlock(
@@ -116,25 +128,6 @@ fun AssistantMessageCard(
             AttachmentStrip(activeVersion.files, removable = false, modifier = Modifier.padding(top = 8.dp),
                 selectedImageAttachments = selectedImageAttachments, onToggleChatImage = onToggleChatImage,
                 inlinePreview = true)
-        }
-
-        if (isStreaming) {
-            Row(
-                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(14.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = androidx.compose.ui.res.stringResource(org.starfall.multigateway.R.string.generating),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
 
         if (!isStreaming && versionIndices.size > 1) {
@@ -493,10 +486,10 @@ private fun CompletedAssistantContent(
                 blocks.forEach { block ->
                     val offset = block.offset.coerceIn(cursor, content.length)
                     if (offset > cursor) {
-                        val textBefore = content.substring(cursor, offset)
+                        val textBefore = content.substring(cursor, offset).trimEnd()
                         if (textBefore.isNotBlank()) {
                             FormattedMarkdownMessage(content = textBefore)
-                            Spacer(Modifier.height(6.dp))
+                            Spacer(Modifier.height(4.dp))
                         }
                     }
 
@@ -509,13 +502,20 @@ private fun CompletedAssistantContent(
                                 )
                             }
                     }
-                    ProcessingDropdown(
-                        items = visibleProcessingItems,
-                        durationMillis = processingDurationMillis.takeIf { blocks.size == 1 },
-                        startNumber = nextItemNumber,
-                        modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
-                        previewCount = if (animateStreamingContent && block === blocks.last()) 2 else 0
-                    )
+                    key(block.offset, block.items.map { item ->
+                        when (item) {
+                            is ProcessingDropdownItem.Thinking -> "thinking:${item.reasoning.hashCode()}"
+                            is ProcessingDropdownItem.Tool -> "tool:${item.activity.id}"
+                        }
+                    }) {
+                        ProcessingDropdown(
+                            items = visibleProcessingItems,
+                            durationMillis = processingDurationMillis.takeIf { blocks.size == 1 },
+                            startNumber = nextItemNumber,
+                            modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
+                            previewCount = if (animateStreamingContent && block === blocks.last()) 2 else 0
+                        )
+                    }
                     val files = block.items.filterIsInstance<ProcessingDropdownItem.Tool>()
                         .flatMap { item ->
                             val activity = item.activity

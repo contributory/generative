@@ -1,6 +1,7 @@
 package org.starfall.multigateway.navigation
 
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -32,10 +33,7 @@ import kotlinx.coroutines.withContext
 import org.starfall.multigateway.R
 import org.starfall.multigateway.features.about.ui.AboutScreen
 import org.starfall.multigateway.features.appdata.logic.buildJsonExport
-import org.starfall.multigateway.features.appdata.logic.parseConversationsExport
-import org.starfall.multigateway.features.appdata.logic.parseMcpExport
-import org.starfall.multigateway.features.appdata.logic.parseProvidersExport
-import org.starfall.multigateway.features.appdata.logic.parseSpeechServicesExport
+import org.starfall.multigateway.features.appdata.logic.parseFullAppDataExport
 import org.starfall.multigateway.shared.model.JsonExportKind
 import org.starfall.multigateway.features.appdata.ui.AppDataScreen
 import org.starfall.multigateway.features.defaults.systemtools.ui.SystemToolsScreen
@@ -89,7 +87,7 @@ enum class AppDestination(val route: String) {
     PROVIDERS("providers"),
     MCP("mcp"),
     SPEECH("speech"),
-    SETTINGS("settings"),
+    FEATURES("features"),
     SYSTEM_TOOLS("system_tools"),
     STORAGE("storage"),
     REMOTE_MACHINES("remote_machines"),
@@ -168,12 +166,12 @@ fun AppNavigation(
     val importedProviderId by configurationViewModel.importedProviderId.collectAsStateWithLifecycle()
     val providerImportError by configurationViewModel.providerImportError.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var pendingExport by remember { mutableStateOf<Pair<JsonExportKind, String>?>(null) }
-    var pendingImportKind by remember { mutableStateOf<JsonExportKind?>(null) }
+    var pendingExport by remember { mutableStateOf<String?>(null) }
+    var pendingImport by remember { mutableStateOf(false) }
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
-        val payload = pendingExport?.second
+        val payload = pendingExport
         pendingExport = null
         if (uri == null || payload == null) return@rememberLauncherForActivityResult
         coroutineScope.launch(Dispatchers.IO) {
@@ -193,48 +191,45 @@ fun AppNavigation(
         }
     }
 
-    fun exportJson(kind: JsonExportKind) {
+    fun exportJson() {
         coroutineScope.launch {
             val payload = withContext(Dispatchers.Default) {
-                buildJsonExport(kind, providers, mcpServers, speechServices, conversations, providerGroups)
+                buildJsonExport(providers, mcpServers, speechServices, conversations, providerGroups)
             }
-            pendingExport = kind to payload
-            exportLauncher.launch(kind.fileName)
+            pendingExport = payload
+            exportLauncher.launch(JsonExportKind.FULL_BACKUP.fileName)
         }
     }
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
-        val kind = pendingImportKind
-        pendingImportKind = null
-        if (uri == null || kind == null) return@rememberLauncherForActivityResult
+        val shouldImport = pendingImport
+        pendingImport = false
+        if (uri == null || !shouldImport) return@rememberLauncherForActivityResult
         coroutineScope.launch {
             try {
                 val raw = withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
                         ?: error("Could not open the selected file.")
                 }
-                val count = when (kind) {
-                    JsonExportKind.PROVIDERS -> withContext(Dispatchers.Default) { parseProvidersExport(raw) }
-                        .also {
-                            withContext(Dispatchers.IO) {
-                                configurationViewModel.importProviders(it.providers, it.groups)
-                                if (it.speechServices.isNotEmpty()) {
-                                    configurationViewModel.importSpeechServices(it.speechServices)
-                                }
-                            }
-                        }.let { it.providers.size + it.speechServices.size }
-
-                    JsonExportKind.MCP_SERVERS -> withContext(Dispatchers.Default) { parseMcpExport(raw) }
-                        .also { withContext(Dispatchers.IO) { configurationViewModel.importMcpServers(it) } }.size
-
-                    JsonExportKind.SPEECH_SERVICES -> withContext(Dispatchers.Default) { parseSpeechServicesExport(raw) }
-                        .also { withContext(Dispatchers.IO) { configurationViewModel.importSpeechServices(it) } }.size
-
-                    JsonExportKind.CONVERSATIONS -> withContext(Dispatchers.Default) { parseConversationsExport(raw) }
-                        .also { withContext(Dispatchers.IO) { viewModel.importConversations(it) } }.size
+                val fileName = withContext(Dispatchers.IO) {
+                    context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                        ?.use { cursor ->
+                            if (cursor.moveToFirst()) cursor.getString(0) else null
+                        }
                 }
+                val backup = withContext(Dispatchers.Default) { parseFullAppDataExport(raw, fileName) }
+                withContext(Dispatchers.IO) {
+                    // Imports are additive/upserts: categories absent from legacy exports are untouched.
+                    backup.providers?.let { configurationViewModel.importProviders(it, backup.providerGroups) }
+                    backup.mcpServers?.let { configurationViewModel.importMcpServers(it) }
+                    backup.speechServices?.let { configurationViewModel.importSpeechServices(it) }
+                    backup.conversations?.let { viewModel.importConversations(it) }
+                }
+                val count = backup.providers.orEmpty().size + backup.providerGroups.orEmpty().size +
+                    backup.mcpServers.orEmpty().size + backup.speechServices.orEmpty().size +
+                    backup.conversations.orEmpty().size
                 Toast.makeText(context, "$count item(s) imported", Toast.LENGTH_SHORT).show()
             } catch (error: Exception) {
                 Toast.makeText(context, "Import failed: ${error.message.orEmpty()}", Toast.LENGTH_LONG).show()
@@ -242,8 +237,8 @@ fun AppNavigation(
         }
     }
 
-    fun importJson(kind: JsonExportKind) {
-        pendingImportKind = kind
+    fun importJson() {
+        pendingImport = true
         importLauncher.launch(arrayOf("application/json", "text/*"))
     }
     // The app preference is the default for new chats. Existing chats keep showing
@@ -337,7 +332,7 @@ fun AppNavigation(
                         viewModel.setDefaultSystemPrompt(prompt)
                     },
                     onNavigateToSettings = {
-                        navigate(AppDestination.SETTINGS)
+                        navigate(AppDestination.FEATURES)
                     },
                     onCloseDrawer = {
                         coroutineScope.launch { drawerState.close() }
@@ -398,7 +393,7 @@ fun AppNavigation(
                             startNewChat()
                         },
                         onOpenSettings = {
-                            navigate(AppDestination.SETTINGS)
+                            navigate(AppDestination.FEATURES)
                         },
                         onRegenerate = { id ->
                             viewModel.regenerateMessage(id)
@@ -575,7 +570,7 @@ fun AppNavigation(
                                     pendingNewProvider = ProviderEditorPage(provider, true)
                                     navController.navigate("providers/new")
                                 } else {
-                                    navController.navigate("providers/edit/${provider.id}")
+                                    navController.navigate("providers/edit/${Uri.encode(provider.id)}")
                                 }
                             },
                             onSaveGroup = configurationViewModel::saveProviderGroup,
@@ -724,7 +719,7 @@ fun AppNavigation(
                             }
                         }
                     }
-                    composable(AppDestination.SETTINGS.route) {
+                    composable(AppDestination.FEATURES.route) {
                         Scaffold { padding ->
                             FeaturesScreen(
                                 modifier = Modifier.padding(padding),
@@ -871,7 +866,7 @@ fun AppNavigation(
                     // Restore old saved menu routes into the unified settings destination.
                     composable(AppDestination.MENU.route) {
                         LaunchedEffect(Unit) {
-                            navController.navigate(AppDestination.SETTINGS.route) {
+                            navController.navigate(AppDestination.FEATURES.route) {
                                 popUpTo(AppDestination.MENU.route) { inclusive = true }
                                 launchSingleTop = true
                             }

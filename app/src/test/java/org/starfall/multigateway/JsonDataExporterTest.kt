@@ -2,99 +2,53 @@ package org.starfall.multigateway
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.int
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.multigateway.shared.model.auth.Authorization
-import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.features.appdata.logic.buildJsonExport
+import org.starfall.multigateway.features.appdata.logic.parseFullAppDataExport
 import org.starfall.multigateway.shared.model.Conversation
-import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.McpInfo
 import org.starfall.multigateway.shared.model.SpeechService
 import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderGroup
-import org.starfall.multigateway.shared.model.JsonExportKind
-import org.starfall.multigateway.features.appdata.logic.buildJsonExport
-import org.starfall.multigateway.features.appdata.logic.parseConversationsExport
-import org.starfall.multigateway.features.appdata.logic.parseMcpExport
-import org.starfall.multigateway.features.appdata.logic.parseProvidersExport
-import org.starfall.multigateway.features.appdata.logic.parseSpeechServicesExport
 
 class JsonDataExporterTest {
-    @Test fun exportsEachCollectionAsVersionedJsonWithItsType() {
-        val provider = ModelProvider(
-            id = "provider-1",
-            name = "Test provider",
-            type = ModelApiType.OPENAI,
-            auth = Authorization(AuthMethod.PLATFORM_DEFAULT, value = "api-key"),
-            baseUrl = "https://example.com"
-        )
-        val mcp = McpInfo(id = "mcp-1", name = "Test MCP", url = "https://example.com/mcp")
-        val speech = SpeechService(id = "speech-1", name = "Test speech", apiKey = "speech-key")
-        val chat = Conversation(id = "chat-1", title = "Test chat", createdAt = 1, updatedAt = 2)
+    @Test fun exportsAllCollectionsInOneVersionedBackup() {
+        val provider = ModelProvider("provider-1", "Test provider", ModelApiType.OPENAI, baseUrl = "https://example.com")
+        val mcp = McpInfo("mcp-1", "Test MCP", url = "https://example.com/mcp")
+        val speech = SpeechService("speech-1", "Test speech", apiKey = "speech-key")
+        val chat = Conversation("chat-1", "Test chat", createdAt = 1, updatedAt = 2)
+        val groups = listOf(ProviderGroup("group-1", "Work", 1))
 
-        val outputs = JsonExportKind.entries.map { kind ->
-            Json.parseToJsonElement(
-                buildJsonExport(kind, listOf(provider), listOf(mcp), listOf(speech), listOf(chat), listOf())
-            ).jsonObject
-        }
+        val json = Json.parseToJsonElement(buildJsonExport(listOf(provider), listOf(mcp), listOf(speech), listOf(chat), groups)).jsonObject
+        assertEquals(1, json.getValue("formatVersion").jsonPrimitive.int)
+        assertEquals("full_backup", json.getValue("type").jsonPrimitive.content)
+        assertTrue(json.getValue("providers").toString().contains("provider-1"))
+        assertTrue(json.getValue("mcpServers").toString().contains("mcp-1"))
+        assertTrue(json.getValue("speechServices").toString().contains("speech-1"))
+        assertTrue(json.getValue("conversations").toString().contains("chat-1"))
+        assertTrue(json.getValue("providerGroups").toString().contains("group-1"))
 
-        assertEquals(JsonExportKind.entries.size, outputs.size)
-        outputs.forEachIndexed { index, output ->
-            assertEquals(1, output.getValue("formatVersion").jsonPrimitive.int)
-            assertEquals(JsonExportKind.entries[index].name.lowercase(), output.getValue("type").jsonPrimitive.content)
-            assertTrue(output.getValue("items").toString().isNotBlank())
-        }
-        assertTrue(outputs[0].getValue("items").toString().contains("api-key"))
-        assertTrue(outputs[1].getValue("items").toString().contains("Test MCP"))
-        assertTrue(outputs[2].getValue("items").toString().contains("speech-key"))
-        assertTrue(outputs[3].getValue("items").toString().contains("Test chat"))
-    }
-
-    @Test fun exportedCollectionsCanBeParsedBackIntoTheirOriginalModels() {
-        val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI, baseUrl = "https://example.com", groupId = "g", sortOrder = 2)
-        val groups = listOf(ProviderGroup("g", "Work", 1, "folder.png"), ProviderGroup("empty", "Empty folder", 3))
-        val mcp = McpInfo("m", "MCP", url = "https://example.com/mcp")
-        val speech = SpeechService("s", "Speech")
-        val chat = Conversation("c", "Chat", createdAt = 10, updatedAt = 20)
-
-        val imported = parseProvidersExport(buildJsonExport(
-            JsonExportKind.PROVIDERS, listOf(provider), listOf(), listOf(), listOf(), groups
-        ))
-        assertEquals(provider, imported.providers.single())
-        assertEquals(groups, imported.groups)
-        assertEquals(mcp, parseMcpExport(buildJsonExport(
-            JsonExportKind.MCP_SERVERS, listOf(), listOf(mcp), listOf(), listOf()
-        )).single())
-        assertEquals(speech, parseSpeechServicesExport(buildJsonExport(
-            JsonExportKind.SPEECH_SERVICES, listOf(), listOf(), listOf(speech), listOf()
-        )).single())
-        assertEquals(chat, parseConversationsExport(buildJsonExport(
-            JsonExportKind.CONVERSATIONS, listOf(), listOf(), listOf(), listOf(chat)
-        )).single())
+        val restored = parseFullAppDataExport(json.toString())
+        assertEquals(provider, restored.providers?.single())
+        assertEquals(mcp, restored.mcpServers?.single())
+        assertEquals(speech, restored.speechServices?.single())
+        assertEquals(chat, restored.conversations?.single())
+        assertEquals(groups, restored.providerGroups)
     }
 
     @Test fun legacyProviderExportsCanBeReadWithoutGroupRecords() {
-        val imported = parseProvidersExport("""{
-            "formatVersion": 1,
-            "type": "providers",
-            "items": [{"id":"p","name":"Provider","type":"openai","baseUrl":"https://example.com","groupId":"g"}]
+        val imported = parseFullAppDataExport("""{
+            "formatVersion":1,"type":"providers",
+            "items":[{"id":"p","name":"Provider","type":"openai","baseUrl":"https://example.com","groupId":"g"}]
         }""")
-
-        assertEquals("g", imported.providers.single().groupId)
-        assertNull(imported.groups)
-        val current = parseProvidersExport(buildJsonExport(
-            JsonExportKind.PROVIDERS, emptyList(), emptyList(), emptyList(), emptyList()
-        ))
-        assertEquals(emptyList<ProviderGroup>(), current.groups)
-    }
-
-    @Test(expected = kotlinx.serialization.SerializationException::class)
-    fun invalidGroupRecordsFailParsingRatherThanSilentlyDroppingGroups() {
-        parseProvidersExport("""{"formatVersion":1,"type":"providers","items":[],"groups":[{"id":"g"}]}""")
+        assertEquals("p", imported.providers?.single()?.id)
+        assertNull(imported.providerGroups)
+        assertNull(imported.mcpServers)
     }
 }

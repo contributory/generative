@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.focus.FocusRequester
@@ -80,7 +81,8 @@ fun ProvidersScreen(
     var groupToRename by remember { mutableStateOf<ProviderGroup?>(null) }
     var deletingGroup by remember { mutableStateOf<ProviderGroup?>(null) }
     var movingProvider by remember { mutableStateOf<ModelProvider?>(null) }
-    var openGroupId by remember { mutableStateOf<String?>(null) }
+    // Preserve the opened folder when navigation temporarily disposes this screen for provider editing.
+    var openGroupId by rememberSaveable { mutableStateOf<String?>(null) }
     // Keep the last opened folder composed until its reverse exit animation finishes.
     var renderedFolderGroup by remember { mutableStateOf<ProviderGroup?>(null) }
     var creatingGroup by remember { mutableStateOf(false) }

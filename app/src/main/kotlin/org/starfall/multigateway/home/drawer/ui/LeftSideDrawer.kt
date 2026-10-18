@@ -15,6 +15,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
 import org.starfall.multigateway.R
 import java.util.UUID
 import org.starfall.multigateway.shared.model.ChatFolder
@@ -277,7 +279,11 @@ fun LeftSideDrawer(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Spacer(Modifier.width(4.dp))
                         IconButton(onClick = { promptDialog = true }, modifier = Modifier.size(40.dp)) { FluentIcon(Icons.Outlined.DocumentSparkle, "Prompts") }
-                        IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) { FluentIcon(Icons.Outlined.Settings, "Settings") }
+                        IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) { Image(
+                            painter = painterResource(R.drawable.multigateway_launcher_round),
+                            contentDescription = "Features",
+                            modifier = Modifier.size(36.dp).clip(CircleShape)
+                        ) }
                     }
                 }
                 Spacer(Modifier.width(8.dp))

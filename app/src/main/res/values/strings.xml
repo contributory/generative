@@ -459,7 +459,9 @@
     <string name="settings_clear_all_chat_history">Clear All Chat History</string>
     <string name="settings_reset_all_application_data">Reset All Application Data</string>
     <string name="settings_export_data">Export data</string>
-    <string name="settings_export_data_description">Save configuration or chat history as JSON files.</string>
+    <string name="settings_export_data_description">Back up or restore all providers, groups, MCP servers, speech services, and conversations using one JSON file.</string>
+    <string name="settings_export_all_data_json">Export All Data (JSON)</string>
+    <string name="settings_import_all_data_json">Import All Data (JSON)</string>
     <string name="settings_export_providers_json">Export Providers JSON</string>
     <string name="settings_export_mcp_json">Export MCP JSON</string>
     <string name="settings_export_speech_services_json">Export Speech Services JSON</string>

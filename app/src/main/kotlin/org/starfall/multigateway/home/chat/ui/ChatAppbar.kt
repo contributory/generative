@@ -1,5 +1,6 @@
 package org.starfall.multigateway.home.chat.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -178,11 +180,12 @@ fun ChatAppBar(
                     tonalElevation = 2.dp
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        FluentIcon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = "Settings",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(22.dp)
+                        Image(
+                            painter = painterResource(R.drawable.multigateway_launcher_round),
+                            contentDescription = "Features",
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
                         )
                     }
                 }

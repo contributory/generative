@@ -15,10 +15,9 @@ import org.robolectric.annotation.Config
 import org.starfall.multigateway.shared.storage.database.AppDatabase
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.storage.ModelRepository
-import org.starfall.multigateway.shared.model.JsonExportKind
 import org.starfall.multigateway.integrations.modelapis.AiService
 import org.starfall.multigateway.features.appdata.logic.buildJsonExport
-import org.starfall.multigateway.features.appdata.logic.parseProvidersExport
+import org.starfall.multigateway.features.appdata.logic.parseFullAppDataExport
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderGroup
@@ -54,10 +53,10 @@ class ProviderImportTest {
     @After fun tearDown() { db.close() }
 
     private suspend fun importBackup() {
-        val backup = parseProvidersExport(buildJsonExport(
-            JsonExportKind.PROVIDERS, providers, emptyList(), emptyList(), emptyList(), groups
+        val backup = parseFullAppDataExport(buildJsonExport(
+            providers, emptyList(), emptyList(), emptyList(), groups
         ))
-        repo.importProviders(backup.providers, backup.groups)
+        repo.importProviders(backup.providers.orEmpty(), backup.providerGroups)
     }
 
     @Test fun roundTripRestoresGroupsMembershipAndExactOrderInAFreshDatabase() = runBlocking {
@@ -94,16 +93,16 @@ class ProviderImportTest {
         val existing = provider("existing", "local", 3)
         repo.saveGroup(localGroup)
         repo.saveProvider(existing)
-        val legacy = parseProvidersExport("""{
+        val legacy = parseFullAppDataExport("""{
             "formatVersion":1,"type":"providers","items":[
                 {"id":"existing","name":"Updated","type":"openai","baseUrl":"https://new.example/v1"},
                 {"id":"known-group","name":"Known","type":"openai","baseUrl":"","groupId":"local","sortOrder":5},
                 {"id":"missing-group","name":"Missing","type":"openai","baseUrl":"","groupId":"missing"}
             ]
         }""")
-        repo.importProviders(legacy.providers, legacy.groups)
+        repo.importProviders(legacy.providers.orEmpty(), legacy.providerGroups)
         // A stale group ID in another legacy backup must not replace the local folder either.
-        repo.importProviders(legacy.providers.take(1).map { it.copy(groupId = "missing") }, legacy.groups)
+        repo.importProviders(legacy.providers.orEmpty().take(1).map { it.copy(groupId = "missing") }, legacy.providerGroups)
 
         val reopened = ModelRepository(db, AiService(context))
         assertEquals(listOf(localGroup), reopened.allGroups.first())

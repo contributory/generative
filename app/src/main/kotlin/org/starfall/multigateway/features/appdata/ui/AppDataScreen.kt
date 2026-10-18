@@ -32,7 +32,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.R
-import org.starfall.multigateway.shared.model.JsonExportKind
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,8 +40,8 @@ fun AppDataScreen(
     providerCount: Int,
     onClearAllConversations: () -> Unit,
     onResetAllData: () -> Unit,
-    onExportJson: (JsonExportKind) -> Unit = {},
-    onImportJson: (JsonExportKind) -> Unit = {},
+    onExportJson: () -> Unit = {},
+    onImportJson: () -> Unit = {},
     onBack: () -> Unit
 ) {
     var showClearConfirm by rememberSaveable { mutableStateOf(false) }
@@ -101,30 +100,12 @@ fun AppDataScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    DataActionButton(stringResource(R.string.settings_export_providers_json)) {
-                        onExportJson(JsonExportKind.PROVIDERS)
-                    }
-                    DataActionButton(stringResource(R.string.settings_export_mcp_json)) {
-                        onExportJson(JsonExportKind.MCP_SERVERS)
-                    }
-                    DataActionButton(stringResource(R.string.settings_export_speech_services_json)) {
-                        onExportJson(JsonExportKind.SPEECH_SERVICES)
-                    }
-                    DataActionButton(stringResource(R.string.settings_export_chats_json)) {
-                        onExportJson(JsonExportKind.CONVERSATIONS)
+                    DataActionButton(stringResource(R.string.settings_export_all_data_json)) {
+                        onExportJson()
                     }
                     Spacer(Modifier.height(4.dp))
-                    DataActionButton(stringResource(R.string.settings_import_providers_json)) {
-                        onImportJson(JsonExportKind.PROVIDERS)
-                    }
-                    DataActionButton(stringResource(R.string.settings_import_mcp_json)) {
-                        onImportJson(JsonExportKind.MCP_SERVERS)
-                    }
-                    DataActionButton(stringResource(R.string.settings_import_speech_services_json)) {
-                        onImportJson(JsonExportKind.SPEECH_SERVICES)
-                    }
-                    DataActionButton(stringResource(R.string.settings_import_chats_json)) {
-                        onImportJson(JsonExportKind.CONVERSATIONS)
+                    DataActionButton(stringResource(R.string.settings_import_all_data_json)) {
+                        onImportJson()
                     }
                 }
             }

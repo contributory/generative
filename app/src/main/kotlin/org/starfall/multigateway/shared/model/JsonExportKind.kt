@@ -1,9 +1,6 @@
 package org.starfall.multigateway.shared.model
 
-/** Identifies the data collection used by JSON import and export actions. */
+/** The single JSON file used to back up or restore all transferable application data. */
 enum class JsonExportKind(val fileName: String) {
-    PROVIDERS("multigateway-providers.json"),
-    MCP_SERVERS("multigateway-mcp.json"),
-    SPEECH_SERVICES("multigateway-speech-services.json"),
-    CONVERSATIONS("multigateway-chats.json")
+    FULL_BACKUP("multigateway-backup.json")
 }

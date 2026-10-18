@@ -147,6 +147,8 @@ fun ChatScreen(
     var openingAtBottom by remember(conversationKey) { mutableStateOf(true) }
     var openingLayoutRevision by remember(conversationKey) { mutableIntStateOf(0) }
     val settleTracker = remember(conversationKey) { ChatSettleTracker() }
+    // Scroll position of a just-sent message: middle by default, top only by the user's drag.
+    val anchor = remember(conversationKey) { ChatScrollAnchor() }
     var revealed by remember(conversationKey) { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val seenMessageIds = remember(conversationKey) { mutableSetOf<String>() }
@@ -160,6 +162,19 @@ fun ChatScreen(
     val conversationMessages = conversation?.messages.orEmpty()
     val messages = remember(conversationMessages, queuedMessages) {
         conversationMessages + queuedMessages
+    }
+    // A user message entering history is a send, whichever way it got there (typed now, handed over
+    // by the tool loop with its queued id, or drained from the queue under a new id). Detecting it
+    // here, in the apply phase, runs before any LaunchedEffect of this commit starts, so every scroll
+    // effect below already sees anchor.settling and leaves the list alone.
+    SideEffect {
+        val sentId = anchor.detector.observe(conversationMessages)
+        if (sentId != null && (followBottom || !autoScroll)) {
+            openingAtBottom = false
+            anchor.start(sentId)
+        } else if (anchor.messageId?.let { id -> messages.none { it.id == id } } == true) {
+            anchor.end()
+        }
     }
 
     var editDraft by remember(conversation?.id) { mutableStateOf<ChatInputEditDraft?>(null) }
@@ -200,8 +215,9 @@ fun ChatScreen(
     val nearBottomPx = with(LocalDensity.current) { 32.dp.toPx() }
     fun isNearBottom(): Boolean {
         val layout = listState.layoutInfo
-        val last = layout.visibleItemsInfo.lastOrNull() ?: return false
-        if (last.index != layout.totalItemsCount - 1) return false
+        // The anchor spacer is blank room after the newest message, not something to scroll to.
+        val last = layout.visibleItemsInfo.lastOrNull { it.key != ANCHOR_SPACER_KEY } ?: return false
+        if (last.index != layout.totalItemsCount - 1 - (if (anchor.messageId != null) 1 else 0)) return false
         return last.offset + last.size - (layout.viewportEndOffset - layout.afterContentPadding) <= nearBottomPx
     }
     val scrollConnection = remember(listState) {
@@ -213,6 +229,7 @@ fun ChatScreen(
                 if (source == NestedScrollSource.UserInput) {
                     openingAtBottom = false
                     followBottom = false
+                    anchor.release()
                 }
                 return Offset.Zero
             }
@@ -236,7 +253,10 @@ fun ChatScreen(
         val index = (if (includeQueued) messages.lastIndex else conversationMessages.lastIndex) +
             messageIndexOffset
         if (index < 0) return
-        listState.scrollToItem(index, OPEN_AT_BOTTOM_OFFSET)
+        // With the anchor spacer the end of the content is the top position, which only the user
+        // may choose. Reveal the newest message instead.
+        if (anchor.messageId != null) listState.revealItemBottom(index)
+        else listState.scrollToItem(index, OPEN_AT_BOTTOM_OFFSET)
     }
     // Animated version used by the jump-to-latest button. Distant targets are first brought within
     // a few items so the animation covers a short, visible distance instead of the whole history.
@@ -267,6 +287,8 @@ fun ChatScreen(
         val firstLoad = seenMessageIds.isEmpty()
         seenMessageIds.addAll(messageIds)
         if (hasNewMessage && !firstLoad) openingAtBottom = false
+        // The anchor owns the scroll position until the sent message is in place.
+        if (anchor.settling) return@LaunchedEffect
         if (firstLoad && messageIds.isNotEmpty()) {
             // The conversation can arrive after ChatScreen was first composed. Wait until its
             // items have been measured before correcting the initial state.
@@ -317,7 +339,8 @@ fun ChatScreen(
         // Remember the settled state so the next open of this chat is instant. Only record while the
         // view is at the newest message and idle, never a half-scrolled or still-loading layout.
         snapshotFlow {
-            settleTracker.pending == 0 && !listState.isScrollInProgress && !listState.canScrollForward
+            settleTracker.pending == 0 && !listState.isScrollInProgress &&
+                (!listState.canScrollForward || anchor.messageId != null)
         }.first { it }
         ChatOpenCache.remember(conversationKey, openSignature, renderEnvironment, settleTracker.readyAssets())
     }
@@ -328,22 +351,23 @@ fun ChatScreen(
         autoScrollTick,
         followBottom,
         streamingHere,
+        anchor.settling,
         if (autoScroll) summaryProgress?.progress else null
     ) {
-        if (autoScroll && followBottom && messages.isNotEmpty() && !streamingHere) {
+        if (autoScroll && followBottom && messages.isNotEmpty() && !streamingHere && !anchor.settling) {
             scrollToBottom(includeQueued = true)
         }
     }
     // Auto scroll on: ease toward the bottom every frame while text streams. Keeping this
     // independent of text length makes the movement smooth instead of jumping per chunk.
-    LaunchedEffect(conversation?.id, conversationMessages.size, autoScroll, streamingHere, followBottom) {
-        if (!autoScroll || !streamingHere || !followBottom) return@LaunchedEffect
+    LaunchedEffect(conversation?.id, conversationMessages.size, autoScroll, streamingHere, followBottom, anchor.settling) {
+        if (!autoScroll || !streamingHere || !followBottom || anchor.settling) return@LaunchedEffect
         var previous = 0L
         while (isActive) {
             // The nested-scroll callback changes this as soon as the user touches the list.
             // Check it inside the loop as well so a pending frame cannot take the scroll lock
             // back from a manual reverse swipe.
-            if (!followBottom) return@LaunchedEffect
+            if (!followBottom || anchor.settling) return@LaunchedEffect
             val now = withFrameNanos { it }
             val elapsedMs = if (previous == 0L) 16f else ((now - previous) / 1_000_000f).coerceIn(1f, 64f)
             previous = now
@@ -456,6 +480,19 @@ fun ChatScreen(
                 )
             }
         } else {
+            val visibleChatHeight = (maxHeight - (appBarHeight + 8.dp) - bottomClearance).coerceAtLeast(0.dp)
+            val anchorTailIds = remember(messages, anchor.messageId) {
+                val index = messages.indexOfFirst { it.id == anchor.messageId }
+                if (index < 0) emptyList() else messages.drop(index).map { it.id }
+            }
+            ChatAnchorEffects(
+                anchor = anchor,
+                listState = listState,
+                itemIndexOf = { id ->
+                    messages.indexOfFirst { it.id == id }.let { if (it < 0) -1 else it + messageIndexOffset }
+                },
+                itemCount = { messages.size + messageIndexOffset + 1 }
+            )
             ChatOpeningVeil(active = veilActive, modifier = Modifier.fillMaxSize()) {
             CompositionLocalProvider(LocalChatSettleTracker provides settleTracker) {
             LazyColumn(
@@ -581,6 +618,13 @@ fun ChatScreen(
                             onCancelSummary = onCancelConversationSummary,
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
+                    }
+                }
+
+                // Room for the sent message to sit in the middle and to be dragged up to the app bar.
+                if (anchor.messageId != null) {
+                    item(key = ANCHOR_SPACER_KEY) {
+                        ChatAnchorTailSpacer(anchor, anchorTailIds, visibleChatHeight)
                     }
                 }
             }

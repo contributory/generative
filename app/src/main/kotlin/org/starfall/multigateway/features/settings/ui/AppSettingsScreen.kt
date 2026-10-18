@@ -42,7 +42,6 @@ import android.content.res.Resources
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
-import org.starfall.multigateway.shared.model.JsonExportKind
 import org.starfall.multigateway.shared.storage.preferences.AppLanguage
 import org.starfall.multigateway.shared.storage.preferences.AppPreferences
 import org.starfall.multigateway.shared.storage.preferences.CodeBlockDisplayMode
