@@ -15,7 +15,7 @@ import org.starfall.multigateway.shared.model.provider.ProviderGroup
 import org.starfall.multigateway.shared.model.provider.ProviderPlacement
 import org.starfall.multigateway.shared.model.provider.ProviderRootOrderItem
 import org.starfall.multigateway.shared.model.api.ModelApiType
-import org.starfall.multigateway.features.providers.providers.screen.ProvidersScreen
+import org.starfall.multigateway.features.providers.list.ui.ProvidersScreen
 
 /** Phone-launcher style drag and drop on the Providers screen. */
 @RunWith(RobolectricTestRunner::class)
@@ -39,9 +39,7 @@ class ProviderDragDropTest {
                     providers = providers,
                     providerGroups = groups,
                     isGridView = grid,
-                    onSaveProvider = {},
-                    onSaveModels = { _, _ -> },
-                    onReorderModels = { _, _ -> },
+                    onOpenProviderEditor = { _, _ -> },
                     onDeleteProvider = {},
                     onReorderProviders = {},
                     onReorderRootItems = { rootOrders += it },

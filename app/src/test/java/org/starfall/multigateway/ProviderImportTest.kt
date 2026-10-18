@@ -15,10 +15,10 @@ import org.robolectric.annotation.Config
 import org.starfall.multigateway.shared.storage.database.AppDatabase
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.storage.ModelRepository
-import org.starfall.multigateway.features.appdata.model.JsonExportKind
+import org.starfall.multigateway.shared.model.JsonExportKind
 import org.starfall.multigateway.integrations.modelapis.AiService
-import org.starfall.multigateway.features.appdata.service.buildJsonExport
-import org.starfall.multigateway.features.appdata.service.parseProvidersExport
+import org.starfall.multigateway.features.appdata.logic.buildJsonExport
+import org.starfall.multigateway.features.appdata.logic.parseProvidersExport
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderGroup

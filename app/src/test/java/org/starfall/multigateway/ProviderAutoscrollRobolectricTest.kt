@@ -15,7 +15,7 @@ import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderGroup
 import org.starfall.multigateway.shared.model.provider.ProviderPlacement
 import org.starfall.multigateway.shared.model.api.ModelApiType
-import org.starfall.multigateway.features.providers.providers.screen.ProvidersScreen
+import org.starfall.multigateway.features.providers.list.ui.ProvidersScreen
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi")
@@ -42,7 +42,7 @@ class ProviderAutoscrollRobolectricTest {
                     providers = providers,
                     providerGroups = groups,
                     isGridView = grid,
-                    onSaveProvider = {}, onSaveModels = { _, _ -> }, onReorderModels = { _, _ -> },
+                    onOpenProviderEditor = { _, _ -> },
                     onDeleteProvider = {}, onReorderProviders = {}, onBack = {},
                     onPlaceProvider = { writes += it; Result.success(Unit) }
                 )

@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.starfall.multigateway.shared.model.ToolDefinition
 import org.starfall.multigateway.shared.model.withUniqueWireNames
-import org.starfall.multigateway.features.mcp.shared.mcpToolWireName
+import org.starfall.multigateway.integrations.mcp.mcpToolWireName
 
 class McpToolNameTest {
     @Test fun wireNameUsesReadableServerAndToolNames() {

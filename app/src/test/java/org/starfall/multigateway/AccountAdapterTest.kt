@@ -1,6 +1,5 @@
 package org.starfall.multigateway
 
-import org.starfall.multigateway.home.chat_screen.Tool.*
 
 import org.starfall.multigateway.integrations.modelapis.account.*
 
@@ -23,8 +22,6 @@ import org.starfall.multigateway.integrations.modelapis.account.AccountProviderA
 import org.starfall.multigateway.integrations.modelapis.claudecode.ClaudeCodeAdapter
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.files.AttachmentResolver
-import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
-import org.starfall.multigateway.home.chat_screen.*
 import org.starfall.multigateway.shared.files.*
 import org.starfall.multigateway.shared.networking.*
 import org.starfall.multigateway.shared.storage.preferences.*
@@ -34,6 +31,9 @@ import org.starfall.multigateway.shared.model.generation.GenerationEvent
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
+import org.starfall.multigateway.home.chat.logic.tool.toolAttachmentParts
+import org.starfall.multigateway.home.chat.logic.tool.toolMessageContent
+import org.starfall.multigateway.shared.model.auth.defaultAuthorization
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)

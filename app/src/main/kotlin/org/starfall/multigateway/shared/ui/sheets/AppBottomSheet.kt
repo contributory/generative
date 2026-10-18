@@ -43,6 +43,7 @@ import org.starfall.multigateway.shared.theme.LocalAmoledMode
 import org.starfall.multigateway.shared.theme.modalScrimColor
 import org.starfall.multigateway.shared.ui.layout.amoledSheetBorder
 import org.starfall.multigateway.shared.ui.layout.windowHeight
+import androidx.compose.ui.graphics.drawscope.DrawScope
 
 /** Let downward motion at the list start reach Material; contain overscroll at the list end. */
 internal fun bottomSheetListScrollBoundary(): NestedScrollConnection = object : NestedScrollConnection {

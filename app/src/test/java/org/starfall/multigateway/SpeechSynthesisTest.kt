@@ -7,8 +7,8 @@ import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.features.mcp.shared.*
-import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.features.mcp.shared.ui.*
+import org.starfall.multigateway.features.machines.shared.ui.*
 import org.starfall.multigateway.integrations.remote.*
 import org.starfall.multigateway.home.chat.*
 import org.starfall.multigateway.integrations.modelapis.*

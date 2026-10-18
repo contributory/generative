@@ -1,75 +1,87 @@
 package org.starfall.multigateway.navigation
 
 import android.net.Uri
-import androidx.compose.foundation.layout.*
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.core.tween
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.launch
-import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import android.widget.Toast
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.activity.compose.BackHandler
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.OutputStreamWriter
-import org.starfall.multigateway.features.appdata.model.JsonExportKind
-import org.starfall.multigateway.features.appdata.service.buildJsonExport
-import org.starfall.multigateway.features.appdata.service.parseConversationsExport
-import org.starfall.multigateway.features.appdata.service.parseMcpExport
-import org.starfall.multigateway.features.appdata.service.parseProvidersExport
-import org.starfall.multigateway.features.appdata.service.parseSpeechServicesExport
-import org.starfall.multigateway.features.defaultmodelsandtools.shared.LocalToolControls
-import org.starfall.multigateway.features.defaultmodelsandtools.shared.ToolControls
-import org.starfall.multigateway.features.defaultmodelsandtools.systemtools.screen.SystemToolsScreen
-import org.starfall.multigateway.features.mcp.serverlist.screen.ServerListScreen
-import org.starfall.multigateway.features.providers.providereditor.screen.ProviderEditorScreen
-import org.starfall.multigateway.features.providers.providers.screen.ProvidersScreen
-import org.starfall.multigateway.features.providers.shared.ConfigurationViewModel
-import org.starfall.multigateway.features.remotemachines.remotemachines.screen.RemoteMachinesScreen
-import org.starfall.multigateway.features.remotemachines.remotemachines.screen.RemoteMachinesViewModel
-import org.starfall.multigateway.features.settings.appsettings.screen.SettingsViewModel
-import org.starfall.multigateway.features.speechservices.speechservices.screen.SpeechServicesScreen
-import org.starfall.multigateway.features.storage.storage.screen.StorageScreen
-import org.starfall.multigateway.home.chat_screen.ChatScreen
-import org.starfall.multigateway.home.chat_screen.ChatViewModel
-import org.starfall.multigateway.home.leftside_drawer.LeftSideDrawer
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.starfall.multigateway.R
+import org.starfall.multigateway.features.about.ui.AboutScreen
+import org.starfall.multigateway.features.appdata.logic.buildJsonExport
+import org.starfall.multigateway.features.appdata.logic.parseConversationsExport
+import org.starfall.multigateway.features.appdata.logic.parseMcpExport
+import org.starfall.multigateway.features.appdata.logic.parseProvidersExport
+import org.starfall.multigateway.features.appdata.logic.parseSpeechServicesExport
+import org.starfall.multigateway.shared.model.JsonExportKind
+import org.starfall.multigateway.features.appdata.ui.AppDataScreen
+import org.starfall.multigateway.features.defaults.systemtools.ui.SystemToolsScreen
+import org.starfall.multigateway.features.icons.ui.IconsScreen
+import org.starfall.multigateway.features.machines.details.ui.MachineDetailsScreen
+import org.starfall.multigateway.features.machines.details.ui.RemoteMachineSettings
+import org.starfall.multigateway.features.machines.details.ui.RemoteTerminalScreen
+import org.starfall.multigateway.features.machines.list.ui.RemoteMachinesScreen
+import org.starfall.multigateway.features.machines.shared.logic.RemoteMachinesViewModel
+import org.starfall.multigateway.features.main.ui.FeaturesScreen
+import org.starfall.multigateway.features.mcp.editor.ui.ServerEditorScreen
+import org.starfall.multigateway.features.mcp.list.ui.ServerListScreen
+import org.starfall.multigateway.features.providers.editor.ui.ProviderEditorScreen
+import org.starfall.multigateway.features.providers.list.ui.ProvidersScreen
+import org.starfall.multigateway.features.providers.shared.logic.ConfigurationViewModel
+import org.starfall.multigateway.features.settings.logic.SettingsViewModel
+import org.starfall.multigateway.features.settings.ui.AppSettingsScreen
+import org.starfall.multigateway.features.settings.ui.MainAppbar
+import org.starfall.multigateway.features.speech.ui.SpeechServicesScreen
+import org.starfall.multigateway.features.storage.ui.StorageScreen
+import org.starfall.multigateway.home.chat.logic.ChatViewModel
+import org.starfall.multigateway.home.chat.logic.contextWindowStatus
+import org.starfall.multigateway.home.chat.ui.ChatScreen
+import org.starfall.multigateway.home.chat.ui.markdown.LocalCodeRenderingPreferences
+import org.starfall.multigateway.home.drawer.ui.LeftSideDrawer
 import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.model.Conversation
 import org.starfall.multigateway.shared.model.McpInfo
+import org.starfall.multigateway.shared.model.RemoteMachine
 import org.starfall.multigateway.shared.model.SpeechService
 import org.starfall.multigateway.shared.model.language.ModelType
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderGroup
 import org.starfall.multigateway.shared.storage.preferences.AppPreferences
 import org.starfall.multigateway.shared.theme.modalScrimColor
+import org.starfall.multigateway.shared.ui.LocalToolControls
+import org.starfall.multigateway.shared.ui.ToolControls
+import org.starfall.multigateway.shared.ui.layout.SlideScreenContent
 import org.starfall.multigateway.shared.ui.media.ChatAttachmentSelection
 import org.starfall.multigateway.shared.ui.media.LocalChatAttachmentSelection
-import androidx.compose.ui.res.stringResource
-import org.starfall.multigateway.R
-import org.starfall.multigateway.features.about.screen.AboutScreen
-import org.starfall.multigateway.features.appdata.screen.AppDataScreen
-import org.starfall.multigateway.features.icons.screen.IconsScreen
-import org.starfall.multigateway.features.main.screen.FeaturesScreen
-import org.starfall.multigateway.features.settings.appsettings.screen.AppSettingsScreen
-import org.starfall.multigateway.features.settings.shared.MainAppbar
 
 /** Stable route names are persisted by Navigation across Activity/process recreation. */
+private data class MachineEditorPage(val machine: RemoteMachine, val isNew: Boolean)
+private data class ProviderEditorPage(val provider: ModelProvider, val isNew: Boolean)
+private enum class RemoteMachineSettingsPage { SETTINGS }
+
 enum class AppDestination(val route: String) {
     CHAT("chat"),
     PROVIDERS("providers"),
@@ -123,6 +135,8 @@ fun AppNavigation(
     val conversations: List<Conversation> by viewModel.conversations.collectAsStateWithLifecycle()
     val currentConv: Conversation? by viewModel.currentConversation.collectAsStateWithLifecycle()
     val chatAttachments = remember { ChatAttachmentSelection() }
+    var mcpEditor by remember { mutableStateOf<Pair<McpInfo, Boolean>?>(null) }
+    var pendingNewProvider by remember { mutableStateOf<ProviderEditorPage?>(null) }
     LaunchedEffect(currentConv?.id) { chatAttachments.clear() }
     val isGenerating: Boolean by viewModel.isGenerating.collectAsStateWithLifecycle()
     val generatingConversationIds by viewModel.generatingConversationIds.collectAsStateWithLifecycle()
@@ -141,6 +155,8 @@ fun AppNavigation(
     val mcpToolErrors by configurationViewModel.mcpToolErrors.collectAsStateWithLifecycle()
     val mcpToolsLoading by configurationViewModel.mcpToolsLoading.collectAsStateWithLifecycle()
     val remoteMachineState by remoteMachinesViewModel.state.collectAsStateWithLifecycle()
+    val remoteMachineBinaries by remoteMachinesViewModel.binaries.collectAsStateWithLifecycle()
+    var remoteMachinePage by remember { mutableStateOf<Any?>(null) }
 
     val toolSettings by viewModel.toolSettings.collectAsStateWithLifecycle()
     val queuedMessages by viewModel.queuedMessages.collectAsStateWithLifecycle()
@@ -254,7 +270,7 @@ fun AppNavigation(
     }
 
 
-    CompositionLocalProvider(org.starfall.multigateway.home.chat_screen.LocalCodeRenderingPreferences provides appPrefs, LocalChatAttachmentSelection provides chatAttachments, LocalToolControls provides ToolControls(
+    CompositionLocalProvider(org.starfall.multigateway.home.chat.ui.markdown.LocalCodeRenderingPreferences provides appPrefs, LocalChatAttachmentSelection provides chatAttachments, LocalToolControls provides ToolControls(
         servers = mcpServers,
         machines = remoteMachineState.machines,
         settings = toolSettings,
@@ -442,6 +458,39 @@ fun AppNavigation(
                         Box(Modifier.fillMaxSize())
                     }
 
+                    composable("providers/new") {
+                        val page = pendingNewProvider
+                        if (page == null) {
+                            LaunchedEffect(Unit) { navController.popBackStack() }
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
+                        } else {
+                            key(page.provider.id) {
+                                ProviderEditorScreen(
+                                    initialProvider = page.provider,
+                                    isNew = page.isNew,
+                                    onSave = { saved ->
+                                        configurationViewModel.saveProvider(saved)
+                                        pendingNewProvider = ProviderEditorPage(saved, false)
+                                        Toast.makeText(context, context.getString(R.string.provider_saved), Toast.LENGTH_SHORT).show()
+                                    },
+                                    onDismiss = {
+                                        pendingNewProvider = null
+                                        navController.popBackStack()
+                                    },
+                                    onSaveModels = configurationViewModel::saveProviderModels,
+                                    onReorderModels = configurationViewModel::reorderProviderModels,
+                                    onAuthorizeProvider = configurationViewModel::authorizeProvider,
+                                    onCancelProviderAuthorization = configurationViewModel::cancelProviderAuthorization,
+                                    onClearOAuthCredentials = configurationViewModel::clearOAuthCredentials,
+                                    onTestConnection = configurationViewModel::testConnection,
+                                    onFetchModels = configurationViewModel::fetchProviderModels
+                                )
+                            }
+                        }
+                    }
+
                     composable(
                         route = "providers/edit/{providerId}?modelId={modelId}",
                         arguments = listOf(navArgument("modelId") {
@@ -463,7 +512,10 @@ fun AppNavigation(
                                     initialProvider = provider,
                                     isNew = false,
                                     initialEditingModelId = modelId,
-                                    onSave = configurationViewModel::saveProvider,
+                                    onSave = { saved ->
+                                        configurationViewModel.saveProvider(saved)
+                                        Toast.makeText(context, context.getString(R.string.provider_saved), Toast.LENGTH_SHORT).show()
+                                    },
                                     onDismiss = { navController.popBackStack() },
                                     onSaveModels = configurationViewModel::saveProviderModels,
                                     onReorderModels = configurationViewModel::reorderProviderModels,
@@ -485,7 +537,14 @@ fun AppNavigation(
                             onCollapsedSectionsChange = settingsViewModel::setProvidersCollapsedSections,
                             isGridView = appPrefs.showProvidersAsGrid,
                             onToggleGridView = { configurationViewModel.setShowProvidersAsGrid(it) },
-                            onSaveProvider = { configurationViewModel.saveProvider(it) },
+                            onOpenProviderEditor = { provider, isNew ->
+                                if (isNew) {
+                                    pendingNewProvider = ProviderEditorPage(provider, true)
+                                    navController.navigate("providers/new")
+                                } else {
+                                    navController.navigate("providers/edit/${provider.id}")
+                                }
+                            },
                             onSaveGroup = configurationViewModel::saveProviderGroup,
                             onDeleteGroup = { groupId ->
                                 configurationViewModel.deleteProviderGroup(groupId)
@@ -494,42 +553,51 @@ fun AppNavigation(
                             },
                             onMoveProviderToGroup = configurationViewModel::moveProviderToGroup,
                             onPlaceProviderImmediately = configurationViewModel::queueProviderPlacement,
-                            onSaveModels = { providerId, models -> configurationViewModel.saveProviderModels(providerId, models) },
-                            onReorderModels = configurationViewModel::reorderProviderModels,
                             onDeleteProvider = { providerId ->
                                 configurationViewModel.deleteProvider(providerId)
                                 settingsViewModel.setModelPickerCollapsedProviders(appPrefs.modelPickerCollapsedProviders - providerId)
                             },
                             onReorderProviders = configurationViewModel::reorderProviders,
                             onReorderRootItems = configurationViewModel::reorderProviderRootItems,
-                            onAuthorizeProvider = { provider -> configurationViewModel.authorizeProvider(provider) },
-                            onCancelProviderAuthorization = configurationViewModel::cancelProviderAuthorization,
-                            onClearOAuthCredentials = { provider -> configurationViewModel.clearOAuthCredentials(provider) },
-                            onTestConnection = { prov, modelId -> configurationViewModel.testConnection(prov, modelId) },
-                            onFetchModels = { provider -> configurationViewModel.fetchProviderModels(provider) },
                             onBack = { navController.popBackStack() }
                         )
                     }
 
                     composable(AppDestination.MCP.route) {
-                        ServerListScreen(
-                            mcpServers = mcpServers,
-                            isGridView = appPrefs.showMcpAsGrid,
-                            onToggleGridView = { configurationViewModel.setShowMcpAsGrid(it) },
-                            toolsCache = mcpToolsCache,
-                            toolErrors = mcpToolErrors,
-                            toolsLoading = mcpToolsLoading,
-                            toolSettings = toolSettings,
-                            onSetToolEnabled = viewModel::setMcpToolEnabled,
-                            onSetMcpEnabled = viewModel::setQuickMcp,
-                            onSaveMcpServer = { configurationViewModel.saveMcpServer(it) },
-                            onDeleteMcpServer = { configurationViewModel.deleteMcpServer(it) },
-                            onReorderMcpServers = configurationViewModel::reorderMcpServers,
-                            onRefreshTools = { configurationViewModel.refreshMcpTools(it) },
-                            onAuthorizeOAuth = { configurationViewModel.authorizeMcpOAuth(it) },
-                            onClearOAuth = { configurationViewModel.clearMcpOAuth(it) },
-                            onBack = { navController.popBackStack() }
-                        )
+                        SlideScreenContent(editor = mcpEditor, label = stringResource(R.string.mcp_editor)) { page ->
+                            if (page != null) {
+                                ServerEditorScreen(
+                                    initialServer = page.first,
+                                    isNew = page.second,
+                                    onRefreshTools = { configurationViewModel.refreshMcpTools(it) },
+                                    onAuthorizeOAuth = { configurationViewModel.authorizeMcpOAuth(it) },
+                                    onClearOAuth = { configurationViewModel.clearMcpOAuth(it) },
+                                    cachedTools = mcpToolsCache[page.first.id] ?: page.first.cachedTools,
+                                    cachedError = mcpToolErrors[page.first.id],
+                                    cachedLoading = page.first.id in mcpToolsLoading,
+                                    toolSettings = toolSettings,
+                                    onSetToolEnabled = viewModel::setMcpToolEnabled,
+                                    onDismiss = { mcpEditor = null },
+                                    onSave = { configurationViewModel.saveMcpServer(it) }
+                                )
+                            } else {
+                                ServerListScreen(
+                                    mcpServers = mcpServers,
+                                    isGridView = appPrefs.showMcpAsGrid,
+                                    onToggleGridView = { configurationViewModel.setShowMcpAsGrid(it) },
+                                    toolsCache = mcpToolsCache,
+                                    toolErrors = mcpToolErrors,
+                                    toolsLoading = mcpToolsLoading,
+                                    toolSettings = toolSettings,
+                                    onSetToolEnabled = viewModel::setMcpToolEnabled,
+                                    onSetMcpEnabled = viewModel::setQuickMcp,
+                                    onDeleteMcpServer = { configurationViewModel.deleteMcpServer(it) },
+                                    onReorderMcpServers = configurationViewModel::reorderMcpServers,
+                                    onOpenEditor = { server, isNew -> mcpEditor = server to isNew },
+                                    onBack = { navController.popBackStack() }
+                                )
+                            }
+                        }
                     }
 
                     composable(AppDestination.SPEECH.route) {
@@ -572,12 +640,44 @@ fun AppNavigation(
                         )
                     }
                      composable(AppDestination.STORAGE.route) { StorageScreen(toolFiles) { navController.popBackStack() } }
-                     composable(AppDestination.REMOTE_MACHINES.route) {
-                         RemoteMachinesScreen(
-                             viewModel = remoteMachinesViewModel,
-                             onBack = { navController.popBackStack() }
-                         )
-                     }
+                    composable(AppDestination.REMOTE_MACHINES.route) {
+                        SlideScreenContent(editor = remoteMachinePage, label = stringResource(R.string.remote_machines_title)) { selected ->
+                            when {
+                                selected is RemoteMachine -> RemoteTerminalScreen(
+                                    machine = selected,
+                                    viewModel = remoteMachinesViewModel,
+                                    onBack = { remoteMachinePage = null }
+                                )
+                                selected is MachineEditorPage -> MachineDetailsScreen(
+                                    initial = selected.machine,
+                                    isNew = selected.isNew,
+                                    state = remoteMachineState,
+                                    onSave = {
+                                        remoteMachinesViewModel.saveMachine(it)
+                                        remoteMachinePage = null
+                                    },
+                                    onBack = { remoteMachinePage = null },
+                                    onRefreshIp = { remoteMachinesViewModel.refreshIp(it) },
+                                    onFetchUsername = { remoteMachinesViewModel.fetchGCloudUsername(it) },
+                                    onAuthorizeOAuth = { remoteMachinesViewModel.authorize(it) },
+                                    onStoreAndroidOAuthToken = { client, token -> remoteMachinesViewModel.storeAndroidOAuthToken(client, token) }
+                                )
+                                selected == RemoteMachineSettingsPage.SETTINGS -> RemoteMachineSettings(
+                                    state = remoteMachineState,
+                                    binaries = remoteMachineBinaries,
+                                    viewModel = remoteMachinesViewModel,
+                                    onBack = { remoteMachinePage = null }
+                                )
+                                else -> RemoteMachinesScreen(
+                                    viewModel = remoteMachinesViewModel,
+                                    onBack = { navController.popBackStack() },
+                                    onOpenEditor = { machine, isNew -> remoteMachinePage = MachineEditorPage(machine, isNew) },
+                                    onOpenSettings = { remoteMachinePage = RemoteMachineSettingsPage.SETTINGS },
+                                    onOpenTerminal = { machine -> remoteMachinePage = machine }
+                                )
+                            }
+                        }
+                    }
                     composable(AppDestination.SETTINGS.route) {
                         Scaffold { padding ->
                             FeaturesScreen(

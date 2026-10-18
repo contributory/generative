@@ -10,7 +10,7 @@ import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderGroup
 import org.starfall.multigateway.shared.model.provider.ProviderPlacement
 import org.starfall.multigateway.shared.model.api.ModelApiType
-import org.starfall.multigateway.features.providers.providers.screen.ProvidersScreen
+import org.starfall.multigateway.features.providers.list.ui.ProvidersScreen
 
 /** Phone-style drag and drop: reorder, drop into a folder, drag out of an open folder. */
 class ProviderDragBehaviorTest {
@@ -28,9 +28,7 @@ class ProviderDragBehaviorTest {
                     providers = providers,
                     providerGroups = listOf(group),
                     isGridView = true,
-                    onSaveProvider = {},
-                    onSaveModels = { _, _ -> },
-                    onReorderModels = { _, _ -> },
+                    onOpenProviderEditor = { _, _ -> },
                     onDeleteProvider = {},
                     onReorderProviders = {},
                     onBack = {},

@@ -25,6 +25,7 @@ import java.net.ServerSocket
 import java.net.Socket
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.auth.defaultAuthorization
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)

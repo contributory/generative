@@ -3,15 +3,16 @@ package org.starfall.multigateway
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.features.providers.shared.*
-import org.starfall.multigateway.home.chat_screen.*
-import org.starfall.multigateway.home.shared.ui.*
-import org.starfall.multigateway.home.modelpicker_sheet.*
+import org.starfall.multigateway.features.providers.shared.ui.*
+import org.starfall.multigateway.shared.ui.model.*
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
 import org.starfall.multigateway.shared.model.provider.ProviderGroup
+import org.starfall.multigateway.shared.ui.model.ModelPickerItem
+import org.starfall.multigateway.shared.ui.model.computeModelPickerItems
+import org.starfall.multigateway.shared.model.language.withConversationReasoning
 
 class ModelPickerSelectionVisibilityTest {
     private val group = ProviderGroup("folder", "Work")

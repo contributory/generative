@@ -4,8 +4,8 @@ import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.features.providers.shared.ModelConnectionRemovals
-import org.starfall.multigateway.features.providers.shared.ModelConnectionTests
+import org.starfall.multigateway.features.providers.shared.logic.ModelConnectionRemovals
+import org.starfall.multigateway.features.providers.shared.logic.ModelConnectionTests
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 

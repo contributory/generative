@@ -1,0 +1,1131 @@
+package org.starfall.multigateway.shared.ui.model
+
+import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import org.starfall.multigateway.R
+import org.starfall.multigateway.shared.ui.model.LocalThinkingScreenBurst
+import org.starfall.multigateway.shared.ui.model.ReasoningEffortControl
+import org.starfall.multigateway.shared.ui.model.ThinkingScreenBurstLayer
+import org.starfall.multigateway.shared.ui.model.maximumEffortCardBrush
+import org.starfall.multigateway.shared.ui.model.maximumThinkingCardBrush
+import org.starfall.multigateway.shared.ui.model.reasoningEffortBurstDuration
+import org.starfall.multigateway.shared.ui.model.reasoningEffortIndex
+import org.starfall.multigateway.shared.ui.model.reasoningEffortOptions
+import org.starfall.multigateway.shared.ui.model.reasoningEffortTier
+import org.starfall.multigateway.shared.ui.model.rememberThinkingColorBurst
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.DEFAULT_CONTEXT_WINDOW_TOKENS
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.language.ModelType
+import org.starfall.multigateway.shared.model.language.ThinkingPassback
+import org.starfall.multigateway.shared.model.language.passbackMode
+import org.starfall.multigateway.shared.model.language.supportedReasoningEfforts
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
+import org.starfall.multigateway.shared.ui.sheets.AppBottomSheet
+import org.starfall.multigateway.shared.ui.icons.EntityIcon
+import org.starfall.multigateway.shared.ui.icons.FluentIcon
+import org.starfall.multigateway.shared.ui.icons.Icons
+import org.starfall.multigateway.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.multigateway.shared.ui.icons.providerInitials
+import org.starfall.multigateway.shared.ui.model.revealThinkingColor
+import org.starfall.multigateway.shared.ui.model.drawMaximumEffortStreaks
+
+private const val MODEL_LABEL_PREFIX_LIMIT = 20
+
+/** Keep the model's final path segment visible when a namespace or prefix is unusually long. */
+private fun compactModelLabel(value: String): String {
+    val slash = value.indexOf('/')
+    if (slash <= MODEL_LABEL_PREFIX_LIMIT) return value
+    val prefix = value.substring(0, slash)
+    return "${prefix.first()}...${prefix.takeLast(5)}/${value.substring(slash + 1)}"
+}
+
+sealed interface ModelPickerItem {
+    data class Group(
+        val group: ProviderGroup,
+        val providerCount: Int
+    ) : ModelPickerItem
+
+    data class Provider(
+        val provider: ModelProvider,
+        val modelCount: Int,
+        val depth: Int,
+        val hasSelectedModel: Boolean = false
+    ) : ModelPickerItem
+
+    data class Model(
+        val provider: ModelProvider,
+        val modelId: String,
+        val config: ModelConfiguration,
+        val isSelected: Boolean,
+        val depth: Int
+    ) : ModelPickerItem
+}
+
+private val ModelPickerItem.folderId: String?
+    get() = when (this) {
+        is ModelPickerItem.Group -> group.id
+        is ModelPickerItem.Provider -> provider.groupId.takeIf { depth == 1 }
+        is ModelPickerItem.Model -> provider.groupId.takeIf { depth == 2 }
+    }
+
+// Each lazy row draws its part of one continuous folder outline, including the
+// spacing between rows. Keeping rows lazy preserves scrolling to selected models.
+private fun Modifier.folderOutline(first: Boolean, last: Boolean, color: Color): Modifier = drawBehind {
+    val stroke = 1.dp.toPx()
+    val left = stroke / 2
+    val right = size.width - stroke / 2
+    val top = if (first) stroke / 2 else -4.dp.toPx()
+    val bottom = if (last) size.height - stroke / 2 else size.height + 4.dp.toPx()
+    val radius = 18.dp.toPx().coerceAtMost((bottom - top) / 2)
+    // Draw the two sides independently. Joining the open segments with moveTo()
+    // makes visible diagonal/kinked corners when LazyColumn spacing is present.
+    drawLine(color, Offset(left, top + if (first) radius else 0f),
+        Offset(left, bottom - if (last) radius else 0f), strokeWidth = stroke)
+    drawLine(color, Offset(right, top + if (first) radius else 0f),
+        Offset(right, bottom - if (last) radius else 0f), strokeWidth = stroke)
+    if (first || last) {
+        val path = Path().apply {
+            if (first) {
+                moveTo(left, top + radius)
+                quadraticBezierTo(left, top, left + radius, top)
+                lineTo(right - radius, top)
+                quadraticBezierTo(right, top, right, top + radius)
+            }
+            if (last) {
+                moveTo(left, bottom - radius)
+                quadraticBezierTo(left, bottom, left + radius, bottom)
+                lineTo(right - radius, bottom)
+                quadraticBezierTo(right, bottom, right, bottom - radius)
+            }
+        }
+        drawPath(path, color, style = Stroke(stroke))
+    }
+}
+
+private data class ModelPickerTab(
+    val key: String,
+    val folderId: String?,
+    val label: String,
+    val ungroupedOnly: Boolean = false
+)
+
+internal val chatModelPickerFilter: (ModelProvider, String, ModelConfiguration) -> Boolean = { _, _, config ->
+    config.modelType == org.starfall.multigateway.shared.model.language.ModelType.TEXT_GENERATION
+}
+
+fun computeModelPickerItems(
+    providers: List<ModelProvider>,
+    providerGroups: List<ProviderGroup>,
+    dynamicModelsMap: Map<String, List<String>>,
+    selectedProviderId: String,
+    selectedModelId: String,
+    query: String = "",
+    providerFilterId: String? = null,
+    collapsedGroupIds: Set<String> = emptySet(),
+    collapsedProviderIds: Set<String> = emptySet(),
+    expandSearchResults: Boolean = true,
+    selectedFolderId: String? = null,
+    ungroupedOnly: Boolean = false,
+    modelFilter: (ModelProvider, String, ModelConfiguration) -> Boolean = { _, _, _ -> true }
+): List<ModelPickerItem> {
+    data class ProviderNode(val provider: ModelProvider, val models: List<String>)
+
+    val defaultConfig = ModelConfiguration()
+    val normalizedQuery = query.trim()
+    val groupById = providerGroups.associateBy { it.id }
+    val providerOrder = compareBy<ModelProvider> { it.id != selectedProviderId }
+        .thenBy { it.sortOrder }
+        .thenBy { it.id }
+    val orderedProviders = when {
+        selectedFolderId != null -> providers
+            .filter { it.groupId == selectedFolderId }
+            .sortedWith(providerOrder)
+        ungroupedOnly -> providers
+            .filter { it.groupId == null || it.groupId !in groupById }
+            .sortedWith(providerOrder)
+        else -> buildList {
+            providerGroups
+                .sortedWith(compareBy<ProviderGroup> { it.sortOrder }.thenBy { it.name.lowercase() })
+                .forEach { group ->
+                    addAll(providers.filter { it.groupId == group.id }.sortedWith(providerOrder))
+                }
+            addAll(
+                providers
+                    .filter { it.groupId == null || it.groupId !in groupById }
+                    .sortedWith(providerOrder)
+            )
+        }
+    }
+    val visibleProviders = orderedProviders.mapNotNull { provider ->
+        if (providerFilterId != null && provider.id != providerFilterId) return@mapNotNull null
+
+        val groupMatches = provider.groupId
+            ?.let(groupById::get)
+            ?.name
+            ?.contains(normalizedQuery, ignoreCase = true) == true
+        val providerMatches = provider.name.contains(normalizedQuery, ignoreCase = true)
+        val models = providerModels(provider, dynamicModelsMap, selectedProviderId, selectedModelId)
+            .filter { modelId ->
+                modelFilter(provider, modelId, provider.config.modelConfigs[modelId] ?: defaultConfig)
+            }
+            .filter { modelId ->
+                normalizedQuery.isBlank() ||
+                    groupMatches ||
+                    providerMatches ||
+                    modelId.contains(normalizedQuery, ignoreCase = true) ||
+                    provider.config.modelConfigs[modelId]?.displayName.orEmpty()
+                        .contains(normalizedQuery, ignoreCase = true)
+            }
+
+        if (models.isEmpty()) null else ProviderNode(provider, models)
+    }
+
+    val forceExpanded = (normalizedQuery.isNotBlank() && expandSearchResults) || providerFilterId != null
+    fun modelItems(node: ProviderNode, depth: Int): List<ModelPickerItem.Model> =
+        node.models.map { modelId ->
+            val config = node.provider.config.modelConfigs[modelId] ?: defaultConfig
+            // Model IDs are scoped to a provider. Display names are presentation-only and may
+            // legitimately be shared by multiple models, so selection must use both IDs exactly.
+            val isSelected = selectedProviderId.isNotBlank() &&
+                selectedModelId.isNotBlank() &&
+                node.provider.id == selectedProviderId &&
+                modelId == selectedModelId
+            ModelPickerItem.Model(node.provider, modelId, config, isSelected, depth)
+        }
+
+    return buildList {
+        visibleProviders.forEach { node ->
+            val models = modelItems(node, depth = 1)
+            add(ModelPickerItem.Provider(
+                node.provider,
+                node.models.size,
+                depth = 0,
+                hasSelectedModel = models.any { it.isSelected }
+            ))
+            addAll(if (!forceExpanded && node.provider.id in collapsedProviderIds) {
+                // Keep the selected model visible so collapsing a provider never hides
+                // the model that the picker is currently representing.
+                models.filter { it.isSelected }
+            } else models)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ModelPickerBottomSheet(
+    providers: List<ModelProvider>,
+    providerGroups: List<ProviderGroup> = emptyList(),
+    collapsedGroupIdsState: Set<String> = emptySet(),
+    collapsedProviderIdsState: Set<String> = emptySet(),
+    onCollapsedGroupIdsChange: (Set<String>) -> Unit = {},
+    onCollapsedProviderIdsChange: (Set<String>) -> Unit = {},
+    selectedTabKeyState: String = "default",
+    onSelectedTabKeyChange: (String) -> Unit = {},
+    selectedProviderId: String,
+    selectedModelId: String,
+    conversationReasoningEffort: String?,
+    onSelectModel: (providerId: String, modelId: String) -> Unit,
+    onSetReasoningEffort: (String?) -> Unit,
+    dynamicModelsMap: Map<String, List<String>> = emptyMap(),
+    modelFilter: (ModelProvider, String, ModelConfiguration) -> Boolean = { _, _, _ -> true },
+    showReasoningEffort: Boolean = true,
+    onEditProvider: (providerId: String) -> Unit = {},
+    onDismiss: () -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    var expandSearchResults by remember(query) { mutableStateOf(true) }
+    val forceExpanded = query.isNotBlank() && expandSearchResults
+    var collapsedGroupIds by remember { mutableStateOf(collapsedGroupIdsState) }
+    var collapsedProviderIds by remember { mutableStateOf(collapsedProviderIdsState) }
+    val defaultTabLabel = stringResource(R.string.common_default)
+    val ungroupedTabLabel = stringResource(R.string.ungrouped)
+    val folderTabs = remember(providers, providerGroups, defaultTabLabel, ungroupedTabLabel) {
+        val groupsById = providerGroups.associateBy { it.id }
+        val providerGroupIds = providers.mapNotNull { it.groupId }.filter { it in groupsById }.toSet()
+        val hasUngroupedProviders = providers.any { provider ->
+            provider.groupId == null || provider.groupId !in groupsById
+        }
+        buildList {
+            add(ModelPickerTab(key = "default", folderId = null, label = defaultTabLabel))
+            providerGroups
+                .asSequence()
+                .filter { it.id in providerGroupIds }
+                .sortedWith(compareBy<ProviderGroup> { it.sortOrder }.thenBy { it.name.lowercase() })
+                .forEach { group ->
+                    add(ModelPickerTab(key = "folder_${group.id}", folderId = group.id, label = group.name))
+                }
+            if (hasUngroupedProviders) {
+                add(ModelPickerTab(key = "ungrouped", folderId = null, label = ungroupedTabLabel, ungroupedOnly = true))
+            }
+        }
+    }
+    var selectedTabKey by remember { mutableStateOf(selectedTabKeyState.ifBlank { "default" }) }
+    // Keep a separate LazyListState for every tab. Reusing one state here makes
+    // Compose restore the previous tab's position (or jump to its initial row)
+    // whenever the tab content is replaced.
+    val tabListStates = remember { mutableMapOf<String, LazyListState>() }
+    val initializedTabKeys = remember { mutableSetOf<String>() }
+    val tabPositionsBeforeSearch = remember { mutableMapOf<String, Pair<Int, Int>>() }
+    // Switching tabs replaces most rows at once while the list is also repositioned. Fading the old
+    // rows out during that jump can leave them stuck on screen, so rows are swapped instantly.
+    var instantTabSwap by remember { mutableStateOf(false) }
+    val selectedTabIndex = folderTabs.indexOfFirst { it.key == selectedTabKey }.coerceAtLeast(0)
+    LaunchedEffect(selectedTabIndex) {
+        if (instantTabSwap) {
+            delay(400)
+            instantTabSwap = false
+        }
+    }
+    LaunchedEffect(folderTabs) {
+        if (folderTabs.none { it.key == selectedTabKey }) {
+            val fallback = folderTabs.firstOrNull()?.key ?: "default"
+            selectedTabKey = fallback
+            onSelectedTabKeyChange(fallback)
+        }
+    }
+    LaunchedEffect(selectedTabKeyState) {
+        val requested = selectedTabKeyState.ifBlank { "default" }
+        if (requested != selectedTabKey && folderTabs.any { it.key == requested }) {
+            selectedTabKey = requested
+        }
+    }
+    val selectedTab = folderTabs.getOrNull(selectedTabIndex)
+    val selectedFolderId = selectedTab?.folderId
+    val ungroupedOnly = selectedTab?.ungroupedOnly == true
+    LaunchedEffect(collapsedGroupIdsState) {
+        collapsedGroupIds = collapsedGroupIdsState
+    }
+    LaunchedEffect(collapsedProviderIdsState) {
+        collapsedProviderIds = collapsedProviderIdsState
+    }
+    fun setCollapsedGroups(value: Set<String>) {
+        collapsedGroupIds = value
+        onCollapsedGroupIdsChange(value)
+    }
+    fun setCollapsedProviders(value: Set<String>) {
+        collapsedProviderIds = value
+        onCollapsedProviderIdsChange(value)
+    }
+
+    val flatItems = remember(
+        providers,
+        providerGroups,
+        dynamicModelsMap,
+        selectedProviderId,
+        selectedModelId,
+        query,
+        expandSearchResults,
+        collapsedGroupIds,
+        collapsedProviderIds,
+        selectedFolderId,
+        ungroupedOnly,
+        modelFilter
+    ) {
+        computeModelPickerItems(
+            providers = providers,
+            providerGroups = providerGroups,
+            dynamicModelsMap = dynamicModelsMap,
+            selectedProviderId = selectedProviderId,
+            selectedModelId = selectedModelId,
+            query = query,
+            expandSearchResults = expandSearchResults,
+            collapsedGroupIds = collapsedGroupIds,
+            collapsedProviderIds = collapsedProviderIds,
+            selectedFolderId = selectedFolderId,
+            ungroupedOnly = ungroupedOnly,
+            modelFilter = modelFilter
+        )
+    }
+
+    // The selected model is centered in the list. Near the top of the list the scroll position
+    // simply clamps to 0, so it only sits at the very top when nothing is above it.
+    val targetIndex = remember(flatItems, selectedProviderId, selectedModelId) {
+        flatItems.indexOfFirst { it is ModelPickerItem.Model && it.isSelected }.coerceAtLeast(0)
+    }
+    val listState = remember(selectedTabKey) {
+        tabListStates.getOrPut(selectedTabKey) { LazyListState((targetIndex - 3).coerceAtLeast(0)) }
+    }
+    val centerTopPaddingPx = with(LocalDensity.current) { 10.dp.roundToPx() }
+    LaunchedEffect(selectedTabKey, flatItems, query, targetIndex) {
+        if (query.isBlank() && flatItems.isNotEmpty() &&
+            initializedTabKeys.add(selectedTabKey) && !listState.isScrollInProgress
+        ) {
+            listState.scrollToItem(targetIndex)
+            val info = listState.layoutInfo
+            val itemSize = info.visibleItemsInfo.firstOrNull { it.index == targetIndex }?.size
+            if (itemSize != null && targetIndex > 0) {
+                val centerDelta = ((info.viewportSize.height - itemSize) / 2 - centerTopPaddingPx)
+                    .coerceAtLeast(0)
+                listState.scrollToItem(targetIndex, -centerDelta)
+            }
+        }
+    }
+    LaunchedEffect(query, selectedTabKey) {
+        if (query.isNotBlank()) {
+            tabPositionsBeforeSearch.putIfAbsent(
+                selectedTabKey,
+                listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+            )
+            listState.scrollToItem(0)
+        } else {
+            tabPositionsBeforeSearch.remove(selectedTabKey)?.let { (index, offset) ->
+                listState.scrollToItem(index, offset)
+            }
+        }
+    }
+    val allCollapsed = !forceExpanded && providers.all { it.id in collapsedProviderIds }
+
+    AppBottomSheet(
+        onDismissRequest = onDismiss,
+        fixedHeightFraction = 0.9f
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilledTonalIconButton(
+                    enabled = providers.isNotEmpty() || providerGroups.isNotEmpty(),
+                    onClick = {
+                        expandSearchResults = false
+                        if (allCollapsed) {
+                            setCollapsedGroups(emptySet())
+                            setCollapsedProviders(emptySet())
+                        } else {
+                            setCollapsedProviders(providers.map { it.id }.toSet())
+                        }
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    FluentIcon(
+                        if (allCollapsed) Icons.Outlined.ExpandMore else Icons.Outlined.ExpandLess,
+                        contentDescription = stringResource(
+                            if (allCollapsed) R.string.expand_all_model_sections else R.string.collapse_all_model_sections
+                        )
+                    )
+                }
+                SelectableOutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    leadingIcon = { FluentIcon(Icons.Outlined.Search, contentDescription = null) },
+                    placeholder = { Text(stringResource(R.string.search_models_placeholder)) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(28.dp),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            if (folderTabs.size > 1) {
+                ScrollableTabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    edgePadding = 12.dp,
+                    containerColor = Color.Transparent,
+                    divider = {}
+                ) {
+                    folderTabs.forEachIndexed { index, tab ->
+                        Tab(
+                            selected = selectedTabIndex == index,
+                            onClick = {
+                                if (selectedTabKey != tab.key) instantTabSwap = true
+                                selectedTabKey = tab.key
+                                onSelectedTabKeyChange(tab.key)
+                            },
+                            modifier = Modifier.testTag("model-picker-tab_${tab.key}"),
+                            text = {
+                                Text(tab.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        )
+                    }
+                }
+            }
+
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .testTag("model-picker-list"),
+                contentPadding = PaddingValues(start = 20.dp, top = 10.dp, end = 20.dp, bottom = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (flatItems.isEmpty()) {
+                    item(key = "empty") {
+                        Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(R.string.no_matching_models),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                } else {
+                    itemsIndexed(
+                        flatItems,
+                        key = { _, item ->
+                                when (item) {
+                                    is ModelPickerItem.Group -> "group_${item.group.id}"
+                                    is ModelPickerItem.Provider -> "provider_${item.provider.id}"
+                                    is ModelPickerItem.Model -> "model_${item.provider.id}_${item.modelId}"
+                                }
+                            }
+                        ) { index, item ->
+                            val folderId = item.folderId
+                            val first = folderId != null && flatItems.getOrNull(index - 1)?.folderId != folderId
+                            val last = folderId != null && flatItems.getOrNull(index + 1)?.folderId != folderId
+                        Box(
+                            Modifier.fillMaxWidth()
+                                .animateItem(
+                                    fadeInSpec = if (instantTabSwap) null else spring<Float>(stiffness = Spring.StiffnessMediumLow),
+                                    placementSpec = spring(
+                                        dampingRatio = Spring.DampingRatioNoBouncy,
+                                        stiffness = Spring.StiffnessMediumLow
+                                    ),
+                                    fadeOutSpec = if (instantTabSwap) null else spring<Float>(stiffness = Spring.StiffnessMediumLow)
+                                )
+                                .testTag("model-picker-frame_$index")
+                                    .then(if (folderId != null) Modifier.folderOutline(
+                                        first, last, MaterialTheme.colorScheme.outline
+                                    ) else Modifier)
+                                    .padding(
+                                        start = 6.dp, end = 6.dp,
+                                        top = if (first) 6.dp else 0.dp,
+                                        bottom = if (last) 6.dp else 0.dp
+                                    )
+                            ) {
+                            when (item) {
+                                is ModelPickerItem.Group -> Unit
+
+                                is ModelPickerItem.Provider -> {
+                                    val collapsed = item.provider.id in collapsedProviderIds &&
+                                        !forceExpanded
+                                        ModelPickerProviderRow(
+                                            provider = item.provider,
+                                            collapsed = collapsed,
+                                            hasSelectedModel = item.hasSelectedModel,
+                                            onEdit = {
+                                                onDismiss()
+                                                onEditProvider(item.provider.id)
+                                            },
+                                            onToggle = {
+                                            expandSearchResults = false
+                                            setCollapsedProviders(
+                                                if (collapsed) collapsedProviderIds - item.provider.id
+                                                else collapsedProviderIds + item.provider.id
+                                            )
+                                        }
+                                    )
+                                }
+
+                                is ModelPickerItem.Model -> {
+                                    Box(Modifier.fillMaxWidth().testTag("model-picker-model_${item.provider.id}_${item.modelId}")) {
+                                        ModelPickerCard(
+                                            modelId = item.modelId,
+                                            config = item.config,
+                                            isSelected = item.isSelected,
+                                            conversationReasoningEffort = conversationReasoningEffort,
+                                            onSetReasoningEffort = onSetReasoningEffort,
+                                            showReasoningEffort = showReasoningEffort,
+                                            onClick = {
+                                                onSelectModel(item.provider.id, item.modelId)
+                                                onDismiss()
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun ModelPickerGroupRow(
+    group: ProviderGroup,
+    collapsed: Boolean,
+    onToggle: () -> Unit
+) {
+    val toggleDescription = stringResource(
+        if (collapsed) R.string.expand_group else R.string.collapse_group, group.name
+    )
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth().animateContentSize(
+            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+        ).testTag("model-picker-group_${group.id}")
+            .semantics { contentDescription = toggleDescription }
+            .clickable(onClick = onToggle)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            EntityIcon(
+                image = group.icon,
+                modifier = Modifier.size(24.dp),
+                fallback = if (collapsed) Icons.Outlined.Folder else Icons.Outlined.FolderOpen,
+                matchName = group.name
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                group.name,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.width(32.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ModelPickerProviderRow(
+    provider: ModelProvider,
+    collapsed: Boolean,
+    hasSelectedModel: Boolean,
+    onEdit: () -> Unit,
+    onToggle: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = if (hasSelectedModel) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
+            else Color.Transparent,
+        contentColor = if (hasSelectedModel) MaterialTheme.colorScheme.onPrimaryContainer
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+            )
+            .testTag("model-picker-provider_${provider.id}")
+            .combinedClickable(onClick = onToggle, onLongClick = onEdit)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FluentIcon(
+                if (collapsed) Icons.Default.KeyboardArrowRight else Icons.Default.KeyboardArrowDown,
+                contentDescription = stringResource(if (collapsed) R.string.expand_group else R.string.collapse_group, provider.name),
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            ProviderMark(
+                provider = provider,
+                compact = true
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                provider.name,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyLarge,
+                 color = if (hasSelectedModel) MaterialTheme.colorScheme.onPrimaryContainer
+                     else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                 fontWeight = FontWeight.Medium
+             )
+             if (hasSelectedModel) {
+                 FluentIcon(
+                     Icons.Filled.Check,
+                     contentDescription = null,
+                     tint = MaterialTheme.colorScheme.primary,
+                     modifier = Modifier.size(18.dp)
+                 )
+             }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun ModelPickerCard(
+    modelId: String,
+    config: ModelConfiguration,
+    isSelected: Boolean,
+    providerName: String? = null,
+    folderName: String? = null,
+    conversationReasoningEffort: String?,
+    onSetReasoningEffort: (String?) -> Unit,
+    showReasoningEffort: Boolean,
+    onLongClick: (() -> Unit)? = null,
+    onClick: () -> Unit = {},
+    onPreviewTierChange: (Int) -> Unit = {},
+    embedded: Boolean = false,
+    drawBackground: Boolean = true
+) {
+    val supportedEfforts = config.supportedReasoningEfforts
+    val effortOptions = remember(supportedEfforts) {
+        reasoningEffortOptions(supportedEfforts)
+    }
+    var previewReasoningValue by remember(conversationReasoningEffort, isSelected, effortOptions) {
+        mutableFloatStateOf(reasoningEffortIndex(conversationReasoningEffort, effortOptions).toFloat())
+    }
+    val tier = reasoningEffortTier(previewReasoningValue.roundToInt(), effortOptions)
+    val enhancedThinking = isSelected && showReasoningEffort && config.supportsThinking && tier >= 5
+    val cardTint by animateFloatAsState(
+        if (enhancedThinking) 1f else 0f,
+        tween(if (tier == 6) 1800 else 2600, easing = FastOutSlowInEasing),
+        label = "thinkingCardTint"
+    )
+    val cardBase = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
+        else MaterialTheme.colorScheme.surfaceContainerLow
+    val settledCardColor = cardBase
+    val cardBrush = if (tier == 6) maximumEffortCardBrush()
+        else maximumThinkingCardBrush(MaterialTheme.colorScheme.surfaceContainerLow)
+    val cardBurst = rememberThinkingColorBurst()
+    val screenBurst = LocalThinkingScreenBurst.current
+    var cardOrigin by remember { mutableStateOf(Offset.Zero) }
+    val cardContentColor = if (!embedded && enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
+    val cardGesture = Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+    val cardModifier = Modifier.fillMaxWidth().then(if (embedded) Modifier else cardGesture)
+    val cardContentModifier = Modifier
+        .fillMaxWidth()
+        .onGloballyPositioned { cardOrigin = it.localToScreen(Offset.Zero) }
+        .then(
+            if (drawBackground) Modifier.drawBehind {
+                revealThinkingColor(cardBurst) {
+                    drawRect(cardBrush, alpha = cardTint)
+                    if (tier == 6) drawMaximumEffortStreaks(cardTint)
+                }
+            } else Modifier
+        )
+        .padding(10.dp)
+    val cardContent: @Composable ColumnScope.() -> Unit = {
+            Row(
+                modifier = Modifier.fillMaxWidth().then(if (embedded) {
+                    Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
+                        .then(cardGesture)
+                        .padding(10.dp)
+                } else Modifier),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                EntityIcon(config.icon, Modifier.size(40.dp), text = modelInitial(modelId), matchName = config.displayName.ifBlank { modelId }, model = true)
+
+                Spacer(Modifier.width(10.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = compactModelLabel(config.displayName.ifBlank { modelId }),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (config.displayName.isNotBlank() && config.displayName != modelId) {
+                        Text(
+                            text = "ID: ${compactModelLabel(modelId)}",
+                            style = MaterialTheme.typography.labelSmall,
+                             color = if (!embedded && enhancedThinking && tier >= 5) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (!providerName.isNullOrBlank() || !folderName.isNullOrBlank()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            providerName?.takeIf { it.isNotBlank() }?.let {
+                                ModelContextChip(
+                                    text = it,
+                                    modifier = Modifier.weight(1f),
+                                    containerAlpha = if (embedded) 0.5f else 0.78f,
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            folderName?.takeIf { it.isNotBlank() }?.let {
+                                ModelContextChip(
+                                    text = "Group: $it",
+                                    modifier = Modifier.weight(1f),
+                                    containerAlpha = if (embedded) 0.5f else 0.78f,
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                    }
+                    ModelCapabilityBadges(
+                        config,
+                        modifier = if (embedded) Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
+                            .padding(3.dp)
+                        else Modifier
+                    )
+                }
+
+                if (isSelected) {
+                    Spacer(Modifier.width(6.dp))
+                    Surface(
+                        shape = CircleShape,
+                         color = MaterialTheme.colorScheme.primary.copy(alpha = if (embedded) 0.5f else 1f),
+                        modifier = Modifier.size(22.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            FluentIcon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Selected",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Off is the lowest slider level, so the slider stays visible whenever the model supports thinking.
+            if (showReasoningEffort && isSelected && config.supportsThinking) {
+                val activeLabel = effortOptions[previewReasoningValue.roundToInt().coerceIn(effortOptions.indices)].label
+
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        FluentIcon(
+                            imageVector = Icons.Outlined.Psychology,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Reasoning Effort",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = if (!embedded && enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Text(
+                            text = activeLabel,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                ReasoningEffortControl(
+                    effort = conversationReasoningEffort,
+                    onEffortChange = onSetReasoningEffort,
+                    onPreviewValueChange = {
+                        previewReasoningValue = it
+                        onPreviewTierChange(reasoningEffortTier(it.roundToInt(), effortOptions))
+                    },
+                    options = effortOptions,
+                    onColorBurst = { origin, selectedTier ->
+                         val burstColor = if (selectedTier == 6) Color(0xFFDC2626) else Color(0xFFA78BFA)
+                         if (selectedTier >= 5) cardBurst.start(origin - cardOrigin, burstColor,
+                             reasoningEffortBurstDuration(selectedTier))
+                         screenBurst?.let { burst ->
+                             when (selectedTier) {
+                                 6 -> burst.start(
+                                     origin = origin,
+                                     color = burstColor,
+                                     durationMillis = 6500,
+                                     keepAfterCompletion = true,
+                                     starCount = 180
+                                 )
+                                 5 -> if (embedded) burst.hide() else burst.start(
+                                     origin = origin,
+                                     color = Color(0xFFA78BFA),
+                                     durationMillis = 2600,
+                                     keepAfterCompletion = false,
+                                     starCount = 32
+                                 )
+                                 else -> burst.hide()
+                             }
+                         }
+                    },
+                    trackBackground = settledCardColor
+                )
+            }
+    }
+    CompositionLocalProvider(LocalContentColor provides cardContentColor) {
+        if (embedded) {
+            Column(modifier = cardContentModifier, content = cardContent)
+        } else {
+            Surface(
+                modifier = cardModifier,
+                shape = RoundedCornerShape(16.dp),
+                color = cardBase,
+                contentColor = cardContentColor,
+                border = if (isSelected) {
+                    BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f))
+                } else null
+            ) {
+                Column(modifier = cardContentModifier, content = cardContent)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ModelContextChip(
+    text: String,
+    modifier: Modifier = Modifier,
+    containerColor: Color,
+    contentColor: Color,
+    containerAlpha: Float = 0.78f
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(7.dp),
+        color = containerColor.copy(alpha = containerAlpha),
+        contentColor = contentColor
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        ModelBadge(
+            label = when (config.modelType) {
+                ModelType.TEXT_GENERATION -> "Chat"
+                ModelType.IMAGE_GENERATION -> "Image"
+                ModelType.VIDEO_GENERATION -> "Video"
+                ModelType.TEXT_TO_SPEECH -> "TTS"
+                ModelType.SPEECH_TO_TEXT -> "STT"
+                else -> config.modelType.displayName
+            },
+            icon = when (config.modelType) {
+                ModelType.TEXT_GENERATION -> Icons.Outlined.ChatBubbleOutline
+                ModelType.IMAGE_GENERATION -> Icons.Outlined.Image
+                ModelType.VIDEO_GENERATION -> Icons.Outlined.Videocam
+                ModelType.TEXT_TO_SPEECH, ModelType.SPEECH_TO_TEXT -> Icons.Outlined.Audiotrack
+                ModelType.EMBEDDING, ModelType.RERANKING -> null
+                ModelType.REALTIME -> Icons.Outlined.ChatBubbleOutline
+            },
+            colors = AssistChipDefaults.assistChipColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        )
+        if (config.modelType != ModelType.TEXT_GENERATION) return@Row
+        ModelBadge(
+            label = compactContextWindow(config.contextWindowTokens),
+            colors = AssistChipDefaults.assistChipColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        )
+        if (config.supportsVision) {
+            ModelBadge(
+                label = "Image",
+                iconOnly = true,
+                icon = Icons.Outlined.Image,
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+        }
+        if (config.supportsVideoInput) {
+            ModelBadge(
+                label = "Video",
+                iconOnly = true,
+                icon = Icons.Outlined.Videocam,
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+        }
+        if (config.supportsAudioInput) {
+            ModelBadge(
+                label = "Audio",
+                iconOnly = true,
+                icon = Icons.Outlined.Audiotrack,
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+        }
+        if (config.supportsThinking) {
+            ModelBadge(
+                label = "Thinking",
+                iconOnly = true,
+                icon = Icons.Outlined.Psychology,
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+        }
+        if (config.supportsToolCalls) {
+            ModelBadge(
+                label = "Tools",
+                iconOnly = true,
+                icon = Icons.Outlined.Build,
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+        }
+    }
+}
+
+private fun compactContextWindow(tokens: Int): String {
+    val count = tokens.takeIf { it > 0 } ?: DEFAULT_CONTEXT_WINDOW_TOKENS
+    val divisor = when {
+        count >= 1_000_000 -> 1_000_000
+        count >= 1_000 -> 1_000
+        else -> return count.toString()
+    }
+    val value = java.math.BigDecimal(count).divide(java.math.BigDecimal(divisor), 1, java.math.RoundingMode.HALF_UP)
+        .stripTrailingZeros().toPlainString()
+    return value + if (divisor == 1_000_000) "M" else "k"
+}
+
+@Composable
+private fun ModelBadge(
+    label: String,
+    icon: Int? = null,
+    iconOnly: Boolean = false,
+    colors: ChipColors = AssistChipDefaults.assistChipColors()
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = colors.containerColor,
+        contentColor = colors.labelColor,
+        modifier = Modifier.height(24.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            icon?.let { FluentIcon(it, contentDescription = if (iconOnly) label else null, modifier = Modifier.size(12.dp)) }
+            if (!iconOnly) Text(label, fontSize = 10.sp)
+        }
+    }
+}
+
+@Composable
+private fun ProviderMark(
+    provider: ModelProvider,
+    compact: Boolean = false
+) {
+    val mark = providerInitials(provider.name)
+    EntityIcon(provider.icon, Modifier.size(if (compact) 22.dp else 42.dp), text = mark, matchName = provider.name)
+}
+
+private fun providerModels(
+    provider: ModelProvider,
+    dynamicModelsMap: Map<String, List<String>>,
+    selectedProviderId: String,
+    selectedModelId: String
+): List<String> = (
+        provider.config.modelIds
+            ?: ((dynamicModelsMap[provider.id]
+                ?: defaultProviderModels(provider.type)) + provider.config.modelConfigs.keys)
+        )
+    .plus(if (provider.id == selectedProviderId && selectedModelId.isNotBlank()) listOf(selectedModelId) else emptyList())
+    .distinct()
+
+
+internal fun defaultProviderModels(type: ModelApiType): List<String> = emptyList()

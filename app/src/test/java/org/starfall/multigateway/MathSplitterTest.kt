@@ -3,13 +3,13 @@ package org.starfall.multigateway
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.multigateway.home.chat_screen.MathBlock
-import org.starfall.multigateway.home.chat_screen.MathPiece
-import org.starfall.multigateway.home.chat_screen.MAX_INLINE_FORMULAS
-import org.starfall.multigateway.home.chat_screen.MathSplitter
-import org.starfall.multigateway.home.chat_screen.groupMathBlocks
-import org.starfall.multigateway.home.chat_screen.mathPlaceholder
-import org.starfall.multigateway.home.chat_screen.placeholderMarkdown
+import org.starfall.multigateway.home.chat.logic.markdown.MAX_INLINE_FORMULAS
+import org.starfall.multigateway.home.chat.logic.markdown.MathBlock
+import org.starfall.multigateway.home.chat.logic.markdown.MathPiece
+import org.starfall.multigateway.home.chat.logic.markdown.MathSplitter
+import org.starfall.multigateway.home.chat.logic.markdown.groupMathBlocks
+import org.starfall.multigateway.home.chat.logic.markdown.mathPlaceholder
+import org.starfall.multigateway.home.chat.logic.markdown.placeholderMarkdown
 
 class MathSplitterTest {
     private fun split(text: String, mode: String = "AUTO") = MathSplitter.split(text, mode)

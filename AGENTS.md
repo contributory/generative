@@ -1,7 +1,5 @@
 # MultiGateway Structure
 
-> **Migration in progress:** the tree and rules below describe the target structure. The Kotlin sources have not been moved yet and still use the old layout (`home/chat_screen/`, `*_sheet/`, `features/*/screen/`, ...). Remove this note when the migration is finished.
-
 ```text
 📦 org.starfall.multigateway/
 ├── 📄 MainActivity.kt
@@ -19,19 +17,15 @@
 │   │   ├── 📁 logic/
 │   │   │   └── 📄 JsonDataTransfer.kt
 │   │   ├── 📁 model/
-│   │   │   ├── 📄 JsonExportKind.kt
 │   │   │   └── 📄 ProvidersExport.kt
 │   │   └── 📁 ui/
 │   │       └── 📄 AppDataScreen.kt
 │   ├── 📁 defaults/
-│   │   ├── 📁 logic/
-│   │   │   └── 📄 ToolControls.kt
-│   │   └── 📁 ui/
-│   │       ├── 📄 DefaultModelsScreen.kt
-│   │       ├── 📄 ImageToolSettingsScreen.kt
-│   │       ├── 📄 ProfileMcpPermissions.kt
-│   │       ├── 📄 SystemToolsScreen.kt
-│   │       └── 📄 ToolSwitch.kt
+│   │   └── 📁 systemtools/
+│   │       └── 📁 ui/
+│   │           ├── 📄 DefaultModelsTab.kt
+│   │           ├── 📄 ImageToolSettingsScreen.kt
+│   │           └── 📄 SystemToolsScreen.kt
 │   ├── 📁 icons/
 │   │   └── 📁 ui/
 │   │       └── 📄 IconsScreen.kt
@@ -197,6 +191,7 @@
 │   ├── 📁 mcp/
 │   │   ├── 📄 McpOAuthService.kt
 │   │   ├── 📄 McpOAuthTokenStore.kt
+│   │   ├── 📄 McpOAuthUrlUtils.kt
 │   │   └── 📄 McpService.kt
 │   ├── 📁 media/
 │   │   ├── 📄 AgnesMedia.kt
@@ -252,9 +247,11 @@
 │       ├── 📄 ExecutableBinaryStore.kt
 │       ├── 📄 RemoteBinarySupport.kt
 │       ├── 📄 RemoteMachineService.kt
+│       ├── 📄 RemoteMachineAssetsService.kt
+│       ├── 📄 RemoteMachineCloudShellService.kt
+│       ├── 📄 RemoteMachineConnectionManager.kt
 │       ├── 📄 RemoteMachineStore.kt
 │       ├── 📄 RemoteTerminal.kt
-│       ├── 📄 RemoteTerminalBridge.kt
 │       ├── 📄 SshConfigParser.kt
 │       └── 📄 SshConnectionSupport.kt
 ├── 📁 navigation/
@@ -297,6 +294,7 @@
     │   ├── 📄 ChatProfile.kt
     │   ├── 📄 ClaudeThinking.kt
     │   ├── 📄 DefaultOptions.kt
+    │   ├── 📄 JsonExportKind.kt
     │   ├── 📄 McpInfo.kt
     │   ├── 📄 PromptLibrary.kt
     │   ├── 📄 ProviderLink.kt
@@ -362,6 +360,9 @@
     ├── 📁 theme/
     │   └── 📄 Theme.kt
     └── 📁 ui/
+        ├── 📄 ProfileMcpPermissions.kt
+        ├── 📄 ToolControls.kt
+        ├── 📄 ToolSwitch.kt
         ├── 📁 auth/
         │   ├── 📄 AppAuthResultActivity.kt
         │   ├── 📄 OAuthBrowserActivity.kt
@@ -381,6 +382,7 @@
         │   ├── 📄 AmoledBorder.kt
         │   ├── 📄 MainAppbar.kt
         │   ├── 📄 ResponsiveLayout.kt
+        │   ├── 📄 SettingsCard.kt
         │   ├── 📄 SettingsComponents.kt
         │   └── 📄 SlideScreenContent.kt
         ├── 📁 lists/

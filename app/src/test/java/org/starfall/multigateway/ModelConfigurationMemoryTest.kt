@@ -16,6 +16,7 @@ import org.starfall.multigateway.shared.model.language.DEFAULT_CONTEXT_WINDOW_TO
 import org.starfall.multigateway.shared.model.language.DiscoveredModel
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.language.ModelType
+import org.starfall.multigateway.shared.model.language.normalizedForTemplate
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

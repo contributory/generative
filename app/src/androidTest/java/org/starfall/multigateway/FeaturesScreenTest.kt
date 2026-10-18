@@ -19,13 +19,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.features.about.screen.AboutScreen
-import org.starfall.multigateway.features.main.screen.FeaturesScreen
-import org.starfall.multigateway.features.settings.appsettings.screen.AppSettingsScreen
-import org.starfall.multigateway.features.settings.shared.MainAppbar
+import org.starfall.multigateway.features.about.ui.AboutScreen
+import org.starfall.multigateway.features.main.ui.FeaturesScreen
+import org.starfall.multigateway.features.settings.ui.AppSettingsScreen
+import org.starfall.multigateway.features.settings.ui.MainAppbar
 import org.starfall.multigateway.shared.storage.preferences.AppPreferences
 import org.starfall.multigateway.navigation.AppNavigation
-import org.starfall.multigateway.home.chat_screen.ChatAppBar
+import org.starfall.multigateway.home.chat.ui.ChatAppBar
 
 class FeaturesScreenTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()

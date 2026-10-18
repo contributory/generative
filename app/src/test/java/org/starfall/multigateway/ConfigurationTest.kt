@@ -21,6 +21,7 @@ import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
+import org.starfall.multigateway.shared.model.provider.streamEnabledFor
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)

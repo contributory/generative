@@ -34,15 +34,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.starfall.multigateway.shared.storage.preferences.AppLocale
 import org.starfall.multigateway.shared.storage.preferences.ScreenWakelockMode
-import org.starfall.multigateway.home.shared.service.ChatBackgroundService
 import org.starfall.multigateway.shared.theme.MultiGatewayTheme
-import org.starfall.multigateway.home.chat_screen.ChatViewModel
-import org.starfall.multigateway.features.providers.shared.ConfigurationViewModel
-import org.starfall.multigateway.features.settings.appsettings.screen.SettingsViewModel
-import org.starfall.multigateway.features.remotemachines.remotemachines.screen.RemoteMachinesViewModel
+import org.starfall.multigateway.features.providers.shared.logic.ConfigurationViewModel
+import org.starfall.multigateway.features.settings.logic.SettingsViewModel
+import org.starfall.multigateway.features.machines.shared.logic.RemoteMachinesViewModel
 import org.starfall.multigateway.shared.model.parseProviderLink
 import org.starfall.multigateway.shared.ui.dialogs.CrashReportDialog
 import org.starfall.multigateway.navigation.AppNavigation
+import org.starfall.multigateway.home.chat.logic.ChatViewModel
+import org.starfall.multigateway.home.shared.logic.ChatBackgroundService
 
 private const val SERVICE_STOP_GRACE_MS = 5_000L
 

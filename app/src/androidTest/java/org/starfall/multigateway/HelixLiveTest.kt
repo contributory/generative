@@ -9,12 +9,12 @@ import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.home.chat_screen.ChatViewModel
-import org.starfall.multigateway.features.providers.shared.ConfigurationViewModel
-import org.starfall.multigateway.features.settings.appsettings.screen.SettingsViewModel
+import org.starfall.multigateway.features.providers.shared.logic.ConfigurationViewModel
+import org.starfall.multigateway.features.settings.logic.SettingsViewModel
 import java.util.UUID
 import android.os.ParcelFileDescriptor
 import kotlinx.serialization.json.*
+import org.starfall.multigateway.home.chat.logic.ChatViewModel
 
 /** Explicit ADB-only smoke test; uses the provider already entered on the device, never embeds a credential. */
 class HelixLiveTest {

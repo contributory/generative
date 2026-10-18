@@ -7,6 +7,11 @@ import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.model.language.ACTIVE_THINKING_BUDGET
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.language.SELECTABLE_REASONING_EFFORTS
+import org.starfall.multigateway.shared.model.language.requestReasoningEffort
+import org.starfall.multigateway.shared.model.language.wireReasoningEffort
+import org.starfall.multigateway.shared.model.language.withConversationReasoning
+import org.starfall.multigateway.shared.model.language.withSelectedReasoningEffort
+import org.starfall.multigateway.shared.model.language.googleThinkingConfig
 
 class ClaudeThinkingTest {
     private fun parameters(model: String, effort: String?, limit: Int = 16000) =

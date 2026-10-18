@@ -11,7 +11,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.ui.lists.moved
-import org.starfall.multigateway.features.providers.shared.ProviderModelsPane
+import org.starfall.multigateway.features.providers.shared.ui.ProviderModelsPane
 
 class LibraryReorderBehaviorTest {
     @get:Rule val compose = createComposeRule()

@@ -20,9 +20,7 @@ import org.starfall.multigateway.shared.storage.database.AppDatabase
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.storage.ModelRepository
 import org.starfall.multigateway.integrations.modelapis.AiService
-import org.starfall.multigateway.home.modelpicker_sheet.ModelPickerItem
-import org.starfall.multigateway.home.modelpicker_sheet.computeModelPickerItems
-import org.starfall.multigateway.features.providers.providers.screen.newProviderId
+import org.starfall.multigateway.features.providers.list.ui.newProviderId
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.provider.ModelProvider
@@ -30,6 +28,8 @@ import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
 import org.starfall.multigateway.shared.model.provider.ProviderGroup
 import org.starfall.multigateway.shared.model.provider.ProviderPlacement
 import org.starfall.multigateway.shared.model.provider.ProviderRootOrderItem
+import org.starfall.multigateway.shared.ui.model.ModelPickerItem
+import org.starfall.multigateway.shared.ui.model.computeModelPickerItems
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

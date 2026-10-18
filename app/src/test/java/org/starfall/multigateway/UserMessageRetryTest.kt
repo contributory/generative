@@ -3,8 +3,8 @@ package org.starfall.multigateway
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.home.chat_screen.prepareUserMessageRetry
-import org.starfall.multigateway.home.chat_screen.unansweredUserMessageIds
+import org.starfall.multigateway.home.chat.logic.prepareUserMessageRetry
+import org.starfall.multigateway.home.chat.logic.unansweredUserMessageIds
 
 class UserMessageRetryTest {
     private fun user(id: String) = StoredMessage(id, ChatRole.USER,

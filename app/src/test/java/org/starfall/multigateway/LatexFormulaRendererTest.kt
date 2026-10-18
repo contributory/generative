@@ -3,9 +3,9 @@ package org.starfall.multigateway
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
-import org.starfall.multigateway.home.chat_screen.LatexCacheKey
-import org.starfall.multigateway.home.chat_screen.latexCacheKey
-import org.starfall.multigateway.home.chat_screen.latexFallbackSource
+import org.starfall.multigateway.home.chat.ui.markdown.LatexCacheKey
+import org.starfall.multigateway.home.chat.ui.markdown.latexCacheKey
+import org.starfall.multigateway.home.chat.ui.markdown.latexFallbackSource
 
 class LatexFormulaRendererTest {
     @Test fun cacheKeyRoundsPixelSizeAndIncludesThemeInputs() {

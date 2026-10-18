@@ -13,8 +13,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import org.starfall.multigateway.features.mcp.shared.*
-import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.features.mcp.shared.ui.*
+import org.starfall.multigateway.features.machines.shared.ui.*
 import org.starfall.multigateway.integrations.remote.*
 import org.starfall.multigateway.home.chat.*
 import org.starfall.multigateway.integrations.modelapis.*

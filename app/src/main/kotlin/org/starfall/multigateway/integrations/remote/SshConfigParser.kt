@@ -144,11 +144,11 @@ object SshConfigParser {
             }
             val secret = machine.identityPassphrase.ifBlank { machine.password }
             machine.copy(
-                // Machine name, address, user and the single secret are the persisted base record.
-                // Other connection options are always hydrated from the SSH config file.
-                host = if (isCloudShell) "" else machine.host,
+                // Explicit SSH config values take precedence; absent values retain the saved base record.
+                // Secrets and app-only settings remain sourced from the saved machine.
+                host = if (isCloudShell) "" else o["hostname"].orEmpty().ifBlank { machine.host },
                 port = if (isCloudShell) 6_000 else o["port"]?.toIntOrNull()?.coerceIn(1, 65535) ?: 22,
-                username = if (isCloudShell) o["user"].orEmpty() else machine.username,
+                username = if (isCloudShell) o["user"].orEmpty() else o["user"].orEmpty().ifBlank { machine.username },
                 gcloudUsername = if (isCloudShell) o["user"].orEmpty() else machine.gcloudUsername,
                 authentication = authentication,
                 password = if (authentication == RemoteAuthentication.PASSWORD) secret else "",

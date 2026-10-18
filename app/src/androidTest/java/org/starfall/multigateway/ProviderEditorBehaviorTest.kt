@@ -9,8 +9,9 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.features.providers.providereditor.screen.ProviderEditorScreen
-import org.starfall.multigateway.features.providers.modeleditor.screen.ModelEditorScreen
+import org.starfall.multigateway.shared.ui.model.ModelCapabilityBadges
+import org.starfall.multigateway.features.providers.editor.ui.ProviderEditorScreen
+import org.starfall.multigateway.features.providers.editor.ui.ModelEditorScreen
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.starfall.multigateway.shared.model.auth.AuthMethod
@@ -93,7 +94,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
             androidx.compose.foundation.layout.Column {
                 org.starfall.multigateway.shared.ui.icons.EntityIcon(null, text =
                     org.starfall.multigateway.shared.ui.icons.providerInitials("My Provider Name"))
-                org.starfall.multigateway.home.modelpicker_sheet.ModelCapabilityBadges(config)
+                org.starfall.multigateway.shared.ui.model.ModelCapabilityBadges(config)
             }
         } }
         compose.onNodeWithText("MP").assertIsDisplayed()

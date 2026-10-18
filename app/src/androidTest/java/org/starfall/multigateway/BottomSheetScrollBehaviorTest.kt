@@ -23,7 +23,7 @@ import org.junit.Test
 import org.starfall.multigateway.shared.model.language.DiscoveredModel
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.api.ModelApiType
-import org.starfall.multigateway.features.providers.fetchmodels.sheet.ProviderModelCatalogSheet
+import org.starfall.multigateway.features.providers.editor.ui.ProviderModelCatalogSheet
 
 class BottomSheetScrollBehaviorTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()

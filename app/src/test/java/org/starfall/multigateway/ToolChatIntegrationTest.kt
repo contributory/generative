@@ -1,6 +1,5 @@
 package org.starfall.multigateway
 
-import org.starfall.multigateway.home.chat_screen.Tool.*
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
@@ -14,13 +13,12 @@ import org.robolectric.annotation.Config
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.features.defaultmodelsandtools.shared.*
-import org.starfall.multigateway.home.chat_screen.*
 import org.starfall.multigateway.shared.files.*
 import org.starfall.multigateway.shared.networking.*
 import org.starfall.multigateway.shared.storage.preferences.*
-import org.starfall.multigateway.features.mcp.shared.*
-import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.features.mcp.shared.ui.*
+import org.starfall.multigateway.integrations.mcp.*
+import org.starfall.multigateway.features.machines.shared.ui.*
 import org.starfall.multigateway.integrations.remote.*
 import org.starfall.multigateway.home.chat.*
 import org.starfall.multigateway.integrations.modelapis.*
@@ -34,6 +32,7 @@ import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.language.ModelType
 import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
+import org.starfall.multigateway.home.chat.logic.tool.ToolChatViewModel
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)

@@ -22,6 +22,7 @@ import org.starfall.multigateway.shared.model.auth.AuthMethod
 import org.starfall.multigateway.shared.model.auth.Authorization
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.oauthCredentialId
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)

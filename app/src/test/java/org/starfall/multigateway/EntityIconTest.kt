@@ -17,8 +17,9 @@ import org.starfall.multigateway.shared.storage.database.entities.McpServerEntit
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.storage.ModelRepository
 import org.starfall.multigateway.shared.storage.McpRepository
-import org.starfall.multigateway.features.mcp.shared.*
-import org.starfall.multigateway.features.remotemachines.shared.*
+import org.starfall.multigateway.features.mcp.shared.ui.*
+import org.starfall.multigateway.integrations.mcp.*
+import org.starfall.multigateway.features.machines.shared.ui.*
 import org.starfall.multigateway.integrations.remote.*
 import org.starfall.multigateway.home.chat.*
 import org.starfall.multigateway.integrations.modelapis.*

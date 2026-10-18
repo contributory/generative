@@ -2,12 +2,8 @@ package org.starfall.multigateway
 
 import org.junit.Assert.*
 import org.junit.Test
+import org.starfall.multigateway.features.providers.list.logic.*
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.features.providers.fetchmodels.sheet.*
-import org.starfall.multigateway.features.providers.modeleditor.screen.*
-import org.starfall.multigateway.features.providers.providereditor.screen.*
-import org.starfall.multigateway.features.providers.providers.screen.*
-import org.starfall.multigateway.features.providers.shared.*
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.provider.ModelProvider

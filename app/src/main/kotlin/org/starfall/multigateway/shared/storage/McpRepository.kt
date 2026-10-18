@@ -7,8 +7,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-import org.starfall.multigateway.features.mcp.shared.McpOAuthService
-import org.starfall.multigateway.features.mcp.shared.McpService
+import org.starfall.multigateway.integrations.mcp.McpOAuthService
+import org.starfall.multigateway.integrations.mcp.McpService
 import org.starfall.multigateway.shared.icons.IconStore
 import org.starfall.multigateway.shared.model.McpAuthorization
 import org.starfall.multigateway.shared.model.McpInfo

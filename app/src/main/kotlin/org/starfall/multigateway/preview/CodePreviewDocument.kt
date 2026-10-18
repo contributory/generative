@@ -1,7 +1,7 @@
 package org.starfall.multigateway.preview
 
 import java.util.Base64
-import org.starfall.multigateway.home.chat_screen.codeLanguage
+import org.starfall.multigateway.shared.code.codeLanguage
 
 internal const val PREVIEW_ORIGIN = "https://preview.multigateway.invalid/"
 internal val previewRuntimeAssets = setOf("runtime.js")

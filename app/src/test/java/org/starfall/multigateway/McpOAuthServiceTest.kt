@@ -21,7 +21,7 @@ import org.robolectric.annotation.Config
 import org.starfall.multigateway.shared.model.McpAuthMethod
 import org.starfall.multigateway.shared.model.McpAuthorization
 import org.starfall.multigateway.shared.model.McpInfo
-import org.starfall.multigateway.features.mcp.shared.McpOAuthService
+import org.starfall.multigateway.integrations.mcp.McpOAuthService
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)

@@ -17,8 +17,6 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.multigateway.shared.model.*
-import org.starfall.multigateway.home.modelpicker_sheet.ModelPickerBottomSheet
-import org.starfall.multigateway.home.quickactions_sheet.QuickActionsBottomSheet
 import org.starfall.multigateway.shared.ui.media.InlineVideoPreview
 import org.starfall.multigateway.shared.ui.media.mediaThumbnail
 import java.io.File
@@ -26,6 +24,8 @@ import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
+import org.starfall.multigateway.home.sheets.ui.QuickActionsBottomSheet
+import org.starfall.multigateway.shared.ui.model.ModelPickerBottomSheet
 
 class DeviceRegressionTest {
     @get:Rule val compose = createComposeRule()

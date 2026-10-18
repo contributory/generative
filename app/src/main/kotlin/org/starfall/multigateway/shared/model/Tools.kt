@@ -51,6 +51,8 @@ data class ToolSettings(
 data class ToolActivity(
     val id: String,
     val name: String,
+    /** Function name the model used for this call; [name] is the display name. */
+    val wireName: String = "",
     val status: String = "running",
     val summary: String = "",
     val files: List<String> = emptyList(),

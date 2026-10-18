@@ -1,7 +1,13 @@
 package org.starfall.multigateway
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.*
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -13,7 +19,7 @@ import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderGroup
 import org.starfall.multigateway.shared.model.provider.ProviderPlacement
 import org.starfall.multigateway.shared.model.api.ModelApiType
-import org.starfall.multigateway.features.providers.providers.screen.ProvidersScreen
+import org.starfall.multigateway.features.providers.list.ui.ProvidersScreen
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h1000dp-xhdpi")
@@ -34,21 +40,24 @@ class ProviderFolderContainerTest {
     ) {
         compose.setContent {
             MaterialTheme {
-                ProvidersScreen(
-                    providers = source,
-                    providerGroups = listOf(group),
-                    isGridView = true,
-                    onSaveProvider = {},
-                    onSaveModels = { _, _ -> },
-                    onReorderModels = { _, _ -> },
-                    onDeleteProvider = {},
-                    onReorderProviders = {},
-                    onBack = {},
-                    onPlaceProvider = { placement ->
-                        writes += placement
-                        Result.success(Unit)
-                    }
-                )
+                var editorOpened by remember { mutableStateOf(false) }
+                if (editorOpened) {
+                    Text("Provider editor", modifier = androidx.compose.ui.Modifier.testTag("provider_editor"))
+                } else {
+                    ProvidersScreen(
+                        providers = source,
+                        providerGroups = listOf(group),
+                        isGridView = true,
+                        onOpenProviderEditor = { _, _ -> editorOpened = true },
+                        onDeleteProvider = {},
+                        onReorderProviders = {},
+                        onBack = {},
+                        onPlaceProvider = { placement ->
+                            writes += placement
+                            Result.success(Unit)
+                        }
+                    )
+                }
             }
         }
         compose.waitForIdle()

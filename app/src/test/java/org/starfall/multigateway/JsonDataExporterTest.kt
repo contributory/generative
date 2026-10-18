@@ -17,12 +17,12 @@ import org.starfall.multigateway.shared.model.McpInfo
 import org.starfall.multigateway.shared.model.SpeechService
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.provider.ProviderGroup
-import org.starfall.multigateway.features.appdata.model.JsonExportKind
-import org.starfall.multigateway.features.appdata.service.buildJsonExport
-import org.starfall.multigateway.features.appdata.service.parseConversationsExport
-import org.starfall.multigateway.features.appdata.service.parseMcpExport
-import org.starfall.multigateway.features.appdata.service.parseProvidersExport
-import org.starfall.multigateway.features.appdata.service.parseSpeechServicesExport
+import org.starfall.multigateway.shared.model.JsonExportKind
+import org.starfall.multigateway.features.appdata.logic.buildJsonExport
+import org.starfall.multigateway.features.appdata.logic.parseConversationsExport
+import org.starfall.multigateway.features.appdata.logic.parseMcpExport
+import org.starfall.multigateway.features.appdata.logic.parseProvidersExport
+import org.starfall.multigateway.features.appdata.logic.parseSpeechServicesExport
 
 class JsonDataExporterTest {
     @Test fun exportsEachCollectionAsVersionedJsonWithItsType() {
