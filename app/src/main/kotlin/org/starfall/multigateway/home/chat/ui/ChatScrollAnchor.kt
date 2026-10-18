@@ -2,29 +2,20 @@ package org.starfall.multigateway.home.chat.ui
 
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.layout.layout
 import kotlin.math.abs
 import org.starfall.multigateway.home.chat.logic.SentMessageDetector
 import org.starfall.multigateway.home.chat.logic.anchorTailSpacer
-
-/** Key of the blank item that keeps the list scrollable far enough for a sent message to be anchored. */
-internal const val ANCHOR_SPACER_KEY = "anchor-tail-spacer"
 
 private const val MAX_WAIT_FRAMES = 90
 private const val MAX_SETTLE_PASSES = 3
@@ -33,7 +24,7 @@ private const val SETTLE_TOLERANCE_PX = 2
 /**
  * The scroll position of a just-sent user message: flush under the app bar. When a message is sent,
  * including a pending one that starts once the previous response ends, [ChatAnchorEffects] places it
- * there once; the user can drag it away and back. Only user messages get this: [ChatAnchorTailSpacer]
+ * there once; the user can drag it away and back. Only user messages get this: [anchorTailItem]
  * keeps the content tall enough to reach it, and AI messages scroll as before.
  *
  * Every other automatic scroll (following a streaming reply, jump to latest, opening a chat) must stay
@@ -56,8 +47,20 @@ internal class ChatScrollAnchor {
     var settling by mutableStateOf(false)
         private set
 
-    /** Last measured height of each item, kept while it is scrolled out of the visible window. */
-    val heights = mutableStateMapOf<String, Int>()
+    // Natural (unpadded) height of each item, written while the item is measured. Plain storage plus a
+    // version that only the newest item's measure reads, so a prefix change re-measures just that item.
+    private val naturalHeights = HashMap<String, Int>()
+    private var heightsVersion by mutableIntStateOf(0)
+
+    fun recordHeight(id: String, px: Int, notify: Boolean) {
+        if (naturalHeights.put(id, px) != px && notify) heightsVersion += 1
+    }
+
+    /** Minimum height of the newest item: one visible area minus the items of the turn before it. */
+    fun newestItemMinHeight(visiblePx: Int, precedingIds: List<String>): Int {
+        heightsVersion // observed by the measuring item
+        return anchorTailSpacer(visiblePx, precedingIds.sumOf { naturalHeights[it] ?: 0 })
+    }
 
     fun start(id: String) {
         messageId = id
@@ -77,13 +80,9 @@ internal class ChatScrollAnchor {
     fun end() {
         messageId = null
         settling = false
-        heights.clear()
+        naturalHeights.clear()
     }
 }
-
-/** Height of the chat area (between the app bar and the input bar) in the layout's own coordinates. */
-private fun LazyListLayoutInfo.visibleContentHeight(): Int =
-    (viewportEndOffset - afterContentPadding) - beforeContentPadding
 
 /**
  * Applies a [ChatScrollAnchor.start] request. Everything that scrolls for it lives in one effect keyed
@@ -102,17 +101,6 @@ internal fun ChatAnchorEffects(
     val currentIndexOf by rememberUpdatedState(itemIndexOf)
     val currentItemCount by rememberUpdatedState(itemCount)
 
-    // Items scrolled out of the window are not in layoutInfo, so their heights are remembered here.
-    LaunchedEffect(anchor, anchor.messageId) {
-        if (anchor.messageId == null) return@LaunchedEffect
-        snapshotFlow { listState.layoutInfo }.collect { info ->
-            for (item in info.visibleItemsInfo) {
-                val key = item.key as? String ?: continue
-                if (key != ANCHOR_SPACER_KEY && anchor.heights[key] != item.size) anchor.heights[key] = item.size
-            }
-        }
-    }
-
     LaunchedEffect(anchor.request) {
         val id = anchor.messageId ?: return@LaunchedEffect
         val request = anchor.request
@@ -124,7 +112,7 @@ internal fun ChatAnchorEffects(
             ) androidx.compose.runtime.withFrameNanos { }
 
             // The first pass animates to the message; the next passes correct for sizes that were
-            // still unknown (the spacer and the reply shrink/grow as they are measured).
+            // still unknown (the reply grows as it is measured).
             repeat(MAX_SETTLE_PASSES) {
                 val index = currentIndexOf(id)
                 if (index < 0) return@LaunchedEffect
@@ -145,13 +133,25 @@ internal fun ChatAnchorEffects(
     }
 }
 
-/** Blank item after the newest content; see [anchorTailSpacer]. Reads heights here so only it recomposes. */
-@Composable
-internal fun ChatAnchorTailSpacer(anchor: ChatScrollAnchor, tailIds: List<String>, visibleHeight: Dp) {
-    val density = LocalDensity.current
-    val tailPx = tailIds.sumOf { anchor.heights[it] ?: 0 }
-    val spacerPx = anchorTailSpacer(with(density) { visibleHeight.roundToPx() }, tailPx)
-    Spacer(Modifier.height(with(density) { spacerPx.toDp() }))
+/**
+ * Measures an item and records its natural height; the newest item is then padded to at least
+ * [ChatScrollAnchor.newestItemMinHeight]. Because the padding is decided in the same measure pass as
+ * the item's own size, content that shrinks (a placeholder replaced by short text) never lets the list
+ * clamp its scroll position the way a separate spacer, updated a frame later, would.
+ */
+internal fun Modifier.anchorTailItem(
+    anchor: ChatScrollAnchor,
+    id: String,
+    isNewest: Boolean,
+    precedingIds: List<String>,
+    visiblePx: Int
+): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    anchor.recordHeight(id, placeable.height, notify = !isNewest)
+    val height = if (isNewest && anchor.messageId != null) {
+        maxOf(placeable.height, anchor.newestItemMinHeight(visiblePx, precedingIds))
+    } else placeable.height
+    layout(placeable.width, height) { placeable.placeRelative(0, 0) }
 }
 
 /**

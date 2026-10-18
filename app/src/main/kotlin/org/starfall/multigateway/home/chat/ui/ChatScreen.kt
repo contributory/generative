@@ -215,9 +215,8 @@ fun ChatScreen(
     val nearBottomPx = with(LocalDensity.current) { 32.dp.toPx() }
     fun isNearBottom(): Boolean {
         val layout = listState.layoutInfo
-        // The anchor spacer is blank room after the newest message, not something to scroll to.
-        val last = layout.visibleItemsInfo.lastOrNull { it.key != ANCHOR_SPACER_KEY } ?: return false
-        if (last.index != layout.totalItemsCount - 1 - (if (anchor.messageId != null) 1 else 0)) return false
+        val last = layout.visibleItemsInfo.lastOrNull() ?: return false
+        if (last.index != layout.totalItemsCount - 1) return false
         return last.offset + last.size - (layout.viewportEndOffset - layout.afterContentPadding) <= nearBottomPx
     }
     val scrollConnection = remember(listState) {
@@ -254,8 +253,8 @@ fun ChatScreen(
         val index = (if (includeQueued) messages.lastIndex else conversationMessages.lastIndex) +
             messageIndexOffset
         if (index < 0) return
-        // With the anchor spacer the end of the content is the top position, which only the user
-        // may choose. Reveal the newest message instead.
+        // While a sent message is anchored the end of the content is the position under the app bar
+        // (the newest item is padded for it). Reveal the newest message instead of jumping there.
         if (anchor.messageId != null) listState.revealItemBottom(index)
         else listState.scrollToItem(index, OPEN_AT_BOTTOM_OFFSET)
     }
@@ -481,7 +480,9 @@ fun ChatScreen(
                 )
             }
         } else {
-            val visibleChatHeight = (maxHeight - (appBarHeight + 8.dp) - bottomClearance).coerceAtLeast(0.dp)
+            val visibleChatPx = with(density) {
+                (maxHeight - (appBarHeight + 8.dp) - bottomClearance).coerceAtLeast(0.dp).roundToPx()
+            }
             val anchorTailIds = remember(messages, anchor.messageId) {
                 val index = messages.indexOfFirst { it.id == anchor.messageId }
                 if (index < 0) emptyList() else messages.drop(index).map { it.id }
@@ -492,7 +493,7 @@ fun ChatScreen(
                 itemIndexOf = { id ->
                     messages.indexOfFirst { it.id == id }.let { if (it < 0) -1 else it + messageIndexOffset }
                 },
-                itemCount = { messages.size + messageIndexOffset + 1 }
+                itemCount = { messages.size + messageIndexOffset }
             )
             ChatOpeningVeil(active = veilActive, modifier = Modifier.fillMaxSize()) {
             CompositionLocalProvider(LocalChatSettleTracker provides settleTracker) {
@@ -515,6 +516,12 @@ fun ChatScreen(
 
                 items(messages, key = { it.id }) { msg ->
                     val isLast = msg.id == lastMessage?.id
+                    Column(
+                        Modifier.anchorTailItem(
+                            anchor, msg.id, msg.id == messages.last().id,
+                            anchorTailIds.dropLast(1), visibleChatPx
+                        )
+                    ) {
 
                     if (msg.role == ChatRole.USER) {
                         UserMessageCard(
@@ -620,12 +627,6 @@ fun ChatScreen(
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }
-                }
-
-                // Room for the sent message to sit in the middle and to be dragged up to the app bar.
-                if (anchor.messageId != null) {
-                    item(key = ANCHOR_SPACER_KEY) {
-                        ChatAnchorTailSpacer(anchor, anchorTailIds, visibleChatHeight)
                     }
                 }
             }

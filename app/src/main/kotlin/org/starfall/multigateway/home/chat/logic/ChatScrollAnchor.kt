@@ -39,7 +39,8 @@ internal class SentMessageDetector {
 }
 
 /**
- * Blank space to keep after the newest content while a sent message is anchored, in px.
+ * Minimum height of the newest item while a sent message is anchored, in px: the part of one visible
+ * area that the items before it do not already fill.
  *
  * The list can only scroll as far as its content allows. Placing the message flush under the
  * app bar, and letting the user drag it back there, needs the content from the message to the end to

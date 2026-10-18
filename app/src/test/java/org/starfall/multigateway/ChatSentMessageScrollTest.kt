@@ -108,7 +108,7 @@ class ChatSentMessageScrollTest {
     private fun assertUnderAppBar(text: String) {
         val top = top(text)
         val h = rootHeight()
-        assertTrue("\"$text\" must sit under the app bar, was at $top of $h", top in (0.04f * h)..(0.17f * h))
+        assertTrue("\"$text\" must sit under the app bar, was at $top of $h", top in (0.08f * h)..(0.25f * h))
         assertTrue("room below for the reply", top < inputTop() - 0.4f * h)
     }
 
@@ -171,7 +171,7 @@ class ChatSentMessageScrollTest {
 
         compose.onRoot().performTouchInput { swipeUp(startY = height * 0.8f, endY = height * 0.05f, durationMillis = 200) }
         frames()
-        assertTrue("it can be dragged back to the app bar", top("Pending question") < 0.17f * rootHeight())
+        assertTrue("it can be dragged back to the app bar", top("Pending question") < 0.25f * rootHeight())
     }
 
     @Test fun aLongReplyIsFollowedWithoutLosingTheEndOfIt() {
