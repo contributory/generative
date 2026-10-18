@@ -61,6 +61,53 @@ fi
 release_body="$(gh release view "$tag" --repo "$repo" --json body --jq '.body // ""')"
 release_marker='<!-- multigateway-release-info -->'
 if [[ "$release_body" != *"$release_marker"* ]]; then
+  ai_notes=""
+  ai_base="${RELEASE_NOTES_API_BASE_URL:-${AI_BASE_URL:-}}"
+  ai_key="${RELEASE_NOTES_API_KEY:-${AI_API_KEY:-}}"
+  ai_model="${RELEASE_NOTES_MODEL:-${AI_MODEL:-gpt-4o-mini}}"
+  if [[ -n "$ai_base" ]]; then
+    ai_tmp="$(mktemp -d)"
+    previous_tag="$(git describe --tags --abbrev=0 "$commit^" 2>/dev/null || true)"
+    if [[ -n "$previous_tag" ]]; then
+      commit_messages="$(git log --no-merges --format='%s' "$previous_tag..$commit" 2>/dev/null || true)"
+    else
+      commit_messages="$(git log -20 --no-merges --format='%s' "$commit" 2>/dev/null || true)"
+    fi
+    printf '%s' "$commit_messages" > "$ai_tmp/commit-messages.txt"
+    python3 - "$ai_model" "$ai_tmp/commit-messages.txt" "$ai_tmp/request.json" <<'PY_REQUEST'
+import json, sys
+model, messages_path, request_path = sys.argv[1:]
+commit_messages = open(messages_path, encoding="utf-8").read().strip()
+payload = {"model": model, "temperature": 0.2, "messages": [
+    {"role": "system", "content": "Write concise English release notes for end users of the MultiGateway Android app using only the supplied commit messages. Describe likely user-visible features, usability improvements, and fixes. Do not mention internal code, refactoring, tests, CI, commit history, or developer tasks. Do not invent details not supported by the messages. Return 2-6 short Markdown bullets only."},
+    {"role": "user", "content": "Commit messages for this release:\n" + (commit_messages or "No commit messages available; provide one conservative general maintenance note.")},
+]}
+with open(request_path, "w", encoding="utf-8") as stream:
+    json.dump(payload, stream)
+PY_REQUEST
+    ai_base="${ai_base%/}"
+    [[ "$ai_base" == */chat/completions ]] || ai_base="$ai_base/chat/completions"
+    curl_args=(--silent --show-error --fail --connect-timeout "${RELEASE_NOTES_CONNECT_TIMEOUT_SECONDS:-5}" --max-time "${RELEASE_NOTES_TIMEOUT_SECONDS:-20}" -H 'Content-Type: application/json' --data-binary "@$ai_tmp/request.json" -o "$ai_tmp/response.json")
+    [[ -z "$ai_key" ]] || curl_args+=(-H "Authorization: Bearer $ai_key")
+    if curl "${curl_args[@]}" "$ai_base"; then
+      ai_notes="$(python3 - "$ai_tmp/response.json" <<'PY_RESPONSE'
+import json, sys
+try:
+    data = json.load(open(sys.argv[1], encoding="utf-8"))
+    content = data["choices"][0]["message"]["content"]
+    if isinstance(content, str) and len(content.strip()) >= 20:
+        print(content.strip())
+except (OSError, ValueError, KeyError, IndexError, TypeError):
+    pass
+PY_RESPONSE
+      )"
+    fi
+    rm -rf "$ai_tmp"
+  fi
+  if [[ -z "$ai_notes" ]]; then
+    echo 'Warning: AI release-note API unavailable; falling back to GitHub-generated notes.' >&2
+    ai_notes="${release_body:-'- Includes general improvements and fixes for a smoother, more reliable app experience.'}"
+  fi
   notes_file="$(mktemp)"
   trap 'rm -f "$notes_file"' EXIT
 
@@ -81,8 +128,8 @@ if [[ "$release_body" != *"$release_marker"* ]]; then
     printf '\n### Verify a downloaded APK\n\n'
     printf 'Run `shasum -a 1 <apk-file>` and compare the result with the matching `.sha1` file attached to this release.\n'
 
-    if [[ -n "$release_body" ]]; then
-      printf '\n### Changes\n\n%s\n' "$release_body"
+    if [[ -n "$ai_notes" ]]; then
+      printf '\n### What’s changed\n\n%s\n' "$ai_notes"
     fi
   } > "$notes_file"
 
