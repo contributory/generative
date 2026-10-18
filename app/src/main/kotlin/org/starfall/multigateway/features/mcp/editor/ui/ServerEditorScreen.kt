@@ -17,6 +17,7 @@ import org.starfall.multigateway.shared.model.McpAuthorization
 import org.starfall.multigateway.shared.model.McpInfo
 import org.starfall.multigateway.shared.model.ToolDefinition
 import org.starfall.multigateway.shared.model.ToolSettings
+import org.starfall.multigateway.shared.model.McpToolParameterConfig
 import org.starfall.multigateway.shared.model.auth.Authorization
 import org.starfall.multigateway.shared.model.auth.bearerHeaderValue
 import org.starfall.multigateway.shared.model.isContentApiName
@@ -32,6 +33,7 @@ fun ServerEditorScreen(
     onAuthorizeOAuth: suspend (McpInfo) -> Result<McpInfo>, onClearOAuth: suspend (McpInfo) -> McpInfo,
     cachedTools: List<ToolDefinition>?, cachedError: String?, cachedLoading: Boolean,
     toolSettings: ToolSettings, onSetToolEnabled: (String, String, Boolean) -> Unit,
+    onSetToolParameter: (String, String, String, McpToolParameterConfig) -> Unit,
     onDismiss: () -> Unit, onSave: (McpInfo) -> Unit
 ) {
     var serverIcon by remember(initialServer.id) { mutableStateOf(initialServer.icon) }
@@ -121,7 +123,7 @@ fun ServerEditorScreen(
                          oauthAuthorized = false; authValue = cleared.auth.value.orEmpty()
                     }, modifier = Modifier.weight(1f)
                 ) else McpToolsTab(initialServer.id, cachedTools, cachedLoading, cachedError, canSave, toolSettings,
-                    onSetToolEnabled, ::refreshTools, Modifier.weight(1f))
+                    onSetToolEnabled, onSetToolParameter, ::refreshTools, Modifier.weight(1f))
             }
         }
     }

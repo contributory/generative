@@ -1,7 +1,7 @@
 package org.starfall.multigateway.shared.model
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.*
 import java.util.UUID
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.provider.ModelProvider
@@ -39,6 +39,8 @@ data class ToolSettings(
     val system: Map<String, SystemToolConfig> = emptyMap(),
     val quickMcp: Map<String, Boolean> = emptyMap(),
     val mcpTools: Map<String, Map<String, Boolean>> = emptyMap(),
+    /** Per-server, per-tool parameter visibility and optional default values. */
+    val mcpToolParameters: Map<String, Map<String, Map<String, McpToolParameterConfig>>> = emptyMap(),
     /** Master switch for Remote Machine tools in the chat tool picker. */
     val machinesEnabled: Boolean = false,
     /** Machine-level switches shown in Tools Manage. Entries override the legacy master switch. */
@@ -77,6 +79,67 @@ data class ToolDefinition(
     /** A tool owned by a Remote Machine, mutually exclusive with [serverId]. */
     val remoteMachineId: String? = null
 )
+
+
+@Serializable
+data class McpToolParameterConfig(
+    val enabled: Boolean = true,
+    /** Stored as text in the editor and converted to the parameter's schema type when called. */
+    val defaultValue: String = ""
+)
+
+fun configuredMcpTool(tool: ToolDefinition, settings: ToolSettings): ToolDefinition {
+    val serverId = tool.serverId ?: return tool
+    val overrides = settings.mcpToolParameters[serverId]?.get(tool.originalName).orEmpty()
+    if (overrides.isEmpty()) return tool
+    val properties = tool.schema["properties"] as? JsonObject ?: return tool
+    val required = (tool.schema["required"] as? JsonArray)?.mapNotNull { it.jsonPrimitive.contentOrNull }.orEmpty()
+    val visibleProperties = buildJsonObject {
+        properties.forEach { (name, schema) ->
+            val config = overrides[name]
+            if (config?.enabled != false) put(name, schema)
+        }
+    }
+    val visibleRequired = required.filter { name -> overrides[name]?.enabled != false }
+    val schema = buildJsonObject {
+        tool.schema.forEach { (key, value) ->
+            when (key) {
+                "properties" -> put(key, visibleProperties)
+                "required" -> if (visibleRequired.isNotEmpty()) put(key, JsonArray(visibleRequired.map(::JsonPrimitive)))
+                else -> put(key, value)
+            }
+        }
+        if ("properties" !in tool.schema) put("properties", visibleProperties)
+    }
+    return tool.copy(schema = schema)
+}
+
+fun configuredMcpArguments(tool: ToolDefinition, arguments: JsonObject, settings: ToolSettings): JsonObject {
+    val serverId = tool.serverId ?: return arguments
+    val overrides = settings.mcpToolParameters[serverId]?.get(tool.originalName).orEmpty()
+    if (overrides.isEmpty()) return arguments
+    val properties = tool.schema["properties"] as? JsonObject ?: JsonObject(emptyMap())
+    return buildJsonObject {
+        arguments.forEach { (name, value) ->
+            val config = overrides[name]
+            if (config?.enabled != false) put(name, value)
+        }
+        overrides.forEach { (name, config) ->
+            if (config.defaultValue.isBlank() || arguments.containsKey(name)) return@forEach
+            val type = (properties[name] as? JsonObject)?.get("type")?.jsonPrimitive?.contentOrNull
+            val value = runCatching {
+                when (type) {
+                    "integer" -> JsonPrimitive(config.defaultValue.trim().toLong())
+                    "number" -> JsonPrimitive(config.defaultValue.trim().toDouble())
+                    "boolean" -> JsonPrimitive(config.defaultValue.trim().toBooleanStrict())
+                    "object", "array" -> Json.parseToJsonElement(config.defaultValue)
+                    else -> JsonPrimitive(config.defaultValue)
+                }
+            }.getOrElse { JsonPrimitive(config.defaultValue) }
+            put(name, value)
+        }
+    }
+}
 
 /**
  * Server and machine names are user-controlled, so two entries can still produce the same readable

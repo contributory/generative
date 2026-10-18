@@ -32,6 +32,8 @@ import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.generation.GenerationEvent
 import org.starfall.multigateway.shared.model.generation.hasToolCalls
 import org.starfall.multigateway.shared.model.globalMcpToolEnabled
+import org.starfall.multigateway.shared.model.configuredMcpTool
+import org.starfall.multigateway.shared.model.configuredMcpArguments
 import org.starfall.multigateway.shared.model.isContentApiPreset
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.language.ModelType
@@ -272,7 +274,7 @@ class ToolChatViewModel(
                     provider,
                     model,
                     history,
-                    allowed,
+                    allowed.map { configuredMcpTool(it, settings()) },
                     prompt,
                     sendThinking = sendThinkingContent,
                     onText = { send(GenerationEvent.Text(it)) },
@@ -346,7 +348,7 @@ class ToolChatViewModel(
                             ) { "MCP tool disabled" }
                             toolExecution.callMcpTool(
                                 sessions[tool.serverId] ?: error("MCP session unavailable"),
-                                tool.originalName, args, retainLongTextInMemory = !contentApi
+                                tool.originalName, configuredMcpArguments(tool, args, settings()), retainLongTextInMemory = !contentApi
                             )
                         } else if (name == SEND_FILE_TOOL_NAME) {
                             check(settings().sendFileEnabled) { "Send File tool disabled" }

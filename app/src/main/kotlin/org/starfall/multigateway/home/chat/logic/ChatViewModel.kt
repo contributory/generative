@@ -80,6 +80,16 @@ class ChatViewModel(
             }
         }
     }
+    fun setMcpToolParameter(serverId: String, toolName: String, parameterName: String, config: org.starfall.multigateway.shared.model.McpToolParameterConfig) {
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            toolStore.update { settings ->
+                val server = settings.mcpToolParameters[serverId].orEmpty()
+                val parameters = server[toolName].orEmpty() + (parameterName to config)
+                val tools = server + (toolName to parameters)
+                settings.copy(mcpToolParameters = settings.mcpToolParameters + (serverId to tools))
+            }
+        }
+    }
     fun setMachinesEnabled(enabled: Boolean) {
         viewModelScope.launch(LocalWriteErrors.handler) {
             toolStore.update { it.copy(machinesEnabled = enabled) }

@@ -135,8 +135,9 @@ internal fun SelectedModelOverviewBottomSheet(
                   drawBackground = false,
                  onPreviewTierChange = { previewTier = it }
             )
+            // Show the dropdown only when this model has at least one configurable option.
             // Keep optional model controls tucked away until the user opens Model Options.
-            Surface(
+            if (visibleModelTools.isNotEmpty() || config.supportsThinking) Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.1f),
                 modifier = Modifier.fillMaxWidth().testTag("model-options-dropdown")

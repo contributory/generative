@@ -1,10 +1,7 @@
 package org.starfall.multigateway.shared.ui.icons
 
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import coil3.compose.AsyncImage
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -17,9 +14,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.starfall.multigateway.R
 import org.starfall.multigateway.shared.icons.IconStore
@@ -79,50 +74,37 @@ fun EntityIcon(
 }
 
 @Composable
-fun IconPickerRow(image: String?, onChange: (String?) -> Unit, text: String? = null, fallback: Int? = null, onBusyChange: (Boolean) -> Unit = {}, matchName: String? = null, model: Boolean = false, faviconBaseUrl: String = "", defaultImage: String? = null) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val currentOnChange by rememberUpdatedState(onChange)
-    val currentOnBusy by rememberUpdatedState(onBusyChange)
+fun IconPickerRow(
+    image: String?,
+    onChange: (String?) -> Unit,
+    text: String? = null,
+    fallback: Int? = null,
+    onBusyChange: (Boolean) -> Unit = {},
+    matchName: String? = null,
+    model: Boolean = false,
+    faviconBaseUrl: String = "",
+    defaultImage: String? = null
+) {
+    var showDialog by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
-    var showFavicon by remember { mutableStateOf(false) }
-    if (showFavicon) FaviconDialog(faviconBaseUrl, onSave = { id ->
-        currentOnChange(id); showFavicon = false
-    }, onBusyChange = { importing = it; currentOnBusy(it) }, onDismiss = { showFavicon = false })
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) scope.launch {
-            importing = true
-            currentOnBusy(true)
-            try {
-                val id = withContext(Dispatchers.IO) { IconStore(context).importImage(uri, shared = false) }
-                currentOnChange(id)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (_: Exception) {
-                Toast.makeText(context, R.string.icon_import_failed, Toast.LENGTH_LONG).show()
-            } finally { importing = false; currentOnBusy(false) }
-        }
-    }
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        EntityIcon(image ?: defaultImage, Modifier.size(56.dp), text, fallback, matchName, model)
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.entity_icon), style = MaterialTheme.typography.titleSmall)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(enabled = !importing, onClick = {
-                    picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }) {
-                    FluentIcon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(if (importing) R.string.icon_importing else R.string.choose_icon))
-                }
-                IconButton(enabled = !importing, onClick = { showFavicon = true }) {
-                    FluentIcon(Icons.Outlined.Download, stringResource(R.string.favicon_get_logo))
-                }
-            }
-        }
-        if (image != null) IconButton(enabled = !importing, onClick = { currentOnChange(null) }) {
-            FluentIcon(Icons.Outlined.Close, contentDescription = stringResource(R.string.remove_icon))
-        }
-    }
+    if (showDialog) FaviconDialog(
+        image = image,
+        defaultImage = defaultImage,
+        text = text,
+        fallback = fallback,
+        matchName = matchName,
+        model = model,
+        baseUrl = faviconBaseUrl,
+        onSave = onChange,
+        onBusyChange = { importing = it; onBusyChange(it) },
+        onDismiss = { showDialog = false }
+    )
+    EntityIcon(
+        image = image ?: defaultImage,
+        modifier = Modifier.size(56.dp).clickable(enabled = !importing) { showDialog = true },
+        text = text,
+        fallback = fallback,
+        matchName = matchName,
+        model = model
+    )
 }

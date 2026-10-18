@@ -606,6 +606,7 @@ fun AppNavigation(
                                     cachedLoading = page.first.id in mcpToolsLoading,
                                     toolSettings = toolSettings,
                                     onSetToolEnabled = viewModel::setMcpToolEnabled,
+                                    onSetToolParameter = viewModel::setMcpToolParameter,
                                     onDismiss = { mcpEditor = null },
                                     onSave = { configurationViewModel.saveMcpServer(it) }
                                 )

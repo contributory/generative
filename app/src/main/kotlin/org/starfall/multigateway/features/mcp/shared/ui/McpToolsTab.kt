@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.*
 import org.starfall.multigateway.R
 import org.starfall.multigateway.shared.model.ToolDefinition
+import org.starfall.multigateway.shared.model.McpToolParameterConfig
 import org.starfall.multigateway.shared.model.ToolSettings
 import org.starfall.multigateway.shared.ui.icons.FluentIcon
 import org.starfall.multigateway.shared.ui.icons.Icons
@@ -26,6 +27,7 @@ import org.starfall.multigateway.shared.ui.icons.Icons
 internal fun McpToolsTab(
     serverId: String, tools: List<ToolDefinition>?, loading: Boolean, error: String?, ready: Boolean,
     toolSettings: ToolSettings, onSetToolEnabled: (String, String, Boolean) -> Unit,
+    onSetToolParameter: (String, String, String, McpToolParameterConfig) -> Unit,
     onRefresh: () -> Unit, modifier: Modifier = Modifier
 ) {
     Column(modifier.fillMaxWidth()) {
@@ -53,9 +55,14 @@ internal fun McpToolsTab(
             else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 items(tools, key = { it.name }) { tool ->
-                    McpToolItem(tool, toolSettings.mcpTools[serverId]?.get(tool.originalName) != false) {
-                        onSetToolEnabled(serverId, tool.originalName, it)
-                    }
+                    McpToolItem(
+                        serverId = serverId,
+                        tool = tool,
+                        enabled = toolSettings.mcpTools[serverId]?.get(tool.originalName) != false,
+                        parameterSettings = toolSettings.mcpToolParameters[serverId]?.get(tool.originalName).orEmpty(),
+                        onEnabledChange = { onSetToolEnabled(serverId, tool.originalName, it) },
+                        onParameterChange = { name, config -> onSetToolParameter(serverId, tool.originalName, name, config) }
+                    )
                 }
             }
         }
@@ -70,7 +77,14 @@ private fun ToolListPlaceholder(resource: Int) {
 }
 
 @Composable
-private fun McpToolItem(tool: ToolDefinition, enabled: Boolean, onEnabledChange: (Boolean) -> Unit) {
+private fun McpToolItem(
+    serverId: String,
+    tool: ToolDefinition,
+    enabled: Boolean,
+    parameterSettings: Map<String, McpToolParameterConfig>,
+    onEnabledChange: (Boolean) -> Unit,
+    onParameterChange: (String, McpToolParameterConfig) -> Unit
+) {
     var expanded by remember(tool.name) { mutableStateOf(false) }
     val properties = tool.schema["properties"] as? JsonObject ?: JsonObject(emptyMap())
     val required = (tool.schema["required"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }?.toSet().orEmpty()
@@ -101,7 +115,15 @@ private fun McpToolItem(tool: ToolDefinition, enabled: Boolean, onEnabledChange:
                     Text(stringResource(R.string.common_parameters), style = MaterialTheme.typography.labelLarge)
                     if (properties.isEmpty()) Text(stringResource(R.string.no_parameters), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    else properties.forEach { (name, raw) -> McpToolParameter(name, raw, name in required) }
+                    else properties.forEach { (name, raw) ->
+                        McpToolParameter(
+                            name = name,
+                            raw = raw,
+                            required = name in required,
+                            config = parameterSettings[name] ?: McpToolParameterConfig(),
+                            onChange = { onParameterChange(name, it) }
+                        )
+                    }
                 }
             }
         }
@@ -109,22 +131,48 @@ private fun McpToolItem(tool: ToolDefinition, enabled: Boolean, onEnabledChange:
 }
 
 @Composable
-private fun McpToolParameter(name: String, raw: JsonElement, required: Boolean) {
+private fun McpToolParameter(
+    name: String,
+    raw: JsonElement,
+    required: Boolean,
+    config: McpToolParameterConfig,
+    onChange: (McpToolParameterConfig) -> Unit
+) {
     val schema = raw as? JsonObject ?: JsonObject(emptyMap())
     val type = schema["type"]?.jsonPrimitive?.contentOrNull ?: if (schema["enum"] is JsonArray) "enum" else "any"
     val description = schema["description"]?.jsonPrimitive?.contentOrNull
     val enumValues = (schema["enum"] as? JsonArray)?.joinToString(", ") { (it as? JsonPrimitive)?.contentOrNull ?: it.toString() }
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.width(6.dp))
-            Text(type, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-            if (required) {
-                Spacer(Modifier.width(6.dp))
-                Text("required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.width(6.dp))
+                    Text(type, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    if (required) {
+                        Spacer(Modifier.width(6.dp))
+                        Text("required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                if (!description.isNullOrBlank()) Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (!enumValues.isNullOrBlank()) Text("Allowed: $enumValues", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
             }
+            Switch(
+                checked = config.enabled,
+                onCheckedChange = { onChange(config.copy(enabled = it)) },
+                enabled = config.enabled || !required || config.defaultValue.isNotBlank()
+            )
         }
-        if (!description.isNullOrBlank()) Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (!enumValues.isNullOrBlank()) Text("Allowed: $enumValues", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+        OutlinedTextField(
+            value = config.defaultValue,
+            onValueChange = { onChange(config.copy(defaultValue = it)) },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.common_default)) },
+            placeholder = { Text(type) },
+            singleLine = true,
+            supportingText = if (required && !config.enabled && config.defaultValue.isBlank()) {
+                { Text(stringResource(R.string.mcp_required_parameter_default_needed), color = MaterialTheme.colorScheme.error) }
+            } else null
+        )
     }
 }

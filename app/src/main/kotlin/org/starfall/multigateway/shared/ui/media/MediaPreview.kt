@@ -65,23 +65,34 @@ suspend fun mediaThumbnail(context: Context, reference: String, mime: String, si
 
 @Composable
 fun MediaPreviewDialog(reference: String, name: String, mime: String, onDismiss: () -> Unit) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = MaterialTheme.shapes.extraLarge) {
-            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Box(Modifier.weight(1f, fill = false)) { MediaContent(reference, mime) }
-                MediaViewerToolbar(onClose = onDismiss)
+    var zoomedImage by remember(reference, mime) { mutableStateOf(false) }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = !zoomedImage)) {
+        Surface(
+            modifier = if (zoomedImage) Modifier.fillMaxSize() else Modifier,
+            shape = if (zoomedImage) RoundedCornerShape(0.dp) else MaterialTheme.shapes.extraLarge,
+            color = if (zoomedImage) Color.Black else MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                Modifier.then(if (zoomedImage) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
+                    .padding(if (zoomedImage) 0.dp else 16.dp),
+                verticalArrangement = Arrangement.spacedBy(if (zoomedImage) 0.dp else 12.dp)
+            ) {
+                if (!zoomedImage) Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Box(Modifier.weight(1f, fill = false).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    MediaContent(reference, mime, onImageZoomChanged = { zoomedImage = it })
+                }
+                MediaViewerToolbar(onClose = { if (zoomedImage) zoomedImage = false else onDismiss() })
             }
         }
     }
 }
 
 @Composable
-fun MediaContent(reference: String, mime: String) {
+fun MediaContent(reference: String, mime: String, onImageZoomChanged: (Boolean) -> Unit = {}) {
     // A new source gets its own player and loading/error state.
     key(reference, mime) {
         when {
-            mime.startsWith("image/") -> ZoomableMediaImage(reference, mime)
+            mime.startsWith("image/") -> ZoomableMediaImage(reference, mime, onImageZoomChanged)
             mime.startsWith("video/") -> VideoPlayback(reference)
             mime.startsWith("audio/") -> AudioPlayback(reference)
             else -> Text("Preview unavailable for this file type.")
@@ -90,17 +101,18 @@ fun MediaContent(reference: String, mime: String) {
 }
 
 @Composable
-private fun ZoomableMediaImage(reference: String, mime: String) {
+private fun ZoomableMediaImage(reference: String, mime: String, onZoomChanged: (Boolean) -> Unit) {
     val context = LocalContext.current
     var loaded by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf(false) }
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
-    Box(Modifier.fillMaxWidth().windowHeightIn(minFraction = 0.22f, maxFraction = 0.6f).clipToBounds()
+    Box((if (scale > 1.02f) Modifier.fillMaxSize() else Modifier.fillMaxWidth().windowHeightIn(minFraction = 0.22f, maxFraction = 0.6f)).clipToBounds()
         .onSizeChanged { viewportSize = it }
         .transformable(rememberTransformableState { _, zoom, pan, _ ->
             scale = (scale * zoom).coerceIn(1f, 5f)
+            onZoomChanged(scale > 1.02f)
             val boundX = viewportSize.width * (scale - 1f) / 2f
             val boundY = viewportSize.height * (scale - 1f) / 2f
             offset = Offset((offset.x + pan.x).coerceIn(-boundX, boundX),
@@ -109,7 +121,7 @@ private fun ZoomableMediaImage(reference: String, mime: String) {
         coil3.compose.AsyncImage(
             model = org.starfall.multigateway.shared.icons.AppImages.source(reference),
             contentDescription = "Image preview", contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.6f)
+            modifier = (if (scale > 1.02f) Modifier.fillMaxSize() else Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.6f))
                 .graphicsLayer { scaleX = scale; scaleY = scale; translationX = offset.x; translationY = offset.y },
             onSuccess = { loaded = true }, onError = { loaded = true; error = true }
         )

@@ -58,7 +58,7 @@ fun ModelEditorScreen(
     var typeExpanded by remember { mutableStateOf(false) }
     var showSampling by remember { mutableStateOf(false) }
     var showModelTools by remember { mutableStateOf(false) }
-    var modelJsonExpanded by remember { mutableStateOf(false) }
+    var showModelJsonDialog by remember { mutableStateOf(false) }
     val trimmedId = modelId.trim()
     val modelJson = if (initialModelId.isNotBlank() && trimmedId == initialModelId) config.modelJson else JsonObject(emptyMap())
     val prettyJson = remember { Json { prettyPrint = true } }
@@ -306,28 +306,34 @@ fun ModelEditorScreen(
                     }
                 }
             }
-            Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
-                Column(Modifier.fillMaxWidth()) {
-                    Row(
-                        Modifier.fillMaxWidth().testTag("model-json-toggle")
-                            .clickable { modelJsonExpanded = !modelJsonExpanded }.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        FluentIcon(
-                            if (modelJsonExpanded) Icons.Default.ExpandMore else Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = null
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.model_json), style = MaterialTheme.typography.titleMedium)
-                    }
-                    if (modelJsonExpanded) {
-                        Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 12.dp).testTag("model-json-code")) {
-                            CodeBlockSurface(language = "json", code = modelJsonCode)
-                        }
-                    }
-                }
+            OutlinedButton(
+                onClick = { showModelJsonDialog = true },
+                modifier = Modifier.fillMaxWidth().testTag("model-json-button")
+            ) {
+                Text(stringResource(R.string.model_json))
             }
         }
+    }
+    if (showModelJsonDialog) {
+        AlertDialog(
+            onDismissRequest = { showModelJsonDialog = false },
+            title = { Text(stringResource(R.string.model_json)) },
+            text = {
+                Box(
+                    Modifier.fillMaxWidth()
+                        .heightIn(max = 480.dp)
+                        .verticalScroll(rememberScrollState())
+                        .testTag("model-json-code")
+                ) {
+                    CodeBlockSurface(language = "json", code = modelJsonCode)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showModelJsonDialog = false }) {
+                    Text(stringResource(R.string.common_close))
+                }
+            }
+        )
     }
     if (showModelTools) {
         ModelToolsDialog(
