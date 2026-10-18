@@ -1,9 +1,9 @@
 package org.starfall.multigateway.home.chat.logic.tool
 
 import kotlinx.serialization.json.*
-import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.networking.obj
 import org.starfall.multigateway.shared.networking.str
+import org.starfall.multigateway.home.shared.logic.ToolSummary
 
 internal class ToolBudget {
     private var total = 0
@@ -20,28 +20,6 @@ internal class ToolBudget {
 }
 private const val TOOL_RESULT_FILE_LIMIT = 10_000
 private const val TOOL_RESULT_PREVIEW_LIMIT = 6_000
-internal data class ToolSummary(
-    val content: JsonObject,
-    val preview: String,
-    val files: List<String>
-)
-
-/**
- * Summary for generated media and Content-API responses. Only the media itself is stored as files;
- * the response JSON is never written to disk, so nothing extra is left for the user to clean up.
- */
-@Suppress("UNUSED_PARAMETER")
-internal fun summarizeToolResult(result: JsonObject, files: ToolFiles): ToolSummary {
-    val media = Regex("tool-file:([a-zA-Z0-9._-]+)").findAll(result.toString()).map { it.groupValues[1] }.distinct().take(32).toList()
-    val isError = (result["isError"] as? JsonPrimitive)?.booleanOrNull == true
-    val preview = when {
-        isError -> "Tool reported an error."
-        media.isNotEmpty() -> "Saved ${media.size} file(s). Open Storage for details."
-        else -> "Tool completed."
-    }
-    return ToolSummary(result, preview, media)
-}
-
 /** Compact response handling for ordinary MCP tools, separate from media and Content-API. */
 internal suspend fun summarizeGenericToolResult(result: JsonObject): ToolSummary {
     val completeResult = result

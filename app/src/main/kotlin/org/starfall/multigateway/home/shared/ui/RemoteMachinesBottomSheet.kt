@@ -1,4 +1,4 @@
-package org.starfall.multigateway.home.sheets.ui
+package org.starfall.multigateway.home.shared.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*

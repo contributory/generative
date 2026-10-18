@@ -1,5 +1,8 @@
 package org.starfall.multigateway.home.chat.ui
 
+import org.starfall.multigateway.home.BottomSheetsLink
+import org.starfall.multigateway.home.BottomSheetsLinkState
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -66,7 +69,7 @@ import org.starfall.multigateway.home.chat.logic.input.DirectMediaRequest
 import org.starfall.multigateway.home.chat.logic.unansweredUserMessageIds
 import org.starfall.multigateway.home.chat.ui.input.UserInputArea
 import org.starfall.multigateway.home.chat.ui.markdown.LocalCodeRenderingPreferences
-import org.starfall.multigateway.home.sheets.ui.ConversationSummaryBottomSheet
+import org.starfall.multigateway.home.shared.ui.ConversationSummaryBottomSheet
 import org.starfall.multigateway.home.chat.model.ContextWindowStatus
 
 // Far larger than any item; clamped to the bottom by the first LazyColumn measure.

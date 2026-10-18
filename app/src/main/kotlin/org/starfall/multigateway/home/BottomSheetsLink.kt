@@ -1,4 +1,4 @@
-package org.starfall.multigateway.home.chat.ui
+package org.starfall.multigateway.home
 
 import android.content.Intent
 import android.net.Uri
@@ -29,10 +29,10 @@ import org.starfall.multigateway.shared.model.provider.ProviderGroup
 import org.starfall.multigateway.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import org.starfall.multigateway.home.sheets.ui.QuickActionsBottomSheet
-import org.starfall.multigateway.home.sheets.ui.RemoteMachinesBottomSheet
-import org.starfall.multigateway.home.sheets.ui.SelectedModelOverviewBottomSheet
-import org.starfall.multigateway.home.sheets.ui.ToolsManageBottomSheet
+import org.starfall.multigateway.home.shared.ui.QuickActionsBottomSheet
+import org.starfall.multigateway.home.shared.ui.RemoteMachinesBottomSheet
+import org.starfall.multigateway.home.shared.ui.SelectedModelOverviewBottomSheet
+import org.starfall.multigateway.home.shared.ui.ToolsManageBottomSheet
 import org.starfall.multigateway.shared.ui.model.ModelPickerBottomSheet
 import org.starfall.multigateway.shared.ui.model.chatModelPickerFilter
 

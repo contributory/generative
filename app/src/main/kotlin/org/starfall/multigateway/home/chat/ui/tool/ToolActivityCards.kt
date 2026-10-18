@@ -48,7 +48,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.sin
-import org.starfall.multigateway.home.shared.ui.MediaViewer
+import org.starfall.multigateway.shared.ui.media.MediaViewer
 import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.model.ToolActivity
 import org.starfall.multigateway.shared.storage.preferences.WordWrapMode
@@ -56,7 +56,7 @@ import org.starfall.multigateway.shared.ui.icons.FluentIcon
 import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.home.shared.ui.LocalToolSheetState
 import org.starfall.multigateway.home.shared.ui.ToolSheetState
-import org.starfall.multigateway.home.sheets.ui.ToolDetailsSheetHost
+import org.starfall.multigateway.home.shared.ui.ToolDetailsSheetHost
 
 @Composable
 fun ToolActivityCards(activities: List<ToolActivity>) {

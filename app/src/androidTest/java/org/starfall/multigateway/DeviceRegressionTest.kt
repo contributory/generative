@@ -24,7 +24,7 @@ import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
-import org.starfall.multigateway.home.sheets.ui.QuickActionsBottomSheet
+import org.starfall.multigateway.home.shared.ui.QuickActionsBottomSheet
 import org.starfall.multigateway.shared.ui.model.ModelPickerBottomSheet
 
 class DeviceRegressionTest {

@@ -29,7 +29,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import org.starfall.multigateway.home.shared.ui.MediaFileCard
+import org.starfall.multigateway.shared.ui.media.MediaFileCard
 import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.model.MessageVersion
 import org.starfall.multigateway.shared.model.StoredMessage
@@ -45,7 +45,7 @@ import org.starfall.multigateway.home.chat.ui.markdown.MarkdownRenderer
 import org.starfall.multigateway.home.chat.ui.markdown.StreamingMarkdownRenderer
 import org.starfall.multigateway.home.shared.ui.LocalToolSheetState
 import org.starfall.multigateway.home.shared.ui.ToolSheetState
-import org.starfall.multigateway.home.sheets.ui.ToolDetailsSheetHost
+import org.starfall.multigateway.home.shared.ui.ToolDetailsSheetHost
 
 @Composable
 fun AssistantMessageCard(

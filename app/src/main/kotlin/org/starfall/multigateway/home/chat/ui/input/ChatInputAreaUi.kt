@@ -74,8 +74,8 @@ import org.starfall.multigateway.home.chat.logic.input.canSendChatInput
 import org.starfall.multigateway.home.chat.logic.input.directMediaHint
 import org.starfall.multigateway.home.chat.logic.input.filterMediaProvidersForKind
 import org.starfall.multigateway.home.chat.ui.AttachmentStrip
-import org.starfall.multigateway.home.chat.ui.BottomSheetsLink
-import org.starfall.multigateway.home.chat.ui.BottomSheetsLinkState
+import org.starfall.multigateway.home.BottomSheetsLink
+import org.starfall.multigateway.home.BottomSheetsLinkState
 import org.starfall.multigateway.shared.ui.model.modelInitial
 
 @Composable

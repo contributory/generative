@@ -1,4 +1,4 @@
-package org.starfall.multigateway.home.shared.ui
+package org.starfall.multigateway.shared.ui.media
 
 import org.starfall.multigateway.R
 import android.content.Intent
@@ -35,7 +35,7 @@ import org.starfall.multigateway.shared.ui.media.isPreviewableMedia
 import org.starfall.multigateway.shared.ui.media.mediaMimeType
 import org.starfall.multigateway.shared.ui.media.mediaThumbnail
 import org.starfall.multigateway.shared.ui.layout.windowHeightIn
-import org.starfall.multigateway.home.chat.ui.markdown.CodeBlockSurface
+import org.starfall.multigateway.shared.ui.code.SharedCodeBlock
 import org.starfall.multigateway.shared.code.codeLanguage
 
 private fun File.mime() = mediaMimeType(name)
@@ -144,8 +144,7 @@ internal fun MediaViewer(store:ToolFiles,file:File,onDismiss:()->Unit) {
                         when {
                             isPreviewableMedia(file.mime()) -> MediaContent(file.path, file.mime())
                             textual -> text?.let { content ->
-                                CodeBlockSurface(language = language, code = content, originalCode = content,
-                                    isStreaming = false, onExpansionChange = null, expanded = true)
+                                SharedCodeBlock(language = language, code = content)
                                 if (truncated) Text("Preview truncated to the first $TEXT_PREVIEW_LIMIT characters.",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)

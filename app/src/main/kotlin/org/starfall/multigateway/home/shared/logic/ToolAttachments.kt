@@ -1,4 +1,4 @@
-package org.starfall.multigateway.home.chat.logic.tool
+package org.starfall.multigateway.home.shared.logic
 
 import kotlinx.serialization.json.*
 import org.starfall.multigateway.shared.model.api.ModelApiType

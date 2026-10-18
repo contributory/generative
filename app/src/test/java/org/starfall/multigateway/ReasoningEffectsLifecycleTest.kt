@@ -19,7 +19,7 @@ import org.starfall.multigateway.shared.ui.model.*
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.provider.ModelProvider
-import org.starfall.multigateway.home.sheets.ui.SelectedModelOverviewBottomSheet
+import org.starfall.multigateway.home.shared.ui.SelectedModelOverviewBottomSheet
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi")

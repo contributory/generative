@@ -26,8 +26,6 @@ import org.starfall.multigateway.shared.networking.requireObject
 import org.starfall.multigateway.shared.networking.str
 import org.starfall.multigateway.shared.networking.text
 import org.starfall.multigateway.shared.networking.toolArguments
-import org.starfall.multigateway.home.chat.logic.tool.toolAttachmentParts
-import org.starfall.multigateway.home.chat.logic.tool.toolMessageContent
 
 /** Builds protocol-specific model requests and normalizes their responses for tool calling. */
 internal class ToolRequestService(

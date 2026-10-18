@@ -43,14 +43,14 @@ import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.shared.ui.media.LocalChatAttachmentSelection
 import org.starfall.multigateway.shared.ui.media.MediaContent
 import org.starfall.multigateway.shared.ui.media.MediaViewerToolbar
+import org.starfall.multigateway.shared.ui.media.MediaViewer
 import org.starfall.multigateway.shared.ui.media.isPreviewableMedia
 import org.starfall.multigateway.shared.ui.media.mediaMimeType
 import org.starfall.multigateway.shared.ui.media.mediaThumbnail
 import org.starfall.multigateway.shared.ui.layout.windowHeight
 import org.starfall.multigateway.shared.ui.layout.windowHeightIn
-import org.starfall.multigateway.home.chat.ui.markdown.CodeBlockSurface
 import org.starfall.multigateway.shared.code.codeLanguage
-import org.starfall.multigateway.home.shared.ui.MediaViewer
+import org.starfall.multigateway.shared.ui.media.MediaViewer
 
 private fun File.mime() = mediaMimeType(name)
 

@@ -1,5 +1,8 @@
 package org.starfall.multigateway.home.chat.logic.tool
 
+import org.starfall.multigateway.home.shared.logic.summarizeToolResult
+import org.starfall.multigateway.home.shared.logic.ToolSummary
+
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.*

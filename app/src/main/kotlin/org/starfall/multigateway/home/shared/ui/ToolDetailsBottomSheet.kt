@@ -1,4 +1,4 @@
-package org.starfall.multigateway.home.sheets.ui
+package org.starfall.multigateway.home.shared.ui
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -32,14 +32,13 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.starfall.multigateway.home.shared.ui.MediaViewer
+import org.starfall.multigateway.shared.ui.media.MediaViewer
 import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.model.ToolActivity
 import org.starfall.multigateway.shared.ui.sheets.AppBottomSheet
 import org.starfall.multigateway.shared.ui.icons.FluentIcon
 import org.starfall.multigateway.shared.ui.icons.Icons
-import org.starfall.multigateway.home.chat.ui.markdown.CodeBlockSurface
-import org.starfall.multigateway.home.chat.ui.markdown.LazyCodeBlock
+import org.starfall.multigateway.shared.ui.code.SharedCodeBlock
 import org.starfall.multigateway.home.shared.ui.ToolSheetState
 
 private val toolJson = Json { prettyPrint = true }
@@ -137,13 +136,12 @@ internal fun ToolDetailsBottomSheet(
             )
             Spacer(Modifier.height(10.dp))
             // Lazy chunked rendering: no character cap, only visible chunks are composed and highlighted.
-            LazyCodeBlock(
+            SharedCodeBlock(
                 language = if (responseIsJson) "json" else "text",
-                text = responseText.ifBlank {
+                code = responseText.ifBlank {
                     if (activity.status == "running") "Waiting for tool response…" else "No response"
                 },
-                modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp),
-                onDownload = downloadResponse.takeIf { canDownload }
+                modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp)
             )
 
             if (fileNames.isNotEmpty()) {
@@ -313,17 +311,9 @@ private fun PrettyArguments(raw: String) {
 
 /** Same rendering rules as chat code blocks: font size, highlighting and word wrap all come from [CodeBlockSurface]. */
 @Composable
-private fun RawValueBlock(value: String, onDownload: (() -> Unit)? = null) {
+private fun RawValueBlock(value: String) {
     val language = remember(value) { if (looksLikeJson(value)) "json" else "text" }
-    CodeBlockSurface(
-        language = language,
-        code = value,
-        originalCode = value,
-        isStreaming = false,
-        onExpansionChange = null,
-        expanded = true,
-        onDownload = onDownload
-    )
+    SharedCodeBlock(language = language, code = value)
 }
 
 private class ResponseSource(val text: String)

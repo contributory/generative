@@ -1,4 +1,4 @@
-package org.starfall.multigateway.home.sheets.ui
+package org.starfall.multigateway.home.shared.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState

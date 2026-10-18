@@ -34,7 +34,7 @@ import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.multigateway.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import org.starfall.multigateway.shared.ui.text.SelectableOutlinedTextField
-import org.starfall.multigateway.home.chat.ui.markdown.RenderCodeBlock
+import org.starfall.multigateway.shared.ui.code.SharedCodeBlock
 import org.starfall.multigateway.shared.ui.model.modelInitial
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -305,7 +305,7 @@ fun ModelEditorScreen(
                     }
                     if (modelJsonExpanded) {
                         Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 12.dp).testTag("model-json-code")) {
-                            RenderCodeBlock(language = "json", code = modelJsonCode, isStreaming = false)
+                            SharedCodeBlock(language = "json", code = modelJsonCode)
                         }
                     }
                 }

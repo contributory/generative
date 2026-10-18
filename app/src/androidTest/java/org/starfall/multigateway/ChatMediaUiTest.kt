@@ -20,7 +20,7 @@ import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.features.providers.shared.ui.*
 import org.starfall.multigateway.shared.ui.media.MediaPreviewDialog
-import org.starfall.multigateway.home.shared.ui.MediaFileCard
+import org.starfall.multigateway.shared.ui.media.MediaFileCard
 import org.starfall.multigateway.shared.ui.media.ChatFilePreview
 import org.starfall.multigateway.shared.ui.media.InlineVideoPreview
 import androidx.compose.ui.graphics.asImageBitmap

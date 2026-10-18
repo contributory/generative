@@ -20,7 +20,7 @@ import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.networking.ToolHttp
 import org.starfall.multigateway.shared.networking.obj
 import org.starfall.multigateway.shared.networking.str
-import org.starfall.multigateway.home.chat.logic.tool.summarizeToolResult
+import org.starfall.multigateway.home.shared.logic.summarizeToolResult
 
 /** Handles direct image/video generation and emits its progress as tool events. */
 internal class ToolMediaGenerationService(
