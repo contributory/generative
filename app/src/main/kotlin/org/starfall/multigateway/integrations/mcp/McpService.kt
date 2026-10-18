@@ -65,7 +65,11 @@ class McpService(
 }
 
 suspend fun <T> McpSession.useSession(block: suspend (McpSession) -> T): T =
-    try { block(this) } finally { close() }
+    try {
+        block(this)
+    } finally {
+        close()
+    }
 
 class McpSession(
     private val info: McpInfo,
@@ -146,15 +150,18 @@ class McpSession(
                     header(name, bearerHeaderValue(name, it))
                 }
             }
+
             McpAuthMethod.OAUTH2 -> oauthToken.takeIf { it.isNotBlank() }?.let {
                 headers.remove(HttpHeaders.Authorization)
                 header(HttpHeaders.Authorization, "Bearer $it")
             }
+
             McpAuthMethod.QUERY_PARAM -> {
                 val key = info.auth.key?.takeIf { it.isNotBlank() } ?: "key"
                 val value = info.auth.value.orEmpty()
                 if (value.isNotBlank()) url { parameters.append(key, value) }
             }
+
             McpAuthMethod.NONE -> Unit
         }
     }
@@ -176,7 +183,7 @@ class McpSession(
                 check(result.size <= 256) { "MCP has more than 256 tools" }
             }
             cursor = page.nextCursor
-            check(cursor == null || seen.add(cursor!!)) { "MCP repeated a tools page" }
+            check(cursor == null || seen.add(cursor)) { "MCP repeated a tools page" }
         } while (!cursor.isNullOrEmpty())
         return result
     }
@@ -233,7 +240,7 @@ internal fun mcpToolWireName(serverName: String, toolName: String): String {
     if (base.length <= MCP_TOOL_NAME_MAX_LENGTH) return base
 
     // Derived from the visible names only: internal server ids must never reach the model.
-    val suffix = UUID.nameUUIDFromBytes((serverName + ":" + toolName).toByteArray())
+    val suffix = UUID.nameUUIDFromBytes(("$serverName:$toolName").toByteArray())
         .toString().replace("-", "").take(MCP_TOOL_NAME_SUFFIX_LENGTH)
     return base.take(MCP_TOOL_NAME_MAX_LENGTH - suffix.length - 1) + "_" + suffix
 }
@@ -245,11 +252,11 @@ private const val MCP_TOOL_NAME_MAX_LENGTH = 64
 private const val MCP_TOOL_NAME_SUFFIX_LENGTH = 10
 
 private fun ToolSchema.toJson(): JsonObject = buildJsonObject {
-    schema?.takeIf { it.isNotBlank() }?.let { put("\$schema", JsonPrimitive(it)) }
-    type?.let { put("type", JsonPrimitive(it)) }
+    schema?.takeIf { it.isNotBlank() }?.let { put($$"$schema", JsonPrimitive(it)) }
+    put("type", JsonPrimitive(type))
     properties?.takeIf { it.isNotEmpty() }?.let { put("properties", it) }
     required?.takeIf { it.isNotEmpty() }?.let { put("required", JsonArray(it.map(::JsonPrimitive))) }
-    defs?.let { put("\$defs", it) }
+    defs?.let { put($$"$defs", it) }
 }
 
 private fun JsonElement.toAny(): Any? = when (this) {

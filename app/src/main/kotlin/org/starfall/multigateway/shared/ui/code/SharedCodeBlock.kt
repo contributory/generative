@@ -1,8 +1,11 @@
 package org.starfall.multigateway.shared.ui.code
 
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,3 +53,77 @@ fun SharedCodeBlock(language: String, code: String, modifier: Modifier = Modifie
         }
     }
 }
+
+/** Virtualized code surface for large tool responses; only visible chunks are highlighted and composed. */
+@Composable
+fun SharedLazyCodeBlock(language: String, code: String, modifier: Modifier = Modifier) {
+    val starts by produceState<IntArray?>(null, code) {
+        value = withContext(Dispatchers.Default) { sharedChunkStarts(code) }
+    }
+    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        tonalElevation = 1.dp
+    ) {
+        Column(Modifier.fillMaxWidth()) {
+            Text(
+                language.ifBlank { "code" },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            val chunks = starts
+            if (chunks == null) {
+                Text("Loading…", modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 440.dp)) {
+                    items(count = chunks.size, key = { it }) { index ->
+                        val from = chunks[index]
+                        val to = if (index + 1 < chunks.size) chunks[index + 1] else code.length
+                        val chunk = remember(code, from, to) { code.substring(from, to) }
+                        val highlighted = produceState(AnnotatedString(chunk), chunk, language, dark) {
+                            value = withContext(Dispatchers.Default) { highlightedCode(language, chunk, dark) }
+                        }.value
+                        Text(
+                            highlighted,
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 2.dp),
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun sharedChunkStarts(text: String, maxLines: Int = 80, maxChars: Int = 4_000): IntArray {
+    val starts = ArrayList<Int>()
+    var start = 0
+    while (start < text.length) {
+        starts.add(start)
+        val limit = minOf(text.length, start + maxChars)
+        var index = start
+        var lines = 0
+        var lastBreak = -1
+        while (index < limit) {
+            if (text[index] == '\n') {
+                lines++
+                lastBreak = index + 1
+                if (lines >= maxLines) break
+            }
+            index++
+        }
+        start = when {
+            lines >= maxLines -> lastBreak
+            limit == text.length -> text.length
+            lastBreak > start -> lastBreak
+            else -> limit
+        }
+    }
+    return starts.toIntArray()
+}
+

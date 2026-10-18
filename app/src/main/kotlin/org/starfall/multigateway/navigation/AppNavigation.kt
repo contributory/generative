@@ -125,13 +125,16 @@ fun AppNavigation(
             restoreState = true
         }
     }
+
     fun startNewChat() {
         viewModel.startNewChat()
         navigate(AppDestination.CHAT)
     }
+
     fun openConfiguration(destination: AppDestination) {
         navController.navigate(destination.route) { launchSingleTop = true }
     }
+
     val conversations: List<Conversation> by viewModel.conversations.collectAsStateWithLifecycle()
     val currentConv: Conversation? by viewModel.currentConversation.collectAsStateWithLifecycle()
     val chatAttachments = remember { ChatAttachmentSelection() }
@@ -187,6 +190,7 @@ fun AppNavigation(
             }
         }
     }
+
     fun exportJson(kind: JsonExportKind) {
         coroutineScope.launch {
             val payload = withContext(Dispatchers.Default) {
@@ -196,6 +200,7 @@ fun AppNavigation(
             exportLauncher.launch(kind.fileName)
         }
     }
+
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -218,10 +223,13 @@ fun AppNavigation(
                                 }
                             }
                         }.let { it.providers.size + it.speechServices.size }
+
                     JsonExportKind.MCP_SERVERS -> withContext(Dispatchers.Default) { parseMcpExport(raw) }
                         .also { withContext(Dispatchers.IO) { configurationViewModel.importMcpServers(it) } }.size
+
                     JsonExportKind.SPEECH_SERVICES -> withContext(Dispatchers.Default) { parseSpeechServicesExport(raw) }
                         .also { withContext(Dispatchers.IO) { configurationViewModel.importSpeechServices(it) } }.size
+
                     JsonExportKind.CONVERSATIONS -> withContext(Dispatchers.Default) { parseConversationsExport(raw) }
                         .also { withContext(Dispatchers.IO) { viewModel.importConversations(it) } }.size
                 }
@@ -231,20 +239,22 @@ fun AppNavigation(
             }
         }
     }
+
     fun importJson(kind: JsonExportKind) {
         pendingImportKind = kind
         importLauncher.launch(arrayOf("application/json", "text/*"))
     }
     // The app preference is the default for new chats. Existing chats keep showing
     // the model they last used, independently of that default.
-    val conversationModel = currentConv?.takeIf { appPrefs.persistSelectedModel && it.modelId.isNotBlank() }?.let { conversation ->
-        providers.firstOrNull { provider ->
-            provider.id == conversation.providerId &&
-                provider.config.modelIds?.contains(conversation.modelId) != false &&
-                (provider.config.modelConfigs[conversation.modelId]?.modelType
-                    ?: ModelType.TEXT_GENERATION) == ModelType.TEXT_GENERATION
-        }?.let { conversation }
-    }
+    val conversationModel =
+        currentConv?.takeIf { appPrefs.persistSelectedModel && it.modelId.isNotBlank() }?.let { conversation ->
+            providers.firstOrNull { provider ->
+                provider.id == conversation.providerId &&
+                        provider.config.modelIds?.contains(conversation.modelId) != false &&
+                        (provider.config.modelConfigs[conversation.modelId]?.modelType
+                            ?: ModelType.TEXT_GENERATION) == ModelType.TEXT_GENERATION
+            }?.let { conversation }
+        }
     val chatProviderId = conversationModel?.providerId ?: appPrefs.selectedProviderId
     val chatModelId = conversationModel?.modelId ?: appPrefs.selectedModelId
     LaunchedEffect(Unit) {
@@ -270,20 +280,24 @@ fun AppNavigation(
     }
 
 
-    CompositionLocalProvider(org.starfall.multigateway.home.chat.ui.markdown.LocalCodeRenderingPreferences provides appPrefs, LocalChatAttachmentSelection provides chatAttachments, LocalToolControls provides ToolControls(
-        servers = mcpServers,
-        machines = remoteMachineState.machines,
-        settings = toolSettings,
-        providers = providers,
-        setSystem = viewModel::setSystemTool,
-        setMcp = viewModel::setQuickMcp,
-        setMachines = viewModel::setMachinesEnabled,
-        setMachine = { machineId, enabled ->
-            viewModel.setMachineEnabled(machineId, enabled, remoteMachineState.machines.map { it.id })
-        },
-        setMachineTool = viewModel::setMachineToolEnabled,
-        setSendFile = viewModel::setSendFileEnabled
-    )) {
+    CompositionLocalProvider(
+        org.starfall.multigateway.home.chat.ui.markdown.LocalCodeRenderingPreferences provides appPrefs,
+        LocalChatAttachmentSelection provides chatAttachments,
+        LocalToolControls provides ToolControls(
+            servers = mcpServers,
+            machines = remoteMachineState.machines,
+            settings = toolSettings,
+            providers = providers,
+            setSystem = viewModel::setSystemTool,
+            setMcp = viewModel::setQuickMcp,
+            setMachines = viewModel::setMachinesEnabled,
+            setMachine = { machineId, enabled ->
+                viewModel.setMachineEnabled(machineId, enabled, remoteMachineState.machines.map { it.id })
+            },
+            setMachineTool = viewModel::setMachineToolEnabled,
+            setSendFile = viewModel::setSendFileEnabled
+        )
+    ) {
         ModalNavigationDrawer(
             drawerState = drawerState,
             gesturesEnabled = chatOnTop,
@@ -348,94 +362,100 @@ fun AppNavigation(
                             }
                         )
                 ) {
-                        ChatScreen(
-                                conversation = currentConv,
-                                isGenerating = isGenerating,
-                                generatingConversationId = generatingConversationId,
-                                chatError = chatError,
-                                providers = providers,
-                                providerGroups = providerGroups,
-                                modelPickerCollapsedGroups = appPrefs.modelPickerCollapsedGroups,
-                                modelPickerCollapsedProviders = appPrefs.modelPickerCollapsedProviders,
-                                onModelPickerCollapsedGroupsChange = settingsViewModel::setModelPickerCollapsedGroups,
-                                onModelPickerCollapsedProvidersChange = settingsViewModel::setModelPickerCollapsedProviders,
-                                modelPickerSelectedTab = appPrefs.modelPickerSelectedTab,
-                                onModelPickerSelectedTabChange = settingsViewModel::setModelPickerSelectedTab,
-                                selectedProviderId = chatProviderId,
-                                selectedModelName = chatModelId,
-                                autoScroll = appPrefs.autoScroll,
-                                onSendMedia = viewModel::sendMedia,
-                                onResendUserMessage = viewModel::resendUserMessage,
-                                onSendMessage = { text, files ->
-                                    viewModel.sendMessage(text, files)
-                                },
-                                onStopGenerating = {
-                                    viewModel.stopGeneration()
-                                },
-                                onOpenDrawer = {
-                                    coroutineScope.launch { drawerState.open() }
-                                },
-                                onNewChat = {
-                                    startNewChat()
-                                },
-                                onOpenSettings = {
-                                    navigate(AppDestination.SETTINGS)
-                                },
-                                onRegenerate = { id ->
-                                    viewModel.regenerateMessage(id)
-                                },
-                                onRetryFromError = { id ->
-                                    viewModel.retryFromError(id)
-                                },
-                                onEditMessage = { id, content, files ->
-                                    viewModel.editMessage(id, content, files)
-                                },
-                                onDeleteMessage = { id ->
-                                    viewModel.deleteMessage(id)
-                                },
-                                onDeleteMessageVersion = { id ->
-                                    viewModel.deleteMessageVersion(id)
-                                },
-                                queuedMessages = queuedMessages,
-                                onEditQueuedMessage = { id, content, files ->
-                                    viewModel.editQueuedMessage(id, content, files)
-                                },
-                                onDeleteQueuedMessage = { id ->
-                                    viewModel.deleteQueuedMessage(id)
-                                },
-                                onSwitchVersion = { id, idx ->
-                                    viewModel.switchMessageVersion(id, idx)
-                                },
-                                onSelectModel = { provId, modelId ->
-                                    viewModel.selectModel(provId, modelId)
-                                },
-                                summaryProgress = summaryProgress,
-                                contextWindowStatus = contextWindowStatus,
-                                onSetReasoningEffort = viewModel::setConversationReasoningEffort,
-                                onSetThinkingPassback = configurationViewModel::setThinkingPassback,
-                                onSetModelReasoningEffort = configurationViewModel::setModelReasoningEffort,
-                                onEditModel = { providerId, modelId ->
-                                    navController.navigate("providers/edit/${Uri.encode(providerId)}?modelId=${Uri.encode(modelId)}") {
-                                        launchSingleTop = true
-                                    }
-                                },
-                                onEditProvider = { providerId ->
-                                    navController.navigate("providers/edit/${Uri.encode(providerId)}") {
-                                        launchSingleTop = true
-                                    }
-                                },
-                                onStartConversationSummary = viewModel::startConversationSummary,
-                                onCancelConversationSummary = viewModel::cancelConversationSummary,
-                                onSummaryRoleChange = viewModel::setSummaryRole,
-                                onDeleteSummary = viewModel::deleteConversationSummary,
-                                speakingMessageId = speakingMessageId,
-                                onReadMessage = { messageId, text ->
-                                    viewModel.speakText(text, messageId)
-                                },
-                                onFetchOllamaModels = { url ->
-                                    configurationViewModel.fetchOllamaModels(url)
-                                }
-                        )
+                    ChatScreen(
+                        conversation = currentConv,
+                        isGenerating = isGenerating,
+                        generatingConversationId = generatingConversationId,
+                        chatError = chatError,
+                        providers = providers,
+                        providerGroups = providerGroups,
+                        modelPickerCollapsedGroups = appPrefs.modelPickerCollapsedGroups,
+                        modelPickerCollapsedProviders = appPrefs.modelPickerCollapsedProviders,
+                        onModelPickerCollapsedGroupsChange = settingsViewModel::setModelPickerCollapsedGroups,
+                        onModelPickerCollapsedProvidersChange = settingsViewModel::setModelPickerCollapsedProviders,
+                        modelPickerSelectedTab = appPrefs.modelPickerSelectedTab,
+                        onModelPickerSelectedTabChange = settingsViewModel::setModelPickerSelectedTab,
+                        selectedProviderId = chatProviderId,
+                        selectedModelName = chatModelId,
+                        autoScroll = appPrefs.autoScroll,
+                        onSendMedia = viewModel::sendMedia,
+                        onResendUserMessage = viewModel::resendUserMessage,
+                        onSendMessage = { text, files ->
+                            viewModel.sendMessage(text, files)
+                        },
+                        onStopGenerating = {
+                            viewModel.stopGeneration()
+                        },
+                        onOpenDrawer = {
+                            coroutineScope.launch { drawerState.open() }
+                        },
+                        onNewChat = {
+                            startNewChat()
+                        },
+                        onOpenSettings = {
+                            navigate(AppDestination.SETTINGS)
+                        },
+                        onRegenerate = { id ->
+                            viewModel.regenerateMessage(id)
+                        },
+                        onRetryFromError = { id ->
+                            viewModel.retryFromError(id)
+                        },
+                        onEditMessage = { id, content, files ->
+                            viewModel.editMessage(id, content, files)
+                        },
+                        onDeleteMessage = { id ->
+                            viewModel.deleteMessage(id)
+                        },
+                        onDeleteMessageVersion = { id ->
+                            viewModel.deleteMessageVersion(id)
+                        },
+                        queuedMessages = queuedMessages,
+                        onEditQueuedMessage = { id, content, files ->
+                            viewModel.editQueuedMessage(id, content, files)
+                        },
+                        onDeleteQueuedMessage = { id ->
+                            viewModel.deleteQueuedMessage(id)
+                        },
+                        onSwitchVersion = { id, idx ->
+                            viewModel.switchMessageVersion(id, idx)
+                        },
+                        onSelectModel = { provId, modelId ->
+                            viewModel.selectModel(provId, modelId)
+                        },
+                        summaryProgress = summaryProgress,
+                        contextWindowStatus = contextWindowStatus,
+                        onSetReasoningEffort = viewModel::setConversationReasoningEffort,
+                        onSetThinkingPassback = configurationViewModel::setThinkingPassback,
+                        onSetModelReasoningEffort = configurationViewModel::setModelReasoningEffort,
+                        onEditModel = { providerId, modelId ->
+                            navController.navigate(
+                                "providers/edit/${Uri.encode(providerId)}?modelId=${
+                                    Uri.encode(
+                                        modelId
+                                    )
+                                }"
+                            ) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onEditProvider = { providerId ->
+                            navController.navigate("providers/edit/${Uri.encode(providerId)}") {
+                                launchSingleTop = true
+                            }
+                        },
+                        onStartConversationSummary = viewModel::startConversationSummary,
+                        onCancelConversationSummary = viewModel::cancelConversationSummary,
+                        onSummaryRoleChange = viewModel::setSummaryRole,
+                        onDeleteSummary = viewModel::deleteConversationSummary,
+                        speakingMessageId = speakingMessageId,
+                        onReadMessage = { messageId, text ->
+                            viewModel.speakText(text, messageId)
+                        },
+                        onFetchOllamaModels = { url ->
+                            configurationViewModel.fetchOllamaModels(url)
+                        }
+                    )
                 }
                 NavHost(
                     navController = navController,
@@ -473,7 +493,11 @@ fun AppNavigation(
                                     onSave = { saved ->
                                         configurationViewModel.saveProvider(saved)
                                         pendingNewProvider = ProviderEditorPage(saved, false)
-                                        Toast.makeText(context, context.getString(R.string.provider_saved), Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(R.string.provider_saved),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     },
                                     onDismiss = {
                                         pendingNewProvider = null
@@ -514,7 +538,11 @@ fun AppNavigation(
                                     initialEditingModelId = modelId,
                                     onSave = { saved ->
                                         configurationViewModel.saveProvider(saved)
-                                        Toast.makeText(context, context.getString(R.string.provider_saved), Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(R.string.provider_saved),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     },
                                     onDismiss = { navController.popBackStack() },
                                     onSaveModels = configurationViewModel::saveProviderModels,
@@ -625,29 +653,33 @@ fun AppNavigation(
                             onSave = viewModel::setSystemTool,
                             onSetSendFile = viewModel::setSendFileEnabled,
                             providerGroups = providerGroups,
-                             collapsedGroupIds = appPrefs.modelPickerCollapsedGroups,
-                             collapsedProviderIds = appPrefs.modelPickerCollapsedProviders,
-                             onCollapsedGroupIdsChange = settingsViewModel::setModelPickerCollapsedGroups,
-                             onCollapsedProviderIdsChange = settingsViewModel::setModelPickerCollapsedProviders,
-                             selectedTabKey = appPrefs.modelPickerSelectedTab,
-                             onSelectedTabKeyChange = settingsViewModel::setModelPickerSelectedTab,
-                             onEditProvider = { providerId ->
-                                 navController.navigate("providers/edit/${Uri.encode(providerId)}") {
-                                     launchSingleTop = true
-                                 }
-                             },
-                             onBack = { navController.popBackStack() }
+                            collapsedGroupIds = appPrefs.modelPickerCollapsedGroups,
+                            collapsedProviderIds = appPrefs.modelPickerCollapsedProviders,
+                            onCollapsedGroupIdsChange = settingsViewModel::setModelPickerCollapsedGroups,
+                            onCollapsedProviderIdsChange = settingsViewModel::setModelPickerCollapsedProviders,
+                            selectedTabKey = appPrefs.modelPickerSelectedTab,
+                            onSelectedTabKeyChange = settingsViewModel::setModelPickerSelectedTab,
+                            onEditProvider = { providerId ->
+                                navController.navigate("providers/edit/${Uri.encode(providerId)}") {
+                                    launchSingleTop = true
+                                }
+                            },
+                            onBack = { navController.popBackStack() }
                         )
                     }
-                     composable(AppDestination.STORAGE.route) { StorageScreen(toolFiles) { navController.popBackStack() } }
+                    composable(AppDestination.STORAGE.route) { StorageScreen(toolFiles) { navController.popBackStack() } }
                     composable(AppDestination.REMOTE_MACHINES.route) {
-                        SlideScreenContent(editor = remoteMachinePage, label = stringResource(R.string.remote_machines_title)) { selected ->
+                        SlideScreenContent(
+                            editor = remoteMachinePage,
+                            label = stringResource(R.string.remote_machines_title)
+                        ) { selected ->
                             when {
                                 selected is RemoteMachine -> RemoteTerminalScreen(
                                     machine = selected,
                                     viewModel = remoteMachinesViewModel,
                                     onBack = { remoteMachinePage = null }
                                 )
+
                                 selected is MachineEditorPage -> MachineDetailsScreen(
                                     initial = selected.machine,
                                     isNew = selected.isNew,
@@ -660,18 +692,27 @@ fun AppNavigation(
                                     onRefreshIp = { remoteMachinesViewModel.refreshIp(it) },
                                     onFetchUsername = { remoteMachinesViewModel.fetchGCloudUsername(it) },
                                     onAuthorizeOAuth = { remoteMachinesViewModel.authorize(it) },
-                                    onStoreAndroidOAuthToken = { client, token -> remoteMachinesViewModel.storeAndroidOAuthToken(client, token) }
+                                    onStoreAndroidOAuthToken = { client, token ->
+                                        remoteMachinesViewModel.storeAndroidOAuthToken(
+                                            client,
+                                            token
+                                        )
+                                    }
                                 )
+
                                 selected == RemoteMachineSettingsPage.SETTINGS -> RemoteMachineSettings(
                                     state = remoteMachineState,
                                     binaries = remoteMachineBinaries,
                                     viewModel = remoteMachinesViewModel,
                                     onBack = { remoteMachinePage = null }
                                 )
+
                                 else -> RemoteMachinesScreen(
                                     viewModel = remoteMachinesViewModel,
                                     onBack = { navController.popBackStack() },
-                                    onOpenEditor = { machine, isNew -> remoteMachinePage = MachineEditorPage(machine, isNew) },
+                                    onOpenEditor = { machine, isNew ->
+                                        remoteMachinePage = MachineEditorPage(machine, isNew)
+                                    },
                                     onOpenSettings = { remoteMachinePage = RemoteMachineSettingsPage.SETTINGS },
                                     onOpenTerminal = { machine -> remoteMachinePage = machine }
                                 )
@@ -760,7 +801,10 @@ fun AppNavigation(
                                     onToolCallStrategyChange = settingsViewModel::setToolCallStrategy,
                                     onToolCallConcurrentLimitChange = settingsViewModel::setToolCallConcurrentLimit,
                                     onScreenWakelockModeChange = settingsViewModel::setScreenWakelockMode,
-                                    onAppLanguageChange = settingsViewModel::setAppLanguage
+                                    onAppLanguageChange = settingsViewModel::setAppLanguage,
+                                    onAutoSummaryEnabledChange = settingsViewModel::setAutoSummaryEnabled,
+                                    onSummarySuggestionEnabledChange = settingsViewModel::setSummarySuggestionEnabled,
+                                    onAutoSummaryPercentChange = settingsViewModel::setAutoSummaryPercent
                                 )
                             }
                         }

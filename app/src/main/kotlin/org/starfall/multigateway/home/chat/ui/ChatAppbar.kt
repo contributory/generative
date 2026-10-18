@@ -242,14 +242,29 @@ internal fun ContextWindowRing(status: ContextWindowStatus, size: androidx.compo
                 .padding(2.dp),
             color = color,
             trackColor = color.copy(alpha = 0.18f),
-            strokeWidth = 4.dp
+            strokeWidth = if (size < 50.dp) 3.dp else 4.dp
         )
-        Text(
-            text = "${status.percentage}%",
-            style = if (size < 50.dp) MaterialTheme.typography.labelSmall else MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        if (size < 50.dp) {
+            // Fixed size in dp (ignores the system font scale) so "100%" always fits inside the ring.
+            val digitSize = with(androidx.compose.ui.platform.LocalDensity.current) {
+                (if (status.percentage >= 100) 7.dp else 8.dp).toSp()
+            }
+            Text(
+                text = "${status.percentage}%",
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = digitSize, lineHeight = digitSize),
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                softWrap = false
+            )
+        } else {
+            Text(
+                text = "${status.percentage}%",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 @Composable
@@ -266,7 +281,7 @@ internal fun ContextWindowIndicator(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f)
     ) {
         Box(contentAlignment = Alignment.Center) {
-            ContextWindowRing(status, 28.dp)
+            ContextWindowRing(status, 32.dp)
         }
     }
 }

@@ -31,8 +31,8 @@ import org.starfall.multigateway.shared.model.generation.GenerationEvent
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
-import org.starfall.multigateway.home.chat.logic.tool.toolAttachmentParts
-import org.starfall.multigateway.home.chat.logic.tool.toolMessageContent
+import org.starfall.multigateway.home.shared.logic.toolAttachmentParts
+import org.starfall.multigateway.home.shared.logic.toolMessageContent
 import org.starfall.multigateway.shared.model.auth.defaultAuthorization
 
 @Config(sdk = [28])

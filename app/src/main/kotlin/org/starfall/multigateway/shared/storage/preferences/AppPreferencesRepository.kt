@@ -56,6 +56,9 @@ enum class ScreenWakelockMode(val value: String) {
 const val DEFAULT_WORD_WRAP_COLUMN = 80
 const val DEFAULT_MESSAGE_FONT_SIZE = 16
 const val DEFAULT_CODE_BLOCK_MAX_LINES = 15
+const val DEFAULT_AUTO_SUMMARY_PERCENT = 99
+const val MIN_AUTO_SUMMARY_PERCENT = 50
+const val MAX_AUTO_SUMMARY_PERCENT = 100
 const val DEFAULT_TOOL_ROUND_LIMIT = 12
 const val MAX_TOOL_ROUND_LIMIT = 1000
 const val DEFAULT_TOOL_CALL_CONCURRENT_LIMIT = 2
@@ -109,7 +112,12 @@ data class AppPreferences(
     val toolRoundLimit: Int = DEFAULT_TOOL_ROUND_LIMIT,
     val toolCallStrategy: ToolCallStrategy = ToolCallStrategy.SEQUENTIAL,
     val toolCallConcurrentLimit: Int = DEFAULT_TOOL_CALL_CONCURRENT_LIMIT,
-    val screenWakelockMode: ScreenWakelockMode = ScreenWakelockMode.EXCEPT_TOOL_CALLS
+    val screenWakelockMode: ScreenWakelockMode = ScreenWakelockMode.EXCEPT_TOOL_CALLS,
+    /** Summarize automatically once estimated context usage reaches [autoSummaryPercent]. */
+    val autoSummaryEnabled: Boolean = true,
+    /** Show the "Summarize" suggestion card when the context is nearly full. */
+    val summarySuggestionEnabled: Boolean = true,
+    val autoSummaryPercent: Int = DEFAULT_AUTO_SUMMARY_PERCENT
 ) {
     /** Size in sp used for chat text. sp already follows the system font scale. */
     val effectiveMessageFontSize: Int get() = if (messageFontSizeCustom) messageFontSize else DEFAULT_MESSAGE_FONT_SIZE
@@ -168,6 +176,9 @@ class AppPreferencesRepository(private val context: Context) {
         val TOOL_CALL_STRATEGY = stringPreferencesKey("tool_call_strategy")
         val TOOL_CALL_CONCURRENT_LIMIT = intPreferencesKey("tool_call_concurrent_limit")
         val SCREEN_WAKELOCK_MODE = stringPreferencesKey("screen_wakelock_mode")
+        val AUTO_SUMMARY_ENABLED = booleanPreferencesKey("auto_summary_enabled")
+        val SUMMARY_SUGGESTION_ENABLED = booleanPreferencesKey("summary_suggestion_enabled")
+        val AUTO_SUMMARY_PERCENT = intPreferencesKey("auto_summary_percent")
     }
 
     private val storedPreferences: Flow<AppPreferences> = context.dataStore.data
@@ -226,7 +237,11 @@ class AppPreferencesRepository(private val context: Context) {
                 toolRoundLimit = preferences[PreferenceKeys.TOOL_ROUND_LIMIT]?.coerceIn(1, MAX_TOOL_ROUND_LIMIT) ?: DEFAULT_TOOL_ROUND_LIMIT,
                 toolCallStrategy = ToolCallStrategy.fromValue(preferences[PreferenceKeys.TOOL_CALL_STRATEGY]),
                 toolCallConcurrentLimit = preferences[PreferenceKeys.TOOL_CALL_CONCURRENT_LIMIT]?.coerceIn(1, MAX_TOOL_CALL_CONCURRENT_LIMIT) ?: DEFAULT_TOOL_CALL_CONCURRENT_LIMIT,
-                screenWakelockMode = ScreenWakelockMode.fromValue(preferences[PreferenceKeys.SCREEN_WAKELOCK_MODE])
+                screenWakelockMode = ScreenWakelockMode.fromValue(preferences[PreferenceKeys.SCREEN_WAKELOCK_MODE]),
+                autoSummaryEnabled = preferences[PreferenceKeys.AUTO_SUMMARY_ENABLED] ?: true,
+                summarySuggestionEnabled = preferences[PreferenceKeys.SUMMARY_SUGGESTION_ENABLED] ?: true,
+                autoSummaryPercent = preferences[PreferenceKeys.AUTO_SUMMARY_PERCENT]
+                    ?.coerceIn(MIN_AUTO_SUMMARY_PERCENT, MAX_AUTO_SUMMARY_PERCENT) ?: DEFAULT_AUTO_SUMMARY_PERCENT
             )
         }
 
@@ -572,6 +587,25 @@ class AppPreferencesRepository(private val context: Context) {
         require(limit in 1..MAX_TOOL_CALL_CONCURRENT_LIMIT)
         state.mutate({ it.copy(toolCallConcurrentLimit = limit) }) {
             context.dataStore.edit { it[PreferenceKeys.TOOL_CALL_CONCURRENT_LIMIT] = limit }
+        }
+    }
+
+    suspend fun setAutoSummaryEnabled(enabled: Boolean) {
+        state.mutate({ it.copy(autoSummaryEnabled = enabled) }) {
+            context.dataStore.edit { it[PreferenceKeys.AUTO_SUMMARY_ENABLED] = enabled }
+        }
+    }
+
+    suspend fun setSummarySuggestionEnabled(enabled: Boolean) {
+        state.mutate({ it.copy(summarySuggestionEnabled = enabled) }) {
+            context.dataStore.edit { it[PreferenceKeys.SUMMARY_SUGGESTION_ENABLED] = enabled }
+        }
+    }
+
+    suspend fun setAutoSummaryPercent(percent: Int) {
+        require(percent in MIN_AUTO_SUMMARY_PERCENT..MAX_AUTO_SUMMARY_PERCENT)
+        state.mutate({ it.copy(autoSummaryPercent = percent) }) {
+            context.dataStore.edit { it[PreferenceKeys.AUTO_SUMMARY_PERCENT] = percent }
         }
     }
 

@@ -2,6 +2,7 @@ package org.starfall.multigateway.home.shared.logic
 
 import kotlinx.serialization.json.*
 import org.starfall.multigateway.shared.files.ToolFiles
+import org.starfall.multigateway.shared.networking.str
 
 internal data class ToolSummary(
     val content: JsonObject,
@@ -19,5 +20,6 @@ internal fun summarizeToolResult(result: JsonObject, files: ToolFiles): ToolSumm
         media.isNotEmpty() -> "Saved ${media.size} file(s). Open Storage for details."
         else -> "Tool completed."
     }
-    return ToolSummary(result, preview, media)
+    val content = if (media.isEmpty()) result else JsonObject(result + ("files" to JsonArray(media.map { str("tool-file:$it") })))
+    return ToolSummary(content, preview, media)
 }

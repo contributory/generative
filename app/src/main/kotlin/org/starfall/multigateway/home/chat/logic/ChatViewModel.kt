@@ -342,6 +342,7 @@ class ChatViewModel(
         if (isGenerating.value || replacingGeneration || summaryJob?.isActive == true || pendingConversationWrites > 0) return false
         val current = _currentConversation.value ?: return false
         val prefs = appPreferences.value
+        if (!prefs.autoSummaryEnabled) return false
         val model = providers.value.find { it.id == prefs.selectedProviderId }?.config?.modelConfigs?.get(prefs.selectedModelId) ?: return false
         val status = contextEstimate.value?.takeIf {
             it.conversation === current && it.preferences == prefs && it.model == model
@@ -349,7 +350,7 @@ class ChatViewModel(
             org.starfall.multigateway.home.chat.logic.contextWindowStatus(current, prefs.effectiveSystemPrompt, model, prefs.promptRoleMessages())
         } else return false
         val projected = status.copy(estimatedTokens = status.estimatedTokens + (incoming?.let { estimateMessageTokens(it, false) } ?: 0))
-        if (model.modelType != ModelType.TEXT_GENERATION || !projected.shouldAutoSummarize) return false
+        if (model.modelType != ModelType.TEXT_GENERATION || !projected.reachedPercent(prefs.autoSummaryPercent)) return false
         val boundary = current.messages.lastOrNull()?.id ?: return false
         if (current.summary?.throughMessageId == boundary) return false
         val attempt = "${current.id}/$boundary/${current.summary?.id}/${prefs.selectedProviderId}/${prefs.selectedModelId}"

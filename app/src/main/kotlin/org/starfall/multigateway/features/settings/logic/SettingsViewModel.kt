@@ -106,6 +106,15 @@ class SettingsViewModel(
     fun setToolCallConcurrentLimit(value: Int) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setToolCallConcurrentLimit(value) }
     }
+    fun setAutoSummaryEnabled(value: Boolean) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setAutoSummaryEnabled(value) }
+    }
+    fun setSummarySuggestionEnabled(value: Boolean) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setSummarySuggestionEnabled(value) }
+    }
+    fun setAutoSummaryPercent(value: Int) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setAutoSummaryPercent(value) }
+    }
     fun setScreenWakelockMode(value: ScreenWakelockMode) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setScreenWakelockMode(value) }
     }

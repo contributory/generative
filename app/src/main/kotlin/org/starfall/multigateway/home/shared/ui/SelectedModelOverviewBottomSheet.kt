@@ -54,8 +54,10 @@ internal fun SelectedModelOverviewBottomSheet(
     LaunchedEffect(previewTier, screenBurst) {
         // A max-effort burst is started only by crossing into the red tier on the slider.
         // Reopening this sheet at an already-selected max tier should not replay it.
-        if (previewTier != 6 && screenBurst?.keepAfterCompletion == true) {
-            screenBurst.hide()
+        when {
+            previewTier != 6 && screenBurst?.keepAfterCompletion == true -> screenBurst.hide()
+            previewTier == 6 && config.supportsThinking && screenBurst != null && !screenBurst.keepAfterCompletion ->
+                screenBurst.restoreSettled()
         }
     }
     // The purple tier is shown only on the effort control; max effort keeps its red sheet treatment.

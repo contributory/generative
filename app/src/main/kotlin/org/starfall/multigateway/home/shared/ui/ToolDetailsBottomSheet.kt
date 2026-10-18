@@ -39,6 +39,7 @@ import org.starfall.multigateway.shared.ui.sheets.AppBottomSheet
 import org.starfall.multigateway.shared.ui.icons.FluentIcon
 import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.shared.ui.code.SharedCodeBlock
+import org.starfall.multigateway.shared.ui.code.SharedLazyCodeBlock
 import org.starfall.multigateway.home.shared.ui.ToolSheetState
 
 private val toolJson = Json { prettyPrint = true }
@@ -136,7 +137,7 @@ internal fun ToolDetailsBottomSheet(
             )
             Spacer(Modifier.height(10.dp))
             // Lazy chunked rendering: no character cap, only visible chunks are composed and highlighted.
-            SharedCodeBlock(
+            SharedLazyCodeBlock(
                 language = if (responseIsJson) "json" else "text",
                 code = responseText.ifBlank {
                     if (activity.status == "running") "Waiting for tool response…" else "No response"

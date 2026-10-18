@@ -41,7 +41,7 @@ internal fun canonicalResource(value: String): String {
     require(url.fragment == null) { "MCP resource URL must not contain a fragment." }
     val path = if (url.encodedPath == "/") "" else url.encodedPath
     return url.newBuilder()
-        .encodedPath(if (path.isEmpty()) "/" else path)
+        .encodedPath(path.ifEmpty { "/" })
         .query(null)
         .fragment(null)
         .build()

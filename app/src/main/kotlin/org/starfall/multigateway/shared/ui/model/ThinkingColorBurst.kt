@@ -69,6 +69,15 @@ internal class ThinkingColorBurst(private val scope: CoroutineScope) {
         }
     }
 
+    /** Restore the settled max-effort stars without replaying the animation when the sheet reopens. */
+    fun restoreSettled() {
+        job?.cancel()
+        job = null
+        starCount = starCount.coerceAtLeast(32)
+        keepAfterCompletion = true
+        scope.launch { progress.snapTo(1f) }
+    }
+
     /** Hide a settled screen effect immediately when its owning sheet is dismissed or leaves max. */
     fun hide() {
         job?.cancel()

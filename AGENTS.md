@@ -171,22 +171,20 @@
 │   ├── 📁 shared/
 │   │   ├── 📁 logic/
 │   │   │   ├── 📄 ChatBackgroundService.kt
+│   │   │   ├── 📄 ToolAttachments.kt
 │   │   │   ├── 📄 ToolExecutionService.kt
 │   │   │   ├── 📄 ToolMediaGenerationService.kt
 │   │   │   ├── 📄 ToolRequestService.kt
-│   │   │   └── 📄 ToolSheetState.kt
+│   │   │   └── 📄 ToolResultSummaries.kt
 │   │   └── 📁 ui/
-│   │       ├── 📄 ReasoningEffortControl.kt
-│   │       └── 📄 ThinkingColorBurst.kt
-│   └── 📁 sheets/
-│       └── 📁 ui/
-│           ├── 📄 ConversationSummaryBottomSheet.kt
-│           ├── 📄 QuickActionsBottomSheet.kt
-│           ├── 📄 ReasoningEffortBottomSheet.kt
-│           ├── 📄 RemoteMachinesBottomSheet.kt
-│           ├── 📄 SelectedModelOverviewBottomSheet.kt
-│           ├── 📄 ToolDetailsBottomSheet.kt
-│           └── 📄 ToolsManageBottomSheet.kt
+│   │       ├── 📄 ConversationSummaryBottomSheet.kt
+│   │       ├── 📄 QuickActionsBottomSheet.kt
+│   │       ├── 📄 ReasoningEffortBottomSheet.kt
+│   │       ├── 📄 RemoteMachinesBottomSheet.kt
+│   │       ├── 📄 SelectedModelOverviewBottomSheet.kt
+│   │       ├── 📄 ToolDetailsBottomSheet.kt
+│   │       ├── 📄 ToolSheetState.kt
+│   │       └── 📄 ToolsManageBottomSheet.kt
 ├── 📁 integrations/
 │   ├── 📁 mcp/
 │   │   ├── 📄 McpOAuthService.kt

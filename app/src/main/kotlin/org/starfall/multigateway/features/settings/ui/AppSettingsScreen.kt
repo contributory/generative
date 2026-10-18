@@ -48,6 +48,8 @@ import org.starfall.multigateway.shared.storage.preferences.AppPreferences
 import org.starfall.multigateway.shared.storage.preferences.CodeBlockDisplayMode
 import org.starfall.multigateway.shared.storage.preferences.DEFAULT_TOOL_CALL_CONCURRENT_LIMIT
 import org.starfall.multigateway.shared.storage.preferences.DEFAULT_TOOL_ROUND_LIMIT
+import org.starfall.multigateway.shared.storage.preferences.MAX_AUTO_SUMMARY_PERCENT
+import org.starfall.multigateway.shared.storage.preferences.MIN_AUTO_SUMMARY_PERCENT
 import org.starfall.multigateway.shared.storage.preferences.MAX_TOOL_CALL_CONCURRENT_LIMIT
 import org.starfall.multigateway.shared.storage.preferences.MAX_TOOL_ROUND_LIMIT
 import org.starfall.multigateway.shared.storage.preferences.MessageFontFamily
@@ -180,7 +182,10 @@ fun PreferencesSettingsView(
     onToolCallStrategyChange: (ToolCallStrategy) -> Unit = {},
     onToolCallConcurrentLimitChange: (Int) -> Unit = {},
     onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit = {},
-    onAppLanguageChange: (useSystem: Boolean, tag: String) -> Unit = { _, _ -> }
+    onAppLanguageChange: (useSystem: Boolean, tag: String) -> Unit = { _, _ -> },
+    onAutoSummaryEnabledChange: (Boolean) -> Unit = {},
+    onSummarySuggestionEnabledChange: (Boolean) -> Unit = {},
+    onAutoSummaryPercentChange: (Int) -> Unit = {}
 ) {
     LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
@@ -311,6 +316,26 @@ fun PreferencesSettingsView(
             }
         }
         item {
+            SettingsSection(stringResource(R.string.settings_summary)) {
+                PreferenceToggle(stringResource(R.string.settings_summary_suggestion), stringResource(R.string.settings_summary_suggestion_description),
+                    appPreferences.summarySuggestionEnabled, onSummarySuggestionEnabledChange)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                PreferenceToggle(stringResource(R.string.settings_auto_summary), stringResource(R.string.settings_auto_summary_description),
+                    appPreferences.autoSummaryEnabled, onAutoSummaryEnabledChange)
+                if (appPreferences.autoSummaryEnabled) {
+                    Text(stringResource(R.string.settings_auto_summary_threshold, appPreferences.autoSummaryPercent),
+                        style = MaterialTheme.typography.bodyMedium)
+                    androidx.compose.material3.Slider(
+                        value = appPreferences.autoSummaryPercent.toFloat(),
+                        onValueChange = { onAutoSummaryPercentChange(kotlin.math.round(it).toInt()) },
+                        valueRange = MIN_AUTO_SUMMARY_PERCENT.toFloat()..MAX_AUTO_SUMMARY_PERCENT.toFloat(),
+                        steps = MAX_AUTO_SUMMARY_PERCENT - MIN_AUTO_SUMMARY_PERCENT - 1,
+                        modifier = Modifier.fillMaxWidth().testTag("auto-summary-percent")
+                    )
+                }
+            }
+        }
+        item {
             SettingsSection(stringResource(R.string.settings_tool_calls)) {
                 PreferenceToggle(stringResource(R.string.settings_limit_tool_rounds), stringResource(R.string.settings_limit_tool_rounds_description),
                     appPreferences.toolRoundLimitEnabled, onToolRoundLimitEnabledChange)
@@ -404,7 +429,10 @@ fun AppSettingsScreen(
     onToolCallStrategyChange: (ToolCallStrategy) -> Unit,
     onToolCallConcurrentLimitChange: (Int) -> Unit,
     onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit,
-    onAppLanguageChange: (Boolean, String) -> Unit
+    onAppLanguageChange: (Boolean, String) -> Unit,
+    onAutoSummaryEnabledChange: (Boolean) -> Unit = {},
+    onSummarySuggestionEnabledChange: (Boolean) -> Unit = {},
+    onAutoSummaryPercentChange: (Int) -> Unit = {}
 ) {
     val pager = rememberPagerState(pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
@@ -437,7 +465,10 @@ fun AppSettingsScreen(
                     onToolCallStrategyChange = onToolCallStrategyChange,
                     onToolCallConcurrentLimitChange = onToolCallConcurrentLimitChange,
                     onScreenWakelockModeChange = onScreenWakelockModeChange,
-                    onAppLanguageChange = onAppLanguageChange
+                    onAppLanguageChange = onAppLanguageChange,
+                    onAutoSummaryEnabledChange = onAutoSummaryEnabledChange,
+                    onSummarySuggestionEnabledChange = onSummarySuggestionEnabledChange,
+                    onAutoSummaryPercentChange = onAutoSummaryPercentChange
                 )
                 else -> AppearanceSettingsView(
                     appPreferences = appPreferences,

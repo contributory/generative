@@ -15,7 +15,7 @@ import java.nio.file.Files
 import java.util.Base64
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.provider.ModelProvider
-import org.starfall.multigateway.home.chat.logic.tool.summarizeToolResult
+import org.starfall.multigateway.home.shared.logic.summarizeToolResult
 
 internal val referencePng: ByteArray get() = Base64.getDecoder().decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=")

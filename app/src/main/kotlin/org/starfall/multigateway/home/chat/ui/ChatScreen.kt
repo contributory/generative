@@ -642,7 +642,10 @@ fun ChatScreen(
                     )
                 }
             }
-            if (contextWindowStatus?.shouldSuggestSummary == true && !streamingHere && summaryProgress == null) {
+            var summarySuggestionDismissed by remember(conversation?.id, conversation?.summary?.id) { mutableStateOf(false) }
+            if (contextWindowStatus?.shouldSuggestSummary == true && !streamingHere && summaryProgress == null &&
+                !summarySuggestionDismissed &&
+                org.starfall.multigateway.home.chat.ui.markdown.LocalCodeRenderingPreferences.current.summarySuggestionEnabled) {
                 Surface(color = MaterialTheme.colorScheme.secondaryContainer,
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
@@ -653,6 +656,11 @@ fun ChatScreen(
                             modifier = Modifier.weight(1f))
                         TextButton(onClick = { showContextSummarySheet = true }) {
                             Text(androidx.compose.ui.res.stringResource(org.starfall.multigateway.R.string.summarize_now))
+                        }
+                        IconButton(onClick = { summarySuggestionDismissed = true }, modifier = Modifier.size(32.dp)) {
+                            FluentIcon(Icons.Default.Close,
+                                androidx.compose.ui.res.stringResource(org.starfall.multigateway.R.string.common_close),
+                                modifier = Modifier.size(18.dp))
                         }
                     }
                 }

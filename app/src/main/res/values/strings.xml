@@ -409,6 +409,12 @@
     <string name="settings_system_bars">System bars</string>
     <string name="settings_immersive_mode">Immersive Mode</string>
     <string name="settings_immersive_mode_description">Hide the status bar while chatting</string>
+    <string name="settings_summary">Summary</string>
+    <string name="settings_summary_suggestion">Summary suggestion</string>
+    <string name="settings_summary_suggestion_description">Show a suggestion to summarize when the context is nearly full</string>
+    <string name="settings_auto_summary">Auto summarize</string>
+    <string name="settings_auto_summary_description">Summarize the conversation automatically when the context fills up</string>
+    <string name="settings_auto_summary_threshold">Auto summarize at %1$d%% of the context</string>
     <string name="settings_conversations">Conversations</string>
     <string name="settings_continue_last_chat">Continue Last Chat</string>
     <string name="settings_continue_last_chat_description">Open the most recent conversation on launch</string>

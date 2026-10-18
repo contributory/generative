@@ -18,7 +18,7 @@ import org.starfall.multigateway.shared.model.auth.Authorization
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.home.chat.logic.tool.ToolBudget
-import org.starfall.multigateway.home.chat.logic.tool.summarizeToolResult
+import org.starfall.multigateway.home.shared.logic.summarizeToolResult
 
 class ToolHardeningTest {
     private fun json(text: String) = Json.parseToJsonElement(text).jsonObject
