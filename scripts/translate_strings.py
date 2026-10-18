@@ -10,7 +10,6 @@ Rules:
   * translatable="false" entries and entries with child XML tags are skipped.
   * Placeholders (%1$d, %s, %%, \\n, <b>...) are protected; a translation that loses
     one is rejected and not written.
-  * Vietnamese (values-vi) is maintained by hand and skipped unless --include-vi is given.
 
 Strings are sent in batches joined by a symbol-only separator to keep the number of requests low.
 
@@ -21,6 +20,7 @@ import argparse
 import asyncio
 import inspect
 import re
+from importlib.metadata import PackageNotFoundError, version
 import sys
 import time
 import xml.etree.ElementTree as ET
@@ -134,16 +134,37 @@ def translate_batch(translate, texts, dest, delay):
 def make_translator():
     try:
         from googletrans import Translator
-    except ImportError:
-        sys.exit("googletrans is missing: pip install googletrans==4.0.2")
-    translator = Translator()
+        installed_version = version("googletrans")
+    except (ImportError, PackageNotFoundError):
+        sys.exit("googletrans is missing: install googletrans==4.0.2")
+    if installed_version != "4.0.2":
+        sys.exit(
+            f"googletrans==4.0.2 is required (found {installed_version}); "
+            "install the documented version before translating."
+        )
 
     def translate(text, dest):
+        # googletrans 3.4.0 exposes an async translate() backed by a persistent
+        # httpx.AsyncClient. Reusing that client across asyncio.run() calls closes
+        # its event loop after the first request, causing later calls to fail with
+        # "Event loop is closed". Use one client per request and close it inside
+        # the same event loop that performs the request.
         for attempt in range(4):
+            translator = Translator()
             try:
                 result = translator.translate(text, src="en", dest=dest)
-                if inspect.isawaitable(result):  # googletrans 4.0.2+ is async
-                    result = asyncio.run(result)
+                if inspect.isawaitable(result):
+                    async def await_translation():
+                        try:
+                            return await result
+                        finally:
+                            client = getattr(translator, "client", None)
+                            close = getattr(client, "aclose", None)
+                            if close is not None:
+                                await close()
+                    result = asyncio.run(await_translation())
+                else:
+                    return result.text
                 return result.text
             except Exception as error:  # network hiccups / rate limits
                 if attempt == 3:
@@ -172,7 +193,6 @@ def main():
     parser.add_argument("--res-dir", type=Path, default=RES_DIR)
     parser.add_argument("--langs", nargs="*", help="only these folders/codes, e.g. de zh-rTW (default: all)")
     parser.add_argument("--min-words", type=int, default=3, help="skip English texts without this many consecutive words (default 3)")
-    parser.add_argument("--include-vi", action="store_true", help="also fill Vietnamese")
     parser.add_argument("--batch-size", type=int, default=25, help="strings per request (default 25)")
     parser.add_argument("--max-chars", type=int, default=3500, help="characters per request (default 3500)")
     parser.add_argument("--delay", type=float, default=1.0, help="seconds between requests (default 1.0)")
@@ -191,8 +211,6 @@ def main():
             continue
         lang, region = match.groups()
         if args.langs and folder.name.removeprefix("values-").lower() not in wanted and lang not in wanted:
-            continue
-        if lang == "vi" and not args.include_vi and not args.langs:
             continue
         targets.append((folder / "strings.xml", googletrans_code(lang, region)))
 
