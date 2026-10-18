@@ -10,8 +10,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.service.LlmService
-import org.starfall.multigateway.data.service.OllamaModelCache
+import org.starfall.multigateway.integrations.modelapis.AiService
+import org.starfall.multigateway.integrations.modelapis.ollama.OllamaModelCache
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -24,8 +24,8 @@ class OllamaModelCacheTest {
             server.enqueue(MockResponse().setHeader("Content-Type", "application/json")
                 .setBody("""{"models":[{"name":"local-model"}]}"""))
             val url = server.url("/").toString()
-            assertEquals(listOf("local-model"), LlmService(context).fetchOllamaModels(url))
-            assertEquals(listOf("local-model"), LlmService(context).fetchOllamaModels(url))
+            assertEquals(listOf("local-model"), AiService(context).fetchOllamaModels(url))
+            assertEquals(listOf("local-model"), AiService(context).fetchOllamaModels(url))
             assertEquals(1, server.requestCount)
             assertEquals(listOf("local-model"), OllamaModelCache(context).read(url)?.models)
         } finally { server.shutdown() }
@@ -39,7 +39,7 @@ class OllamaModelCacheTest {
             cache.write(url, listOf("previous-model"))
             assertFalse(OllamaModelCache(context).isFresh(cache.read(url)!!))
             server.enqueue(MockResponse().setResponseCode(503))
-            assertEquals(listOf("previous-model"), LlmService(context).fetchOllamaModels(url))
+            assertEquals(listOf("previous-model"), AiService(context).fetchOllamaModels(url))
             assertNull(cache.read(server.url("/other/").toString()))
         } finally { server.shutdown() }
     }
@@ -50,7 +50,7 @@ class OllamaModelCacheTest {
             val url = server.url("/").toString()
             OllamaModelCache(context, now = { 0 }).write(url, listOf("removed-model"))
             server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody("""{"models":[]}"""))
-            assertTrue(LlmService(context).fetchOllamaModels(url).isEmpty())
+            assertTrue(AiService(context).fetchOllamaModels(url).isEmpty())
             assertTrue(OllamaModelCache(context).read(url)!!.models.isEmpty())
         } finally { server.shutdown() }
     }

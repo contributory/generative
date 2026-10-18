@@ -10,12 +10,12 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.model.LlmProviderInfo
-import org.starfall.multigateway.data.model.ProviderGroup
-import org.starfall.multigateway.data.model.ProviderPlacement
-import org.starfall.multigateway.data.model.ProviderRootOrderItem
-import org.starfall.multigateway.data.model.ProviderType
-import org.starfall.multigateway.ui.providers.ProviderScreen
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
+import org.starfall.multigateway.shared.model.provider.ProviderPlacement
+import org.starfall.multigateway.shared.model.provider.ProviderRootOrderItem
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.features.providers.list.ui.ProvidersScreen
 
 /** Phone-launcher style drag and drop on the Providers screen. */
 @RunWith(RobolectricTestRunner::class)
@@ -24,10 +24,10 @@ class ProviderDragDropTest {
     @get:Rule val compose = createComposeRule()
 
     private fun provider(id: String, group: String? = null, order: Int = 0, icon: String? = null) =
-        LlmProviderInfo(id, id, ProviderType.OPENAI, baseUrl = "", groupId = group, sortOrder = order, icon = icon)
+        ModelProvider(id, id, ModelApiType.OPENAI, baseUrl = "", groupId = group, sortOrder = order, icon = icon)
 
     private fun show(
-        providers: List<LlmProviderInfo>,
+        providers: List<ModelProvider>,
         groups: List<ProviderGroup>,
         writes: MutableList<ProviderPlacement> = mutableListOf(),
         grid: Boolean = true,
@@ -35,13 +35,11 @@ class ProviderDragDropTest {
     ) {
         compose.setContent {
             MaterialTheme {
-                ProviderScreen(
+                ProvidersScreen(
                     providers = providers,
                     providerGroups = groups,
                     isGridView = grid,
-                    onSaveProvider = {},
-                    onSaveModels = { _, _ -> },
-                    onReorderModels = { _, _ -> },
+                    onOpenProviderEditor = { _, _ -> },
                     onDeleteProvider = {},
                     onReorderProviders = {},
                     onReorderRootItems = { rootOrders += it },

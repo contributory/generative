@@ -4,7 +4,9 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
 import java.io.File
 import java.io.StringReader
 import java.nio.file.Files

@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.ui.chat.rememberLiveThinkingScrollState
+import org.starfall.multigateway.home.chat.ui.rememberLiveThinkingScrollState
 
 class ThinkingScrollBehaviorTest {
     @get:Rule val compose = createComposeRule()

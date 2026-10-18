@@ -14,10 +14,18 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.service.AttachmentResolver
-import org.starfall.multigateway.data.service.OfficialLlmSdk
+import org.starfall.multigateway.shared.model.*
 import java.util.concurrent.TimeUnit
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
+import org.starfall.multigateway.shared.model.language.withConversationReasoning
+import org.starfall.multigateway.shared.model.language.reasoningEffortDisabled
+import org.starfall.multigateway.shared.model.language.withSelectedReasoningEffort
+import org.starfall.multigateway.shared.model.language.reasoningBudget
+import org.starfall.multigateway.shared.model.language.requestReasoningEffort
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)
@@ -54,30 +62,30 @@ class ReasoningSettingTest {
 
     @Test fun offReachesNativeProviderRequests() = runBlocking {
         val context: Context = ApplicationProvider.getApplicationContext()
-        val sdk = OfficialLlmSdk(AttachmentResolver(context))
+        val adapters = ProviderAdaptersTestSupport(context)
         val messages = listOf(StoredMessage("u", ChatRole.USER, listOf(MessageVersion(content = "Hello"))))
-        for (type in listOf(ProviderType.OPENAI, ProviderType.ANTHROPIC, ProviderType.GOOGLE)) {
+        for (type in listOf(ModelApiType.OPENAI, ModelApiType.ANTHROPIC, ModelApiType.GOOGLE)) {
             MockWebServer().use { server ->
                 val event = when (type) {
-                    ProviderType.ANTHROPIC -> "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
-                    ProviderType.GOOGLE -> "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"ok\"}]}}]}\n\n"
+                    ModelApiType.ANTHROPIC -> "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+                    ModelApiType.GOOGLE -> "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"ok\"}]}}]}\n\n"
                     else -> "data: [DONE]\n\n"
                 }
                 server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody(event))
-                val provider = LlmProviderInfo("p", "P", type, Authorization(value = "key"),
-                    baseUrl = server.url(if (type == ProviderType.GOOGLE) "/v1beta" else "/v1").toString(),
+                val provider = ModelProvider("p", "P", type, Authorization(value = "key"),
+                    baseUrl = server.url(if (type == ModelApiType.GOOGLE) "/v1beta" else "/v1").toString(),
                     config = ProviderConfiguration(modelConfigs = mapOf("custom" to ModelConfiguration(
                         reasoningEffort = "none"
                     ))))
                 when (type) {
-                    ProviderType.ANTHROPIC -> sdk.streamAnthropic(provider, "custom", messages, "", null, null, 2048).toList()
-                    ProviderType.GOOGLE -> sdk.streamGoogle(provider, "custom", messages, "", null, null, 2048).toList()
-                    else -> sdk.streamOpenAi(provider, "custom", messages, "", null, null, 2048, "none").toList()
+                    ModelApiType.ANTHROPIC -> adapters.streamAnthropic(provider, "custom", messages, "", null, null, 2048).toList()
+                    ModelApiType.GOOGLE -> adapters.streamGoogle(provider, "custom", messages, "", null, null, 2048).toList()
+                    else -> adapters.streamOpenAi(provider, "custom", messages, "", null, null, 2048, "none").toList()
                 }
                 val body = Json.parseToJsonElement(server.takeRequest(5, TimeUnit.SECONDS)!!.body.readUtf8()).jsonObject
                 when (type) {
-                    ProviderType.ANTHROPIC -> assertEquals("disabled", body["thinking"]!!.jsonObject["type"]!!.jsonPrimitive.content)
-                    ProviderType.GOOGLE -> assertEquals(0, body["generationConfig"]!!.jsonObject["thinkingConfig"]!!.jsonObject["thinkingBudget"]!!.jsonPrimitive.int)
+                    ModelApiType.ANTHROPIC -> assertEquals("disabled", body["thinking"]!!.jsonObject["type"]!!.jsonPrimitive.content)
+                    ModelApiType.GOOGLE -> assertEquals(0, body["generationConfig"]!!.jsonObject["thinkingConfig"]!!.jsonObject["thinkingBudget"]!!.jsonPrimitive.int)
                     else -> assertEquals("none", body["reasoning_effort"]!!.jsonPrimitive.content)
                 }
             }

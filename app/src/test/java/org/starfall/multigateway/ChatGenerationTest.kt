@@ -4,8 +4,12 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.ui.chat.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.providers.shared.ui.*
+import org.starfall.multigateway.shared.model.generation.GenerationEvent
+import org.starfall.multigateway.home.chat.logic.ChatGeneration
+import org.starfall.multigateway.home.chat.logic.prepareRegeneration
+import org.starfall.multigateway.home.chat.logic.updateResponse
 
 class ChatGenerationTest {
     @Test fun regenerationAndStreamingPreserveOriginalAndNewModelNames() {

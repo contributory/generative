@@ -8,13 +8,13 @@ import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.ui.chat.ChatViewModel
-import org.starfall.multigateway.ui.configuration.ConfigurationViewModel
-import org.starfall.multigateway.ui.settings.SettingsViewModel
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.providers.shared.logic.ConfigurationViewModel
+import org.starfall.multigateway.features.settings.logic.SettingsViewModel
 import java.util.UUID
 import android.os.ParcelFileDescriptor
 import kotlinx.serialization.json.*
+import org.starfall.multigateway.home.chat.logic.ChatViewModel
 
 /** Explicit ADB-only smoke test; uses the provider already entered on the device, never embeds a credential. */
 class HelixLiveTest {
@@ -32,7 +32,7 @@ class HelixLiveTest {
             config = owner[ConfigurationViewModel::class.java]
             settings = owner[SettingsViewModel::class.java]
         }
-        val gear = hasContentDescription("General Settings") and SemanticsMatcher("chat toolbar settings") {
+        val gear = hasContentDescription("Settings") and SemanticsMatcher("chat toolbar settings") {
             it.boundsInRoot.left > compose.activity.resources.displayMetrics.widthPixels / 2
         }
         for (attempt in 0..8) {

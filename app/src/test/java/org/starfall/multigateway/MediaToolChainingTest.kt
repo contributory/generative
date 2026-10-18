@@ -1,5 +1,6 @@
 package org.starfall.multigateway
 
+
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
@@ -12,11 +13,30 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.service.*
-import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.mcp.shared.ui.*
+import org.starfall.multigateway.integrations.mcp.*
+import org.starfall.multigateway.features.machines.shared.ui.*
+import org.starfall.multigateway.integrations.remote.*
+import org.starfall.multigateway.home.chat.*
+import org.starfall.multigateway.integrations.modelapis.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.icons.*
+import org.starfall.multigateway.shared.media.*
+import org.starfall.multigateway.integrations.media.*
+import org.starfall.multigateway.shared.helpers.media.*
+import org.starfall.multigateway.shared.model.media.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
 import java.nio.file.Files
 import java.util.Base64
+import org.starfall.multigateway.shared.model.generation.GenerationEvent
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.language.ModelType
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
+import org.starfall.multigateway.home.chat.logic.tool.ToolChatViewModel
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)
@@ -67,11 +87,11 @@ class MediaToolChainingTest {
                 }
             }
             try {
-                val provider = LlmProviderInfo("p", "local", ProviderType.OPENAI, baseUrl = server.url("/v1").toString(),
+                val provider = ModelProvider("p", "local", ModelApiType.OPENAI, baseUrl = server.url("/v1").toString(),
                     config = ProviderConfiguration(supportStream = false, modelIds = listOf("chat", "image"), modelConfigs = mapOf(
                         "chat" to ModelConfiguration(supportsToolCalls = true), "image" to ModelConfiguration(modelType = ModelType.IMAGE_GENERATION))))
                 val http = ToolHttp(ToolFiles(root))
-                val events = ToolChat(http, McpService(http), LlmService(ApplicationProvider.getApplicationContext<Context>())).generate(
+                val events = ToolChatViewModel(http, McpService(http), AiService(ApplicationProvider.getApplicationContext<Context>())).generate(
                     provider, "chat", listOf(StoredMessage("u", ChatRole.USER, listOf(MessageVersion("Edit this image", files = listOf(attachment.absolutePath))))),
                     "", emptyList(), listOf(provider), { ToolSettings(system = mapOf("generate_image" to SystemToolConfig(true, "p", "image"))) }).toList()
                 assertEquals(2, rounds)
@@ -136,13 +156,13 @@ class MediaToolChainingTest {
                 }
             }
             try {
-                val provider = LlmProviderInfo("p", "local", ProviderType.OPENAI, baseUrl = server.url("/v1").toString(),
+                val provider = ModelProvider("p", "local", ModelApiType.OPENAI, baseUrl = server.url("/v1").toString(),
                     config = ProviderConfiguration(supportStream = false, modelIds = listOf("chat", "image", "video"),
                         modelConfigs = mapOf("chat" to ModelConfiguration(supportsToolCalls = true),
                             "image" to ModelConfiguration(modelType = ModelType.IMAGE_GENERATION),
                             "video" to ModelConfiguration(modelType = ModelType.VIDEO_GENERATION))))
                 val http = ToolHttp(files)
-                val events = ToolChat(http, McpService(http), LlmService(ApplicationProvider.getApplicationContext<Context>())).generate(
+                val events = ToolChatViewModel(http, McpService(http), AiService(ApplicationProvider.getApplicationContext<Context>())).generate(
                     provider, "chat", listOf(StoredMessage("u", ChatRole.USER, listOf(MessageVersion("Animate an image",
                         files = if (uploaded) listOf(attachment.absolutePath) else emptyList())))), "", emptyList(), listOf(provider),
                     { ToolSettings(system = mapOf("generate_image" to SystemToolConfig(!uploaded, "p", "image"),

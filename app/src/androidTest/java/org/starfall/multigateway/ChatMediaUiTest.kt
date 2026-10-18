@@ -1,5 +1,6 @@
 package org.starfall.multigateway
 
+
 import android.graphics.Bitmap
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Box
@@ -15,18 +16,29 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.tools.ToolFiles
-import org.starfall.multigateway.ui.chat.*
-import org.starfall.multigateway.ui.components.MediaPreviewDialog
-import org.starfall.multigateway.ui.tools.MediaFileCard
-import org.starfall.multigateway.ui.components.ChatFilePreview
-import org.starfall.multigateway.ui.components.InlineVideoPreview
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.files.ToolFiles
+import org.starfall.multigateway.features.providers.shared.ui.*
+import org.starfall.multigateway.shared.ui.media.MediaPreviewDialog
+import org.starfall.multigateway.shared.ui.media.MediaFileCard
+import org.starfall.multigateway.shared.ui.media.ChatFilePreview
+import org.starfall.multigateway.shared.ui.media.InlineVideoPreview
 import androidx.compose.ui.graphics.asImageBitmap
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.language.ModelType
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
+import org.starfall.multigateway.home.chat.logic.input.DirectMediaRequest
+import org.starfall.multigateway.home.chat.ui.AssistantMessageCard
+import org.starfall.multigateway.home.chat.ui.AttachmentStrip
+import org.starfall.multigateway.home.chat.ui.UserMessageCard
+import org.starfall.multigateway.home.chat.ui.input.UserInputArea
+import org.starfall.multigateway.home.chat.ui.tool.ToolActivityCards
 
 class ChatMediaUiTest {
     @Test fun assistantFilesKeepTheirLargePreview() {
@@ -37,7 +49,7 @@ class ChatMediaUiTest {
         try {
             val message = StoredMessage("assistant", ChatRole.MODEL,
                 listOf(MessageVersion(content = "Image", files = listOf(image.path))))
-            compose.setContent { MaterialTheme { AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {}) } }
+            compose.setContent { MaterialTheme { AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {}, onSwitchVersion = {}) } }
             compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Generated image").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithContentDescription("Generated image").assertHeightIsAtLeast(120.dp).performClick()
             compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Image preview").fetchSemanticsNodes().isNotEmpty() }
@@ -147,7 +159,7 @@ class ChatMediaUiTest {
                     "videos", "Content API / extract", status = "success", files = names, inlineMedia = true
                 ))
             )))
-            compose.setContent { MaterialTheme { AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {}) } }
+            compose.setContent { MaterialTheme { AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {}, onSwitchVersion = {}) } }
             compose.waitUntil(5_000) {
                 compose.onAllNodesWithContentDescription("Open video").fetchSemanticsNodes().size == 2
             }
@@ -166,7 +178,7 @@ class ChatMediaUiTest {
         compose.setContent {
             var reading by remember { mutableStateOf(false) }
             MaterialTheme {
-                AssistantMessageCard(message, false, {}, {}, {}, {}, { reading = !reading }, {}, isReading = reading)
+                AssistantMessageCard(message, false, {}, {}, {}, {}, { reading = !reading }, {}, isReading = reading, onSwitchVersion = {})
             }
         }
         compose.onNodeWithText("Actual model").assertExists()
@@ -180,7 +192,7 @@ class ChatMediaUiTest {
     @Test fun mediaModesKeepComposerSizeAndSendDirectly() {
         var submitted: DirectMediaRequest? = null
         var textSubmissions = 0
-        val provider = LlmProviderInfo("media", "Media", ProviderType.OPENAI, baseUrl = "https://example.com/v1",
+        val provider = ModelProvider("media", "Media", ModelApiType.OPENAI, baseUrl = "https://example.com/v1",
             config = ProviderConfiguration(modelIds = listOf("image", "video"), modelConfigs = mapOf(
                 "image" to ModelConfiguration(modelType = ModelType.IMAGE_GENERATION),
                 "video" to ModelConfiguration(modelType = ModelType.VIDEO_GENERATION))))
@@ -236,7 +248,7 @@ class ChatMediaUiTest {
                 ToolActivity("duplicate", "other", status = "success", files = listOf(name))
             ))))
             compose.setContent {
-                MaterialTheme { AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {}) }
+                MaterialTheme { AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {}, onSwitchVersion = {}) }
             }
             compose.waitUntil(5_000) {
                 compose.onAllNodesWithContentDescription("Generated image").fetchSemanticsNodes().size == 1
@@ -306,6 +318,7 @@ class ChatMediaUiTest {
                 MaterialTheme {
                     Box(Modifier.fillMaxSize()) {
                         AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {},
+                            onSwitchVersion = {},
                             selectedImageAttachments = attachments,
                             onToggleChatImage = { ref -> attachments = if (ref in attachments) attachments - ref else attachments + ref })
                         UserInputArea(
@@ -355,7 +368,7 @@ class ChatMediaUiTest {
                 ToolActivity("image", "generate_image", status = "success", files = listOf(name), contentOffset = before.length)
             ))
             compose.setContent { MaterialTheme {
-                AssistantMessageCard(StoredMessage("assistant", ChatRole.MODEL, listOf(version)), false, {}, {}, {}, {}, {}, {})
+                AssistantMessageCard(StoredMessage("assistant", ChatRole.MODEL, listOf(version)), false, {}, {}, {}, {}, {}, {}, onSwitchVersion = {})
             } }
             compose.waitUntil(5_000) {
                 compose.onAllNodesWithContentDescription("Generated image").fetchSemanticsNodes().isNotEmpty()

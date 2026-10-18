@@ -9,10 +9,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.local.db.AppDatabase
-import org.starfall.multigateway.data.local.preferences.AppPreferencesRepository
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.repository.ConversationRepository
+import org.starfall.multigateway.shared.storage.database.AppDatabase
+import org.starfall.multigateway.shared.storage.preferences.AppPreferencesRepository
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.storage.ConversationRepository
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

@@ -3,9 +3,13 @@ package org.starfall.multigateway
 import java.util.Base64
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.local.preferences.WordWrapMode
-import org.starfall.multigateway.ui.chat.*
-import org.starfall.multigateway.ui.preview.*
+import org.starfall.multigateway.shared.storage.preferences.WordWrapMode
+import org.starfall.multigateway.features.providers.shared.ui.*
+import org.starfall.multigateway.preview.*
+import org.starfall.multigateway.home.chat.ui.markdown.codeWrapWidth
+import org.starfall.multigateway.shared.code.CodeTokenKind
+import org.starfall.multigateway.shared.code.codeTokens
+import org.starfall.multigateway.shared.code.highlightedCode
 
 class CodeRenderingTest {
     @Test fun wrapModesUseViewportColumnAndMinimumLikeVsCode() {

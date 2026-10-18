@@ -4,7 +4,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
+import org.starfall.multigateway.shared.model.*
 
 class DataModelTest {
 
@@ -47,7 +47,7 @@ class DataModelTest {
         val profile = ChatProfile(
             id = "custom-1",
             name = "Custom Assistant",
-            config = LlmChatConfig(systemPrompt = "You are a helpful assistant")
+            config = AiChatConfig(systemPrompt = "You are a helpful assistant")
         )
 
         val jsonStr = json.encodeToString(profile)

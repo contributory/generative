@@ -2,7 +2,7 @@ package org.starfall.multigateway
 
 import android.content.Context
 import kotlinx.serialization.json.*
-import org.starfall.multigateway.data.local.db.SecretCipher
+import org.starfall.multigateway.shared.storage.database.SecretCipher
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.first
@@ -16,39 +16,46 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.local.db.AppDatabase
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.repository.LlmRepository
-import org.starfall.multigateway.data.service.LlmService
-import org.starfall.multigateway.ui.chat.ModelPickerItem
-import org.starfall.multigateway.ui.chat.computeModelPickerItems
-import org.starfall.multigateway.ui.providers.newProviderId
+import org.starfall.multigateway.shared.storage.database.AppDatabase
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.storage.ModelRepository
+import org.starfall.multigateway.integrations.modelapis.AiService
+import org.starfall.multigateway.features.providers.list.ui.newProviderId
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
+import org.starfall.multigateway.shared.model.provider.ProviderPlacement
+import org.starfall.multigateway.shared.model.provider.ProviderRootOrderItem
+import org.starfall.multigateway.shared.ui.model.ModelPickerItem
+import org.starfall.multigateway.shared.ui.model.computeModelPickerItems
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class ProviderGroupTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
-    @Test fun repositoryOmitsSmallContextOverridesAndPersistsRawModelJson() = runBlocking {
+    @Test fun repositoryPersistsSmallContextOverridesAndRawModelJson() = runBlocking {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
-            val repo = LlmRepository(db, LlmService(context))
+            val repo = ModelRepository(db, AiService(context))
             val raw = Json.parseToJsonElement("""{"id":"small","context_window":32000,"vendor":{"extra":true}}""").jsonObject
-            repo.saveProvider(LlmProviderInfo("json-test", "Provider", ProviderType.OPENAI, baseUrl = "",
+            repo.saveProvider(ModelProvider("json-test", "Provider", ModelApiType.OPENAI, baseUrl = "",
                 config = ProviderConfiguration(modelConfigs = mapOf(
                     "small" to ModelConfiguration(contextWindowTokens = 32000, modelJson = raw),
                     "default" to ModelConfiguration(contextWindowTokens = 128000),
                     "large" to ModelConfiguration(contextWindowTokens = 128001)
                 ))))
-            val entity = db.llmProviderDao().getProviderById("json-test")!!
+            val entity = db.modelProviderDao().getProviderById("json-test")!!
             val stored = Json.parseToJsonElement(SecretCipher.decrypt(entity.configJson)).jsonObject.getValue("modelConfigs").jsonObject
-            assertFalse(stored.getValue("small").jsonObject.containsKey("contextWindowTokens"))
+            assertEquals(32000, stored.getValue("small").jsonObject.getValue("contextWindowTokens").jsonPrimitive.int)
             assertFalse(stored.getValue("default").jsonObject.containsKey("contextWindowTokens"))
             assertEquals(128001, stored.getValue("large").jsonObject.getValue("contextWindowTokens").jsonPrimitive.int)
-            val reopened = LlmRepository(db, LlmService(context)).getProviderById("json-test")!!
+            val reopened = ModelRepository(db, AiService(context)).getProviderById("json-test")!!
             assertEquals(raw, reopened.config.modelConfigs.getValue("small").modelJson)
-            assertEquals(DEFAULT_CONTEXT_WINDOW_TOKENS, reopened.config.modelConfigs.getValue("small").contextWindowTokens)
+            assertEquals(32000, reopened.config.modelConfigs.getValue("small").contextWindowTokens)
         } finally { db.close() }
     }
 
@@ -56,16 +63,16 @@ class ProviderGroupTest {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
-            val repo = LlmRepository(db, LlmService(context))
+            val repo = ModelRepository(db, AiService(context))
             repo.saveGroup(ProviderGroup("g", "Folder", 1))
             for ((id, group) in listOf("outside" to null, "a" to "g", "b" to "g", "tail" to null))
-                repo.saveProvider(LlmProviderInfo(id, id, ProviderType.OPENAI, baseUrl = "", groupId = group))
+                repo.saveProvider(ModelProvider(id, id, ModelApiType.OPENAI, baseUrl = "", groupId = group))
             val root = listOf(ProviderRootOrderItem("g", true), ProviderRootOrderItem("tail", false))
             repo.placeProvider(ProviderPlacement("outside", "g", root, mapOf("g" to listOf("a", "outside", "b"))))
             assertEquals("g", repo.getProviderById("outside")!!.groupId)
             val visible = repo.allProviders.first()
             assertEquals(listOf("a", "outside", "b"), visible.filter { it.groupId == "g" }.map { it.id })
-            val persisted = LlmRepository(db, LlmService(context))
+            val persisted = ModelRepository(db, AiService(context))
             assertEquals(listOf("a", "outside", "b"), persisted.allProviders.first().filter { it.groupId == "g" }.map { it.id })
             repo.placeProvider(ProviderPlacement("a", null,
                 listOf(ProviderRootOrderItem("a", false)) + root, mapOf("g" to listOf("outside", "b"))))
@@ -85,14 +92,14 @@ class ProviderGroupTest {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
-            val repo = LlmRepository(db, LlmService(context))
+            val repo = ModelRepository(db, AiService(context))
             val group = ProviderGroup("g1", "Work", 0, "icon-11111111-1111-1111-1111-111111111111.png")
             repo.saveGroup(group)
             repo.saveProvider(
-                LlmProviderInfo(
+                ModelProvider(
                     id = "p1",
                     name = "Provider",
-                    type = ProviderType.OPENAI,
+                    type = ModelApiType.OPENAI,
                     baseUrl = "https://example.test/v1",
                     groupId = group.id
                 )
@@ -115,9 +122,9 @@ class ProviderGroupTest {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
-            val repo = LlmRepository(db, LlmService(context))
+            val repo = ModelRepository(db, AiService(context))
             repo.saveGroup(ProviderGroup("g", "Work", 0))
-            fun provider(id: String, group: String? = "g") = LlmProviderInfo(id, id, ProviderType.OPENAI,
+            fun provider(id: String, group: String? = "g") = ModelProvider(id, id, ModelApiType.OPENAI,
                 baseUrl = "https://example.test/v1", groupId = group)
             repo.saveProvider(provider("z-first"))
             repo.saveProvider(provider("a-second"))
@@ -139,7 +146,7 @@ class ProviderGroupTest {
             assertEquals(finalOrder, repo.allProviders.first().filter { it.groupId == "g" }.map { it.id })
             repo.moveProviderToGroup("a-second", "g")
             assertEquals(finalOrder, repo.allProviders.first().filter { it.groupId == "g" }.map { it.id })
-            val reloaded = LlmRepository(db, LlmService(context)).allProviders.first()
+            val reloaded = ModelRepository(db, AiService(context)).allProviders.first()
             assertEquals(finalOrder, reloaded.filter { it.groupId == "g" }.map { it.id })
             assertEquals(listOf(0, 1, 2, 3), reloaded.filter { it.groupId == "g" }.map { it.sortOrder })
         } finally { db.close() }
@@ -150,15 +157,15 @@ class ProviderGroupTest {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
-            val repo = LlmRepository(db, LlmService(context))
+            val repo = ModelRepository(db, AiService(context))
             repo.saveGroup(ProviderGroup("g", "Work", 0))
             for (id in listOf("z-legacy", "a-legacy")) {
-                db.llmProviderDao().insertOrUpdate(org.starfall.multigateway.data.local.db.entities.LlmProviderEntity(
-                    id, id, ProviderType.OPENAI.name, "https://example.test/v1", "{}", "{}", null, Int.MAX_VALUE, "g"))
+                db.modelProviderDao().insertOrUpdate(org.starfall.multigateway.shared.storage.database.entities.ModelProviderEntity(
+                    id, id, ModelApiType.OPENAI.name, "https://example.test/v1", "{}", "{}", null, Int.MAX_VALUE, "g"))
             }
-            repo.saveProvider(LlmProviderInfo("moving", "Moving", ProviderType.OPENAI, baseUrl = "https://example.test/v1"))
+            repo.saveProvider(ModelProvider("moving", "Moving", ModelApiType.OPENAI, baseUrl = "https://example.test/v1"))
             repo.moveProviderToGroup("moving", "g")
-            val members = LlmRepository(db, LlmService(context)).allProviders.first().filter { it.groupId == "g" }
+            val members = ModelRepository(db, AiService(context)).allProviders.first().filter { it.groupId == "g" }
             assertEquals(listOf("a-legacy", "z-legacy", "moving"), members.map { it.id })
             assertEquals(listOf(0, 1, 2), members.map { it.sortOrder })
             repo.moveProviderToGroup("moving", null)
@@ -170,10 +177,10 @@ class ProviderGroupTest {
     fun defaultPickerOrdersProvidersByFolderThenProviderSortOrder() {
         val first = ProviderGroup("first", "First", sortOrder = 0)
         val second = ProviderGroup("second", "Second", sortOrder = 1)
-        fun provider(id: String, groupId: String?, sortOrder: Int) = LlmProviderInfo(
+        fun provider(id: String, groupId: String?, sortOrder: Int) = ModelProvider(
             id = id,
             name = id,
-            type = ProviderType.OPENAI,
+            type = ModelApiType.OPENAI,
             baseUrl = "",
             groupId = groupId,
             sortOrder = sortOrder,
@@ -202,10 +209,10 @@ class ProviderGroupTest {
     @Test
     fun pickerTabsFilterFoldersAndProviderCollapseButSearchExpandsMatches() {
         val group = ProviderGroup("g1", "Work", 0)
-        val grouped = LlmProviderInfo(
+        val grouped = ModelProvider(
             id = "p1",
             name = "Primary",
-            type = ProviderType.OPENAI,
+            type = ModelApiType.OPENAI,
             baseUrl = "https://example.test/v1",
             groupId = group.id,
             config = ProviderConfiguration(
@@ -213,10 +220,10 @@ class ProviderGroupTest {
                 modelConfigs = mapOf("alpha" to ModelConfiguration(), "beta" to ModelConfiguration())
             )
         )
-        val root = LlmProviderInfo(
+        val root = ModelProvider(
             id = "p2",
             name = "Root",
-            type = ProviderType.ANTHROPIC,
+            type = ModelApiType.ANTHROPIC,
             baseUrl = "https://example.test/v1",
             config = ProviderConfiguration(
                 modelIds = listOf("gamma"),
@@ -269,25 +276,25 @@ class ProviderGroupTest {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
-            val repo = LlmRepository(db, LlmService(context))
+            val repo = ModelRepository(db, AiService(context))
             val g1 = ProviderGroup("g1", "One", 0)
             val g2 = ProviderGroup("g2", "Two", 1)
             repo.saveGroup(g1)
             repo.saveGroup(g2)
             repo.saveProvider(
-                LlmProviderInfo(
+                ModelProvider(
                     id = "root",
                     name = "Root",
-                    type = ProviderType.OPENAI,
+                    type = ModelApiType.OPENAI,
                     baseUrl = "https://example.test/v1",
                     sortOrder = 2
                 )
             )
             repo.saveProvider(
-                LlmProviderInfo(
+                ModelProvider(
                     id = "child",
                     name = "Child",
-                    type = ProviderType.OPENAI,
+                    type = ModelApiType.OPENAI,
                     baseUrl = "https://example.test/v1",
                     sortOrder = 0,
                     groupId = g1.id
@@ -327,7 +334,7 @@ class ProviderGroupTest {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
-            val repo = LlmRepository(db, LlmService(context))
+            val repo = ModelRepository(db, AiService(context))
             val firstId = newProviderId()
             val secondId = newProviderId()
             assertNotEquals(firstId, secondId)
@@ -335,18 +342,18 @@ class ProviderGroupTest {
             assertTrue(secondId.startsWith("custom_"))
 
             repo.saveProvider(
-                LlmProviderInfo(
+                ModelProvider(
                     id = firstId,
                     name = "First",
-                    type = ProviderType.OPENAI,
+                    type = ModelApiType.OPENAI,
                     baseUrl = "https://first.example/v1"
                 )
             )
             repo.saveProvider(
-                LlmProviderInfo(
+                ModelProvider(
                     id = secondId,
                     name = "Second",
-                    type = ProviderType.OPENAI,
+                    type = ModelApiType.OPENAI,
                     baseUrl = "https://second.example/v1"
                 )
             )

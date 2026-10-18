@@ -1,5 +1,9 @@
 package org.starfall.multigateway
 
+import org.starfall.multigateway.shared.auth.*
+
+import org.starfall.multigateway.integrations.modelapis.account.*
+
 import android.content.Context
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
@@ -14,12 +18,14 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.adapter.common.*
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.service.AttachmentResolver
-import org.starfall.multigateway.data.tools.text
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.files.AttachmentResolver
+import org.starfall.multigateway.shared.networking.text
 import java.net.ServerSocket
 import java.net.Socket
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.auth.defaultAuthorization
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)
@@ -28,16 +34,16 @@ class OAuthLoopbackTest {
     @Before fun prepareKeystore() = installTestAndroidKeyStore()
 
     private fun adapter(port: Int, tokenUrl: String, browser: CompletableDeferred<String>) =
-        object : OAuthAccountAdapter(context, AttachmentResolver(context), ProviderType.ANTIGRAVITY,
+        object : OAuthAccountAdapter(context, AttachmentResolver(context), ModelApiType.ANTIGRAVITY,
             "test-client", "https://example.com/authorize", tokenUrl, "scope",
             port, "/oauth-callback", callbackHost = "127.0.0.1") {
             override suspend fun openBrowser(url: String) { browser.complete(url) }
-            override suspend fun prepareAuthenticatedProvider(provider: LlmProviderInfo) = provider
-            override suspend fun fetchModels(provider: LlmProviderInfo) = listOf("chat")
+            override suspend fun prepareAuthenticatedProvider(provider: ModelProvider) = provider
+            override suspend fun fetchModels(provider: ModelProvider) = listOf("chat")
         }
 
-    private fun provider() = LlmProviderInfo("loopback", "Test", ProviderType.ANTIGRAVITY,
-        baseUrl = ProviderType.ANTIGRAVITY.defaultBaseUrl, auth = ProviderType.ANTIGRAVITY.defaultAuthorization())
+    private fun provider() = ModelProvider("loopback", "Test", ModelApiType.ANTIGRAVITY,
+        baseUrl = ModelApiType.ANTIGRAVITY.defaultBaseUrl, auth = ModelApiType.ANTIGRAVITY.defaultAuthorization())
 
     private suspend fun request(port: Int, path: String): String = withContext(Dispatchers.IO) {
         Socket("127.0.0.1", port).use { socket ->

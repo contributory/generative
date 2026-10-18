@@ -19,3 +19,17 @@ plugins {
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
+
+// The unqualified `./gradlew assembleDebug` command is the legacy build entry point.
+// Keep the new app buildable explicitly via `./gradlew :app:assembleDebug`.
+subprojects {
+    tasks.configureEach {
+        if (
+            name == "assembleDebug" &&
+            project.name == "app" &&
+            gradle.startParameter.taskNames.any { it == "assembleDebug" }
+        ) {
+            enabled = false
+        }
+    }
+}

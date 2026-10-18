@@ -14,7 +14,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Modifier
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.ui.components.SelectableOutlinedTextField
+import org.starfall.multigateway.shared.ui.text.SelectableOutlinedTextField
 
 class SelectableTextFieldTest {
     @get:Rule val compose = createComposeRule()

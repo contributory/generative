@@ -13,8 +13,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.ui.chat.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.providers.shared.ui.*
+import org.starfall.multigateway.shared.ui.model.*
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.home.shared.ui.SelectedModelOverviewBottomSheet
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi")
@@ -25,7 +30,7 @@ class ReasoningEffectsLifecycleTest {
         var clicks = 0
         lateinit var burst: ThinkingColorBurst
         lateinit var reopenSheet: () -> Unit
-        val provider = LlmProviderInfo("p", "Provider", ProviderType.OPENAI, baseUrl = "")
+        val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI, baseUrl = "")
         compose.setContent {
             MaterialTheme {
                 val screenBurst = rememberThinkingColorBurst()
@@ -37,7 +42,7 @@ class ReasoningEffectsLifecycleTest {
                     Button(onClick = { clicks++ }) { Text("Underlying action") }
                     if (sheetVisible) {
                         ThinkingScreenBurstLayer(screenBurst)
-                        SelectedModelOverviewSheet(
+                        SelectedModelOverviewBottomSheet(
                             provider = provider,
                             folderName = null,
                             modelId = "Effect model",
@@ -76,7 +81,7 @@ class ReasoningEffectsLifecycleTest {
         compose.runOnIdle { assertEquals(1f, burst.progress.value, 0.001f) }
     }
     private fun setUpSheet(onBurst: (ThinkingColorBurst) -> Unit) {
-        val provider = LlmProviderInfo("p", "Provider", ProviderType.OPENAI, baseUrl = "")
+        val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI, baseUrl = "")
         compose.setContent {
             MaterialTheme {
                 val screenBurst = rememberThinkingColorBurst()
@@ -84,7 +89,7 @@ class ReasoningEffectsLifecycleTest {
                 var effort by remember { mutableStateOf<String?>(null) }
                 CompositionLocalProvider(LocalThinkingScreenBurst provides screenBurst) {
                     ThinkingScreenBurstLayer(screenBurst)
-                    SelectedModelOverviewSheet(
+                    SelectedModelOverviewBottomSheet(
                         provider = provider,
                         folderName = null,
                         modelId = "Effect model",

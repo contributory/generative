@@ -7,20 +7,28 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.integrations.media.*
+import org.starfall.multigateway.shared.helpers.media.*
+import org.starfall.multigateway.shared.model.media.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
 import java.nio.file.Files
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 class VideoProtocolTest {
     @Test fun protocolsAreDetectedByApiHost() {
-        val proxy = LlmProviderInfo("p", "proxy", ProviderType.OPENAI, baseUrl = "https://proxy.example/v1")
+        val proxy = ModelProvider("p", "proxy", ModelApiType.OPENAI, baseUrl = "https://proxy.example/v1")
         assertEquals(VideoApi.OPENAI, videoApi(proxy))
         assertEquals(VideoApi.OPENAI, videoApi(proxy.copy(baseUrl = "https://h3video.cc.cd/v1")))
         assertEquals(VideoApi.AGNES, videoApi(proxy.copy(baseUrl = "https://apihub.agnes-ai.com/v1")))
     }
 
-    private fun provider(server: MockWebServer, path: String = "/v1") = LlmProviderInfo(
-        "p", "video", ProviderType.OPENAI, baseUrl = server.url(path).toString(),
+    private fun provider(server: MockWebServer, path: String = "/v1") = ModelProvider(
+        "p", "video", ModelApiType.OPENAI, baseUrl = server.url(path).toString(),
         auth = Authorization(value = "test-secret")
     )
     private fun response(body: String) = MockResponse().setBody(body)
@@ -132,7 +140,7 @@ class VideoProtocolTest {
     }
 
     @Test fun referenceModesAndFlashLimitsAreValidated() {
-        val p = LlmProviderInfo("p", "Agnes", ProviderType.OPENAI, baseUrl = "https://apihub.agnes-ai.com/v1")
+        val p = ModelProvider("p", "Agnes", ModelApiType.OPENAI, baseUrl = "https://apihub.agnes-ai.com/v1")
         val images = JsonArray(listOf(str("https://example.com/image.png")))
         val options = obj("images" to images, "seconds" to str("8"))
         validateVideoOptions(p, "agnes-video-2.5-flash", options)

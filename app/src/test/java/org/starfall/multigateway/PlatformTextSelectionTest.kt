@@ -15,8 +15,8 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.ui.components.PlatformSelectionToolbar
-import org.starfall.multigateway.ui.components.SelectionClipboard
+import org.starfall.multigateway.shared.ui.text.PlatformSelectionToolbar
+import org.starfall.multigateway.shared.ui.text.SelectionClipboard
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

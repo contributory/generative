@@ -363,7 +363,6 @@
     <string name="use_system_language_desc">Follow the language of your device. Turn off to choose a language for this app.</string>
     <string name="app_language">App language</string>
 
-    <string name="settings_general">General Settings</string>
     <string name="settings_back">Back</string>
     <string name="settings_category">Settings category</string>
     <string name="settings_group_configuration">Configuration</string>
@@ -410,6 +409,12 @@
     <string name="settings_system_bars">System bars</string>
     <string name="settings_immersive_mode">Immersive Mode</string>
     <string name="settings_immersive_mode_description">Hide the status bar while chatting</string>
+    <string name="settings_summary">Summary</string>
+    <string name="settings_summary_suggestion">Summary suggestion</string>
+    <string name="settings_summary_suggestion_description">Show a suggestion to summarize when the context is nearly full</string>
+    <string name="settings_auto_summary">Auto summarize</string>
+    <string name="settings_auto_summary_description">Summarize the conversation automatically when the context fills up</string>
+    <string name="settings_auto_summary_threshold">Auto summarize at %1$d%% of the context</string>
     <string name="settings_conversations">Conversations</string>
     <string name="settings_continue_last_chat">Continue Last Chat</string>
     <string name="settings_continue_last_chat_description">Open the most recent conversation on launch</string>
@@ -650,7 +655,7 @@
     <string name="select_model">Select a model</string>
     <string name="search_history">Search history...</string>
     <string name="no_conversations_yet">No conversations yet</string>
-    <string name="connect_providers_description">Connect to multiple LLM providers and agents seamlessly.</string>
+    <string name="connect_providers_description">Connect to multiple AI providers and agents seamlessly.</string>
     <string name="choose_another_model_hint">Tap the model name to choose another model</string>
     <string name="settings_source_code">Source code</string>
     <string name="settings_license">License</string>

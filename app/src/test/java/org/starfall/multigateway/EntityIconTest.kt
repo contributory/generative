@@ -12,13 +12,27 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.local.db.AppDatabase
-import org.starfall.multigateway.data.local.db.entities.McpServerEntity
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.repository.LlmRepository
-import org.starfall.multigateway.data.repository.McpRepository
-import org.starfall.multigateway.data.service.*
+import org.starfall.multigateway.shared.storage.database.AppDatabase
+import org.starfall.multigateway.shared.storage.database.entities.McpServerEntity
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.storage.ModelRepository
+import org.starfall.multigateway.shared.storage.McpRepository
+import org.starfall.multigateway.features.mcp.shared.ui.*
+import org.starfall.multigateway.integrations.mcp.*
+import org.starfall.multigateway.features.machines.shared.ui.*
+import org.starfall.multigateway.integrations.remote.*
+import org.starfall.multigateway.home.chat.*
+import org.starfall.multigateway.integrations.modelapis.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.icons.*
+import org.starfall.multigateway.shared.media.*
 import java.io.File
+import org.starfall.multigateway.shared.icons.model.IconRule
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -79,16 +93,16 @@ class EntityIconTest {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
-            val provider = LlmProviderInfo("p", "Provider", ProviderType.OPENAI,
+            val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI,
                 baseUrl = "https://example.test/v1", icon = "icon-a.png", sortOrder = 0, config = ProviderConfiguration(
                     modelConfigs = mapOf("model" to ModelConfiguration(icon = "icon-b.png", temperature = 0.4))))
-            LlmRepository(db, LlmService(context)).saveProvider(provider)
-            val llm = LlmRepository(db, LlmService(context))
-            assertEquals(provider, llm.getProviderById("p"))
+            ModelRepository(db, AiService(context)).saveProvider(provider)
+            val ai = ModelRepository(db, AiService(context))
+            assertEquals(provider, ai.getProviderById("p"))
             val removed = provider.copy(icon = null, config = provider.config.copy(
                 modelConfigs = mapOf("model" to provider.config.modelConfigs.getValue("model").copy(icon = null))))
-            llm.saveProvider(removed)
-            assertEquals(removed, llm.getProviderById("p"))
+            ai.saveProvider(removed)
+            assertEquals(removed, ai.getProviderById("p"))
 
             val server = McpInfo("s", "Server", url = "https://example.test/mcp",
                 headers = mapOf("X-Test" to "yes"), auth = McpAuthorization(McpAuthMethod.BEARER_TOKEN, value = "secret"),
@@ -106,12 +120,12 @@ class EntityIconTest {
         context.getSharedPreferences("named-entity-icons", Context.MODE_PRIVATE).edit().clear().commit()
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
-            val source = LlmProviderInfo("first", " My Provider ", ProviderType.OPENAI,
+            val source = ModelProvider("first", " My Provider ", ModelApiType.OPENAI,
                 baseUrl = "https://example.test", icon = "icon-a.png",
                 config = ProviderConfiguration(modelConfigs = mapOf("m" to ModelConfiguration(displayName = "My Model", icon = "icon-b.png"))))
-            LlmRepository(db, LlmService(context), IconStore(context)).saveProvider(source)
-            LlmRepository(db, LlmService(context), IconStore(context)).deleteProvider(source.id)
-            val repository = LlmRepository(db, LlmService(context), IconStore(context))
+            ModelRepository(db, AiService(context), IconStore(context)).saveProvider(source)
+            ModelRepository(db, AiService(context), IconStore(context)).deleteProvider(source.id)
+            val repository = ModelRepository(db, AiService(context), IconStore(context))
             val future = source.copy(id = "later", name = "my provider", icon = null,
                 config = ProviderConfiguration(modelConfigs = mapOf("another-id" to ModelConfiguration(displayName = " my model "))))
             repository.saveProvider(future)

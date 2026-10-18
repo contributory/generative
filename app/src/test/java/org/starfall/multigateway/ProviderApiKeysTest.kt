@@ -3,9 +3,16 @@ package org.starfall.multigateway
 import kotlinx.serialization.json.Json
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.ui.providers.ProviderApiKeysState
-import org.starfall.multigateway.ui.providers.maskedProviderApiKey
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.providers.shared.model.ProviderApiKeysState
+import org.starfall.multigateway.features.providers.shared.model.maskedProviderApiKey
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderApiKey
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
+import org.starfall.multigateway.shared.model.auth.requestHeaders
+import org.starfall.multigateway.shared.model.auth.bearerHeaderValue
 
 class ProviderApiKeysTest {
     private val identity: (String) -> String = { bearerHeaderValue("Authorization", it) }
@@ -60,11 +67,11 @@ class ProviderApiKeysTest {
         val legacy = Json.decodeFromString<ProviderConfiguration>("""{"headers":{"X-Client":"app"}}""")
         assertFalse(legacy.multipleApiKeys)
         assertTrue(legacy.apiKeys.isEmpty())
-        val provider = LlmProviderInfo("p", "Provider", ProviderType.OPENAI,
+        val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI,
             baseUrl = "https://example.com/v1", auth = Authorization(value = "active-key"),
             config = legacy.copy(multipleApiKeys = true, apiKeys = listOf(
                 ProviderApiKey("a", "", "active-key"), ProviderApiKey("b", "Backup", "backup-key"))))
-        val restored = Json.decodeFromString<LlmProviderInfo>(Json.encodeToString(LlmProviderInfo.serializer(), provider))
+        val restored = Json.decodeFromString<ModelProvider>(Json.encodeToString(ModelProvider.serializer(), provider))
         assertEquals(provider, restored)
         assertEquals(mapOf("Authorization" to "Bearer active-key"), restored.auth.requestHeaders(restored.type))
         val state = ProviderApiKeysState(restored.auth.token, restored.config.multipleApiKeys, restored.config.apiKeys)

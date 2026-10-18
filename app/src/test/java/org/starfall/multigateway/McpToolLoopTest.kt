@@ -1,5 +1,8 @@
 package org.starfall.multigateway
 
+
+import org.starfall.multigateway.integrations.modelapis.account.*
+
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
@@ -10,14 +13,32 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.Before
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.adapter.common.*
+import org.starfall.multigateway.shared.auth.*
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.starfall.multigateway.data.adapter.codex.*
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.service.*
-import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.integrations.modelapis.openaicodex.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.mcp.shared.ui.*
+import org.starfall.multigateway.integrations.mcp.*
+import org.starfall.multigateway.features.machines.shared.ui.*
+import org.starfall.multigateway.integrations.remote.*
+import org.starfall.multigateway.home.chat.*
+import org.starfall.multigateway.integrations.modelapis.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.icons.*
+import org.starfall.multigateway.shared.media.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
 import java.nio.file.Files
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.generation.GenerationEvent
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
+import org.starfall.multigateway.home.chat.logic.tool.ToolChatViewModel
+import org.starfall.multigateway.shared.model.auth.defaultAuthorization
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)
@@ -30,7 +51,7 @@ class McpToolLoopTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
     @Test(timeout = 60000) fun allProviderAdaptersExecuteMcpAndReturnToolResultToModel() = runBlocking {
-        for(type in ProviderType.entries) {
+        for(type in ModelApiType.entries) {
             val server=MockWebServer();server.start()
             val root=Files.createTempDirectory("mcp-loop").toFile()
             val image = java.io.File(root, "sample.png").apply { writeBytes(byteArrayOf(1, 2, 3)) }
@@ -55,23 +76,23 @@ class McpToolLoopTest {
                         }
                         return json(buildJsonObject{put("jsonrpc","2.0");put("id",body["id"]!!);put("result",result)})
                     }
-                    if (type == ProviderType.ANTIGRAVITY) body = body.getValue("request").jsonObject
+                    if (type == ModelApiType.ANTIGRAVITY) body = body.getValue("request").jsonObject
                     assertTrue(type.name + " attachment", body.toString().contains("AQID"))
                     rounds++
                     if(rounds==2)assertTrue(type.name,body.toString().contains("hello_from_mcp"))
                     val first=rounds==1
                     val tools=body["tools"]!!.jsonArray
                     val name=when(type){
-                        ProviderType.ANTHROPIC, ProviderType.CLAUDE_CODE -> tools[0].jsonObject["name"]!!.jsonPrimitive.content
-                        ProviderType.OPENAI_RESPONSES, ProviderType.OPENAI_CODEX -> tools[0].jsonObject["name"]?.jsonPrimitive?.content ?: tools[0].jsonObject["function"]!!.jsonObject["name"]!!.jsonPrimitive.content
-                        ProviderType.GOOGLE, ProviderType.ANTIGRAVITY->tools[0].jsonObject["functionDeclarations"]!!.jsonArray[0].jsonObject["name"]!!.jsonPrimitive.content
+                        ModelApiType.ANTHROPIC, ModelApiType.CLAUDE_CODE -> tools[0].jsonObject["name"]!!.jsonPrimitive.content
+                        ModelApiType.OPENAI_RESPONSES, ModelApiType.OPENAI_CODEX -> tools[0].jsonObject["name"]?.jsonPrimitive?.content ?: tools[0].jsonObject["function"]!!.jsonObject["name"]!!.jsonPrimitive.content
+                        ModelApiType.GOOGLE, ModelApiType.ANTIGRAVITY->tools[0].jsonObject["functionDeclarations"]!!.jsonArray[0].jsonObject["name"]!!.jsonPrimitive.content
                         else->tools[0].jsonObject["function"]!!.jsonObject["name"]!!.jsonPrimitive.content
                     }
-                    val call=buildJsonObject{put("id","c1");put("type","function");put("function",buildJsonObject{put("name",name);if(type==ProviderType.OLLAMA)put("arguments",buildJsonObject{}) else put("arguments","{}")})}
+                    val call=buildJsonObject{put("id","c1");put("type","function");put("function",buildJsonObject{put("name",name);if(type==ModelApiType.OLLAMA)put("arguments",buildJsonObject{}) else put("arguments","{}")})}
                     val message=buildJsonObject{put("role","assistant");put("content",if(first) "" else "done");if(first)put("tool_calls",buildJsonArray{add(call)})}
                     val response = when(type){
-                        ProviderType.OPENAI, ProviderType.GITHUB_COPILOT->buildJsonObject{put("choices",buildJsonArray{add(buildJsonObject{put("message",message)})})}
-                        ProviderType.OPENAI_RESPONSES, ProviderType.OPENAI_CODEX->buildJsonObject{
+                        ModelApiType.OPENAI, ModelApiType.GITHUB_COPILOT->buildJsonObject{put("choices",buildJsonArray{add(buildJsonObject{put("message",message)})})}
+                        ModelApiType.OPENAI_RESPONSES, ModelApiType.OPENAI_CODEX->buildJsonObject{
                             put("status","completed")
                             put("output",buildJsonArray{
                                 add(if(first) buildJsonObject{
@@ -81,16 +102,16 @@ class McpToolLoopTest {
                                 })
                             })
                         }
-                        ProviderType.OLLAMA->buildJsonObject{put("message",message)}
-                        ProviderType.ANTHROPIC, ProviderType.CLAUDE_CODE->buildJsonObject{put("content",buildJsonArray{add(if(first)buildJsonObject{put("type","tool_use");put("id","c1");put("name",name);put("input",buildJsonObject{})}else buildJsonObject{put("type","text");put("text","done")})})}
-                        ProviderType.GOOGLE, ProviderType.ANTIGRAVITY->buildJsonObject{put("candidates",buildJsonArray{add(buildJsonObject{put("content",buildJsonObject{put("parts",buildJsonArray{add(if(first)buildJsonObject{put("functionCall",buildJsonObject{put("name",name);put("args",buildJsonObject{})});put("thoughtSignature","sig")}else buildJsonObject{put("text","done")})})})})})}
+                        ModelApiType.OLLAMA->buildJsonObject{put("message",message)}
+                        ModelApiType.ANTHROPIC, ModelApiType.CLAUDE_CODE->buildJsonObject{put("content",buildJsonArray{add(if(first)buildJsonObject{put("type","tool_use");put("id","c1");put("name",name);put("input",buildJsonObject{})}else buildJsonObject{put("type","text");put("text","done")})})}
+                        ModelApiType.GOOGLE, ModelApiType.ANTIGRAVITY->buildJsonObject{put("candidates",buildJsonArray{add(buildJsonObject{put("content",buildJsonObject{put("parts",buildJsonArray{add(if(first)buildJsonObject{put("functionCall",buildJsonObject{put("name",name);put("args",buildJsonObject{})});put("thoughtSignature","sig")}else buildJsonObject{put("text","done")})})})})})}
                         else->error("Unsupported provider type: $type")
                     }
-                    return json(if (type == ProviderType.ANTIGRAVITY) obj("response" to response) else response)
+                    return json(if (type == ModelApiType.ANTIGRAVITY) obj("response" to response) else response)
                 }
             }
             try {
-                val auth = if (type == ProviderType.OPENAI_CODEX) {
+                val auth = if (type == ModelApiType.OPENAI_CODEX) {
                     CodexTokenStore(context).save("p", CodexTokenState("test_token", "test_refresh", accountId = "acc"))
                     Authorization(AuthMethod.OAUTH, key = "test@example.com", value = OpenAICodexAdapter.AUTH_MARKER)
                 } else if (type.isAccountProvider) {
@@ -98,10 +119,10 @@ class McpToolLoopTest {
                         AccountTokenState("test_token", "test_refresh", projectId = "test-project"))
                     Authorization(AuthMethod.OAUTH, value = "account:${type.name.lowercase()}:v1")
                 } else type.defaultAuthorization()
-                val p=LlmProviderInfo("p","P",type,auth=auth,baseUrl=server.url(if(type==ProviderType.GOOGLE)"/v1beta" else if(type==ProviderType.OLLAMA)"/api" else "/v1").toString(),config=ProviderConfiguration(supportStream=false,modelConfigs=mapOf("chat" to ModelConfiguration(supportsToolCalls=true))))
+                val p=ModelProvider("p","P",type,auth=auth,baseUrl=server.url(if(type==ModelApiType.GOOGLE)"/v1beta" else if(type==ModelApiType.OLLAMA)"/api" else "/v1").toString(),config=ProviderConfiguration(supportStream=false,modelConfigs=mapOf("chat" to ModelConfiguration(supportsToolCalls=true))))
                 val m=McpInfo("s","MCP",McpProtocol.STREAMABLE_HTTP,server.url("/mcp").toString())
                 val http=ToolHttp(ToolFiles(root))
-                val events=ToolChat(http,McpService(http),LlmService(context)).generate(p,"chat",listOf(StoredMessage("u",ChatRole.USER,listOf(MessageVersion("Call echo", files = listOf(image.absolutePath))))),"",listOf(m),listOf(p),{ToolSettings()}).toList()
+                val events=ToolChatViewModel(http,McpService(http),AiService(context)).generate(p,"chat",listOf(StoredMessage("u",ChatRole.USER,listOf(MessageVersion("Call echo", files = listOf(image.absolutePath))))),"",listOf(m),listOf(p),{ToolSettings()}).toList()
                 assertEquals(type.name,1,calls);assertEquals(type.name,2,rounds)
                 assertEquals(type.name,"done",events.filterIsInstance<GenerationEvent.Text>().joinToString(""){it.text})
                 assertEquals(type.name,"success",events.filterIsInstance<GenerationEvent.Tool>().last().activity.status)

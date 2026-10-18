@@ -7,20 +7,30 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.ui.providers.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.features.providers.editor.ui.*
+import org.starfall.multigateway.features.providers.editor.ui.*
+import org.starfall.multigateway.features.providers.editor.ui.*
+import org.starfall.multigateway.features.providers.list.ui.*
+import org.starfall.multigateway.features.providers.shared.ui.*
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.auth.defaultAuthorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderOAuthAccount
 
 class ProviderOAuthUiTest {
     @get:Rule val compose = createComposeRule()
-    private val accountTypes = listOf(ProviderType.OPENAI_CODEX, ProviderType.CLAUDE_CODE,
-        ProviderType.GITHUB_COPILOT, ProviderType.ANTIGRAVITY)
+    private val accountTypes = listOf(ModelApiType.OPENAI_CODEX, ModelApiType.CLAUDE_CODE,
+        ModelApiType.GITHUB_COPILOT, ModelApiType.ANTIGRAVITY)
 
     @Test fun accountProviderCardsShowSignInStatusInsteadOfUrlInBothLayouts() {
         var type by mutableStateOf(accountTypes.first())
         var grid by mutableStateOf(false)
         var signedIn by mutableStateOf(false)
         compose.setContent { MaterialTheme {
-            ProviderUnifiedCard(LlmProviderInfo("p", "Provider", type, baseUrl = "https://hidden.example/v1",
+            ProviderUnifiedCard(ModelProvider("p", "Provider", type, baseUrl = "https://hidden.example/v1",
                 auth = Authorization(AuthMethod.OAUTH, value = if (signedIn) "marker" else null)), grid,
                 onEdit = {}, onMoveToGroup = {}, onDelete = {})
         } }
@@ -31,14 +41,14 @@ class ProviderOAuthUiTest {
             compose.runOnIdle { signedIn = true }
             compose.onNodeWithText("Signed in").assertIsDisplayed()
         }
-        compose.runOnIdle { type = ProviderType.OPENAI; signedIn = false }
+        compose.runOnIdle { type = ModelApiType.OPENAI; signedIn = false }
         compose.onNodeWithText("https://hidden.example/v1").assertIsDisplayed()
     }
 
     @Test fun accountProviderEditorsHideBaseUrlAndAllowMultipleAccounts() {
         var type by mutableStateOf(accountTypes.first())
         compose.setContent { MaterialTheme { key(type) {
-            ProviderEditScreen(LlmProviderInfo("p", "Provider", type, baseUrl = type.defaultBaseUrl,
+            ProviderEditorScreen(ModelProvider("p", "Provider", type, baseUrl = type.defaultBaseUrl,
                 auth = type.defaultAuthorization()), isNew = false, onSaveModels = { _, _ -> },
                 onReorderModels = { _, _ -> }, onDismiss = {}, onSave = {})
         } } }

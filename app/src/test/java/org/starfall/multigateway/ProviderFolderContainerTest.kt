@@ -1,7 +1,13 @@
 package org.starfall.multigateway
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.*
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -9,11 +15,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.model.LlmProviderInfo
-import org.starfall.multigateway.data.model.ProviderGroup
-import org.starfall.multigateway.data.model.ProviderPlacement
-import org.starfall.multigateway.data.model.ProviderType
-import org.starfall.multigateway.ui.providers.ProviderScreen
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
+import org.starfall.multigateway.shared.model.provider.ProviderPlacement
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.features.providers.list.ui.ProvidersScreen
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h1000dp-xhdpi")
@@ -22,33 +28,36 @@ class ProviderFolderContainerTest {
 
     private val group = ProviderGroup("g", "Folder", sortOrder = 1)
     private val providers = listOf(
-        LlmProviderInfo("root", "Root", ProviderType.OPENAI, baseUrl = "", sortOrder = 0),
-        LlmProviderInfo("member-a", "Member A", ProviderType.OPENAI, baseUrl = "", groupId = "g", sortOrder = 0),
-        LlmProviderInfo("member-b", "Member B", ProviderType.OPENAI, baseUrl = "", groupId = "g", sortOrder = 1),
-        LlmProviderInfo("tail", "Tail", ProviderType.OPENAI, baseUrl = "", sortOrder = 2)
+        ModelProvider("root", "Root", ModelApiType.OPENAI, baseUrl = "", sortOrder = 0),
+        ModelProvider("member-a", "Member A", ModelApiType.OPENAI, baseUrl = "", groupId = "g", sortOrder = 0),
+        ModelProvider("member-b", "Member B", ModelApiType.OPENAI, baseUrl = "", groupId = "g", sortOrder = 1),
+        ModelProvider("tail", "Tail", ModelApiType.OPENAI, baseUrl = "", sortOrder = 2)
     )
 
     private fun showFolder(
-        source: List<LlmProviderInfo> = providers,
+        source: List<ModelProvider> = providers,
         writes: MutableList<ProviderPlacement> = mutableListOf()
     ) {
         compose.setContent {
             MaterialTheme {
-                ProviderScreen(
-                    providers = source,
-                    providerGroups = listOf(group),
-                    isGridView = true,
-                    onSaveProvider = {},
-                    onSaveModels = { _, _ -> },
-                    onReorderModels = { _, _ -> },
-                    onDeleteProvider = {},
-                    onReorderProviders = {},
-                    onBack = {},
-                    onPlaceProvider = { placement ->
-                        writes += placement
-                        Result.success(Unit)
-                    }
-                )
+                var editorOpened by remember { mutableStateOf(false) }
+                if (editorOpened) {
+                    Text("Provider editor", modifier = androidx.compose.ui.Modifier.testTag("provider_editor"))
+                } else {
+                    ProvidersScreen(
+                        providers = source,
+                        providerGroups = listOf(group),
+                        isGridView = true,
+                        onOpenProviderEditor = { _, _ -> editorOpened = true },
+                        onDeleteProvider = {},
+                        onReorderProviders = {},
+                        onBack = {},
+                        onPlaceProvider = { placement ->
+                            writes += placement
+                            Result.success(Unit)
+                        }
+                    )
+                }
             }
         }
         compose.waitForIdle()
@@ -103,8 +112,8 @@ class ProviderFolderContainerTest {
         val writes = mutableListOf<ProviderPlacement>()
         showFolder(
             source = listOf(
-                LlmProviderInfo("source", "Source", ProviderType.OPENAI, baseUrl = "", sortOrder = 0),
-                LlmProviderInfo("member", "Member", ProviderType.OPENAI, baseUrl = "", groupId = "g", sortOrder = 0)
+                ModelProvider("source", "Source", ModelApiType.OPENAI, baseUrl = "", sortOrder = 0),
+                ModelProvider("member", "Member", ModelApiType.OPENAI, baseUrl = "", groupId = "g", sortOrder = 0)
             ),
             writes = writes
         )

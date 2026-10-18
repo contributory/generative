@@ -4,10 +4,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.ui.providers.DragTile
-import org.starfall.multigateway.ui.providers.autoScrollDelta
-import org.starfall.multigateway.ui.providers.hitTile
-import org.starfall.multigateway.ui.providers.isFolderDropZone
+import org.starfall.multigateway.features.providers.list.ui.DragTile
+import org.starfall.multigateway.features.providers.list.ui.autoScrollDelta
+import org.starfall.multigateway.features.providers.list.ui.hitTile
+import org.starfall.multigateway.features.providers.list.ui.isFolderDropZone
 
 class ProviderDragDropGeometryTest {
     private val tile = Rect(0f, 0f, 100f, 200f)

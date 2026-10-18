@@ -18,10 +18,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.model.McpAuthMethod
-import org.starfall.multigateway.data.model.McpAuthorization
-import org.starfall.multigateway.data.model.McpInfo
-import org.starfall.multigateway.data.service.McpOAuthService
+import org.starfall.multigateway.shared.model.McpAuthMethod
+import org.starfall.multigateway.shared.model.McpAuthorization
+import org.starfall.multigateway.shared.model.McpInfo
+import org.starfall.multigateway.integrations.mcp.McpOAuthService
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)

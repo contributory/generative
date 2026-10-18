@@ -6,11 +6,11 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.data.model.LlmProviderInfo
-import org.starfall.multigateway.data.model.ProviderGroup
-import org.starfall.multigateway.data.model.ProviderPlacement
-import org.starfall.multigateway.data.model.ProviderType
-import org.starfall.multigateway.ui.providers.ProviderScreen
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
+import org.starfall.multigateway.shared.model.provider.ProviderPlacement
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.features.providers.list.ui.ProvidersScreen
 
 /** Phone-style drag and drop: reorder, drop into a folder, drag out of an open folder. */
 class ProviderDragBehaviorTest {
@@ -19,18 +19,16 @@ class ProviderDragBehaviorTest {
     private val group = ProviderGroup("g", "Folder", sortOrder = 1)
 
     private fun setScreen(
-        providers: List<LlmProviderInfo>,
+        providers: List<ModelProvider>,
         writes: MutableList<ProviderPlacement> = mutableListOf()
     ) {
         compose.setContent {
             MaterialTheme {
-                ProviderScreen(
+                ProvidersScreen(
                     providers = providers,
                     providerGroups = listOf(group),
                     isGridView = true,
-                    onSaveProvider = {},
-                    onSaveModels = { _, _ -> },
-                    onReorderModels = { _, _ -> },
+                    onOpenProviderEditor = { _, _ -> },
                     onDeleteProvider = {},
                     onReorderProviders = {},
                     onBack = {},
@@ -48,8 +46,8 @@ class ProviderDragBehaviorTest {
     fun folderOpensAsDialogInsteadOfExpandingInsideTheGrid() {
         setScreen(
             listOf(
-                LlmProviderInfo("root", "Root", ProviderType.OPENAI, baseUrl = "", sortOrder = 0),
-                LlmProviderInfo("member", "Member", ProviderType.OPENAI, baseUrl = "", groupId = "g")
+                ModelProvider("root", "Root", ModelApiType.OPENAI, baseUrl = "", sortOrder = 0),
+                ModelProvider("member", "Member", ModelApiType.OPENAI, baseUrl = "", groupId = "g")
             )
         )
 
@@ -64,8 +62,8 @@ class ProviderDragBehaviorTest {
         val writes = mutableListOf<ProviderPlacement>()
         setScreen(
             listOf(
-                LlmProviderInfo("root", "Root", ProviderType.OPENAI, baseUrl = "", sortOrder = 0),
-                LlmProviderInfo("member", "Member", ProviderType.OPENAI, baseUrl = "", groupId = "g")
+                ModelProvider("root", "Root", ModelApiType.OPENAI, baseUrl = "", sortOrder = 0),
+                ModelProvider("member", "Member", ModelApiType.OPENAI, baseUrl = "", groupId = "g")
             ),
             writes
         )

@@ -9,9 +9,14 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.local.preferences.ModelConfigurationMemory
-import org.starfall.multigateway.data.local.preferences.rememberedModelName
-import org.starfall.multigateway.data.model.*
+import org.starfall.multigateway.shared.storage.preferences.ModelConfigurationMemory
+import org.starfall.multigateway.shared.storage.preferences.rememberedModelName
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.model.language.DEFAULT_CONTEXT_WINDOW_TOKENS
+import org.starfall.multigateway.shared.model.language.DiscoveredModel
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.language.ModelType
+import org.starfall.multigateway.shared.model.language.normalizedForTemplate
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -25,7 +30,7 @@ class ModelConfigurationMemoryTest {
             temperature = 0.3, topP = 0.8, supportStream = false, contextWindowTokens = 64000)
         store.remember("first-provider/Speech-Model", config)
         assertEquals("speech-model", rememberedModelName("second-provider/Speech-Model"))
-        assertEquals(config.normalizedForStorage(), ModelConfigurationMemory(context).get("second-provider/speech-model"))
+        assertEquals(config.normalizedForTemplate(), ModelConfigurationMemory(context).get("second-provider/speech-model"))
         val discovered = DiscoveredModel("third-provider/speech-model", contextWindowTokens = 32000,
             displayName = "API voice model", metadata = buildJsonObject { put("owned_by", "vendor") })
         val restored = store.configurationFor(discovered)
@@ -33,7 +38,8 @@ class ModelConfigurationMemoryTest {
         assertFalse(restored.supportsToolCalls)
         assertFalse(restored.supportsThinking)
         assertTrue(restored.supportsAudioInput)
-        assertEquals(DEFAULT_CONTEXT_WINDOW_TOKENS, restored.contextWindowTokens)
+        assertEquals(32000, restored.contextWindowTokens)
+        assertEquals(DEFAULT_CONTEXT_WINDOW_TOKENS, store.configurationFor(DiscoveredModel("third-provider/speech-model")).contextWindowTokens)
         assertEquals(discovered.metadata, restored.modelJson)
         assertEquals("API voice model", restored.displayName)
         assertEquals(0.3, restored.temperature!!, 0.0)
@@ -49,6 +55,9 @@ class ModelConfigurationMemoryTest {
         val nextRaw = buildJsonObject { put("owned_by", "second-provider") }
         val restored = store.configurationFor(DiscoveredModel("second-provider/raw-model", metadata = nextRaw))
         assertEquals(nextRaw, restored.modelJson)
+        assertEquals(262144, restored.contextWindowTokens)
+        assertEquals(300000, store.configurationFor(DiscoveredModel("second-provider/raw-model", contextWindowTokens = 300000)).contextWindowTokens)
+        assertEquals(1000, store.configurationFor(DiscoveredModel("second-provider/raw-model", contextWindowTokens = 1000)).contextWindowTokens)
     }
 
     @Test fun editsOverrideMemoryButSeedingDoesNotOverwriteIt() {

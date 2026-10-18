@@ -14,7 +14,7 @@ import org.robolectric.shadows.ShadowTextToSpeech
 import org.robolectric.annotation.Implements
 import org.robolectric.annotation.Implementation
 import android.widget.Toast
-import org.starfall.multigateway.data.service.TtsHelper
+import org.starfall.multigateway.shared.media.TtsHelper
 
 @Config(sdk = [28], shadows = [TtsHelperTest.ResourceToast::class])
 @RunWith(RobolectricTestRunner::class)

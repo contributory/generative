@@ -10,7 +10,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.service.ExecutableBinaryStore
+import org.starfall.multigateway.integrations.remote.ExecutableBinaryStore
 import java.io.File
 
 @Config(sdk = [28])

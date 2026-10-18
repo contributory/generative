@@ -2,11 +2,15 @@ package org.starfall.multigateway
 
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.ui.providers.*
+import org.starfall.multigateway.features.providers.list.logic.*
+import org.starfall.multigateway.features.providers.list.model.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderRootOrderItem
 
 class ProviderDragLayoutTest {
-    private fun p(id: String, group: String? = null) = LlmProviderInfo(id, id, ProviderType.OPENAI, baseUrl = "", groupId = group)
+    private fun p(id: String, group: String? = null) = ModelProvider(id, id, ModelApiType.OPENAI, baseUrl = "", groupId = group)
     private fun slot(id: String, group: Boolean = false) = ProviderRootOrderItem(id, group)
     private val original = ProviderDragLayout(listOf(p("outside"), p("a", "g"), p("b", "g"), p("tail")),
         listOf(slot("outside"), slot("g", true), slot("tail")))

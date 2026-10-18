@@ -1,5 +1,7 @@
 package org.starfall.multigateway
 
+import org.starfall.multigateway.integrations.modelapis.account.*
+
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
@@ -11,20 +13,33 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.adapter.antigravity.AntigravityAdapter
-import org.starfall.multigateway.data.adapter.common.*
-import org.starfall.multigateway.data.adapter.githubcopilot.GitHubCopilotAdapter
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.service.*
-import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.integrations.modelapis.antigravity.AntigravityAdapter
+import org.starfall.multigateway.shared.auth.*
+import org.starfall.multigateway.integrations.modelapis.githubcopilot.GitHubCopilotAdapter
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.files.AttachmentResolver
+import org.starfall.multigateway.features.mcp.shared.ui.*
+import org.starfall.multigateway.features.machines.shared.ui.*
+import org.starfall.multigateway.integrations.remote.*
+import org.starfall.multigateway.home.chat.*
+import org.starfall.multigateway.integrations.modelapis.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.icons.*
+import org.starfall.multigateway.shared.media.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
 import java.util.concurrent.TimeUnit
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class AccountModelDiscoveryTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
     @Before fun keystore() = installTestAndroidKeyStore()
-    private fun provider(type: ProviderType, server: MockWebServer, slot: String) = LlmProviderInfo(
+    private fun provider(type: ModelApiType, server: MockWebServer, slot: String) = ModelProvider(
         "provider", type.displayName, type, baseUrl = server.url("/").toString().trimEnd('/'),
         auth = Authorization(AuthMethod.OAUTH, value = "account:${type.name.lowercase()}:v1", oauthAccountId = slot))
     private fun json(value: String) = MockResponse().setHeader("Content-Type", "application/json").setBody(value)
@@ -41,8 +56,8 @@ class AccountModelDiscoveryTest {
             val store = AccountTokenStore(context, "antigravity")
             store.save("antigravity:a", AccountTokenState("access-a", "refresh-a"))
             store.save("antigravity:b", AccountTokenState("access-b", "refresh-b"))
-            val a = provider(ProviderType.ANTIGRAVITY, server, "antigravity:a")
-            val b = provider(ProviderType.ANTIGRAVITY, server, "antigravity:b")
+            val a = provider(ModelApiType.ANTIGRAVITY, server, "antigravity:a")
+            val b = provider(ModelApiType.ANTIGRAVITY, server, "antigravity:b")
             val adapter = AntigravityAdapter(context, AttachmentResolver(context))
             val catalogA = adapter.fetchModelCatalog(a)
             assertEquals(listOf("opaque-M7"), catalogA.map { it.id })
@@ -81,7 +96,7 @@ class AccountModelDiscoveryTest {
             server.enqueue(json("""{"models":{"gemini-test":{"displayName":"Gemini Test"}}}"""))
             AccountTokenStore(context, "antigravity").save("onboard", AccountTokenState("access", "refresh"))
             val adapter = AntigravityAdapter(context, AttachmentResolver(context))
-            assertEquals(listOf("gemini-test"), adapter.fetchModels(provider(ProviderType.ANTIGRAVITY, server, "onboard")))
+            assertEquals(listOf("gemini-test"), adapter.fetchModels(provider(ModelApiType.ANTIGRAVITY, server, "onboard")))
             server.takeRequest(5, TimeUnit.SECONDS)
             val onboard = server.takeRequest(5, TimeUnit.SECONDS)!!
             assertEquals("/v1internal:onboardUser", onboard.path)
@@ -110,9 +125,9 @@ class AccountModelDiscoveryTest {
             val store = AccountTokenStore(context, "github_copilot")
             store.save("copilot:a", AccountTokenState("token-a", ""))
             store.save("copilot:b", AccountTokenState("token-b", ""))
-            val a = provider(ProviderType.GITHUB_COPILOT, server, "copilot:a")
-            val b = provider(ProviderType.GITHUB_COPILOT, server, "copilot:b")
-            val service = LlmService(context)
+            val a = provider(ModelApiType.GITHUB_COPILOT, server, "copilot:a")
+            val b = provider(ModelApiType.GITHUB_COPILOT, server, "copilot:b")
+            val service = AiService(context)
             val catalogA = service.fetchProviderModelCatalog(a)
             assertEquals(listOf("gpt-5-test"), catalogA.map { it.id })
             val model = catalogA.single()
@@ -125,7 +140,7 @@ class AccountModelDiscoveryTest {
             assertEquals(listOf("account-b"), service.fetchProviderModels(b))
             val wire = GitHubCopilotAdapter(context, AttachmentResolver(context)).prepareModelProvider(a, "gpt-5-test")
             // Explicit account routing must win even for GPT-5 names.
-            assertEquals(ProviderType.OPENAI, wire.type)
+            assertEquals(ModelApiType.OPENAI, wire.type)
             assertEquals("token-a", wire.auth.token)
             val requests = List(3) { server.takeRequest(5, TimeUnit.SECONDS)!! }
             assertEquals(listOf("Bearer token-a", "Bearer token-b", "Bearer token-a"), requests.map { it.getHeader("Authorization") })
@@ -139,7 +154,7 @@ class AccountModelDiscoveryTest {
             server.enqueue(json("""{"data":[{"id":"now-available","supported_endpoints":["/responses"]}]}"""))
             server.enqueue(json("""{"data":[]}"""))
             AccountTokenStore(context, "github_copilot").save("refresh", AccountTokenState("token", ""))
-            val p = provider(ProviderType.GITHUB_COPILOT, server, "refresh")
+            val p = provider(ModelApiType.GITHUB_COPILOT, server, "refresh")
             val adapter = GitHubCopilotAdapter(context, AttachmentResolver(context))
             assertEquals(listOf("was-available"), adapter.fetchModels(p))
             assertEquals(listOf("now-available"), adapter.fetchModels(p))

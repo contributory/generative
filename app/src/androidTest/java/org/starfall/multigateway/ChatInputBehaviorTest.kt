@@ -1,24 +1,36 @@
 package org.starfall.multigateway
 
+
 import androidx.room.Room
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import kotlinx.coroutines.runBlocking
-import org.starfall.multigateway.data.local.db.AppDatabase
-import org.starfall.multigateway.data.local.preferences.AppPreferencesRepository
-import org.starfall.multigateway.data.repository.*
-import org.starfall.multigateway.data.service.*
-import org.starfall.multigateway.data.tools.*
-import org.starfall.multigateway.data.model.ChatRole
-import org.starfall.multigateway.ui.chat.ChatViewModel
+import org.starfall.multigateway.shared.storage.database.AppDatabase
+import org.starfall.multigateway.shared.storage.preferences.AppPreferencesRepository
+import org.starfall.multigateway.appwiring.*
+import org.starfall.multigateway.shared.storage.*
+import org.starfall.multigateway.features.mcp.shared.ui.*
+import org.starfall.multigateway.integrations.mcp.*
+import org.starfall.multigateway.features.machines.shared.ui.*
+import org.starfall.multigateway.integrations.remote.*
+import org.starfall.multigateway.home.chat.*
+import org.starfall.multigateway.integrations.modelapis.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.icons.*
+import org.starfall.multigateway.shared.media.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
+import org.starfall.multigateway.shared.model.ChatRole
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.multigateway.ui.chat.UserInputArea
+import org.starfall.multigateway.home.chat.logic.ChatViewModel
+import org.starfall.multigateway.home.chat.logic.tool.ToolChatViewModel
+import org.starfall.multigateway.home.chat.ui.input.UserInputArea
 
 class ChatInputBehaviorTest {
     @get:Rule val compose = createComposeRule()
@@ -63,7 +75,7 @@ class ChatInputBehaviorTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val database = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         val repository = ConversationRepository(database)
-        val llm = LlmService(context)
+        val ai = AiService(context)
         val http = ToolHttp(ToolFiles(context))
         val mcp = McpService(http)
         val tts = TtsHelper(context)
@@ -76,9 +88,9 @@ class ChatInputBehaviorTest {
                     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                         @Suppress("UNCHECKED_CAST")
                         return ChatViewModel(
-                            repository, LlmRepository(database, llm),
+                            repository, ModelRepository(database, ai),
                             McpRepository(database, mcp), AppPreferencesRepository(context),
-                            ToolChat(http, mcp, llm), ToolSettingsStore(context),
+                            ToolChatViewModel(http, mcp, ai), ToolSettingsStore(context),
                             SpeechRepository(database), tts, SpeechSynthesisService(),
                             SpeechAudioPlayer(context)
                         ) as T

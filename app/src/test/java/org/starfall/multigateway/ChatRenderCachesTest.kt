@@ -12,13 +12,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import com.mikepenz.markdown.model.State
-import org.starfall.multigateway.ui.chat.AssetKey
-import org.starfall.multigateway.ui.chat.ChatOpenCache
-import org.starfall.multigateway.ui.chat.ChatRenderCaches
-import org.starfall.multigateway.ui.chat.ChatSettleTracker
-import org.starfall.multigateway.ui.chat.MarkdownParseCache
-import org.starfall.multigateway.ui.chat.SoftLruCache
 import com.mikepenz.markdown.model.parseMarkdown
+import org.starfall.multigateway.home.chat.ui.AssetKey
+import org.starfall.multigateway.home.chat.ui.ChatOpenCache
+import org.starfall.multigateway.home.chat.ui.ChatRenderCaches
+import org.starfall.multigateway.home.chat.ui.ChatSettleTracker
+import org.starfall.multigateway.home.chat.ui.MarkdownParseCache
+import org.starfall.multigateway.home.chat.ui.SoftLruCache
 
 @RunWith(RobolectricTestRunner::class)
 class ChatRenderCachesTest {

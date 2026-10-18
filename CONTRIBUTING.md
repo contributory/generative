@@ -1,49 +1,87 @@
 # Contributing to MultiGateway
 
-MultiGateway is a native Android application written in Kotlin with Jetpack Compose.
+Thank you for your interest in MultiGateway. Contributions should improve the app for its users, keep existing user data safe, and fit the current Kotlin/Jetpack Compose architecture. You do not need to be a professional Android developer to report a problem, suggest an improvement, or help with documentation; code changes should follow the repository guidance below.
 
-## Development
+## What you may contribute
 
-Use JDK 17 and Android SDK 36. Open the repository root in Android Studio and sync
-Gradle, or use another Android development environment with API 36 and build-tools
-36.0.0 installed. The Gradle wrapper is the entry point for all builds; no separate
-language SDK or package manager is required. Configure `sdk.dir` in your untracked
-`local.properties` or set `ANDROID_HOME`.
+Contributions may include:
+
+- Bug fixes, accessibility improvements, UI polish, and user-requested features.
+- Provider/API compatibility fixes, MCP integration improvements, and media or speech behavior fixes.
+- Performance, reliability, privacy, and security improvements.
+- Unit tests and other focused regression coverage.
+- Corrections to user-facing text, translations, README content, and other documentation.
+- Reproducible bug reports and clear feature suggestions, even when you are not submitting code.
+
+Keep changes focused on the issue being addressed. Explain visible behavior changes and note any trade-offs or limitations.
+
+## What must not be changed or contributed
+
+- Do not commit API keys, access tokens, OAuth credentials, signing keys, passwords, personal data, or local machine configuration.
+- Do not add tracking, hidden data collection, credential exfiltration, or other behavior that violates user privacy or security.
+- Do not silently remove existing functionality, change data formats, or introduce destructive database changes without a clear reason, compatibility handling, and appropriate migration where needed.
+- Do not add unrelated dependencies, generated build outputs, IDE state, or local-only files to a change.
+- Do not modify `legacyApp/` merely to implement a feature in the current app. The active implementation is in `app/`; touch `legacyApp/` only when the task explicitly concerns that legacy variant or a change demonstrably needs to keep it compatible.
+- Do not reorganize unrelated code or rewrite whole files when a small, targeted change is sufficient.
+
+All contributions must comply with the repository [LICENSE](LICENSE). By submitting code for inclusion, you represent that you have the right to submit it and agree that an accepted, merged code contribution is licensed under the repository license. The contributor-only commercial-use permission described in the license applies only to qualifying code contributions; documentation-only, issue, review, sponsorship, and other non-code contributions do not qualify.
+
+## Development environment
+
+The active Android app uses Kotlin, Jetpack Compose, and Gradle. Use JDK 17 and Android SDK 36 with build-tools 36.0.0. Open the repository root in Android Studio and sync Gradle, or use another Android development environment. The Gradle wrapper is included; a separate Gradle installation is not required. Configure `sdk.dir` in your untracked `local.properties` file or set `ANDROID_HOME`.
+
+Useful commands:
 
 ```bash
+# Build the current app's debug APK
 ./gradlew :app:assembleDebug
+
+# Run unit tests and lint for the current app
 ./gradlew :app:testDebugUnitTest :app:lintDebug
-./gradlew :app:connectedDebugAndroidTest  # requires a device/emulator
+
+# Run instrumented tests (requires a connected device or emulator)
+./gradlew :app:connectedDebugAndroidTest
 ```
 
-## Architecture
+## Code organization and architecture
 
-See [docs/architecture.md](docs/architecture.md) for dependency ownership and state
-lifetimes. Keep rendering in Compose, screen actions in ViewModels, and persistent
-or remote data operations in the data layer. Pass state and callbacks to reusable
-composables. Collect UI flows with `collectAsStateWithLifecycle()`.
+The current implementation is under `app/src/main/kotlin/org/starfall/multigateway/`. Place changes according to responsibility and who uses the code:
 
-- Add feature UI and its state holder under `ui/<feature>/`.
-- Inject dependencies through constructors and wire them in `di/AppContainer.kt`.
-- Add destinations to `ui/navigation/AppDestination.kt` and the `MainScreen` NavHost.
-- Use `viewModelScope` for writes triggered by user actions. Composition scopes are
-  for UI work such as opening a drawer, not persistence.
-- Keep Room entities, DAOs and migrations under `data/local/db/`. Export schemas
-  and supply migrations for schema changes; preserve existing users' data.
-- Put Android resources in `app/src/main/res/` and raw asset files in
-  `app/src/main/assets/`.
-- Use Kotlin coroutines and Flow, and propagate cancellation when handling errors.
+- `features/`: independent feature screens and their feature-specific state/logic.
+- `home/`: chat, conversation drawer, and chat-related shared UI and logic.
+- `integrations/`: code whose primary purpose is communicating with external services, including provider APIs, MCP, media-generation APIs, and remote-machine connections.
+- `shared/`: reusable UI, models, storage, networking primitives, and pure helpers used across layers.
+- `navigation/`: app navigation destinations and routing.
+- `appwiring/`: application-level dependency construction and initialization.
 
-## Validation and pull requests
+Follow this dependency direction: `shared` ← `integrations` ← `features` and `home` ← `navigation` ← `appwiring`. In particular:
 
-Run unit tests, lint, and a debug build before submitting. For navigation or state
-changes, also check system Back, rotation, process recreation, and navigation while
-chat generation is active on an emulator/device. Add behavior tests when changing
-business logic. Summarize the behavior change and the checks you ran in the PR.
+- `shared/` and `integrations/` must not import from `features/` or `home/`.
+- `features/` and `home/` must not import from each other, and one feature must not import another feature.
+- Code used by only one layer should normally stay with that layer. Move code to `shared/` when it is genuinely used by multiple layers; external API calls and protocol handling belong in `integrations/`.
+- Keep UI rendering in Compose and screen state/actions in the appropriate ViewModel or state holder. Inject dependencies rather than constructing unrelated services inside UI composables.
+- Use lifecycle-aware collection for UI flows and propagate coroutine cancellation.
+- Keep files focused and preferably at or below 500 lines; split only when it improves clarity and ownership.
 
-The Codemagic debug workflow runs unit tests, lint, and builds APKs. Release builds
-use the existing signing environment variables and `scripts/publish-github-release.sh`.
-Version name/code live in `app/build.gradle.kts`.
+Before changing package structure or moving a file, inspect its callers, tests, imports, and package references. Update those references to the new location rather than creating a duplicate implementation. Preserve the dependency boundaries above.
 
-Do not commit API keys, local SDK paths, build outputs, or release signing secrets.
-Contributions are covered by the repository [LICENSE](LICENSE). By submitting code for inclusion, you represent that you have the right to submit it and agree that an accepted, merged code contribution is licensed under the repository license. A qualifying code contribution also gives the contributing person or organization the contributor-only commercial-use permission defined in the license; documentation-only, issue, review, sponsorship, and other non-code contributions do not qualify.
+## User data, resources, and configuration
+
+- Keep Room entities, DAOs, and migrations in the existing database-related packages. For schema changes, provide a compatible migration and preserve existing users' data.
+- Add app resources under `app/src/main/res/` and raw assets under `app/src/main/assets/`.
+- Do not check in `local.properties`, build outputs, signing material, or machine-specific configuration.
+- Keep credentials out of logs, error messages, test fixtures, sample links, and documentation.
+- When changing provider or MCP behavior, handle unsuccessful responses, cancellation, and malformed input without exposing secrets.
+
+## Validation and review
+
+Before submitting a code change, run the most relevant checks available:
+
+1. Build the debug app with `./gradlew :app:assembleDebug`.
+2. Run relevant unit tests; run `./gradlew :app:testDebugUnitTest :app:lintDebug` when appropriate.
+3. For navigation, lifecycle, or state changes, check system Back, rotation, process recreation, and behavior while chat generation is active on a device/emulator when practical.
+4. For bug fixes, add or update regression tests when feasible.
+
+If you cannot run a check, say so clearly. In the pull request or change summary, describe the problem, the behavior changed, the checks performed, and any known limitations. Do not claim a check passed unless it actually ran successfully.
+
+Versioning and release publishing are maintained through the repository's existing build/release configuration; contributors should not change release automation as part of an unrelated feature or bug fix.

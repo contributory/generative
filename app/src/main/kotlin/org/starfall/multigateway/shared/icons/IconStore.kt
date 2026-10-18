@@ -1,0 +1,344 @@
+package org.starfall.multigateway.shared.icons
+
+import android.content.Context
+import org.starfall.multigateway.shared.icons.model.IconRule
+import org.starfall.multigateway.shared.icons.model.StoredIcon
+import android.graphics.Bitmap
+import android.net.Uri
+import android.provider.OpenableColumns
+import java.io.File
+import java.util.UUID
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CancellationException
+
+/** Try each model family first, then progressively restore hyphen suffixes, before the vendor. */
+internal fun iconMatchNames(name: String, model: Boolean): List<String> {
+    val clean = name.trim()
+    return (if (model) listOf(clean.substringAfterLast('/')) else listOf(clean)).flatMap { part ->
+            if (!model) {
+                // Exact names win. Then try complete word groups, longest first,
+                // so descriptive prefixes/suffixes work for every brand, including
+                // multi-word brands, without matching fragments inside other words.
+                val providerName = part.trim()
+                val words = Regex("[\\p{L}\\p{N}]+").findAll(providerName).map { it.value }.toList()
+                buildList {
+                    add(providerName)
+                    for (length in words.size downTo 1) {
+                        for (start in 0..words.size - length) {
+                            add(words.subList(start, start + length).joinToString(" "))
+                        }
+                    }
+                }
+            } else {
+                val segments = part.trim().split('-')
+                buildList {
+                    val first = segments.firstOrNull().orEmpty()
+                    val leadingLetters = first.takeWhile(Char::isLetter)
+                    if (leadingLetters.isNotEmpty() && leadingLetters.length < first.length) {
+                        add(leadingLetters)
+                    }
+                    segments.indices.forEach { index ->
+                        add(segments.take(index + 1).joinToString("-"))
+                    }
+                }
+            }
+        }
+        .filter { it.isNotEmpty() }.distinct()
+}
+
+/** Icons belong to the app, independent of temporary photo-picker URI permissions. */
+class IconStore(private val context: Context) {
+    private val directory get() = File(context.filesDir, "entity-icons").apply { mkdirs() }
+
+    private val preferences get() = context.getSharedPreferences("named-entity-icons", Context.MODE_PRIVATE)
+    private val assets get() = context.getSharedPreferences("icon-assets", Context.MODE_PRIVATE)
+    private val automatic get() = context.getSharedPreferences("automatic-entity-icons", Context.MODE_PRIVATE)
+    private val variants get() = context.getSharedPreferences("icon-variants", Context.MODE_PRIVATE)
+    companion object {
+        private val changes = MutableStateFlow(0L)
+        val revision = changes.asStateFlow()
+        private val lookupChanges = MutableStateFlow(0L)
+        val lookupRevision = lookupChanges.asStateFlow()
+        private val storedIconName = Regex("^((?:entity-)?icon-[a-f0-9-]+|lobe-[a-z0-9-]+)\\.png$")
+        private val downloadLock = Mutex()
+        private val mutationLock = Any()
+        private val source = LobeIconSource()
+        private val failedDownloads = java.util.concurrent.ConcurrentHashMap<String, Long>()
+        private val missingDarkVariants = mutableSetOf<String>()
+    }
+
+    fun rules(): List<IconRule> {
+        val saved = preferences.getString("rules", null)
+        if (saved != null) return runCatching { Json.decodeFromString<List<IconRule>>(saved) }.getOrDefault(emptyList())
+        // Upgrade earlier name caches into one shared collection.
+        return preferences.all.mapNotNull { (key, value) ->
+            if (':' !in key || value !is String) null
+            else IconRule(pattern = Regex.escape(key.substringAfter(':')), image = value)
+        }.distinctBy { it.pattern }
+    }
+
+    fun saveRules(rules: List<IconRule>) = synchronized(mutationLock) {
+        require(rules.all { it.pattern.isNotBlank() && runCatching { Regex(it.pattern) }.isSuccess })
+        check(preferences.edit().clear().putString("rules", Json.encodeToString(rules)).commit())
+        changes.value += 1
+        lookupChanges.value += 1
+    }
+
+    fun entries(): List<StoredIcon> {
+        val rules = rules()
+        val variantImages = variants.all.values.filterIsInstance<String>().toSet()
+        return directory.listFiles().orEmpty().filter { storedIconName.matches(it.name) &&
+            !it.name.startsWith("entity-icon-") && !it.name.startsWith("lobe-dark-") && it.name !in variantImages }.map { file ->
+            StoredIcon(file.name, assets.getString(file.name, file.name) ?: file.name,
+                rules.filter { it.image == file.name }.map { it.pattern },
+                lightImage = themedImage(file.name, false),
+                darkImage = variants.getString("dark:${file.name}", null)?.takeIf { File(directory, it).isFile })
+        }.sortedBy { it.filename.lowercase(java.util.Locale.ROOT) }
+    }
+
+    fun editMatches(image: String, patterns: List<String>) = synchronized(mutationLock) {
+        require(storedIconName.matches(image))
+        val existing = rules()
+        val old = existing.filter { it.image == image }
+        val replacement = patterns.distinct().map { pattern ->
+            old.firstOrNull { it.pattern == pattern } ?: IconRule(pattern = pattern, image = image)
+        }
+        // Retain the relative precedence of existing rules, appending newly added cases.
+        saveRules(existing.filter { it.image != image || it.pattern in patterns } +
+            replacement.filter { rule -> old.none { it.id == rule.id } })
+        check(assets.edit().putString(image, assets.getString(image, image)).commit())
+    }
+
+    fun delete(image: String) = synchronized(mutationLock) {
+        require(storedIconName.matches(image))
+        val file = File(directory, image)
+        check(!file.exists() || file.delete())
+        saveRules(rules().filterNot { it.image == image })
+        val editor = automatic.edit()
+        automatic.all.filterValues { it == image }.keys.forEach { editor.remove(it) }
+        check(editor.commit())
+        check(assets.edit().remove(image).commit())
+        check(variants.edit().remove("light:$image").remove("dark:$image").commit())
+        changes.value += 1
+    }
+
+    /** Called on IO only, after explicit icons and user regex rules have been considered. */
+    internal suspend fun resolve(name: String, model: Boolean = false, iconSource: LobeIconSource = source): String? {
+        find(name, model)?.let { image ->
+            if (image.startsWith("lobe-") && !image.startsWith("lobe-dark-")) {
+                downloadLock.withLock { ensureDarkVariant(image, iconSource) }
+            }
+            return image
+        }
+        return downloadLock.withLock {
+            find(name, model)?.let { return@withLock it }
+            val remoteCandidates = buildList {
+                if (model) LobeModelIconResolver.resolve(name)?.let(::add)
+                addAll(iconMatchNames(name, model))
+            }.distinctBy { it.lowercase(java.util.Locale.ROOT) }
+            for (candidate in remoteCandidates) {
+                var attemptedId: String? = null
+                val key = candidate.lowercase(java.util.Locale.ROOT)
+                automatic.getString(key, null)?.let { cached ->
+                    if (File(directory, cached).isFile) {
+                        ensureDarkVariant(cached, iconSource)
+                        return@withLock cached
+                    }
+                }
+                try {
+                    val filename = iconSource.find(candidate, model = model) ?: continue
+                    val id = "lobe-$filename"
+                    attemptedId = id
+                    if ((failedDownloads[id] ?: 0L) > System.currentTimeMillis()) continue
+                    val file = File(directory, id)
+                    if (!file.exists()) {
+                        val bytes = iconSource.image(filename)
+                        require(AppImages.decode(context, bytes, 256) != null) { "Invalid icon image" }
+                        synchronized(mutationLock) {
+                            val staging = File.createTempFile("download-", ".tmp", directory)
+                            try {
+                                staging.writeBytes(bytes)
+                                check(staging.renameTo(file))
+                            } finally { staging.delete() }
+                        }
+                    }
+                    ensureDarkVariant(id, iconSource)
+                    synchronized(mutationLock) {
+                        if (file.exists()) {
+                            check(assets.edit().putString(id, filename).commit())
+                            check(automatic.edit().putString(key, id).commit())
+                            changes.value += 1
+                        }
+                    }
+                    return@withLock find(name, model) ?: id
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    // Offline/missing images leave the existing UI fallback intact; retry later.
+                    attemptedId?.let { failedDownloads[it] = System.currentTimeMillis() + 60_000 }
+                }
+            }
+            null
+        }
+    }
+
+    private suspend fun ensureDarkVariant(image: String, iconSource: LobeIconSource) {
+        if (!image.startsWith("lobe-") || image.startsWith("lobe-dark-") ||
+            variants.contains("dark:$image") || image in missingDarkVariants) return
+        val failureKey = "dark:$image"
+        if ((failedDownloads[failureKey] ?: 0L) > System.currentTimeMillis()) return
+        try {
+            val brand = image.removePrefix("lobe-").removeSuffix(".png").removeSuffix("-color")
+            val filename = iconSource.find(brand, dark = true)
+            if (filename == null) { missingDarkVariants += image; return }
+            val id = "lobe-dark-$filename"
+            val file = File(directory, id)
+            if (!file.isFile) {
+                val bytes = iconSource.image(filename, dark = true)
+                require(AppImages.decode(context, bytes, 256) != null) { "Invalid icon image" }
+                val staging = File.createTempFile("download-", ".tmp", directory)
+                try { staging.writeBytes(bytes); check(staging.renameTo(file)) } finally { staging.delete() }
+            }
+            synchronized(mutationLock) {
+                check(variants.edit().putString("dark:$image", id).commit())
+                changes.value += 1
+            }
+        } catch (e: CancellationException) { throw e }
+        catch (e: Exception) { failedDownloads[failureKey] = System.currentTimeMillis() + 60_000 }
+    }
+
+    fun themedImage(image: String, dark: Boolean): String {
+        val light = variants.getString("light:$image", null)?.takeIf { File(directory, it).isFile } ?: image
+        return if (dark) variants.getString("dark:$image", null)?.takeIf { File(directory, it).isFile } ?: light else light
+    }
+
+    fun setVariant(image: String, replacement: String?, dark: Boolean) = synchronized(mutationLock) {
+        require(storedIconName.matches(image))
+        require(replacement == null || (storedIconName.matches(replacement) && File(directory, replacement).isFile))
+        val key = "${if (dark) "dark" else "light"}:$image"
+        val editor = variants.edit()
+        if (replacement == null) editor.remove(key) else editor.putString(key, replacement)
+        check(editor.commit())
+        changes.value += 1
+        lookupChanges.value += 1
+    }
+
+    fun find(name: String, model: Boolean = false): String? {
+        val compiled = rules().mapNotNull { rule ->
+            runCatching { Regex(rule.pattern, RegexOption.IGNORE_CASE) to rule.image }.getOrNull()
+        }
+        for (candidate in iconMatchNames(name, model)) {
+            compiled.firstOrNull { it.first.matches(candidate) }?.let { return it.second }
+        }
+        return null
+    }
+
+    fun cache(name: String, image: String, model: Boolean = false): Unit = synchronized(mutationLock) {
+        if (image.startsWith("entity-icon-")) return
+        val candidate = iconMatchNames(name, model).firstOrNull() ?: return
+        val pattern = Regex.escape(candidate)
+        val existing = rules()
+        val index = existing.indexOfFirst { it.pattern.equals(pattern, ignoreCase = true) }
+        if (index >= 0 && existing[index].image == image) return
+        val rule = if (index >= 0) existing[index].copy(image = image) else IconRule(pattern = pattern, image = image)
+        saveRules(listOf(rule) + existing.filterNot { it.id == rule.id })
+    }
+
+    fun importImage(uri: Uri, shared: Boolean = true): String {
+        val staging = File.createTempFile("import-", ".tmp", directory)
+        try {
+            val input = context.contentResolver.openInputStream(uri) ?: error("Cannot open image")
+            input.use { source ->
+                staging.outputStream().use { output ->
+                    val buffer = ByteArray(8192)
+                    var total = 0L
+                    while (true) {
+                        val read = source.read(buffer)
+                        if (read < 0) break
+                        total += read
+                        require(total <= 20L * 1024 * 1024) { "Image is too large" }
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+            val bitmap = runBlocking { AppImages.decode(context, staging, 256) }
+                ?: error("Cannot decode image")
+            val id = "${if (shared) "" else "entity-"}icon-${UUID.randomUUID()}.png"
+            val target = File(directory, id)
+            try {
+                target.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+            } catch (error: Throwable) {
+                target.delete()
+                throw error
+            }
+            val filename = runCatching {
+                context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getString(0) else null
+                }
+            }.getOrNull() ?: uri.lastPathSegment ?: id
+            if (shared) check(assets.edit().putString(id, filename).commit())
+            changes.value += 1
+            return id
+        } finally {
+            staging.delete()
+        }
+    }
+
+    /** Save a confirmed favicon preview as an app-owned icon. Called on IO. */
+    internal fun importBitmap(bitmap: Bitmap): String {
+        val staging = File.createTempFile("favicon-", ".png", context.cacheDir)
+        try {
+            staging.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+            return importImage(Uri.fromFile(staging), shared = false)
+        } finally { staging.delete() }
+    }
+
+    /** Resolve explicit icons to Coil request data without decoding in the UI. */
+    fun imageData(image: String?, dark: Boolean = false): Any? {
+        if (image == null) return null
+        if (Uri.parse(image).scheme?.lowercase() in listOf("http", "https")) return image
+        val id = themedImage(image, dark)
+        if (!storedIconName.matches(id)) return null
+        return File(directory, id).takeIf { it.isFile }
+    }
+
+    /** Compatibility for IO-only import/export clients; Coil owns decoding and caching. */
+    internal suspend fun loadIcon(image: String?, dark: Boolean = false): Bitmap? {
+        val data = imageData(image, dark) ?: return null
+        if ((failedDownloads["remote:$image"] ?: 0L) > System.currentTimeMillis()) return null
+        val bitmap = AppImages.decode(context, data, 256)
+        if (bitmap == null) failedDownloads["remote:$image"] = System.currentTimeMillis() + 60_000
+        return bitmap
+    }
+
+    /** Called on IO, never from a composable. */
+    fun load(id: String?): Bitmap? = imageData(id)?.let { data ->
+        runBlocking { AppImages.decode(context, data, 256) }
+    }
+
+    /**
+     * Removes imported files that are no longer referenced by either persisted entities or
+     * shared matching rules. This is intentionally reference-driven so deleting a cache rule
+     * never removes an icon that is still explicitly assigned to a Provider, Model or MCP server.
+     */
+    fun prune(entityImages: Collection<String?>) = synchronized(mutationLock) {
+        val referenced = buildSet {
+            rules().mapTo(this) { it.image }
+            entityImages.filterNotNull().filterTo(this) { storedIconName.matches(it) }
+            assets.all.keys.filterTo(this) { storedIconName.matches(it) }
+            variants.all.values.filterIsInstance<String>().filterTo(this) { storedIconName.matches(it) }
+        }
+        directory.listFiles().orEmpty().forEach { file ->
+            val staleIcon = storedIconName.matches(file.name) && file.name !in referenced
+            val staleImport = file.name.startsWith("import-") && file.extension == "tmp"
+            if (staleIcon || staleImport) file.delete()
+        }
+    }
+}

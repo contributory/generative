@@ -1,5 +1,6 @@
 package org.starfall.multigateway
 
+
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.serialization.json.*
@@ -11,10 +12,27 @@ import org.junit.Test
 import org.robolectric.annotation.Config
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.tools.*
-import org.starfall.multigateway.data.service.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
+import org.starfall.multigateway.features.mcp.shared.ui.*
+import org.starfall.multigateway.integrations.mcp.*
+import org.starfall.multigateway.features.machines.shared.ui.*
+import org.starfall.multigateway.integrations.remote.*
+import org.starfall.multigateway.home.chat.*
+import org.starfall.multigateway.integrations.modelapis.*
+import org.starfall.multigateway.shared.icons.*
+import org.starfall.multigateway.shared.media.*
 import java.nio.file.Files
+import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.generation.GenerationEvent
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.language.ModelType
+import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
+import org.starfall.multigateway.home.chat.logic.tool.ToolChatViewModel
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)
@@ -72,12 +90,12 @@ class ToolChatIntegrationTest {
             }
         }
         try {
-            val provider = LlmProviderInfo("p", "Chat", ProviderType.OPENAI, baseUrl = server.url("/v1").toString(),
+            val provider = ModelProvider("p", "Chat", ModelApiType.OPENAI, baseUrl = server.url("/v1").toString(),
                 config = ProviderConfiguration(supportStream = false))
             val preset = McpInfo("content-api", "Content API", url = server.url("/mcp").toString())
             val store = ToolFiles(root)
             val http = ToolHttp(store)
-            val events = ToolChat(http, McpService(http), LlmService(context)).generate(provider, "chat",
+            val events = ToolChatViewModel(http, McpService(http), AiService(context)).generate(provider, "chat",
                 listOf(StoredMessage("u", ChatRole.USER, listOf(MessageVersion("Get this video")))),
                 "", listOf(preset), listOf(provider), { ToolSettings() }).toList()
             assertEquals(2, rounds)
@@ -105,10 +123,10 @@ class ToolChatIntegrationTest {
         server.enqueue(MockResponse().addHeader("Content-Type", "application/json")
             .setBody("{\"data\":[{\"b64_json\":\"$b64\"}]}"))
         try {
-            val provider = LlmProviderInfo("p", "local", ProviderType.OPENAI,
+            val provider = ModelProvider("p", "local", ModelApiType.OPENAI,
                 baseUrl = server.url("/v1").toString())
             val http = ToolHttp(ToolFiles(root))
-            val engine = ToolChat(http, McpService(http), LlmService(context))
+            val engine = ToolChatViewModel(http, McpService(http), AiService(context))
             val prompt = "A watercolor landscape with a blue lake"
             val events = engine.generateMedia(provider, "image-model", ModelType.IMAGE_GENERATION,
                 prompt, buildJsonObject { put("quality", "high") }).toList()
@@ -169,8 +187,8 @@ data: [DONE]
             }
         }
         try {
-            val provider = LlmProviderInfo(
-                "p", "local", ProviderType.OPENAI,
+            val provider = ModelProvider(
+                "p", "local", ModelApiType.OPENAI,
                 baseUrl = server.url("/v1").toString(),
                 config = ProviderConfiguration(
                     modelIds = listOf("chat", "image"),
@@ -182,7 +200,7 @@ data: [DONE]
             )
             val files = ToolFiles(root)
             val http = ToolHttp(files)
-            val events = ToolChat(http, McpService(http), LlmService(context)).generate(
+            val events = ToolChatViewModel(http, McpService(http), AiService(context)).generate(
                 provider,
                 "chat",
                 listOf(StoredMessage("u", ChatRole.USER, listOf(MessageVersion("Draw a tree")))),
@@ -246,10 +264,10 @@ data: [DONE]
             }
         }
         try {
-            val provider=LlmProviderInfo("p","local",ProviderType.OPENAI,baseUrl=server.url("/v1").toString(),config=ProviderConfiguration(
+            val provider=ModelProvider("p","local",ModelApiType.OPENAI,baseUrl=server.url("/v1").toString(),config=ProviderConfiguration(
                 modelIds=listOf("chat","image"),modelConfigs=mapOf("chat" to ModelConfiguration(supportsToolCalls=true),"image" to ModelConfiguration(modelType=ModelType.IMAGE_GENERATION))))
             val files=ToolFiles(root);val http=ToolHttp(files)
-            val engine=ToolChat(http,McpService(http),LlmService(context))
+            val engine=ToolChatViewModel(http,McpService(http),AiService(context))
             val events=engine.generate(provider,"chat",listOf(StoredMessage("u",ChatRole.USER,listOf(MessageVersion("Draw a tree")))),"",emptyList(),listOf(provider),{ToolSettings(system=mapOf("generate_image" to SystemToolConfig(true,"p","image").withImageOptions(buildJsonObject { put("quality","high"); put("output_format","webp") })))}).toList()
             assertEquals(1,mediaCalls);assertEquals(2,rounds)
             val imageBody=Json.parseToJsonElement(imageRequest).jsonObject

@@ -12,28 +12,32 @@ import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.starfall.multigateway.data.adapter.common.*
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.service.AttachmentResolver
-import org.starfall.multigateway.data.tools.text
+import org.starfall.multigateway.shared.auth.*
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.files.AttachmentResolver
+import org.starfall.multigateway.shared.networking.text
 import java.net.ServerSocket
 import java.net.Socket
+import org.starfall.multigateway.shared.model.auth.defaultAuthorization
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.integrations.modelapis.account.OAuthAccountAdapter
 
 @RunWith(AndroidJUnit4::class)
 class OAuthLoopbackDeviceTest {
     private val context: Context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     private fun adapter(port: Int, tokenUrl: String, browser: CompletableDeferred<String>) =
-        object : OAuthAccountAdapter(context, AttachmentResolver(context), ProviderType.ANTIGRAVITY,
+        object : OAuthAccountAdapter(context, AttachmentResolver(context), ModelApiType.ANTIGRAVITY,
             "test-client", "https://example.com/authorize", tokenUrl, "scope",
             port, "/oauth-callback", callbackHost = "127.0.0.1") {
             override suspend fun openBrowser(url: String) { browser.complete(url) }
-            override suspend fun prepareAuthenticatedProvider(provider: LlmProviderInfo) = provider
-            override suspend fun fetchModels(provider: LlmProviderInfo) = listOf("chat")
+            override suspend fun prepareAuthenticatedProvider(provider: ModelProvider) = provider
+            override suspend fun fetchModels(provider: ModelProvider) = listOf("chat")
         }
 
-    private fun provider() = LlmProviderInfo("loopback-device-test", "Test", ProviderType.ANTIGRAVITY,
-        baseUrl = ProviderType.ANTIGRAVITY.defaultBaseUrl, auth = ProviderType.ANTIGRAVITY.defaultAuthorization())
+    private fun provider() = ModelProvider("loopback-device-test", "Test", ModelApiType.ANTIGRAVITY,
+        baseUrl = ModelApiType.ANTIGRAVITY.defaultBaseUrl, auth = ModelApiType.ANTIGRAVITY.defaultAuthorization())
 
     private suspend fun request(port: Int, path: String): String = withContext(Dispatchers.IO) {
         Socket("127.0.0.1", port).use { socket ->
@@ -113,7 +117,7 @@ class OAuthLoopbackDeviceTest {
             MockWebServer().use { tokenServer ->
                 tokenServer.enqueue(MockResponse().setBody("""{"access_token":"test-browser-access","refresh_token":"test-refresh","expires_in":3600}"""))
                 val port = 51121
-                val adapter = object : OAuthAccountAdapter(context, AttachmentResolver(context), ProviderType.ANTIGRAVITY,
+                val adapter = object : OAuthAccountAdapter(context, AttachmentResolver(context), ModelApiType.ANTIGRAVITY,
                     "test-client", "https://example.com/authorize", tokenServer.url("/token").toString(),
                     "scope", port, "/oauth-callback", callbackHost = "127.0.0.1") {
                     override suspend fun openBrowser(url: String) {
@@ -128,8 +132,8 @@ class OAuthLoopbackDeviceTest {
                                 .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
                         }
                     }
-                    override suspend fun prepareAuthenticatedProvider(provider: LlmProviderInfo) = provider
-                    override suspend fun fetchModels(provider: LlmProviderInfo) = listOf("chat")
+                    override suspend fun prepareAuthenticatedProvider(provider: ModelProvider) = provider
+                    override suspend fun fetchModels(provider: ModelProvider) = listOf("chat")
                 }
                 val authorized = withTimeout(90_000) { adapter.authorize(provider()) }.getOrThrow()
                 assertEquals("account:antigravity:v1", authorized.auth.value)

@@ -4,7 +4,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.*
+import org.starfall.multigateway.shared.model.*
 
 class SidebarOrganizationTest {
     private val state = SidebarOrganization(

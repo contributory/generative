@@ -2,7 +2,7 @@ package org.starfall.multigateway
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.starfall.multigateway.ui.components.wrapAtWhitespace
+import org.starfall.multigateway.shared.ui.text.wrapAtWhitespace
 
 class WordWrappedFadeTextTest {
     @Test fun shortNamesStayOnOneLine() {

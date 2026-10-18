@@ -6,9 +6,14 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.multigateway.data.model.McpInfo
-import org.starfall.multigateway.data.model.isContentApiPreset
-import org.starfall.multigateway.data.tools.*
+import org.starfall.multigateway.shared.model.McpInfo
+import org.starfall.multigateway.shared.model.isContentApiPreset
+import org.starfall.multigateway.home.chat.logic.tool.resolveContentApiMedia
+import org.starfall.multigateway.shared.helpers.media.*
+import org.starfall.multigateway.shared.model.media.*
+import org.starfall.multigateway.shared.files.*
+import org.starfall.multigateway.shared.networking.*
+import org.starfall.multigateway.shared.storage.preferences.*
 import java.nio.file.Files
 
 class ContentApiMediaTest {

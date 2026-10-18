@@ -12,20 +12,23 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.multigateway.data.local.db.AppDatabase
-import org.starfall.multigateway.data.model.*
-import org.starfall.multigateway.data.repository.LlmRepository
-import org.starfall.multigateway.data.service.JsonExportKind
-import org.starfall.multigateway.data.service.LlmService
-import org.starfall.multigateway.data.service.buildJsonExport
-import org.starfall.multigateway.data.service.parseProvidersExport
+import org.starfall.multigateway.shared.storage.database.AppDatabase
+import org.starfall.multigateway.shared.model.*
+import org.starfall.multigateway.shared.storage.ModelRepository
+import org.starfall.multigateway.shared.model.JsonExportKind
+import org.starfall.multigateway.integrations.modelapis.AiService
+import org.starfall.multigateway.features.appdata.logic.buildJsonExport
+import org.starfall.multigateway.features.appdata.logic.parseProvidersExport
+import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.provider.ProviderGroup
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)
 class ProviderImportTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
     private lateinit var db: AppDatabase
-    private lateinit var repo: LlmRepository
+    private lateinit var repo: ModelRepository
 
     private val groups = listOf(
         ProviderGroup("work", "Work", 1, "folder.png"),
@@ -38,14 +41,14 @@ class ProviderImportTest {
         provider("tail", null, 2)
     )
 
-    private fun provider(id: String, group: String?, order: Int) = LlmProviderInfo(
-        id, id, ProviderType.OPENAI, baseUrl = "https://example.test/v1", groupId = group, sortOrder = order
+    private fun provider(id: String, group: String?, order: Int) = ModelProvider(
+        id, id, ModelApiType.OPENAI, baseUrl = "https://example.test/v1", groupId = group, sortOrder = order
     )
 
     @Before fun setUp() {
         installTestAndroidKeyStore()
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
-        repo = LlmRepository(db, LlmService(context))
+        repo = ModelRepository(db, AiService(context))
     }
 
     @After fun tearDown() { db.close() }
@@ -60,11 +63,11 @@ class ProviderImportTest {
     @Test fun roundTripRestoresGroupsMembershipAndExactOrderInAFreshDatabase() = runBlocking {
         importBackup()
 
-        val reopened = LlmRepository(db, LlmService(context))
+        val reopened = ModelRepository(db, AiService(context))
         assertEquals(groups, reopened.allGroups.first())
         assertEquals(providers.associateBy { it.id }, reopened.allProviders.first().associateBy { it.id })
-        assertEquals(listOf("z-first", "a-second"), db.llmProviderDao().getProvidersByGroup("work").map { it.id })
-        assertTrue(db.llmProviderDao().getProvidersByGroup("empty").isEmpty())
+        assertEquals(listOf("z-first", "a-second"), db.modelProviderDao().getProvidersByGroup("work").map { it.id })
+        assertTrue(db.modelProviderDao().getProvidersByGroup("empty").isEmpty())
     }
 
     @Test fun reimportRestoresMovedProvidersWithoutReorderingTheBackupOrDuplicatingGroups() = runBlocking {
@@ -79,7 +82,7 @@ class ProviderImportTest {
 
         repeat(2) { importBackup() }
 
-        val reopened = LlmRepository(db, LlmService(context))
+        val reopened = ModelRepository(db, AiService(context))
         val restoredGroups = reopened.allGroups.first()
         assertEquals(listOf("work", "empty", "local"), restoredGroups.map { it.id })
         assertEquals(groups, restoredGroups.filter { it.id in groups.mapTo(hashSetOf()) { group -> group.id } })
@@ -102,7 +105,7 @@ class ProviderImportTest {
         // A stale group ID in another legacy backup must not replace the local folder either.
         repo.importProviders(legacy.providers.take(1).map { it.copy(groupId = "missing") }, legacy.groups)
 
-        val reopened = LlmRepository(db, LlmService(context))
+        val reopened = ModelRepository(db, AiService(context))
         assertEquals(listOf(localGroup), reopened.allGroups.first())
         assertEquals(existing.copy(name = "Updated", baseUrl = "https://new.example/v1"), reopened.getProviderById("existing"))
         assertEquals("local", reopened.getProviderById("known-group")?.groupId)
@@ -115,13 +118,13 @@ class ProviderImportTest {
         repo.saveGroup(existingGroup)
         repo.saveProvider(existingProvider)
         db.openHelper.writableDatabase.execSQL("""
-            CREATE TRIGGER fail_import BEFORE INSERT ON llm_providers
+            CREATE TRIGGER fail_import BEFORE INSERT ON model_providers
             WHEN NEW.id = 'tail' BEGIN SELECT RAISE(ABORT, 'test import failure'); END
         """.trimIndent())
 
         assertTrue(runCatching { importBackup() }.isFailure)
 
-        val reopened = LlmRepository(db, LlmService(context))
+        val reopened = ModelRepository(db, AiService(context))
         assertEquals(listOf(existingGroup), reopened.allGroups.first())
         assertEquals(listOf(existingProvider), reopened.allProviders.first())
         assertEquals(listOf(existingGroup), repo.allGroups.first())
