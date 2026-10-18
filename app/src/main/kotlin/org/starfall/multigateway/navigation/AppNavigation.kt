@@ -61,6 +61,8 @@ import org.starfall.multigateway.home.chat.logic.contextWindowStatus
 import org.starfall.multigateway.home.chat.ui.ChatScreen
 import org.starfall.multigateway.home.chat.ui.markdown.LocalCodeRenderingPreferences
 import org.starfall.multigateway.home.drawer.ui.LeftSideDrawer
+import org.starfall.multigateway.home.drawer.ui.recordDrawerBackdrop
+import org.starfall.multigateway.home.drawer.ui.rememberDrawerBackdrop
 import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.model.Conversation
 import org.starfall.multigateway.shared.model.McpInfo
@@ -298,12 +300,15 @@ fun AppNavigation(
             setSendFile = viewModel::setSendFileEnabled
         )
     ) {
+        val drawerScrim = modalScrimColor(DrawerDefaults.scrimColor)
+        val drawerBackdrop = rememberDrawerBackdrop(drawerState, drawerScrim)
         ModalNavigationDrawer(
             drawerState = drawerState,
             gesturesEnabled = chatOnTop,
-            scrimColor = modalScrimColor(DrawerDefaults.scrimColor),
+            scrimColor = drawerScrim,
             drawerContent = {
                 LeftSideDrawer(
+                    backdrop = drawerBackdrop,
                     conversations = conversations,
                     providers = providers,
                     currentConversationId = currentConv?.id,
@@ -347,7 +352,7 @@ fun AppNavigation(
             LaunchedEffect(chatOnTop) {
                 if (!chatOnTop) focusManager.clearFocus(force = true)
             }
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxSize().recordDrawerBackdrop(drawerBackdrop)) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()

@@ -171,6 +171,7 @@
 │   │   │   └── 📄 ConversationModelIcon.kt
 │   │   └── 📁 ui/
 │   │       ├── 📄 ConversationItem.kt
+│   │       ├── 📄 DrawerBackdrop.kt
 │   │       ├── 📄 LeftSideDrawer.kt
 │   │       └── 📄 PromptLibraryDialog.kt
 │   ├── 📁 shared/

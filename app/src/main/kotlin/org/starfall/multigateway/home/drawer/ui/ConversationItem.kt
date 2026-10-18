@@ -56,16 +56,21 @@ internal fun ConversationItem(
     onPin: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit, onMove: () -> Unit,
     showContextMenu: Boolean, onContextMenuDismiss: () -> Unit,
     modifier: Modifier = Modifier,
-    modelIcon: ConversationModelIcon? = null
+    modelIcon: ConversationModelIcon? = null,
+    backdrop: DrawerBackdrop? = null
 ) {
     val menu = showContextMenu
     val active = chat.id == currentId
     // AMOLED: the open chat is outlined with a faint border instead of a tinted fill.
     val outlineActive = LocalAmoledMode.current && active && !checked
-    Surface(shape = RoundedCornerShape(12.dp),
+    val itemShape = RoundedCornerShape(12.dp)
+    Surface(shape = itemShape,
         color = if (!outlineActive && (checked || active)) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent,
         border = if (outlineActive) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)) else null,
-        modifier = modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick)) {
+        modifier = modifier.fillMaxWidth()
+            // Blur what shows through behind this item so its text stays readable; the empty sheet is untouched.
+            .drawerBackdropBlur(backdrop, itemShape, MaterialTheme.colorScheme.surface.copy(alpha = DrawerContainerAlpha))
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)) {
         Row(Modifier.padding(start = 10.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (selecting) Checkbox(checked, onCheckedChange = { onClick() }, modifier = Modifier.size(36.dp))
             else if (modelIcon != null) EntityIcon(

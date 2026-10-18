@@ -27,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -74,7 +75,8 @@ fun LeftSideDrawer(
     promptLibrary: PromptLibrary? = null,
     onPromptLibraryChange: (PromptLibrary) -> Unit = {},
     modifier: Modifier = Modifier,
-    providers: List<ModelProvider> = emptyList()
+    providers: List<ModelProvider> = emptyList(),
+    backdrop: DrawerBackdrop? = null
 ) {
     val providersById = remember(providers) { providers.associateBy { it.id } }
     var search by remember { mutableStateOf("") }
@@ -146,7 +148,7 @@ fun LeftSideDrawer(
     )
 
     val drawerShape = RoundedCornerShape(topEnd = 32.dp, bottomEnd = 32.dp)
-    val drawerModifier = modifier.windowWidth(0.85f).let {
+    val drawerModifier = modifier.windowWidth(0.85f).onSizeChanged { backdrop?.sheetWidthPx = it.width.toFloat() }.let {
         if (LocalAmoledMode.current) {
             // Only the edge facing the chat is outlined; top/bottom/start sit against the screen edge.
             it.amoledEdgeBorder(drawerShape, MaterialTheme.colorScheme.outlineVariant, 1.dp, AmoledBorderEdge.End)
@@ -155,7 +157,7 @@ fun LeftSideDrawer(
     ModalDrawerSheet(
         modifier = drawerModifier,
         drawerShape = drawerShape,
-        drawerContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+        drawerContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = DrawerContainerAlpha)
     ) {
         Column(
             Modifier.fillMaxSize()
@@ -219,7 +221,7 @@ fun LeftSideDrawer(
                         if (folder.expanded || search.isNotBlank()) {
                             items(chats, key = { "chat:${it.id}" }) { chat ->
                                 ConversationItem(chat, currentConversationId, generatingConversationIds, selecting, chat.id in selected, chat.id in organization.pinnedChatIds,
-                                    modelIcon = chat.lastModelIcon(providersById),
+                                    modelIcon = chat.lastModelIcon(providersById), backdrop = backdrop,
                                     onClick = { onChatClick(chat.id, chat) },
                                     onLongClick = { onChatLongClick(chat.id) },
                                     showContextMenu = contextChatId == chat.id, onContextMenuDismiss = ::dismissContextMenu,
@@ -235,7 +237,7 @@ fun LeftSideDrawer(
                     .sortedWith(compareByDescending<Conversation> { it.id in organization.pinnedChatIds }.thenByDescending { it.updatedAt })
                 items(history, key = { "chat:${it.id}" }) { chat ->
                     ConversationItem(chat, currentConversationId, generatingConversationIds, selecting, chat.id in selected, chat.id in organization.pinnedChatIds,
-                        modelIcon = chat.lastModelIcon(providersById),
+                        modelIcon = chat.lastModelIcon(providersById), backdrop = backdrop,
                         onClick = { onChatClick(chat.id, chat) },
                         onLongClick = { onChatLongClick(chat.id) },
                         showContextMenu = contextChatId == chat.id, onContextMenuDismiss = ::dismissContextMenu,
