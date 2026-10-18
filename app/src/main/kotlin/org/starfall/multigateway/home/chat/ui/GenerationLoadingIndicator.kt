@@ -25,7 +25,7 @@ import org.starfall.multigateway.shared.ui.icons.EntityIcon
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
-/** Compact model-aware loading indicator; animation phases run in sequence without overlapping. */
+/** The model icon rolls left to reveal the generating label, pauses, then rolls back as the label hides. */
 @Composable
 internal fun GenerationLoadingIndicator(
     modelName: String,
@@ -34,22 +34,27 @@ internal fun GenerationLoadingIndicator(
     val textReveal = remember { Animatable(0f) }
     val iconTravel = remember { Animatable(0f) }
     val iconRotation = remember { Animatable(0f) }
-    val travelPx = with(LocalDensity.current) { 28.dp.toPx() }
+    val travelPx = with(LocalDensity.current) { 24.dp.toPx() }
 
     LaunchedEffect(Unit) {
         while (true) {
-            textReveal.animateTo(1f, animationSpec = tween(durationMillis = 2_000))
-            textReveal.animateTo(0f, animationSpec = tween(durationMillis = 1_000))
+            // Roll left while revealing the label in sync with the icon's movement.
             coroutineScope {
-                val travel = launch { iconTravel.animateTo(1f, tween(durationMillis = 600)) }
-                val rotation = launch { iconRotation.animateTo(360f, tween(durationMillis = 600)) }
+                val travel = launch { iconTravel.animateTo(1f, tween(durationMillis = 700)) }
+                val reveal = launch { textReveal.animateTo(1f, tween(durationMillis = 700)) }
+                val rotation = launch { iconRotation.animateTo(-360f, tween(durationMillis = 700)) }
                 travel.join()
+                reveal.join()
                 rotation.join()
             }
+            kotlinx.coroutines.delay(1_000)
+            // Roll back to the starting point while hiding the label from right to left.
             coroutineScope {
-                val travel = launch { iconTravel.animateTo(0f, tween(durationMillis = 600)) }
-                val rotation = launch { iconRotation.animateTo(0f, tween(durationMillis = 600)) }
+                val travel = launch { iconTravel.animateTo(0f, tween(durationMillis = 700)) }
+                val reveal = launch { textReveal.animateTo(0f, tween(durationMillis = 700)) }
+                val rotation = launch { iconRotation.animateTo(0f, tween(durationMillis = 700)) }
                 travel.join()
+                reveal.join()
                 rotation.join()
             }
         }
@@ -62,9 +67,9 @@ internal fun GenerationLoadingIndicator(
         EntityIcon(
             image = null,
             modifier = Modifier
-                .size(20.dp)
+                .size(26.dp)
                 .graphicsLayer {
-                    translationX = travelPx * iconTravel.value
+                    translationX = -travelPx * iconTravel.value
                     rotationZ = iconRotation.value
                 },
             text = modelName,

@@ -9,6 +9,7 @@ import android.widget.Toast
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -68,7 +69,18 @@ class MainActivity : ComponentActivity() {
         // A recreated Activity (rotation, locale change, process restore) still carries the original
         // launch intent; only a fresh launch may import its provider link.
         if (savedInstanceState == null) handleIntent(intent)
-        enableEdgeToEdge()
+        // Keep both system bars genuinely transparent in gesture and three-button navigation modes.
+        // The default edge-to-edge navigation style may add a contrast scrim on some Android versions.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
+            ),
+            navigationBarStyle = SystemBarStyle.auto(
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
+            )
+        )
 
         lifecycleScope.launch {
             viewModel.isAnyGenerating.collect { busy ->
@@ -114,7 +126,9 @@ class MainActivity : ComponentActivity() {
             ) {
                 val darkBars = MaterialTheme.colorScheme.background.luminance() < 0.5f
                 SideEffect {
-                    // enableEdgeToEdge() configures transparent system bars without deprecated color setters.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        window.isNavigationBarContrastEnforced = false
+                    }
                     WindowCompat.getInsetsController(window, window.decorView).apply {
                         isAppearanceLightStatusBars = !darkBars
                         isAppearanceLightNavigationBars = !darkBars

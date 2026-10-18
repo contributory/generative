@@ -46,7 +46,7 @@ class MediaToolChainingTest {
             .addExtensionMimeTypeMapping("png", "image/png")
     }
     @Test fun uploadedImageBecomesReusableReferenceAndVideoAppearsInChat() = scenario(true)
-    @Test fun generatedImageChainsToVideoWithoutSendFile() = scenario(false)
+    @Test fun generatedImageResultHidesFileReferencesFromModel() = scenario(false)
 
     @Test fun modelCanEditUserAttachmentWithDefaultImageTool() = runBlocking {
         kotlinx.coroutines.withTimeout(30000) {
@@ -77,7 +77,7 @@ class MediaToolChainingTest {
                                         "name" to str("generate_image"), "arguments" to str(args.toString()))))))
                             } else {
                                 val result = Json.parseToJsonElement(body["messages"]!!.jsonArray.last().jsonObject.text("content")).jsonObject
-                                assertTrue(result["files"]!!.jsonArray.first().jsonPrimitive.content.startsWith("tool-file:"))
+                                assertFalse(result.toString().contains("tool-file:"))
                                 obj("role" to str("assistant"), "content" to str("Edited image ready."))
                             }
                             json(obj("choices" to JsonArray(listOf(obj("message" to message)))))
@@ -133,7 +133,8 @@ class MediaToolChainingTest {
                             rounds++
                             val messages = body["messages"]!!.jsonArray
                             val shouldCreateImage = !uploaded && rounds == 1
-                            val shouldCreateVideo = uploaded && rounds == 1 || !uploaded && rounds == 2
+                            val shouldCreateVideo = uploaded && rounds == 1
+                            if (!uploaded && rounds == 2) assertFalse(messages.last().jsonObject.text("content").contains("tool-file:"))
                             val message = if (shouldCreateImage || shouldCreateVideo) {
                                 if (shouldCreateVideo) {
                                     inputUri = if (uploaded) {
@@ -148,7 +149,7 @@ class MediaToolChainingTest {
                                 obj("role" to str("assistant"), "content" to str(""), "tool_calls" to JsonArray(listOf(
                                     obj("id" to str("call$rounds"), "type" to str("function"), "function" to obj(
                                         "name" to str(if (shouldCreateImage) "generate_image" else "generate_video"), "arguments" to str(args.toString()))))))
-                            } else obj("role" to str("assistant"), "content" to str("Video ready."))
+                            } else obj("role" to str("assistant"), "content" to str(if (uploaded) "Video ready." else "Image ready."))
                             json(obj("choices" to JsonArray(listOf(obj("message" to message)))))
                         }
                         else -> MockResponse().setResponseCode(404)
@@ -167,12 +168,12 @@ class MediaToolChainingTest {
                         files = if (uploaded) listOf(attachment.absolutePath) else emptyList())))), "", emptyList(), listOf(provider),
                     { ToolSettings(system = mapOf("generate_image" to SystemToolConfig(!uploaded, "p", "image"),
                         "generate_video" to SystemToolConfig(true, "p", "video"))) }).toList()
-                assertEquals(if (uploaded) 2 else 3, rounds)
-                val videoActivity = events.filterIsInstance<GenerationEvent.Tool>().last { it.activity.name == "generate_video" }.activity
-                assertEquals("success", videoActivity.status)
-                assertTrue(videoActivity.files.any { it.endsWith(".mp4") })
+                assertEquals(2, rounds)
+                val mediaActivity = events.filterIsInstance<GenerationEvent.Tool>().last { it.activity.name == if (uploaded) "generate_video" else "generate_image" }.activity
+                assertEquals("success", mediaActivity.status)
+                assertTrue(mediaActivity.files.any { it.endsWith(if (uploaded) ".mp4" else ".png") })
                 assertFalse(events.filterIsInstance<GenerationEvent.Tool>().any { it.activity.name == "send_file" })
-                assertNotNull(files.resolve(inputUri.removePrefix("tool-file:")))
+                if (uploaded) assertNotNull(files.resolve(inputUri.removePrefix("tool-file:")))
             } finally { server.shutdown(); root.deleteRecursively(); attachment.delete() }
         }
     }

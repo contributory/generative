@@ -89,6 +89,8 @@
     <string name="tool_select_model_hint">点击以选择模型</string>
     <string name="tool_generate_image_description">使用选定模型根据提示生成图像。</string>
     <string name="tool_generate_video_description">使用选定模型根据提示生成视频。</string>
+    <string name="tool_optional_params_title">可选参数</string>
+    <string name="tool_optional_params_description">关闭后将对 AI 隐藏该参数，即使 AI 传入也会被忽略。</string>
     <string name="tool_settings_other_tools_title">其他工具</string>
     <string name="tool_send_file_title">发送文件</string>
     <string name="tool_send_file_description">允许 AI 在聊天中显示工具结果中的文件。</string>

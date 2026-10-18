@@ -115,6 +115,8 @@
     <string name="tool_select_model_hint">Nhấn để chọn model</string>
     <string name="tool_generate_image_description">Tạo ảnh từ prompt bằng model đã chọn.</string>
     <string name="tool_generate_video_description">Tạo video từ prompt bằng model đã chọn.</string>
+    <string name="tool_optional_params_title">Tham số tùy chọn</string>
+    <string name="tool_optional_params_description">Tắt tham số để ẩn khỏi AI và bỏ qua nếu AI vẫn truyền vào.</string>
     <string name="tool_settings_other_tools_title">Công cụ khác</string>
     <string name="tool_send_file_title">Gửi tệp</string>
     <string name="tool_send_file_description">Cho phép AI hiển thị tệp từ kết quả công cụ trong cuộc trò chuyện.</string>

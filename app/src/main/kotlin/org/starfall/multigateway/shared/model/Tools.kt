@@ -17,7 +17,9 @@ data class SystemToolConfig(
     val modelId: String = "",
     val prompt: String = "",
     val imageOptionsByModel: Map<String, JsonObject> = emptyMap(),
-    val videoOptionsByModel: Map<String, JsonObject> = emptyMap()
+    val videoOptionsByModel: Map<String, JsonObject> = emptyMap(),
+    /** Optional media-tool parameters hidden from the model and ignored if it passes them anyway. */
+    val disabledParams: Set<String> = emptySet()
 ) {
     val imageOptions: JsonObject
         get() = imageOptionsByModel["$providerId/$modelId"] ?: JsonObject(emptyMap())

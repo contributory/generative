@@ -89,6 +89,8 @@
     <string name="tool_select_model_hint">Tippe, um ein Modell auszuwählen</string>
     <string name="tool_generate_image_description">Bilder anhand von Prompts mit dem ausgewählten Modell erstellen.</string>
     <string name="tool_generate_video_description">Videos anhand von Prompts mit dem ausgewählten Modell erstellen.</string>
+    <string name="tool_optional_params_title">Optionale Parameter</string>
+    <string name="tool_optional_params_description">Deaktivierte Parameter werden vor der KI verborgen und ignoriert, falls sie trotzdem übergeben werden.</string>
     <string name="tool_settings_other_tools_title">Weitere Tools</string>
     <string name="tool_send_file_title">Datei senden</string>
     <string name="tool_send_file_description">Der KI erlauben, Dateien aus Tool-Ergebnissen im Chat anzuzeigen.</string>

@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -24,6 +25,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.starfall.multigateway.R
 import androidx.compose.ui.res.stringResource
+import org.starfall.multigateway.shared.helpers.media.mediaToolOptionalParams
 import org.starfall.multigateway.shared.helpers.media.videoOptionFields
 import org.starfall.multigateway.shared.ui.layout.SettingsCard
 import org.starfall.multigateway.shared.model.DEFAULT_CHAT_SUMMARY_PROMPT
@@ -141,6 +143,28 @@ fun SystemToolsScreen(
                             checked = config.enabled,
                             onCheckedChange = { onSave(name, config.copy(enabled = it)) }
                         )
+                    }
+                    if (config.enabled) {
+                        Spacer(Modifier.height(8.dp))
+                        HorizontalDivider()
+                        Spacer(Modifier.height(8.dp))
+                        Text(stringResource(R.string.tool_optional_params_title), style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            stringResource(R.string.tool_optional_params_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        mediaToolOptionalParams(name).forEach { param ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(param, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
+                                Switch(
+                                    checked = param !in config.disabledParams,
+                                    onCheckedChange = { on ->
+                                        onSave(name, config.copy(disabledParams = if (on) config.disabledParams - param else config.disabledParams + param))
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }

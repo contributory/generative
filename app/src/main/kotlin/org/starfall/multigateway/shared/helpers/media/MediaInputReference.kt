@@ -52,23 +52,30 @@ internal fun mediaInputImageUrlArgument(arguments: JsonObject): String? {
     return validateVideoImageUrl(value.content)
 }
 
-internal fun mediaToolSchema(name: String): JsonObject = obj(
+/** Optional parameters of a media tool that the user can hide from the model. */
+fun mediaToolOptionalParams(name: String): List<String> = when (name) {
+    "generate_video" -> listOf("input_image", "input_image_url")
+    "generate_image" -> listOf("input_images")
+    else -> emptyList()
+}
+
+internal fun mediaToolSchema(name: String, disabledParams: Set<String> = emptySet()): JsonObject = obj(
     "type" to str("object"),
     "properties" to buildJsonObject {
         put("prompt", obj("type" to str("string")))
-        if (name == "generate_video") put("input_image", obj(
+        if (name == "generate_video" && "input_image" !in disabledParams) put("input_image", obj(
             "type" to str("string"),
-            "description" to str("Optional tool-file: URI of an attached or previously generated image to animate. Reuse it directly; send_file is not needed.")
+            "description" to str("Optional tool-file: URI of an attached image to animate. Reuse it directly.")
         ))
-        if (name == "generate_video") put("input_image_url", obj(
+        if (name == "generate_video" && "input_image_url" !in disabledParams) put("input_image_url", obj(
             "type" to str("string"),
             "description" to str("Optional public HTTPS source-image URL for Agnes Video. Agnes requires public URLs and does not accept local tool-file uploads. Use either input_image or input_image_url, not both.")
         ))
-        if (name == "generate_image") put("input_images", obj(
+        if (name == "generate_image" && "input_images" !in disabledParams) put("input_images", obj(
             "type" to str("array"),
             "items" to obj("type" to str("string")),
             "minItems" to JsonPrimitive(1), "maxItems" to JsonPrimitive(16),
-            "description" to str("Optional tool-file: URIs of attached or previously generated images to edit or use as references. Reuse directly; send_file is not needed.")
+            "description" to str("Optional tool-file: URIs of attached images to edit or use as references. Reuse directly.")
         ))
     },
     "required" to JsonArray(listOf(str("prompt")))

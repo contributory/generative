@@ -89,6 +89,8 @@
     <string name="tool_select_model_hint">タップしてモデルを選択</string>
     <string name="tool_generate_image_description">選択したモデルを使ってプロンプトから画像を生成します。</string>
     <string name="tool_generate_video_description">選択したモデルを使ってプロンプトから動画を生成します。</string>
+    <string name="tool_optional_params_title">任意パラメーター</string>
+    <string name="tool_optional_params_description">オフにするとAIに表示されず、渡されても無視されます。</string>
     <string name="tool_settings_other_tools_title">その他のツール</string>
     <string name="tool_send_file_title">ファイルを送信</string>
     <string name="tool_send_file_description">ツールの結果に含まれるファイルをチャット内で AI が表示できるようにします。</string>

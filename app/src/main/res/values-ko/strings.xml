@@ -89,6 +89,8 @@
     <string name="tool_select_model_hint">탭하여 모델 선택</string>
     <string name="tool_generate_image_description">선택한 모델을 사용하여 프롬프트에서 이미지를 생성합니다.</string>
     <string name="tool_generate_video_description">선택한 모델을 사용하여 프롬프트에서 동영상을 생성합니다.</string>
+    <string name="tool_optional_params_title">선택 매개변수</string>
+    <string name="tool_optional_params_description">끄면 AI에게 숨기며, AI가 전달해도 무시합니다.</string>
     <string name="tool_settings_other_tools_title">기타 도구</string>
     <string name="tool_send_file_title">파일 보내기</string>
     <string name="tool_send_file_description">AI가 도구 결과의 파일을 채팅에 표시하도록 허용합니다.</string>

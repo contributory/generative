@@ -174,7 +174,7 @@ class ToolChatViewModel(
                         } else {
                             "Generate a video from a detailed prompt. The app displays the saved video."
                         },
-                        schema = mediaToolSchema(name)
+                        schema = mediaToolSchema(name, config.disabledParams)
                     )
                 }
             }
@@ -201,7 +201,11 @@ class ToolChatViewModel(
             messages.forEach { message ->
                 val activities = if (message.role == ChatRole.MODEL) {
                     // Connection handshakes are transport state, not conversation.
-                    message.activeVersion.toolActivity.filterNot { it.name.endsWith(": connect") }
+                    // With Send File off, earlier send_file calls are dropped too so the model never sees the tool.
+                    message.activeVersion.toolActivity.filterNot {
+                        it.name.endsWith(": connect") ||
+                            (!settings().sendFileEnabled && it.wireName == SEND_FILE_TOOL_NAME)
+                    }
                 } else emptyList()
                 val replay = replayToolActivities(message.content, activities, http.requireFiles())
                 val attachments = if (message.files.isEmpty()) JsonArray(emptyList()) else
@@ -367,10 +371,10 @@ class ToolChatViewModel(
                                 model = cfg.modelId,
                                 prompt = args.text("prompt"),
                                 imageOptions = cfg.imageOptions,
-                                inputImage = mediaInputImageArgument(args),
-                                inputImages = mediaInputImagesArgument(args),
+                                inputImage = if ("input_image" in cfg.disabledParams) null else mediaInputImageArgument(args),
+                                inputImages = if ("input_images" in cfg.disabledParams) emptyList() else mediaInputImagesArgument(args),
                                 videoOptions = cfg.videoOptions,
-                                inputImageUrl = mediaInputImageUrlArgument(args)
+                                inputImageUrl = if ("input_image_url" in cfg.disabledParams) null else mediaInputImageUrlArgument(args)
                             )
                         }
 
@@ -385,6 +389,14 @@ class ToolChatViewModel(
                         // The model may only get a bounded view of the result, but the UI keeps the complete response.
                         val completeResponse = result.toString()
                         result = summary.content
+                        if (mediaTool) {
+                            // The model only learns that the media exists; file names and locations stay in the app.
+                            val noun = if (name == "generate_image") "image" else "video"
+                            result = obj(
+                                "status" to str("success"),
+                                "message" to str("Generated ${summary.files.size} $noun(s) and displayed them to the user in chat.")
+                            )
+                        }
                         if (tool.serverId != null && !contentApi) {
                             val availableFiles = (summary.files + contentApiMedia?.files.orEmpty()).distinct()
                             result = fileDeliveryResult(result, availableFiles, settings().sendFileEnabled)

@@ -75,6 +75,6 @@ class SystemMediaTools(private val http: ToolHttp) {
             else http.download(reference.value, if (reference.useProviderAuth) provider else null)
         }
         check(names.isNotEmpty()) { "Provider returned no supported media. Check the selected model and endpoint." }
-        obj("files" to JsonArray(names.distinct().map { str("tool-file:$it") }), "message" to str("Media saved and displayed to the user. Reuse these tool-file: URIs directly as inputs to compatible tools; send_file is not required."))
+        obj("files" to JsonArray(names.distinct().map { str("tool-file:$it") }), "message" to str("Media saved and displayed to the user."))
     }
 }

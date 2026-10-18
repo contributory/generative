@@ -36,9 +36,9 @@ internal const val DrawerContainerAlpha = 0.8f
 private val DrawerBackdropBlurRadius = 20.dp
 
 /**
- * What sits behind the open drawer (the chat screen), captured once per frame and blurred once.
- * History items draw their own slice of it, so only the item backgrounds are blurred while the
- * empty area of the sheet keeps showing the sharp chat exactly as before.
+ * Captures the chat behind the drawer and prepares a blurred copy for translucent drawer items.
+ * The actual content behind the drawer remains sharp; blur is composited only inside the drawer's
+ * history-item backgrounds by [drawerBackdropBlur].
  */
 @Stable
 class DrawerBackdrop internal constructor(
@@ -87,7 +87,8 @@ fun Modifier.recordDrawerBackdrop(backdrop: DrawerBackdrop, blurRadius: Dp = Dra
         val radius = blurRadius.toPx()
         backdrop.blurred.renderEffect = BlurEffect(radius, radius, TileMode.Clamp)
         backdrop.blurred.record { drawLayer(backdrop.content) }
-        drawLayer(backdrop.blurred)
+        // Do not paint the blurred copy over the whole screen: only drawer items should use it.
+        drawContent()
     }
 
 /**

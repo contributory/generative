@@ -633,6 +633,8 @@
     <string name="tool_video_generation_title">Video Generation</string>
     <string name="tool_generate_image_description">Generate images from prompts using the selected model.</string>
     <string name="tool_generate_video_description">Generate videos from prompts using the selected model.</string>
+    <string name="tool_optional_params_title">Optional parameters</string>
+    <string name="tool_optional_params_description">Turn a parameter off to hide it from the AI and ignore it if the AI passes it anyway.</string>
     <string name="tool_select_compatible_model_hint">Select a compatible model to enable this tool.</string>
     <string name="tool_image_settings">Image settings</string>
     <string name="tool_video_settings">Video settings</string>

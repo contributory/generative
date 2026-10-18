@@ -74,6 +74,9 @@ private suspend fun replayResult(activity: ToolActivity, files: ToolFiles): Json
             if (activity.status == "error") parsed else summarizeGenericToolResult(parsed).content
         else -> obj("status" to str(activity.status), "summary" to str(activity.summary.take(2000)))
     }
-    val references = activity.files.filter { files.resolve(it) != null }.map { str("tool-file:$it") }
+    // Generated media stays hidden from the model: it only needs to know the media was created.
+    val generatedMedia = activity.wireName == "generate_image" || activity.wireName == "generate_video"
+    val references = if (generatedMedia) emptyList()
+        else activity.files.filter { files.resolve(it) != null }.map { str("tool-file:$it") }
     return if (references.isEmpty()) body else JsonObject(body + ("reusableFiles" to JsonArray(references)))
 }

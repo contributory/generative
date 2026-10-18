@@ -89,6 +89,8 @@
     <string name="tool_select_model_hint">Appuyez pour choisir un modèle</string>
     <string name="tool_generate_image_description">Générer des images à partir de prompts avec le modèle sélectionné.</string>
     <string name="tool_generate_video_description">Générer des vidéos à partir de prompts avec le modèle sélectionné.</string>
+    <string name="tool_optional_params_title">Paramètres facultatifs</string>
+    <string name="tool_optional_params_description">Désactivez un paramètre pour le masquer à l’IA et l’ignorer s’il est tout de même transmis.</string>
     <string name="tool_settings_other_tools_title">Autres outils</string>
     <string name="tool_send_file_title">Envoyer un fichier</string>
     <string name="tool_send_file_description">Permettre à l’IA d’afficher dans la conversation les fichiers issus des résultats des outils.</string>

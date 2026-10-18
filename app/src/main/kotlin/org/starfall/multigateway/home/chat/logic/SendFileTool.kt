@@ -78,18 +78,19 @@ internal class SendFileTool(private val http: ToolHttp) {
     }
 }
 
-internal fun fileDeliveryResult(result: JsonObject, names: List<String>, canSend: Boolean = true): JsonObject = JsonObject(result + mapOf(
-    "app_files" to JsonArray(names.distinct().map { name ->
-        val type = when (name.substringAfterLast('.').lowercase()) {
-            "png", "jpg", "jpeg", "gif", "webp" -> "image"
-            "mp4", "webm", "mov", "mkv" -> "video"
-            "mp3", "wav", "m4a", "aac", "flac", "ogg", "opus", "weba" -> "audio"
-            else -> "other"
-        }
-        obj("type" to str(type), "uri" to str("tool-file:$name"))
-    }),
-    "app_file_delivery" to str(
-        if (canSend) "Files are available but have not been sent to the user. Use send_file(type, uri) to display a relevant file in chat. Do not print media URLs or local file URIs in your answer."
-        else "Files are saved but sending files to the user is turned off. Do not try to display them and do not print media URLs or local file URIs in your answer."
-    )
-))
+internal fun fileDeliveryResult(result: JsonObject, names: List<String>, canSend: Boolean = true): JsonObject {
+    // With Send File off the model must not learn the tool exists, so the result stays untouched.
+    if (!canSend) return result
+    return JsonObject(result + mapOf(
+        "app_files" to JsonArray(names.distinct().map { name ->
+            val type = when (name.substringAfterLast('.').lowercase()) {
+                "png", "jpg", "jpeg", "gif", "webp" -> "image"
+                "mp4", "webm", "mov", "mkv" -> "video"
+                "mp3", "wav", "m4a", "aac", "flac", "ogg", "opus", "weba" -> "audio"
+                else -> "other"
+            }
+            obj("type" to str(type), "uri" to str("tool-file:$name"))
+        }),
+        "app_file_delivery" to str("Files are available but have not been sent to the user. Use send_file(type, uri) to display a relevant file in chat. Do not print media URLs or local file URIs in your answer.")
+    ))
+}
