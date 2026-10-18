@@ -39,7 +39,7 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
     val unavailable = textModels.filter { tests.results[it]?.isFailure == true && it !in removals.pending }.toSet()
     val hasRemovals = removals.pending.isNotEmpty()
     fun close() {
-        if (testingAny) tests.cancelAll()
+        // Closing the dialog only hides its UI; connection tests belong to the editor screen.
         removals.close(remove = { ids -> tests.forget(ids); onRemoveModels(ids) }, dismiss = onDismiss)
     }
     AlertDialog(onDismissRequest = ::close,

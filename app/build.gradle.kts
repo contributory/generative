@@ -14,8 +14,8 @@ android {
         applicationId = "org.starfall.multigateway"
         minSdk = 26
         targetSdk = 36
-        versionCode = 48
-        versionName = "1.4.14"
+        versionCode = 49
+        versionName = "1.4.15"
 
         manifestPlaceholders["appAuthRedirectScheme"] = "multigateway-oauth"
 
