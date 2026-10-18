@@ -89,29 +89,24 @@ fun AssistantMessageCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = if (isStreaming && message.content.isBlank()) 220.dp else 0.dp)
-        ) {
-            if (isStreaming) {
-                CloudGenerationBackdrop(
-                    modifier = Modifier.matchParentSize(),
-                    revealProgress = (message.content.length / 360f).coerceIn(0f, 1f)
-                )
-            }
-            if (isStreaming && message.content.isBlank() && activeVersion.toolActivity.none { it.files.isNotEmpty() }) {
-                StreamingProcessingPreview(activeVersion)
-            } else {
-                CompletedAssistantContent(
-                    version = activeVersion,
-                    processingDurationMillis = processingDurationMillis.takeUnless { isStreaming },
-                    animateStreamingContent = isStreaming,
-                    selectedImageAttachments = selectedImageAttachments,
-                    onToggleChatImage = onToggleChatImage
-                )
-            }
+        if (isStreaming && message.content.isBlank() && activeVersion.toolActivity.none { it.files.isNotEmpty() }) {
+            StreamingProcessingPreview(activeVersion)
+        } else {
+            CompletedAssistantContent(
+                version = activeVersion,
+                processingDurationMillis = processingDurationMillis.takeUnless { isStreaming },
+                animateStreamingContent = isStreaming,
+                selectedImageAttachments = selectedImageAttachments,
+                onToggleChatImage = onToggleChatImage
+            )
         }
+        if (isStreaming) {
+            GenerationLoadingIndicator(
+                modelName = generatedModelName,
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+            )
+        }
+
         activeVersion.generationError?.let { error ->
             GenerationErrorBlock(
                 error = error,
@@ -436,14 +431,30 @@ private fun StreamingProcessingPreview(version: MessageVersion) {
     val timeline = remember(version.reasoningContent, version.toolActivity, version.content.length) {
         buildProcessingTimeline(version)
     }
-    val items = remember(timeline) { timeline.map { it.toDropdownItem() } }
-    ProcessingDropdown(
-        items = items,
-        durationMillis = null,
-        startNumber = 1,
-        isStreaming = true,
-        previewCount = 2
-    )
+    // Keep the active tool visible outside the collapsed processing history. Otherwise, once
+    // enough reasoning/tool entries accumulate, the running call can be hidden among older items
+    // and its running animation appears to have stopped even though the call is still executing.
+    val visibleItems = timeline.mapIndexedNotNull { index, item ->
+        item.takeIf { index >= timeline.size - 2 ||
+            (it is ProcessingTimelineItem.Tool && it.activity.status == "running") }
+    }
+    Column {
+        visibleItems.forEachIndexed { index, item ->
+            key(when (item) {
+                is ProcessingTimelineItem.Thinking -> "thinking:${item.reasoning.hashCode()}"
+                is ProcessingTimelineItem.Tool -> "tool:${item.activity.id}"
+            }) {
+                when (item) {
+                    is ProcessingTimelineItem.Thinking -> LiveThinkingBlock(
+                        reasoning = item.reasoning,
+                        active = index == visibleItems.lastIndex,
+                        showHeader = false
+                    )
+                    is ProcessingTimelineItem.Tool -> ToolActivityCards(listOf(item.activity))
+                }
+            }
+        }
+    }
 }
 
 @Composable

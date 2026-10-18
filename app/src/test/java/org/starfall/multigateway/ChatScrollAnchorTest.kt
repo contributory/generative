@@ -5,7 +5,6 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 import org.starfall.multigateway.home.chat.logic.SentMessageDetector
 import org.starfall.multigateway.home.chat.logic.anchorTailSpacer
-import org.starfall.multigateway.home.chat.logic.sentMessageScrollOffset
 import org.starfall.multigateway.shared.model.ChatRole
 import org.starfall.multigateway.shared.model.MessageVersion
 import org.starfall.multigateway.shared.model.StoredMessage
@@ -67,22 +66,6 @@ class ChatScrollAnchorTest {
     @Test fun firstMessageOfAnEmptyChatHasNothingToScrollAgainst() {
         val detector = SentMessageDetector().also { it.observe(emptyList()) }
         assertNull(detector.observe(chat))
-    }
-
-    @Test fun shortMessageSitsInTheMiddle() {
-        // visible area 600px, message 80px: top at 300px below the top of the area
-        assertEquals(-300, sentMessageScrollOffset(visibleHeight = 600, messageHeight = 80))
-        assertEquals(-300, sentMessageScrollOffset(visibleHeight = 600, messageHeight = 300))
-    }
-
-    @Test fun messageTallerThanHalfIsAlignedByItsBottomEdge() {
-        // 500px tall: top at 100px so the bottom edge meets the end of the area
-        assertEquals(-100, sentMessageScrollOffset(visibleHeight = 600, messageHeight = 500))
-    }
-
-    @Test fun messageTallerThanTheAreaShowsItsEnd() {
-        // 900px tall in a 600px area: scrolled 300px into the message
-        assertEquals(300, sentMessageScrollOffset(visibleHeight = 600, messageHeight = 900))
     }
 
     @Test fun spacerFillsTheGapToOneVisibleAreaAndShrinksAsTheReplyGrows() {

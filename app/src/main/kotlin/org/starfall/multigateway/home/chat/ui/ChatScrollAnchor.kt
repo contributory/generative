@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.Dp
 import kotlin.math.abs
 import org.starfall.multigateway.home.chat.logic.SentMessageDetector
 import org.starfall.multigateway.home.chat.logic.anchorTailSpacer
-import org.starfall.multigateway.home.chat.logic.sentMessageScrollOffset
 
 /** Key of the blank item that keeps the list scrollable far enough for a sent message to be anchored. */
 internal const val ANCHOR_SPACER_KEY = "anchor-tail-spacer"
@@ -32,17 +31,14 @@ private const val MAX_SETTLE_PASSES = 3
 private const val SETTLE_TOLERANCE_PX = 2
 
 /**
- * The scroll position of a just-sent user message. The chat has two deliberate positions for it:
- *
- * 1. **Middle** (the default). When a message is sent, including a pending one that starts once the
- *    previous response ends, it is placed in the middle of the chat area so its reply has room below.
- *    Only this class's settle routine puts it there.
- * 2. **Top**, flush with the app bar. Only the user gets it there, by dragging up. [ChatAnchorTailSpacer]
- *    keeps the content tall enough for that drag, and nothing automatic scrolls to it.
+ * The scroll position of a just-sent user message: flush under the app bar. When a message is sent,
+ * including a pending one that starts once the previous response ends, [ChatAnchorEffects] places it
+ * there once; the user can drag it away and back. Only user messages get this: [ChatAnchorTailSpacer]
+ * keeps the content tall enough to reach it, and AI messages scroll as before.
  *
  * Every other automatic scroll (following a streaming reply, jump to latest, opening a chat) must stay
- * out of the way while [settling] and must not use "scroll to the end of the content", which with the
- * spacer present is the top position.
+ * out of the way while [settling], and must not use "scroll to the end of the content", which with the
+ * spacer present would move the user message to the top.
  */
 @Stable
 internal class ChatScrollAnchor {
@@ -127,19 +123,17 @@ internal fun ChatAnchorEffects(
                 !(currentIndexOf(id) >= 0 && listState.layoutInfo.totalItemsCount >= currentItemCount())
             ) androidx.compose.runtime.withFrameNanos { }
 
-            // The first pass animates towards the middle assuming a short message. The message is
-            // measured on arrival, so the next pass corrects by its real height; the last one verifies.
+            // The first pass animates to the message; the next passes correct for sizes that were
+            // still unknown (the spacer and the reply shrink/grow as they are measured).
             repeat(MAX_SETTLE_PASSES) {
                 val index = currentIndexOf(id)
                 if (index < 0) return@LaunchedEffect
                 val info = listState.layoutInfo
-                val visible = info.visibleContentHeight()
                 val item = info.visibleItemsInfo.firstOrNull { it.index == index }
                 if (item == null) {
-                    listState.animateScrollToItem(index, sentMessageScrollOffset(visible, 0))
+                    listState.animateScrollToItem(index, 0)
                 } else {
-                    val wantedTop = -sentMessageScrollOffset(visible, item.size)
-                    val delta = (item.offset - info.beforeContentPadding) - wantedTop
+                    val delta = item.offset - info.beforeContentPadding
                     if (abs(delta) <= SETTLE_TOLERANCE_PX) return@LaunchedEffect
                     listState.animateScrollBy(delta.toFloat())
                 }

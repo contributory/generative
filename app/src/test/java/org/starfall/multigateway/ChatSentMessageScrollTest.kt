@@ -104,12 +104,12 @@ class ChatSentMessageScrollTest {
 
     private fun inputTop() = compose.onNode(hasSetTextAction()).fetchSemanticsNode().boundsInRoot.top
 
-    /** The message is in the middle band of the chat area, with its reply space below. */
-    private fun assertInTheMiddle(text: String) {
+    /** The message sits just under the app bar, with the whole area below it for the reply. */
+    private fun assertUnderAppBar(text: String) {
         val top = top(text)
         val h = rootHeight()
-        assertTrue("\"$text\" must sit around the middle, was at $top of $h", top in (0.36f * h)..(0.62f * h))
-        assertTrue("room below for the reply", top < inputTop() - 0.2f * h)
+        assertTrue("\"$text\" must sit under the app bar, was at $top of $h", top in (0.04f * h)..(0.17f * h))
+        assertTrue("room below for the reply", top < inputTop() - 0.4f * h)
     }
 
     private fun sendWhilePending(env: Env, sentId: String, queuedId: String = sentId) {
@@ -129,18 +129,18 @@ class ChatSentMessageScrollTest {
         frames()
     }
 
-    @Test fun pendingMessageSentWithANewIdIsPlacedInTheMiddle() {
+    @Test fun pendingMessageSentWithANewIdIsPlacedUnderTheAppBar() {
         val env = Env()
         openChat(env, history(10))
         sendWhilePending(env, sentId = "sent", queuedId = "queued-before-drain")
-        assertInTheMiddle("Pending question")
+        assertUnderAppBar("Pending question")
     }
 
-    @Test fun pendingMessageHandedOverWithItsQueuedIdIsPlacedInTheMiddle() {
+    @Test fun pendingMessageHandedOverWithItsQueuedIdIsPlacedUnderTheAppBar() {
         val env = Env()
         openChat(env, history(10))
         sendWhilePending(env, sentId = "same-id")
-        assertInTheMiddle("Pending question")
+        assertUnderAppBar("Pending question")
     }
 
     @Test fun aShortReplyStartingAndFinishingNeverMovesTheMessage() {
@@ -155,20 +155,23 @@ class ChatSentMessageScrollTest {
 
         update { env.generating.value = false }
         assertEquals("the end of the response must not scroll", placed, top("Pending question"), 2f)
-        assertInTheMiddle("Pending question")
+        assertUnderAppBar("Pending question")
     }
 
-    @Test fun draggingUpIsTheOnlyWayToReachTheAppBar() {
+    @Test fun theUserCanDragTheMessageAwayAndBackToTheAppBar() {
         val env = Env()
         openChat(env, history(10))
         sendWhilePending(env, sentId = "sent")
         val placed = top("Pending question")
 
+        compose.onRoot().performTouchInput { swipeDown(startY = height * 0.3f, endY = height * 0.6f, durationMillis = 200) }
+        frames()
+        val moved = top("Pending question")
+        assertTrue("dragging down moves it away: $placed -> $moved", moved > placed + 50f)
+
         compose.onRoot().performTouchInput { swipeUp(startY = height * 0.8f, endY = height * 0.05f, durationMillis = 200) }
         frames()
-        val dragged = top("Pending question")
-        assertTrue("dragging up moves it above the middle: $placed -> $dragged", dragged < placed - 50f)
-        assertTrue("it can reach the app bar: $dragged of ${rootHeight()}", dragged < 0.2f * rootHeight())
+        assertTrue("it can be dragged back to the app bar", top("Pending question") < 0.17f * rootHeight())
     }
 
     @Test fun aLongReplyIsFollowedWithoutLosingTheEndOfIt() {

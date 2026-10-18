@@ -239,9 +239,10 @@ fun ChatScreen(
                 return Offset.Zero
             }
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                // Do not leave the jump-to-latest affordance visible after a fling that ended at
-                // the bottom, regardless of which direction the fling used.
-                if (isNearBottom()) followBottom = true
+                // Resume following only when the fling was toward newer messages. A short fling
+                // toward history can end within the near-bottom tolerance; treating that as a
+                // request to follow would immediately pull the list back to the latest message.
+                if (consumed.y > 0f && isNearBottom()) followBottom = true
                 return Velocity.Zero
             }
         }

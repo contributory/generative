@@ -39,25 +39,11 @@ internal class SentMessageDetector {
 }
 
 /**
- * The `scrollOffset` for `LazyListState.scrollToItem` that places a just-sent message at the first of
- * the two scroll positions: its top at the vertical middle of the visible chat area, so the other half
- * is free for the reply. A negative offset pushes the item *down* from the top of the content area.
- *
- * A message taller than half the area cannot keep its top at the middle without hiding its end, so
- * it is aligned by its bottom edge instead (this also covers a message taller than the whole area).
- *
- * @param visibleHeight height of the chat area between the app bar and the input bar, in px
- * @param messageHeight measured height of the sent message, in px
- */
-internal fun sentMessageScrollOffset(visibleHeight: Int, messageHeight: Int): Int =
-    -minOf(visibleHeight / 2, visibleHeight - messageHeight)
-
-/**
  * Blank space to keep after the newest content while a sent message is anchored, in px.
  *
- * The list can only scroll as far as its content allows. Placing the message in the middle, and
- * letting the user drag it up to the app bar (the second position), both need the content from the
- * message to the end to be at least one visible area tall. The reply starts out shorter than that, so
+ * The list can only scroll as far as its content allows. Placing the message flush under the
+ * app bar, and letting the user drag it back there, needs the content from the message to the end to
+ * be at least one visible area tall. The reply starts out shorter than that, so
  * this fills the difference and shrinks to nothing as the reply grows; the total never changes, which
  * is why the list does not move while a reply streams.
  */
