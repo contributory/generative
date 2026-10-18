@@ -9,9 +9,22 @@
 # MultiGateway
 
 <p align="center">
-  <img src="docs/screenshot1.png" width="240" alt="Light mode"/>
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="docs/screenshot_dark.png" width="240" alt="Dark mode"/>
+  <a href="https://github.com/starfall-org/multigateway"><img alt="GitHub repository" src="https://img.shields.io/badge/GitHub-starfall--org%2Fmultigateway-181717?logo=github"></a>
+  <img alt="Platform: Android" src="https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white">
+  <img alt="Language: Kotlin" src="https://img.shields.io/badge/language-Kotlin-7F52FF?logo=kotlin&logoColor=white">
+  <img alt="UI: Jetpack Compose" src="https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white">
+  <img alt="Design: Material 3" src="https://img.shields.io/badge/Design-Material%203-6750A4?logo=materialdesign&logoColor=white">
+  <img alt="Design inspiration: Fluent UI" src="https://img.shields.io/badge/Design-Fluent%20UI-0078D4?logo=fluentui&logoColor=white">
+  <img alt="OpenAI" src="https://img.shields.io/badge/OpenAI-412991?logo=openai&logoColor=white">
+  <img alt="Anthropic" src="https://img.shields.io/badge/Anthropic-D97757?logo=anthropic&logoColor=white">
+  <img alt="Ollama" src="https://img.shields.io/badge/Ollama-000000?logo=ollama&logoColor=white">
+  <img alt="MCP" src="https://img.shields.io/badge/MCP-Model%20Context%20Protocol-6E56CF">
+  <img alt="SSH" src="https://img.shields.io/badge/SSH-Remote%20Machines-2F6F44?logo=gnubash&logoColor=white">
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Starfall%20Org%20Copyleft%20v1.0-blue"></a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshot1.png" width="280" alt="MultiGateway running in light mode"/>
 </p>
 
 MultiGateway is a native Android app for chatting with AI models from multiple providers in one place. Configure your own provider accounts and endpoints, manage conversations locally, connect remote MCP tools, and use supported image and video generation features from a single Material 3 interface.
