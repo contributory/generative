@@ -30,6 +30,7 @@ import org.starfall.multigateway.shared.storage.McpRepository
 import org.starfall.multigateway.shared.storage.ModelRepository
 import org.starfall.multigateway.shared.storage.SpeechRepository
 import org.starfall.multigateway.shared.storage.database.AppDatabase
+import org.starfall.multigateway.shared.storage.database.entities.ConversationMigrationQuarantineEntity
 import org.starfall.multigateway.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.multigateway.shared.storage.preferences.ToolSettingsStore
 import java.io.File
@@ -55,21 +56,7 @@ class ChatViewModelSelectionTest {
         conversationRepo.saveConversation(conversation)
         val preferences = AppPreferencesRepository(context)
         preferences.setContinueLastConversation(false)
-        val http = ToolHttp(files)
-        val ai = AiService(context)
-        val viewModel = ChatViewModel(
-            conversationRepo = conversationRepo,
-            modelRepo = ModelRepository(db, ai),
-            mcpRepo = McpRepository(db, McpService(http)),
-            prefsRepo = preferences,
-            toolChat = ToolChatViewModel(http, McpService(http), ai),
-            toolStore = ToolSettingsStore(context),
-            speechRepo = SpeechRepository(db),
-            ttsHelper = TtsHelper(context),
-            speechSynthesis = SpeechSynthesisService(),
-            speechAudioPlayer = SpeechAudioPlayer(context),
-            toolFiles = files
-        )
+        val viewModel = createViewModel(context, db, files, conversationRepo, preferences)
         try {
             val database = db.openHelper.writableDatabase
             database.beginTransaction()
@@ -92,6 +79,71 @@ class ChatViewModelSelectionTest {
             db.close()
             root.deleteRecursively()
         }
+    }
+
+    @Test fun deletingQuarantinedConversationDoesNotDecodeItOrDeleteSharedFiles() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
+        val root = Files.createTempDirectory("quarantined-delete").toFile()
+        val files = ToolFiles(File(root, "tool_media"))
+        File(files.directory, "shared.bin").writeText("shared")
+        File(files.directory, "only-here.bin").writeText("only here")
+        val repository = ConversationRepository(db)
+        val shared = Conversation("shared", "Shared", 1, 1, messages = listOf(
+            StoredMessage("shared-message", ChatRole.USER, listOf(MessageVersion(files = listOf("tool-file:shared.bin"))))
+        ))
+        val quarantined = Conversation("quarantined", "Quarantined", 1, 1, messages = listOf(
+            StoredMessage("quarantined-message", ChatRole.USER, listOf(MessageVersion(
+                files = listOf("tool-file:shared.bin", "tool-file:only-here.bin")
+            )))
+        ))
+        repository.saveConversation(shared)
+        repository.saveConversation(quarantined)
+        db.conversationDao().insertMigrationIssue(
+            ConversationMigrationQuarantineEntity(quarantined.id, "messages_json", "{broken", "invalid_json")
+        )
+        val preferences = AppPreferencesRepository(context)
+        preferences.setContinueLastConversation(false)
+        val viewModel = createViewModel(context, db, files, repository, preferences)
+        try {
+            viewModel.deleteConversation(quarantined.id)
+            awaitMain {
+                db.openHelper.readableDatabase.query(
+                    "SELECT COUNT(*) FROM conversations WHERE id = ?", arrayOf(quarantined.id)
+                ).use { it.moveToFirst() && it.getLong(0) == 0L }
+            }
+            awaitMain { !File(files.directory, "only-here.bin").exists() }
+            assertTrue(File(files.directory, "shared.bin").exists())
+            assertFalse(File(files.directory, "only-here.bin").exists())
+            db.openHelper.readableDatabase.query("PRAGMA foreign_key_check").use { assertFalse(it.moveToFirst()) }
+        } finally {
+            db.close()
+            root.deleteRecursively()
+        }
+    }
+
+    private fun createViewModel(
+        context: Context,
+        db: AppDatabase,
+        files: ToolFiles,
+        conversationRepo: ConversationRepository,
+        preferences: AppPreferencesRepository
+    ): ChatViewModel {
+        val http = ToolHttp(files)
+        val ai = AiService(context)
+        return ChatViewModel(
+            conversationRepo = conversationRepo,
+            modelRepo = ModelRepository(db, ai),
+            mcpRepo = McpRepository(db, McpService(http)),
+            prefsRepo = preferences,
+            toolChat = ToolChatViewModel(http, McpService(http), ai),
+            toolStore = ToolSettingsStore(context),
+            speechRepo = SpeechRepository(db),
+            ttsHelper = TtsHelper(context),
+            speechSynthesis = SpeechSynthesisService(),
+            speechAudioPlayer = SpeechAudioPlayer(context),
+            toolFiles = files
+        )
     }
 
     private fun awaitMain(condition: () -> Boolean) {

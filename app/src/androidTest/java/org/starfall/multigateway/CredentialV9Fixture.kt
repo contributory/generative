@@ -100,7 +100,7 @@ internal object CredentialV9Fixture {
         openSource(context, name).use { helper ->
             helper.writableDatabase.execSQL(
                 "INSERT INTO conversations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                arrayOf<Any?>("matrix-broken", "Broken matrix conversation", 5, 10,
+                arrayOf<Any?>("matrix-broken", "Broken matrix conversation", 0, 0,
                     "not valid conversation json", null, "", "", null, "{not a summary}", null)
             )
         }

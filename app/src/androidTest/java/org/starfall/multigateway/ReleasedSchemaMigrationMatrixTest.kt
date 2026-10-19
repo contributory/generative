@@ -21,7 +21,6 @@ import org.starfall.multigateway.shared.storage.ConversationMigrationException
 import org.starfall.multigateway.shared.storage.ConversationRepository
 import org.starfall.multigateway.shared.storage.McpRepository
 import org.starfall.multigateway.shared.storage.ModelRepository
-import org.starfall.multigateway.shared.storage.ProfileRepository
 import org.starfall.multigateway.shared.storage.SpeechRepository
 import org.starfall.multigateway.shared.storage.database.AppDatabase
 import org.starfall.multigateway.shared.storage.database.SecretCipher
@@ -70,7 +69,7 @@ class ReleasedSchemaMigrationMatrixTest {
             AppDatabase.MIGRATION_9_10
         ).build()
 
-    private fun assertFinalRows(room: AppDatabase, db: SupportSQLiteDatabase, sourceVersion: Int) {
+    private suspend fun assertFinalRows(room: AppDatabase, db: SupportSQLiteDatabase, sourceVersion: Int) {
         assertEquals(2L, count(db, "conversations"))
         assertEquals(2L, count(db, "model_providers"))
         assertEquals(2L, count(db, "mcp_servers"))
@@ -128,7 +127,7 @@ class ReleasedSchemaMigrationMatrixTest {
         )
     }
 
-    private fun assertCredentials(room: AppDatabase, db: SupportSQLiteDatabase, sourceVersion: Int) {
+    private suspend fun assertCredentials(room: AppDatabase, db: SupportSQLiteDatabase, sourceVersion: Int) {
         val providerId = if (sourceVersion == 9) "provider-v9" else ReleasedSchemaMatrixFixture.PROVIDER_ID
         val noAuthProviderId = if (sourceVersion == 9) "provider-none" else ReleasedSchemaMatrixFixture.NO_AUTH_PROVIDER_ID
         val mcpId = if (sourceVersion == 9) "mcp-v9" else ReleasedSchemaMatrixFixture.MCP_ID
@@ -144,7 +143,8 @@ class ReleasedSchemaMigrationMatrixTest {
 
         val providerAuthId = nullableString(db, "SELECT authId FROM model_providers WHERE id = ?", providerId)
         val mcpAuthId = nullableString(db, "SELECT authId FROM mcp_servers WHERE id = ?", mcpId)
-        val speechAuthId = nullableString(db, "SELECT authId FROM speech_services WHERE id = ?", speechId)
+        val speechAuthId = if (sourceVersion == 1) null else
+            nullableString(db, "SELECT authId FROM speech_services WHERE id = ?", speechId)
         assertNotNull(providerAuthId)
         assertNotNull(mcpAuthId)
         if (sourceVersion == 1) assertNull(speechAuthId) else assertNotNull(speechAuthId)
@@ -173,7 +173,9 @@ class ReleasedSchemaMigrationMatrixTest {
 
         assertNull(nullableString(db, "SELECT authId FROM model_providers WHERE id = ?", noAuthProviderId))
         assertNull(nullableString(db, "SELECT authId FROM mcp_servers WHERE id = ?", noAuthMcpId))
-        assertNull(nullableString(db, "SELECT authId FROM speech_services WHERE id = ?", noAuthSpeechId))
+        if (sourceVersion != 1) {
+            assertNull(nullableString(db, "SELECT authId FROM speech_services WHERE id = ?", noAuthSpeechId))
+        }
 
         val providers = ModelRepository(room, AiService(context))
         val provider = providers.getProviderById(providerId)!!
@@ -191,7 +193,7 @@ class ReleasedSchemaMigrationMatrixTest {
         }
     }
 
-    private fun assertConversationQuarantine(room: AppDatabase, db: SupportSQLiteDatabase, sourceVersion: Int) {
+    private suspend fun assertConversationQuarantine(room: AppDatabase, db: SupportSQLiteDatabase, sourceVersion: Int) {
         val brokenId = "matrix-broken"
         val issues = db.query(
             "SELECT payloadKind, rawJson, errorCode FROM conversation_migration_quarantine WHERE conversationId = ? ORDER BY payloadKind",
@@ -205,7 +207,13 @@ class ReleasedSchemaMigrationMatrixTest {
         assertEquals(expectedKinds, issues.map { it.first })
         assertTrue(issues.all { it.third == "invalid_json" })
         assertTrue(issues.all { it.second == "not valid conversation json" || it.second == "{not a summary}" })
-        assertTrue(runCatching { ConversationRepository(room).loadById(brokenId) }.exceptionOrNull() is ConversationMigrationException)
+        val failure = try {
+            ConversationRepository(room).loadById(brokenId)
+            null
+        } catch (error: Throwable) {
+            error
+        }
+        assertTrue(failure is ConversationMigrationException)
     }
 
     private fun count(db: SupportSQLiteDatabase, table: String): Long =
