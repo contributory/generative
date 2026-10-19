@@ -2,8 +2,6 @@
 
 ```text
 📦 org.starfall.multigateway/
-├── 📄 MainActivity.kt
-├── 📄 MultiGatewayApplication.kt
 ├── 📁 appwiring/
 │   ├── 📄 AppContainer.kt
 │   └── 📄 DefaultDataInitializer.kt
@@ -17,6 +15,7 @@
 │   │   ├── 📁 logic/
 │   │   │   └── 📄 JsonDataTransfer.kt
 │   │   ├── 📁 model/
+│   │   │   ├── 📄 FullAppDataExport.kt
 │   │   │   └── 📄 ProvidersExport.kt
 │   │   └── 📁 ui/
 │   │       └── 📄 AppDataScreen.kt
@@ -43,7 +42,8 @@
 │   │       │   └── 📄 RemoteMachinesViewModel.kt
 │   │       └── 📁 ui/
 │   │           ├── 📄 BinaryTestNotice.kt
-│   │           └── 📄 RemoteMachineComponents.kt
+│   │           ├── 📄 RemoteMachineComponents.kt
+│   │           └── 📄 RemoteTerminalBridge.kt
 │   ├── 📁 main/
 │   │   └── 📁 ui/
 │   │       └── 📄 FeaturesScreen.kt
@@ -106,7 +106,9 @@
 │   │   │   └── 📄 SettingsViewModel.kt
 │   │   └── 📁 ui/
 │   │       ├── 📄 AppSettingsScreen.kt
-│   │       └── 📄 CodeRenderingPreferences.kt
+│   │       ├── 📄 CodeRenderingPreferences.kt
+│   │       ├── 📄 MainAppbar.kt
+│   │       └── 📄 SettingsComponents.kt
 │   ├── 📁 speech/
 │   │   └── 📁 ui/
 │   │       └── 📄 SpeechServicesScreen.kt
@@ -116,14 +118,12 @@
 ├── 📁 home/
 │   ├── 📁 chat/
 │   │   ├── 📁 logic/
-│   │   │   ├── 📄 ChatGeneration.kt
-│   │   │   ├── 📄 ChatScrollAnchor.kt
-│   │   │   ├── 📄 ChatSpeechCoordinator.kt
-│   │   │   ├── 📄 ChatViewModel.kt
-│   │   │   ├── 📄 ContextWindowLogic.kt
-│   │   │   ├── 📄 ConversationSummaryCoordinator.kt
-│   │   │   ├── 📄 SendFileTool.kt
-│   │   │   ├── 📄 UserMessageRetry.kt
+│   │   │   ├── 📁 input/
+│   │   │   │   └── 📄 ChatInputAreaViewModel.kt
+│   │   │   ├── 📁 markdown/
+│   │   │   │   ├── 📄 LatexDetector.kt
+│   │   │   │   ├── 📄 MarkdownLibrary.kt
+│   │   │   │   └── 📄 MathSplitter.kt
 │   │   │   ├── 📁 service/
 │   │   │   │   ├── 📄 AutomaticConversationSummaryCoordinator.kt
 │   │   │   │   ├── 📄 ChatConversationCoordinator.kt
@@ -132,37 +132,24 @@
 │   │   │   │   ├── 📄 ChatModelContextCoordinator.kt
 │   │   │   │   ├── 📄 ChatToolSettingsActions.kt
 │   │   │   │   └── 📄 ConversationTitleGenerator.kt
-│   │   │   ├── 📁 input/
-│   │   │   │   └── 📄 ChatInputAreaViewModel.kt
-│   │   │   ├── 📁 markdown/
-│   │   │   │   ├── 📄 LatexDetector.kt
-│   │   │   │   ├── 📄 MarkdownLibrary.kt
-│   │   │   │   └── 📄 MathSplitter.kt
-│   │   │   └── 📁 tool/
-│   │   │       ├── 📄 ContentApiMedia.kt
-│   │   │       ├── 📄 ContentApiMediaDownloader.kt
-│   │   │       ├── 📄 ToolAttachmentsViewModel.kt
-│   │   │       ├── 📄 ToolChatViewModel.kt
-│   │   │       └── 📄 ToolResultsViewModel.kt
+│   │   │   ├── 📁 tool/
+│   │   │   │   ├── 📄 ContentApiMediaDownloader.kt
+│   │   │   │   ├── 📄 ToolChatViewModel.kt
+│   │   │   │   ├── 📄 ToolHistoryReplay.kt
+│   │   │   │   └── 📄 ToolResultsViewModel.kt
+│   │   │   ├── 📄 ChatGeneration.kt
+│   │   │   ├── 📄 ChatScrollAnchor.kt
+│   │   │   ├── 📄 ChatSpeechCoordinator.kt
+│   │   │   ├── 📄 ChatViewModel.kt
+│   │   │   ├── 📄 ContextWindowLogic.kt
+│   │   │   ├── 📄 ConversationSummaryCoordinator.kt
+│   │   │   ├── 📄 SendFileTool.kt
+│   │   │   └── 📄 UserMessageRetry.kt
 │   │   ├── 📁 model/
-│   │   │   ├── 📄 ContentApiMedia.kt
 │   │   │   └── 📄 ContextWindowStatus.kt
 │   │   └── 📁 ui/
-│   │       ├── 📄 AssistantMessageCard.kt
-│   │       ├── 📄 AttachmentPreview.kt
-│   │       ├── 📄 BottomSheetsLink.kt
-│   │       ├── 📄 ChatAppbar.kt
-│   │       ├── 📄 ChatOpeningVeil.kt
-│   │       ├── 📄 ChatRenderCaches.kt
-│   │       ├── 📄 ChatScreen.kt
-│   │       ├── 📄 ConversationSummaryUi.kt
-│   │       ├── 📄 LiveThinkingBlock.kt
-│   │       ├── 📄 MessageBubble.kt
-│   │       ├── 📄 ReasoningDropdown.kt
-│   │       ├── 📄 UserMessageCard.kt
 │   │       ├── 📁 input/
-│   │       │   ├── 📄 ChatInputAreaUi.kt
-│   │       │   └── 📄 InputBar.kt
+│   │       │   └── 📄 ChatInputAreaUi.kt
 │   │       ├── 📁 markdown/
 │   │       │   ├── 📄 LatexFormulaRenderer.kt
 │   │       │   ├── 📄 MarkdownCodeBlock.kt
@@ -171,8 +158,21 @@
 │   │       │   ├── 📄 MarkdownMathParagraph.kt
 │   │       │   ├── 📄 MarkdownRenderer.kt
 │   │       │   └── 📄 MarkdownTable.kt
-│   │       └── 📁 tool/
-│   │           └── 📄 ToolActivityCards.kt
+│   │       ├── 📁 tool/
+│   │       │   └── 📄 ToolActivityCards.kt
+│   │       ├── 📄 AssistantMessageCard.kt
+│   │       ├── 📄 AttachmentPreview.kt
+│   │       ├── 📄 ChatAppbar.kt
+│   │       ├── 📄 ChatOpeningVeil.kt
+│   │       ├── 📄 ChatRenderCaches.kt
+│   │       ├── 📄 ChatScreen.kt
+│   │       ├── 📄 ChatScrollAnchor.kt
+│   │       ├── 📄 ConversationSummaryUi.kt
+│   │       ├── 📄 GenerationLoadingIndicator.kt
+│   │       ├── 📄 LiveThinkingBlock.kt
+│   │       ├── 📄 MessageBubble.kt
+│   │       ├── 📄 ReasoningDropdown.kt
+│   │       └── 📄 UserMessageCard.kt
 │   ├── 📁 drawer/
 │   │   ├── 📁 logic/
 │   │   │   └── 📄 ConversationModelIcon.kt
@@ -198,6 +198,7 @@
 │   │       ├── 📄 ToolDetailsBottomSheet.kt
 │   │       ├── 📄 ToolSheetState.kt
 │   │       └── 📄 ToolsManageBottomSheet.kt
+│   └── 📄 BottomSheetsLink.kt
 ├── 📁 integrations/
 │   ├── 📁 mcp/
 │   │   ├── 📄 McpOAuthService.kt
@@ -205,19 +206,10 @@
 │   │   ├── 📄 McpOAuthUrlUtils.kt
 │   │   └── 📄 McpService.kt
 │   ├── 📁 media/
-│   │   ├── 📄 GeneratedMediaReference.kt
-│   │   ├── 📄 GeneratedMediaResponses.kt
-│   │   ├── 📄 ImageEditRequests.kt
 │   │   ├── 📄 ImageStreaming.kt
 │   │   ├── 📄 SystemMediaTools.kt
-│   │   ├── 📄 VideoGeneration.kt
-│   │   └── 📄 VideoRequests.kt
+│   │   └── 📄 VideoGeneration.kt
 │   ├── 📁 modelapis/
-│   │   ├── 📄 AiService.kt
-│   │   ├── 📄 ModelApiAdapter.kt
-│   │   ├── 📄 ModelApiAdapterRegistry.kt
-│   │   ├── 📄 ModelCatalogAdapter.kt
-│   │   ├── 📄 ModelCatalogMetadata.kt
 │   │   ├── 📁 account/
 │   │   │   ├── 📄 AccountProviderAdapter.kt
 │   │   │   ├── 📄 AccountProviderAdapterRegistry.kt
@@ -246,195 +238,227 @@
 │   │   │   └── 📄 OpenAICodexAdapter.kt
 │   │   ├── 📁 openairesponses/
 │   │   │   └── 📄 OpenAIResponsesAdapter.kt
-│   │   └── 📁 sdk/
-│   │       ├── 📄 OfficialProviderSdk.kt
-│   │       └── 📄 SdkAttachmentContent.kt
+│   │   ├── 📁 sdk/
+│   │   │   ├── 📄 OfficialProviderSdk.kt
+│   │   │   └── 📄 SdkAttachmentContent.kt
+│   │   ├── 📄 AiService.kt
+│   │   ├── 📄 ModelApiAdapter.kt
+│   │   ├── 📄 ModelApiAdapterRegistry.kt
+│   │   ├── 📄 ModelCatalogAdapter.kt
+│   │   └── 📄 ModelCatalogMetadata.kt
 │   └── 📁 remote/
 │       ├── 📄 AndroidEdDSA.kt
 │       ├── 📄 CloudShellApi.kt
 │       ├── 📄 ExecutableBinaryStore.kt
 │       ├── 📄 RemoteBinarySupport.kt
-│       ├── 📄 RemoteMachineService.kt
 │       ├── 📄 RemoteMachineAssetsService.kt
 │       ├── 📄 RemoteMachineCloudShellService.kt
 │       ├── 📄 RemoteMachineConnectionManager.kt
+│       ├── 📄 RemoteMachineService.kt
 │       ├── 📄 RemoteMachineStore.kt
 │       ├── 📄 RemoteTerminal.kt
 │       ├── 📄 SshConfigParser.kt
 │       └── 📄 SshConnectionSupport.kt
 ├── 📁 navigation/
-│   └── 📄 AppNavigation.kt
-└── 📁 shared/
-    ├── 📁 auth/
-    │   ├── 📄 AppAuthTransactions.kt
-    │   ├── 📄 OAuthBrowser.kt
-    │   ├── 📄 OAuthBrowserKeepAliveService.kt
-    │   ├── 📄 OAuthCallbackService.kt
-    │   ├── 📄 OAuthLoopbackCompatibility.kt
-    │   └── 📄 StandardAppAuthAuthorization.kt
-    ├── 📁 code/
-    │   └── 📄 CodeSyntaxHighlighting.kt
-    ├── 📁 files/
-    │   ├── 📄 AttachmentResolver.kt
-    │   ├── 📄 CrashReports.kt
-    │   └── 📄 ToolFiles.kt
-    ├── 📁 helpers/
-    │   └── 📁 media/
-    │       ├── 📄 AgnesMedia.kt
-    │       ├── 📄 ImageGenerationOptions.kt
-    │       ├── 📄 MediaInputReference.kt
-    │       └── 📄 VideoGenerationOptions.kt
-    ├── 📁 icons/
-    │   ├── 📄 AppImages.kt
-    │   ├── 📄 FaviconService.kt
-    │   ├── 📄 IcoDecoder.kt
-    │   ├── 📄 IconStore.kt
-    │   ├── 📄 LobeIconSource.kt
-    │   ├── 📄 LobeModelIconResolver.kt
-    │   └── 📁 model/
-    │       ├── 📄 IconRule.kt
-    │       └── 📄 StoredIcon.kt
-    ├── 📁 media/
-    │   ├── 📄 MediaPlayers.kt
-    │   ├── 📄 SpeechAudioPlayer.kt
-    │   ├── 📄 SpeechSynthesisService.kt
-    │   ├── 📄 SpeechText.kt
-    │   └── 📄 TtsHelper.kt
-    ├── 📁 model/
-    │   ├── 📄 ChatMessage.kt
-    │   ├── 📄 ChatProfile.kt
-    │   ├── 📄 ClaudeThinking.kt
-    │   ├── 📄 DefaultOptions.kt
-    │   ├── 📄 JsonExportKind.kt
-    │   ├── 📄 McpInfo.kt
-    │   ├── 📄 PromptLibrary.kt
-    │   ├── 📄 ProviderLink.kt
-    │   ├── 📄 RemoteMachineModels.kt
-    │   ├── 📄 ResponseVersions.kt
-    │   ├── 📄 SidebarOrganization.kt
-    │   ├── 📄 SpeechService.kt
-    │   ├── 📄 Tools.kt
-    │   ├── 📁 api/
-    │   │   └── 📄 ModelApiType.kt
-    │   ├── 📁 auth/
-    │   │   ├── 📄 AuthMethod.kt
-    │   │   ├── 📄 Authorization.kt
-    │   │   └── 📄 AuthorizationExtensions.kt
-    │   ├── 📁 generation/
-    │   │   ├── 📄 GenerationEvent.kt
-    │   │   └── 📄 StoredMessageExtensions.kt
-    │   ├── 📁 language/
-    │   │   ├── 📄 Capabilities.kt
-    │   │   ├── 📄 DiscoveredModel.kt
-    │   │   ├── 📄 LanguageModel.kt
-    │   │   ├── 📄 ModelConfiguration.kt
-    │   │   ├── 📄 ModelConfigurationConstants.kt
-    │   │   ├── 📄 ModelConfigurationExtensions.kt
-    │   │   ├── 📄 ModelConfigurationReasoning.kt
-    │   │   ├── 📄 ModelType.kt
-    │   │   └── 📄 SendThinkingContent.kt
-    │   ├── 📁 media/
-    │   │   ├── 📄 ImageOptionField.kt
-    │   │   ├── 📄 MediaInputImage.kt
-    │   │   └── 📄 VideoApi.kt
-    │   └── 📁 provider/
-    │       ├── 📄 ModelProvider.kt
-    │       ├── 📄 ModelProviderExtensions.kt
-    │       ├── 📄 ProviderApiKey.kt
-    │       ├── 📄 ProviderConfiguration.kt
-    │       ├── 📄 ProviderConfigurationExtensions.kt
-    │       ├── 📄 ProviderGroup.kt
-    │       ├── 📄 ProviderModels.kt
-    │       ├── 📄 ProviderOAuthAccount.kt
-    │       ├── 📄 ProviderPlacement.kt
-    │       └── 📄 ProviderRootOrderItem.kt
-    ├── 📁 networking/
-    │   ├── 📄 ProviderParsing.kt
-    │   ├── 📄 ToolHttp.kt
-    │   └── 📄 ToolStreaming.kt
-    ├── 📁 preview/
-    │   ├── 📄 CodePreviewActivity.kt
-    │   └── 📄 CodePreviewDocument.kt
-    ├── 📁 storage/
-    │   ├── 📄 ConversationRepository.kt
-    │   ├── 📄 ImmediateState.kt
-    │   ├── 📄 McpRepository.kt
-    │   ├── 📄 ModelRepository.kt
-    │   ├── 📄 ProfileRepository.kt
-    │   ├── 📄 RepositoryJson.kt
-    │   ├── 📄 SpeechRepository.kt
-    │   ├── 📁 database/
-    │   │   ├── 📄 AppDatabase.kt
-    │   │   ├── 📄 SecretCipher.kt
-    │   │   ├── 📁 dao/
-    │   │   │   └── 📄 Daos.kt
-    │   │   └── 📁 entities/
-    │   │       └── 📄 Entities.kt
-    │   └── 📁 preferences/
-    │       ├── 📄 AppLanguage.kt
-    │       ├── 📄 AppPreferencesRepository.kt
-    │       ├── 📄 ModelConfigurationMemory.kt
-    │       └── 📄 ToolSettingsStore.kt
-    ├── 📁 theme/
-    │   └── 📄 Theme.kt
-    └── 📁 ui/
-        ├── 📄 ProfileMcpPermissions.kt
-        ├── 📄 ToolControls.kt
-        ├── 📄 ToolSwitch.kt
-        ├── 📁 auth/
-        │   ├── 📄 AppAuthResultActivity.kt
-        │   ├── 📄 OAuthBrowserActivity.kt
-        │   └── 📄 OAuthNotificationPermission.kt
-        ├── 📁 code/
-        │   ├── 📄 CodeBlockHeader.kt
-        │   ├── 📄 CodeBlockSurface.kt
-        │   ├── 📄 CodeRendering.kt
-        │   └── 📄 LazyCodeBlock.kt
-        ├── 📁 dialogs/
-        │   ├── 📄 AppDialogs.kt
-        │   ├── 📄 CrashReportDialog.kt
-        │   └── 📄 FaviconDialog.kt
-        ├── 📁 icons/
-        │   ├── 📄 EntityIcon.kt
-        │   ├── 📄 FluentIcon.kt
-        │   └── 📄 Icons.kt
-        ├── 📁 layout/
-        │   ├── 📄 AdaptiveCardLayout.kt
-        │   ├── 📄 AmoledBorder.kt
-        │   ├── 📄 MainAppbar.kt
-        │   ├── 📄 ResponsiveLayout.kt
-        │   ├── 📄 SettingsCard.kt
-        │   ├── 📄 SettingsComponents.kt
-        │   └── 📄 SlideScreenContent.kt
-        ├── 📁 lists/
-        │   ├── 📄 FadeGridListContent.kt
-        │   └── 📄 ListOrder.kt
-        ├── 📁 media/
-        │   ├── 📄 ChatAttachmentSelection.kt
-        │   ├── 📄 ChatFilePreview.kt
-        │   ├── 📄 MediaFileCard.kt
-        │   ├── 📄 MediaPlaybackState.kt
-        │   ├── 📄 MediaPreview.kt
-        │   ├── 📄 MediaViewer.kt
-        │   └── 📄 MediaViewerToolbar.kt
-        ├── 📁 menus/
-        │   ├── 📄 ItemOverflowMenu.kt
-        │   └── 📄 RoundedDropdownMenuItem.kt
-        ├── 📁 model/
-        │   ├── 📄 ModelInitial.kt
-        │   └── 📄 ModelPickerBottomSheet.kt
-        ├── 📁 sheets/
-        │   ├── 📄 AppBottomSheet.kt
-        │   └── 📄 BottomSheetHeight.kt
-        └── 📁 text/
-            ├── 📄 ApiKeyMask.kt
-            ├── 📄 GlyphSelectionGate.kt
-            ├── 📄 PlatformTextSelection.kt
-            ├── 📄 SelectableTextFields.kt
-            ├── 📄 StreamingTextFade.kt
-            └── 📄 WordWrappedFadeText.kt
+│   ├── 📄 AppNavigation.kt
+│   └── 📄 TargetedEditorContent.kt
+├── 📁 preview/
+├── 📁 shared/
+│   ├── 📁 auth/
+│   │   ├── 📄 AppAuthTransactions.kt
+│   │   ├── 📄 OAuthBrowser.kt
+│   │   ├── 📄 OAuthBrowserKeepAliveService.kt
+│   │   ├── 📄 OAuthCallbackService.kt
+│   │   ├── 📄 OAuthLoopbackCompatibility.kt
+│   │   └── 📄 StandardAppAuthAuthorization.kt
+│   ├── 📁 code/
+│   │   └── 📄 CodeSyntaxHighlighting.kt
+│   ├── 📁 files/
+│   │   ├── 📄 AttachmentResolver.kt
+│   │   ├── 📄 ConversationUploads.kt
+│   │   ├── 📄 CrashReports.kt
+│   │   └── 📄 ToolFiles.kt
+│   ├── 📁 helpers/
+│   │   └── 📁 media/
+│   │       ├── 📄 AgnesMedia.kt
+│   │       ├── 📄 ContentApiMedia.kt
+│   │       ├── 📄 GeneratedMediaResponses.kt
+│   │       ├── 📄 ImageEditRequests.kt
+│   │       ├── 📄 ImageGenerationOptions.kt
+│   │       ├── 📄 MediaInputReference.kt
+│   │       ├── 📄 VideoGenerationOptions.kt
+│   │       └── 📄 VideoRequests.kt
+│   ├── 📁 icons/
+│   │   ├── 📁 model/
+│   │   │   ├── 📄 IconRule.kt
+│   │   │   └── 📄 StoredIcon.kt
+│   │   ├── 📄 AppImages.kt
+│   │   ├── 📄 FaviconService.kt
+│   │   ├── 📄 IcoDecoder.kt
+│   │   ├── 📄 IconStore.kt
+│   │   ├── 📄 LobeIconSource.kt
+│   │   └── 📄 LobeModelIconResolver.kt
+│   ├── 📁 media/
+│   │   ├── 📄 MediaPlayers.kt
+│   │   ├── 📄 SpeechAudioPlayer.kt
+│   │   ├── 📄 SpeechSynthesisService.kt
+│   │   ├── 📄 SpeechText.kt
+│   │   └── 📄 TtsHelper.kt
+│   ├── 📁 model/
+│   │   ├── 📁 api/
+│   │   │   └── 📄 ModelApiType.kt
+│   │   ├── 📁 auth/
+│   │   │   ├── 📄 AuthMethod.kt
+│   │   │   ├── 📄 Authorization.kt
+│   │   │   ├── 📄 AuthorizationExtensions.kt
+│   │   │   └── 📄 CredentialLoadState.kt
+│   │   ├── 📁 generation/
+│   │   │   ├── 📄 GenerationEvent.kt
+│   │   │   └── 📄 StoredMessageExtensions.kt
+│   │   ├── 📁 language/
+│   │   │   ├── 📄 Capabilities.kt
+│   │   │   ├── 📄 DiscoveredModel.kt
+│   │   │   ├── 📄 LanguageModel.kt
+│   │   │   ├── 📄 ModelConfiguration.kt
+│   │   │   ├── 📄 ModelConfigurationConstants.kt
+│   │   │   ├── 📄 ModelConfigurationExtensions.kt
+│   │   │   ├── 📄 ModelConfigurationReasoning.kt
+│   │   │   ├── 📄 ModelType.kt
+│   │   │   └── 📄 SendThinkingContent.kt
+│   │   ├── 📁 media/
+│   │   │   ├── 📄 ContentApiMedia.kt
+│   │   │   ├── 📄 GeneratedMediaReference.kt
+│   │   │   ├── 📄 ImageOptionField.kt
+│   │   │   ├── 📄 MediaInputImage.kt
+│   │   │   └── 📄 VideoApi.kt
+│   │   ├── 📁 provider/
+│   │   │   ├── 📄 ModelProvider.kt
+│   │   │   ├── 📄 ModelProviderExtensions.kt
+│   │   │   ├── 📄 ProviderApiKey.kt
+│   │   │   ├── 📄 ProviderConfiguration.kt
+│   │   │   ├── 📄 ProviderConfigurationExtensions.kt
+│   │   │   ├── 📄 ProviderGroup.kt
+│   │   │   ├── 📄 ProviderModels.kt
+│   │   │   ├── 📄 ProviderOAuthAccount.kt
+│   │   │   ├── 📄 ProviderPlacement.kt
+│   │   │   └── 📄 ProviderRootOrderItem.kt
+│   │   ├── 📄 ChatMessage.kt
+│   │   ├── 📄 ChatProfile.kt
+│   │   ├── 📄 ClaudeThinking.kt
+│   │   ├── 📄 ConversationListItem.kt
+│   │   ├── 📄 DefaultOptions.kt
+│   │   ├── 📄 JsonExportKind.kt
+│   │   ├── 📄 McpInfo.kt
+│   │   ├── 📄 PromptLibrary.kt
+│   │   ├── 📄 ProviderLink.kt
+│   │   ├── 📄 RemoteMachineModels.kt
+│   │   ├── 📄 ResponseVersions.kt
+│   │   ├── 📄 SidebarOrganization.kt
+│   │   ├── 📄 SpeechService.kt
+│   │   └── 📄 Tools.kt
+│   ├── 📁 networking/
+│   │   ├── 📄 ProviderParsing.kt
+│   │   ├── 📄 ToolHttp.kt
+│   │   └── 📄 ToolStreaming.kt
+│   ├── 📁 preview/
+│   │   ├── 📄 CodePreviewActivity.kt
+│   │   └── 📄 CodePreviewDocument.kt
+│   ├── 📁 storage/
+│   │   ├── 📁 database/
+│   │   │   ├── 📁 dao/
+│   │   │   │   └── 📄 Daos.kt
+│   │   │   ├── 📁 entities/
+│   │   │   │   ├── 📄 ConversationEntities.kt
+│   │   │   │   ├── 📄 Entities.kt
+│   │   │   │   └── 📄 Phase4Entities.kt
+│   │   │   ├── 📄 AppDatabase.kt
+│   │   │   ├── 📄 ConfigurationMigration10Catalogs.kt
+│   │   │   ├── 📄 ConfigurationMigration10Json.kt
+│   │   │   ├── 📄 ConfigurationMigration10Mcp.kt
+│   │   │   ├── 📄 ConfigurationMigration10Profiles.kt
+│   │   │   ├── 📄 ConfigurationMigration10Providers.kt
+│   │   │   ├── 📄 ConfigurationMigration10Schema.kt
+│   │   │   ├── 📄 ConfigurationMigration10Speech.kt
+│   │   │   ├── 📄 ConfigurationMigration9To10.kt
+│   │   │   ├── 📄 ConversationMigration9To10.kt
+│   │   │   └── 📄 SecretCipher.kt
+│   │   ├── 📁 preferences/
+│   │   │   ├── 📄 AppLanguage.kt
+│   │   │   ├── 📄 AppPreferencesRepository.kt
+│   │   │   ├── 📄 ModelConfigurationMemory.kt
+│   │   │   └── 📄 ToolSettingsStore.kt
+│   │   ├── 📄 AuthPayloads.kt
+│   │   ├── 📄 ConversationRepository.kt
+│   │   ├── 📄 EndpointSecrets.kt
+│   │   ├── 📄 ImmediateState.kt
+│   │   ├── 📄 McpRepository.kt
+│   │   ├── 📄 ModelRepository.kt
+│   │   ├── 📄 ProfileRepository.kt
+│   │   ├── 📄 ProviderStorageMapper.kt
+│   │   ├── 📄 RepositoryJson.kt
+│   │   ├── 📄 SpeechRepository.kt
+│   │   └── 📄 StructuredJsonStorage.kt
+│   ├── 📁 theme/
+│   │   └── 📄 Theme.kt
+│   └── 📁 ui/
+│       ├── 📁 auth/
+│       │   ├── 📄 AppAuthResultActivity.kt
+│       │   ├── 📄 OAuthBrowserActivity.kt
+│       │   └── 📄 OAuthNotificationPermission.kt
+│       ├── 📁 code/
+│       │   ├── 📄 CodeBlockHeader.kt
+│       │   ├── 📄 CodeBlockSurface.kt
+│       │   ├── 📄 CodeRendering.kt
+│       │   └── 📄 LazyCodeBlock.kt
+│       ├── 📁 dialogs/
+│       │   ├── 📄 AppDialogs.kt
+│       │   ├── 📄 CrashReportDialog.kt
+│       │   └── 📄 FaviconDialog.kt
+│       ├── 📁 icons/
+│       │   ├── 📄 EntityIcon.kt
+│       │   ├── 📄 FluentIcon.kt
+│       │   └── 📄 Icons.kt
+│       ├── 📁 layout/
+│       │   ├── 📄 AdaptiveCardLayout.kt
+│       │   ├── 📄 AmoledBorder.kt
+│       │   ├── 📄 ResponsiveLayout.kt
+│       │   ├── 📄 SettingsCard.kt
+│       │   └── 📄 SlideScreenContent.kt
+│       ├── 📁 lists/
+│       │   ├── 📄 FadeGridListContent.kt
+│       │   └── 📄 ListOrder.kt
+│       ├── 📁 media/
+│       │   ├── 📄 ChatAttachmentSelection.kt
+│       │   ├── 📄 ChatFilePreview.kt
+│       │   ├── 📄 MediaFileCard.kt
+│       │   ├── 📄 MediaPlaybackState.kt
+│       │   ├── 📄 MediaPreview.kt
+│       │   └── 📄 MediaViewerToolbar.kt
+│       ├── 📁 menus/
+│       │   ├── 📄 ItemOverflowMenu.kt
+│       │   └── 📄 RoundedDropdownMenuItem.kt
+│       ├── 📁 model/
+│       │   ├── 📄 ModelInitial.kt
+│       │   ├── 📄 ModelPickerBottomSheet.kt
+│       │   ├── 📄 ModelPickerCards.kt
+│       │   ├── 📄 ReasoningEffortControl.kt
+│       │   └── 📄 ThinkingColorBurst.kt
+│       ├── 📁 sheets/
+│       │   ├── 📄 AppBottomSheet.kt
+│       │   └── 📄 BottomSheetHeight.kt
+│       ├── 📁 text/
+│       │   ├── 📄 ApiKeyMask.kt
+│       │   ├── 📄 GlyphSelectionGate.kt
+│       │   ├── 📄 PlatformTextSelection.kt
+│       │   ├── 📄 SelectableTextFields.kt
+│       │   ├── 📄 StreamingTextFade.kt
+│       │   └── 📄 WordWrappedFadeText.kt
+│       ├── 📄 ProfileMcpPermissions.kt
+│       ├── 📄 ToolControls.kt
+│       └── 📄 ToolSwitch.kt
+├── 📄 MainActivity.kt
+└── 📄 MultiGatewayApplication.kt
 ```
-
 ## Legend
 
 - 📁 Folder
@@ -480,8 +504,8 @@
 
 ### home/
 
-- `home/` is the chat screen only. It is split into `chat/` (messages, input, markdown, tool UI), `drawer/`, `sheets/` (chat bottom sheets) and `shared/` (code used by more than one of them).
-- The same rules as sub-features apply: `chat/`, `drawer/` and `sheets/` never import each other; common code goes in `home/shared/`.
+- `home/` contains the chat experience and its drawer. It is split into `chat/` (messages, input, markdown, tool UI), `drawer/`, and `shared/` (code used by more than one of them). Chat bottom sheets currently live in `home/shared/ui/`; `home/BottomSheetsLink.kt` is a top-level home component.
+- Keep `chat/` and `drawer/` independent; common code goes in `home/shared/`.
 
 ### ui/, logic/, model/
 
