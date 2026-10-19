@@ -63,7 +63,7 @@ internal fun directMediaHint(
     mediaModelId: String,
     mediaLabel: String
 ): String = when {
-    mediaKind == ModelType.VIDEO_GENERATION && attachments.size > 1 -> "Choose one reference image for the video"
+    mediaKind == ModelType.VIDEO_GENERATION && attachments.size > 1 -> "Choose one reference image or video for the video"
     mediaKind == ModelType.IMAGE_GENERATION && attachments.size > 16 -> "Choose up to 16 reference images"
     text.length > 32000 -> "Prompt exceeds 32,000 characters"
     mediaModel == null -> "Choose a $mediaLabel model"

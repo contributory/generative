@@ -134,14 +134,15 @@ internal fun BottomSheetsLink(
         QuickActionsBottomSheet(
             onPickImage = {
                 photoPicker.launch(PickVisualMediaRequest(
-                    if (mediaKind == null) ActivityResultContracts.PickVisualMedia.ImageAndVideo
+                    if (mediaKind == null || mediaKind == ModelType.VIDEO_GENERATION) ActivityResultContracts.PickVisualMedia.ImageAndVideo
                     else ActivityResultContracts.PickVisualMedia.ImageOnly
                 ))
             },
             onPickDocument = {
                 documentPicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                     addCategory(Intent.CATEGORY_OPENABLE)
-                    type = if (mediaKind == null) "*/*" else "image/*"
+                    type = if (mediaKind == null || mediaKind == ModelType.VIDEO_GENERATION) "*/*" else "image/*"
+                    if (mediaKind == ModelType.VIDEO_GENERATION) putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*", "video/*"))
                     putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
                 })

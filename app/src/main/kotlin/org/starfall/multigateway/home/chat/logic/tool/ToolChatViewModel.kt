@@ -11,6 +11,8 @@ import java.util.UUID
 import org.starfall.multigateway.shared.helpers.media.mediaInputImageArgument
 import org.starfall.multigateway.shared.helpers.media.mediaInputImageUrlArgument
 import org.starfall.multigateway.shared.helpers.media.mediaInputImagesArgument
+import org.starfall.multigateway.shared.helpers.media.mediaInputVideoArgument
+import org.starfall.multigateway.shared.helpers.media.mediaInputVideoUrlArgument
 import org.starfall.multigateway.shared.helpers.media.mediaToolSchema
 import org.starfall.multigateway.shared.helpers.media.configuredMediaOptions
 import org.starfall.multigateway.shared.helpers.media.toolAttachmentReferences
@@ -179,7 +181,7 @@ class ToolChatViewModel(
                         description = if (name == "generate_image") {
                             "Generate or edit an image from a detailed prompt and optional attached/reference images. The app displays the saved image."
                         } else {
-                            "Generate a video from a detailed prompt. The app displays the saved video."
+                            "Generate a video from a detailed prompt and an optional attached/reference image or video. The app displays the saved video."
                         },
                         schema = mediaToolSchema(name, config.disabledParams, mediaProvider, config.modelId)
                     )
@@ -381,7 +383,9 @@ class ToolChatViewModel(
                                 inputImage = if ("input_image" in cfg.disabledParams) null else mediaInputImageArgument(args),
                                 inputImages = if ("input_images" in cfg.disabledParams) emptyList() else mediaInputImagesArgument(args),
                                 videoOptions = configuredMediaOptions(name, mediaProvider, cfg.modelId, cfg.videoOptions, args, cfg.disabledParams),
-                                inputImageUrl = if ("input_image_url" in cfg.disabledParams) null else mediaInputImageUrlArgument(args)
+                                inputImageUrl = if ("input_image_url" in cfg.disabledParams) null else mediaInputImageUrlArgument(args),
+                                inputVideo = if ("input_video" in cfg.disabledParams) null else mediaInputVideoArgument(args),
+                                inputVideoUrl = if ("input_video_url" in cfg.disabledParams) null else mediaInputVideoUrlArgument(args)
                             )
                         }
 

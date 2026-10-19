@@ -10,6 +10,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.UUID
 import org.starfall.multigateway.shared.helpers.media.MAX_MEDIA_INPUT_BYTES
+import org.starfall.multigateway.shared.helpers.media.MAX_MEDIA_INPUT_VIDEO_BYTES
+import org.starfall.multigateway.shared.helpers.media.detectInputMediaMime
 import org.starfall.multigateway.integrations.media.SystemMediaTools
 import org.starfall.multigateway.shared.helpers.media.isAgnesProvider
 import org.starfall.multigateway.integrations.modelapis.AiService
@@ -36,10 +38,13 @@ internal class ToolMediaGenerationService(
         inputImage: String?,
         inputImages: List<String>,
         videoOptions: JsonObject,
-        inputImageUrl: String?
+        inputImageUrl: String?,
+        inputVideo: String? = null,
+        inputVideoUrl: String? = null
     ): JsonObject = SystemMediaTools(http).generate(
         name, provider, model, prompt, imageOptions,
-        inputImage, inputImages, videoOptions = videoOptions, inputImageUrl = inputImageUrl
+        inputImage, inputImages, videoOptions = videoOptions, inputImageUrl = inputImageUrl,
+        inputVideo = inputVideo, inputVideoUrl = inputVideoUrl
     )
 
     fun generateMedia(
@@ -58,23 +63,35 @@ internal class ToolMediaGenerationService(
         emit(GenerationEvent.Tool(activity))
         try {
             require(kind != ModelType.VIDEO_GENERATION || attachments.size <= 1) {
-                "Video generation accepts one reference image. Remove extra attachments."
+                "Video generation accepts one reference image or video. Remove extra attachments."
             }
             require(attachments.size <= 16) { "Image generation accepts at most 16 reference images." }
-            val maxBytes = if (kind == ModelType.IMAGE_GENERATION && provider.type.isOpenAi && !isAgnesProvider(provider)) 50L * 1024 * 1024 - 1 else MAX_MEDIA_INPUT_BYTES
-            val inputs = aiService.importToolAttachments(attachments, http.requireFiles(), maxBytes)
+            val maxBytes = when {
+                kind == ModelType.VIDEO_GENERATION -> MAX_MEDIA_INPUT_VIDEO_BYTES
+                provider.type.isOpenAi && !isAgnesProvider(provider) -> 50L * 1024 * 1024 - 1
+                else -> MAX_MEDIA_INPUT_BYTES
+            }
+            val files = http.requireFiles()
+            val inputs = aiService.importToolAttachments(attachments, files, maxBytes)
+            // A video's single reference attachment can be an image or a video; sniff the saved file to tell which.
+            val referenceIsVideo = kind == ModelType.VIDEO_GENERATION && inputs.singleOrNull()?.let { reference ->
+                val mime = files.resolve(reference.removePrefix("tool-file:"))?.let(::detectInputMediaMime)
+                require(mime != null) { "Video reference must be a PNG, JPEG, or WebP image, or an MP4, MOV, or WebM video." }
+                mime.startsWith("video/")
+            } == true
             if (inputs.isNotEmpty()) {
                 activity = activity.copy(arguments = buildJsonObject {
                     put("prompt", prompt)
-                    if (kind == ModelType.VIDEO_GENERATION) put("input_image", inputs.single())
+                    if (kind == ModelType.VIDEO_GENERATION) put(if (referenceIsVideo) "input_video" else "input_image", inputs.single())
                     else put("input_images", JsonArray(inputs.map(::str)))
                 }.toString())
                 emit(GenerationEvent.Tool(activity))
             }
             val result = SystemMediaTools(http).generate(name, provider, model, prompt, imageOptions,
-                inputImage = if (kind == ModelType.VIDEO_GENERATION) inputs.singleOrNull() else null,
+                inputImage = if (kind == ModelType.VIDEO_GENERATION && !referenceIsVideo) inputs.singleOrNull() else null,
                 inputImages = if (kind == ModelType.IMAGE_GENERATION) inputs else emptyList(),
-                videoOptions = videoOptions)
+                videoOptions = videoOptions,
+                inputVideo = if (referenceIsVideo) inputs.single() else null)
             val summary = summarizeToolResult(result, http.requireFiles())
             emit(GenerationEvent.Tool(activity.copy(status = "success", summary = summary.preview,
                 files = summary.files, response = summary.content.toString())))

@@ -2,6 +2,7 @@ package org.starfall.multigateway.integrations.media
 
 import org.starfall.multigateway.shared.model.media.VideoApi
 import org.starfall.multigateway.shared.model.media.MediaInputImage
+import org.starfall.multigateway.shared.model.media.MediaInputVideo
 import org.starfall.multigateway.shared.helpers.media.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
@@ -14,7 +15,7 @@ import org.starfall.multigateway.shared.networking.str
 import org.starfall.multigateway.shared.networking.text
 
 class SystemMediaTools(private val http: ToolHttp) {
-    suspend fun generate(kind: String, provider: ModelProvider, model: String, prompt: String, imageOptions: JsonObject = obj(), inputImage: String? = null, inputImages: List<String> = emptyList(), videoOptions: JsonObject = obj(), inputImageUrl: String? = null): JsonObject = withContext(Dispatchers.IO) {
+    suspend fun generate(kind: String, provider: ModelProvider, model: String, prompt: String, imageOptions: JsonObject = obj(), inputImage: String? = null, inputImages: List<String> = emptyList(), videoOptions: JsonObject = obj(), inputImageUrl: String? = null, inputVideo: String? = null, inputVideoUrl: String? = null): JsonObject = withContext(Dispatchers.IO) {
         val files = http.requireFiles()
         require(kind in setOf("generate_image", "generate_video")) { "Unsupported media tool" }
         require(prompt.isNotBlank() && prompt.length <= 32000) { "A prompt of 1–32000 characters is required" }
@@ -32,6 +33,15 @@ class SystemMediaTools(private val http: ToolHttp) {
             resolveInputImage(it, files)
         }
         require(inputImageUrl == null || kind == "generate_video") { "input_image_url is only supported by generate_video." }
+        val video = inputVideo?.let {
+            require(kind == "generate_video") { "input_video is only supported by generate_video." }
+            require(provider.type.isOpenAi || provider.type == ModelApiType.GOOGLE) {
+                "This provider does not support video-to-video. Select an OpenAI-compatible or Google video provider."
+            }
+            resolveInputVideo(it, files)
+        }
+        require(inputVideoUrl == null || kind == "generate_video") { "input_video_url is only supported by generate_video." }
+        inputVideoUrl?.let { validateReferenceUrl(it, "videos") }
         val base = providerBase(provider)
         val response = when(provider.type) {
             ModelApiType.OPENAI, ModelApiType.OPENAI_RESPONSES -> if(kind == "generate_image") {
@@ -43,7 +53,7 @@ class SystemMediaTools(private val http: ToolHttp) {
                     http.postMedia("$base/images/edits", openAiImageEditRequest(model, prompt, imageOptions, referenceImages), provider)
                 }
             } else {
-                VideoGeneration(http).generate(provider, model, prompt, image, videoOptions, inputImageUrl)
+                VideoGeneration(http).generate(provider, model, prompt, image, videoOptions, inputImageUrl, video, inputVideoUrl)
             }
             ModelApiType.GOOGLE -> {
                 val root = if(Regex("/v1(?:beta|alpha)?$").containsMatchIn(base)) base else "$base/v1beta"
@@ -54,7 +64,9 @@ class SystemMediaTools(private val http: ToolHttp) {
                     http.post("$root/models/$model:$method", body, provider)
                 } else {
                     require(videoOptions.isEmpty() && inputImageUrl == null) { "Google video generation uses attached images and provider defaults." }
-                    var job = http.post("$root/models/$model:predictLongRunning", googleVideoRequest(prompt, image), provider)
+                    require(image == null || (video == null && inputVideoUrl == null)) { "Google video generation accepts either a source image or a source video, not both." }
+                    require(video == null || inputVideoUrl == null) { "Use one source video: an attachment or input_video_url." }
+                    var job = http.post("$root/models/$model:predictLongRunning", googleVideoRequest(prompt, image, video, inputVideoUrl), provider)
                     val name = googleVideoOperationName(job)
                     job = withTimeout(15*60*1000L) {
                         var state = job

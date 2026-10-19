@@ -1,6 +1,7 @@
 package org.starfall.multigateway.shared.helpers.media
 
 import org.starfall.multigateway.shared.model.media.MediaInputImage
+import org.starfall.multigateway.shared.model.media.MediaInputVideo
 import org.starfall.multigateway.shared.model.media.ImageOptionField
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 
@@ -13,6 +14,7 @@ import org.starfall.multigateway.shared.networking.text
 import org.starfall.multigateway.shared.model.api.ModelApiType
 
 internal const val MAX_MEDIA_INPUT_BYTES = 20L * 1024 * 1024
+internal const val MAX_MEDIA_INPUT_VIDEO_BYTES = 100L * 1024 * 1024
 
 internal fun resolveInputImage(reference: String, files: ToolFiles, maxBytes: Long = MAX_MEDIA_INPUT_BYTES): MediaInputImage {
     require(reference.startsWith("tool-file:")) { "input_image must be a tool-file: URI returned by an attachment or tool." }
@@ -22,14 +24,54 @@ internal fun resolveInputImage(reference: String, files: ToolFiles, maxBytes: Lo
     require(file.length() in 1..maxBytes) { "Input image is empty or exceeds the selected API's file-size limit (${(maxBytes + 1024 * 1024 - 1) / (1024 * 1024)} MB)." }
     val header = ByteArray(12)
     val count = file.inputStream().use { it.read(header) }
-    val mime = when {
-        count >= 8 && header.take(8) == listOf(0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a) -> "image/png"
-        count >= 3 && header[0] == 0xff.toByte() && header[1] == 0xd8.toByte() && header[2] == 0xff.toByte() -> "image/jpeg"
-        count == 12 && String(header, 0, 4, Charsets.US_ASCII) == "RIFF" &&
-            String(header, 8, 4, Charsets.US_ASCII) == "WEBP" -> "image/webp"
-        else -> error("input_image must contain a PNG, JPEG, or WebP image; other MIME types are unsupported.")
-    }
+    val mime = sniffImageMime(header, count)
+        ?: error("input_image must contain a PNG, JPEG, or WebP image; other MIME types are unsupported.")
     return MediaInputImage(file, mime)
+}
+
+private fun sniffImageMime(header: ByteArray, count: Int): String? = when {
+    count >= 8 && header.take(8) == listOf(0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a) -> "image/png"
+    count >= 3 && header[0] == 0xff.toByte() && header[1] == 0xd8.toByte() && header[2] == 0xff.toByte() -> "image/jpeg"
+    count == 12 && String(header, 0, 4, Charsets.US_ASCII) == "RIFF" &&
+        String(header, 8, 4, Charsets.US_ASCII) == "WEBP" -> "image/webp"
+    else -> null
+}
+
+// ISO-BMFF brands that share the `ftyp` box with MP4/MOV but are images or audio.
+private val NON_VIDEO_BRANDS = setOf("heic", "heix", "heim", "heis", "mif1", "msf1", "avif", "avis", "M4A ", "M4B ", "M4P ", "crx ")
+
+private fun sniffVideoMime(header: ByteArray, count: Int): String? = when {
+    count >= 12 && String(header, 4, 4, Charsets.US_ASCII) == "ftyp" -> {
+        val brand = String(header, 8, 4, Charsets.US_ASCII)
+        when {
+            brand in NON_VIDEO_BRANDS -> null
+            brand == "qt  " -> "video/quicktime"
+            else -> "video/mp4"
+        }
+    }
+    count >= 4 && header[0] == 0x1a.toByte() && header[1] == 0x45.toByte() &&
+        header[2] == 0xdf.toByte() && header[3] == 0xa3.toByte() -> "video/webm"
+    else -> null
+}
+
+internal fun resolveInputVideo(reference: String, files: ToolFiles, maxBytes: Long = MAX_MEDIA_INPUT_VIDEO_BYTES): MediaInputVideo {
+    require(reference.startsWith("tool-file:")) { "input_video must be a tool-file: URI returned by an attachment or tool." }
+    val name = reference.removePrefix("tool-file:")
+    require(name.matches(Regex("[A-Za-z0-9_-]+\\.[A-Za-z0-9]+"))) { "Invalid input_video tool-file: reference." }
+    val file = files.resolve(name) ?: error("The input_video file is unavailable. Attach or generate the video again.")
+    require(file.length() in 1..maxBytes) { "Input video is empty or exceeds the selected API's file-size limit (${(maxBytes + 1024 * 1024 - 1) / (1024 * 1024)} MB)." }
+    val header = ByteArray(12)
+    val count = file.inputStream().use { it.read(header) }
+    val mime = sniffVideoMime(header, count)
+        ?: error("input_video must contain an MP4, MOV, or WebM video; other formats are unsupported.")
+    return MediaInputVideo(file, mime)
+}
+
+/** MIME type of a supported image or video reference, or null when the file is neither. */
+internal fun detectInputMediaMime(file: File): String? {
+    val header = ByteArray(12)
+    val count = file.inputStream().use { it.read(header) }
+    return sniffImageMime(header, count) ?: sniffVideoMime(header, count)
 }
 
 internal fun mediaInputImagesArgument(arguments: JsonObject): List<String> {
@@ -55,20 +97,37 @@ internal fun mediaInputImageUrlArgument(arguments: JsonObject): String? {
     return validateVideoImageUrl(value.content)
 }
 
+internal fun mediaInputVideoArgument(arguments: JsonObject): String? {
+    val value = arguments["input_video"] ?: return null
+    require(value is JsonPrimitive && value.isString && value.content.isNotBlank()) {
+        "input_video must be a non-empty tool-file: URI string. Omit it when no source video is needed."
+    }
+    return value.content
+}
+
+internal fun mediaInputVideoUrlArgument(arguments: JsonObject): String? {
+    val value = arguments["input_video_url"] ?: return null
+    require(value is JsonPrimitive && value.isString && value.content.isNotBlank()) { "input_video_url must be a public HTTPS URL string." }
+    return validateReferenceUrl(value.content, "videos")
+}
+
 /** Parameters exposed to the model for a selected media tool and model. */
-data class MediaToolParameter(val key: String, val label: String)
+/** [field] is set for provider/model options, which can hold a default value; attached-file inputs have none. */
+data class MediaToolParameter(val key: String, val label: String, val field: ImageOptionField? = null)
 
 fun mediaToolOptionalParams(name: String, provider: ModelProvider? = null, model: String = ""): List<MediaToolParameter> {
     val inputs = when (name) {
         "generate_video" -> listOf(
             MediaToolParameter("input_image", "Reference image (attached file)"),
-            MediaToolParameter("input_image_url", "Reference image URL")
+            MediaToolParameter("input_image_url", "Reference image URL"),
+            MediaToolParameter("input_video", "Reference video (attached file)"),
+            MediaToolParameter("input_video_url", "Reference video URL")
         )
         "generate_image" -> listOf(MediaToolParameter("input_images", "Reference images (attached files)"))
         else -> emptyList()
     }
     val options = if (provider == null || model.isBlank()) emptyList() else mediaToolOptionFields(name, provider, model)
-        .map { MediaToolParameter(it.path, it.label) }
+        .map { MediaToolParameter(it.path, it.label, it) }
     return inputs + options
 }
 
@@ -94,6 +153,14 @@ internal fun mediaToolSchema(
         if (name == "generate_video" && "input_image_url" !in disabledParams) put("input_image_url", obj(
             "type" to str("string"),
             "description" to str("Optional public HTTPS source-image URL for Agnes Video. Use either input_image or input_image_url, not both.")
+        ))
+        if (name == "generate_video" && "input_video" !in disabledParams) put("input_video", obj(
+            "type" to str("string"),
+            "description" to str("Optional tool-file: URI of an attached video to use as the source or reference. Reuse it directly.")
+        ))
+        if (name == "generate_video" && "input_video_url" !in disabledParams) put("input_video_url", obj(
+            "type" to str("string"),
+            "description" to str("Optional public HTTPS source-video URL for Agnes Video 2.5. Use either input_video or input_video_url, not both.")
         ))
         if (name == "generate_image" && "input_images" !in disabledParams) put("input_images", obj(
             "type" to str("array"), "items" to obj("type" to str("string")),

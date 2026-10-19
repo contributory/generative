@@ -26,7 +26,12 @@ import kotlinx.coroutines.launch
 import org.starfall.multigateway.R
 import androidx.compose.ui.res.stringResource
 import org.starfall.multigateway.shared.helpers.media.mediaToolOptionalParams
+import org.starfall.multigateway.shared.helpers.media.optionAt
+import org.starfall.multigateway.shared.helpers.media.validateImageOptions
+import org.starfall.multigateway.shared.helpers.media.validateVideoOptions
 import org.starfall.multigateway.shared.helpers.media.videoOptionFields
+import org.starfall.multigateway.shared.helpers.media.withOption
+import org.starfall.multigateway.shared.model.media.ImageOptionField
 import org.starfall.multigateway.shared.ui.layout.SettingsCard
 import org.starfall.multigateway.shared.model.DEFAULT_CHAT_SUMMARY_PROMPT
 import org.starfall.multigateway.shared.model.DEFAULT_TITLE_GENERATION_PROMPT
@@ -159,6 +164,11 @@ fun SystemToolsScreen(
                         if (parameters.isEmpty()) {
                             Text("No configurable parameters for the selected model.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
+                        if (parameters.any { it.field != null }) Text(
+                            stringResource(R.string.tool_optional_params_default_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         parameters.forEach { param ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
@@ -171,6 +181,10 @@ fun SystemToolsScreen(
                                         onSave(name, config.copy(disabledParams = if (on) config.disabledParams - param.key else config.disabledParams + param.key))
                                     }
                                 )
+                            }
+                            val field = param.field
+                            if (field != null && parameterProvider != null) {
+                                MediaParameterDefault(name, config, parameterProvider, field, onSave)
                             }
                         }
                     }
@@ -279,5 +293,42 @@ fun SystemToolsScreen(
         )
     }
     }
+    }
+}
+
+/**
+ * Default value of a media-tool parameter. It is stored in the selected model's saved options, the same
+ * place as the model's Image/Video settings, so it applies when the AI omits the parameter or it is turned off.
+ * Only values that pass the same validation as those settings are saved.
+ */
+@Composable
+private fun MediaParameterDefault(
+    name: String,
+    config: SystemToolConfig,
+    provider: ModelProvider,
+    field: ImageOptionField,
+    onSave: (String, SystemToolConfig) -> Unit
+) {
+    val video = name == "generate_video"
+    val options = if (video) config.videoOptions else config.imageOptions
+    var problem by remember(config.providerId, config.modelId, field.path) { mutableStateOf<String?>(null) }
+    var resetSignal by remember(config.providerId, config.modelId, field.path) { mutableIntStateOf(0) }
+    Column {
+        ImageOptionInput(
+            field = field,
+            value = options.optionAt(field.path),
+            resetSignal = resetSignal,
+            onFocusChange = { if (!it) problem = null }
+        ) { value ->
+            val next = options.withOption(field.path, value)
+            val failure = runCatching {
+                if (video) validateVideoOptions(provider, config.modelId, next)
+                else validateImageOptions(provider, config.modelId, next)
+            }.exceptionOrNull()
+            problem = failure?.message
+            if (failure == null) onSave(name, if (video) config.withVideoOptions(next) else config.withImageOptions(next))
+            else resetSignal++
+        }
+        problem?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
     }
 }

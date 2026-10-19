@@ -103,11 +103,17 @@ fun ImageToolSettingsScreen(provider: ModelProvider, config: SystemToolConfig, o
 }
 
 @Composable
-private fun ImageOptionInput(field: ImageOptionField, value: JsonElement?, onChange: (JsonElement?) -> Unit) {
+internal fun ImageOptionInput(
+    field: ImageOptionField,
+    value: JsonElement?,
+    resetSignal: Int = 0,
+    onFocusChange: (Boolean) -> Unit = {},
+    onChange: (JsonElement?) -> Unit
+) {
     val current = (value as? JsonPrimitive)?.takeUnless { it == JsonNull }?.content.orEmpty()
     var text by remember { mutableStateOf(current) }
     var focused by remember { mutableStateOf(false) }
-    LaunchedEffect(current, focused) { if (!focused) text = current }
+    LaunchedEffect(current, focused, resetSignal) { if (!focused) text = current }
     var choosing by remember { mutableStateOf(false) }
     val choices = if (field.kind == "boolean") listOf("true", "false") else field.choices
     val invalid = text.isNotBlank() && when (field.kind) {
@@ -129,7 +135,7 @@ private fun ImageOptionInput(field: ImageOptionField, value: JsonElement?, onCha
             },
             label = { Text(field.label) }, placeholder = { Text(stringResource(R.string.image_tool_provider_default_hint)) },
             readOnly = field.kind == "boolean", singleLine = true, isError = invalid,
-            modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
+            modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused; onFocusChange(it.isFocused) },
              supportingText = if (field.min != null || field.max != null) {{ Text(stringResource(R.string.image_tool_range_hint, field.min ?: "…", field.max ?: "…")) }} else null
         )
         if (choices.isNotEmpty()) Box {

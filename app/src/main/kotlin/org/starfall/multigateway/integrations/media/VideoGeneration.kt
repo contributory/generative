@@ -2,6 +2,7 @@ package org.starfall.multigateway.integrations.media
 
 import org.starfall.multigateway.shared.model.media.VideoApi
 import org.starfall.multigateway.shared.model.media.MediaInputImage
+import org.starfall.multigateway.shared.model.media.MediaInputVideo
 import org.starfall.multigateway.shared.helpers.media.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
@@ -20,22 +21,29 @@ internal class VideoGeneration(
     private val pollIntervalMillis: Long = 1500,
     private val pollingTimeoutMillis: Long = 15 * 60 * 1000L
 ) {
-    suspend fun generate(provider: ModelProvider, model: String, prompt: String, image: MediaInputImage?, options: JsonObject, imageUrl: String?): JsonObject {
+    suspend fun generate(
+        provider: ModelProvider, model: String, prompt: String, image: MediaInputImage?, options: JsonObject, imageUrl: String?,
+        video: MediaInputVideo? = null, videoUrl: String? = null
+    ): JsonObject {
         val api = videoApi(provider)
         require(image == null || imageUrl == null) { "Use one source image: an attachment or input_image_url." }
+        require(video == null || videoUrl == null) { "Use one source video: an attachment or input_video_url." }
         imageUrl?.let(::validateVideoImageUrl)
-        val effectiveOptions = if (api == VideoApi.AGNES && imageUrl != null) JsonObject(options + ("first_frame" to str(imageUrl))) else options
+        videoUrl?.let { validateReferenceUrl(it, "videos") }
+        val effectiveOptions = if (api == VideoApi.AGNES) agnesVideoInputs(options, imageUrl, videoUrl) else options
         validateVideoOptions(provider, model, effectiveOptions)
         val configuredBase = providerBase(provider).removeSuffix("/videos")
         val base = if (api == VideoApi.AGNES) agnesApiBase(provider) else configuredBase
         var job = when (api) {
             VideoApi.OPENAI -> {
                 require(imageUrl == null) { "This video API needs an attached source image, not input_image_url." }
-                http.json(http.request("$base/videos", provider).post(openAiVideoRequest(model, prompt, image)).build())
+                require(videoUrl == null) { "This video API needs an attached source video, not input_video_url." }
+                http.json(http.request("$base/videos", provider).post(openAiVideoRequest(model, prompt, image, video)).build())
             }
             VideoApi.AGNES -> {
                 require(image == null) { "Agnes Video requires public image URLs. Local file uploads are not supported by its documented API; use first-frame URL in Video settings or input_image_url." }
-                http.post("$base/videos", agnesVideoRequest(model, prompt, options, imageUrl), provider)
+                require(video == null) { "Agnes Video requires public video URLs. Local file uploads are not supported by its documented API; use input_video_url." }
+                http.post("$base/videos", agnesVideoRequest(model, prompt, options, imageUrl, videoUrl), provider)
             }
         }
         val id = videoJobId(job, api)

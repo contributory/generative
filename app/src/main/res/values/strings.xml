@@ -637,6 +637,7 @@
     <string name="tool_generate_image_description">Generate images from prompts using the selected model.</string>
     <string name="tool_generate_video_description">Generate videos from prompts using the selected model.</string>
     <string name="tool_optional_params_title">Optional parameters</string>
+    <string name="tool_optional_params_default_hint">A parameter with a value field can also have a default. It is used when the AI leaves the parameter out, and always applies when the parameter is turned off. Defaults are saved per model and shared with that model\u2019s Image/Video settings.</string>
     <string name="tool_optional_params_description">Turn a parameter off to hide it from the AI and ignore it if the AI passes it anyway.</string>
     <string name="tool_select_compatible_model_hint">Select a compatible model to enable this tool.</string>
     <string name="tool_image_settings">Image settings</string>

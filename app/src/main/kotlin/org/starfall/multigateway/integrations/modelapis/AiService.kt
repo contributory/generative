@@ -90,7 +90,7 @@ class AiService(
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             references.map { reference ->
                 val meta = attachments.metadata(reference) ?: error("Attachment metadata is missing")
-                require(meta.sizeBytes <= maxBytes) { "Reference image is too large for the selected generation API." }
+                require(meta.sizeBytes <= maxBytes) { "Reference file is too large for the selected generation API." }
                 val input = attachments.open(reference) ?: error("Attachment data is missing")
                 "tool-file:" + files.save(input, meta.mimeType, maxBytes)
             }

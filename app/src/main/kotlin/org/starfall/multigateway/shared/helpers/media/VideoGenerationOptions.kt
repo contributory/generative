@@ -13,10 +13,12 @@ internal fun videoApi(provider: ModelProvider): VideoApi = when {
     else -> VideoApi.OPENAI
 }
 
-internal fun validateVideoImageUrl(value: String): String {
+internal fun validateVideoImageUrl(value: String): String = validateReferenceUrl(value, "images")
+
+internal fun validateReferenceUrl(value: String, kind: String): String {
     val url = value.toHttpUrlOrNull()
     require(url != null && url.scheme == "https" && url.username.isEmpty() && url.password.isEmpty()) {
-        "Reference images require a publicly accessible HTTPS URL without embedded credentials."
+        "Reference $kind require a publicly accessible HTTPS URL without embedded credentials."
     }
     return value
 }
