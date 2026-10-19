@@ -6,6 +6,12 @@ Refactor the persistence layer so opening MultiGateway does not load and deseria
 
 This is a data-layer and user-experience change. The app must become usable quickly after launch, and sending a message immediately after opening the app must not depend on unrelated history having finished loading.
 
+## Execution status
+
+- ~~Phase 0 source inventory: current Room entities, DAO queries, repositories, model fields, call sites, and existing persistence tests inspected.~~ Completed before the first code slice; the active module is `app` and the current Room schema is version 9.
+- ~~Additive first slice: expose a metadata-only conversation-list projection and an explicit full-conversation load method without changing the existing full-history API.~~ Implemented in `ConversationListItem.kt`, `Daos.kt`, and `ConversationRepository.kt`; focused tests are in `SidebarStorageTest.kt`. Verified with `./gradlew :app:testDebugUnitTest --tests org.starfall.multigateway.SidebarStorageTest` and `git diff --check`.
+- Next: build a representative v9 fixture and integrity checks before changing the Room schema or removing any legacy JSON column.
+
 ## Non-negotiable requirements
 
 1. **Do not lose user data.** Migrate existing databases in place and preserve conversation IDs, order, timestamps, message contents, all message versions, attachments/references, tool activity/results, summaries, reasoning settings, provider/model/profile links, and all configuration fields.
@@ -82,7 +88,7 @@ This is a required architecture decision, not an optional optimization. Provider
 
 ### Phase 0 — Inventory and baseline
 
-- Read `AGENTS.md` and inspect current entities, DAO queries, repositories, model data classes, backup/import/export code, and all call sites.
+- ~~Read `AGENTS.md` and inspect current entities, DAO queries, repositories, model data classes, backup/import/export code, and all call sites.~~
 - Inventory every JSON-backed Room column and identify its full schema, default/null semantics, secret handling, ordering, and relationships.
 - Add/identify representative fixtures for an empty database, normal chats, long chats, multiple message versions, tool calls/results, attachments, summaries, all provider types, MCP servers, profiles, and speech settings.
 - Capture baseline timings and counts on a realistic database: database open, first usable screen, first-send readiness, conversation list display, and opening a large conversation. Record row counts and representative data checksums for migration verification.

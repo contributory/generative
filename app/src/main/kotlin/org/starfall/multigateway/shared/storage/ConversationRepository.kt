@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import org.starfall.multigateway.shared.model.ChatRole
 import org.starfall.multigateway.shared.model.Conversation
+import org.starfall.multigateway.shared.model.ConversationListItem
 import org.starfall.multigateway.shared.model.ConversationSummary
 import org.starfall.multigateway.shared.model.MessageVersion
 import org.starfall.multigateway.shared.model.StoredMessage
@@ -24,10 +25,23 @@ class ConversationRepository(private val db: AppDatabase) {
 
     private val state = ImmediateState(stored)
     val allConversations: Flow<List<Conversation>> = state.flow
+    /** Metadata-only list flow. Full message histories are loaded separately. */
+    val conversationList: Flow<List<ConversationListItem>> = dao.getConversationListItems()
 
     suspend fun getById(id: String): Conversation? {
         state.value?.let { items -> return items.firstOrNull { it.id == id } }
         return withContext(Dispatchers.IO) { dao.getConversationById(id)?.let(::entityToModel) }
+    }
+
+    /**
+     * Loads one complete conversation directly from storage.
+     *
+     * This explicit method is the boundary future selection code should use
+     * after observing [conversationList]. The existing [getById] contract stays
+     * unchanged while callers migrate away from the application-wide snapshot.
+     */
+    suspend fun loadById(id: String): Conversation? = withContext(Dispatchers.IO) {
+        dao.getConversationById(id)?.let(::entityToModel)
     }
 
     suspend fun saveConversation(conversation: Conversation) {

@@ -9,9 +9,26 @@ import org.starfall.multigateway.shared.storage.database.entities.ModelProviderE
 import org.starfall.multigateway.shared.storage.database.entities.ProviderGroupEntity
 import org.starfall.multigateway.shared.storage.database.entities.ProviderModelsEntity
 import org.starfall.multigateway.shared.storage.database.entities.SpeechServiceEntity
+import org.starfall.multigateway.shared.model.ConversationListItem
 
 @Dao
 interface ConversationDao {
+    /**
+     * Reads only conversation metadata. Do not add messagesJson or summaryJson
+     * to this projection: the list must not fetch or deserialize full history.
+     */
+    @Query(
+        """
+        SELECT id, title, createdAt, updatedAt, tokenCount, providerId, modelId,
+            profileId, reasoningEffort,
+            CASE WHEN messagesJson = '[]' THEN 0 ELSE 1 END AS hasMessages,
+            CASE WHEN summaryJson IS NULL THEN 0 ELSE 1 END AS hasSummary
+        FROM conversations
+        ORDER BY updatedAt DESC
+        """
+    )
+    fun getConversationListItems(): Flow<List<ConversationListItem>>
+
     @Query("SELECT * FROM conversations ORDER BY updatedAt DESC")
     fun getAllConversations(): Flow<List<ConversationEntity>>
 

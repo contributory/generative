@@ -10,6 +10,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.multigateway.shared.storage.database.AppDatabase
+import org.starfall.multigateway.shared.storage.database.entities.ConversationEntity
 import org.starfall.multigateway.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.storage.ConversationRepository
@@ -41,6 +42,57 @@ class SidebarStorageTest {
             assertEquals("Second model", restored.activeVersion.modelDisplayName)
             assertEquals("p2", restored.activeVersion.providerId)
             assertEquals("First model", restored.copy(activeVersionIndex = 0).activeVersion.modelDisplayName)
+        } finally { db.close() }
+    }
+
+    @Test fun conversationListReadsMetadataWithoutDecodingMessageOrSummaryJson() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java).build()
+        try {
+            db.conversationDao().insertOrUpdate(
+                ConversationEntity(
+                    id = "broken-history",
+                    title = "Metadata only",
+                    createdAt = 1,
+                    updatedAt = 2,
+                    messagesJson = "not valid json",
+                    tokenCount = 7,
+                    providerId = "provider",
+                    modelId = "model",
+                    profileId = "profile",
+                    summaryJson = "also not valid json",
+                    reasoningEffort = "high"
+                )
+            )
+
+            val item = ConversationRepository(db).conversationList.first().single()
+
+            assertEquals("broken-history", item.id)
+            assertEquals("Metadata only", item.title)
+            assertEquals(7, item.tokenCount)
+            assertEquals("provider", item.providerId)
+            assertEquals("model", item.modelId)
+            assertEquals("profile", item.profileId)
+            assertEquals("high", item.reasoningEffort)
+            assertTrue(item.hasMessages)
+            assertTrue(item.hasSummary)
+        } finally { db.close() }
+    }
+
+    @Test fun loadByIdRemainsAnExplicitFullHistoryRead() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java).build()
+        try {
+            val conversation = Conversation(
+                id = "selected",
+                title = "Selected",
+                createdAt = 1,
+                updatedAt = 1,
+                messages = listOf(
+                    StoredMessage("message", ChatRole.USER, listOf(MessageVersion(content = "Loaded")))
+                )
+            )
+            ConversationRepository(db).saveConversation(conversation)
+
+            assertEquals(conversation, ConversationRepository(db).loadById("selected"))
         } finally { db.close() }
     }
     @Test fun bulkDeleteKeepsUnselectedConversationAndItsMessages() = runBlocking {
