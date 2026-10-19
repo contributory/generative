@@ -10,7 +10,8 @@ This is a data-layer and user-experience change. The app must become usable quic
 
 - ~~Phase 0 source inventory: current Room entities, DAO queries, repositories, model fields, call sites, and existing persistence tests inspected.~~ Completed before the first code slice; the active module is `app` and the current Room schema is version 9.
 - ~~Additive first slice: expose a metadata-only conversation-list projection and an explicit full-conversation load method without changing the existing full-history API.~~ Implemented in `ConversationListItem.kt`, `Daos.kt`, and `ConversationRepository.kt`; focused tests are in `SidebarStorageTest.kt`. Verified with `./gradlew :app:testDebugUnitTest --tests org.starfall.multigateway.SidebarStorageTest` and `git diff --check`.
-- Next: build a representative v9 fixture and integrity checks before changing the Room schema or removing any legacy JSON column.
+- ~~Representative v9 baseline fixture: create a real v9 schema fixture covering rich conversation history, versions, attachments, tool activity, summary, provider/model/profile/MCP/speech data, encrypted values, nulls, and malformed payloads.~~ Implemented in `CredentialMigrationTest.kt`; the fixture is opened through Room at version 9 and checked through repository/DAO reads. `compileDebugAndroidTestKotlin` passed and direct instrumentation ran all 3 `CredentialMigrationTest` tests successfully.
+- Next: design the normalized v10 schema and write the first v9→v10 migration test against this fixture; production schema changes remain intentionally untouched.
 
 ## Non-negotiable requirements
 
@@ -90,7 +91,7 @@ This is a required architecture decision, not an optional optimization. Provider
 
 - ~~Read `AGENTS.md` and inspect current entities, DAO queries, repositories, model data classes, backup/import/export code, and all call sites.~~
 - Inventory every JSON-backed Room column and identify its full schema, default/null semantics, secret handling, ordering, and relationships.
-- Add/identify representative fixtures for an empty database, normal chats, long chats, multiple message versions, tool calls/results, attachments, summaries, all provider types, MCP servers, profiles, and speech settings.
+- Add/identify remaining fixtures for an empty database, long chats, all provider types, and earlier supported schemas; the representative v9 rich-history fixture is tracked as completed above.
 - Capture baseline timings and counts on a realistic database: database open, first usable screen, first-send readiness, conversation list display, and opening a large conversation. Record row counts and representative data checksums for migration verification.
 
 ### Phase 1 — Design schema and migration tests

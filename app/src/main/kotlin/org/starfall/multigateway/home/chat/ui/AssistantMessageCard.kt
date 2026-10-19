@@ -104,6 +104,7 @@ fun AssistantMessageCard(
         if (isStreaming) {
             GenerationLoadingIndicator(
                 modelName = generatedModelName,
+                phase = GenerationPhase.of(activeVersion),
                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
             )
         }

@@ -24,7 +24,10 @@
     <string name="crash_issue_open_failed">Could not open GitHub. Please check that a browser is installed.</string>
     <string name="thinking">Thinking</string>
     <string name="thinking_streaming">Thinking...</string>
+    <string name="generation_requesting">Requesting...</string>
+    <string name="generation_thinking">Thinking...</string>
     <string name="generating">Generating...</string>
+    <string name="generation_executing">Executing...</string>
     <string name="chat_input_placeholder">Type some text...</string>
     <string name="chat_submit_failed">Unable to send. Check the selected model and try again.</string>
     <string name="thought_process">Thought Process</string>
