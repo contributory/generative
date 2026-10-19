@@ -70,7 +70,6 @@ fun ProvidersScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val screenTransitionActive = LocalScreenTransitionActive.current
     var deletingProviderId by remember { mutableStateOf<String?>(null) }
     var orderedProviders by remember { mutableStateOf(providers) }
     var rootItems by remember { mutableStateOf(providerRootItems(providers, providerGroups)) }
@@ -85,11 +84,6 @@ fun ProvidersScreen(
     // Preserve the opened folder when navigation temporarily disposes this screen for provider editing.
     var openGroupId by rememberSaveable { mutableStateOf<String?>(null) }
     var skipNextFolderEnterAnimation by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(skipNextFolderEnterAnimation, screenTransitionActive) {
-        if (skipNextFolderEnterAnimation && !screenTransitionActive) {
-            skipNextFolderEnterAnimation = false
-        }
-    }
     // Keep the last opened folder composed until its reverse exit animation finishes.
     var renderedFolderGroup by remember { mutableStateOf<ProviderGroup?>(null) }
     var creatingGroup by remember { mutableStateOf(false) }
@@ -134,6 +128,10 @@ fun ProvidersScreen(
         if (openGroup != null) renderedFolderGroup = openGroup
     }
     val folderOverlayGroup = openGroup ?: renderedFolderGroup
+    // The skip flag is one-shot: the overlay reads it when first composed, then it is cleared so later opens animate.
+    LaunchedEffect(folderOverlayGroup?.id) {
+        if (folderOverlayGroup != null) skipNextFolderEnterAnimation = false
+    }
 
     fun createProvider(groupId: String? = null) {
         onOpenProviderEditor(
