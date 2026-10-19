@@ -39,9 +39,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.gestures.animateScrollBy
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.ui.unit.Velocity
 import kotlin.math.exp
 import kotlin.math.min
@@ -72,6 +69,10 @@ import org.starfall.multigateway.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.multigateway.home.shared.ui.ConversationSummaryBottomSheet
 import org.starfall.multigateway.home.chat.model.ContextWindowStatus
 
+// Jump-to-latest: ease time constant (smaller is faster), frames the bottom must hold, and a hard cap.
+private const val JUMP_EASE_MS = 90f
+private const val JUMP_SETTLE_FRAMES = 3
+private const val JUMP_MAX_DURATION_MS = 2500L
 // Far larger than any item; clamped to the bottom by the first LazyColumn measure.
 private const val OPEN_AT_BOTTOM_OFFSET = 10_000_000
 
@@ -269,24 +270,38 @@ fun ChatScreen(
     }
     // Animated version used by the jump-to-latest button. Distant targets are first brought within
     // a few items so the animation covers a short, visible distance instead of the whole history.
+    // The rest is one continuous per-frame ease toward the bottom edge of the newest item. Re-reading
+    // the layout every frame keeps it smooth when sizes change underneath it (items measured for the
+    // first time, the tail spacer, streamed text); chained fixed-length tweens would each decelerate to
+    // zero and make the scroll stutter.
     suspend fun animateScrollToBottom() {
         val index = messages.lastIndex + messageIndexOffset
         if (index < 0) return
         if (index - listState.firstVisibleItemIndex > 6) listState.scrollToItem(index - 3)
-        // The last item can still grow while it is measured or streamed, so re-measure a few times.
-        repeat(4) {
+        var previous = 0L
+        var started = 0L
+        var settledFrames = 0
+        while (settledFrames < JUMP_SETTLE_FRAMES) {
+            val now = withFrameNanos { it }
+            if (started == 0L) started = now
+            // Never loop forever if the content keeps growing under the animation.
+            if ((now - started) / 1_000_000L > JUMP_MAX_DURATION_MS) break
+            val elapsedMs = if (previous == 0L) 16f else ((now - previous) / 1_000_000f).coerceIn(1f, 64f)
+            previous = now
             val layout = listState.layoutInfo
             val item = layout.visibleItemsInfo.firstOrNull { it.index == index }
             if (item == null) {
-                listState.animateScrollToItem(index)
-                return@repeat
+                listState.scrollToItem(index)
+                continue
             }
-            val remaining = item.offset + item.size - (layout.viewportEndOffset - layout.afterContentPadding)
-            if (remaining <= 1) return
-            listState.animateScrollBy(
-                remaining.toFloat(),
-                tween(durationMillis = 350, easing = FastOutSlowInEasing)
-            )
+            val remaining = (item.offset + item.size - (layout.viewportEndOffset - layout.afterContentPadding)).toFloat()
+            if (remaining <= 1f) {
+                settledFrames++
+                continue
+            }
+            settledFrames = 0
+            val step = (remaining * (1f - exp(-elapsedMs / JUMP_EASE_MS))).coerceAtLeast(min(remaining, elapsedMs * 0.05f))
+            listState.scrollBy(step)
         }
         scrollToBottom()
     }

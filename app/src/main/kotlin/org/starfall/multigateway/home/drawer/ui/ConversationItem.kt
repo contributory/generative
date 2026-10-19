@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import org.starfall.multigateway.R
 import java.util.UUID
-import org.starfall.multigateway.shared.model.Conversation
+import org.starfall.multigateway.shared.model.ConversationListItem
 import org.starfall.multigateway.shared.theme.LocalAmoledMode
 import org.starfall.multigateway.shared.ui.layout.AmoledBorderEdge
 import org.starfall.multigateway.shared.ui.dialogs.AppAlertDialog as AlertDialog
@@ -51,7 +51,7 @@ import org.starfall.multigateway.shared.ui.model.modelInitial
 
 @Composable
 internal fun ConversationItem(
-    chat: Conversation, currentId: String?, generatingIds: Set<String>, selecting: Boolean, checked: Boolean, pinned: Boolean,
+    chat: ConversationListItem, currentId: String?, generatingIds: Set<String>, selecting: Boolean, checked: Boolean, pinned: Boolean,
     onClick: () -> Unit, onLongClick: () -> Unit, onSelect: () -> Unit,
     onPin: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit, onMove: () -> Unit,
     showContextMenu: Boolean, onContextMenuDismiss: () -> Unit,

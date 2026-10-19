@@ -78,7 +78,7 @@ internal class ConversationSummaryCoordinator(
                 }, basePrompt)
             }
             check(text.isNotBlank()) { "Summary returned no content" }
-            val latest = repository.getById(conversation.id)
+            val latest = repository.loadById(conversation.id)
                 ?: currentConversation()?.takeIf { it.id == conversation.id } ?: conversation
             val updated = latest.copy(summary = ConversationSummary(UUID.randomUUID().toString(), text, cutoff, SummaryRole.SYSTEM),
                 updatedAt = System.currentTimeMillis())

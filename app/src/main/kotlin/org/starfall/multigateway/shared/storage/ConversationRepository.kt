@@ -3,7 +3,10 @@ package org.starfall.multigateway.shared.storage
 import androidx.room.withTransaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.starfall.multigateway.shared.model.ChatRole
 import org.starfall.multigateway.shared.model.Conversation
@@ -29,21 +32,20 @@ class ConversationMigrationException(
 
 class ConversationRepository(private val db: AppDatabase) {
     private val dao = db.conversationDao()
+    private val writeLock = Mutex()
 
-    // Kept for compatibility with existing callers. New list UI should use conversationList,
-    // which never loads these child rows.
-    private val stored: Flow<List<Conversation>> = dao.getAllConversations().map { entities ->
-        withContext(Dispatchers.IO) { entities.map { entityToModel(it) } }
-    }
-
-    private val state = ImmediateState(stored)
-    val allConversations: Flow<List<Conversation>> = state.flow
+    /**
+     * Compatibility full-history flow. It is cold on purpose: constructing a repository no
+     * longer starts decoding every conversation. New UI code must use [conversationList] and
+     * [loadById] instead.
+     */
+    val allConversations: Flow<List<Conversation>> = dao.getAllConversations()
+        .map { entities -> entities.map { entityToModel(it) } }
+        .flowOn(Dispatchers.IO)
     val conversationList: Flow<List<ConversationListItem>> = dao.getConversationListItems()
 
-    suspend fun getById(id: String): Conversation? {
-        state.value?.let { items -> return items.firstOrNull { it.id == id } }
-        return loadById(id)
-    }
+    /** Full-history lookup retained for callers that predate [loadById]. */
+    suspend fun getById(id: String): Conversation? = loadById(id)
 
     /** Loads exactly one conversation and its relational children. */
     suspend fun loadById(id: String): Conversation? = withContext(Dispatchers.IO) {
@@ -53,46 +55,54 @@ class ConversationRepository(private val db: AppDatabase) {
 
     suspend fun saveConversation(conversation: Conversation) {
         val persisted = conversation.pruningEmptyResponses()
-        state.mutate({ it.upsert(persisted) { item -> item.id }.sortedByDescending { it.updatedAt } }) {
-            db.withTransaction {
-                dao.insertOrUpdate(modelToEntity(persisted))
-                dao.deleteMessages(persisted.id)
-                dao.deleteMigrationIssues(persisted.id)
-                persistChildren(persisted)
+        withContext(Dispatchers.IO) {
+            writeLock.withLock {
+                db.withTransaction {
+                    dao.insertOrUpdate(modelToEntity(persisted))
+                    dao.deleteMessages(persisted.id)
+                    dao.deleteMigrationIssues(persisted.id)
+                    persistChildren(persisted)
+                }
             }
         }
     }
 
     suspend fun renameConversation(id: String, title: String) {
         val now = System.currentTimeMillis()
-        state.mutate({ items ->
-            items.map { if (it.id == id) it.copy(title = title, updatedAt = now) else it }
-                .sortedByDescending { it.updatedAt }
-        }) {
-            db.withTransaction {
-                val current = dao.getConversationById(id) ?: return@withTransaction
-                dao.insertOrUpdate(current.copy(title = title, updatedAt = now))
+        withContext(Dispatchers.IO) {
+            writeLock.withLock {
+                db.withTransaction {
+                    val current = dao.getConversationById(id) ?: return@withTransaction
+                    dao.insertOrUpdate(current.copy(title = title, updatedAt = now))
+                }
             }
         }
     }
 
     suspend fun deleteConversation(id: String) {
-        state.mutate({ items -> items.filterNot { it.id == id } }) { dao.deleteById(id) }
+        withContext(Dispatchers.IO) { writeLock.withLock { dao.deleteById(id) } }
     }
 
     suspend fun deleteConversations(ids: List<String>) {
-        state.mutate({ items -> items.filterNot { it.id in ids } }) {
-            db.withTransaction { ids.chunked(500).forEach { dao.deleteByIds(it) } }
+        withContext(Dispatchers.IO) {
+            writeLock.withLock {
+                db.withTransaction { ids.chunked(500).forEach { dao.deleteByIds(it) } }
+            }
         }
     }
 
     suspend fun deleteAll() {
-        state.mutate({ emptyList() }) { dao.deleteAll() }
+        withContext(Dispatchers.IO) { writeLock.withLock { dao.deleteAll() } }
     }
 
     /** The subset of [names] that no stored conversation still refers to. */
     suspend fun unreferencedFiles(names: Collection<String>): Set<String> =
         names.filterNot { dao.mentionsFile(it) }.toSet()
+
+    /** Returns raw references without decoding any conversation or message model. */
+    suspend fun allFileReferences(): List<String> = withContext(Dispatchers.IO) {
+        dao.getAllFileReferences()
+    }
 
     private suspend fun entityToModel(entity: ConversationEntity): Conversation {
         val issues = dao.getMigrationIssues(entity.id)

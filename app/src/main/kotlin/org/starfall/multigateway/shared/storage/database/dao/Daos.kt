@@ -116,6 +116,13 @@ interface ConversationDao {
         )
     """)
     suspend fun mentionsFile(name: String): Boolean
+
+    @Query("""
+        SELECT reference FROM message_version_files
+        UNION ALL
+        SELECT reference FROM tool_activity_files
+    """)
+    suspend fun getAllFileReferences(): List<String>
 }
 
 @Dao

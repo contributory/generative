@@ -15,6 +15,7 @@ import org.starfall.multigateway.shared.media.SpeechSynthesisService
 import org.starfall.multigateway.shared.media.TtsHelper
 import org.starfall.multigateway.shared.model.ChatRole
 import org.starfall.multigateway.shared.model.Conversation
+import org.starfall.multigateway.shared.model.ConversationListItem
 import org.starfall.multigateway.shared.model.ConversationSummary
 import org.starfall.multigateway.shared.model.ConversationSummaryRequest
 import org.starfall.multigateway.shared.model.DEFAULT_TITLE_GENERATION_PROMPT
@@ -136,8 +137,8 @@ class ChatViewModel(
     private val deletingAllConversations = MutableStateFlow(false)
     private val deletingConversations = MutableStateFlow<Set<String>>(emptySet())
     private val renamingConversations = MutableStateFlow<Map<String, String>>(emptyMap())
-    val conversations: StateFlow<List<Conversation>> = combine(
-        conversationRepo.allConversations, deletingConversations, renamingConversations, deletingAllConversations
+    val conversations: StateFlow<List<ConversationListItem>> = combine(
+        conversationRepo.conversationList, deletingConversations, renamingConversations, deletingAllConversations
     ) { items, deleted, renamed, deletingAll ->
         if (deletingAll) emptyList() else items.filterNot { it.id in deleted }.map { item ->
             renamed[item.id]?.let { item.copy(title = it) } ?: item
@@ -159,6 +160,7 @@ class ChatViewModel(
 
     private val _currentConversation = MutableStateFlow<Conversation?>(null)
     val currentConversation: StateFlow<Conversation?> = _currentConversation.asStateFlow()
+    private var conversationSelectionToken = 0L
 
     private data class GenerationUiState(
         val busy: Boolean = false,
@@ -408,13 +410,15 @@ class ChatViewModel(
             // An explicitly empty ID means the previous session was on a blank New Chat.
             // A missing ID is a legacy install, so preserve the old latest-history fallback once.
             if (storedId == "") return@launch
-            val allConversations = conversationRepo.allConversations.first()
+            val conversationItems = conversationRepo.conversationList.first()
             val lastConversation = if (storedId != null) {
-                allConversations.firstOrNull { it.id == storedId && it.messages.isNotEmpty() }
+                conversationItems.firstOrNull {
+                    it.id == storedId && it.hasMessages && !it.hasMigrationIssue
+                }
             } else {
-                allConversations.asSequence()
-                    .filter { it.messages.isNotEmpty() }
-                    .maxWithOrNull(compareBy<Conversation> { it.updatedAt }.thenBy { it.createdAt })
+                conversationItems.asSequence()
+                    .filter { it.hasMessages && !it.hasMigrationIssue }
+                    .maxWithOrNull(compareBy<ConversationListItem> { it.updatedAt }.thenBy { it.createdAt })
             } ?: return@launch
 
             // Do not replace a selection made while Room was loading.
@@ -422,7 +426,7 @@ class ChatViewModel(
                 !deletingAllConversations.value &&
                 lastConversation.id !in deletingConversations.value
             ) {
-                selectConversation(lastConversation)
+                selectConversation(lastConversation.id)
             }
         }
     }
@@ -501,28 +505,45 @@ class ChatViewModel(
                 conversationRepo.saveConversation(updated)
             } catch (error: Exception) {
                 if (_currentConversation.value == updated) {
-                    _currentConversation.value = conversationRepo.getById(previous.id) ?: previous
+                    _currentConversation.value = conversationRepo.loadById(previous.id) ?: previous
                 }
                 throw error
             }
         }
     }
 
+    /** Compatibility overload for tests and callers that already have an explicit full model. */
     fun selectConversation(conversation: Conversation) {
         if (deletingAllConversations.value || conversation.id in deletingConversations.value) return
+        ++conversationSelectionToken
+        applySelectedConversation(conversation)
+    }
+
+    fun selectConversation(conversationId: String) {
+        if (deletingAllConversations.value || conversationId in deletingConversations.value) return
+        val request = ++conversationSelectionToken
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            val conversation = conversationRepo.loadById(conversationId) ?: return@launch
+            // A slow history read must not replace a newer selection.
+            if (request != conversationSelectionToken || deletingAllConversations.value ||
+                conversationId in deletingConversations.value
+            ) return@launch
+            applySelectedConversation(conversation)
+        }
+    }
+
+    private fun applySelectedConversation(conversation: Conversation) {
         val selected = existingGeneration(conversation.id)?.snapshot ?: conversation
         if (selected.id != _currentConversation.value?.id) toolChat.disconnectRemoteMachines()
         _currentConversation.value = selected
         viewModelScope.launch(LocalWriteErrors.handler) {
             prefsRepo.setLastActiveConversationId(selected.id)
-        }
-        drainQueuedMessages()
-        if (!appPreferences.value.persistSelectedModel) return
-        conversationModelProvider(selected)?.let { provider ->
-            viewModelScope.launch(LocalWriteErrors.handler) {
+            if (!appPreferences.value.persistSelectedModel) return@launch
+            conversationModelProvider(selected)?.let { provider ->
                 prefsRepo.setSelectedModel(provider.id, selected.modelId)
             }
         }
+        drainQueuedMessages()
     }
 
     fun startNewChat() {
@@ -565,7 +586,7 @@ class ChatViewModel(
                 synchronized(generationLock) {
                     generations.filterKeys { it in targets }.values.toList()
                 }.forEach { it.stopAndJoin() }
-                val uploads = uploadsOf(targets.mapNotNull { conversationRepo.getById(it) } + listOfNotNull(previous))
+                val uploads = uploadsOf(targets.mapNotNull { conversationRepo.loadById(it) } + listOfNotNull(previous))
                 conversationRepo.deleteConversations(targets.toList())
                 deleted = true
                 prefsRepo.updateSidebar { it.removeChats(targets) }
@@ -636,7 +657,9 @@ class ChatViewModel(
             try {
                 summaryJob?.cancelAndJoin()
                 synchronized(generationLock) { generations.values.toList() }.forEach { it.stopAndJoin() }
-                val uploads = uploadsOf(conversationRepo.allConversations.first() + listOfNotNull(previous))
+                val uploads = conversationRepo.allFileReferences()
+                    .mapNotNull(toolFiles::nameOf)
+                    .toSet() + uploadsOf(listOfNotNull(previous))
                 conversationRepo.deleteAll()
                 deleted = true
                 prefsRepo.updateSidebar { SidebarOrganization() }
@@ -653,6 +676,10 @@ class ChatViewModel(
     suspend fun importConversations(items: List<Conversation>) {
         items.forEach { conversationRepo.saveConversation(it) }
     }
+
+    /** Full-history reads are kept at the explicit export boundary, not in sidebar state. */
+    suspend fun conversationsForExport(): List<Conversation> =
+        conversationRepo.conversationList.first().mapNotNull { conversationRepo.loadById(it.id) }
 
     fun deleteAllUserData(attachedFiles: Collection<String> = emptyList()) {
         clearAllConversations(attachedFiles)
@@ -826,7 +853,7 @@ class ChatViewModel(
                 }
             } else {
                 val current = _currentConversation.value?.takeIf { it.id == conversationId }
-                    ?: conversationRepo.getById(conversationId)
+                    ?: conversationRepo.loadById(conversationId)
                     ?: return@launch
                 if (current.title != expectedFallbackTitle) return@launch
                 val updated = current.copy(title = title, updatedAt = System.currentTimeMillis())

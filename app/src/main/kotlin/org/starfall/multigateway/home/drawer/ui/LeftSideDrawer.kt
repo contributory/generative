@@ -38,7 +38,7 @@ import androidx.compose.ui.res.painterResource
 import org.starfall.multigateway.R
 import java.util.UUID
 import org.starfall.multigateway.shared.model.ChatFolder
-import org.starfall.multigateway.shared.model.Conversation
+import org.starfall.multigateway.shared.model.ConversationListItem
 import org.starfall.multigateway.shared.model.PromptLibrary
 import org.starfall.multigateway.shared.model.SidebarOrganization
 import org.starfall.multigateway.shared.model.provider.ModelProvider
@@ -59,7 +59,7 @@ import org.starfall.multigateway.home.drawer.logic.lastModelIcon
 private fun SidebarLabel(text: String) { Text(text, Modifier.padding(start = 8.dp, top = 10.dp, bottom = 6.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 @Composable
 fun LeftSideDrawer(
-    conversations: List<Conversation>,
+    conversations: List<ConversationListItem>,
     currentConversationId: String?,
     isOpen: Boolean,
     generatingConversationIds: Set<String> = emptySet(),
@@ -67,7 +67,7 @@ fun LeftSideDrawer(
     onUpdateOrganization: ((SidebarOrganization) -> SidebarOrganization) -> Unit,
     onDeleteConversations: (Set<String>) -> Unit,
     defaultSystemPrompt: String,
-    onSelectConversation: (Conversation) -> Unit,
+    onSelectConversation: (ConversationListItem) -> Unit,
     onNewChat: () -> Unit,
     onRenameConversation: (String, String) -> Unit,
     onDeleteConversation: (String) -> Unit,
@@ -87,7 +87,7 @@ fun LeftSideDrawer(
     var contextChatId by remember { mutableStateOf<String?>(null) }
     var selected by remember { mutableStateOf(emptySet<String>()) }
     var deleting by remember { mutableStateOf(emptySet<String>()) }
-    var renaming by remember { mutableStateOf<Conversation?>(null) }
+    var renaming by remember { mutableStateOf<ConversationListItem?>(null) }
     var title by remember { mutableStateOf("") }
     var grouping by remember { mutableStateOf(false) }
     var blankContextMenu by remember { mutableStateOf(false) }
@@ -104,7 +104,7 @@ fun LeftSideDrawer(
     val matchingIds = matches.map { it.id }.toSet()
     fun stopSelecting() { selecting = false; selected = emptySet(); contextChatId = null }
     fun dismissContextMenu() { contextChatId = null }
-    fun onChatClick(id: String, chat: Conversation) {
+    fun onChatClick(id: String, chat: ConversationListItem) {
         if (selecting) {
             selected = if (id in selected) selected - id else selected + id
             if (selected.isEmpty()) stopSelecting()
@@ -193,7 +193,7 @@ fun LeftSideDrawer(
                 if (folders.isNotEmpty()) item(key = "folders-label") { SidebarLabel("Folders") }
                 folders.forEach { folder ->
                     val chats = matches.filter { organization.chatFolders[it.id] == folder.id }
-                        .sortedWith(compareByDescending<Conversation> { it.id in organization.pinnedChatIds }.thenByDescending { it.updatedAt })
+                        .sortedWith(compareByDescending<ConversationListItem> { it.id in organization.pinnedChatIds }.thenByDescending { it.updatedAt })
                     if (search.isBlank() || chats.isNotEmpty() || folder.name.contains(search, true)) {
                         item(key = "folder:${folder.id}") {
                             var menu by remember { mutableStateOf(false) }
@@ -236,7 +236,7 @@ fun LeftSideDrawer(
                     }
                 }
                 val history = matches.filter { organization.chatFolders[it.id] !in folderIds }
-                    .sortedWith(compareByDescending<Conversation> { it.id in organization.pinnedChatIds }.thenByDescending { it.updatedAt })
+                    .sortedWith(compareByDescending<ConversationListItem> { it.id in organization.pinnedChatIds }.thenByDescending { it.updatedAt })
                 items(history, key = { "chat:${it.id}" }) { chat ->
                     ConversationItem(chat, currentConversationId, generatingConversationIds, selecting, chat.id in selected, chat.id in organization.pinnedChatIds,
                         modelIcon = chat.lastModelIcon(providersById), backdrop = backdrop,

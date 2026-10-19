@@ -2,6 +2,7 @@ package org.starfall.multigateway.home.drawer.logic
 
 import org.starfall.multigateway.shared.model.ChatRole
 import org.starfall.multigateway.shared.model.Conversation
+import org.starfall.multigateway.shared.model.ConversationListItem
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 internal data class ConversationModelIcon(val image: String?, val name: String)
@@ -15,5 +16,13 @@ internal fun Conversation.lastModelIcon(providers: Map<String, ModelProvider>): 
     val name = config?.displayName?.takeIf { it.isNotBlank() }
         ?: version?.modelDisplayName?.takeIf { it.isNotBlank() }
         ?: id
+    return ConversationModelIcon(config?.icon, name)
+}
+
+/** Metadata-only fallback used by the sidebar without loading the conversation history. */
+internal fun ConversationListItem.lastModelIcon(providers: Map<String, ModelProvider>): ConversationModelIcon? {
+    val id = modelId.takeIf { it.isNotBlank() } ?: return null
+    val config = providers[providerId]?.config?.modelConfigs?.get(id)
+    val name = config?.displayName?.takeIf { it.isNotBlank() } ?: id
     return ConversationModelIcon(config?.icon, name)
 }

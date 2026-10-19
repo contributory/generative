@@ -12,7 +12,8 @@ This is a data-layer and user-experience change. The app must become usable quic
 - ~~Additive first slice: expose a metadata-only conversation-list projection and an explicit full-conversation load method without changing the existing full-history API.~~ Implemented in `ConversationListItem.kt`, `Daos.kt`, and `ConversationRepository.kt`; focused tests are in `SidebarStorageTest.kt`. Verified with `./gradlew :app:testDebugUnitTest --tests org.starfall.multigateway.SidebarStorageTest` and `git diff --check`.
 - ~~Representative v9 baseline fixture: create a real v9 schema fixture covering rich conversation history, versions, attachments, tool activity, summary, provider/model/profile/MCP/speech data, encrypted values, nulls, and malformed payloads.~~ Implemented in `CredentialMigrationTest.kt`; the fixture is opened through Room at version 9 and checked through repository/DAO reads. `compileDebugAndroidTestKotlin` passed and direct instrumentation ran all 3 `CredentialMigrationTest` tests successfully.
 - ~~Conversation v10 migration slice: normalize conversations, messages, versions, tool activities, file references, summaries, and migration quarantine; add `MIGRATION_9_10`; replace conversation repository persistence/mapping and file-reference lookup.~~ Implemented in `ConversationEntities.kt`, `ConversationMigration9To10.kt`, `AppDatabase.kt`, `Daos.kt`, and `ConversationRepository.kt`. The v9 fixture now migrates through Room v10 and verifies relational counts, ordering, legacy transforms, quarantine, indexes, and foreign-key integrity.
-- Next: wire `conversationList` and targeted `loadById()` into `ChatViewModel`/navigation so the active UI no longer depends on the compatibility `allConversations` full-history flow.
+- ~~Conversation UI metadata-first slice: wire `conversationList` and targeted `loadById()` into `ChatViewModel`/navigation, keep export as an explicit full-history boundary, and remove eager compatibility-flow initialization.~~ Implemented in `ConversationRepository.kt`, `ChatViewModel.kt`, `AppNavigation.kt`, drawer UI, and `Daos.kt`. Sidebar state now contains metadata only; selection, restoration, summaries, deletion cleanup, and export load only the required full conversations. A selection token prevents slow history reads from replacing a newer selection.
+- Next: replace full-history conversation rewrites with targeted append/update transactions and add focused ViewModel coverage for metadata restoration and selection races.
 
 ## Non-negotiable requirements
 
@@ -114,10 +115,10 @@ This is a required architecture decision, not an optional optimization. Provider
 
 ### Phase 3 — Remove eager loading and implement lazy loading
 
-- Replace the `SELECT * FROM conversations` plus full `entityToModel()` flow with a metadata-only conversation-list query.
-- Load the selected conversation's message rows and related child rows on demand.
-- Refactor `ChatViewModel` and all consumers that currently assume `allConversations` includes message bodies. Audit uses such as stored conversation selection, retries, summaries, upload reference cleanup, deletion, and generation context.
-- Ensure first-send behavior works immediately after app launch without waiting for unrelated history. Keep provider/model readiness separate from conversation-history readiness.
+- ~~Replace the `SELECT * FROM conversations` plus full `entityToModel()` flow with a metadata-only conversation-list query.~~ Implemented for the active sidebar/navigation path; `allConversations` remains only as a cold compatibility API.
+- ~~Load the selected conversation's message rows and related child rows on demand.~~ Implemented through `ConversationRepository.loadById()`.
+- ~~Refactor `ChatViewModel` and all consumers that currently assume `allConversations` includes message bodies. Audit uses such as stored conversation selection, retries, summaries, upload reference cleanup, deletion, and generation context.~~ Active UI callers now use metadata or targeted reads; export remains an explicit full-history boundary.
+- Ensure first-send behavior works immediately after app launch without waiting for unrelated history. The UI no longer subscribes to full history, but end-to-end first-send timing and targeted append writes remain to be measured and optimized.
 - Implement incremental history loading for large conversations if the measured UI/rendering path requires it.
 
 ### Phase 4 — Split provider/MCP metadata from encrypted auth, then normalize remaining data

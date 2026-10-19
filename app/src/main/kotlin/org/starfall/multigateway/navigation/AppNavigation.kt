@@ -63,6 +63,7 @@ import org.starfall.multigateway.home.drawer.ui.recordDrawerBackdrop
 import org.starfall.multigateway.home.drawer.ui.rememberDrawerBackdrop
 import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.model.Conversation
+import org.starfall.multigateway.shared.model.ConversationListItem
 import org.starfall.multigateway.shared.model.McpInfo
 import org.starfall.multigateway.shared.model.RemoteMachine
 import org.starfall.multigateway.shared.model.SpeechService
@@ -135,7 +136,7 @@ fun AppNavigation(
         navController.navigate(destination.route) { launchSingleTop = true }
     }
 
-    val conversations: List<Conversation> by viewModel.conversations.collectAsStateWithLifecycle()
+    val conversations: List<ConversationListItem> by viewModel.conversations.collectAsStateWithLifecycle()
     val currentConv: Conversation? by viewModel.currentConversation.collectAsStateWithLifecycle()
     val chatAttachments = remember { ChatAttachmentSelection() }
     var mcpEditor by remember { mutableStateOf<Pair<McpInfo, Boolean>?>(null) }
@@ -193,8 +194,11 @@ fun AppNavigation(
 
     fun exportJson() {
         coroutineScope.launch {
+            val fullConversations = withContext(Dispatchers.IO) {
+                viewModel.conversationsForExport()
+            }
             val payload = withContext(Dispatchers.Default) {
-                buildJsonExport(providers, mcpServers, speechServices, conversations, providerGroups)
+                buildJsonExport(providers, mcpServers, speechServices, fullConversations, providerGroups)
             }
             pendingExport = payload
             exportLauncher.launch(JsonExportKind.FULL_BACKUP.fileName)
@@ -318,7 +322,7 @@ fun AppNavigation(
                     promptLibrary = appPrefs.promptLibrary,
                     onPromptLibraryChange = viewModel::setPromptLibrary,
                     onSelectConversation = {
-                        viewModel.selectConversation(it)
+                        viewModel.selectConversation(it.id)
                         navigate(AppDestination.CHAT)
                     },
                     onNewChat = {
