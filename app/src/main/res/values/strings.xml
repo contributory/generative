@@ -24,10 +24,7 @@
     <string name="crash_issue_open_failed">Could not open GitHub. Please check that a browser is installed.</string>
     <string name="thinking">Thinking</string>
     <string name="thinking_streaming">Thinking...</string>
-    <string name="generation_requesting">Requesting...</string>
-    <string name="generation_thinking">Thinking...</string>
     <string name="generating">Generating...</string>
-    <string name="generation_executing">Executing...</string>
     <string name="chat_input_placeholder">Type some text...</string>
     <string name="chat_submit_failed">Unable to send. Check the selected model and try again.</string>
     <string name="thought_process">Thought Process</string>
@@ -182,7 +179,7 @@
     <string name="tool_calls">ToolCall Support</string>
     <string name="model_reasoning_levels">Supported reasoning levels</string>
     <string name="model_options_title">Model Options</string>
-    <string name="model_tools_title">Model tools</string>
+    <string name="model_tools_title">Model Tools</string>
     <string name="model_tools_hint">Enable built-in tools supported by this model. These are sent directly in the model API request.</string>
     <string name="send_thinking_content_back">Send Thinking Content</string>
     <string name="send_thinking_content_back_hint">Auto sends earlier thinking back only in chats that use tool calls. On always sends it; Off never does.</string>
@@ -210,11 +207,11 @@
     <string name="delete_mcp_server_message">Are you sure you want to delete this MCP connection?</string>
     <string name="mcp_tool_discovery_error_title">Tool discovery error · %1$s</string>
     <string name="mcp_tool_discovery_error_clipboard">MCP tool discovery error</string>
-    <string name="mcp_protocol">Protocol: %1$s</string>
+    <string name="mcp_protocol">%1$s</string>
     <string name="mcp_no_endpoint">No endpoint</string>
     <string name="mcp_error_details">Error · Tap for details</string>
     <string name="add_mcp_server_title">Add MCP Server</string>
-    <string name="configure_mcp_server_title">Configure MCP Server</string>
+    <string name="configure_mcp_server_title">MCP Editor</string>
     <string name="mcp_basic_settings">Basic Settings</string>
     <string name="mcp_tools">Tools</string>
     <string name="legacy_sse">Legacy SSE</string>
@@ -296,8 +293,8 @@
     <string name="icon_variant_dark">Dark (optional)</string>
     <string name="tool_generating_image">Generating image</string>
     <string name="tool_generating_video">Generating video</string>
-    <string name="tool_generate_image">Create image</string>
-    <string name="tool_generate_video">Create video</string>
+    <string name="tool_generate_image">Generate Image</string>
+    <string name="tool_generate_video">Generate Video</string>
     <string name="provider_restore_default_url">Restore default URL</string>
     <string name="provider_select_auth_type">Select authentication type</string>
     <string name="provider_api_key_label">API Key (%1$s)</string>

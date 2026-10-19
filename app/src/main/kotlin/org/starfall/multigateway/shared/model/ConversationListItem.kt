@@ -18,5 +18,6 @@ data class ConversationListItem(
     val profileId: String?,
     val reasoningEffort: String?,
     val hasMessages: Boolean,
-    val hasSummary: Boolean
+    val hasSummary: Boolean,
+    val hasMigrationIssue: Boolean = false
 )

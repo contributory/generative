@@ -1,20 +1,22 @@
 package org.starfall.multigateway.shared.storage.database.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "conversations")
+@Entity(
+    tableName = "conversations",
+    indices = [Index(value = ["updatedAt", "id"], name = "index_conversations_updatedAt")]
+)
 data class ConversationEntity(
     @PrimaryKey val id: String,
     val title: String,
     val createdAt: Long,
     val updatedAt: Long,
-    val messagesJson: String,
     val tokenCount: Int?,
     val providerId: String,
     val modelId: String,
     val profileId: String?,
-    val summaryJson: String?,
     val reasoningEffort: String?
 )
 

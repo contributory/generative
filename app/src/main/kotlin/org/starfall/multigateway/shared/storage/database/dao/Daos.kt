@@ -3,12 +3,19 @@ package org.starfall.multigateway.shared.storage.database.dao
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 import org.starfall.multigateway.shared.storage.database.entities.ChatProfileEntity
+import org.starfall.multigateway.shared.storage.database.entities.ConversationMigrationQuarantineEntity
+import org.starfall.multigateway.shared.storage.database.entities.ConversationSummaryEntity
 import org.starfall.multigateway.shared.storage.database.entities.ConversationEntity
+import org.starfall.multigateway.shared.storage.database.entities.MessageEntity
+import org.starfall.multigateway.shared.storage.database.entities.MessageVersionEntity
 import org.starfall.multigateway.shared.storage.database.entities.McpServerEntity
 import org.starfall.multigateway.shared.storage.database.entities.ModelProviderEntity
 import org.starfall.multigateway.shared.storage.database.entities.ProviderGroupEntity
 import org.starfall.multigateway.shared.storage.database.entities.ProviderModelsEntity
 import org.starfall.multigateway.shared.storage.database.entities.SpeechServiceEntity
+import org.starfall.multigateway.shared.storage.database.entities.MessageVersionFileEntity
+import org.starfall.multigateway.shared.storage.database.entities.ToolActivityEntity
+import org.starfall.multigateway.shared.storage.database.entities.ToolActivityFileEntity
 import org.starfall.multigateway.shared.model.ConversationListItem
 
 @Dao
@@ -17,23 +24,74 @@ interface ConversationDao {
      * Reads only conversation metadata. Do not add messagesJson or summaryJson
      * to this projection: the list must not fetch or deserialize full history.
      */
-    @Query(
-        """
-        SELECT id, title, createdAt, updatedAt, tokenCount, providerId, modelId,
-            profileId, reasoningEffort,
-            CASE WHEN messagesJson = '[]' THEN 0 ELSE 1 END AS hasMessages,
-            CASE WHEN summaryJson IS NULL THEN 0 ELSE 1 END AS hasSummary
-        FROM conversations
-        ORDER BY updatedAt DESC
-        """
-    )
+    @Query("""
+        SELECT c.id, c.title, c.createdAt, c.updatedAt, c.tokenCount, c.providerId, c.modelId,
+            c.profileId, c.reasoningEffort,
+            EXISTS (SELECT 1 FROM messages m WHERE m.conversationId = c.id)
+                OR EXISTS (SELECT 1 FROM conversation_migration_quarantine q
+                    WHERE q.conversationId = c.id AND q.payloadKind IN ('messages_json', 'messages_integrity')) AS hasMessages,
+            EXISTS (SELECT 1 FROM conversation_summaries s WHERE s.conversationId = c.id)
+                OR EXISTS (SELECT 1 FROM conversation_migration_quarantine q
+                    WHERE q.conversationId = c.id AND q.payloadKind IN ('summary_json', 'summary_boundary_missing')) AS hasSummary,
+            EXISTS (SELECT 1 FROM conversation_migration_quarantine q WHERE q.conversationId = c.id) AS hasMigrationIssue
+        FROM conversations c
+        ORDER BY c.updatedAt DESC, c.id ASC
+    """)
     fun getConversationListItems(): Flow<List<ConversationListItem>>
 
-    @Query("SELECT * FROM conversations ORDER BY updatedAt DESC")
+    @Query("SELECT * FROM conversations ORDER BY updatedAt DESC, id ASC")
     fun getAllConversations(): Flow<List<ConversationEntity>>
 
     @Query("SELECT * FROM conversations WHERE id = :id")
     suspend fun getConversationById(id: String): ConversationEntity?
+
+    @Query("SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY sequence ASC")
+    suspend fun getMessages(conversationId: String): List<MessageEntity>
+
+    @Query("SELECT * FROM message_versions WHERE conversationId = :conversationId AND messageId = :messageId ORDER BY versionIndex ASC")
+    suspend fun getMessageVersions(conversationId: String, messageId: String): List<MessageVersionEntity>
+
+    @Query("SELECT * FROM message_version_files WHERE conversationId = :conversationId AND messageId = :messageId AND versionIndex = :versionIndex ORDER BY fileIndex ASC")
+    suspend fun getMessageVersionFiles(conversationId: String, messageId: String, versionIndex: Int): List<MessageVersionFileEntity>
+
+    @Query("SELECT * FROM tool_activities WHERE conversationId = :conversationId AND messageId = :messageId AND versionIndex = :versionIndex ORDER BY activityIndex ASC")
+    suspend fun getToolActivities(conversationId: String, messageId: String, versionIndex: Int): List<ToolActivityEntity>
+
+    @Query("SELECT * FROM tool_activity_files WHERE conversationId = :conversationId AND messageId = :messageId AND versionIndex = :versionIndex AND activityIndex = :activityIndex ORDER BY fileIndex ASC")
+    suspend fun getToolActivityFiles(conversationId: String, messageId: String, versionIndex: Int, activityIndex: Int): List<ToolActivityFileEntity>
+
+    @Query("SELECT * FROM conversation_summaries WHERE conversationId = :conversationId")
+    suspend fun getSummary(conversationId: String): ConversationSummaryEntity?
+
+    @Query("SELECT * FROM conversation_migration_quarantine WHERE conversationId = :conversationId")
+    suspend fun getMigrationIssues(conversationId: String): List<ConversationMigrationQuarantineEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMessages(messages: List<MessageEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMessageVersions(versions: List<MessageVersionEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertToolActivities(activities: List<ToolActivityEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMessageVersionFiles(files: List<MessageVersionFileEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertToolActivityFiles(files: List<ToolActivityFileEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSummary(summary: ConversationSummaryEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMigrationIssue(issue: ConversationMigrationQuarantineEntity)
+
+    @Query("DELETE FROM messages WHERE conversationId = :conversationId")
+    suspend fun deleteMessages(conversationId: String)
+
+    @Query("DELETE FROM conversation_migration_quarantine WHERE conversationId = :conversationId")
+    suspend fun deleteMigrationIssues(conversationId: String)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdate(conversation: ConversationEntity)
@@ -47,8 +105,16 @@ interface ConversationDao {
     @Query("DELETE FROM conversations")
     suspend fun deleteAll()
 
-    /** True when any stored conversation still mentions [name] (a file name) in its messages. */
-    @Query("SELECT EXISTS(SELECT 1 FROM conversations WHERE instr(messagesJson, :name) > 0)")
+    /** True when any stored conversation still refers to [name] in either relational file table. */
+    @Query("""
+        SELECT EXISTS(
+            SELECT 1 FROM message_version_files WHERE reference = :name OR reference = 'tool-file:' || :name
+                OR reference LIKE '%/' || :name OR reference LIKE 'file:%/' || :name OR reference LIKE 'tool-file:%/' || :name
+            UNION ALL
+            SELECT 1 FROM tool_activity_files WHERE reference = :name OR reference = 'tool-file:' || :name
+                OR reference LIKE '%/' || :name OR reference LIKE 'file:%/' || :name OR reference LIKE 'tool-file:%/' || :name
+        )
+    """)
     suspend fun mentionsFile(name: String): Boolean
 }
 

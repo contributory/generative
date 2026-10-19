@@ -14,6 +14,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.multigateway.shared.storage.database.AppDatabase
 import org.starfall.multigateway.shared.storage.database.SecretCipher
+import org.starfall.multigateway.shared.storage.ConversationMigrationException
 import org.starfall.multigateway.shared.storage.ConversationRepository
 import org.starfall.multigateway.shared.model.*
 import java.util.UUID
@@ -45,7 +46,7 @@ class CredentialMigrationTest {
         val room = Room.databaseBuilder(context, AppDatabase::class.java, name).addMigrations(
             AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4,
             AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7,
-            AppDatabase.MIGRATION_7_8, AppDatabase.MIGRATION_8_9
+            AppDatabase.MIGRATION_7_8, AppDatabase.MIGRATION_8_9, AppDatabase.MIGRATION_9_10
         ).build()
         try {
             val db = room.openHelper.writableDatabase // Room validates every migrated table.
@@ -73,7 +74,9 @@ class CredentialMigrationTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val name = "v9-fixture-${UUID.randomUUID()}"
         createV9Fixture(context, name)
-        val room = Room.databaseBuilder(context, AppDatabase::class.java, name).build()
+        val room = Room.databaseBuilder(context, AppDatabase::class.java, name)
+            .addMigrations(AppDatabase.MIGRATION_9_10)
+            .build()
         try {
             val repository = ConversationRepository(room)
             val list = repository.conversationList.first()
@@ -107,6 +110,8 @@ class CredentialMigrationTest {
             val assistant = rich.messages[1]
             assertEquals("assistant-1", assistant.id)
             assertEquals(2, assistant.versions.size)
+            assertEquals("", assistant.versions[0].content)
+            assertEquals("failed", assistant.versions[0].generationError)
             assertEquals("provider-rich", assistant.activeVersion.providerId)
             assertEquals("catalog-model", assistant.activeVersion.modelId)
             assertEquals("signature", assistant.activeVersion.reasoningSignature)
@@ -116,7 +121,8 @@ class CredentialMigrationTest {
             assertEquals("activity-1", activity.id)
             assertEquals("Search", activity.name)
             assertEquals("search", activity.wireName)
-            assertEquals("completed", activity.status)
+            assertEquals("interrupted", activity.status)
+            assertEquals("The previous run did not finish.", activity.summary)
             assertEquals("query", activity.arguments)
             assertEquals("full tool response", activity.response)
             assertEquals(42, activity.contentOffset)
@@ -157,9 +163,28 @@ class CredentialMigrationTest {
             // Keep the malformed source value visible to the future migration test. The current
             // repository intentionally has legacy empty-list fallback, but migration must not
             // mistake this value for a valid empty conversation or discard it silently.
-            val malformed = room.conversationDao().getConversationById("malformed")!!
-            assertEquals("not valid conversation json", malformed.messagesJson)
-            assertEquals("{not a summary}", malformed.summaryJson)
+            val malformedIssues = room.conversationDao().getMigrationIssues("malformed")
+            assertEquals(setOf("invalid_json"), malformedIssues.map { it.errorCode }.toSet())
+            assertEquals("not valid conversation json", malformedIssues.first { it.payloadKind == "messages_json" }.rawJson)
+            assertEquals("{not a summary}", malformedIssues.first { it.payloadKind == "summary_json" }.rawJson)
+            assertTrue(runCatching { repository.loadById("malformed") }.exceptionOrNull() is ConversationMigrationException)
+
+            fun count(table: String): Long = room.openHelper.writableDatabase.query("SELECT COUNT(*) FROM $table").use {
+                assertTrue(it.moveToFirst())
+                it.getLong(0)
+            }
+            assertEquals(2L, count("messages"))
+            assertEquals(4L, count("message_versions"))
+            assertEquals(1L, count("tool_activities"))
+            assertEquals(4L, count("message_version_files"))
+            assertEquals(1L, count("tool_activity_files"))
+            assertEquals(1L, count("conversation_summaries"))
+            assertEquals(2L, count("conversation_migration_quarantine"))
+            assertTrue(room.openHelper.writableDatabase.query(
+                "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?",
+                arrayOf("index_message_version_files_reference")
+            ).use { it.moveToFirst() })
+            assertFalse(room.openHelper.writableDatabase.query("PRAGMA foreign_key_check").use { it.moveToFirst() })
         } finally {
             room.close()
             context.deleteDatabase(name)
@@ -186,7 +211,7 @@ class CredentialMigrationTest {
                 id = "assistant-1",
                 role = ChatRole.MODEL,
                 versions = listOf(
-                    MessageVersion(content = "older answer", timestamp = "2026-01-01T00:02:00Z"),
+                    MessageVersion(content = "[Error: failed]", timestamp = "2026-01-01T00:02:00Z"),
                     MessageVersion(
                         content = "current answer",
                         timestamp = "2026-01-01T00:03:00Z",
@@ -196,7 +221,7 @@ class CredentialMigrationTest {
                                 id = "activity-1",
                                 name = "Search",
                                 wireName = "search",
-                                status = "completed",
+                                status = "running",
                                 summary = "Found a result",
                                 files = listOf("result.json"),
                                 arguments = "query",

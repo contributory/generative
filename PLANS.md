@@ -11,7 +11,8 @@ This is a data-layer and user-experience change. The app must become usable quic
 - ~~Phase 0 source inventory: current Room entities, DAO queries, repositories, model fields, call sites, and existing persistence tests inspected.~~ Completed before the first code slice; the active module is `app` and the current Room schema is version 9.
 - ~~Additive first slice: expose a metadata-only conversation-list projection and an explicit full-conversation load method without changing the existing full-history API.~~ Implemented in `ConversationListItem.kt`, `Daos.kt`, and `ConversationRepository.kt`; focused tests are in `SidebarStorageTest.kt`. Verified with `./gradlew :app:testDebugUnitTest --tests org.starfall.multigateway.SidebarStorageTest` and `git diff --check`.
 - ~~Representative v9 baseline fixture: create a real v9 schema fixture covering rich conversation history, versions, attachments, tool activity, summary, provider/model/profile/MCP/speech data, encrypted values, nulls, and malformed payloads.~~ Implemented in `CredentialMigrationTest.kt`; the fixture is opened through Room at version 9 and checked through repository/DAO reads. `compileDebugAndroidTestKotlin` passed and direct instrumentation ran all 3 `CredentialMigrationTest` tests successfully.
-- Next: design the normalized v10 schema and write the first v9→v10 migration test against this fixture; production schema changes remain intentionally untouched.
+- ~~Conversation v10 migration slice: normalize conversations, messages, versions, tool activities, file references, summaries, and migration quarantine; add `MIGRATION_9_10`; replace conversation repository persistence/mapping and file-reference lookup.~~ Implemented in `ConversationEntities.kt`, `ConversationMigration9To10.kt`, `AppDatabase.kt`, `Daos.kt`, and `ConversationRepository.kt`. The v9 fixture now migrates through Room v10 and verifies relational counts, ordering, legacy transforms, quarantine, indexes, and foreign-key integrity.
+- Next: wire `conversationList` and targeted `loadById()` into `ChatViewModel`/navigation so the active UI no longer depends on the compatibility `allConversations` full-history flow.
 
 ## Non-negotiable requirements
 
@@ -96,20 +97,20 @@ This is a required architecture decision, not an optional optimization. Provider
 
 ### Phase 1 — Design schema and migration tests
 
-- Finalize normalized entities, foreign keys, indexes, delete semantics, and DAO access patterns.
-- Increment the Room database version from 9 and implement sequential migrations from every supported schema version; do not replace the existing migration chain.
-- Write migration tests against real v9 schema fixtures and earlier supported schema versions. Include malformed/legacy JSON cases and encrypted values.
-- Ensure migration is transactional and idempotent where applicable. If a row cannot be decoded, do not silently discard it: preserve the original value in a documented recovery/quarantine mechanism or fail migration safely with an actionable error.
+- ~~Finalize normalized entities, foreign keys, indexes, delete semantics, and DAO access patterns.~~ Completed for the conversation/message migration slice; provider/MCP and remaining JSON-backed tables are still pending.
+- ~~Increment the Room database version from 9 and implement sequential migrations from every supported schema version; do not replace the existing migration chain.~~ Room is now version 10 with the existing v1→v9 chain preserved and `MIGRATION_9_10` registered.
+- ~~Write migration tests against real v9 schema fixtures and earlier supported schema versions. Include malformed/legacy JSON cases and encrypted values.~~ The v9 fixture and existing v1/encryption tests pass through the new schema; broader earlier-version fixture coverage remains pending.
+- ~~Ensure migration is transactional and idempotent where applicable. If a row cannot be decoded, do not silently discard it: preserve the original value in a documented recovery/quarantine mechanism or fail migration safely with an actionable error.~~ Malformed conversation and summary payloads are preserved in `conversation_migration_quarantine`; opening an affected conversation raises `ConversationMigrationException`.
 - Do not run full-table secret re-encryption or unrelated expensive scans on every database open. Any required secret conversion must be versioned, bounded, and performed once in an explicit migration or resumable migration step.
 
 ### Phase 2 — Normalize conversations first
 
-- Create relational message/version/part/activity/summary tables and required indexes.
-- In a migration transaction, read each legacy `messagesJson` and `summaryJson`, decode it, and insert equivalent rows while preserving order and IDs where present.
-- Validate counts and content fidelity before removing the legacy columns. Use a staged migration if SQLite/Room constraints make a single migration too risky.
-- Migrate `mentionsFile` and all file-reference cleanup checks to relational queries.
-- Add repository APIs that read conversation metadata separately from full messages; change save/update/delete paths to use targeted row operations.
-- Ensure the migration is safe for large histories: avoid materializing the entire database into one giant in-memory object. Process conversations in bounded batches inside a controlled migration strategy while preserving atomicity/data integrity.
+- ~~Create relational message/version/part/activity/summary tables and required indexes.~~ Implemented for messages, versions, tool activities, message/tool file references, summaries, and quarantine in the conversation slice.
+- ~~In a migration transaction, read each legacy `messagesJson` and `summaryJson`, decode it, and insert equivalent rows while preserving order and IDs where present.~~ Implemented by `MIGRATION_9_10`; message/version/file/tool order is stored explicitly by sequence/index columns.
+- ~~Validate counts and content fidelity before removing the legacy columns. Use a staged migration if SQLite/Room constraints make a single migration too risky.~~ The migration removes only the conversation JSON columns after conversion; the fixture asserts relational counts/content and `PRAGMA foreign_key_check`.
+- ~~Migrate `mentionsFile` and all file-reference cleanup checks to relational queries.~~ `ConversationDao.mentionsFile()` now searches both relational reference tables while preserving bare, `tool-file:` and stored path forms.
+- Add repository APIs that read conversation metadata separately from full messages; change save/update/delete paths to use targeted row operations. The metadata/list and targeted-load APIs are present; UI caller migration and append-only write optimization remain.
+- ~~Ensure the migration is safe for large histories: avoid materializing the entire database into one giant in-memory object. Process conversations in bounded batches inside a controlled migration strategy while preserving atomicity/data integrity.~~ Migration iterates source conversations one row at a time inside Room's migration transaction; one legacy conversation is decoded at a time.
 
 ### Phase 3 — Remove eager loading and implement lazy loading
 

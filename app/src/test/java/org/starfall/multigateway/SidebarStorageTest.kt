@@ -10,6 +10,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.multigateway.shared.storage.database.AppDatabase
+import org.starfall.multigateway.shared.storage.database.entities.ConversationMigrationQuarantineEntity
 import org.starfall.multigateway.shared.storage.database.entities.ConversationEntity
 import org.starfall.multigateway.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.multigateway.shared.model.*
@@ -54,13 +55,27 @@ class SidebarStorageTest {
                     title = "Metadata only",
                     createdAt = 1,
                     updatedAt = 2,
-                    messagesJson = "not valid json",
                     tokenCount = 7,
                     providerId = "provider",
                     modelId = "model",
                     profileId = "profile",
-                    summaryJson = "also not valid json",
                     reasoningEffort = "high"
+                )
+            )
+            db.conversationDao().insertMigrationIssue(
+                ConversationMigrationQuarantineEntity(
+                    conversationId = "broken-history",
+                    payloadKind = "messages_json",
+                    rawJson = "not valid json",
+                    errorCode = "invalid_json"
+                )
+            )
+            db.conversationDao().insertMigrationIssue(
+                ConversationMigrationQuarantineEntity(
+                    conversationId = "broken-history",
+                    payloadKind = "summary_json",
+                    rawJson = "also not valid json",
+                    errorCode = "invalid_json"
                 )
             )
 

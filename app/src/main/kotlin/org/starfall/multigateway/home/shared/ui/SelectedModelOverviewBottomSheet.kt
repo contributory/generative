@@ -167,45 +167,8 @@ internal fun SelectedModelOverviewBottomSheet(
                             modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 12.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            if (visibleModelTools.isNotEmpty()) {
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                                Text(
-                                    stringResource(R.string.model_tools_title),
-                                    style = MaterialTheme.typography.titleSmall
-                                )
-                                Text(
-                                    stringResource(R.string.model_tools_hint),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                visibleModelTools.distinct().forEach { tool ->
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().testTag("model-tool-$tool"),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        Text(
-                                            modelToolDisplayName(tool),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Switch(
-                                            checked = tool in config.enabledModelTools,
-                                            onCheckedChange = { enabled ->
-                                                val current = config.enabledModelTools.filter { it in visibleModelTools }.toSet()
-                                                val updated = if (enabled) current + tool else current - tool
-                                                onSetModelTools?.invoke(updated.toList())
-                                            },
-                                            enabled = onSetModelTools != null,
-                                            modifier = Modifier.testTag("model-tool-switch-$tool")
-                                        )
-                                    }
-                                }
-                            }
                             if (config.supportsThinking) {
-                                if (visibleModelTools.isNotEmpty()) {
-                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                                }
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                                 val modes = listOf(ThinkingPassback.AUTO, ThinkingPassback.ON, ThinkingPassback.OFF)
                                 val labels = listOf(
                                     stringResource(R.string.common_auto),
@@ -246,6 +209,41 @@ internal fun SelectedModelOverviewBottomSheet(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                            }
+                            if (visibleModelTools.isNotEmpty()) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                                Text(
+                                    stringResource(R.string.model_tools_title),
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                                Text(
+                                    stringResource(R.string.model_tools_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                visibleModelTools.distinct().forEach { tool ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().testTag("model-tool-$tool"),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Text(
+                                            modelToolDisplayName(tool),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Switch(
+                                            checked = tool in config.enabledModelTools,
+                                            onCheckedChange = { enabled ->
+                                                val current = config.enabledModelTools.filter { it in visibleModelTools }.toSet()
+                                                val updated = if (enabled) current + tool else current - tool
+                                                onSetModelTools?.invoke(updated.toList())
+                                            },
+                                            enabled = onSetModelTools != null,
+                                            modifier = Modifier.testTag("model-tool-switch-$tool")
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

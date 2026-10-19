@@ -15,6 +15,13 @@ import org.starfall.multigateway.shared.storage.database.dao.ProviderModelsDao
 import org.starfall.multigateway.shared.storage.database.dao.SpeechServiceDao
 import org.starfall.multigateway.shared.storage.database.entities.ChatProfileEntity
 import org.starfall.multigateway.shared.storage.database.entities.ConversationEntity
+import org.starfall.multigateway.shared.storage.database.entities.MessageEntity
+import org.starfall.multigateway.shared.storage.database.entities.MessageVersionEntity
+import org.starfall.multigateway.shared.storage.database.entities.ToolActivityEntity
+import org.starfall.multigateway.shared.storage.database.entities.MessageVersionFileEntity
+import org.starfall.multigateway.shared.storage.database.entities.ToolActivityFileEntity
+import org.starfall.multigateway.shared.storage.database.entities.ConversationSummaryEntity
+import org.starfall.multigateway.shared.storage.database.entities.ConversationMigrationQuarantineEntity
 import org.starfall.multigateway.shared.storage.database.entities.McpServerEntity
 import org.starfall.multigateway.shared.storage.database.entities.ModelProviderEntity
 import org.starfall.multigateway.shared.storage.database.entities.ProviderGroupEntity
@@ -24,6 +31,13 @@ import org.starfall.multigateway.shared.storage.database.entities.SpeechServiceE
 @Database(
     entities = [
         ConversationEntity::class,
+        MessageEntity::class,
+        MessageVersionEntity::class,
+        ToolActivityEntity::class,
+        MessageVersionFileEntity::class,
+        ToolActivityFileEntity::class,
+        ConversationSummaryEntity::class,
+        ConversationMigrationQuarantineEntity::class,
         ChatProfileEntity::class,
         ProviderGroupEntity::class,
         ModelProviderEntity::class,
@@ -31,7 +45,7 @@ import org.starfall.multigateway.shared.storage.database.entities.SpeechServiceE
         McpServerEntity::class,
         SpeechServiceEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -102,6 +116,12 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                ConversationMigration9To10.migrate(db)
+            }
+        }
+
         // No schema change: upgrade existing v2 secrets atomically before any DAO reads.
         internal fun encryptLegacySecrets(db: SupportSQLiteDatabase) {
             db.query("PRAGMA secure_delete = ON").close()
@@ -131,7 +151,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "multigateway_db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9).addCallback(object : Callback() {
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10).addCallback(object : Callback() {
                     override fun onOpen(db: SupportSQLiteDatabase) { encryptLegacySecrets(db) }
                 }).build()
                 INSTANCE = instance
