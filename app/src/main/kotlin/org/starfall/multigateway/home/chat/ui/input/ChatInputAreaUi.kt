@@ -392,7 +392,7 @@ fun UserInputArea(
                                 fallback = if (mediaModel == null) {
                                     if (mediaKind == ModelType.IMAGE_GENERATION) Icons.Outlined.Image else Icons.Outlined.Videocam
                                 } else null,
-                                matchName = mediaModel?.displayName?.ifBlank { mediaModelId }, model = true
+                                matchName = mediaModel?.displayName?.ifBlank { mediaModelId }, fallbackMatchName = mediaModelId, model = true
                             )
                         } else {
                         val selectedProvider = providers.firstOrNull { it.id == selectedProviderId }
@@ -402,7 +402,7 @@ fun UserInputArea(
                             }
                         EntityIcon(selectedConfig?.icon, Modifier.fillMaxSize(),
                             text = modelInitial(selectedModelName),
-                             matchName = selectedConfig?.displayName?.ifBlank { selectedModelName } ?: selectedModelName, model = true)
+                             matchName = selectedConfig?.displayName?.ifBlank { selectedModelName } ?: selectedModelName, fallbackMatchName = selectedModelName, model = true)
                         }
                     }
 

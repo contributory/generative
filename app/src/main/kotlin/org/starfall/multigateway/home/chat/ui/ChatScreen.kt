@@ -596,6 +596,10 @@ fun ChatScreen(
                         AssistantMessageCard(
                             message = msg,
                             isReading = speakingMessageId == msg.id,
+                            modelIcon = msg.activeVersion.let { version ->
+                                val provider = providers.find { it.id == version.providerId.ifBlank { conversation?.providerId.orEmpty() } }
+                                provider?.config?.modelConfigs?.get(version.modelId.ifBlank { conversation?.modelId.orEmpty() })?.icon
+                            },
                             fallbackModelName = providers.find { it.id == conversation?.providerId }
                                 ?.config?.modelConfigs?.get(conversation?.modelId)?.displayName
                                 ?.ifBlank { conversation?.modelId.orEmpty() } ?: conversation?.modelId.orEmpty(),

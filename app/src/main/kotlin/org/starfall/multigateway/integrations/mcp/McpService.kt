@@ -42,6 +42,7 @@ import org.starfall.multigateway.shared.model.McpInfo
 import org.starfall.multigateway.shared.model.McpProtocol
 import org.starfall.multigateway.shared.model.ToolDefinition
 import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.auth.CredentialLoadState
 import org.starfall.multigateway.shared.model.auth.bearerHeaderValue
 import org.starfall.multigateway.shared.model.resolvedUrl
 import org.starfall.multigateway.shared.networking.ToolHttp
@@ -49,18 +50,28 @@ import org.starfall.multigateway.shared.networking.ToolHttp
 /** MCP client backed by the official Model Context Protocol Kotlin SDK. */
 class McpService(
     private val http: ToolHttp = ToolHttp(),
-    private val oauth: McpOAuthService? = null
+    private val oauth: McpOAuthService? = null,
+    var serverLoader: suspend (McpInfo) -> McpInfo = { it }
 ) {
     suspend fun listTools(info: McpInfo): List<String> = discover(info).map { it.originalName }
     suspend fun discover(info: McpInfo): List<ToolDefinition> = session(info).useSession { it.tools() }
 
     suspend fun session(info: McpInfo): McpSession {
-        val oauthToken = if (info.auth.method == McpAuthMethod.OAUTH2) {
-            oauth?.accessToken(info) ?: info.auth.token
+        val server = if (info.credentialState == CredentialLoadState.NOT_REQUESTED) serverLoader(info) else info
+        check(server.id == info.id) { "Credential loader returned a different MCP server." }
+        server.requireNetworkCredentials()
+        val oauthToken = if (server.auth.method == McpAuthMethod.OAUTH2) {
+            oauth?.accessToken(server) ?: server.auth.token
         } else {
-            info.auth.token
+            server.auth.token
         }
-        return McpSession(info, http, oauthToken).also { it.initialize() }
+        return McpSession(server, http, oauthToken).also { it.initialize() }
+    }
+}
+
+private fun McpInfo.requireNetworkCredentials() {
+    check(credentialState == CredentialLoadState.LOADED || credentialState == CredentialLoadState.NOT_CONFIGURED) {
+        "MCP credentials are not ready ($credentialState). Reload before use."
     }
 }
 
@@ -76,6 +87,7 @@ class McpSession(
     private val http: ToolHttp,
     private val oauthToken: String = info.auth.token
 ) {
+    init { info.requireNetworkCredentials() }
     private val endpoint = info.resolvedUrl() ?: error("MCP URL is missing")
     private var httpClient: HttpClient? = null
     private var client: Client? = null

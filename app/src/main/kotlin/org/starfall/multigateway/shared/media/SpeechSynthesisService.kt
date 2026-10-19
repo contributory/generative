@@ -13,8 +13,10 @@ import org.starfall.multigateway.shared.model.SpeechService
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.auth.AuthMethod
 import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.auth.CredentialLoadState
 import org.starfall.multigateway.shared.model.auth.requestHeaders
 import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.networking.requireNetworkCredentials
 
 fun supportsSpeechProvider(provider: ModelProvider): Boolean =
     provider.type.isOpenAi || provider.type == ModelApiType.GOOGLE
@@ -71,18 +73,23 @@ internal fun pcmWave(pcm: ByteArray, sampleRate: Int = 24_000): ByteArray {
     return buffer.array()
 }
 
-class SpeechSynthesisService {
+class SpeechSynthesisService(
+    private val providerLoader: suspend (ModelProvider) -> ModelProvider = { it }
+) {
     suspend fun synthesize(provider: ModelProvider, service: SpeechService, text: String): ByteArray =
         withContext(Dispatchers.IO) {
-            require(supportsSpeechProvider(provider)) { "Provider ${provider.name} does not support TTS." }
-            val payload = speechPayload(provider, service, text)
-            val google = provider.type == ModelApiType.GOOGLE
-            val base = provider.baseUrl.trimEnd('/')
+            val resolved = if (provider.credentialState == CredentialLoadState.NOT_REQUESTED) providerLoader(provider) else provider
+            check(resolved.id == provider.id) { "Credential loader returned a different speech provider." }
+            resolved.requireNetworkCredentials()
+            require(supportsSpeechProvider(resolved)) { "Provider ${resolved.name} does not support TTS." }
+            val payload = speechPayload(resolved, service, text)
+            val google = resolved.type == ModelApiType.GOOGLE
+            val base = resolved.baseUrl.trimEnd('/')
             var endpoint = if (google) {
                 val model = URLEncoder.encode(service.modelId!!.removePrefix("models/"), "UTF-8").replace("+", "%20")
                 "$base/models/$model:generateContent"
             } else "$base/audio/speech"
-            val auth = if (service.apiKey.isNotBlank()) Authorization(value = service.apiKey) else provider.auth
+            val auth = if (service.apiKey.isNotBlank()) Authorization(value = service.apiKey) else resolved.auth
             if (auth.method == AuthMethod.QUERY_PARAM && auth.token.isNotBlank()) {
                 val key = URLEncoder.encode(auth.key?.ifBlank { "key" } ?: "key", "UTF-8")
                 endpoint += "?" + key + "=" + URLEncoder.encode(auth.token, "UTF-8")
@@ -94,8 +101,8 @@ class SpeechSynthesisService {
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json")
                 setRequestProperty("Accept", if (google) "application/json" else "audio/*")
-                auth.requestHeaders(provider.type).forEach { (key, value) -> setRequestProperty(key, value) }
-                provider.config.headers.forEach { (key, value) -> setRequestProperty(key, value) }
+                auth.requestHeaders(resolved.type).forEach { (key, value) -> setRequestProperty(key, value) }
+                resolved.config.headers.forEach { (key, value) -> setRequestProperty(key, value) }
             }
             try {
                 connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }

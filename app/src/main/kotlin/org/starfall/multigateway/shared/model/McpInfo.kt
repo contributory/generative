@@ -40,7 +40,8 @@ data class McpInfo(
     val auth: McpAuthorization = McpAuthorization(),
     val cachedTools: List<ToolDefinition>? = null,
     val sortOrder: Int = Int.MAX_VALUE,
-    val icon: String? = null
+    val icon: String? = null,
+    @kotlinx.serialization.Transient val credentialState: org.starfall.multigateway.shared.model.auth.CredentialLoadState = org.starfall.multigateway.shared.model.auth.CredentialLoadState.LOADED
 )
 
 const val CONTENT_API_MCP_ENDPOINT = "https://serverweb.serv00.net/mcp"

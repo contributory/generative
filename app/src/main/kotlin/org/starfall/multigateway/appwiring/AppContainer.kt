@@ -57,6 +57,8 @@ class AppContainer(context: Context) {
     val defaultDataInitializer = DefaultDataInitializer(providers, mcp, speech, preferences, icons)
 
     init {
+        aiService.providerLoader = providers::resolveProvider
+        mcpService.serverLoader = mcp::resolveServer
         migrateLegacyRemoteBinaries()
     }
 
@@ -83,7 +85,7 @@ class AppContainer(context: Context) {
                 toolSettings,
                 speech,
                 TtsHelper(appContext),
-                SpeechSynthesisService(),
+                SpeechSynthesisService(providers::resolveProvider),
                 SpeechAudioPlayer(appContext),
                 toolFiles
             )

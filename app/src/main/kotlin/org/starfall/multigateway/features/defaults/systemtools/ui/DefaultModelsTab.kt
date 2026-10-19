@@ -125,6 +125,7 @@ private fun DefaultModelSelector(
                 text = modelId.substringAfterLast('/').take(1).uppercase(),
                 fallback = if (model == null) Icons.Outlined.Add else null,
                 matchName = modelName,
+                fallbackMatchName = modelId,
                 model = true
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {

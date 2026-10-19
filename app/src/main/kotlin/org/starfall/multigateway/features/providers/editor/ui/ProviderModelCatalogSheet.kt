@@ -117,7 +117,7 @@ internal fun ProviderModelCatalogSheet(
                         Column {
                         Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             EntityIcon(provider.config.modelConfigs[id]?.icon, Modifier.size(36.dp),
-                                text = id.substringAfterLast('/').take(1).uppercase(), matchName = title, model = true)
+                                text = id.substringAfterLast('/').take(1).uppercase(), matchName = title, fallbackMatchName = id, model = true)
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
                                     maxLines = if (expanded) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)

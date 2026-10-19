@@ -8,6 +8,7 @@ import org.starfall.multigateway.shared.model.ChatProfile
 import org.starfall.multigateway.shared.model.McpInfo
 import org.starfall.multigateway.shared.model.SpeechService
 import org.starfall.multigateway.shared.model.ToolDefinition
+import org.starfall.multigateway.shared.model.auth.CredentialLoadState
 import org.starfall.multigateway.shared.model.language.DiscoveredModel
 import org.starfall.multigateway.shared.model.language.defaultNativeModelTools
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
@@ -40,6 +41,33 @@ class ConfigurationViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val providerGroups = modelRepo.allGroups
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Editors must receive a selected full record, never a metadata-list placeholder. */
+    suspend fun loadProviderForEditor(id: String): ModelProvider =
+        (modelRepo.getProviderById(id)
+            ?: error("This provider no longer exists. Go back to Providers and select an existing provider."))
+            .also { requireLoadedCredentials(it.credentialState) }
+
+    suspend fun loadMcpServerForEditor(id: String): McpInfo =
+        (mcpRepo.getById(id)
+            ?: error("This MCP server no longer exists. Go back to MCP and select an existing server."))
+            .also { requireLoadedCredentials(it.credentialState) }
+
+    suspend fun loadProvidersForExport(): List<ModelProvider> =
+        modelRepo.loadProvidersForExport().onEach { requireLoadedCredentials(it.credentialState) }
+
+    suspend fun loadServersForExport(): List<McpInfo> =
+        mcpRepo.loadServersForExport().onEach { requireLoadedCredentials(it.credentialState) }
+
+    private fun requireLoadedCredentials(state: CredentialLoadState) {
+        check(state == CredentialLoadState.LOADED || state == CredentialLoadState.NOT_CONFIGURED) {
+            "Saved credentials are not loaded. Retry before editing or exporting this record."
+        }
+    }
+
+    // Metadata saves retain the encrypted auth row; ordinary model changes must not resolve it.
+    private suspend fun providerMetadataById(id: String): ModelProvider? =
+        modelRepo.allProviders.first().firstOrNull { it.id == id }
 
     private val _importedProviderId = MutableStateFlow<String?>(null)
     val importedProviderId = _importedProviderId.asStateFlow()
@@ -125,7 +153,7 @@ class ConfigurationViewModel(
 
     fun saveModelConfiguration(providerId: String, modelId: String, config: ModelConfiguration) {
         viewModelScope.launch(LocalWriteErrors.handler) {
-            val provider = modelRepo.getProviderById(providerId) ?: return@launch
+            val provider = providerMetadataById(providerId) ?: return@launch
             modelRepo.saveProvider(provider.copy(config = provider.config.copy(
                 modelConfigs = provider.config.modelConfigs + (modelId to config)
             )))
@@ -135,7 +163,7 @@ class ConfigurationViewModel(
     /** Persists the level picked in the chat's selected-model sheet. Off ("none") only applies to the conversation; the model's on/off switch lives in its configuration. */
     fun setModelReasoningEffort(providerId: String, modelId: String, effort: String?) {
         viewModelScope.launch(LocalWriteErrors.handler) {
-            val provider = modelRepo.getProviderById(providerId) ?: return@launch
+            val provider = providerMetadataById(providerId) ?: return@launch
             val config = provider.config.modelConfigs[modelId] ?: return@launch
             val updated = config.withSelectedReasoningEffort(effort)
             if (updated == config) return@launch
@@ -147,7 +175,7 @@ class ConfigurationViewModel(
 
     fun setModelTools(providerId: String, modelId: String, enabledTools: List<String>) {
         viewModelScope.launch(LocalWriteErrors.handler) {
-            val provider = modelRepo.getProviderById(providerId) ?: return@launch
+            val provider = providerMetadataById(providerId) ?: return@launch
             val existing = provider.config.modelConfigs[modelId] ?: ModelConfiguration()
             val supportedTools = existing.supportedModelTools.ifEmpty {
                 defaultNativeModelTools(provider.type, modelId)
@@ -168,7 +196,7 @@ class ConfigurationViewModel(
 
     fun setThinkingPassback(providerId: String, modelId: String, mode: ThinkingPassback) {
         viewModelScope.launch(LocalWriteErrors.handler) {
-            val provider = modelRepo.getProviderById(providerId) ?: return@launch
+            val provider = providerMetadataById(providerId) ?: return@launch
             val existing = provider.config.modelConfigs[modelId]
             // A freshly selected model may not have a saved configuration yet (it is written
             // asynchronously on selection); create it here so the choice is never lost.
@@ -188,7 +216,7 @@ class ConfigurationViewModel(
 
     fun saveProviderModels(providerId: String, modelConfigs: Map<String, ModelConfiguration>) {
         viewModelScope.launch(LocalWriteErrors.handler) {
-            val provider = modelRepo.getProviderById(providerId) ?: return@launch
+            val provider = providerMetadataById(providerId) ?: return@launch
             val modelIds = modelConfigs.keys.toList()
             modelRepo.saveProvider(provider.copy(config = provider.config.copy(
                 modelConfigs = modelConfigs,

@@ -11,8 +11,8 @@ import org.starfall.multigateway.shared.storage.database.dao.ConversationDao
 import org.starfall.multigateway.shared.storage.database.dao.McpServerDao
 import org.starfall.multigateway.shared.storage.database.dao.ModelProviderDao
 import org.starfall.multigateway.shared.storage.database.dao.ProviderGroupDao
-import org.starfall.multigateway.shared.storage.database.dao.ProviderModelsDao
 import org.starfall.multigateway.shared.storage.database.dao.SpeechServiceDao
+import org.starfall.multigateway.shared.storage.database.dao.StructuredJsonDao
 import org.starfall.multigateway.shared.storage.database.entities.ChatProfileEntity
 import org.starfall.multigateway.shared.storage.database.entities.ConversationEntity
 import org.starfall.multigateway.shared.storage.database.entities.MessageEntity
@@ -25,8 +25,25 @@ import org.starfall.multigateway.shared.storage.database.entities.ConversationMi
 import org.starfall.multigateway.shared.storage.database.entities.McpServerEntity
 import org.starfall.multigateway.shared.storage.database.entities.ModelProviderEntity
 import org.starfall.multigateway.shared.storage.database.entities.ProviderGroupEntity
-import org.starfall.multigateway.shared.storage.database.entities.ProviderModelsEntity
 import org.starfall.multigateway.shared.storage.database.entities.SpeechServiceEntity
+import org.starfall.multigateway.shared.storage.database.entities.ProviderAuthEntity
+import org.starfall.multigateway.shared.storage.database.entities.ProviderModelSelectionEntity
+import org.starfall.multigateway.shared.storage.database.entities.ProviderModelConfigurationEntity
+import org.starfall.multigateway.shared.storage.database.entities.ProviderModelValueEntity
+import org.starfall.multigateway.shared.storage.database.entities.ProviderCatalogModelEntity
+import org.starfall.multigateway.shared.storage.database.entities.ProviderCatalogToolEntity
+import org.starfall.multigateway.shared.storage.database.entities.McpAuthEntity
+import org.starfall.multigateway.shared.storage.database.entities.McpToolCacheEntity
+import org.starfall.multigateway.shared.storage.database.entities.McpCachedToolEntity
+import org.starfall.multigateway.shared.storage.database.entities.ChatProfileConfigEntity
+import org.starfall.multigateway.shared.storage.database.entities.ChatProfileMcpAccessEntity
+import org.starfall.multigateway.shared.storage.database.entities.ChatProfileMcpToolEntity
+import org.starfall.multigateway.shared.storage.database.entities.ChatProfileActiveMcpEntity
+import org.starfall.multigateway.shared.storage.database.entities.ChatProfileActiveModelToolEntity
+import org.starfall.multigateway.shared.storage.database.entities.SpeechAuthEntity
+import org.starfall.multigateway.shared.storage.database.entities.StructuredJsonDocumentEntity
+import org.starfall.multigateway.shared.storage.database.entities.StructuredJsonNodeEntity
+import org.starfall.multigateway.shared.storage.database.entities.ConfigurationMigrationQuarantineEntity
 
 @Database(
     entities = [
@@ -41,9 +58,26 @@ import org.starfall.multigateway.shared.storage.database.entities.SpeechServiceE
         ChatProfileEntity::class,
         ProviderGroupEntity::class,
         ModelProviderEntity::class,
-        ProviderModelsEntity::class,
         McpServerEntity::class,
-        SpeechServiceEntity::class
+        SpeechServiceEntity::class,
+        ProviderAuthEntity::class,
+        ProviderModelSelectionEntity::class,
+        ProviderModelConfigurationEntity::class,
+        ProviderModelValueEntity::class,
+        ProviderCatalogModelEntity::class,
+        ProviderCatalogToolEntity::class,
+        McpAuthEntity::class,
+        McpToolCacheEntity::class,
+        McpCachedToolEntity::class,
+        ChatProfileConfigEntity::class,
+        ChatProfileMcpAccessEntity::class,
+        ChatProfileMcpToolEntity::class,
+        ChatProfileActiveMcpEntity::class,
+        ChatProfileActiveModelToolEntity::class,
+        SpeechAuthEntity::class,
+        StructuredJsonDocumentEntity::class,
+        StructuredJsonNodeEntity::class,
+        ConfigurationMigrationQuarantineEntity::class
     ],
     version = 10,
     exportSchema = true
@@ -53,9 +87,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun chatProfileDao(): ChatProfileDao
     abstract fun providerGroupDao(): ProviderGroupDao
     abstract fun modelProviderDao(): ModelProviderDao
-    abstract fun providerModelsDao(): ProviderModelsDao
     abstract fun mcpServerDao(): McpServerDao
     abstract fun speechServiceDao(): SpeechServiceDao
+    abstract fun structuredJsonDao(): StructuredJsonDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -118,28 +152,17 @@ abstract class AppDatabase : RoomDatabase() {
 
         val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                ConversationMigration9To10.migrate(db)
+                // Room owns the upgrade transaction; direct callers need the same atomicity.
+                val ownsTransaction = !db.inTransaction()
+                if (ownsTransaction) db.beginTransaction()
+                try {
+                    ConversationMigration9To10.migrate(db)
+                    ConfigurationMigration9To10.migrate(db)
+                    if (ownsTransaction) db.setTransactionSuccessful()
+                } finally {
+                    if (ownsTransaction) db.endTransaction()
+                }
             }
-        }
-
-        // No schema change: upgrade existing v2 secrets atomically before any DAO reads.
-        internal fun encryptLegacySecrets(db: SupportSQLiteDatabase) {
-            db.query("PRAGMA secure_delete = ON").close()
-            db.beginTransaction()
-            try {
-                val columns = mapOf("model_providers" to listOf("authJson", "configJson", "baseUrl"),
-                    "mcp_servers" to listOf("headersJson", "url"), "speech_services" to listOf("apiKey"))
-                columns.forEach { (table, fields) -> fields.forEach { field ->
-                    db.query("SELECT id, $field FROM $table WHERE $field IS NOT NULL").use { rows ->
-                        while (rows.moveToNext()) {
-                            val value = rows.getString(1)
-                            if (!SecretCipher.isEncrypted(value)) db.execSQL("UPDATE $table SET $field = ? WHERE id = ?",
-                                arrayOf(SecretCipher.encrypt(value), rows.getString(0)))
-                        }
-                    }
-                } }
-                db.setTransactionSuccessful()
-            } finally { db.endTransaction() }
         }
 
         @Volatile
@@ -151,9 +174,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "multigateway_db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10).addCallback(object : Callback() {
-                    override fun onOpen(db: SupportSQLiteDatabase) { encryptLegacySecrets(db) }
-                }).build()
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10).build()
                 INSTANCE = instance
                 instance
             }

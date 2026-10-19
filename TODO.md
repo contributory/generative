@@ -1,0 +1,60 @@
+# TODO
+
+- [x] Read `AGENTS.md` and inspect the entities, DAOs, repositories, models, migrations, import/export code, and data call sites.
+  ( `Đọc AGENTS.md và kiểm tra entities, DAO, repositories, model, migration, import/export cùng các nơi sử dụng dữ liệu.` )
+- [x] Use a metadata-only query for the conversation list so the active UI path does not load every message history at startup.
+  ( `Chuyển danh sách hội thoại sang truy vấn metadata để đường đi UI chính không tải toàn bộ lịch sử tin nhắn khi khởi động.` )
+- [x] Add an API to load a single conversation and its child records on demand through `ConversationRepository.loadById()`.
+  ( `Thêm API tải một hội thoại và các bản ghi con theo yêu cầu qua ConversationRepository.loadById().` )
+- [x] Switch active chat UI and navigation to `conversationList` and targeted ID-based loading; `allConversations` remains a lazy compatibility flow with no production callers outside its declaration.
+  ( `Chuyển UI chat và navigation đang hoạt động sang conversationList và API tải theo ID; allConversations chỉ còn là luồng tương thích lazy, không có nơi gọi trong production ngoài khai báo.` )
+- [x] Store conversations, messages, versions, file references, tool activities, summaries, and migration quarantine in relational SQLite tables.
+  ( `Chuyển dữ liệu hội thoại, tin nhắn, phiên bản, file reference, tool activity, summary và migration quarantine sang các bảng quan hệ SQLite.` )
+- [x] Replace `mentionsFile()` substring searching with relational file-reference queries.
+  ( `Chuyển tìm kiếm file reference trong mentionsFile() sang truy vấn các bảng quan hệ.` )
+- [x] Store provider/MCP authentication in separate encrypted auth tables; keep `authId` nullable and do not create dummy auth records when authentication is not configured.
+  ( `Tách dữ liệu xác thực provider/MCP sang các bảng auth được mã hóa riêng; giữ authId nullable và không tạo auth record giả khi không cấu hình xác thực.` )
+- [x] Normalize most provider/model, profile, MCP tool-cache, and speech data into relational tables. Extensible JSON is stored as a tree in `structured_json_documents`/`structured_json_nodes`, not as one JSON blob column.
+  ( `Chuẩn hóa phần lớn dữ liệu provider/model, profile, MCP tool cache và speech sang các bảng quan hệ. JSON mở rộng được lưu dưới dạng cây trong structured_json_documents/structured_json_nodes, không phải một JSON blob trong cột.` )
+- [x] Combine conversation and configuration migration in `MIGRATION_9_10`; `AppDatabase` declares schema version 10 and retains the earlier migration chain.
+  ( `Hợp nhất migration hội thoại và cấu hình vào MIGRATION_9_10; AppDatabase khai báo schema version 10 và giữ chuỗi migration từ các version cũ.` )
+- [x] Add migration test source for legacy v1/v9 data, credentials, normalized configuration, error cases, and rollback. Android/Room execution passed 8 tests on the authorized Star 4 - 11 device.
+  ( `Bổ sung mã kiểm thử migration cho dữ liệu legacy từ v1 và v9, dữ liệu xác thực, cấu hình chuẩn hóa, trường hợp lỗi và rollback. Đã chạy thành công 8 kiểm thử Android/Room trên thiết bị Star 4 - 11 được cấp quyền.` )
+- [x] Run `python3 -B -m unittest discover -s scripts -p 'test_phase5_*.py'`: all 67 Python tests passed. These are host-side tooling/SQLite tests, not Android/Room acceptance tests.
+  ( `Chạy python3 -B -m unittest discover -s scripts -p 'test_phase5_*.py': cả 67 test Python đều thành công. Đây là kiểm thử công cụ/SQLite trên máy chủ, không thay thế kiểm thử nghiệm thu Android/Room.` )
+- [x] Run `python3 -B scripts/validate-phase5.py`. The overall result is `FAIL`; do not treat it as acceptance.
+  ( `Chạy python3 -B scripts/validate-phase5.py. Kết quả tổng thể là FAIL; không được xem đây là nghiệm thu thành công.` )
+- [x] ~~An earlier TODO incorrectly stated that the current schema was v11 and required a 10→11 merge.~~ The source declares version 10, registers one direct v9→v10 migration, and the helpers are named `ConfigurationMigration10*`.
+  ( `~~TODO trước đây ghi sai rằng schema hiện tại là v11 và cần hợp nhất 10→11.~~ Mã nguồn khai báo version 10, đăng ký một migration trực tiếp v9→v10 và các helper mang tên ConfigurationMigration10*.` )
+- [x] ~~An earlier status treated migration data-integrity verification as complete.~~ The missing pre-drop conversation comparisons have now been added; fixtures and Android migration tests pass with the source still staged until verification completes.
+  ( `~~Trạng thái trước đây coi việc xác minh tính toàn vẹn dữ liệu migration là hoàn tất.~~ Các bước đối chiếu conversation trước khi xóa source còn thiếu đã được bổ sung; fixture và Android migration test thành công, source vẫn được giữ tạm cho tới khi kiểm tra xong.` )
+- [x] Add complete row-count and data-integrity checks for conversation/configuration migration before dropping source tables; preserve the source and roll back the migration if any check fails. Conversation migration now compares scalar fields, versions, tools, files, summaries, and counts before dropping its staged source; configuration migration performs source/child/count/foreign-key checks.
+  ( `Thêm kiểm tra đầy đủ số lượng bản ghi và tính toàn vẹn dữ liệu hội thoại/cấu hình trước khi xóa bảng nguồn; giữ nguyên dữ liệu nguồn và rollback migration nếu có kiểm tra thất bại. Conversation migration hiện đối chiếu scalar, version, tool, file, summary và số lượng trước khi xóa source tạm; configuration migration kiểm tra source/child/count/foreign-key.` )
+- [x] Audit migration handling for null/empty values, defaults, ordering, unknown JSON fields, encrypted/plaintext credentials, secrets in URLs/queries/headers, cache failures, and malformed required payloads. Never silently replace invalid required configuration with defaults. Required malformed values roll back; optional cache failures retain exact encrypted originals.
+  ( `Rà soát cách migration xử lý giá trị null/rỗng, giá trị mặc định, thứ tự, trường JSON lạ, thông tin xác thực mã hóa/plaintext, bí mật trong URL/query/header, lỗi cache và payload bắt buộc không hợp lệ. Không được âm thầm thay cấu hình bắt buộc bị lỗi bằng giá trị mặc định. Giá trị bắt buộc lỗi sẽ rollback; cache tùy chọn lỗi giữ lại bản gốc đã mã hóa.` )
+- [ ] Verify upgrades from every supported released schema, including row counts, order, and contents of conversations, message versions, tool activities, file references, summaries, provider/model settings, profiles, MCP, and speech. Never delete or recreate the database.
+  ( `Xác minh nâng cấp từ mọi schema đã phát hành được hỗ trợ, gồm số lượng, thứ tự và nội dung hội thoại, phiên bản tin nhắn, tool activity, file reference, summary, cấu hình provider/model, profile, MCP và speech. Không xóa hoặc tạo lại database.` )
+- [x] Rename or clearly document the configuration migration helpers so their names reflect the current migration to schema v10. The former `ConfigurationMigration11*` helpers are now `ConfigurationMigration10*`.
+  ( `Đổi tên hoặc ghi chú rõ các helper migration cấu hình để tên phản ánh migration hiện tại lên schema v10. Các helper `ConfigurationMigration11*` trước đây đã được đổi thành `ConfigurationMigration10*`.` )
+- [x] Replace the full-history delete-and-rebuild in `ConversationRepository.saveConversation()` with transactional writes that touch only changed rows. Preserve atomicity for append, update, delete, retry, and version replacement.
+  ( `Thay việc xóa và ghi lại toàn bộ lịch sử trong ConversationRepository.saveConversation() bằng các thao tác transaction chỉ ghi những hàng thay đổi. Giữ tính nguyên tử cho append, update, delete, retry và thay phiên bản.` )
+- [ ] Add repository/ViewModel tests for append/update/delete, metadata restoration, conversation-selection races, retry/version behavior, and preservation of unchanged child records. Repository append/edit row-identity coverage and existing metadata/rename/delete tests pass; dedicated selection-race and retry tests remain.
+  ( `Bổ sung kiểm thử repository/ViewModel cho append/update/delete, khôi phục metadata, tranh chấp khi chọn hội thoại, retry/version và bảo toàn các bản ghi con không thay đổi. Đã có test repository append/edit theo row identity cùng test metadata/rename/delete; vẫn còn test riêng cho selection-race và retry.` )
+- [x] Verify that provider/MCP metadata remains visible when an unrelated auth record is unreadable. Network operations load only the required auth and report clear errors for missing credentials or decryption failures.
+  ( `Xác minh metadata provider/MCP vẫn hiển thị khi auth của bản ghi không liên quan không đọc được. Thao tác mạng chỉ tải auth cần thiết và báo lỗi rõ ràng khi thiếu thông tin xác thực hoặc giải mã thất bại.` )
+- [x] Run legacy JSON import/export and round-trip tests after migration verification. Preserve external formats and distinguish API/import/export JSON from canonical SQLite storage.
+  ( `Chạy kiểm thử import/export JSON cũ và round-trip sau khi xác minh migration. Giữ tương thích định dạng bên ngoài và phân biệt JSON dùng cho API/import/export với dữ liệu lưu trữ chuẩn trong SQLite.` )
+- [ ] Verify that deleting conversations/messages leaves no orphan rows and does not delete files still referenced by another conversation.
+  ( `Xác minh việc xóa hội thoại/tin nhắn không để lại bản ghi mồ côi và không xóa file vẫn được hội thoại khác tham chiếu.` )
+- [x] Verify metadata queries do not read message bodies, quarantine payloads, or auth tables. Check foreign keys, indexes, orphan records, duplicate versions, and provider/profile links after migration. Repository tests, migration tests, and host SQL checks cover this scope.
+  ( `Xác minh truy vấn metadata không đọc nội dung tin nhắn, payload quarantine hoặc bảng auth. Kiểm tra foreign key, index, bản ghi mồ côi, phiên bản trùng và liên kết provider/profile sau migration. Repository test, migration test và host SQL check đã bao phủ phạm vi này.` )
+- [ ] Investigate and fix the immediate-after-launch send failure if it still reproduces. Measure first-send readiness and inspect provider/model/auth initialization; do not hide initialization races with fixed delays.
+  ( `Điều tra và sửa lỗi gửi tin nhắn ngay sau khi mở app nếu còn tái hiện. Đo thời điểm sẵn sàng gửi lần đầu và kiểm tra khởi tạo provider/model/auth; không dùng thời gian chờ cố định để che lỗi khởi tạo.` )
+- [ ] Measure startup, conversation-list readiness, large-conversation open, and first-send readiness on the same device/dataset before and after the changes. Record row counts and non-sensitive checksums; do not mark this complete without real measurements.
+  ( `Đo thời gian khởi động, hiển thị danh sách hội thoại, mở hội thoại lớn và sẵn sàng gửi tin nhắn trên cùng thiết bị/dataset trước và sau thay đổi. Ghi số lượng bản ghi và checksum không chứa dữ liệu nhạy cảm; không đánh dấu hoàn tất khi chưa có số đo thực tế.` )
+- [ ] Add incremental history loading only if real measurements show it is needed.
+  ( `Chỉ thêm tải lịch sử theo trang nếu số đo thực tế cho thấy cần thiết.` )
+- [x] After the related changes are complete, run a consolidated verification pass covering migration/repository tests, Kotlin/Room compilation, and the debug build. The targeted pass passed; the full 508-test Robolectric run still has 7 unrelated UI failures in chat scrolling/selection, favicon redirect, and provider drag/autoscroll.
+  ( `Sau khi hoàn tất các thay đổi liên quan, đã chạy lượt xác minh tập trung gồm migration/repository test, Kotlin/Room compile và debug build. Lượt test mục tiêu thành công; full Robolectric 508 test còn 7 lỗi UI không liên quan ở chat scroll/selection, favicon redirect và provider drag/autoscroll.` )
+- [ ] Verify on a device/emulator using an existing database and authorized realistic data. Compilation or host-side SQLite tests are not substitutes for this verification.
+  ( `Kiểm thử trên thiết bị/emulator với database hiện có và dữ liệu thực tế được phép sử dụng. Biên dịch hoặc kiểm thử SQLite trên máy chủ không thay thế được bước xác minh này.` )

@@ -5,6 +5,10 @@ import android.content.Context
 import kotlinx.coroutines.runBlocking
 import android.text.Html
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl
@@ -130,6 +134,53 @@ internal class FaviconService(private val context: Context, private val http: To
             catch (error: Exception) { failures += "${url.host}${url.encodedPath}: ${error.message ?: "could not load the icon"}" }
         }
         error("No favicon could be retrieved. Tried icon links in the homepage head, then favicon.ico and favicon.png on the host and root domain.\n\n" + failures.joinToString("\n"))
+    }
+
+    /**
+     * Like [get], but returns every distinct image found (a direct image link, the homepage's icon
+     * links, then favicon.ico/png fallbacks) so the person can choose between them.
+     */
+    suspend fun getAll(customUrl: String, baseUrl: String, limit: Int = 12): List<FaviconResult> = withContext(Dispatchers.IO) {
+        val homepage = faviconHomepage(customUrl, baseUrl)
+        val failures = java.util.Collections.synchronizedList(mutableListOf<String>())
+        if (customUrl.isNotBlank()) {
+            try {
+                val resource = download(homepage)
+                decodeFavicon(context, resource.bytes)?.let { return@withContext listOf(FaviconResult(it, resource.url)) }
+            } catch (error: CancellationException) { throw error }
+            catch (_: Exception) { /* not a direct image; fall back to homepage discovery */ }
+        }
+        val links = try {
+            val page = download(homepage, html = true)
+            faviconHeadUrls(page.bytes.toString(Charsets.UTF_8), page.url)
+        } catch (error: CancellationException) { throw error }
+        catch (error: Exception) {
+            failures += "Homepage: ${error.message ?: "could not load the page"}"
+            emptyList()
+        }
+        val gate = kotlinx.coroutines.sync.Semaphore(4)
+        val found = coroutineScope {
+            (links + faviconFallbackUrls(homepage)).distinct().map { url ->
+                async {
+                    gate.withPermit {
+                        try {
+                            val resource = download(url)
+                            val bitmap = decodeFavicon(context, resource.bytes)
+                                ?: error("Not a supported SVG, PNG, JPEG, WebP, GIF, or ICO image.")
+                            FaviconResult(bitmap, resource.url) to resource.bytes.contentHashCode()
+                        } catch (error: CancellationException) { throw error }
+                        catch (error: Exception) {
+                            failures += "${url.host}${url.encodedPath}: ${error.message ?: "could not load the icon"}"
+                            null
+                        }
+                    }
+                }
+            }.awaitAll().filterNotNull()
+        }
+        // Different URLs often serve the same bytes (e.g. root-domain and www favicons).
+        val unique = found.distinctBy { it.second }.map { it.first }.distinctBy { it.url.toString() }.take(limit)
+        if (unique.isEmpty()) error("No favicon could be retrieved. Tried icon links in the homepage head, then favicon.ico and favicon.png on the host and root domain.\n\n" + failures.joinToString("\n"))
+        unique
     }
 }
 

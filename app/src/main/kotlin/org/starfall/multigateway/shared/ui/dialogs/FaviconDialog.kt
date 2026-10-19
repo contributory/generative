@@ -1,21 +1,19 @@
 package org.starfall.multigateway.shared.ui.dialogs
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -25,21 +23,19 @@ import org.starfall.multigateway.R
 import org.starfall.multigateway.shared.icons.FaviconResult
 import org.starfall.multigateway.shared.icons.FaviconService
 import org.starfall.multigateway.shared.icons.IconStore
-import org.starfall.multigateway.shared.ui.icons.EntityIcon
 import org.starfall.multigateway.shared.ui.icons.FluentIcon
 import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.shared.ui.text.SelectableOutlinedTextField
 
+/**
+ * Fetches logos from the web only. Every image found is listed so the person picks one; nothing
+ * is saved until they confirm. Uploading from the device lives on the logo itself.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun FaviconDialog(
-    image: String?,
-    defaultImage: String?,
-    text: String?,
-    fallback: Int?,
-    matchName: String?,
-    model: Boolean,
     baseUrl: String,
-    onSave: (String?) -> Unit,
+    onSave: (String) -> Unit,
     onBusyChange: (Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -48,19 +44,45 @@ internal fun FaviconDialog(
     val service = remember { FaviconService(context) }
     val store = remember(context) { IconStore(context) }
     var customUrl by remember { mutableStateOf("") }
-    var result by remember { mutableStateOf<FaviconResult?>(null) }
+    var results by remember { mutableStateOf<List<FaviconResult>>(emptyList()) }
+    var selected by remember { mutableStateOf<FaviconResult?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val currentBusy by rememberUpdatedState(onBusyChange)
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) scope.launch {
+    DisposableEffect(Unit) { onDispose { currentBusy(false) } }
+
+    fun fetch() {
+        scope.launch {
             busy = true
             currentBusy(true)
             error = null
             try {
-                val id = withContext(Dispatchers.IO) { store.importImage(uri, shared = false) }
+                val found = withContext(Dispatchers.IO) { service.getAll(customUrl, baseUrl) }
+                results = found
+                selected = found.firstOrNull()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                results = emptyList()
+                selected = null
+                error = failure.message ?: "Could not retrieve the image."
+            } finally {
+                busy = false
+                currentBusy(false)
+            }
+        }
+    }
+
+    fun save(choice: FaviconResult) {
+        scope.launch {
+            busy = true
+            currentBusy(true)
+            error = null
+            try {
+                val name = choice.url.pathSegments.lastOrNull().orEmpty().ifBlank { choice.url.host }
+                val id = withContext(Dispatchers.IO) { store.importBitmap(choice.bitmap, name) }
                 onSave(id)
-                result = null
+                onDismiss()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
@@ -71,55 +93,15 @@ internal fun FaviconDialog(
             }
         }
     }
-    DisposableEffect(Unit) { onDispose { currentBusy(false) } }
 
     AppAlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
-        title = { Text(context.getString(R.string.entity_icon)) },
+        title = { Text(context.getString(R.string.favicon_get_logo)) },
         text = {
             Column(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                val preview = result
-                Box(
-                    Modifier.size(112.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
-                        .clickable(enabled = !busy) {
-                            imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        }
-                ) {
-                    if (preview != null) {
-                        Image(
-                            bitmap = preview.bitmap.asImageBitmap(),
-                            contentDescription = context.getString(R.string.favicon_preview),
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        EntityIcon(
-                            image = image ?: defaultImage,
-                            modifier = Modifier.fillMaxSize(),
-                            text = text,
-                            fallback = fallback,
-                            matchName = matchName,
-                            model = model
-                        )
-                    }
-                    Surface(
-                        modifier = Modifier.align(Alignment.BottomEnd).padding(5.dp),
-                        shape = RoundedCornerShape(50),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    ) {
-                        FluentIcon(
-                            Icons.Outlined.AddPhotoAlternate,
-                            contentDescription = context.getString(R.string.favicon_preview),
-                            modifier = Modifier.padding(5.dp).size(18.dp)
-                        )
-                    }
-                }
                 SelectableOutlinedTextField(
                     value = customUrl,
                     onValueChange = { customUrl = it; error = null },
@@ -129,48 +111,57 @@ internal fun FaviconDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
-                        if (customUrl.isNotEmpty()) {
-                            IconButton(enabled = !busy, onClick = { customUrl = ""; error = null }) {
-                                FluentIcon(Icons.Outlined.Close, contentDescription = context.getString(R.string.common_clear))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (customUrl.isNotEmpty()) {
+                                IconButton(enabled = !busy, onClick = { customUrl = ""; error = null }) {
+                                    FluentIcon(Icons.Outlined.Close, contentDescription = context.getString(R.string.common_clear))
+                                }
                             }
+                            TextButton(enabled = !busy, onClick = ::fetch) { Text(context.getString(R.string.favicon_fetch)) }
                         }
                     }
                 )
-                if (busy) CircularProgressIndicator()
+                if (busy) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-                preview?.let { Text(it.url.toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                if (results.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        results.forEach { item ->
+                            val isSelected = item == selected
+                            val shape = RoundedCornerShape(14.dp)
+                            Surface(
+                                modifier = Modifier.size(72.dp)
+                                    .clip(shape)
+                                    .border(
+                                        if (isSelected) 2.dp else 1.dp,
+                                        if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                                        shape
+                                    )
+                                    .clickable(enabled = !busy) { selected = item },
+                                color = MaterialTheme.colorScheme.surfaceContainerHighest
+                            ) {
+                                Image(
+                                    bitmap = item.bitmap.asImageBitmap(),
+                                    contentDescription = context.getString(R.string.favicon_preview),
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier.fillMaxSize().padding(6.dp)
+                                )
+                            }
+                        }
+                    }
+                    selected?.let {
+                        Text(it.url.toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
         },
         confirmButton = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (image != null) {
-                    TextButton(enabled = !busy, onClick = {
-                        onSave(null)
-                        result = null
-                        customUrl = ""
-                        error = null
-                    }) { Text(context.getString(R.string.common_remove)) }
+                TextButton(enabled = !busy && selected != null, onClick = { selected?.let(::save) }) {
+                    Text(context.getString(R.string.common_save))
                 }
-                TextButton(enabled = !busy, onClick = {
-                    scope.launch {
-                    busy = true
-                    currentBusy(true)
-                    error = null
-                    try {
-                        val fetched = withContext(Dispatchers.IO) { service.get(customUrl, baseUrl) }
-                        val id = withContext(Dispatchers.IO) { store.importBitmap(fetched.bitmap) }
-                        result = fetched
-                        onSave(id)
-                    } catch (cancelled: CancellationException) {
-                        throw cancelled
-                    } catch (failure: Exception) {
-                        error = failure.message ?: "Could not retrieve the image."
-                    } finally {
-                        busy = false
-                        currentBusy(false)
-                    }
-                }
-                }) { Text(context.getString(R.string.favicon_fetch)) }
                 TextButton(enabled = !busy, onClick = onDismiss) { Text(context.getString(R.string.common_close)) }
             }
         }

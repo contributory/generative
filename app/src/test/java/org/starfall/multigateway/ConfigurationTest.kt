@@ -62,7 +62,7 @@ class ConfigurationTest {
                 val request = server.takeRequest(5, TimeUnit.SECONDS)!!
                 val body = json.parseToJsonElement(request.body.readUtf8()).jsonObject
                 assertEquals(model, body["model"]!!.jsonPrimitive.content)
-                assertEquals(limit, body["max_tokens"]!!.jsonPrimitive.int)
+                assertEquals(limit, body["max_completion_tokens"]!!.jsonPrimitive.int)
                 assertEquals(temp, body["temperature"]?.jsonPrimitive?.double)
                 assertEquals(p.config.headers["X-Request"], request.getHeader("X-Request"))
                 if (temp == null) assertFalse(body.containsKey("top_p"))
@@ -104,7 +104,8 @@ class ConfigurationTest {
                     }
                     else -> {
                         assertNotEquals(true, body["stream"]?.jsonPrimitive?.boolean)
-                        assertEquals(37, body["max_tokens"]!!.jsonPrimitive.int)
+                        val tokenField = if (type == ModelApiType.OPENAI) "max_completion_tokens" else "max_tokens"
+                        assertEquals(37, body[tokenField]!!.jsonPrimitive.int)
                         if (type == ModelApiType.ANTHROPIC) assertEquals(9, body["top_k"]!!.jsonPrimitive.int)
                         else assertFalse(body.containsKey("top_k"))
                     }

@@ -29,6 +29,8 @@ import org.starfall.multigateway.shared.media.*
 import java.io.File
 import org.starfall.multigateway.shared.icons.model.IconRule
 import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.auth.AuthMethod
+import org.starfall.multigateway.shared.model.auth.Authorization
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
@@ -94,6 +96,7 @@ class EntityIconTest {
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
             val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI,
+                auth = Authorization(AuthMethod.BEARER_TOKEN, value = "fixture-icon-test-token"),
                 baseUrl = "https://example.test/v1", icon = "icon-a.png", sortOrder = 0, config = ProviderConfiguration(
                     modelConfigs = mapOf("model" to ModelConfiguration(icon = "icon-b.png", temperature = 0.4))))
             ModelRepository(db, AiService(context)).saveProvider(provider)
@@ -384,13 +387,13 @@ class EntityIconTest {
     }
 
     @Test fun legacyRecordsWithoutIconsStillLoad() = runBlocking {
+        installTestAndroidKeyStore()
         assertNull(kotlinx.serialization.json.Json.decodeFromString<ModelConfiguration>("{}").icon)
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
-            db.mcpServerDao().insertOrUpdate(McpServerEntity(
-                id = "old", name = "Old", protocol = McpProtocol.SSE.name, url = "https://example.test/sse",
-                headersJson = """{"headers":{"X-Test":"yes"},"auth":{"method":"NONE"}}""",
-                cachedToolsJson = null, sortOrder = 0))
+            McpRepository(db, McpService()).saveServer(McpInfo(
+                id = "old", name = "Old", protocol = McpProtocol.SSE, url = "https://example.test/sse",
+                headers = mapOf("X-Test" to "yes"), sortOrder = 0))
             val restored = McpRepository(db, McpService()).getById("old")!!
             assertNull(restored.icon)
             assertEquals(mapOf("X-Test" to "yes"), restored.headers)

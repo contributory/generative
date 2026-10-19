@@ -1,6 +1,7 @@
 package org.starfall.multigateway.shared.storage.database.entities
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -25,9 +26,6 @@ data class ChatProfileEntity(
     @PrimaryKey val id: String,
     val name: String,
     val icon: String?,
-    val configJson: String,
-    val activeMcpJson: String,
-    val activeModelToolsJson: String,
     val sortOrder: Int
 )
 
@@ -39,37 +37,67 @@ data class ProviderGroupEntity(
     val icon: String?
 )
 
-@Entity(tableName = "model_providers")
+@Entity(
+    tableName = "model_providers",
+    foreignKeys = [ForeignKey(
+        entity = ProviderAuthEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["authId"],
+        onDelete = ForeignKey.SET_NULL,
+        onUpdate = ForeignKey.CASCADE
+    )],
+    indices = [Index(value = ["authId"], name = "index_model_providers_authId")]
+)
 data class ModelProviderEntity(
     @PrimaryKey val id: String,
     val name: String,
     val type: String,
     val baseUrl: String,
-    val authJson: String,
-    val configJson: String,
     val icon: String?,
     val sortOrder: Int,
-    val groupId: String?
+    val groupId: String?,
+    val authId: String?,
+    val supportStream: Boolean,
+    val responsesApi: Boolean,
+    val customListModelsUrl: String?,
+    val maxTokens: Int,
+    val multipleApiKeys: Boolean,
+    val modelSelectionMode: String
 )
 
-@Entity(tableName = "provider_models")
-data class ProviderModelsEntity(
-    @PrimaryKey val id: String,
-    val modelsJson: String
+@Entity(
+    tableName = "mcp_servers",
+    foreignKeys = [ForeignKey(
+        entity = McpAuthEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["authId"],
+        onDelete = ForeignKey.SET_NULL,
+        onUpdate = ForeignKey.CASCADE
+    )],
+    indices = [Index(value = ["authId"], name = "index_mcp_servers_authId")]
 )
-
-@Entity(tableName = "mcp_servers")
 data class McpServerEntity(
     @PrimaryKey val id: String,
     val name: String,
     val protocol: String,
     val url: String?,
-    val headersJson: String?,
-    val cachedToolsJson: String?,
-    val sortOrder: Int
+    val icon: String?,
+    val sortOrder: Int,
+    val authId: String?,
+    val cacheState: String
 )
 
-@Entity(tableName = "speech_services")
+@Entity(
+    tableName = "speech_services",
+    foreignKeys = [ForeignKey(
+        entity = SpeechAuthEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["authId"],
+        onDelete = ForeignKey.SET_NULL,
+        onUpdate = ForeignKey.CASCADE
+    )],
+    indices = [Index(value = ["authId"], name = "index_speech_services_authId")]
+)
 data class SpeechServiceEntity(
     @PrimaryKey val id: String,
     val name: String,
@@ -78,7 +106,10 @@ data class SpeechServiceEntity(
     val voice: String,
     val speed: Float,
     val pitch: Float,
-    val apiKey: String,
     val sortOrder: Int,
-    val optionsJson: String? = null
+    val icon: String?,
+    val instructions: String,
+    val responseFormat: String,
+    val languageCode: String,
+    val authId: String?
 )

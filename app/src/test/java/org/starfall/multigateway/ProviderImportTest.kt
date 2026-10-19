@@ -19,6 +19,7 @@ import org.starfall.multigateway.integrations.modelapis.AiService
 import org.starfall.multigateway.features.appdata.logic.buildJsonExport
 import org.starfall.multigateway.features.appdata.logic.parseFullAppDataExport
 import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.auth.CredentialLoadState
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderGroup
 
@@ -41,7 +42,8 @@ class ProviderImportTest {
     )
 
     private fun provider(id: String, group: String?, order: Int) = ModelProvider(
-        id, id, ModelApiType.OPENAI, baseUrl = "https://example.test/v1", groupId = group, sortOrder = order
+        id, id, ModelApiType.OPENAI, baseUrl = "https://example.test/v1", groupId = group, sortOrder = order,
+        credentialState = CredentialLoadState.NOT_CONFIGURED
     )
 
     @Before fun setUp() {
@@ -64,7 +66,7 @@ class ProviderImportTest {
 
         val reopened = ModelRepository(db, AiService(context))
         assertEquals(groups, reopened.allGroups.first())
-        assertEquals(providers.associateBy { it.id }, reopened.allProviders.first().associateBy { it.id })
+        assertEquals(providers.associateBy { it.id }, reopened.loadProvidersForExport().associateBy { it.id })
         assertEquals(listOf("z-first", "a-second"), db.modelProviderDao().getProvidersByGroup("work").map { it.id })
         assertTrue(db.modelProviderDao().getProvidersByGroup("empty").isEmpty())
     }
@@ -85,7 +87,7 @@ class ProviderImportTest {
         val restoredGroups = reopened.allGroups.first()
         assertEquals(listOf("work", "empty", "local"), restoredGroups.map { it.id })
         assertEquals(groups, restoredGroups.filter { it.id in groups.mapTo(hashSetOf()) { group -> group.id } })
-        assertEquals((providers + localProvider).associateBy { it.id }, reopened.allProviders.first().associateBy { it.id })
+        assertEquals((providers + localProvider).associateBy { it.id }, reopened.loadProvidersForExport().associateBy { it.id })
     }
 
     @Test fun legacyImportPreservesLocalLayoutAndDoesNotCreateDanglingGroupReferences() = runBlocking {

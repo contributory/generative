@@ -12,12 +12,18 @@ import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.auth.AuthMethod
 import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.auth.CredentialLoadState
 import org.starfall.multigateway.shared.model.auth.requestHeaders
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 internal fun obj(vararg pairs: Pair<String, JsonElement>) = JsonObject(mapOf(*pairs))
 internal fun str(value: String) = JsonPrimitive(value)
 internal fun JsonObject.text(key: String) = (get(key) as? JsonPrimitive)?.contentOrNull.orEmpty()
+internal fun ModelProvider.requireNetworkCredentials(): ModelProvider = also {
+    check(credentialState == CredentialLoadState.LOADED || credentialState == CredentialLoadState.NOT_CONFIGURED) {
+        "Provider credentials are not ready ($credentialState). Reload before use."
+    }
+}
 internal fun providerBase(p: ModelProvider): String {
     val url = p.baseUrl.trim().toHttpUrlOrNull() ?: error("Provider URL must use http:// or https://")
     require(url.username.isEmpty() && url.password.isEmpty() && url.query == null && url.fragment == null) {
@@ -56,6 +62,7 @@ class ToolHttp(
         }
     }
     fun request(url: String, provider: ModelProvider? = null): Request.Builder {
+        provider?.requireNetworkCredentials()
         val builder = Request.Builder().url(url).header("Accept", "application/json")
         provider?.let { p ->
             val auth = p.auth

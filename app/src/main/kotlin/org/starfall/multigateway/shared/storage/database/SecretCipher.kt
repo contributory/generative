@@ -34,6 +34,10 @@ internal object SecretCipher {
     }
     fun decrypt(value: String): String {
         if (!isEncrypted(value)) return value // Legacy records are upgraded transactionally at database open.
+        return decryptStrict(value)
+    }
+    fun decryptStrict(value: String): String {
+        check(isEncrypted(value)) { "Credential value is not encrypted." }
         try {
             val bytes = Base64.getDecoder().decode(value.removePrefix(PREFIX))
             require(bytes.size >= 28)

@@ -8,15 +8,13 @@ import org.starfall.multigateway.shared.model.McpInfo
 import org.starfall.multigateway.shared.model.McpProtocol
 import org.starfall.multigateway.shared.model.SpeechService
 import org.starfall.multigateway.shared.model.api.ModelApiType
-import org.starfall.multigateway.shared.model.auth.AuthMethod
-import org.starfall.multigateway.shared.model.auth.Authorization
 import org.starfall.multigateway.shared.model.isContentApiName
 import org.starfall.multigateway.shared.storage.McpRepository
 import org.starfall.multigateway.shared.storage.ModelRepository
 import org.starfall.multigateway.shared.storage.SpeechRepository
 import org.starfall.multigateway.shared.storage.preferences.AppPreferencesRepository
 
-/** Runs once per application process; existing records retain their persisted format. */
+/** Runs once per process using provider/MCP metadata only; auth repairs belong in migrations. */
 class DefaultDataInitializer(
     private val modelRepo: ModelRepository,
     private val mcpRepo: McpRepository,
@@ -30,25 +28,6 @@ class DefaultDataInitializer(
             if (currentProviders.isEmpty()) {
                 initDefaultProviders()
             } else {
-                val legacyGoogle = currentProviders.find { it.id == "google" }
-                if (legacyGoogle?.auth?.method == AuthMethod.QUERY_PARAM && legacyGoogle.auth.key.isNullOrBlank()) {
-                    modelRepo.saveProvider(legacyGoogle.copy(auth = legacyGoogle.auth.copy(key = "key")))
-                }
-                val legacyAnthropic = currentProviders.find { it.id == "anthropic" }
-                if (legacyAnthropic?.auth?.method == AuthMethod.CUSTOM_HEADER && legacyAnthropic.auth.key.isNullOrBlank()) {
-                    modelRepo.saveProvider(legacyAnthropic.copy(auth = Authorization(
-                        method = AuthMethod.PLATFORM_DEFAULT,
-                        value = legacyAnthropic.auth.value.orEmpty()
-                    )))
-                }
-
-                currentProviders.filter {
-                    it.type in listOf(ModelApiType.GOOGLE, ModelApiType.ANTHROPIC) &&
-                        it.auth.method == AuthMethod.BEARER_TOKEN && it.auth.key == null
-                }.forEach {
-                    modelRepo.saveProvider(it.copy(auth = it.auth.copy(method = AuthMethod.PLATFORM_DEFAULT)))
-                }
-
                 val existingOllama = currentProviders.find { it.type == ModelApiType.OLLAMA }
                 if (existingOllama != null && (
                         existingOllama.baseUrl.contains("108.181.196.208") ||

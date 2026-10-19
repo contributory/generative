@@ -2,7 +2,6 @@ package org.starfall.multigateway
 
 import android.content.Context
 import kotlinx.serialization.json.*
-import org.starfall.multigateway.shared.storage.database.SecretCipher
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.first
@@ -48,11 +47,6 @@ class ProviderGroupTest {
                     "default" to ModelConfiguration(contextWindowTokens = 128000),
                     "large" to ModelConfiguration(contextWindowTokens = 128001)
                 ))))
-            val entity = db.modelProviderDao().getProviderById("json-test")!!
-            val stored = Json.parseToJsonElement(SecretCipher.decrypt(entity.configJson)).jsonObject.getValue("modelConfigs").jsonObject
-            assertEquals(32000, stored.getValue("small").jsonObject.getValue("contextWindowTokens").jsonPrimitive.int)
-            assertFalse(stored.getValue("default").jsonObject.containsKey("contextWindowTokens"))
-            assertEquals(128001, stored.getValue("large").jsonObject.getValue("contextWindowTokens").jsonPrimitive.int)
             val reopened = ModelRepository(db, AiService(context)).getProviderById("json-test")!!
             assertEquals(raw, reopened.config.modelConfigs.getValue("small").modelJson)
             assertEquals(32000, reopened.config.modelConfigs.getValue("small").contextWindowTokens)
@@ -161,7 +155,21 @@ class ProviderGroupTest {
             repo.saveGroup(ProviderGroup("g", "Work", 0))
             for (id in listOf("z-legacy", "a-legacy")) {
                 db.modelProviderDao().insertOrUpdate(org.starfall.multigateway.shared.storage.database.entities.ModelProviderEntity(
-                    id, id, ModelApiType.OPENAI.name, "https://example.test/v1", "{}", "{}", null, Int.MAX_VALUE, "g"))
+                    id = id,
+                    name = id,
+                    type = ModelApiType.OPENAI.name,
+                    baseUrl = "https://example.test/v1",
+                    icon = null,
+                    sortOrder = Int.MAX_VALUE,
+                    groupId = "g",
+                    authId = null,
+                    supportStream = true,
+                    responsesApi = false,
+                    customListModelsUrl = null,
+                    maxTokens = 4000,
+                    multipleApiKeys = false,
+                    modelSelectionMode = "DISCOVERY"
+                ))
             }
             repo.saveProvider(ModelProvider("moving", "Moving", ModelApiType.OPENAI, baseUrl = "https://example.test/v1"))
             repo.moveProviderToGroup("moving", "g")

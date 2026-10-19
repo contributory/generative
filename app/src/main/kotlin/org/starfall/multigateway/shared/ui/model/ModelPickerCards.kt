@@ -140,7 +140,7 @@ internal fun ModelPickerCard(
                 } else Modifier),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                EntityIcon(config.icon, Modifier.size(40.dp), text = modelInitial(modelId), matchName = config.displayName.ifBlank { modelId }, model = true)
+                EntityIcon(config.icon, Modifier.size(40.dp), text = modelInitial(modelId), matchName = config.displayName.ifBlank { modelId }, fallbackMatchName = modelId, model = true)
 
                 Spacer(Modifier.width(10.dp))
 

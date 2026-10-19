@@ -49,7 +49,7 @@ internal fun ProviderModelsPane(models: List<String>, configurations: Map<String
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), modifier = Modifier.fillMaxWidth()
                         .longPressDraggableHandle(onDragStopped = onDrop).clickable { onEdit(id) }) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        EntityIcon(model.icon, Modifier.size(42.dp), text = modelInitial(id), matchName = model.displayName.ifBlank { id }, model = true)
+                        EntityIcon(model.icon, Modifier.size(42.dp), text = modelInitial(id), matchName = model.displayName.ifBlank { id }, fallbackMatchName = id, model = true)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(model.displayName.ifBlank { id }, style = MaterialTheme.typography.titleMedium, overflow = TextOverflow.Ellipsis, maxLines = 2)

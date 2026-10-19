@@ -27,6 +27,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import java.io.OutputStreamWriter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -168,6 +169,7 @@ fun AppNavigation(
     val providerImportError by configurationViewModel.providerImportError.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var pendingExport by remember { mutableStateOf<String?>(null) }
+    var preparingExport by remember { mutableStateOf(false) }
     var pendingImport by remember { mutableStateOf(false) }
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -175,33 +177,46 @@ fun AppNavigation(
         val payload = pendingExport
         pendingExport = null
         if (uri == null || payload == null) return@rememberLauncherForActivityResult
-        coroutineScope.launch(Dispatchers.IO) {
-            runCatching {
-                context.contentResolver.openOutputStream(uri)?.use { output ->
-                    OutputStreamWriter(output, Charsets.UTF_8).use { it.write(payload) }
-                } ?: error("Could not open the selected file.")
-            }.onSuccess {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "JSON file exported", Toast.LENGTH_SHORT).show()
+        coroutineScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri)?.use { output ->
+                        OutputStreamWriter(output, Charsets.UTF_8).use { it.write(payload) }
+                    } ?: error("Could not open the selected file.")
                 }
-            }.onFailure { error ->
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Export failed: ${error.message.orEmpty()}", Toast.LENGTH_LONG).show()
-                }
+                Toast.makeText(context, "JSON file exported", Toast.LENGTH_SHORT).show()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                Toast.makeText(context, "Export failed: could not write the selected file. Choose a writable location and retry.", Toast.LENGTH_LONG).show()
             }
         }
     }
 
     fun exportJson() {
+        if (preparingExport || pendingExport != null) return
+        preparingExport = true
         coroutineScope.launch {
-            val fullConversations = withContext(Dispatchers.IO) {
-                viewModel.conversationsForExport()
+            try {
+                val fullProviders = configurationViewModel.loadProvidersForExport()
+                val fullServers = configurationViewModel.loadServersForExport()
+                val fullConversations = withContext(Dispatchers.IO) {
+                    viewModel.conversationsForExport()
+                }
+                val payload = withContext(Dispatchers.Default) {
+                    buildJsonExport(fullProviders, fullServers, speechServices, fullConversations, providerGroups)
+                }
+                pendingExport = payload
+                exportLauncher.launch(JsonExportKind.FULL_BACKUP.fileName)
+            } catch (cancelled: CancellationException) {
+                pendingExport = null
+                throw cancelled
+            } catch (_: Exception) {
+                pendingExport = null
+                Toast.makeText(context, "Export failed: could not prepare a complete backup. Check provider/MCP credentials and try again.", Toast.LENGTH_LONG).show()
+            } finally {
+                preparingExport = false
             }
-            val payload = withContext(Dispatchers.Default) {
-                buildJsonExport(providers, mcpServers, speechServices, fullConversations, providerGroups)
-            }
-            pendingExport = payload
-            exportLauncher.launch(JsonExportKind.FULL_BACKUP.fileName)
         }
     }
 
@@ -531,14 +546,15 @@ fun AppNavigation(
                             defaultValue = null
                         })
                     ) { entry ->
-                        val providerId = entry.arguments?.getString("providerId")
+                        val providerId = entry.arguments?.getString("providerId").orEmpty()
                         val modelId = entry.arguments?.getString("modelId")
-                        val provider = providers.firstOrNull { it.id == providerId }
-                        if (provider == null) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
-                            }
-                        } else {
+                        TargetedEditorContent(
+                            recordId = providerId,
+                            title = "Provider editor",
+                            loadingMessage = "Loading provider and saved credentials…",
+                            onBack = { navController.popBackStack() },
+                            load = { configurationViewModel.loadProviderForEditor(providerId) }
+                        ) { provider ->
                             key(provider.id) {
                                 ProviderEditorScreen(
                                     initialProvider = provider,
@@ -602,21 +618,32 @@ fun AppNavigation(
                     composable(AppDestination.MCP.route) {
                         SlideScreenContent(editor = mcpEditor, label = stringResource(R.string.mcp_editor)) { page ->
                             if (page != null) {
-                                ServerEditorScreen(
-                                    initialServer = page.first,
-                                    isNew = page.second,
-                                    onRefreshTools = { configurationViewModel.refreshMcpTools(it) },
-                                    onAuthorizeOAuth = { configurationViewModel.authorizeMcpOAuth(it) },
-                                    onClearOAuth = { configurationViewModel.clearMcpOAuth(it) },
-                                    cachedTools = mcpToolsCache[page.first.id] ?: page.first.cachedTools,
-                                    cachedError = mcpToolErrors[page.first.id],
-                                    cachedLoading = page.first.id in mcpToolsLoading,
-                                    toolSettings = toolSettings,
-                                    onSetToolEnabled = viewModel::setMcpToolEnabled,
-                                    onSetToolParameter = viewModel::setMcpToolParameter,
-                                    onDismiss = { mcpEditor = null },
-                                    onSave = { configurationViewModel.saveMcpServer(it) }
-                                )
+                                TargetedEditorContent(
+                                    recordId = page.first.id,
+                                    title = stringResource(R.string.configure_mcp_server_title),
+                                    loadingMessage = "Loading MCP server and saved credentials…",
+                                    onBack = { mcpEditor = null },
+                                    load = { configurationViewModel.loadMcpServerForEditor(page.first.id) },
+                                    draft = page.first.takeIf { page.second }
+                                ) { server ->
+                                    key(server.id) {
+                                        ServerEditorScreen(
+                                            initialServer = server,
+                                            isNew = page.second,
+                                            onRefreshTools = { configurationViewModel.refreshMcpTools(it) },
+                                            onAuthorizeOAuth = { configurationViewModel.authorizeMcpOAuth(it) },
+                                            onClearOAuth = { configurationViewModel.clearMcpOAuth(it) },
+                                            cachedTools = mcpToolsCache[server.id] ?: server.cachedTools,
+                                            cachedError = mcpToolErrors[server.id],
+                                            cachedLoading = server.id in mcpToolsLoading,
+                                            toolSettings = toolSettings,
+                                            onSetToolEnabled = viewModel::setMcpToolEnabled,
+                                            onSetToolParameter = viewModel::setMcpToolParameter,
+                                            onDismiss = { mcpEditor = null },
+                                            onSave = { configurationViewModel.saveMcpServer(it) }
+                                        )
+                                    }
+                                }
                             } else {
                                 ServerListScreen(
                                     mcpServers = mcpServers,

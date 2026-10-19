@@ -92,9 +92,11 @@ class ToolChatViewModel(
         imageOptions: JsonObject = obj(),
         attachments: List<String> = emptyList(),
         videoOptions: JsonObject = obj()
-    ): Flow<GenerationEvent> = mediaGeneration.generateMedia(
-        provider, model, kind, prompt, imageOptions, attachments, videoOptions
-    )
+    ): Flow<GenerationEvent> = flow {
+        emitAll(mediaGeneration.generateMedia(
+            aiService.resolveProvider(provider), model, kind, prompt, imageOptions, attachments, videoOptions
+        ))
+    }
 
     suspend fun completeText(
         provider: ModelProvider,
@@ -115,6 +117,7 @@ class ToolChatViewModel(
         maxToolRounds: () -> Int? = { null },
         takePendingMessage: () -> StoredMessage? = { null }
     ): Flow<GenerationEvent> = channelFlow {
+        val selectedProvider = aiService.resolveProvider(provider)
         val sessions = mutableMapOf<String, McpSession>()
         val tools = mutableListOf<ToolDefinition>()
         // Keep one catalog for a generation. The service still validates the selected machine at
@@ -184,7 +187,7 @@ class ToolChatViewModel(
             }
 
             if (tools.isEmpty()) {
-                toolRequest.streamEvents(provider, model, messages, prompt).collect { send(it) }
+                toolRequest.streamEvents(selectedProvider, model, messages, prompt).collect { send(it) }
                 return@channelFlow
             }
 
@@ -194,10 +197,10 @@ class ToolChatViewModel(
 
             http.requireFiles()
             val history = mutableListOf<JsonObject>()
-            if (provider.type != ModelApiType.GOOGLE && prompt.isNotBlank()) {
+            if (selectedProvider.type != ModelApiType.GOOGLE && prompt.isNotBlank()) {
                 history += obj("role" to str("system"), "content" to str(prompt))
             }
-            val passbackConfig = provider.config.modelConfigs[model] ?: ModelConfiguration()
+            val passbackConfig = selectedProvider.config.modelConfigs[model] ?: ModelConfiguration()
             // Auto passes earlier reasoning back only when this conversation already used tools. It also
             // switches on as soon as the current turn makes a tool call (see below).
             var sendThinkingContent = passbackConfig.sendsThinkingBack(messages.hasToolCalls())
@@ -271,9 +274,9 @@ class ToolChatViewModel(
                     }
                 }
 
-                val streaming = provider.streamEnabledFor(model)
+                val streaming = selectedProvider.streamEnabledFor(model)
                 val turn = toolRequest.request(
-                    provider,
+                    selectedProvider,
                     model,
                     history,
                     allowed.map { configuredMcpTool(it, settings()) },
@@ -358,8 +361,8 @@ class ToolChatViewModel(
                         } else {
                             val cfg = settings().system[name] ?: error("System tool is not configured")
                             check(cfg.enabled) { "System tool disabled" }
-                            val mediaProvider = providers.find { it.id == cfg.providerId }
-                                ?: error("Select a provider for this system tool")
+                            val mediaProvider = aiService.resolveProvider(providers.find { it.id == cfg.providerId }
+                                ?: error("Select a provider for this system tool"))
                             val kind = if (name == "generate_image") {
                                 ModelType.IMAGE_GENERATION
                             } else {

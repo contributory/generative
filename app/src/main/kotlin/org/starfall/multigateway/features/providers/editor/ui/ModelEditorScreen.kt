@@ -129,6 +129,7 @@ fun ModelEditorScreen(
                 text = modelInitial(modelId),
                 onBusyChange = { iconImporting = it },
                 matchName = config.displayName.ifBlank { modelId },
+                fallbackMatchName = modelId,
                 model = true,
                 faviconBaseUrl = provider.baseUrl
             )

@@ -37,7 +37,7 @@ class SpeechServiceStorageTest {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java).build()
         try {
-            db.speechServiceDao().insertOrUpdate(SpeechServiceEntity("s", "Old", "system", null, "Default", 1f, 1f, "", 0))
+            SpeechRepository(db).saveService(SpeechService("s", "Old", provider = "system", voice = "Default", speed = 1f, pitch = 1f, sortOrder = 0))
             val service = SpeechRepository(db).getById("s")!!
             assertEquals("mp3", service.responseFormat)
             assertEquals("", service.instructions)

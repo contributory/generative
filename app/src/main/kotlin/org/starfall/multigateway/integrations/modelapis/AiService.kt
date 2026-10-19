@@ -16,6 +16,7 @@ import org.starfall.multigateway.shared.model.ChatRole
 import org.starfall.multigateway.shared.model.MessageVersion
 import org.starfall.multigateway.shared.model.StoredMessage
 import org.starfall.multigateway.shared.model.api.ModelApiType
+import org.starfall.multigateway.shared.model.auth.CredentialLoadState
 import org.starfall.multigateway.shared.model.generation.GenerationEvent
 import org.starfall.multigateway.shared.model.generation.hasToolCalls
 import org.starfall.multigateway.shared.model.language.DiscoveredModel
@@ -25,10 +26,14 @@ import org.starfall.multigateway.shared.model.language.sendsThinkingBack
 import org.starfall.multigateway.shared.model.language.wireReasoningEffort
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.streamEnabledFor
+import org.starfall.multigateway.shared.networking.requireNetworkCredentials
 import org.starfall.multigateway.shared.storage.preferences.ModelConfigurationMemory
 import java.util.Base64
 
-class AiService(context: Context) {
+class AiService(
+    context: Context,
+    var providerLoader: suspend (ModelProvider) -> ModelProvider = { it }
+) {
     internal val modelConfigurationMemory = ModelConfigurationMemory(context)
     private val appContext = context.applicationContext
 
@@ -52,6 +57,16 @@ class AiService(context: Context) {
     }
 
     private val adapters = ModelApiAdapterRegistry(context, sdk, httpClient, attachments, json)
+
+    /**
+     * Load only NOT_REQUESTED records; the loader must retain the caller's public configuration.
+     * Already-ready records bypass the loader, and incomplete results fail before any adapter runs.
+     */
+    suspend fun resolveProvider(provider: ModelProvider): ModelProvider {
+        val resolved = if (provider.credentialState == CredentialLoadState.NOT_REQUESTED) providerLoader(provider) else provider
+        check(resolved.id == provider.id) { "Credential loader returned a different provider." }
+        return resolved.requireNetworkCredentials()
+    }
 
     internal suspend fun toolAttachments(
         message: StoredMessage,
@@ -81,15 +96,23 @@ class AiService(context: Context) {
             }
         }
 
-    suspend fun authorizeProvider(provider: ModelProvider): Result<ModelProvider> =
-        accountAdapters.get(provider.type)?.authorize(provider)
-            ?: Result.failure(IllegalArgumentException("${provider.type.displayName} does not use account authorization."))
+    suspend fun authorizeProvider(provider: ModelProvider): Result<ModelProvider> = try {
+        val resolved = resolveProvider(provider)
+        accountAdapters.get(resolved.type)?.authorize(resolved)
+            ?: Result.failure(IllegalArgumentException("${resolved.type.displayName} does not use account authorization."))
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
 
-    suspend fun prepareAccountProvider(provider: ModelProvider, modelName: String? = null): ModelProvider =
-        accountAdapters.get(provider.type)?.let { adapter ->
-            if (modelName == null) adapter.prepareAuthenticatedProvider(provider) else adapter.prepareModelProvider(provider, modelName)
+    suspend fun prepareAccountProvider(provider: ModelProvider, modelName: String? = null): ModelProvider {
+        val resolved = resolveProvider(provider)
+        return accountAdapters.get(resolved.type)?.let { adapter ->
+            if (modelName == null) adapter.prepareAuthenticatedProvider(resolved) else adapter.prepareModelProvider(resolved, modelName)
         }
-            ?: provider
+            ?: resolved
+    }
 
     fun normalizeAccountToolRequest(
         sourceProvider: ModelProvider,
@@ -115,9 +138,10 @@ class AiService(context: Context) {
     }
 
     suspend fun testConnection(provider: ModelProvider): Result<String> {
-        accountAdapters.get(provider.type)?.let { return it.testConnection(provider) }
         return try {
-            adapters.testConnection(provider)
+            val resolved = resolveProvider(provider)
+            accountAdapters.get(resolved.type)?.let { return it.testConnection(resolved) }
+            adapters.testConnection(resolved)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -165,8 +189,9 @@ class AiService(context: Context) {
         fetchProviderModelCatalog(provider).map { it.id }
 
     suspend fun fetchProviderModelCatalog(provider: ModelProvider): List<DiscoveredModel> {
-        accountAdapters.get(provider.type)?.let { return it.fetchModelCatalog(provider) }
-        return adapters.modelCatalog.fetch(provider)
+        val resolved = resolveProvider(provider)
+        accountAdapters.get(resolved.type)?.let { return it.fetchModelCatalog(resolved) }
+        return adapters.modelCatalog.fetch(resolved)
     }
 
     suspend fun fetchOllamaModels(baseUrl: String): List<String> =
@@ -219,25 +244,26 @@ class AiService(context: Context) {
         systemPrompt: String = "",
         maxOutputTokens: Int? = null
     ): Flow<GenerationEvent> = flow {
-        val modelConfig = provider.config.modelConfigs[modelName] ?: ModelConfiguration()
+        val resolved = resolveProvider(provider)
+        val modelConfig = resolved.config.modelConfigs[modelName] ?: ModelConfiguration()
         val sendThinking = modelConfig.sendsThinkingBack(messages.hasToolCalls())
-        val requestProvider = provider.copy(config = provider.config.copy(supportStream = provider.streamEnabledFor(modelName)))
+        val requestProvider = resolved.copy(config = resolved.config.copy(supportStream = resolved.streamEnabledFor(modelName)))
         val requestMessages = filterAttachmentsForProvider(requestProvider, modelConfig, messages)
         val temperature = modelConfig.temperature
         val topP = modelConfig.topP
         val topK = modelConfig.topK
         val maxTokens = maxOutputTokens
             ?.coerceAtLeast(1)
-            ?.let { minOf(it, provider.config.maxTokens) }
-            ?: provider.config.maxTokens
-        accountAdapters.get(provider.type)?.let { adapter ->
+            ?.let { minOf(it, resolved.config.maxTokens) }
+            ?: resolved.config.maxTokens
+        accountAdapters.get(resolved.type)?.let { adapter ->
             emitAll(adapter.streamEvents(
                 requestProvider, modelName, requestMessages, systemPrompt, maxTokens
             ))
             return@flow
         }
-        val adapter = adapters.get(provider.type)
-            ?: error("No request adapter is registered for ${provider.type.displayName}.")
+        val adapter = adapters.get(resolved.type)
+            ?: error("No request adapter is registered for ${resolved.type.displayName}.")
         emitAll(adapter.stream(ModelApiRequest(
             provider = requestProvider,
             modelName = modelName,

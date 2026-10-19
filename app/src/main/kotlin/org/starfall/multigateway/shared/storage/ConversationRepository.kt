@@ -58,9 +58,7 @@ class ConversationRepository(private val db: AppDatabase) {
         withContext(Dispatchers.IO) {
             writeLock.withLock {
                 db.withTransaction {
-                    dao.insertOrUpdate(modelToEntity(persisted))
-                    dao.deleteMessages(persisted.id)
-                    dao.deleteMigrationIssues(persisted.id)
+                    upsertConversation(modelToEntity(persisted))
                     persistChildren(persisted)
                 }
             }
@@ -72,8 +70,8 @@ class ConversationRepository(private val db: AppDatabase) {
         withContext(Dispatchers.IO) {
             writeLock.withLock {
                 db.withTransaction {
-                    val current = dao.getConversationById(id) ?: return@withTransaction
-                    dao.insertOrUpdate(current.copy(title = title, updatedAt = now))
+                    // REPLACE deletes the parent first and cascades into its history.
+                    dao.renameConversation(id, title, now)
                 }
             }
         }
@@ -164,52 +162,104 @@ class ConversationRepository(private val db: AppDatabase) {
     }
 
     private suspend fun persistChildren(conversation: Conversation) {
-        val messages = conversation.messages.mapIndexed { sequence, message ->
-            MessageEntity(conversation.id, message.id, sequence, message.role.persistedValue, message.activeVersionIndex)
+        val existingMessages = dao.getMessages(conversation.id)
+        val messageIds = conversation.messages.map { it.id }
+        if (messageIds.isEmpty()) dao.deleteAllMessages(conversation.id)
+        else dao.deleteMessagesExcept(conversation.id, messageIds)
+
+        // Message sequence is unique. Shift only when the message set/order changed so a reorder
+        // can be applied without deleting and rebuilding any message's descendants.
+        if (existingMessages.map { it.id } != messageIds) dao.shiftMessageSequences(conversation.id, 1_000_000)
+
+        conversation.messages.forEachIndexed { sequence, message ->
+            val entity = MessageEntity(conversation.id, message.id, sequence, message.role.persistedValue, message.activeVersionIndex)
+            val previous = existingMessages.firstOrNull { it.id == message.id }
+            if (previous == null) dao.insertMessage(entity) else if (previous != entity) dao.updateMessage(entity)
+            persistMessage(conversation.id, message)
         }
-        dao.insertMessages(messages)
-        conversation.messages.forEach { message ->
-            message.versions.forEachIndexed { versionIndex, version ->
-                dao.insertMessageVersions(listOf(MessageVersionEntity(
-                    conversationId = conversation.id,
-                    messageId = message.id,
-                    versionIndex = versionIndex,
-                    content = version.content,
-                    timestamp = version.timestamp,
-                    reasoningContent = version.reasoningContent,
-                    reasoningSignature = version.reasoningSignature,
-                    processingFinishedAt = version.processingFinishedAt,
-                    providerId = version.providerId,
-                    modelId = version.modelId,
-                    modelDisplayName = version.modelDisplayName,
-                    generationInterrupted = version.generationInterrupted,
-                    generationError = version.generationError
-                )))
-                dao.insertMessageVersionFiles(version.files.mapIndexed { fileIndex, reference ->
-                    MessageVersionFileEntity(conversation.id, message.id, versionIndex, fileIndex, reference)
-                })
-                version.toolActivity.forEachIndexed { activityIndex, activity ->
-                    dao.insertToolActivities(listOf(ToolActivityEntity(
-                        conversation.id, message.id, versionIndex, activityIndex, activity.id, activity.name,
-                        activity.wireName, activity.status, activity.summary, activity.arguments, activity.response,
-                        activity.contentOffset, activity.reasoningOffset, activity.inlineMedia, activity.responsePreviewLimit
-                    )))
-                    dao.insertToolActivityFiles(activity.files.mapIndexed { fileIndex, reference ->
-                        ToolActivityFileEntity(conversation.id, message.id, versionIndex, activityIndex, fileIndex, reference)
-                    })
-                }
-            }
+
+        val summary = conversation.summary?.takeIf { it.throughMessageId in messageIds }?.let {
+            ConversationSummaryEntity(conversation.id, it.id, it.content, it.throughMessageId, it.role.name, it.createdAt)
         }
-        conversation.summary?.takeIf { it.throughMessageId in conversation.messages.map { message -> message.id } }?.let {
-            dao.insertSummary(ConversationSummaryEntity(
-                conversationId = conversation.id,
-                id = it.id,
-                content = it.content,
-                throughMessageId = it.throughMessageId,
-                role = it.role.name,
-                createdAt = it.createdAt
-            ))
+        if (summary == null) {
+            dao.deleteSummary(conversation.id)
+        } else {
+            val previous = dao.getSummary(conversation.id)
+            if (previous == null) dao.insertSummaryIfAbsent(summary)
+            else if (previous != summary) dao.updateSummary(summary)
         }
+    }
+
+    private suspend fun upsertConversation(entity: ConversationEntity) {
+        if (dao.updateConversation(entity) == 0) dao.insertConversation(entity)
+    }
+
+    private suspend fun persistMessage(conversationId: String, message: StoredMessage) {
+        val existingVersions = dao.getMessageVersions(conversationId, message.id)
+        val versionIndexes = message.versions.indices.toList()
+        if (versionIndexes.isEmpty()) dao.deleteMessageVersions(conversationId, message.id)
+        else dao.deleteMessageVersionsExcept(conversationId, message.id, versionIndexes)
+
+        message.versions.forEachIndexed { versionIndex, version ->
+            val entity = MessageVersionEntity(
+                conversationId = conversationId,
+                messageId = message.id,
+                versionIndex = versionIndex,
+                content = version.content,
+                timestamp = version.timestamp,
+                reasoningContent = version.reasoningContent,
+                reasoningSignature = version.reasoningSignature,
+                processingFinishedAt = version.processingFinishedAt,
+                providerId = version.providerId,
+                modelId = version.modelId,
+                modelDisplayName = version.modelDisplayName,
+                generationInterrupted = version.generationInterrupted,
+                generationError = version.generationError
+            )
+            val previous = existingVersions.firstOrNull { it.versionIndex == versionIndex }
+            if (previous == null) dao.insertMessageVersion(entity)
+            else if (previous != entity) dao.updateMessageVersion(entity)
+            persistVersionFiles(conversationId, message.id, versionIndex, version.files)
+            persistActivities(conversationId, message.id, versionIndex, version.toolActivity)
+        }
+    }
+
+    private suspend fun persistVersionFiles(conversationId: String, messageId: String, versionIndex: Int, references: List<String>) {
+        val existing = dao.getMessageVersionFiles(conversationId, messageId, versionIndex)
+        if (existing.map { it.reference } == references) return
+        if (references.isEmpty()) dao.deleteMessageVersionFiles(conversationId, messageId, versionIndex)
+        else dao.deleteMessageVersionFilesExcept(conversationId, messageId, versionIndex, references.indices.toList())
+        dao.insertMessageVersionFiles(references.mapIndexed { fileIndex, reference ->
+            MessageVersionFileEntity(conversationId, messageId, versionIndex, fileIndex, reference)
+        })
+    }
+
+    private suspend fun persistActivities(conversationId: String, messageId: String, versionIndex: Int, activities: List<ToolActivity>) {
+        val existing = dao.getToolActivities(conversationId, messageId, versionIndex)
+        val activityIndexes = activities.indices.toList()
+        if (activityIndexes.isEmpty()) dao.deleteToolActivities(conversationId, messageId, versionIndex)
+        else dao.deleteToolActivitiesExcept(conversationId, messageId, versionIndex, activityIndexes)
+        activities.forEachIndexed { activityIndex, activity ->
+            val entity = ToolActivityEntity(
+                conversationId, messageId, versionIndex, activityIndex, activity.id, activity.name,
+                activity.wireName, activity.status, activity.summary, activity.arguments, activity.response,
+                activity.contentOffset, activity.reasoningOffset, activity.inlineMedia, activity.responsePreviewLimit
+            )
+            val previous = existing.firstOrNull { it.activityIndex == activityIndex }
+            if (previous == null) dao.insertToolActivity(entity)
+            else if (previous != entity) dao.updateToolActivity(entity)
+            persistActivityFiles(conversationId, messageId, versionIndex, activityIndex, activity.files)
+        }
+    }
+
+    private suspend fun persistActivityFiles(conversationId: String, messageId: String, versionIndex: Int, activityIndex: Int, references: List<String>) {
+        val existing = dao.getToolActivityFiles(conversationId, messageId, versionIndex, activityIndex)
+        if (existing.map { it.reference } == references) return
+        if (references.isEmpty()) dao.deleteToolActivityFiles(conversationId, messageId, versionIndex, activityIndex)
+        else dao.deleteToolActivityFilesExcept(conversationId, messageId, versionIndex, activityIndex, references.indices.toList())
+        dao.insertToolActivityFiles(references.mapIndexed { fileIndex, reference ->
+            ToolActivityFileEntity(conversationId, messageId, versionIndex, activityIndex, fileIndex, reference)
+        })
     }
 
     private fun modelToEntity(conversation: Conversation) = ConversationEntity(

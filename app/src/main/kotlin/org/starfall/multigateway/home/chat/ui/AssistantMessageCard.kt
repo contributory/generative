@@ -63,6 +63,7 @@ fun AssistantMessageCard(
     onToggleChatImage: ((String) -> Unit)? = null,
     isReading: Boolean = false,
     fallbackModelName: String = "",
+    modelIcon: String? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -104,6 +105,8 @@ fun AssistantMessageCard(
         if (isStreaming) {
             GenerationLoadingIndicator(
                 modelName = generatedModelName,
+                modelId = activeVersion.modelId,
+                modelIcon = modelIcon,
                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
             )
         }

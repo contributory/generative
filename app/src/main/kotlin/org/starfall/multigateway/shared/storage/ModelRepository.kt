@@ -7,17 +7,17 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonPrimitive
 import org.starfall.multigateway.integrations.modelapis.AiService
 import org.starfall.multigateway.shared.icons.IconStore
-import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.auth.AuthMethod
-import org.starfall.multigateway.shared.model.auth.Authorization
+import org.starfall.multigateway.shared.model.auth.CredentialLoadState
 import org.starfall.multigateway.shared.model.language.LanguageModel
+import org.starfall.multigateway.shared.model.language.Capabilities
 import org.starfall.multigateway.shared.model.language.ModelType
 import org.starfall.multigateway.shared.model.provider.ModelProvider
-import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
 import org.starfall.multigateway.shared.model.provider.ProviderGroup
 import org.starfall.multigateway.shared.model.provider.ProviderModels
 import org.starfall.multigateway.shared.model.provider.ProviderPlacement
@@ -28,16 +28,15 @@ import org.starfall.multigateway.shared.model.provider.recordOAuthAccount
 import org.starfall.multigateway.shared.model.provider.removeOAuthAccount
 import org.starfall.multigateway.shared.model.provider.reorderedModels
 import org.starfall.multigateway.shared.storage.database.AppDatabase
-import org.starfall.multigateway.shared.storage.database.SecretCipher
-import org.starfall.multigateway.shared.storage.database.entities.ModelProviderEntity
 import org.starfall.multigateway.shared.storage.database.entities.ProviderGroupEntity
-import org.starfall.multigateway.shared.storage.database.entities.ProviderModelsEntity
+import org.starfall.multigateway.shared.storage.database.entities.ProviderCatalogModelEntity
+import org.starfall.multigateway.shared.storage.database.entities.ProviderCatalogToolEntity
 
 class ModelRepository(private val db: AppDatabase, private val service: AiService, private val icons: IconStore? = null) {
-    suspend fun testConnection(provider: ModelProvider) = service.testConnection(provider)
-    suspend fun testModel(provider: ModelProvider, modelId: String) = service.testModel(provider, modelId)
-    suspend fun fetchProviderModelCatalog(provider: ModelProvider) = service.fetchProviderModelCatalog(provider)
-    suspend fun fetchProviderModels(provider: ModelProvider) = service.fetchProviderModels(provider)
+    suspend fun testConnection(provider: ModelProvider) = service.testConnection(resolveProvider(provider))
+    suspend fun testModel(provider: ModelProvider, modelId: String) = service.testModel(resolveProvider(provider), modelId)
+    suspend fun fetchProviderModelCatalog(provider: ModelProvider) = service.fetchProviderModelCatalog(resolveProvider(provider))
+    suspend fun fetchProviderModels(provider: ModelProvider) = service.fetchProviderModels(resolveProvider(provider))
     suspend fun fetchOllamaModels(baseUrl: String) = service.fetchOllamaModels(baseUrl)
     internal fun rememberExistingModelConfigurations(providers: List<ModelProvider>) {
         providers.flatMap { it.config.modelConfigs.entries }
@@ -48,17 +47,11 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
     private val providerDao = db.modelProviderDao()
     private val groupDao = db.providerGroupDao()
 
-    // Rows are re-decoded on every Room invalidation; unchanged rows (same entity) reuse the previous result
-    // so we don't pay Keystore decrypt + JSON decode for every provider on each emission.
-    // Must be declared before `state`, which starts collecting from its constructor.
-    private val decodedProviders = java.util.concurrent.ConcurrentHashMap<String, Pair<ModelProviderEntity, ModelProvider>>()
-    private val modelsDao = db.providerModelsDao()
+    private val structuredJsonDao = db.structuredJsonDao()
+    private val mapper = ProviderStorageMapper(db)
 
     private val storedProviders: Flow<List<ModelProvider>> = providerDao.getAllProviders().map { entities ->
-        entities.map { providerEntityToModel(it) }.also {
-            // Drop cached decodes of providers that no longer exist.
-            decodedProviders.keys.retainAll(entities.mapTo(hashSetOf()) { e -> e.id })
-        }
+        db.withTransaction { entities.map { mapper.metadata(it) } }
     }
 
     private val storedGroups: Flow<List<ProviderGroup>> = groupDao.getAllGroups().map { groups ->
@@ -94,7 +87,7 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
     }
 
     private suspend fun readCatalog() = Catalog(
-        providerDao.getAllProviders().first().map(::providerEntityToModel),
+        providerDao.getAllProviders().first().map { mapper.metadata(it) },
         groupDao.getAllGroupsOnce().map { ProviderGroup(it.id, it.name, it.sortOrder, it.icon) }
     )
 
@@ -109,16 +102,36 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
     val allProviders: Flow<List<ModelProvider>> = state.flow.map { it.providers }.distinctUntilChanged()
     val allGroups: Flow<List<ProviderGroup>> = state.flow.map { it.groups }.distinctUntilChanged()
 
-    suspend fun getProviderById(id: String): ModelProvider? {
-        state.value?.let { return it.providers.firstOrNull { p -> p.id == id } }
-        return withContext(Dispatchers.IO) {
-            providerDao.getProviderById(id)?.let(::providerEntityToModel)
+    suspend fun getProviderById(id: String): ModelProvider? = withContext(Dispatchers.IO) {
+        db.withTransaction { providerDao.getProviderById(id)?.let { mapper.selected(it) } }
+    }
+
+    /** Resolve only this record's secrets, retaining the caller's public configuration edits. */
+    suspend fun resolveProvider(provider: ModelProvider): ModelProvider = when (provider.credentialState) {
+        CredentialLoadState.LOADED, CredentialLoadState.NOT_CONFIGURED -> provider
+        CredentialLoadState.NOT_REQUESTED -> withContext(Dispatchers.IO) {
+            db.withTransaction {
+                val entity = providerDao.getProviderById(provider.id)
+                    ?: error("Provider ${provider.id} no longer exists. Reload the provider list.")
+                mapper.resolve(provider, entity)
+            }
         }
+        CredentialLoadState.ERROR, CredentialLoadState.LOADING -> error("Provider ${provider.id} credentials are ${provider.credentialState}. Reload before use.")
+    }
+
+    suspend fun loadProvidersForExport(): List<ModelProvider> = withContext(Dispatchers.IO) {
+        db.withTransaction { providerDao.getAllProviders().first().map { mapper.selected(it) } }
     }
 
     suspend fun saveGroup(group: ProviderGroup) {
         state.mutate({ it.copy(groups = it.groups.upsert(group.copy(name = group.name.trim())) { g -> g.id }.sortedBy { g -> g.sortOrder }) }) {
-            groupDao.insertOrUpdate(ProviderGroupEntity(group.id, group.name.trim(), group.sortOrder, group.icon))
+            db.withTransaction { persistGroup(group.copy(name = group.name.trim())) }
+        }
+    }
+
+    private suspend fun persistGroup(group: ProviderGroup) {
+        if (!db.updateStorageRow("provider_groups", group.id, "name" to group.name, "sortOrder" to group.sortOrder, "icon" to group.icon)) {
+            groupDao.insertOrUpdate(ProviderGroupEntity(group.id, group.name, group.sortOrder, group.icon))
         }
     }
 
@@ -224,22 +237,23 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
             authorized.config.oauthAccounts).associateBy { it.id }.values.toList()
         return (persisted ?: authorized).copy(type = authorized.type, baseUrl = authorized.baseUrl, auth = authorized.auth,
             config = (persisted?.config ?: authorized.config).copy(oauthAccounts = accounts,
-                multipleApiKeys = authorized.config.multipleApiKeys))
+                multipleApiKeys = authorized.config.multipleApiKeys), credentialState = CredentialLoadState.LOADED)
     }
 
     suspend fun authorizeProvider(provider: ModelProvider): Result<ModelProvider> = runCatching {
         service.withOAuthSession {
-            val authorized = service.authorizeProvider(provider).getOrThrow().recordOAuthAccount()
+            val authorized = service.authorizeProvider(resolveProvider(provider)).getOrThrow().recordOAuthAccount()
+                .copy(credentialState = CredentialLoadState.LOADED)
             var saved = authorized
             state.mutate({ catalog ->
-                val updated = mergeOAuthAuthorization(catalog.providers.firstOrNull { it.id == provider.id }, authorized)
+                val updated = authorized.metadata()
                 catalog.copy(providers = catalog.providers.upsert(updated) { it.id }.sortedWith(providerOrder))
             }) {
                 db.withTransaction {
-                    val persisted = providerDao.getProviderById(provider.id)?.let(::providerEntityToModel)
+                    val persisted = providerForCredentialCleanup(provider.id)
                     if (persisted != null && persisted.type != authorized.type) clearAllOAuthCredentials(persisted)
                     saved = mergeOAuthAuthorization(persisted, authorized)
-                    providerDao.insertOrUpdate(providerModelToEntity(saved))
+                    mapper.persist(saved)
                 }
             }
             authorized.copy(config = authorized.config.copy(oauthAccounts = saved.config.oauthAccounts))
@@ -247,18 +261,17 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
     }
 
     suspend fun clearOAuthCredentials(provider: ModelProvider): Result<ModelProvider> = runCatching {
-        val accountId = provider.oauthCredentialId
-        state.mutate({ catalog -> catalog.copy(providers = catalog.providers.map {
-            if (it.id == provider.id && it.type == provider.type) it.removeOAuthAccount(accountId) else it
-        }) }) {
-            service.clearAccountCredentials(provider.type, accountId)
+        val resolved = resolveProvider(provider)
+        val accountId = resolved.oauthCredentialId
+        state.mutate({ it }) {
+            service.clearAccountCredentials(resolved.type, accountId)
             db.withTransaction {
-                providerDao.getProviderById(provider.id)?.let(::providerEntityToModel)?.let { persisted ->
-                    if (persisted.type == provider.type) providerDao.insertOrUpdate(providerModelToEntity(persisted.removeOAuthAccount(accountId)))
+                providerDao.getProviderById(provider.id)?.let { mapper.selected(it) }?.let { persisted ->
+                    if (persisted.type == resolved.type) mapper.persist(persisted.removeOAuthAccount(accountId))
                 }
             }
         }
-        provider.removeOAuthAccount(accountId)
+        resolved.removeOAuthAccount(accountId)
     }
 
     private fun clearAllOAuthCredentials(provider: ModelProvider) {
@@ -267,24 +280,33 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
         }
     }
 
+    /** Credential replacement/deletion remains possible when the old encrypted record is damaged. */
+    private suspend fun providerForCredentialCleanup(id: String): ModelProvider? = providerDao.getProviderById(id)?.let { entity ->
+        try { mapper.selected(entity) } catch (e: CancellationException) { throw e }
+        catch (_: IllegalStateException) { mapper.metadata(entity) }
+    }
+
     suspend fun providerExists(id: String): Boolean = providerDao.getProviderById(id) != null
 
     suspend fun saveProvider(draft: ModelProvider) {
         val provider = draft
-        state.mutate({ it.saveProviderDraft(provider) }) {
-            val previous = providerDao.getProviderById(provider.id)?.let(::providerEntityToModel)
-            if (
-                previous != null &&
-                (previous.type != provider.type ||
-                    (previous.auth.method == AuthMethod.OAUTH && provider.auth.method != AuthMethod.OAUTH))
-            ) {
-                clearAllOAuthCredentials(previous)
-            }
-            db.withTransaction {
+        requireSavableCredentials(provider.credentialState)
+        state.mutate({ it.saveProviderDraft(provider.metadata()) }) {
+            val previous = db.withTransaction {
                 val catalog = readCatalog()
+                val previous = catalog.providers.firstOrNull { it.id == provider.id }
+                if (provider.credentialState != CredentialLoadState.NOT_REQUESTED && previous != null) {
+                    // Only a credential edit needs the old OAuth account references.
+                    providerForCredentialCleanup(provider.id)?.let { old ->
+                        if (old.type != provider.type || (old.auth.method == AuthMethod.OAUTH && provider.auth.method != AuthMethod.OAUTH)) {
+                            clearAllOAuthCredentials(old)
+                        }
+                    }
+                }
                 val updated = catalog.saveProviderDraft(provider)
                 persistDestinationOrder(updated, provider.groupId)
-                providerDao.insertOrUpdate(providerModelToEntity(updated.providers.first { it.id == provider.id }))
+                mapper.persist(updated.providers.first { it.id == provider.id })
+                previous
             }
             provider.config.modelConfigs.forEach { (id, config) ->
                 if (previous?.config?.modelConfigs?.get(id) != config) service.modelConfigurationMemory.remember(id, config)
@@ -297,18 +319,24 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
         val importedProviders = providers
         val importedGroups = groups?.map { it.copy(name = it.name.trim()) }
         val importedIds = importedProviders.mapTo(hashSetOf()) { it.id }
-        state.mutate({ it.mergeImport(importedProviders, importedGroups) }) {
+        importedProviders.forEach { requireSavableCredentials(it.credentialState) }
+        state.mutate({ it.mergeImport(importedProviders.map { p -> p.metadata() }, importedGroups) }) {
             val changes = db.withTransaction {
                 val previous = readCatalog()
                 val updated = previous.mergeImport(importedProviders, importedGroups)
                 importedGroups.orEmpty().forEach {
-                    groupDao.insertOrUpdate(ProviderGroupEntity(it.id, it.name, it.sortOrder, it.icon))
+                    persistGroup(it)
                 }
                 val previousById = previous.providers.associateBy { it.id }
-                updated.providers.filter { it.id in importedIds }.map { provider ->
-                    providerDao.insertOrUpdate(providerModelToEntity(provider))
-                    previousById[provider.id] to provider
+                val importedChanges = mutableListOf<Pair<ModelProvider?, ModelProvider>>()
+                updated.providers.filter { it.id in importedIds }.forEach { provider ->
+                    val old = previousById[provider.id]?.let {
+                        if (provider.credentialState == CredentialLoadState.NOT_REQUESTED) it else providerForCredentialCleanup(provider.id)
+                    }
+                    mapper.persist(provider)
+                    importedChanges += old to provider
                 }
+                importedChanges
             }
             changes.forEach { (previous, provider) ->
                 if (previous != null && (previous.type != provider.type ||
@@ -346,20 +374,24 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
         state.mutate({ catalog -> catalog.copy(providers = catalog.providers.map { if (it.id == providerId) it.copy(config = it.config.reorderedModels(modelIds)) else it }) }) {
             db.withTransaction {
                 val entity = providerDao.getProviderById(providerId) ?: return@withTransaction
-                val provider = providerEntityToModel(entity)
-                providerDao.insertOrUpdate(providerModelToEntity(
-                    provider.copy(config = provider.config.reorderedModels(modelIds))
-                ))
+                val provider = mapper.metadata(entity)
+                mapper.persist(provider.copy(config = provider.config.reorderedModels(modelIds)))
             }
         }
     }
 
     suspend fun deleteProvider(id: String) {
         state.mutate({ it.copy(providers = it.providers.filterNot { p -> p.id == id }) }) {
-            providerDao.getProviderById(id)?.let(::providerEntityToModel)?.let {
-                clearAllOAuthCredentials(it)
+            db.withTransaction {
+                providerDao.getProviderById(id)?.let { entity ->
+                    // An unreadable auth row must not prevent deletion of the selected record.
+                    val provider = providerForCredentialCleanup(id) ?: return@let
+                    clearAllOAuthCredentials(provider)
+                    mapper.deleteDocuments(id)
+                    providerDao.deleteById(id)
+                    entity.authId?.let { authId -> db.deleteUnreferencedEndpointAuth("provider_auth", "model_providers", authId) }
+                }
             }
-            providerDao.deleteById(id)
         }
     }
 
@@ -372,72 +404,53 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
     }
 
     suspend fun getModelsForProvider(providerId: String): ProviderModels? = withContext(Dispatchers.IO) {
-        val entity = modelsDao.getModelsForProvider(providerId) ?: return@withContext null
-        val models: List<LanguageModel> = try {
-            json.decodeFromString(entity.modelsJson)
-        } catch (e: Exception) {
-            emptyList()
-        }
-        ProviderModels(id = entity.id, models = models)
+        val entities = providerDao.getCatalogModels(providerId)
+        if (entities.isEmpty() && structuredJsonDao.getDocument("provider_catalog", providerId, "cache_state") == null) return@withContext null
+        val tools = providerDao.getCatalogTools(providerId).groupBy { it.modelOrdinal }
+        ProviderModels(providerId, entities.sortedBy { it.ordinal }.map { model ->
+            LanguageModel(
+                id = model.modelId,
+                displayName = model.displayName,
+                icon = model.icon,
+                providerId = model.catalogProviderId,
+                inputCapabilities = Capabilities(model.inputText, model.inputImage, model.inputVideo, model.inputEmbed, model.inputAudio, model.inputOthers),
+                outputCapabilities = Capabilities(model.outputText, model.outputImage, model.outputVideo, model.outputEmbed, model.outputAudio, model.outputOthers),
+                modelTools = tools[model.ordinal].orEmpty().sortedBy { it.ordinal }.map { it.toolName }
+            )
+        })
     }
 
     suspend fun saveModelsForProvider(providerModels: ProviderModels) = withContext(Dispatchers.IO) {
-        modelsDao.insertOrUpdate(
-            ProviderModelsEntity(
-                id = providerModels.id,
-                modelsJson = json.encodeToString(providerModels.models)
-            )
-        )
-    }
-
-    // (decoded-provider cache lives near the top of the class; it must exist before `state` starts collecting)
-    private fun providerEntityToModel(entity: ModelProviderEntity): ModelProvider {
-        decodedProviders[entity.id]?.let { (cachedEntity, model) -> if (cachedEntity == entity) return model }
-        return decodeProviderEntity(entity).also { decodedProviders[entity.id] = entity to it }
-    }
-
-    private fun decodeProviderEntity(entity: ModelProviderEntity): ModelProvider {
-        val type = try {
-            ModelApiType.valueOf(entity.type)
-        } catch (e: Exception) {
-            ModelApiType.OPENAI
+        db.withTransaction {
+            if (providerDao.getProviderById(providerModels.id) == null) return@withTransaction
+            providerDao.deleteCatalogTools(providerModels.id)
+            providerDao.deleteCatalogModels(providerModels.id)
+            providerModels.models.forEachIndexed { ordinal, model ->
+                providerDao.insertCatalogModels(listOf(ProviderCatalogModelEntity(
+                    providerId = providerModels.id,
+                    ordinal = ordinal,
+                    modelId = model.id,
+                    displayName = model.displayName,
+                    icon = model.icon,
+                    catalogProviderId = model.providerId,
+                    inputText = model.inputCapabilities.text,
+                    inputImage = model.inputCapabilities.image,
+                    inputVideo = model.inputCapabilities.video,
+                    inputEmbed = model.inputCapabilities.embed,
+                    inputAudio = model.inputCapabilities.audio,
+                    inputOthers = model.inputCapabilities.others,
+                    outputText = model.outputCapabilities.text,
+                    outputImage = model.outputCapabilities.image,
+                    outputVideo = model.outputCapabilities.video,
+                    outputEmbed = model.outputCapabilities.embed,
+                    outputAudio = model.outputCapabilities.audio,
+                    outputOthers = model.outputCapabilities.others
+                )))
+                providerDao.insertCatalogTools(model.modelTools.mapIndexed { toolOrdinal, tool ->
+                    ProviderCatalogToolEntity(providerModels.id, ordinal, toolOrdinal, tool)
+                })
+            }
+            structuredJsonDao.replaceDocument(StructuredJsonDocument("provider_catalog", providerModels.id, "cache_state", JsonPrimitive("READY")))
         }
-        val authJson = SecretCipher.decrypt(entity.authJson)
-        val configJson = SecretCipher.decrypt(entity.configJson)
-        val auth: Authorization = try {
-            json.decodeFromString(authJson)
-        } catch (e: Exception) {
-            Authorization()
-        }
-        val config: ProviderConfiguration = try {
-            json.decodeFromString(configJson)
-        } catch (e: Exception) {
-            ProviderConfiguration()
-        }
-        return ModelProvider(
-            id = entity.id,
-            name = entity.name,
-            type = type,
-            auth = auth,
-            icon = entity.icon,
-            baseUrl = SecretCipher.decrypt(entity.baseUrl),
-            config = config,
-            sortOrder = entity.sortOrder,
-            groupId = entity.groupId
-        )
-    }
-
-    private fun providerModelToEntity(provider: ModelProvider): ModelProviderEntity {
-        return ModelProviderEntity(
-            id = provider.id,
-            name = provider.name,
-            type = provider.type.name,
-            baseUrl = SecretCipher.encrypt(provider.baseUrl),
-            authJson = SecretCipher.encrypt(json.encodeToString(provider.auth)),
-            configJson = SecretCipher.encrypt(json.encodeToString(provider.config)),
-            icon = provider.icon,
-            sortOrder = provider.sortOrder,
-            groupId = provider.groupId
-        )
     }
 }

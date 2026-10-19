@@ -26,7 +26,9 @@ import org.starfall.multigateway.shared.ui.icons.EntityIcon
 @Composable
 internal fun GenerationLoadingIndicator(
     modelName: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    modelId: String? = null,
+    modelIcon: String? = null
 ) {
     val iconSize = 26.dp
     val iconSizePx = with(LocalDensity.current) { iconSize.toPx() }
@@ -49,7 +51,7 @@ internal fun GenerationLoadingIndicator(
         contentAlignment = Alignment.CenterStart
     ) {
         EntityIcon(
-            image = null,
+            image = modelIcon,
             modifier = Modifier
                 .size(iconSize)
                 .graphicsLayer {
@@ -62,6 +64,7 @@ internal fun GenerationLoadingIndicator(
                 .clip(CircleShape), // after graphicsLayer so the clip follows the icon
             text = modelName,
             matchName = modelName,
+            fallbackMatchName = modelId,
             model = true
         )
     }

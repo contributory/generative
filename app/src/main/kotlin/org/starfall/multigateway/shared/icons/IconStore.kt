@@ -65,6 +65,8 @@ class IconStore(private val context: Context) {
     private val assets get() = context.getSharedPreferences("icon-assets", Context.MODE_PRIVATE)
     private val automatic get() = context.getSharedPreferences("automatic-entity-icons", Context.MODE_PRIVATE)
     private val variants get() = context.getSharedPreferences("icon-variants", Context.MODE_PRIVATE)
+    /** Original file names of app-owned (non-shared) icons, for display next to the logo. */
+    private val names get() = context.getSharedPreferences("icon-file-names", Context.MODE_PRIVATE)
     companion object {
         private val changes = MutableStateFlow(0L)
         val revision = changes.asStateFlow()
@@ -83,7 +85,7 @@ class IconStore(private val context: Context) {
 
         /** In-memory results of [lookupIcon]; survives screens leaving composition. */
         private data class LookupKey(
-            val root: String, val image: String?, val matchName: String?, val model: Boolean,
+            val root: String, val image: String?, val matchName: String?, val fallbackMatchName: String?, val model: Boolean,
             val dark: Boolean, val skipExplicit: Boolean, val revision: Long
         )
         private class LookupEntry(val lookup: IconLookup, val expiresAt: Long)
@@ -109,21 +111,27 @@ class IconStore(private val context: Context) {
         return RulesSnapshot(saved, rules, compiled).also { rulesSnapshot = it }
     }
 
-    private fun lookupKey(image: String?, matchName: String?, model: Boolean, dark: Boolean, skipExplicit: Boolean) =
-        LookupKey(context.filesDir.path, image, matchName, model, dark, skipExplicit, lookupChanges.value)
+    private fun lookupKey(image: String?, matchName: String?, fallbackMatchName: String?, model: Boolean, dark: Boolean, skipExplicit: Boolean) =
+        LookupKey(context.filesDir.path, image, matchName, fallbackMatchName, model, dark, skipExplicit, lookupChanges.value)
 
     /** Cheap, main-thread-safe cache read. Null means "not looked up yet" (or a stale miss). */
-    fun peekIcon(image: String?, matchName: String?, model: Boolean, dark: Boolean, skipExplicit: Boolean = false): IconLookup? {
-        val entry = lookupCache[lookupKey(image, matchName, model, dark, skipExplicit)] ?: return null
+    fun peekIcon(image: String?, matchName: String?, model: Boolean, dark: Boolean, skipExplicit: Boolean = false, fallbackMatchName: String? = null): IconLookup? {
+        val entry = lookupCache[lookupKey(image, matchName, fallbackMatchName, model, dark, skipExplicit)] ?: return null
         return entry.lookup.takeIf { it.data != null || entry.expiresAt > System.currentTimeMillis() }
     }
 
     /** Resolves the image to show and remembers the answer in RAM. Called on IO. */
-    internal suspend fun lookupIcon(image: String?, matchName: String?, model: Boolean, dark: Boolean, skipExplicit: Boolean = false): Any? {
-        val key = lookupKey(image, matchName, model, dark, skipExplicit)
+    /**
+     * [fallbackMatchName] (e.g. the model id when [matchName] is a display name) is only tried when
+     * the primary name produced no logo, so users no longer have to clear the display name.
+     */
+    internal suspend fun lookupIcon(image: String?, matchName: String?, model: Boolean, dark: Boolean, skipExplicit: Boolean = false, fallbackMatchName: String? = null): Any? {
+        val key = lookupKey(image, matchName, fallbackMatchName, model, dark, skipExplicit)
         lookupCache[key]?.let { if (it.lookup.data != null || it.expiresAt > System.currentTimeMillis()) return it.lookup.data }
         val data = (if (skipExplicit) null else imageData(image, dark))
             ?: imageData(matchName?.let { resolve(it, model) }, dark)
+            ?: fallbackMatchName?.takeIf { it.isNotBlank() && !it.equals(matchName, ignoreCase = true) }
+                ?.let { imageData(resolve(it, model), dark) }
         if (lookupCache.size >= LOOKUP_CACHE_LIMIT) lookupCache.clear()
         lookupCache[key] = LookupEntry(IconLookup(data), System.currentTimeMillis() + LOOKUP_MISS_TTL_MS)
         return data
@@ -320,7 +328,11 @@ class IconStore(private val context: Context) {
         saveRules(listOf(rule) + existing.filterNot { it.id == rule.id })
     }
 
-    fun importImage(uri: Uri, shared: Boolean = true): String {
+    /** File name the person picked or fetched for [image], if known. */
+    fun fileName(image: String?): String? =
+        image?.let { names.getString(it, null) ?: assets.getString(it, null) }?.takeIf { it.isNotBlank() }
+
+    fun importImage(uri: Uri, shared: Boolean = true, displayName: String? = null): String {
         val staging = File.createTempFile("import-", ".tmp", directory)
         try {
             val input = context.contentResolver.openInputStream(uri) ?: error("Cannot open image")
@@ -352,7 +364,9 @@ class IconStore(private val context: Context) {
                     if (cursor.moveToFirst()) cursor.getString(0) else null
                 }
             }.getOrNull() ?: uri.lastPathSegment ?: id
-            if (shared) check(assets.edit().putString(id, filename).commit())
+            val label = displayName?.takeIf { it.isNotBlank() } ?: filename
+            if (shared) check(assets.edit().putString(id, label).commit())
+            else check(names.edit().putString(id, label).commit())
             changes.value += 1
             return id
         } finally {
@@ -361,11 +375,11 @@ class IconStore(private val context: Context) {
     }
 
     /** Save a confirmed favicon preview as an app-owned icon. Called on IO. */
-    internal fun importBitmap(bitmap: Bitmap): String {
+    internal fun importBitmap(bitmap: Bitmap, fileName: String? = null): String {
         val staging = File.createTempFile("favicon-", ".png", context.cacheDir)
         try {
             staging.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
-            return importImage(Uri.fromFile(staging), shared = false)
+            return importImage(Uri.fromFile(staging), shared = false, displayName = fileName)
         } finally { staging.delete() }
     }
 

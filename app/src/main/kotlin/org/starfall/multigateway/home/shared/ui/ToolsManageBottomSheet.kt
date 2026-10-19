@@ -60,6 +60,7 @@ fun ToolsManageBottomSheet(onDismiss: () -> Unit) {
                                 text = modelName.take(2).uppercase(),
                                 fallback = if (name == "generate_image") Icons.Outlined.Image else Icons.Outlined.Videocam,
                                 matchName = modelName,
+                                fallbackMatchName = cfg.modelId,
                                 model = true
                             )
                             Spacer(Modifier.width(12.dp))

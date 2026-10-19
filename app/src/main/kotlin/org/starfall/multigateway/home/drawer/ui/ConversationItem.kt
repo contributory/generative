@@ -73,7 +73,7 @@ internal fun ConversationItem(
             if (selecting) Checkbox(checked, onCheckedChange = { onClick() }, modifier = Modifier.size(36.dp))
             else if (modelIcon != null) EntityIcon(
                 modelIcon.image, Modifier.size(36.dp).clip(CircleShape).combinedClickable(onClick = onLongClick, onLongClick = onLongClick),
-                text = modelInitial(modelIcon.name), matchName = modelIcon.name, model = true,
+                text = modelInitial(modelIcon.name), matchName = modelIcon.name, fallbackMatchName = modelIcon.id, model = true,
                 backgroundColor = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
             ) else Box(Modifier.size(36.dp).clip(CircleShape).background(if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest).combinedClickable(onClick = onLongClick, onLongClick = onLongClick), contentAlignment = Alignment.Center) {
                 Text(chat.title.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "#", color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)

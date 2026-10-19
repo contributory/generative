@@ -20,6 +20,7 @@ internal object ConversationMigration9To10 {
         ).use { rows ->
             while (rows.moveToNext()) migrateConversation(db, rows)
         }
+        verifyMigration(db)
         db.execSQL("DROP TABLE $SOURCE_TABLE")
         db.query("PRAGMA foreign_key_check").use { violations ->
             check(!violations.moveToFirst()) { "Conversation v9 to v10 migration created orphaned rows." }
@@ -69,6 +70,103 @@ internal object ConversationMigration9To10 {
             }
         }
     }
+
+    /** Compare every representable source value with its normalized relational counterpart. */
+    private fun verifyMigration(db: SupportSQLiteDatabase) {
+        check(count(db, SOURCE_TABLE) == count(db, "conversations")) {
+            "Conversation v9 to v10 migration changed the conversation row count."
+        }
+        db.query("SELECT id, title, createdAt, updatedAt, messagesJson, tokenCount, providerId, modelId, profileId, summaryJson, reasoningEffort FROM $SOURCE_TABLE ORDER BY rowid").use { rows ->
+            while (rows.moveToNext()) verifyConversation(db, rows)
+        }
+    }
+
+    private fun verifyConversation(db: SupportSQLiteDatabase, source: android.database.Cursor) {
+        val id = source.getString(0)
+        db.query("SELECT title, createdAt, updatedAt, tokenCount, providerId, modelId, profileId, reasoningEffort FROM conversations WHERE id = ?", args(id)).use { target ->
+            check(target.moveToFirst()) { "Conversation v9 to v10 migration lost conversation $id." }
+            check(target.getString(0) == source.getString(1) && target.getLong(1) == source.getLong(2) &&
+                target.getLong(2) == source.getLong(3) && target.string(3) == source.string(5) &&
+                target.getString(4) == source.getString(6) && target.getString(5) == source.getString(7) &&
+                target.string(6) == source.string(8) && target.string(7) == source.string(10)) {
+                "Conversation v9 to v10 migration changed scalar values for $id."
+            }
+        }
+
+        val decodedMessages = runCatching { migrationJson.decodeFromString<List<StoredMessage>>(source.getString(4)) }.getOrNull()
+        val messageIdsAreUnique = decodedMessages != null && decodedMessages.map { it.id }.distinct().size == decodedMessages.size
+        val expectedMessages = decodedMessages.takeIf { messageIdsAreUnique } ?: emptyList()
+        check(count(db, "messages", "conversationId = ?", id) == expectedMessages.size.toLong()) {
+            "Conversation v9 to v10 migration changed message count for $id."
+        }
+        expectedMessages.forEachIndexed { sequence, message -> verifyMessage(db, id, sequence, message) }
+
+        val sourceSummary = source.string(9)?.let { raw -> runCatching { migrationJson.decodeFromString<ConversationSummary>(raw) }.getOrNull() }
+        val expectedSummary = sourceSummary?.takeIf { summary -> expectedMessages.any { it.id == summary.throughMessageId } }
+        val targetSummaryCount = count(db, "conversation_summaries", "conversationId = ?", id)
+        check(targetSummaryCount == if (expectedSummary == null) 0L else 1L) {
+            "Conversation v9 to v10 migration changed summary presence for $id."
+        }
+        expectedSummary?.let { summary ->
+            db.query("SELECT id, content, throughMessageId, role, createdAt FROM conversation_summaries WHERE conversationId = ?", args(id)).use { target ->
+                check(target.moveToFirst() && target.getString(0) == summary.id && target.getString(1) == summary.content &&
+                    target.getString(2) == summary.throughMessageId && target.getString(3) == summary.role.name &&
+                    target.getLong(4) == summary.createdAt) { "Conversation v9 to v10 migration changed summary values for $id." }
+            }
+        }
+    }
+
+    private fun verifyMessage(db: SupportSQLiteDatabase, conversationId: String, sequence: Int, message: StoredMessage) {
+        db.query("SELECT id, sequence, role, activeVersionIndex FROM messages WHERE conversationId = ? AND id = ?", args(conversationId, message.id)).use { target ->
+            check(target.moveToFirst() && target.getInt(1) == sequence && target.getString(2) == message.role.persistedValue &&
+                target.getInt(3) == message.activeVersionIndex) { "Conversation v9 to v10 migration changed message ${message.id}." }
+        }
+        check(count(db, "message_versions", "conversationId = ? AND messageId = ?", conversationId, message.id) == message.versions.size.toLong()) {
+            "Conversation v9 to v10 migration changed version count for ${message.id}."
+        }
+        message.versions.forEachIndexed { versionIndex, original ->
+            val version = normalizeVersion(message.role, original)
+            db.query("SELECT content, timestamp, reasoningContent, reasoningSignature, processingFinishedAt, providerId, modelId, modelDisplayName, generationInterrupted, generationError FROM message_versions WHERE conversationId = ? AND messageId = ? AND versionIndex = ?", args(conversationId, message.id, versionIndex)).use { target ->
+                check(target.moveToFirst() && target.getString(0) == version.content && target.getString(1) == version.timestamp &&
+                    target.string(2) == version.reasoningContent && target.string(3) == version.reasoningSignature &&
+                    target.longOrNull(4) == version.processingFinishedAt && target.getString(5) == version.providerId &&
+                    target.getString(6) == version.modelId && target.getString(7) == version.modelDisplayName &&
+                    target.getInt(8) == (if (version.generationInterrupted) 1 else 0) && target.string(9) == version.generationError) {
+                    "Conversation v9 to v10 migration changed version $versionIndex for ${message.id}."
+                }
+            }
+            verifyReferences(db, "message_version_files", "conversationId = ? AND messageId = ? AND versionIndex = ?", args(conversationId, message.id, versionIndex), version.files)
+            check(count(db, "tool_activities", "conversationId = ? AND messageId = ? AND versionIndex = ?", conversationId, message.id, versionIndex) == version.toolActivity.size.toLong()) {
+                "Conversation v9 to v10 migration changed tool count for ${message.id} version $versionIndex."
+            }
+            version.toolActivity.forEachIndexed { activityIndex, activity ->
+                db.query("SELECT activityId, name, wireName, status, summary, arguments, response, contentOffset, reasoningOffset, inlineMedia, responsePreviewLimit FROM tool_activities WHERE conversationId = ? AND messageId = ? AND versionIndex = ? AND activityIndex = ?", args(conversationId, message.id, versionIndex, activityIndex)).use { target ->
+                    check(target.moveToFirst() && target.getString(0) == activity.id && target.getString(1) == activity.name &&
+                        target.getString(2) == activity.wireName && target.getString(3) == activity.status && target.getString(4) == activity.summary &&
+                        target.getString(5) == activity.arguments && target.getString(6) == activity.response && target.getInt(7) == activity.contentOffset &&
+                        target.intOrNull(8) == activity.reasoningOffset && target.getInt(9) == (if (activity.inlineMedia) 1 else 0) &&
+                        target.getInt(10) == activity.responsePreviewLimit) { "Conversation v9 to v10 migration changed tool activity $activityIndex for ${message.id}." }
+                }
+                verifyReferences(db, "tool_activity_files", "conversationId = ? AND messageId = ? AND versionIndex = ? AND activityIndex = ?", args(conversationId, message.id, versionIndex, activityIndex), activity.files)
+            }
+        }
+    }
+
+    private fun verifyReferences(db: SupportSQLiteDatabase, table: String, where: String, args: Array<Any?>, expected: List<String>) {
+        db.query("SELECT reference FROM $table WHERE $where ORDER BY fileIndex", args).use { target ->
+            val actual = buildList { while (target.moveToNext()) add(target.getString(0)) }
+            check(actual == expected) { "Conversation v9 to v10 migration changed file references in $table." }
+        }
+    }
+
+    private fun count(db: SupportSQLiteDatabase, table: String, where: String? = null, vararg args: Any?): Long =
+        db.query("SELECT COUNT(*) FROM $table${where?.let { " WHERE $it" }.orEmpty()}", args).use {
+            check(it.moveToFirst()); it.getLong(0)
+        }
+
+    private fun android.database.Cursor.string(index: Int): String? = if (isNull(index)) null else getString(index)
+    private fun android.database.Cursor.longOrNull(index: Int): Long? = if (isNull(index)) null else getLong(index)
+    private fun android.database.Cursor.intOrNull(index: Int): Int? = if (isNull(index)) null else getInt(index)
 
     private fun migrateMessage(db: SupportSQLiteDatabase, conversationId: String, sequence: Int, message: StoredMessage) {
         db.execSQL(

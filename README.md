@@ -100,6 +100,15 @@ MultiGateway is currently an Android-native app built with Kotlin and Jetpack Co
 
 If you want to suggest a change or contribute to the project, read [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution scope, code organization, and validation guidance.
 
+### Lightweight storage validation (no Gradle)
+
+With Python 3.10+ and standard-library SQLite, run
+`python3 -B -m unittest discover -s scripts -p 'test_phase5_*.py'` to test the
+offline validation tools, then `python3 -B scripts/validate-phase5.py` to inspect
+the current source/schema snapshot. These checks do not build the app or certify
+Android migrations. See [Phase 5 validation](docs/phase5-validation.md) for
+resource limits, optional synthetic timings, exit codes and outstanding checks.
+
 ## License
 
 [![License: Starfall Org Contributor Commercial Copyleft](https://img.shields.io/badge/License-Starfall%20Org%20Copyleft%20v1.0-blue.svg)](https://raw.githubusercontent.com/starfall-org/multigateway/refs/heads/main/LICENSE)
