@@ -55,7 +55,7 @@ internal fun GenerationLoadingIndicator(
                     iconTravel.animateTo(1f, tween(durationMillis = 2_000))
                 }
                 val rotation = launch {
-                    iconRotation.animateTo(-360f, tween(durationMillis = 2_000))
+                    iconRotation.animateTo(360f, tween(durationMillis = 2_000))
                 }
                 val reveal = launch {
                     textReveal.animateTo(1f, tween(durationMillis = 2_000))
@@ -90,7 +90,10 @@ internal fun GenerationLoadingIndicator(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 EntityIcon(
                     image = null,
                     modifier = Modifier
