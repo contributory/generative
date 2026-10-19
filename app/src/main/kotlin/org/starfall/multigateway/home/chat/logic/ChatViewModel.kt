@@ -547,6 +547,8 @@ class ChatViewModel(
     }
 
     fun startNewChat() {
+        // A history load started by a previous selection must not replace this blank draft when it completes.
+        ++conversationSelectionToken
         toolChat.disconnectRemoteMachines()
         val now = System.currentTimeMillis()
         _currentConversation.value = Conversation(
@@ -586,7 +588,12 @@ class ChatViewModel(
                 synchronized(generationLock) {
                     generations.filterKeys { it in targets }.values.toList()
                 }.forEach { it.stopAndJoin() }
-                val uploads = uploadsOf(targets.mapNotNull { conversationRepo.loadById(it) } + listOfNotNull(previous))
+                // File references are relational and can be read without decoding a quarantined
+                // conversation.  The post-delete reference check narrows these candidates back to
+                // files that belonged only to the removed conversations.
+                val uploads = conversationRepo.allFileReferences()
+                    .mapNotNull(toolFiles::nameOf)
+                    .toSet() + uploadsOf(listOfNotNull(previous))
                 conversationRepo.deleteConversations(targets.toList())
                 deleted = true
                 prefsRepo.updateSidebar { it.removeChats(targets) }

@@ -78,7 +78,11 @@ class ConversationRepository(private val db: AppDatabase) {
     }
 
     suspend fun deleteConversation(id: String) {
-        withContext(Dispatchers.IO) { writeLock.withLock { dao.deleteById(id) } }
+        withContext(Dispatchers.IO) {
+            writeLock.withLock {
+                db.withTransaction { dao.deleteById(id) }
+            }
+        }
     }
 
     suspend fun deleteConversations(ids: List<String>) {
@@ -90,7 +94,11 @@ class ConversationRepository(private val db: AppDatabase) {
     }
 
     suspend fun deleteAll() {
-        withContext(Dispatchers.IO) { writeLock.withLock { dao.deleteAll() } }
+        withContext(Dispatchers.IO) {
+            writeLock.withLock {
+                db.withTransaction { dao.deleteAll() }
+            }
+        }
     }
 
     /** The subset of [names] that no stored conversation still refers to. */

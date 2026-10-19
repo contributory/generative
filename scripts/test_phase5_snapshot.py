@@ -22,6 +22,23 @@ def sources():
 
 
 class SnapshotCheckerTest(unittest.TestCase):
+    def test_current_v9_to_v10_helper_set_is_selected(self):
+        captured = {
+            'app/src/main/kotlin/org/starfall/multigateway/shared/storage/database/ConversationMigration9To10.kt': 'conversation ddl',
+            'app/src/main/kotlin/org/starfall/multigateway/shared/storage/database/ConfigurationMigration9To10.kt': 'configuration dispatcher',
+            'app/src/main/kotlin/org/starfall/multigateway/shared/storage/database/ConfigurationMigration10Schema.kt': 'configuration ddl',
+            'app/src/main/kotlin/org/starfall/multigateway/shared/storage/database/ConfigurationMigration10Providers.kt': 'provider copy',
+            'app/src/main/kotlin/org/starfall/multigateway/shared/storage/database/ConfigurationMigration11Schema.kt': 'future ddl',
+            'app/src/main/kotlin/org/starfall/multigateway/shared/storage/database/Unrelated.kt': 'unrelated',
+        }
+        selected = driver.migration_source(captured, 10)
+        self.assertIn('conversation ddl', selected)
+        self.assertIn('configuration dispatcher', selected)
+        self.assertIn('configuration ddl', selected)
+        self.assertIn('provider copy', selected)
+        self.assertNotIn('future ddl', selected)
+        self.assertNotIn('unrelated', selected)
+
     def test_executes_captured_code_not_preimported_revision(self):
         stale = ModuleType('phase5_source')
         stale.audit_sources = lambda *args: [('PASS', 'wrong revision')]

@@ -3,15 +3,14 @@
 ## Status and safety boundary
 
 This is a **partial Phase 5 implementation, not migration/release approval**.
-The current worktree now includes the final v10 schema/migration, split
-credentials, metadata-first loading, and targeted conversation writes. This note
-records bounded validation; it does not replace the real migration, repository,
-chat/tool, or device acceptance evidence listed below.
+The current worktree includes the v10 schema/migration, split credentials,
+metadata-first loading, and targeted conversation writes. This note records
+bounded validation; it does not replace real migration, repository, chat/tool,
+or device acceptance evidence.
 
-Gradle, Android instrumentation, and a debug build have now been run in a
-consolidated pass. The authorized device is `Star 4 - 11`; the isolated
-`-PtempAppId=true` package was used to avoid the normal-package signature
-mismatch. No dependency installation or database reset was performed.
+The commands in this note use only source snapshots and synthetic in-memory
+databases. They do not open, inspect, or validate an authorized existing
+database. No real-device timing is recorded by this validation tooling.
 
 ## Run without Gradle
 
@@ -22,6 +21,7 @@ Run these from the repository root:
 python3 -B -m unittest discover -s scripts -p 'test_phase5_*.py'
 python3 -B scripts/validate-phase5.py
 python3 -B scripts/validate-phase5.py --benchmark
+python3 -B scripts/measure-phase5.py --json
 ```
 
 The first command tests the validator and executes the actual rename SQL against
@@ -30,6 +30,16 @@ The validator prints to stdout and writes no artifacts or database files. Add
 `--json` for full input hashes, sample timings and workload limits. `--root` can
 inspect another trusted checkout; its captured checker modules are the modules
 executed, and a changed driver requires restarting with the matching script.
+The measurement command prints a payload-free JSON report to stdout. To retain a
+local report outside the checkout, run:
+
+```sh
+python3 -B scripts/measure-phase5.py --json > /tmp/multigateway-phase5-measurement.json
+```
+
+The measurement dataset, row counts, result fingerprints, and VM-step workload
+are fixed by the script. Wall-clock samples are host observations and can vary
+between runs; they must not be copied into a real-device timing claim.
 
 Exit status is deliberately not a blanket green check:
 
@@ -58,6 +68,11 @@ Do not suppress a nonzero exit just to mark Phase 5 complete.
 - The optional benchmark bounds scalar data and page allocation below 8 MiB,
   rows below 10,000, with an eight-second cooperative deadline and VM-step cap.
   It is sequential and opt-in, not a stress test.
+- The measurement report includes schema version/table shape, every synthetic
+  table's row count at baseline, after unrelated-history growth, and after
+  selected-history growth, plus metadata and selected-history rows, scalar bytes,
+  fingerprints, median host milliseconds and VM steps. It never reports row
+  values, credentials, source payloads or database paths.
 
 ## What is implemented
 
@@ -93,6 +108,7 @@ rowids.
 | `scripts/phase5_sqlite.py` | Compare extracted DDL with Room export; execute actual DAO SELECTs, inspect indexed query plans and probe FK enforcement. |
 | `scripts/phase5_fixtures.py` | Independent message/summary/quarantine flags and grouped/NULL-group provider cases. |
 | `scripts/phase5_benchmark.py` | Bounded synthetic workload and raw host SQLite timings/VM steps. |
+| `scripts/measure-phase5.py` | Standalone JSON measurement/reporting command for schema/table counts and synthetic query metrics. |
 | `scripts/test_phase5_*.py` | Guard regressions, schema mismatch/omitted-DDL tests, forbidden metadata reads, benchmark bounds, snapshot-code binding and rename preservation. |
 
 DDL comparison covers columns, nullability/defaults/PK order, indexes and foreign
@@ -108,6 +124,37 @@ quarantine payload and auth-table reads, including joins/subqueries. Public
 `authId` references and the `multipleApiKeys` Boolean policy are not secret values.
 Source inspection separately follows recognized list mapper helpers; it is
 heuristic, not proof against dynamic dispatch or alternate serialization.
+
+### Measurement report and paging decision criteria
+
+`measure-phase5.py` measures the actual literal DAO projections against a fixed
+synthetic schema. The report distinguishes the metadata projection
+(`getConversationListItems`) from selected-history envelopes (`getMessages`).
+`getMessages()` does not load complete message versions or bodies, so its byte
+metric is not a full-conversation memory measurement.
+
+Use the following criteria for a future paging decision. These are thresholds
+for collecting authorized real-device evidence, not results of the synthetic
+command:
+
+1. Keep the metadata list unpaged only while a representative authorized
+   fixture is at or below **500 conversations and 256 KiB of projected scalar
+   metadata**, and list-ready p95 is at or below **500 ms** without visible
+   frame drops or memory pressure.
+2. Page the metadata list if any of those limits is exceeded. Re-measure with a
+   fixed page size, preserving ordering and the `hasMessages`, `hasSummary`, and
+   `hasMigrationIssue` flags.
+3. Keep selected history unpaged only while the selected conversation is at or
+   below **200 message envelopes and 512 KiB of projected scalar envelope data**,
+   and selected-history-ready p95 is at or below **750 ms** without visible
+   frame drops or memory pressure.
+4. Page selected history if any selected-history limit is exceeded. Measure
+   version/body, tool, and file loading separately before choosing a page size;
+   the current host report does not cover those full-history reads.
+5. Do not make a paging decision from a host timing ratio, a synthetic row
+   count, or an authorized database's raw contents alone. Record warmup count,
+   repetitions, p50/p95, row counts, scalar-byte counts, non-private result
+   fingerprints, and the device/app settings for each real-device comparison.
 
 ## Remaining JSON boundaries: reviewed inventory
 
@@ -132,50 +179,13 @@ The validator intentionally leaves encrypted serialization as `REVIEW` so a
 future addition of non-secret application structures to an auth payload cannot
 be excused just because encryption occurs nearby.
 
-## Actual evidence from this implementation session
+## How to record actual command results
 
-Recorded against a dirty, concurrently edited worktree based on `6152e1d`.
-The final source now declares Room **v10** with a direct v9→v10 migration.
-
-Latest host-validator snapshot SHA-256:
-`9617cbc79d7d08d63060f84531af7dded4129256efc9f1bed2e2615f23918735`.
-All captured inputs were unchanged at the end of that run. Later edits require
-a fresh run; this hash is not a claim about the final worktree.
-
-| Command | Actual result |
-| --- | --- |
-| `python3 -B -m unittest discover -s scripts -p 'test_phase5_*.py'` | 67 tests passed. This includes checks designed to detect invalid DDL, ungrouped-list omissions, cross-wired summary flags and stale checker code. |
-| `git diff --check` | Passed at the time of the check. |
-| `python3 -B scripts/validate-phase5.py` | Exit `1`: the checker cannot recognize Kotlin-generated migration DDL and emits expected REVIEW items; it is not Android/Room acceptance. |
-| Targeted `:app:testDebugUnitTest` + `:app:compileDebugKotlin` | Passed; Phase 4, credential-boundary, sidebar/rename, and incremental-write tests were green. |
-| `:app:assembleDebug` | Passed. |
-| `:app:connectedDebugAndroidTest -PtempAppId=true` | Passed 8 migration/recovery tests on `Star 4 - 11`. |
-| Full `:app:testDebugUnitTest` | 508 tests, 7 failures in unrelated UI tests: chat scroll/selection, favicon redirect, and provider drag/autoscroll. |
-
-The validator found matching exported signatures for 22 configuration tables,
-24 rejected orphan-update probes, metadata SELECTs with no forbidden content/auth
-reads, and indexed targeted conversation-child queries. These are host SQL
-results, not Android decryption or repository results.
-
-### Synthetic scaling observations (not startup measurements)
-
-Runtime: CPython 3.13.5, SQLite 3.46.1, Linux. Nine conversation metadata rows
-were held fixed. Each new message had one 2,048-byte version body. Five timed
-samples followed one warmup; VM-step counts were collected in separate runs.
-Timing includes Python scalar accounting and is subject to host scheduling.
-
-| Workload | Total message-body bytes | Metadata rows / bytes / VM steps | Selected envelope rows / bytes / VM steps | Metadata median ms | Selected median ms |
-| --- | ---: | --- | --- | ---: | ---: |
-| Baseline | 16,384 | 9 / 1,494 / 973 | 2 / 138 / 31 | 0.637776 | 0.091379 |
-| Add 512 unrelated messages | 1,064,960 | 9 / 1,494 / 973 | 2 / 138 / 31 | 0.556223 | 0.064925 |
-| Grow selected conversation to 64 messages | 1,191,936 | 9 / 1,494 / 973 | 64 / 4,654 / 589 | 0.550584 | 0.516906 |
-
-Metadata and selected-envelope result fingerprints did not change after unrelated
-history growth. The selected read grew only when selected messages were added.
-`getMessages()` returns message envelopes, **not complete versions/bodies**;
-these numbers do not measure full-conversation repository loading, legacy-to-new
-speedup, cold-start UI readiness, first-send latency, Android storage I/O or
-Keystore work. No noisy timing ratio is a pass/fail threshold.
+Run the four commands in **Run without Gradle** from a settled checkout and
+record their exit codes, test count, validator overall line, measurement status,
+and the measurement report's runtime metadata. The validator's snapshot hash is
+specific to that run. Do not replace missing Android evidence with a host result,
+and do not add real-device timings unless the exact device run produced them.
 
 ## Acceptance still open / next owner
 
@@ -189,8 +199,10 @@ Keystore work. No noisy timing ratio is a pass/fail threshold.
    unreadable-auth errors, and network boundaries are covered by the targeted
    repository and MockWebServer suites. A broader audit of every future request
    or export entry point remains prudent.
-4. **Android checks:** the migration/repository/build subset has been run. A full
-   green Robolectric run remains blocked by the seven unrelated UI failures above.
+4. **Android checks:** run the relevant Room/Robolectric and instrumentation
+   suites separately. A synthetic instrumentation test, if added, is evidence
+   only for that synthetic database and is not validation of an authorized
+   existing database.
 5. **Real timing baseline:** with authorized fixture data on the same device and
    app settings, record cold DB-open, first usable screen, list-ready, selected
    conversation-ready and first-send-ready timestamps before/after. Hold metadata
@@ -202,7 +214,6 @@ Keystore work. No noisy timing ratio is a pass/fail threshold.
    versions, missing attachment files and structured-document/auth orphans.
    Synthetic FK probes cannot establish real migration fidelity or file presence.
 
-Until those items have evidence, Phase 5 remains partial. The host validator also
-has known concrete DDL-recognition failures because Kotlin-generated migration
-SQL is not statically visible to it. Preserve unrelated agents' changes and do
-not commit the shared worktree without explicit authorization.
+Until those items have evidence, Phase 5 remains partial. The host validator now
+recognizes the current v9→v10 migration helper set, but it still does not execute
+Kotlin, Room mapping, Android Keystore work, or migration row-copy logic.

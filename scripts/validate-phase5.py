@@ -18,6 +18,7 @@ APP = 'app/src/main/kotlin/org/starfall/multigateway'
 DATABASE = APP + '/shared/storage/database/AppDatabase.kt'
 DAO = APP + '/shared/storage/database/dao/Daos.kt'
 SCHEMAS = 'app/schemas/org.starfall.multigateway.shared.storage.database.AppDatabase'
+MEASUREMENT = 'scripts/measure-phase5.py'
 _MAX_FILE = 2_000_000
 _MAX_TOTAL = 32_000_000
 
@@ -35,6 +36,8 @@ def paths_for(root, version):
              for path in (root / folder).rglob('*.kt')}
     paths.update((root / 'scripts').glob('phase5_*.py'))
     paths.add(root / 'scripts/validate-phase5.py')
+    if (root / MEASUREMENT).exists():
+        paths.add(root / MEASUREMENT)
     paths.add(root / SCHEMAS / (str(version) + '.json'))
     if version > 1:
         paths.add(root / SCHEMAS / (str(version - 1) + '.json'))
@@ -76,6 +79,29 @@ def unchanged(root, version, hashes):
         if file.is_symlink() or not file.resolve().is_relative_to(root) or file.stat().st_size > _MAX_FILE or hashlib.sha256(read_bounded(file)).hexdigest() != expected:
             return False
     return True
+
+
+def migration_source(sources, version):
+    """Join the helper set for the current Room version transition.
+
+    v9 -> v10 is split between conversation/configuration dispatchers and the
+    ConfigurationMigration10* helpers. Keep the selection version-aware so a
+    future transition does not accidentally validate an empty or stale helper
+    set.
+    """
+    if version <= 1:
+        return ''
+    transition = str(version - 1) + 'To' + str(version)
+    names = {
+        'ConversationMigration' + transition + '.kt',
+        'ConfigurationMigration' + transition + '.kt',
+    }
+    prefix = 'ConfigurationMigration' + str(version)
+    selected = [source for path, source in sorted(sources.items())
+                if '/shared/storage/database/' in path and
+                (path.rsplit('/', 1)[-1] in names or
+                 path.rsplit('/', 1)[-1].startswith(prefix) and path.endswith('.kt'))]
+    return '\n'.join(selected)
 
 
 @contextmanager
@@ -124,12 +150,10 @@ def main(argv=None):
         schema = json.loads(sources[SCHEMAS + '/' + str(version) + '.json'])
         if schema['database']['version'] != version:
             raise ValueError('Exported schema version differs from AppDatabase version.')
-        # Phase 4 may split DDL into helpers while this check runs. Capture all v11
-        # migration helpers, not just the dispatcher, and reject changes afterwards.
-        migration = '\n'.join(source for path, source in sources.items()
-                              if '/shared/storage/database/' in path and
-                              (path.endswith('/ConfigurationMigration10To11.kt') or
-                               '/ConfigurationMigration11' in path))
+        # The current v9 -> v10 migration is split across dispatchers and
+        # ConfigurationMigration10* helpers. Select it from the captured source
+        # snapshot instead of assuming a single migration file.
+        migration = migration_source(sources, version)
         previous_schema = json.loads(sources[SCHEMAS + '/' + str(version - 1) + '.json']) if version > 1 else None
         with snapshot_checkers(root, sources, args.benchmark) as modules:
             checks = modules['phase5_source'].audit_sources(sources, schema)

@@ -53,6 +53,43 @@ class ConversationIncrementalPersistenceTest {
         } finally { db.close() }
     }
 
+    @Test fun replacingVersionsPersistsTheActiveRetryAndRemovesStaleDescendants() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java).build()
+        try {
+            val repository = ConversationRepository(db)
+            val original = Conversation("retry", "Retry", 1, 1, messages = listOf(
+                StoredMessage("user", ChatRole.USER, listOf(MessageVersion(content = "Question"))),
+                StoredMessage("answer", ChatRole.MODEL, listOf(
+                    MessageVersion(content = "Failed", files = listOf("old.txt"), toolActivity = listOf(
+                        ToolActivity("old-tool", "Search", files = listOf("old-result.txt"))
+                    )),
+                    MessageVersion(content = "Unused alternative", files = listOf("alternative.txt"))
+                ), activeVersionIndex = 0)
+            ))
+            repository.saveConversation(original)
+
+            val retried = original.copy(messages = original.messages.map { message ->
+                if (message.id != "answer") message else message.copy(
+                    versions = listOf(MessageVersion(
+                        content = "Recovered",
+                        files = listOf("new.txt"),
+                        toolActivity = listOf(ToolActivity("new-tool", "Search", status = "success"))
+                    )),
+                    activeVersionIndex = 0
+                )
+            })
+            repository.saveConversation(retried)
+
+            assertEquals(retried, repository.loadById(retried.id))
+            assertEquals(setOf("new.txt"), repository.allFileReferences().toSet())
+            assertEquals(2L, count(db, "message_versions"))
+            assertEquals(1L, count(db, "tool_activities"))
+            assertEquals(1L, count(db, "message_version_files"))
+            assertEquals(0L, count(db, "tool_activity_files"))
+            db.openHelper.readableDatabase.query("PRAGMA foreign_key_check").use { assertFalse(it.moveToFirst()) }
+        } finally { db.close() }
+    }
+
     private fun rowIds(db: AppDatabase): Map<String, Long> {
         fun rowId(table: String, where: String): Long = db.openHelper.readableDatabase.query(
             "SELECT rowid FROM $table WHERE $where"
@@ -65,4 +102,8 @@ class ConversationIncrementalPersistenceTest {
             "answer-activity" to rowId("tool_activities", "messageId = 'answer' AND activityIndex = 0")
         )
     }
+
+    private fun count(db: AppDatabase, table: String): Long = db.openHelper.readableDatabase.query(
+        "SELECT COUNT(*) FROM $table"
+    ).use { cursor -> assertTrue(cursor.moveToFirst()); cursor.getLong(0) }
 }

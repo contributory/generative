@@ -96,6 +96,16 @@ internal object CredentialV9Fixture {
         } finally { helper.close() }
     }
 
+    fun addMalformedConversation(context: Context, name: String) {
+        openSource(context, name).use { helper ->
+            helper.writableDatabase.execSQL(
+                "INSERT INTO conversations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                arrayOf<Any?>("matrix-broken", "Broken matrix conversation", 5, 10,
+                    "not valid conversation json", null, "", "", null, "{not a summary}", null)
+            )
+        }
+    }
+
     private fun insertRows(db: SupportSQLiteDatabase) {
         db.execSQL("INSERT INTO provider_groups VALUES (?, ?, ?, ?)",
             arrayOf<Any?>("group-v9", "Fixture group", 1, "group-icon"))
