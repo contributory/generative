@@ -154,13 +154,21 @@ fun SystemToolsScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        mediaToolOptionalParams(name).forEach { param ->
+                        val parameterProvider = providers.find { it.id == config.providerId }
+                        val parameters = mediaToolOptionalParams(name, parameterProvider, config.modelId)
+                        if (parameters.isEmpty()) {
+                            Text("No configurable parameters for the selected model.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        parameters.forEach { param ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(param, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
+                                Column(Modifier.weight(1f)) {
+                                    Text(param.label, style = MaterialTheme.typography.bodyMedium)
+                                    Text(param.key, style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                                 Switch(
-                                    checked = param !in config.disabledParams,
+                                    checked = param.key !in config.disabledParams,
                                     onCheckedChange = { on ->
-                                        onSave(name, config.copy(disabledParams = if (on) config.disabledParams - param else config.disabledParams + param))
+                                        onSave(name, config.copy(disabledParams = if (on) config.disabledParams - param.key else config.disabledParams + param.key))
                                     }
                                 )
                             }

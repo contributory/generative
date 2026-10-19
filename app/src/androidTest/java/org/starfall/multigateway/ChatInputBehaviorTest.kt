@@ -92,7 +92,7 @@ class ChatInputBehaviorTest {
                             McpRepository(database, mcp), AppPreferencesRepository(context),
                             ToolChatViewModel(http, mcp, ai), ToolSettingsStore(context),
                             SpeechRepository(database), tts, SpeechSynthesisService(),
-                            SpeechAudioPlayer(context)
+                            SpeechAudioPlayer(context), ToolFiles(context)
                         ) as T
                     }
                 })[ChatViewModel::class.java]

@@ -26,7 +26,6 @@ import org.starfall.multigateway.shared.model.language.ThinkingPassback
 import org.starfall.multigateway.shared.model.language.passbackMode
 import org.starfall.multigateway.shared.model.language.supportedReasoningEfforts
 import org.starfall.multigateway.shared.model.provider.ModelProvider
-import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.ui.sheets.AppBottomSheet
 import org.starfall.multigateway.shared.ui.icons.FluentIcon
 import org.starfall.multigateway.shared.ui.icons.Icons
@@ -50,14 +49,9 @@ internal fun SelectedModelOverviewBottomSheet(
     val supportedEfforts = config.supportedReasoningEfforts
     var modelOptionsExpanded by remember(modelId) { mutableStateOf(false) }
     val visibleModelTools = remember(config.supportedModelTools, provider?.type) {
-        config.supportedModelTools.filter { tool ->
-            when (provider?.type) {
-                ModelApiType.GOOGLE -> tool in setOf("google_search", "google_maps", "url_context", "code_execution")
-                ModelApiType.OPENAI_RESPONSES -> tool in setOf("web_search", "code_interpreter", "image_generation")
-                ModelApiType.ANTHROPIC -> tool in setOf("web_search", "web_fetch", "code_execution")
-                else -> false
-            }
-        }
+        // supportedModelTools already comes from this model's catalog/editor configuration.
+        // Do not silently hide valid configured entries behind a second hard-coded allowlist.
+        config.supportedModelTools.distinct()
     }
     val effortOptions = remember(supportedEfforts) {
         reasoningEffortOptions(supportedEfforts)

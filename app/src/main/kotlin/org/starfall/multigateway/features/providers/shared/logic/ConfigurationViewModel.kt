@@ -9,6 +9,7 @@ import org.starfall.multigateway.shared.model.McpInfo
 import org.starfall.multigateway.shared.model.SpeechService
 import org.starfall.multigateway.shared.model.ToolDefinition
 import org.starfall.multigateway.shared.model.language.DiscoveredModel
+import org.starfall.multigateway.shared.model.language.defaultNativeModelTools
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.language.ThinkingPassback
 import org.starfall.multigateway.shared.model.language.passbackMode
@@ -148,12 +149,19 @@ class ConfigurationViewModel(
         viewModelScope.launch(LocalWriteErrors.handler) {
             val provider = modelRepo.getProviderById(providerId) ?: return@launch
             val existing = provider.config.modelConfigs[modelId] ?: ModelConfiguration()
-            val enabled = enabledTools.filter { it in existing.supportedModelTools }.distinct()
-            if (existing.enabledModelTools == enabled) return@launch
+            val supportedTools = existing.supportedModelTools.ifEmpty {
+                defaultNativeModelTools(provider.type, modelId)
+            }
+            val enabled = enabledTools.filter { it in supportedTools }.distinct()
+            val updated = existing.copy(
+                modelTools = existing.modelTools.ifEmpty { supportedTools },
+                enabledModelTools = enabled
+            )
+            if (updated == existing) return@launch
             val modelIds = provider.config.modelIds
             modelRepo.saveProvider(provider.copy(config = provider.config.copy(
                 modelIds = if (modelIds != null && modelId !in modelIds) modelIds + modelId else modelIds,
-                modelConfigs = provider.config.modelConfigs + (modelId to existing.copy(enabledModelTools = enabled))
+                modelConfigs = provider.config.modelConfigs + (modelId to updated)
             )))
         }
     }

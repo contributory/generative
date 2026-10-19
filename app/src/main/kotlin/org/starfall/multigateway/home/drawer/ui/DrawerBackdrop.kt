@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
@@ -87,8 +88,17 @@ fun Modifier.recordDrawerBackdrop(backdrop: DrawerBackdrop, blurRadius: Dp = Dra
         val radius = blurRadius.toPx()
         backdrop.blurred.renderEffect = BlurEffect(radius, radius, TileMode.Clamp)
         backdrop.blurred.record { drawLayer(backdrop.content) }
-        // Do not paint the blurred copy over the whole screen: only drawer items should use it.
-        drawContent()
+
+        // Keep the original content sharp everywhere, then replace only the portion currently
+        // covered by the sliding drawer with its blurred copy. Clipping to the drawer's live
+        // right edge is essential: the uncovered strip on the right must remain completely sharp.
+        drawLayer(backdrop.content)
+        val visibleDrawerWidth = backdrop.sheetWidthPx * backdrop.openFraction()
+        if (visibleDrawerWidth > 0f) {
+            clipRect(left = 0f, top = 0f, right = visibleDrawerWidth, bottom = size.height) {
+                drawLayer(backdrop.blurred)
+            }
+        }
     }
 
 /**

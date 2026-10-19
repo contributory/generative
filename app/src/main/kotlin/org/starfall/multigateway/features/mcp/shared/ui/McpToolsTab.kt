@@ -160,7 +160,6 @@ private fun McpToolParameter(
             Switch(
                 checked = config.enabled,
                 onCheckedChange = { onChange(config.copy(enabled = it)) },
-                enabled = config.enabled || !required || config.defaultValue.isNotBlank()
             )
         }
         OutlinedTextField(

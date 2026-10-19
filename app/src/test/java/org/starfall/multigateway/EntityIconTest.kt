@@ -331,6 +331,32 @@ class EntityIconTest {
         } finally { server.shutdown() }
     }
 
+    @Test fun iconCatalogIsDownloadedOnceAndReusedFromDiskByLaterSources() {
+        val cacheDir = File(context.cacheDir, "catalog-test-${System.nanoTime()}")
+        val server = okhttp3.mockwebserver.MockWebServer().apply { start() }
+        try {
+            val index = server.url("/index").toString()
+            val images = server.url("/images/").toString()
+            server.enqueue(okhttp3.mockwebserver.MockResponse().setBody(
+                """{"files":[{"name":"/light/claude-color.png"},{"name":"/dark/claude.png"}]}"""))
+            val first = LobeIconSource(index, images, catalogCacheDir = cacheDir)
+            assertEquals("claude-color.png", first.find("Claude"))
+            assertEquals(1, server.requestCount)
+            assertTrue(cacheDir.listFiles().orEmpty().any { it.name.startsWith("lobe-icon-catalog-") })
+            // A new process is a new source: it must answer from disk without another request.
+            val second = LobeIconSource(index, images, catalogCacheDir = cacheDir)
+            assertEquals("claude-color.png", second.find("Claude"))
+            assertEquals("claude.png", second.find("Claude", dark = true))
+            assertEquals(1, server.requestCount)
+            // A corrupt cache file is discarded and the index fetched again.
+            cacheDir.listFiles().orEmpty().forEach { it.writeText("not json") }
+            server.enqueue(okhttp3.mockwebserver.MockResponse().setBody(
+                """{"files":[{"name":"/light/openai.png"}]}"""))
+            assertEquals("openai.png", LobeIconSource(index, images, catalogCacheDir = cacheDir).find("OpenAI"))
+            assertEquals(2, server.requestCount)
+        } finally { server.shutdown(); cacheDir.deleteRecursively() }
+    }
+
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
     @Test fun providerNameWithExtraWordsDownloadsTheBrandLogoFile() = runBlocking {
         listOf("named-entity-icons", "automatic-entity-icons").forEach {

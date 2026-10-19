@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.OpenableColumns
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import java.util.UUID
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -53,6 +54,9 @@ internal fun iconMatchNames(name: String, model: Boolean): List<String> {
         .filter { it.isNotEmpty() }.distinct()
 }
 
+/** Result of an icon lookup: [data] is Coil request data, or null when no image was found. */
+class IconLookup(val data: Any?)
+
 /** Icons belong to the app, independent of temporary photo-picker URI permissions. */
 class IconStore(private val context: Context) {
     private val directory get() = File(context.filesDir, "entity-icons").apply { mkdirs() }
@@ -71,12 +75,62 @@ class IconStore(private val context: Context) {
         private val mutationLock = Any()
         private val source = LobeIconSource()
         private val failedDownloads = java.util.concurrent.ConcurrentHashMap<String, Long>()
-        private val missingDarkVariants = mutableSetOf<String>()
+        private val missingDarkVariants: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+        /** Parsed + compiled rules, valid for exactly the raw JSON they were built from. */
+        private class RulesSnapshot(val raw: String, val rules: List<IconRule>, val compiled: List<Pair<Regex, String>>)
+        @Volatile private var rulesSnapshot: RulesSnapshot? = null
+
+        /** In-memory results of [lookupIcon]; survives screens leaving composition. */
+        private data class LookupKey(
+            val root: String, val image: String?, val matchName: String?, val model: Boolean,
+            val dark: Boolean, val skipExplicit: Boolean, val revision: Long
+        )
+        private class LookupEntry(val lookup: IconLookup, val expiresAt: Long)
+        private val lookupCache = ConcurrentHashMap<LookupKey, LookupEntry>()
+        private const val LOOKUP_MISS_TTL_MS = 60_000L
+        private const val LOOKUP_CACHE_LIMIT = 1024
+    }
+
+    /** App-specific cache dir (/storage/emulated/0/Android/data/<package>/cache), or internal cache if unavailable. */
+    private fun catalogDirectory(): File = File(context.externalCacheDir ?: context.cacheDir, "icon-catalog")
+
+    private fun sharedSource(): LobeIconSource = source.also {
+        if (it.catalogCacheDir == null) it.catalogCacheDir = catalogDirectory()
+    }
+
+    private fun currentRules(): RulesSnapshot? {
+        val saved = preferences.getString("rules", null) ?: return null
+        rulesSnapshot?.takeIf { it.raw == saved }?.let { return it }
+        val rules = runCatching { Json.decodeFromString<List<IconRule>>(saved) }.getOrDefault(emptyList())
+        val compiled = rules.mapNotNull { rule ->
+            runCatching { Regex(rule.pattern, RegexOption.IGNORE_CASE) to rule.image }.getOrNull()
+        }
+        return RulesSnapshot(saved, rules, compiled).also { rulesSnapshot = it }
+    }
+
+    private fun lookupKey(image: String?, matchName: String?, model: Boolean, dark: Boolean, skipExplicit: Boolean) =
+        LookupKey(context.filesDir.path, image, matchName, model, dark, skipExplicit, lookupChanges.value)
+
+    /** Cheap, main-thread-safe cache read. Null means "not looked up yet" (or a stale miss). */
+    fun peekIcon(image: String?, matchName: String?, model: Boolean, dark: Boolean, skipExplicit: Boolean = false): IconLookup? {
+        val entry = lookupCache[lookupKey(image, matchName, model, dark, skipExplicit)] ?: return null
+        return entry.lookup.takeIf { it.data != null || entry.expiresAt > System.currentTimeMillis() }
+    }
+
+    /** Resolves the image to show and remembers the answer in RAM. Called on IO. */
+    internal suspend fun lookupIcon(image: String?, matchName: String?, model: Boolean, dark: Boolean, skipExplicit: Boolean = false): Any? {
+        val key = lookupKey(image, matchName, model, dark, skipExplicit)
+        lookupCache[key]?.let { if (it.lookup.data != null || it.expiresAt > System.currentTimeMillis()) return it.lookup.data }
+        val data = (if (skipExplicit) null else imageData(image, dark))
+            ?: imageData(matchName?.let { resolve(it, model) }, dark)
+        if (lookupCache.size >= LOOKUP_CACHE_LIMIT) lookupCache.clear()
+        lookupCache[key] = LookupEntry(IconLookup(data), System.currentTimeMillis() + LOOKUP_MISS_TTL_MS)
+        return data
     }
 
     fun rules(): List<IconRule> {
-        val saved = preferences.getString("rules", null)
-        if (saved != null) return runCatching { Json.decodeFromString<List<IconRule>>(saved) }.getOrDefault(emptyList())
+        currentRules()?.let { return it.rules }
         // Upgrade earlier name caches into one shared collection.
         return preferences.all.mapNotNull { (key, value) ->
             if (':' !in key || value !is String) null
@@ -87,6 +141,7 @@ class IconStore(private val context: Context) {
     fun saveRules(rules: List<IconRule>) = synchronized(mutationLock) {
         require(rules.all { it.pattern.isNotBlank() && runCatching { Regex(it.pattern) }.isSuccess })
         check(preferences.edit().clear().putString("rules", Json.encodeToString(rules)).commit())
+        lookupCache.clear()
         changes.value += 1
         lookupChanges.value += 1
     }
@@ -130,19 +185,28 @@ class IconStore(private val context: Context) {
     }
 
     /** Called on IO only, after explicit icons and user regex rules have been considered. */
-    internal suspend fun resolve(name: String, model: Boolean = false, iconSource: LobeIconSource = source): String? {
+    internal suspend fun resolve(name: String, model: Boolean = false, iconSource: LobeIconSource = sharedSource()): String? {
         find(name, model)?.let { image ->
-            if (image.startsWith("lobe-") && !image.startsWith("lobe-dark-")) {
+            if (image.startsWith("lobe-") && !image.startsWith("lobe-dark-") && needsDarkVariant(image)) {
                 downloadLock.withLock { ensureDarkVariant(image, iconSource) }
             }
             return image
         }
+        val remoteCandidates = buildList {
+            if (model) LobeModelIconResolver.resolve(name)?.let(::add)
+            addAll(iconMatchNames(name, model))
+        }.distinctBy { it.lowercase(java.util.Locale.ROOT) }
+        // Fast path: the first candidate is what the slow loop would try first, so answering from its
+        // already-downloaded file gives the same result without queueing behind other icons' downloads.
+        remoteCandidates.firstOrNull()?.let { first ->
+            automatic.getString(first.lowercase(java.util.Locale.ROOT), null)
+                ?.takeIf { File(directory, it).isFile }?.let { cached ->
+                    if (needsDarkVariant(cached)) downloadLock.withLock { ensureDarkVariant(cached, iconSource) }
+                    return cached
+                }
+        }
         return downloadLock.withLock {
             find(name, model)?.let { return@withLock it }
-            val remoteCandidates = buildList {
-                if (model) LobeModelIconResolver.resolve(name)?.let(::add)
-                addAll(iconMatchNames(name, model))
-            }.distinctBy { it.lowercase(java.util.Locale.ROOT) }
             for (candidate in remoteCandidates) {
                 var attemptedId: String? = null
                 val key = candidate.lowercase(java.util.Locale.ROOT)
@@ -189,6 +253,10 @@ class IconStore(private val context: Context) {
         }
     }
 
+    private fun needsDarkVariant(image: String) =
+        image.startsWith("lobe-") && !image.startsWith("lobe-dark-") &&
+            !variants.contains("dark:$image") && image !in missingDarkVariants
+
     private suspend fun ensureDarkVariant(image: String, iconSource: LobeIconSource) {
         if (!image.startsWith("lobe-") || image.startsWith("lobe-dark-") ||
             variants.contains("dark:$image") || image in missingDarkVariants) return
@@ -226,12 +294,13 @@ class IconStore(private val context: Context) {
         val editor = variants.edit()
         if (replacement == null) editor.remove(key) else editor.putString(key, replacement)
         check(editor.commit())
+        lookupCache.clear()
         changes.value += 1
         lookupChanges.value += 1
     }
 
     fun find(name: String, model: Boolean = false): String? {
-        val compiled = rules().mapNotNull { rule ->
+        val compiled = currentRules()?.compiled ?: rules().mapNotNull { rule ->
             runCatching { Regex(rule.pattern, RegexOption.IGNORE_CASE) to rule.image }.getOrNull()
         }
         for (candidate in iconMatchNames(name, model)) {
@@ -329,6 +398,7 @@ class IconStore(private val context: Context) {
      * never removes an icon that is still explicitly assigned to a Provider, Model or MCP server.
      */
     fun prune(entityImages: Collection<String?>) = synchronized(mutationLock) {
+        lookupCache.clear()
         val referenced = buildSet {
             rules().mapTo(this) { it.image }
             entityImages.filterNotNull().filterTo(this) { storedIconName.matches(it) }

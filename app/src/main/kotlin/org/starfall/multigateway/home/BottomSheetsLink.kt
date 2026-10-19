@@ -22,6 +22,7 @@ import org.starfall.multigateway.shared.ui.model.reasoningEffortTier
 import org.starfall.multigateway.shared.ui.model.ThinkingScreenBurstLayer
 import org.starfall.multigateway.shared.ui.model.rememberThinkingColorBurst
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.language.defaultNativeModelTools
 import org.starfall.multigateway.shared.model.language.ModelType
 import org.starfall.multigateway.shared.model.language.ThinkingPassback
 import org.starfall.multigateway.shared.model.provider.ModelProvider
@@ -160,10 +161,16 @@ internal fun BottomSheetsLink(
             ?: selectedProvider?.config?.modelConfigs?.entries?.firstOrNull {
                 it.value.displayName.isNotBlank() && it.value.displayName == selectedModelName
             }
-        val selectedConfig = selectedConfigEntry?.value
+        val rawSelectedConfig = selectedConfigEntry?.value
             // Keep the same fallback as the model picker: discovered/custom models without
             // an explicit saved configuration still expose the reasoning control.
             ?: ModelConfiguration(displayName = selectedModelName.ifBlank { stringResource(R.string.select_model) })
+        // Some provider catalogs omit native-tool metadata even for models that support the
+        // provider's built-in tools. Keep explicit metadata authoritative, and use known native
+        // presets only when the model has no tool list at all.
+        val selectedConfig = if (rawSelectedConfig.supportedModelTools.isEmpty() && selectedProvider != null) {
+            rawSelectedConfig.copy(modelTools = defaultNativeModelTools(selectedProvider.type, selectedModelName))
+        } else rawSelectedConfig
         val selectedFolderName = selectedProvider?.groupId?.let { groupId ->
             providerGroups.firstOrNull { it.id == groupId }?.name
         }

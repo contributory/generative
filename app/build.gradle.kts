@@ -35,7 +35,10 @@ android {
 
     buildTypes {
         debug {
-            // Use Android Gradle Plugin's default debug signing config; it creates the key when needed.
+            // Opt into an isolated package ID for shareable test APKs without changing release IDs.
+            if (providers.gradleProperty("tempAppId").orNull == "true") {
+                applicationIdSuffix = ".temp"
+            }
         }
         release {
             // Codemagic provides CM_KEYSTORE_PATH and signs in Gradle. On Appcircle it is absent, so the

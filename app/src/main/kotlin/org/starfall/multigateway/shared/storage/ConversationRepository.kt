@@ -68,6 +68,10 @@ class ConversationRepository(private val db: AppDatabase) {
         }
     }
 
+    /** The subset of [names] that no stored conversation still refers to, so they are safe to delete. */
+    suspend fun unreferencedFiles(names: Collection<String>): Set<String> =
+        names.filterNot { dao.mentionsFile(it) }.toSet()
+
     private fun entityToModel(entity: ConversationEntity): Conversation {
         val messages: List<StoredMessage> = try {
             json.decodeFromString(entity.messagesJson)

@@ -5,6 +5,9 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -80,25 +83,42 @@ internal fun FaviconDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 val preview = result
-                if (preview != null) {
-                    Image(
-                        bitmap = preview.bitmap.asImageBitmap(),
-                        contentDescription = context.getString(R.string.favicon_preview),
-                        modifier = Modifier.size(112.dp).clickable(enabled = !busy) {
+                Box(
+                    Modifier.size(112.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+                        .clickable(enabled = !busy) {
                             imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                         }
-                    )
-                } else {
-                    EntityIcon(
-                        image = image ?: defaultImage,
-                        modifier = Modifier.size(112.dp).clickable(enabled = !busy) {
-                            imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        },
-                        text = text,
-                        fallback = fallback,
-                        matchName = matchName,
-                        model = model
-                    )
+                ) {
+                    if (preview != null) {
+                        Image(
+                            bitmap = preview.bitmap.asImageBitmap(),
+                            contentDescription = context.getString(R.string.favicon_preview),
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        EntityIcon(
+                            image = image ?: defaultImage,
+                            modifier = Modifier.fillMaxSize(),
+                            text = text,
+                            fallback = fallback,
+                            matchName = matchName,
+                            model = model
+                        )
+                    }
+                    Surface(
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(5.dp),
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ) {
+                        FluentIcon(
+                            Icons.Outlined.AddPhotoAlternate,
+                            contentDescription = context.getString(R.string.favicon_preview),
+                            modifier = Modifier.padding(5.dp).size(18.dp)
+                        )
+                    }
                 }
                 SelectableOutlinedTextField(
                     value = customUrl,
@@ -132,7 +152,7 @@ internal fun FaviconDialog(
                     }) { Text(context.getString(R.string.common_remove)) }
                 }
                 TextButton(enabled = !busy, onClick = {
-                scope.launch {
+                    scope.launch {
                     busy = true
                     currentBusy(true)
                     error = null
@@ -151,10 +171,8 @@ internal fun FaviconDialog(
                     }
                 }
                 }) { Text(context.getString(R.string.favicon_fetch)) }
+                TextButton(enabled = !busy, onClick = onDismiss) { Text(context.getString(R.string.common_close)) }
             }
-        },
-        dismissButton = {
-            TextButton(enabled = !busy, onClick = onDismiss) { Text(context.getString(R.string.common_close)) }
         }
     )
 }

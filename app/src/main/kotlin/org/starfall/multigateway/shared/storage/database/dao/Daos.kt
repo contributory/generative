@@ -29,6 +29,10 @@ interface ConversationDao {
 
     @Query("DELETE FROM conversations")
     suspend fun deleteAll()
+
+    /** True when any stored conversation still mentions [name] (a file name) in its messages. */
+    @Query("SELECT EXISTS(SELECT 1 FROM conversations WHERE instr(messagesJson, :name) > 0)")
+    suspend fun mentionsFile(name: String): Boolean
 }
 
 @Dao

@@ -17,6 +17,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,6 +33,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.multigateway.R
+import org.starfall.multigateway.shared.ui.icons.FluentIcon
+import org.starfall.multigateway.shared.ui.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,7 +56,9 @@ fun AppDataScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_category_app_data)) },
                 navigationIcon = {
-                    TextButton(onClick = onBack) { Text(stringResource(R.string.common_back)) }
+                    IconButton(onClick = onBack) {
+                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
+                    }
                 }
             )
         }

@@ -12,6 +12,7 @@ import org.starfall.multigateway.shared.helpers.media.mediaInputImageArgument
 import org.starfall.multigateway.shared.helpers.media.mediaInputImageUrlArgument
 import org.starfall.multigateway.shared.helpers.media.mediaInputImagesArgument
 import org.starfall.multigateway.shared.helpers.media.mediaToolSchema
+import org.starfall.multigateway.shared.helpers.media.configuredMediaOptions
 import org.starfall.multigateway.shared.helpers.media.toolAttachmentReferences
 import org.starfall.multigateway.integrations.mcp.McpService
 import org.starfall.multigateway.integrations.mcp.McpSession
@@ -169,6 +170,7 @@ class ToolChatViewModel(
             listOf("generate_image", "generate_video").forEach { name ->
                 val config = settings().system[name]
                 if (config?.enabled == true) {
+                    val mediaProvider = providers.find { it.id == config.providerId }
                     tools += ToolDefinition(
                         name = name,
                         description = if (name == "generate_image") {
@@ -176,7 +178,7 @@ class ToolChatViewModel(
                         } else {
                             "Generate a video from a detailed prompt. The app displays the saved video."
                         },
-                        schema = mediaToolSchema(name, config.disabledParams)
+                        schema = mediaToolSchema(name, config.disabledParams, mediaProvider, config.modelId)
                     )
                 }
             }
@@ -372,10 +374,10 @@ class ToolChatViewModel(
                                 provider = mediaProvider,
                                 model = cfg.modelId,
                                 prompt = args.text("prompt"),
-                                imageOptions = cfg.imageOptions,
+                                imageOptions = configuredMediaOptions(name, mediaProvider, cfg.modelId, cfg.imageOptions, args, cfg.disabledParams),
                                 inputImage = if ("input_image" in cfg.disabledParams) null else mediaInputImageArgument(args),
                                 inputImages = if ("input_images" in cfg.disabledParams) emptyList() else mediaInputImagesArgument(args),
-                                videoOptions = cfg.videoOptions,
+                                videoOptions = configuredMediaOptions(name, mediaProvider, cfg.modelId, cfg.videoOptions, args, cfg.disabledParams),
                                 inputImageUrl = if ("input_image_url" in cfg.disabledParams) null else mediaInputImageUrlArgument(args)
                             )
                         }

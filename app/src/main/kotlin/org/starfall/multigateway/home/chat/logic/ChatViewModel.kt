@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.UUID
+import org.starfall.multigateway.shared.files.ToolFiles
+import org.starfall.multigateway.shared.files.uploadedFileNames
 import org.starfall.multigateway.shared.media.SpeechAudioPlayer
 import org.starfall.multigateway.shared.media.SpeechSynthesisService
 import org.starfall.multigateway.shared.media.TtsHelper
@@ -66,6 +68,7 @@ class ChatViewModel(
     private val ttsHelper: TtsHelper,
     private val speechSynthesis: SpeechSynthesisService,
     private val speechAudioPlayer: SpeechAudioPlayer,
+    private val toolFiles: ToolFiles,
 ) : ViewModel() {
 
     val toolSettings = toolStore.settings.stateIn(viewModelScope, SharingStarted.Eagerly, ToolSettings())
@@ -539,7 +542,11 @@ class ChatViewModel(
 
     fun deleteConversation(id: String) = deleteConversations(setOf(id))
 
-    fun deleteConversations(ids: Set<String>) {
+    /**
+     * Deletes the conversations together with the files the user uploaded to them. [attachedFiles] are the
+     * attachments currently sitting in the chat input; they are kept even if a deleted chat used the same file.
+     */
+    fun deleteConversations(ids: Set<String>, attachedFiles: Collection<String> = emptyList()) {
         val targets = ids - deletingConversations.value
         if (targets.isEmpty()) return
         val previous = _currentConversation.value?.takeIf { it.id in targets }
@@ -558,9 +565,11 @@ class ChatViewModel(
                 synchronized(generationLock) {
                     generations.filterKeys { it in targets }.values.toList()
                 }.forEach { it.stopAndJoin() }
+                val uploads = uploadsOf(targets.mapNotNull { conversationRepo.getById(it) } + listOfNotNull(previous))
                 conversationRepo.deleteConversations(targets.toList())
                 deleted = true
                 prefsRepo.updateSidebar { it.removeChats(targets) }
+                deleteOrphanedUploads(uploads, attachedFiles, removedConversationIds = targets)
             } catch (error: Exception) {
                 if (!deleted && _currentConversation.value == null && previous != null) {
                     _currentConversation.value = previous
@@ -570,6 +579,28 @@ class ChatViewModel(
                 deletingConversations.update { it - targets }
             }
         }
+    }
+
+    /** App-private files the user uploaded to any of [conversations]; user-owned documents are excluded. */
+    private fun uploadsOf(conversations: Collection<Conversation>): Set<String> =
+        conversations.flatMapTo(mutableSetOf()) { it.uploadedFileNames(toolFiles) }
+
+    /**
+     * Uploads are stored once per content hash, so a file can be shared by several chats. After the chats are
+     * gone, delete only the [candidates] that no remaining chat, queued message or input attachment uses.
+     * [removedConversationIds] excludes the queued messages that belonged to the deleted chats.
+     */
+    private suspend fun deleteOrphanedUploads(
+        candidates: Set<String>,
+        attachedFiles: Collection<String>,
+        removedConversationIds: Set<String>
+    ) {
+        if (candidates.isEmpty()) return
+        val queued = _queuedMessages.value.filterKeys { it !in removedConversationIds }.values
+            .flatten().flatMap { message -> message.versions.flatMap { it.files } }
+        val stillWanted = (attachedFiles + queued).mapNotNull(toolFiles::nameOf).toSet()
+        val orphaned = conversationRepo.unreferencedFiles(candidates - stillWanted)
+        if (orphaned.isNotEmpty()) withContext(Dispatchers.IO) { toolFiles.delete(orphaned) }
     }
 
     fun renameConversation(id: String, newTitle: String) {
@@ -591,7 +622,7 @@ class ChatViewModel(
         }
     }
 
-    fun clearAllConversations() {
+    fun clearAllConversations(attachedFiles: Collection<String> = emptyList()) {
         if (deletingAllConversations.value) return
         val previous = _currentConversation.value
         deletingAllConversations.value = true
@@ -605,9 +636,11 @@ class ChatViewModel(
             try {
                 summaryJob?.cancelAndJoin()
                 synchronized(generationLock) { generations.values.toList() }.forEach { it.stopAndJoin() }
+                val uploads = uploadsOf(conversationRepo.allConversations.first() + listOfNotNull(previous))
                 conversationRepo.deleteAll()
                 deleted = true
                 prefsRepo.updateSidebar { SidebarOrganization() }
+                deleteOrphanedUploads(uploads, attachedFiles, removedConversationIds = emptySet())
             } catch (error: Exception) {
                 if (!deleted && _currentConversation.value == null) _currentConversation.value = previous
                 throw error
@@ -621,8 +654,8 @@ class ChatViewModel(
         items.forEach { conversationRepo.saveConversation(it) }
     }
 
-    fun deleteAllUserData() {
-        clearAllConversations()
+    fun deleteAllUserData(attachedFiles: Collection<String> = emptyList()) {
+        clearAllConversations(attachedFiles)
         viewModelScope.launch(LocalWriteErrors.handler) { prefsRepo.setSelectedProfileId(null) }
     }
 

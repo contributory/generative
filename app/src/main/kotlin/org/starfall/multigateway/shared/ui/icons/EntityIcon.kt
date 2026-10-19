@@ -44,14 +44,17 @@ fun EntityIcon(
     val context = LocalContext.current
     val revision by IconStore.lookupRevision.collectAsState()
     val dark = useDarkVariant ?: (MaterialTheme.colorScheme.background.luminance() < 0.5f)
-    var data by remember(context, image, matchName, model, dark) { mutableStateOf<Any?>(null) }
-    var resolved by remember(context, image, matchName, model, dark) { mutableStateOf(false) }
+    val store = remember(context) { IconStore(context) }
+    // Seed from the in-memory cache so a screen that is re-entered paints its logos on the first
+    // frame instead of flashing the fallback while the lookup runs again.
+    val cached = remember(context, image, matchName, model, dark) { store.peekIcon(image, matchName, model, dark) }
+    var data by remember(context, image, matchName, model, dark) { mutableStateOf(cached?.data) }
+    var resolved by remember(context, image, matchName, model, dark) { mutableStateOf(cached != null) }
     var explicitFailed by remember(image, matchName, dark, revision) { mutableStateOf(false) }
     LaunchedEffect(image, matchName, model, revision, context, dark, explicitFailed) {
-        data = withContext(Dispatchers.IO) {
-            val store = IconStore(context)
-            (if (explicitFailed) null else store.imageData(image, dark))
-                ?: store.imageData(matchName?.let { store.resolve(it, model) }, dark)
+        val hit = store.peekIcon(image, matchName, model, dark, explicitFailed)
+        data = if (hit != null) hit.data else withContext(Dispatchers.IO) {
+            store.lookupIcon(image, matchName, model, dark, explicitFailed)
         }
         resolved = true
     }

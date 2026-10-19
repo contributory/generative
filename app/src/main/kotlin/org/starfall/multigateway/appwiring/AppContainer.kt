@@ -84,7 +84,8 @@ class AppContainer(context: Context) {
                 speech,
                 TtsHelper(appContext),
                 SpeechSynthesisService(),
-                SpeechAudioPlayer(appContext)
+                SpeechAudioPlayer(appContext),
+                toolFiles
             )
         }
         initializer { ConfigurationViewModel(profiles, providers, mcp, speech, preferences) }

@@ -1,6 +1,8 @@
 package org.starfall.multigateway.shared.helpers.media
 
 import org.starfall.multigateway.shared.model.media.MediaInputImage
+import org.starfall.multigateway.shared.model.media.ImageOptionField
+import org.starfall.multigateway.shared.model.provider.ModelProvider
 
 import kotlinx.serialization.json.*
 import java.io.File
@@ -8,6 +10,7 @@ import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.networking.obj
 import org.starfall.multigateway.shared.networking.str
 import org.starfall.multigateway.shared.networking.text
+import org.starfall.multigateway.shared.model.api.ModelApiType
 
 internal const val MAX_MEDIA_INPUT_BYTES = 20L * 1024 * 1024
 
@@ -52,34 +55,79 @@ internal fun mediaInputImageUrlArgument(arguments: JsonObject): String? {
     return validateVideoImageUrl(value.content)
 }
 
-/** Optional parameters of a media tool that the user can hide from the model. */
-fun mediaToolOptionalParams(name: String): List<String> = when (name) {
-    "generate_video" -> listOf("input_image", "input_image_url")
-    "generate_image" -> listOf("input_images")
+/** Parameters exposed to the model for a selected media tool and model. */
+data class MediaToolParameter(val key: String, val label: String)
+
+fun mediaToolOptionalParams(name: String, provider: ModelProvider? = null, model: String = ""): List<MediaToolParameter> {
+    val inputs = when (name) {
+        "generate_video" -> listOf(
+            MediaToolParameter("input_image", "Reference image (attached file)"),
+            MediaToolParameter("input_image_url", "Reference image URL")
+        )
+        "generate_image" -> listOf(MediaToolParameter("input_images", "Reference images (attached files)"))
+        else -> emptyList()
+    }
+    val options = if (provider == null || model.isBlank()) emptyList() else mediaToolOptionFields(name, provider, model)
+        .map { MediaToolParameter(it.path, it.label) }
+    return inputs + options
+}
+
+private fun mediaToolOptionFields(name: String, provider: ModelProvider, model: String): List<ImageOptionField> = when (name) {
+    "generate_image" -> imageOptionFields(provider, model)
+    "generate_video" -> videoOptionFields(provider, model)
     else -> emptyList()
 }
 
-internal fun mediaToolSchema(name: String, disabledParams: Set<String> = emptySet()): JsonObject = obj(
+internal fun mediaToolSchema(
+    name: String,
+    disabledParams: Set<String> = emptySet(),
+    provider: ModelProvider? = null,
+    model: String = ""
+): JsonObject = obj(
     "type" to str("object"),
     "properties" to buildJsonObject {
-        put("prompt", obj("type" to str("string")))
+        put("prompt", obj("type" to str("string"), "description" to str("Detailed instructions for the image or video to generate.")))
         if (name == "generate_video" && "input_image" !in disabledParams) put("input_image", obj(
             "type" to str("string"),
             "description" to str("Optional tool-file: URI of an attached image to animate. Reuse it directly.")
         ))
         if (name == "generate_video" && "input_image_url" !in disabledParams) put("input_image_url", obj(
             "type" to str("string"),
-            "description" to str("Optional public HTTPS source-image URL for Agnes Video. Agnes requires public URLs and does not accept local tool-file uploads. Use either input_image or input_image_url, not both.")
+            "description" to str("Optional public HTTPS source-image URL for Agnes Video. Use either input_image or input_image_url, not both.")
         ))
         if (name == "generate_image" && "input_images" !in disabledParams) put("input_images", obj(
-            "type" to str("array"),
-            "items" to obj("type" to str("string")),
+            "type" to str("array"), "items" to obj("type" to str("string")),
             "minItems" to JsonPrimitive(1), "maxItems" to JsonPrimitive(16),
             "description" to str("Optional tool-file: URIs of attached images to edit or use as references. Reuse directly.")
         ))
+        if (provider != null && model.isNotBlank()) {
+            mediaToolOptionFields(name, provider, model).filter { it.path !in disabledParams }.forEach { field ->
+                put(field.path, buildJsonObject {
+                    put("type", str(when (field.kind) { "integer" -> "integer"; "number" -> "number"; else -> "string" }))
+                    put("description", str("Optional ${field.label}. Overrides the configured default for this call."))
+                    if (field.choices.isNotEmpty()) put("enum", JsonArray(field.choices.map(::str)))
+                    field.min?.let { put("minimum", JsonPrimitive(it)) }
+                    field.max?.let { put("maximum", JsonPrimitive(it)) }
+                })
+            }
+        }
     },
     "required" to JsonArray(listOf(str("prompt")))
 )
+
+/** Merge only exposed per-call options over the user's saved defaults. */
+internal fun configuredMediaOptions(
+    name: String, provider: ModelProvider, model: String, defaults: JsonObject,
+    arguments: JsonObject, disabledParams: Set<String>
+): JsonObject {
+    var result = defaults
+    mediaToolOptionFields(name, provider, model).forEach { field ->
+        if (field.path !in disabledParams) arguments[field.path]?.let { value ->
+            result = result.withOption(field.path, value)
+        }
+    }
+    return result
+}
 
 internal fun toolAttachmentReferences(attachments: JsonArray): String =
     if (attachments.isEmpty()) "" else attachments.mapIndexed { index, item ->

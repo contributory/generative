@@ -1,6 +1,7 @@
 package org.starfall.multigateway.shared.model.language
 
 import kotlinx.serialization.json.*
+import org.starfall.multigateway.shared.model.api.ModelApiType
 
 data class DiscoveredModel(
     val id: String,
@@ -25,6 +26,24 @@ data class DiscoveredModel(
             modelTools = modelToolsFromMetadata(metadata),
             supportStream = supported("streaming"),
             modelJson = metadata)
+    }
+}
+
+
+/** Native model tools commonly available when a provider does not expose tool metadata. */
+fun defaultNativeModelTools(providerType: ModelApiType, modelId: String): List<String> {
+    val id = modelId.lowercase()
+    return when (providerType) {
+        ModelApiType.GOOGLE -> if (id.contains("gemini")) {
+            listOf("google_search", "google_maps", "url_context", "code_execution")
+        } else emptyList()
+        ModelApiType.OPENAI_RESPONSES -> if (id.contains("gpt")) {
+            listOf("web_search", "code_interpreter", "image_generation")
+        } else emptyList()
+        ModelApiType.ANTHROPIC -> if (id.contains("claude")) {
+            listOf("web_search", "web_fetch", "code_execution")
+        } else emptyList()
+        else -> emptyList()
     }
 }
 

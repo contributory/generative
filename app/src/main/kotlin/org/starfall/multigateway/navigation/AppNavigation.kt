@@ -311,7 +311,9 @@ fun AppNavigation(
                     generatingConversationIds = generatingConversationIds,
                     organization = appPrefs.sidebar,
                     onUpdateOrganization = settingsViewModel::updateSidebar,
-                    onDeleteConversations = viewModel::deleteConversations,
+                    onDeleteConversations = { ids ->
+                        viewModel.deleteConversations(ids, chatAttachments.attachments.value)
+                    },
                     defaultSystemPrompt = appPrefs.defaultSystemPrompt,
                     promptLibrary = appPrefs.promptLibrary,
                     onPromptLibraryChange = viewModel::setPromptLibrary,
@@ -326,7 +328,7 @@ fun AppNavigation(
                         viewModel.renameConversation(id, newTitle)
                     },
                     onDeleteConversation = {
-                        viewModel.deleteConversation(it)
+                        viewModel.deleteConversations(setOf(it), chatAttachments.attachments.value)
                     },
                     onUpdateDefaultSystemPrompt = { prompt ->
                         viewModel.setDefaultSystemPrompt(prompt)
@@ -487,6 +489,10 @@ fun AppNavigation(
                                 CircularProgressIndicator()
                             }
                         } else {
+                            // Clear the pending page only once this screen has left composition. Clearing it
+                            // inside onDismiss made the exiting screen recompose into the `page == null`
+                            // branch above, whose popBackStack() ran a second time and also popped Providers.
+                            DisposableEffect(Unit) { onDispose { pendingNewProvider = null } }
                             key(page.provider.id) {
                                 ProviderEditorScreen(
                                     initialProvider = page.provider,
@@ -500,10 +506,7 @@ fun AppNavigation(
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     },
-                                    onDismiss = {
-                                        pendingNewProvider = null
-                                        navController.popBackStack()
-                                    },
+                                    onDismiss = { navController.popBackStack() },
                                     onSaveModels = configurationViewModel::saveProviderModels,
                                     onReorderModels = configurationViewModel::reorderProviderModels,
                                     onAuthorizeProvider = configurationViewModel::authorizeProvider,
@@ -837,10 +840,10 @@ fun AppNavigation(
                             conversationCount = conversations.size,
                             providerCount = providers.size,
                             onClearAllConversations = {
-                                viewModel.clearAllConversations()
+                                viewModel.clearAllConversations(chatAttachments.attachments.value)
                             },
                             onResetAllData = {
-                                viewModel.deleteAllUserData()
+                                viewModel.deleteAllUserData(chatAttachments.attachments.value)
                             },
                             onExportJson = ::exportJson,
                             onImportJson = ::importJson,

@@ -37,6 +37,24 @@ class ToolFiles(val directory: File) {
         ?.let { File(directory, it) }?.takeIf {
             it.isFile && !it.name.endsWith(".part") && it.canonicalFile.parentFile == directory.canonicalFile
         }
+    /**
+     * Name of the app-private file a stored reference points at, whether it is saved as `tool-file:<name>`,
+     * a bare name, an absolute path or a `file:` URI. Returns null for anything outside this directory,
+     * such as user-owned `content://` documents, so callers never treat those as deletable.
+     */
+    fun nameOf(reference: String): String? {
+        val raw = reference.removePrefix("tool-file:")
+        val path = if (raw.startsWith("file:")) {
+            runCatching { java.net.URI(raw).path }.getOrNull() ?: return null
+        } else raw
+        val name = if ('/' in path) {
+            val file = File(path)
+            val parent = runCatching { file.canonicalFile.parentFile }.getOrNull()
+            if (parent != directory.canonicalFile) return null
+            file.name
+        } else path
+        return name.takeIf { it.matches(Regex("[a-zA-Z0-9._-]+")) && !it.endsWith(".part") && !it.endsWith(".spill") }
+    }
     fun list(): List<File> = directory.listFiles()?.filter {
         it.isFile && !it.name.endsWith(".part") && !it.name.endsWith(".spill")
     }?.sortedByDescending { it.lastModified() } ?: emptyList()
