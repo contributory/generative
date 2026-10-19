@@ -98,9 +98,10 @@ def migration_source(sources, version):
     }
     prefix = 'ConfigurationMigration' + str(version)
     selected = [source for path, source in sorted(sources.items())
-                if '/shared/storage/database/' in path and
-                (path.rsplit('/', 1)[-1] in names or
-                 path.rsplit('/', 1)[-1].startswith(prefix) and path.endswith('.kt'))]
+                if '/shared/storage/database/' in path and (filename := path.rsplit('/', 1)[-1]) and
+                (filename in names or
+                 filename.startswith(prefix) and path.endswith('.kt') and
+                 not re.fullmatch(r'ConfigurationMigration\d+To\d+\.kt', filename))]
     return '\n'.join(selected)
 
 

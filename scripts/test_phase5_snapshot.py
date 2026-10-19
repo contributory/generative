@@ -28,6 +28,7 @@ class SnapshotCheckerTest(unittest.TestCase):
             'app/src/main/kotlin/org/starfall/multigateway/shared/storage/database/ConfigurationMigration9To10.kt': 'configuration dispatcher',
             'app/src/main/kotlin/org/starfall/multigateway/shared/storage/database/ConfigurationMigration10Schema.kt': 'configuration ddl',
             'app/src/main/kotlin/org/starfall/multigateway/shared/storage/database/ConfigurationMigration10Providers.kt': 'provider copy',
+            'app/src/main/kotlin/org/starfall/multigateway/shared/storage/database/ConfigurationMigration10To11.kt': 'future dispatcher',
             'app/src/main/kotlin/org/starfall/multigateway/shared/storage/database/ConfigurationMigration11Schema.kt': 'future ddl',
             'app/src/main/kotlin/org/starfall/multigateway/shared/storage/database/Unrelated.kt': 'unrelated',
         }
@@ -36,6 +37,7 @@ class SnapshotCheckerTest(unittest.TestCase):
         self.assertIn('configuration dispatcher', selected)
         self.assertIn('configuration ddl', selected)
         self.assertIn('provider copy', selected)
+        self.assertNotIn('future dispatcher', selected)
         self.assertNotIn('future ddl', selected)
         self.assertNotIn('unrelated', selected)
 

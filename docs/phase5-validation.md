@@ -41,6 +41,23 @@ The measurement dataset, row counts, result fingerprints, and VM-step workload
 are fixed by the script. Wall-clock samples are host observations and can vary
 between runs; they must not be copied into a real-device timing claim.
 
+## Optional Android synthetic measurement
+
+The instrumentation test is explicitly synthetic. It uses
+`Room.inMemoryDatabaseBuilder`, inserts fixed scalar rows, reads the metadata
+Flow and selected-history DAO, and logs a `SYNTHETIC_ONLY` line containing table
+row counts and query observations. It never opens `multigateway_db` and does
+not validate an authorized existing database. Run only the named test with:
+
+```sh
+./gradlew :app:connectedDebugAndroidTest -PtempAppId=true \
+  -Pandroid.testInstrumentationRunnerArguments.class=org.starfall.multigateway.Phase5SyntheticMeasurementTest
+```
+
+The logged microsecond values are timings of that synthetic in-memory Android
+run. Report them only when this exact command was run on the named device; the
+host report and source inspection do not supply Android timings.
+
 Exit status is deliberately not a blanket green check:
 
 | Exit | Meaning |
@@ -181,7 +198,7 @@ be excused just because encryption occurs nearby.
 
 ## How to record actual command results
 
-Run the four commands in **Run without Gradle** from a settled checkout and
+Run the four host commands in **Run without Gradle** from a settled checkout and
 record their exit codes, test count, validator overall line, measurement status,
 and the measurement report's runtime metadata. The validator's snapshot hash is
 specific to that run. Do not replace missing Android evidence with a host result,
@@ -200,9 +217,9 @@ and do not add real-device timings unless the exact device run produced them.
    repository and MockWebServer suites. A broader audit of every future request
    or export entry point remains prudent.
 4. **Android checks:** run the relevant Room/Robolectric and instrumentation
-   suites separately. A synthetic instrumentation test, if added, is evidence
-   only for that synthetic database and is not validation of an authorized
-   existing database.
+   suites separately. The optional instrumentation command above is evidence
+   only for its synthetic in-memory database and is not validation of an
+   authorized existing database.
 5. **Real timing baseline:** with authorized fixture data on the same device and
    app settings, record cold DB-open, first usable screen, list-ready, selected
    conversation-ready and first-send-ready timestamps before/after. Hold metadata
