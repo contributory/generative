@@ -86,9 +86,9 @@ Step 1: POST /video/create
   request body -> { "model": "{{model}}", "prompt": "{{prompt}}" }
   response    -> { "data": { "id": "task-123" } }
                          │
-                         └── available to later steps as {{response_1.data.id}}
+                          └── available to later steps as {{step1.response.body.data.id}}
 
-Step 2: GET /video/result/{{response_1.data.id}}
+Step 2: GET /video/result/{{step1.response.body.data.id}}
   request body -> optional; may be {}
   response    -> { "status": "completed", "data": { "video": "https://..." } }
                          │
@@ -100,7 +100,8 @@ Step 2: GET /video/result/{{response_1.data.id}}
 Each step can access:
 
 - The global variables `{{prompt}}`, `{{model}}`, `{{api_token}}`, `{{input_files}}`, and `{{input_file[n]}}`.
-- The complete JSON response from an earlier step through paths such as `{{response_1.data.id}}` or `{{response_2.status}}`.
+- The complete JSON response body from an earlier step through paths such as `{{step1.response.body.data.id}}` or `{{step2.response.body.status}}`.
+- Response headers from an earlier step through variables such as `{{step1.response.headers.location}}`.
 
 ### Headers and API token
 
@@ -155,16 +156,16 @@ User / AI tool call
         │ prompt + model ID + input files
         ▼
 Image/Video tool
-        │ resolve global variables, headers, and {{response_n.path}}
+        │ resolve global variables, headers, and {{stepN.response.path}}
         ▼
 Request chain
         │
         ├── Step 1: endpoint + headers + mapped request
-        │       └── response stored as response_1
-        ├── observe ready / pending / error
+        │       └── response stored as step1.response.body and step1.response.headers
+        ├── observe path existence or pending values
         │       └── pending -> wait + retry within configured rules
         ├── Step 2..N: endpoint + headers + mapped request using prior responses
-        │       └── response stored as response_n
+        │       └── response stored as stepN.response.body and stepN.response.headers
         └── final response mapper
                 └── JSON path / link / base64 / raw bytes
         ▼
@@ -177,7 +178,7 @@ Local generated media ──► chat result
 2. Preserve the standard Default provider execution path, move Default parameter-visibility switches into Image/Video settings, and add an explicit persisted Default/Custom mode.
 3. Add persisted reusable Custom profiles (not keyed by model), with per-step header, response-observer, retry, and final media-mapping models with safe defaults and migration support.
 4. Add a compact mode-aware overview to Default & Tools and edit each request/response/retry configuration in dialogs or secondary screens to avoid overflow.
-5. Implement typed variable substitution for global variables (including `{{api_token}}`) and `{{response_n.path}}`, default/overridden authorization headers, form/JSON request construction, endpoint resolution, file/base64 conversion, and validation errors.
+5. Implement typed variable substitution for global variables (including `{{api_token}}`), `{{stepN.response.path}}`, and `{{stepN.headers.name}}`, default/overridden authorization headers, form/JSON request construction, endpoint resolution, file/base64 conversion, and validation errors.
 6. Implement response observation, ready/pending/error classification, bounded delay/attempt/time-window retries, and clear API error propagation.
 7. Implement final JSON-path extraction and direct image/video/octet-stream decoding.
 8. Add tests for default/custom routing, indexed/list files, both transports, multi-step response references, status classification, retry limits, all response forms, wildcard paths, invalid templates, and missing media values.

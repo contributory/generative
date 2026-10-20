@@ -43,8 +43,17 @@ data class MediaRetryPolicy(
 )
 
 @Serializable
+enum class MediaResponseObservationMode {
+    /** The observer succeeds as soon as the configured JSON path exists. */
+    @SerialName("path_exists") PATH_EXISTS,
+    /** The observer reads the path's string values and retries only for pending values. */
+    @SerialName("value") VALUE
+}
+
+@Serializable
 data class MediaResponseObservation(
     val statusPath: String = "",
+    val mode: MediaResponseObservationMode = MediaResponseObservationMode.VALUE,
     val readyValues: List<String> = listOf("completed", "complete", "succeeded", "success", "done"),
     val pendingValues: List<String> = listOf("queued", "pending", "processing", "running", "in_progress"),
     val errorValues: List<String> = listOf("failed", "failure", "error", "cancelled", "canceled"),

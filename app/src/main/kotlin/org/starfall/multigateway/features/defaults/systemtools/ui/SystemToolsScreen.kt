@@ -100,6 +100,21 @@ fun SystemToolsScreen(
                     }
                     editingMedia = null
                 },
+                onAutoSave = { profiles, activeId ->
+                    val updatedConfig = if (page.first == "generate_video") {
+                        page.third.withVideoRequestProfiles(profiles, activeId)
+                    } else {
+                        page.third.withImageRequestProfiles(profiles, activeId)
+                    }
+                    onSave(page.first, updatedConfig)
+                    page.second.config.modelConfigs[page.third.modelId]?.let { model ->
+                        onSaveModelConfiguration(
+                            page.third.providerId,
+                            page.third.modelId,
+                            model.copy(mediaApiType = MediaGenerationMode.CUSTOM, mediaRequestProfileId = activeId)
+                        )
+                    }
+                },
                 onBack = { editingMedia = null },
                 video = page.first == "generate_video"
             )

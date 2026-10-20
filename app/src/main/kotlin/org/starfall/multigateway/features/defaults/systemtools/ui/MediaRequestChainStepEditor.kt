@@ -19,9 +19,11 @@ import org.starfall.multigateway.shared.model.media.MediaRequestMode
 import org.starfall.multigateway.shared.model.media.MediaRequestChain
 import org.starfall.multigateway.shared.model.media.MediaRequestStep
 import org.starfall.multigateway.shared.model.media.MediaResponseObservation
+import org.starfall.multigateway.shared.model.media.MediaResponseObservationMode
 import org.starfall.multigateway.shared.model.media.MediaResponseType
 import org.starfall.multigateway.shared.model.media.MediaRetryPolicy
 import org.starfall.multigateway.shared.model.media.MediaValueKind
+import org.starfall.multigateway.shared.helpers.media.isValidMediaEndpointTemplate
 import org.starfall.multigateway.shared.ui.icons.FluentIcon
 import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.shared.ui.layout.SettingsCard
@@ -41,9 +43,10 @@ internal fun MediaRequestStepEditor(
 ) {
     SettingsCard {
         Text(stringResource(R.string.media_chain_editing_step, stepNumber), style = MaterialTheme.typography.titleMedium)
-        SelectableOutlinedTextField(
+        MediaTemplateAutocompleteField(
             value = step.endpoint,
             onValueChange = { onChange(step.copy(endpoint = it)) },
+            stepNumber = stepNumber,
             label = { Text(stringResource(R.string.media_chain_endpoint)) },
             supportingText = { Text(stringResource(R.string.media_chain_endpoint_help)) },
             singleLine = true,
@@ -56,7 +59,7 @@ internal fun MediaRequestStepEditor(
             optionLabel = { it },
             onSelect = { onChange(step.copy(method = it)) }
         )
-        HeaderEditor(step.headers) { headers -> onChange(step.copy(headers = headers)) }
+        HeaderEditor(stepNumber, step.headers) { headers -> onChange(step.copy(headers = headers)) }
         Text(
             stringResource(R.string.media_chain_headers_help),
             style = MaterialTheme.typography.bodySmall,
@@ -76,9 +79,10 @@ internal fun MediaRequestStepEditor(
             optionLabel = { transport -> fileTransportLabel(transport) },
             onSelect = { onChange(step.copy(fileTransport = it)) }
         )
-        SelectableOutlinedTextField(
+        MediaTemplateAutocompleteField(
             value = step.body,
             onValueChange = { onChange(step.copy(body = it)) },
+            stepNumber = stepNumber,
             label = { Text(stringResource(R.string.media_chain_request_body)) },
             supportingText = { Text(stringResource(R.string.media_chain_request_body_help)) },
             textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
@@ -93,7 +97,7 @@ internal fun MediaRequestStepEditor(
 }
 
 @Composable
-private fun HeaderEditor(headers: Map<String, String>, onChange: (Map<String, String>) -> Unit) {
+private fun HeaderEditor(stepNumber: Int, headers: Map<String, String>, onChange: (Map<String, String>) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.media_chain_headers), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
@@ -107,16 +111,18 @@ private fun HeaderEditor(headers: Map<String, String>, onChange: (Map<String, St
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                SelectableOutlinedTextField(
+                MediaTemplateAutocompleteField(
                     value = header.key,
                     onValueChange = { value -> onChange(updateHeader(headers, index, value, header.value)) },
+                    stepNumber = stepNumber,
                     label = { Text(stringResource(R.string.common_key)) },
                     singleLine = true,
                     modifier = Modifier.weight(1f)
                 )
-                SelectableOutlinedTextField(
+                MediaTemplateAutocompleteField(
                     value = header.value,
                     onValueChange = { value -> onChange(updateHeader(headers, index, header.key, value)) },
+                    stepNumber = stepNumber,
                     label = { Text(stringResource(R.string.common_value)) },
                     singleLine = true,
                     modifier = Modifier.weight(1f)
@@ -157,14 +163,17 @@ private fun ResponseObserverEditor(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
-        ObservationValuesField(stepNumber, "ready", R.string.media_chain_ready_values, observation.readyValues) {
-            onChange(observation.copy(readyValues = it))
-        }
-        ObservationValuesField(stepNumber, "pending", R.string.media_chain_pending_values, observation.pendingValues) {
-            onChange(observation.copy(pendingValues = it))
-        }
-        ObservationValuesField(stepNumber, "error", R.string.media_chain_error_values, observation.errorValues) {
-            onChange(observation.copy(errorValues = it))
+        MediaChoiceField(
+            label = stringResource(R.string.media_chain_observer_mode),
+            selected = observationModeLabel(observation.mode),
+            options = MediaResponseObservationMode.entries,
+            optionLabel = { mode -> observationModeLabel(mode) },
+            onSelect = { onChange(observation.copy(mode = it)) }
+        )
+        if (observation.mode == MediaResponseObservationMode.VALUE) {
+            ObservationValuesField(stepNumber, "pending", R.string.media_chain_pending_values, observation.pendingValues) {
+                onChange(observation.copy(pendingValues = it))
+            }
         }
         RetryPolicyEditor(stepNumber, observation.retry) { onChange(observation.copy(retry = it)) }
     }
@@ -339,24 +348,27 @@ private fun valueKindLabel(kind: MediaValueKind) = stringResource(
     if (kind == MediaValueKind.LINK) R.string.media_chain_link else R.string.media_chain_base64
 )
 
+@Composable
+private fun observationModeLabel(mode: MediaResponseObservationMode) = stringResource(
+    if (mode == MediaResponseObservationMode.PATH_EXISTS) {
+        R.string.media_chain_observer_path_exists
+    } else {
+        R.string.media_chain_observer_read_value
+    }
+)
+
 internal fun chainValidationError(chain: MediaRequestChain): Int? {
     if (chain.steps.isEmpty()) return R.string.media_chain_one_step_required
     if (chain.steps.any { step ->
-            step.endpoint.trim().isBlank() ||
-                step.endpoint.contains("://") ||
-                step.endpoint.startsWith("//") ||
-                step.endpoint.contains('#') ||
-                step.endpoint.split('/', '?', '#').any { it == ".." } ||
+            !isValidMediaEndpointTemplate(step.endpoint) ||
                 step.method !in requestMethods ||
                 step.headers.keys.any { key -> key.trim().isBlank() || key.any { it <= ' ' || it == ':' || it.code >= 127 } } ||
                 step.headers.values.any { value -> value.contains('\r') || value.contains('\n') } ||
                 runCatching { Json.parseToJsonElement(step.body.ifBlank { "{}" }) }.getOrNull() == null ||
                 (step.mode == MediaRequestMode.FORM && runCatching { Json.parseToJsonElement(step.body.ifBlank { "{}" }) }.getOrNull() !is JsonObject) ||
-                (step.observation.statusPath.isNotBlank() && (
-                    step.observation.readyValues.isEmpty() ||
-                        step.observation.pendingValues.isEmpty() ||
-                        step.observation.errorValues.isEmpty()
-                    )) ||
+                (step.observation.statusPath.isNotBlank() &&
+                    step.observation.mode == MediaResponseObservationMode.VALUE &&
+                    step.observation.pendingValues.isEmpty()) ||
                 step.observation.retry.maxAttempts !in 1..MAX_ATTEMPTS ||
                 step.observation.retry.delayMillis !in 0..MAX_DELAY_MILLIS ||
                 step.observation.retry.maxWaitMillis !in 0..MAX_WAIT_MILLIS

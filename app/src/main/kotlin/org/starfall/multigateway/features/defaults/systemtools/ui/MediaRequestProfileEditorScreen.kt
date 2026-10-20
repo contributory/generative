@@ -33,6 +33,7 @@ internal fun MediaRequestProfileEditorScreen(
     profile: MediaRequestProfile,
     video: Boolean,
     onSave: (MediaRequestProfile) -> Unit,
+    onAutoSave: (MediaRequestProfile) -> Unit = {},
     onBack: () -> Unit
 ) {
     var draft by remember(profile.id) { mutableStateOf(profile) }
@@ -43,6 +44,25 @@ internal fun MediaRequestProfileEditorScreen(
 
     fun leave() {
         if (dirty) confirmDiscard = true else onBack()
+    }
+
+    fun autoSaveDraft() {
+        onAutoSave(draft.copy(name = draft.name.trim()))
+    }
+
+    fun closeStepEditor() {
+        autoSaveDraft()
+        editingStep = null
+    }
+
+    fun removeStep(index: Int) {
+        if (draft.chain.steps.size <= 1) return
+        val updated = draft.copy(
+            chain = draft.chain.copy(steps = draft.chain.steps.filterIndexed { stepIndex, _ -> stepIndex != index })
+        )
+        draft = updated
+        onAutoSave(updated.copy(name = updated.name.trim()))
+        editingStep = null
     }
 
     BackHandler(enabled = LocalScreenTransitionActive.current) { leave() }
@@ -153,7 +173,7 @@ internal fun MediaRequestProfileEditorScreen(
 
     editingStep?.let { selectedIndex ->
         val index = selectedIndex.coerceIn(0, draft.chain.steps.lastIndex)
-        AppBottomSheet(onDismissRequest = { editingStep = null }, fixedHeightFraction = 0.92f) {
+        AppBottomSheet(onDismissRequest = ::closeStepEditor, fixedHeightFraction = 0.92f) {
             Column(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -164,7 +184,13 @@ internal fun MediaRequestProfileEditorScreen(
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.weight(1f)
                     )
-                    IconButton(onClick = { editingStep = null }) {
+                    IconButton(
+                        enabled = draft.chain.steps.size > 1,
+                        onClick = { removeStep(index) }
+                    ) {
+                        FluentIcon(Icons.Outlined.Delete, stringResource(R.string.media_chain_remove_step))
+                    }
+                    IconButton(onClick = ::closeStepEditor) {
                         FluentIcon(Icons.Outlined.Check, stringResource(R.string.common_done))
                     }
                 }

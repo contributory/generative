@@ -200,16 +200,31 @@ internal class ChatMessageActions(
             messages = existing?.messages.orEmpty() + user + assistant,
             updatedAt = now
         )
-        val name = if (request.kind == ModelType.IMAGE_GENERATION) "generate_image" else "generate_video"
-        val config = toolSettings.value.system[name]?.takeIf {
-            it.providerId == provider.id && it.modelId == request.modelId
+        _currentConversation.value = conversation
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            prefsRepo.setLastActiveConversationId(conversation.id)
         }
-        val modelConfig = provider.config.modelConfigs[request.modelId]
+        return generationFor(conversation.id).startEvents(conversation, assistant.id,
+            mediaEvents(provider, request.modelId, request.kind, request.prompt, request.attachments))
+    }
+
+    private fun mediaEvents(
+        provider: ModelProvider,
+        modelId: String,
+        kind: ModelType,
+        prompt: String,
+        attachments: List<String>
+    ): Flow<GenerationEvent> {
+        val name = if (kind == ModelType.IMAGE_GENERATION) "generate_image" else "generate_video"
+        val config = toolSettings.value.system[name]?.takeIf {
+            it.providerId == provider.id && it.modelId == modelId
+        }
+        val modelConfig = provider.config.modelConfigs[modelId]
         val generationMode = modelConfig?.mediaApiType ?: config?.let {
-            if (request.kind == ModelType.IMAGE_GENERATION) it.imageGenerationMode else it.videoGenerationMode
+            if (kind == ModelType.IMAGE_GENERATION) it.imageGenerationMode else it.videoGenerationMode
         } ?: org.starfall.multigateway.shared.model.media.MediaGenerationMode.DEFAULT
         val allSystemConfigs = toolSettings.value.system.values
-        val requestProfile = if (request.kind == ModelType.IMAGE_GENERATION) {
+        val requestProfile = if (kind == ModelType.IMAGE_GENERATION) {
             modelConfig?.mediaRequestProfileId?.let { id ->
                 allSystemConfigs.firstNotNullOfOrNull { profileConfig -> profileConfig.imageRequestProfiles[id] }
             } ?: config?.activeImageRequestProfile
@@ -218,16 +233,43 @@ internal class ChatMessageActions(
                 allSystemConfigs.firstNotNullOfOrNull { profileConfig -> profileConfig.videoRequestProfiles[id] }
             } ?: config?.activeVideoRequestProfile
         }
-        _currentConversation.value = conversation
-        viewModelScope.launch(LocalWriteErrors.handler) {
-            prefsRepo.setLastActiveConversationId(conversation.id)
-        }
-        return generationFor(conversation.id).startEvents(conversation, assistant.id,
-            toolChat.generateMedia(provider, request.modelId, request.kind, request.prompt,
-                config?.imageOptions ?: obj(), request.attachments,
-                videoOptions = config?.videoOptions ?: obj(),
-                generationMode = generationMode,
-                requestChain = requestProfile?.chain))
+        return toolChat.generateMedia(provider, modelId, kind, prompt,
+            config?.imageOptions ?: obj(), attachments,
+            videoOptions = config?.videoOptions ?: obj(),
+            generationMode = generationMode,
+            requestChain = requestProfile?.chain)
+    }
+
+    /** Image/video model a response was produced with, or null when it was a normal chat reply. */
+    internal class MediaTarget(val provider: ModelProvider, val modelId: String, val kind: ModelType)
+
+    internal fun mediaTargetOf(response: StoredMessage?): MediaTarget? {
+        val version = response?.takeIf { it.role == ChatRole.MODEL }?.activeVersion ?: return null
+        val provider = providers.value.find { it.id == version.providerId } ?: return null
+        val kind = provider.config.modelConfigs[version.modelId]?.modelType
+            ?.takeIf { it == ModelType.IMAGE_GENERATION || it == ModelType.VIDEO_GENERATION } ?: return null
+        return MediaTarget(provider, version.modelId, kind)
+    }
+
+    /** Restart a media response from the user message that precedes it (resend/regenerate/retry). */
+    internal fun startMediaResponse(
+        conversation: Conversation,
+        responseId: String,
+        target: MediaTarget,
+        rollbackConversation: Conversation? = null
+    ): Boolean {
+        val responseIndex = conversation.messages.indexOfFirst { it.id == responseId }
+        if (responseIndex <= 0) return false
+        val user = conversation.messages[responseIndex - 1].takeIf { it.role == ChatRole.USER } ?: return false
+        val prompt = user.activeVersion.content
+        if (prompt.isBlank() || prompt.length > 32000) return false
+        if (target.provider.config.modelIds?.contains(target.modelId) == false) return false
+        return generationFor(conversation.id).startEvents(
+            conversation,
+            responseId,
+            mediaEvents(target.provider, target.modelId, target.kind, prompt, user.activeVersion.files),
+            rollbackConversation = rollbackConversation
+        )
     }
 
     fun stopGeneration() { generationForCurrent()?.stop() }

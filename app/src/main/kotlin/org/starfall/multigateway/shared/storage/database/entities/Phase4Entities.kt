@@ -65,7 +65,11 @@ data class ProviderModelConfigurationEntity(
     val supportsToolCalls: Boolean,
     val legacySendThinkingContent: Boolean?,
     val thinkingPassback: String?,
-    val icon: String?
+    val icon: String?,
+    /** Image/video API integration selected for this model. */
+    val mediaApiType: String,
+    /** Reusable custom media profile selected for this model. */
+    val mediaRequestProfileId: String
 )
 
 @Entity(

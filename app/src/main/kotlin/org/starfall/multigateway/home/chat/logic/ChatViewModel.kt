@@ -299,6 +299,10 @@ class ChatViewModel(
         appPreferences = appPreferences,
         selectedChatModel = modelContext::selectedChatModel,
         generatedVersion = messageActions::generatedVersion,
+        mediaTargetOf = messageActions::mediaTargetOf,
+        startMediaResponseAction = { conversation, responseId, target, rollback ->
+            messageActions.startMediaResponse(conversation, responseId, target, rollback)
+        },
         startUserMessageResponseAction = { conversation, responseId, provider, modelId, preferences, rollback, resume ->
             messageActions.startUserMessageResponse(
                 conversation, responseId, provider, modelId, preferences, rollback, resume

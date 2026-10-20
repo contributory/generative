@@ -12,6 +12,7 @@ import org.starfall.multigateway.shared.model.auth.CredentialLoadState
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.language.ModelType
 import org.starfall.multigateway.shared.model.language.ThinkingPassback
+import org.starfall.multigateway.shared.model.media.MediaGenerationMode
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderConfiguration
 import org.starfall.multigateway.shared.storage.database.AppDatabase
@@ -64,9 +65,12 @@ internal class ProviderStorageMapper(private val db: AppDatabase) {
                 reasoningEffort = model.reasoningEffort, reasoningEfforts = list("reasoning_efforts"), thinkingLevel = model.thinkingLevel,
                 supportsToolCalls = model.supportsToolCalls, modelTools = list("model_tools"), enabledModelTools = list("enabled_model_tools"),
                 legacySendThinkingContent = model.legacySendThinkingContent,
-                thinkingPassback = model.thinkingPassback?.let { runCatching { ThinkingPassback.valueOf(it) }.getOrNull() },
-                icon = model.icon,
-                modelJson = structured.readDocument("provider_model", "${entity.id}/${model.modelId}", "model_json") as? JsonObject
+                 thinkingPassback = model.thinkingPassback?.let { runCatching { ThinkingPassback.valueOf(it) }.getOrNull() },
+                 icon = model.icon,
+                 mediaApiType = runCatching { MediaGenerationMode.valueOf(model.mediaApiType) }
+                     .getOrDefault(MediaGenerationMode.DEFAULT),
+                 mediaRequestProfileId = model.mediaRequestProfileId,
+                 modelJson = structured.readDocument("provider_model", "${entity.id}/${model.modelId}", "model_json") as? JsonObject
                     ?: JsonObject(emptyMap())
             )
         }
@@ -165,7 +169,8 @@ internal class ProviderStorageMapper(private val db: AppDatabase) {
                 provider.id, modelId, ordinal, model.temperature, model.topP, model.topK, model.supportStream,
                 model.displayName, model.contextWindowTokens, model.modelType.name, model.supportsVision, model.supportsVideoInput,
                 model.supportsAudioInput, model.supportsThinking, model.reasoningEffort, model.thinkingLevel, model.supportsToolCalls,
-                model.legacySendThinkingContent, model.thinkingPassback?.name, model.icon
+                 model.legacySendThinkingContent, model.thinkingPassback?.name, model.icon,
+                 model.mediaApiType.name, model.mediaRequestProfileId
             )))
             dao.insertModelValues(listOf("reasoning_efforts" to model.reasoningEfforts, "model_tools" to model.modelTools,
                 "enabled_model_tools" to model.enabledModelTools).flatMap { (kind, values) ->

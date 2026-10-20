@@ -2,18 +2,23 @@ package org.starfall.multigateway.integrations.media
 
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.*
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.Request
 import okhttp3.RequestBody
+import okhttp3.Response
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.helpers.media.MEDIA_FILE_TOKEN_PREFIX
 import org.starfall.multigateway.shared.helpers.media.MediaTemplateContext
 import org.starfall.multigateway.shared.helpers.media.MediaTemplateInput
+import org.starfall.multigateway.shared.helpers.media.MediaStepTemplateContext
 import org.starfall.multigateway.shared.helpers.media.MAX_MEDIA_INPUT_VIDEO_BYTES
 import org.starfall.multigateway.shared.helpers.media.decodeMediaBase64
+import org.starfall.multigateway.shared.helpers.media.isAbsoluteMediaEndpoint
+import org.starfall.multigateway.shared.helpers.media.isValidMediaEndpointTemplate
 import org.starfall.multigateway.shared.helpers.media.resolveMediaString
 import org.starfall.multigateway.shared.helpers.media.resolveMediaTemplate
 import org.starfall.multigateway.shared.helpers.media.selectMediaPath
@@ -22,6 +27,7 @@ import org.starfall.multigateway.shared.model.media.MediaRequestChain
 import org.starfall.multigateway.shared.model.media.MediaRequestMode
 import org.starfall.multigateway.shared.model.media.MediaRequestStep
 import org.starfall.multigateway.shared.model.media.MediaResponseType
+import org.starfall.multigateway.shared.model.media.MediaResponseObservationMode
 import org.starfall.multigateway.shared.model.media.MediaValueKind
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.networking.ToolHttp
@@ -41,10 +47,10 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
 
     private data class StepResult(
         val value: JsonElement,
-        val rawFile: String? = null
+        val rawFile: String? = null,
+        val responseHeaders: Map<String, String> = emptyMap(),
+        val step: MediaStepTemplateContext? = null
     )
-
-    private enum class Observation { READY, PENDING, ERROR }
 
     suspend fun execute(
         chain: MediaRequestChain,
@@ -56,6 +62,8 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
         require(chain.steps.isNotEmpty()) { "At least one media request step is required." }
         val inputs = resolveInputs(http.requireFiles(), inputReferences)
         val responses = mutableListOf<JsonElement>()
+        val responseHeaders = mutableListOf<Map<String, String>>()
+        val steps = mutableListOf<MediaStepTemplateContext>()
         var last = StepResult(JsonObject(emptyMap()))
         chain.steps.forEachIndexed { index, step ->
             var attempts = 0
@@ -67,7 +75,9 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
                     model = model,
                     apiToken = provider.auth.token,
                     inputFiles = inputs.map { it.template },
-                    responses = responses.toList()
+                    responses = responses.toList(),
+                    responseHeaders = responseHeaders.toList(),
+                    steps = steps.toList()
                 )
                 last = executeStep(
                     provider,
@@ -77,23 +87,19 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
                     isFinal = index == chain.steps.lastIndex,
                     finalResponseType = chain.finalResponse.type
                 )
-                val observation = observe(step, last.value)
-                when (observation) {
-                    Observation.READY -> break
-                    Observation.ERROR -> error("Media API returned an error: ${safeResponse(last.value, provider)}")
-                    Observation.PENDING -> {
-                        val policy = step.observation.retry
-                        val elapsed = System.currentTimeMillis() - startedAt
-                        val canRetry = attempts < policy.maxAttempts.coerceAtLeast(1) &&
-                            elapsed + policy.delayMillis.coerceAtLeast(0) <= policy.maxWaitMillis.coerceAtLeast(0)
-                        if (!canRetry) {
-                            error("Media API did not become ready within the configured retry limit: ${safeResponse(last.value, provider)}")
-                        }
-                        delay(policy.delayMillis.coerceAtLeast(0))
-                    }
+                if (!shouldRetry(step, last.value)) break
+                val policy = step.observation.retry
+                val elapsed = System.currentTimeMillis() - startedAt
+                val canRetry = attempts < policy.maxAttempts.coerceAtLeast(1) &&
+                    elapsed + policy.delayMillis.coerceAtLeast(0) <= policy.maxWaitMillis.coerceAtLeast(0)
+                if (!canRetry) {
+                    error("Media API did not become ready within the configured retry limit: ${safeResponse(last.value, provider)}")
                 }
+                delay(policy.delayMillis.coerceAtLeast(0))
             }
             responses += last.value
+            responseHeaders += last.responseHeaders
+            steps += last.step ?: error("Media request step did not produce request/response metadata.")
             if (index == chain.steps.lastIndex) return finish(chain, last, provider)
         }
         error("Media request chain did not produce a final response.")
@@ -121,7 +127,9 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
         finalResponseType: MediaResponseType
     ): StepResult {
         val endpoint = resolveEndpoint(provider, resolveText(step.endpoint, context))
-        val headers = step.headers.mapValues { (_, value) -> resolveText(value, context) }
+        val headers = step.headers.entries.associate { (key, value) ->
+            resolveText(key, context) to resolveText(value, context)
+        }
         val body = step.body.trim().ifBlank { "{}" }
         val template = runCatching { json.parseToJsonElement(body) }
             .getOrElse { error("Request step JSON is invalid: ${it.message.orEmpty()}") }
@@ -146,7 +154,13 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
                 http.requireSuccess(response)
                 val text = response.body.string()
                 require(text.length <= 8 * 1024 * 1024) { "Media API JSON response exceeds 8 MB." }
-                StepResult(json.parseToJsonElement(text))
+                val responseBody = json.parseToJsonElement(text)
+                val headers = responseHeaders(response)
+                StepResult(
+                    value = responseBody,
+                    responseHeaders = headers,
+                    step = stepContext(request, resolved, response, responseBody, headers)
+                )
             }
             MediaResponseType.IMAGE, MediaResponseType.VIDEO, MediaResponseType.OCTET_STREAM ->
                 http.withResponse(request) { response ->
@@ -159,10 +173,36 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
                         }
                     }
                     val name = http.requireFiles().save(response.body.byteStream(), mime)
-                    StepResult(obj("file" to str("tool-file:$name")), name)
+                    val responseBody = obj("file" to str("tool-file:$name"))
+                    val headers = responseHeaders(response)
+                    StepResult(
+                        value = responseBody,
+                        rawFile = name,
+                        responseHeaders = headers,
+                        step = stepContext(request, resolved, response, responseBody, headers)
+                    )
                 }
         }
     }
+
+    private fun stepContext(
+        request: Request,
+        requestBody: JsonElement,
+        response: Response,
+        responseBody: JsonElement,
+        responseHeaders: Map<String, String>
+    ) = MediaStepTemplateContext(
+        url = request.url.toString(),
+        requestMethod = request.method,
+        requestHeaders = request.headers.names().associateWith { name -> request.header(name).orEmpty() },
+        requestBody = requestBody,
+        responseBody = responseBody,
+        responseHeaders = responseHeaders,
+        responseStatusCode = response.code
+    )
+
+    private fun responseHeaders(response: Response): Map<String, String> =
+        response.headers.names().associateWith { name -> response.header(name).orEmpty() }
 
     private fun applyMethod(builder: Request.Builder, method: String, body: RequestBody): Request.Builder = when (method.trim().uppercase(Locale.ROOT)) {
         "GET" -> builder.get()
@@ -210,20 +250,21 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
     private fun fileTokenIndex(value: String): Int? = value.removePrefix(MEDIA_FILE_TOKEN_PREFIX)
         .takeIf { it != value }?.toIntOrNull()
 
-    private fun observe(step: MediaRequestStep, response: JsonElement): Observation {
+    /**
+     * The observer only controls whether the current step is retried. A non-pending response
+     * always ends the retry loop and lets the chain continue to its next step, including an
+     * API response whose status is configured as an error.
+     */
+    private fun shouldRetry(step: MediaRequestStep, response: JsonElement): Boolean {
         val path = step.observation.statusPath.trim()
-        if (path.isBlank()) return Observation.READY
-        val values = selectMediaPath(response, path).mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.lowercase() }
-        require(values.isNotEmpty()) { "Response observer path '$path' did not contain a string value." }
-        val ready = step.observation.readyValues.map(String::lowercase)
+        if (path.isBlank()) return false
+        val selected = runCatching { selectMediaPath(response, path) }.getOrNull()
+        if (selected.isNullOrEmpty()) return true
+        if (step.observation.mode == MediaResponseObservationMode.PATH_EXISTS) return false
+        val values = selected.mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.lowercase() }
+        if (values.isEmpty()) return true
         val pending = step.observation.pendingValues.map(String::lowercase)
-        val errors = step.observation.errorValues.map(String::lowercase)
-        return when {
-            values.any { it in errors } -> Observation.ERROR
-            values.any { it in pending } -> Observation.PENDING
-            values.any { it in ready } -> Observation.READY
-            else -> error("Response observer did not recognize value(s): ${values.joinToString()}")
-        }
+        return values.any { it in pending }
     }
 
     private suspend fun finish(
@@ -273,10 +314,13 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
 
     private fun resolveEndpoint(provider: ModelProvider, endpoint: String): String {
         val trimmed = endpoint.trim()
-        require(trimmed.isNotBlank() && !trimmed.contains("://") && !trimmed.startsWith("//") && !trimmed.contains('#')) {
-            "Media request endpoints must be provider-relative paths."
+        require(isValidMediaEndpointTemplate(trimmed)) {
+            "Media request endpoints must be provider-relative paths or complete HTTP(S) URLs without credentials or fragments."
         }
-        require(!trimmed.split('/', '?', '#').any { it == ".." }) { "Media request endpoint traversal is not allowed." }
+        if (isAbsoluteMediaEndpoint(trimmed)) {
+            return trimmed.toHttpUrlOrNull()?.toString()
+                ?: error("Media request endpoint is not a valid HTTP(S) URL.")
+        }
         return providerBase(provider).trimEnd('/') + "/" + trimmed.trimStart('/')
     }
 

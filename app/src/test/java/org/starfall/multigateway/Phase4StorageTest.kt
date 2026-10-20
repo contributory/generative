@@ -23,6 +23,9 @@ import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.auth.*
 import org.starfall.multigateway.shared.model.language.Capabilities
 import org.starfall.multigateway.shared.model.language.LanguageModel
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
+import org.starfall.multigateway.shared.model.language.ModelType
+import org.starfall.multigateway.shared.model.media.MediaGenerationMode
 import org.starfall.multigateway.shared.model.provider.*
 import org.starfall.multigateway.shared.storage.*
 import org.starfall.multigateway.shared.storage.database.AppDatabase
@@ -138,6 +141,25 @@ class Phase4StorageTest {
         assertEquals(0L, count("provider_auth"))
         assertEquals(0L, count("mcp_auth"))
         assertEquals(0L, count("speech_auth"))
+    }
+
+    @Test fun mediaApiTypeAndProfileSurviveProviderMetadataRoundTrip() = runBlocking {
+        val source = Phase4StorageFixtures.provider().let { provider ->
+            val media = ModelConfiguration(
+                modelType = ModelType.IMAGE_GENERATION,
+                mediaApiType = MediaGenerationMode.CUSTOM,
+                mediaRequestProfileId = "shared-image-profile"
+            )
+            provider.copy(config = provider.config.copy(
+                modelIds = provider.config.modelIds.orEmpty() + "image",
+                modelConfigs = provider.config.modelConfigs + ("image" to media)
+            ))
+        }
+        models().saveProvider(source)
+
+        val restored = models().getProviderById(source.id)!!
+        assertEquals(MediaGenerationMode.CUSTOM, restored.config.modelConfigs.getValue("image").mediaApiType)
+        assertEquals("shared-image-profile", restored.config.modelConfigs.getValue("image").mediaRequestProfileId)
     }
 
     @Test fun publicConfigurationEditsPreserveUnreadableCredentialsWithoutDecryptingThem() = runBlocking {

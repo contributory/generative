@@ -7,8 +7,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.starfall.multigateway.shared.model.media.MediaFileTransport
 import java.util.Base64
+import java.util.Locale
 
 internal const val MEDIA_FILE_TOKEN_PREFIX = "__multigateway_media_file_"
 
@@ -18,15 +20,48 @@ internal data class MediaTemplateInput(
     val base64: String
 )
 
+internal data class MediaStepTemplateContext(
+    val url: String,
+    val requestMethod: String,
+    val requestHeaders: Map<String, String>,
+    val requestBody: JsonElement,
+    val responseBody: JsonElement,
+    val responseHeaders: Map<String, String>,
+    val responseStatusCode: Int
+)
+
 internal data class MediaTemplateContext(
     val prompt: String,
     val model: String,
     val apiToken: String,
     val inputFiles: List<MediaTemplateInput>,
-    val responses: List<JsonElement> = emptyList()
+    val responses: List<JsonElement> = emptyList(),
+    val responseHeaders: List<Map<String, String>> = emptyList(),
+    val steps: List<MediaStepTemplateContext> = emptyList()
 )
 
 private val placeholderPattern = Regex("""\{\{\s*([^{}]+?)\s*\}\}""")
+
+/** Accept a provider-relative endpoint or a complete HTTP(S) URL. */
+internal fun isValidMediaEndpointTemplate(value: String): Boolean {
+    val trimmed = value.trim()
+    if (trimmed.isBlank() || trimmed.startsWith("//") || trimmed.contains('#')) return false
+    val candidate = placeholderPattern.replace(trimmed) { "placeholder" }
+    val lower = candidate.lowercase(Locale.ROOT)
+    val absolute = lower.startsWith("http://") || lower.startsWith("https://")
+    if (absolute) {
+        val url = candidate.toHttpUrlOrNull() ?: return false
+        if (url.username.isNotEmpty() || url.password.isNotEmpty() || url.fragment != null) return false
+    } else if (candidate.contains("://")) {
+        return false
+    }
+    return candidate.split('/', '?', '#').none { it == ".." }
+}
+
+internal fun isAbsoluteMediaEndpoint(value: String): Boolean {
+    val lower = value.trim().lowercase(Locale.ROOT)
+    return lower.startsWith("http://") || lower.startsWith("https://")
+}
 
 internal fun resolveMediaTemplate(
     value: JsonElement,
@@ -83,7 +118,10 @@ private fun resolvePlaceholder(
         require(index in context.inputFiles.indices) { "{{input_file[$index]}} is not available." }
         resolveInputFile(context.inputFiles[index], index, fileTransport)
     }
-    name.startsWith("response_") -> resolveResponsePlaceholder(name, context.responses)
+    name.startsWith("step") -> resolveStepPlaceholder(name, context)
+    // Keep decoding profiles created before the stepN.* syntax was introduced.
+    name.startsWith("response_") -> resolveLegacyResponsePlaceholder(name, context.responses)
+    name.startsWith("headers_") -> resolveLegacyHeaderPlaceholder(name, context.responseHeaders)
     else -> error("Unsupported media request variable {{$name}}.")
 }
 
@@ -96,14 +134,64 @@ private fun resolveInputFile(
     MediaFileTransport.FILE -> JsonPrimitive("$MEDIA_FILE_TOKEN_PREFIX$index")
 }
 
-private fun resolveResponsePlaceholder(name: String, responses: List<JsonElement>): JsonElement {
+private fun resolveStepPlaceholder(name: String, context: MediaTemplateContext): JsonElement {
+    val match = Regex("step(\\d+)\\.(.+)").matchEntire(name)
+        ?: error("Invalid step variable {{$name}}. Use {{step1.response.body.path}} or {{step1.response.headers.header}}.")
+    val index = match.groupValues[1].toIntOrNull()?.minus(1)
+        ?: error("Invalid step variable {{$name}}.")
+    require(index in context.steps.indices) { "{{$name}} refers to a step that does not exist." }
+    val step = context.steps[index]
+    val expression = match.groupValues[2]
+    return when {
+        expression == "url" || expression == "request.url" -> JsonPrimitive(step.url)
+        expression == "method" || expression == "request.method" -> JsonPrimitive(step.requestMethod)
+        expression == "response.status" || expression == "response.status_code" -> JsonPrimitive(step.responseStatusCode)
+        expression == "response.body" -> step.responseBody
+        expression.startsWith("response.body.") ->
+            resolveJsonPath(step.responseBody, expression.removePrefix("response.body."), name)
+        expression.startsWith("response.headers.") ->
+            resolveHeaderAt(step.responseHeaders, expression.removePrefix("response.headers."), name)
+        expression.startsWith("request.headers.") ->
+            resolveHeaderAt(step.requestHeaders, expression.removePrefix("request.headers."), name)
+        expression == "request.body" -> step.requestBody
+        expression.startsWith("request.body.") ->
+            resolveJsonPath(step.requestBody, expression.removePrefix("request.body."), name)
+        else -> error("Unsupported step variable {{$name}}. Use stepN.response.body, stepN.response.headers.name, stepN.request.headers.name, or stepN.url.")
+    }
+}
+
+private fun resolveLegacyResponsePlaceholder(name: String, responses: List<JsonElement>): JsonElement {
     val match = Regex("response_(\\d+)(?:\\.(.*))?$").matchEntire(name)
         ?: error("Invalid response variable {{$name}}.")
     val index = match.groupValues[1].toInt() - 1
+    return resolveResponseAt(index, match.groupValues[2], responses, name)
+}
+
+private fun resolveResponseAt(index: Int, path: String, responses: List<JsonElement>, name: String): JsonElement {
     require(index in responses.indices) { "{{$name}} refers to a response that does not exist." }
-    val path = match.groupValues[2]
     if (path.isBlank()) return responses[index]
-    val selected = selectMediaPath(responses[index], path)
+    return resolveJsonPath(responses[index], path, name)
+}
+
+private fun resolveLegacyHeaderPlaceholder(name: String, responseHeaders: List<Map<String, String>>): JsonElement {
+    val match = Regex("headers_(\\d+)\\.(.+)").matchEntire(name)
+        ?: error("Invalid response header variable {{$name}}. Use {{step1.response.headers.someheaderkey}}.")
+    val index = match.groupValues[1].toIntOrNull()?.minus(1)
+        ?: error("Invalid response header variable {{$name}}.")
+    require(index in responseHeaders.indices) { "{{$name}} refers to a response that does not exist." }
+    return resolveHeaderAt(responseHeaders[index], match.groupValues[2], name)
+}
+
+private fun resolveHeaderAt(headers: Map<String, String>, headerName: String, name: String): JsonElement {
+    require(headerName.isNotBlank()) { "{{$name}} must include a response header name." }
+    val value = headers.entries.firstOrNull { it.key.equals(headerName, ignoreCase = true) }?.value
+        ?: error("{{$name}} refers to a response header that does not exist.")
+    return JsonPrimitive(value)
+}
+
+private fun resolveJsonPath(root: JsonElement, path: String, name: String): JsonElement {
+    val selected = runCatching { selectMediaPath(root, path) }
+        .getOrElse { error("{{$name}} refers to an invalid JSON path: ${it.message.orEmpty()}") }
     return if (selected.size == 1) selected.single() else JsonArray(selected)
 }
 

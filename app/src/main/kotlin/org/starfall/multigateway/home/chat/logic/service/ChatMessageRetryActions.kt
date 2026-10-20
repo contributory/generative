@@ -22,6 +22,10 @@ internal class ChatMessageRetryActions(
     private val appPreferences: StateFlow<AppPreferences>,
     private val selectedChatModel: (Conversation?, AppPreferences) -> Pair<ModelProvider?, String>,
     private val generatedVersion: (ModelProvider?, String, String) -> MessageVersion,
+    private val mediaTargetOf: (StoredMessage?) -> ChatMessageActions.MediaTarget?,
+    private val startMediaResponseAction: (
+        Conversation, String, ChatMessageActions.MediaTarget, Conversation?
+    ) -> Boolean,
     private val startUserMessageResponseAction: (
         Conversation, String, ModelProvider, String, AppPreferences, Conversation?, Boolean
     ) -> Boolean,
@@ -42,7 +46,8 @@ internal class ChatMessageRetryActions(
         if (isGenerating.value || summaryJob()?.isActive == true || pendingConversationWrites() > 0) return false
         val current = currentConversation.value ?: return false
         val prefs = appPreferences.value
-        val (baseProvider, model) = selectedChatModel(current, prefs)
+        val mediaTarget = mediaTargetOf(current.messages.getOrNull(current.messages.indexOfFirst { it.id == messageId } + 1))
+        val (baseProvider, model) = mediaTarget?.let { it.provider to it.modelId } ?: selectedChatModel(current, prefs)
         if (baseProvider == null || model.isBlank()) return false
         val responseId = UUID.randomUUID().toString()
         val conv = prepareUserMessageRetry(current, messageId, responseId,
@@ -54,6 +59,7 @@ internal class ChatMessageRetryActions(
         val userIndex = conv.messages.indexOfFirst { it.id == messageId }
         val responseMessageId = conv.messages.getOrNull(userIndex + 1)
             ?.takeIf { it.role == ChatRole.MODEL }?.id ?: return false
+        if (mediaTarget != null) return startMediaResponseAction(conv, responseMessageId, mediaTarget, null)
         return startUserMessageResponse(conv, responseMessageId, baseProvider, model, prefs)
     }
 
@@ -69,7 +75,8 @@ internal class ChatMessageRetryActions(
             it.id == messageId && it.role == ChatRole.MODEL && it.activeVersion.generationError != null
         } ?: return
         val prefs = appPreferences.value
-        val (baseProvider, model) = selectedChatModel(current, prefs)
+        val mediaTarget = mediaTargetOf(failed)
+        val (baseProvider, model) = mediaTarget?.let { it.provider to it.modelId } ?: selectedChatModel(current, prefs)
         if (baseProvider == null || model.isBlank()) return
         val version = failed.activeVersion
         val hasPartial = version.content.isNotBlank() || !version.reasoningContent.isNullOrBlank() ||
@@ -90,6 +97,11 @@ internal class ChatMessageRetryActions(
             profileId = null,
             updatedAt = System.currentTimeMillis()
         )
+        // A media request has no partial answer to continue; it restarts from the user prompt.
+        if (mediaTarget != null) {
+            startMediaResponseAction(conv, messageId, mediaTarget, null)
+            return
+        }
         startUserMessageResponse(conv, messageId, baseProvider, model, prefs, resume = hasPartial)
     }
 
@@ -97,7 +109,8 @@ internal class ChatMessageRetryActions(
         if (isGenerating.value || summaryJob()?.isActive == true || pendingConversationWrites() > 0) return
         val current = currentConversation.value ?: return
         val prefs = appPreferences.value
-        val (baseProvider, model) = selectedChatModel(current, prefs)
+        val mediaTarget = mediaTargetOf(current.messages.firstOrNull { it.id == messageId })
+        val (baseProvider, model) = mediaTarget?.let { it.provider to it.modelId } ?: selectedChatModel(current, prefs)
         if (baseProvider == null || model.isBlank()) return
         var conv = prepareRegeneration(current, messageId,
             generatedVersion(baseProvider, model, System.currentTimeMillis().toString()))?.copy(
@@ -109,6 +122,10 @@ internal class ChatMessageRetryActions(
         val summaryBoundary = current.summary?.throughMessageId
         if (summaryBoundary != null && conv.messages.none { it.id == summaryBoundary }) {
             conv = conv.copy(summary = null)
+        }
+        if (mediaTarget != null) {
+            startMediaResponseAction(conv, messageId, mediaTarget, current)
+            return
         }
         startUserMessageResponse(
             conv,

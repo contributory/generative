@@ -17,6 +17,7 @@ import org.starfall.multigateway.integrations.media.MediaRequestChainExecutor
 import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.helpers.media.MediaTemplateContext
 import org.starfall.multigateway.shared.helpers.media.MediaTemplateInput
+import org.starfall.multigateway.shared.helpers.media.MediaStepTemplateContext
 import org.starfall.multigateway.shared.helpers.media.resolveMediaTemplate
 import org.starfall.multigateway.shared.helpers.media.selectMediaPath
 import org.starfall.multigateway.shared.model.SystemToolConfig
@@ -27,6 +28,7 @@ import org.starfall.multigateway.shared.model.media.MediaRequestChain
 import org.starfall.multigateway.shared.model.media.MediaRequestStep
 import org.starfall.multigateway.shared.model.media.MediaRequestProfile
 import org.starfall.multigateway.shared.model.media.MediaResponseType
+import org.starfall.multigateway.shared.model.media.MediaResponseObservationMode
 import org.starfall.multigateway.shared.model.media.MediaValueKind
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.auth.Authorization
@@ -35,13 +37,20 @@ import org.starfall.multigateway.shared.networking.ToolHttp
 import java.nio.file.Files
 
 class MediaRequestChainTest {
-    private fun context(files: List<MediaTemplateInput> = emptyList(), responses: List<String> = emptyList()) =
+    private fun context(
+        files: List<MediaTemplateInput> = emptyList(),
+        responses: List<String> = emptyList(),
+        responseHeaders: List<Map<String, String>> = emptyList(),
+        steps: List<MediaStepTemplateContext> = emptyList()
+    ) =
         MediaTemplateContext(
             prompt = "draw a tree",
             model = "image-model",
             apiToken = "secret",
             inputFiles = files,
-            responses = responses.map { Json.parseToJsonElement(it) }
+            responses = responses.map { Json.parseToJsonElement(it) },
+            responseHeaders = responseHeaders,
+            steps = steps
         )
 
     @Test fun requestVariablesAreOptionalAndMappingsCanBeEmpty() {
@@ -65,6 +74,55 @@ class MediaRequestChainTest {
         assertEquals("image-model", resolved["model"]!!.jsonPrimitive.content)
     }
 
+    @Test fun responseHeadersCanBeReferencedByPreviousStepNumberAndHeaderName() {
+        val resolved = resolveMediaTemplate(
+            Json.parseToJsonElement("""{"task":"{{step1.response.headers.X-Task-Id}}"}"""),
+            context(
+                steps = listOf(
+                    MediaStepTemplateContext(
+                        url = "https://api.example.test/create",
+                        requestMethod = "POST",
+                        requestHeaders = emptyMap(),
+                        requestBody = JsonObject(emptyMap()),
+                        responseBody = JsonObject(emptyMap()),
+                        responseHeaders = mapOf("X-Task-Id" to "task-123"),
+                        responseStatusCode = 200
+                    )
+                )
+            ),
+            MediaFileTransport.BASE64
+        ).jsonObject
+        assertEquals("task-123", resolved["task"]!!.jsonPrimitive.content)
+    }
+
+    @Test fun stepVariablesExposeRequestAndResponseMetadata() {
+        val resolved = resolveMediaTemplate(
+            Json.parseToJsonElement(
+                """{"url":"{{step1.url}}","requestHeader":"{{step1.request.headers.X-Request-Id}}","requestBody":"{{step1.request.body.prompt}}","responseBody":"{{step1.response.body.data.id}}","responseHeader":"{{step1.response.headers.X-Task-Id}}","status":"{{step1.response.status}}"}"""
+            ),
+            context(
+                steps = listOf(
+                    MediaStepTemplateContext(
+                        url = "https://api.example.test/create",
+                        requestMethod = "POST",
+                        requestHeaders = mapOf("X-Request-Id" to "req-123"),
+                        requestBody = Json.parseToJsonElement("""{"prompt":"draw"}"""),
+                        responseBody = Json.parseToJsonElement("""{"data":{"id":"task-123"}}"""),
+                        responseHeaders = mapOf("X-Task-Id" to "task-123"),
+                        responseStatusCode = 202
+                    )
+                )
+            ),
+            MediaFileTransport.BASE64
+        ).jsonObject
+        assertEquals("https://api.example.test/create", resolved["url"]!!.jsonPrimitive.content)
+        assertEquals("req-123", resolved["requestHeader"]!!.jsonPrimitive.content)
+        assertEquals("draw", resolved["requestBody"]!!.jsonPrimitive.content)
+        assertEquals("task-123", resolved["responseBody"]!!.jsonPrimitive.content)
+        assertEquals("task-123", resolved["responseHeader"]!!.jsonPrimitive.content)
+        assertEquals("202", resolved["status"]!!.jsonPrimitive.content)
+    }
+
     @Test fun inputFilesSupportListsIndexesAndBothTransports() {
         val files = listOf(MediaTemplateInput("reference.png", "image/png", "AQI="))
         val source = Json.parseToJsonElement(
@@ -86,8 +144,20 @@ class MediaRequestChainTest {
         assertEquals(2, selectMediaPath(response, "data.images[].content").size)
         assertEquals("one", selectMediaPath(response, "data.images[0].content").single().jsonPrimitive.content)
         val request = resolveMediaTemplate(
-            Json.parseToJsonElement("""{"id":"{{response_1.data.id}}"}"""),
-            context(responses = listOf(response.toString())),
+            Json.parseToJsonElement("""{"id":"{{step1.response.body.data.id}}"}"""),
+            context(
+                steps = listOf(
+                    MediaStepTemplateContext(
+                        url = "https://api.example.test/create",
+                        requestMethod = "POST",
+                        requestHeaders = emptyMap(),
+                        requestBody = JsonObject(emptyMap()),
+                        responseBody = response,
+                        responseHeaders = emptyMap(),
+                        responseStatusCode = 200
+                    )
+                )
+            ),
             MediaFileTransport.BASE64
         )
         assertEquals("task-123", request.jsonObject["id"]!!.jsonPrimitive.content)
@@ -102,7 +172,7 @@ class MediaRequestChainTest {
                     body = "{\"prompt\":\"{{prompt}}\"}"
                 ),
                 MediaRequestStep(
-                    endpoint = "/video/result/{{response_1.data.id}}",
+                    endpoint = "/video/result/{{step1.response.body.data.id}}",
                     method = "GET",
                     body = "{}"
                 )
@@ -167,7 +237,7 @@ class MediaRequestChainTest {
                 steps = listOf(
                     MediaRequestStep(endpoint = "/video/create", body = "{\"model\":\"{{model}}\",\"prompt\":\"{{prompt}}\"}"),
                     MediaRequestStep(
-                        endpoint = "/video/status/{{response_1.data.id}}",
+                        endpoint = "/video/status/{{step1.response.body.data.id}}",
                         method = "GET",
                         headers = mapOf("Authorization" to "Token custom"),
                         body = "{}",
@@ -201,6 +271,140 @@ class MediaRequestChainTest {
             assertEquals("Token custom", complete.getHeader("Authorization"))
             assertEquals("/video.mp4", server.takeRequest().path)
             assertTrue(result["files"]!!.toString().contains(".mp4"))
+        } finally {
+            server.shutdown()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun endpointsAcceptCompleteUrlsAndResolveVariablesBeforeSending() = runBlocking {
+        val server = MockWebServer().apply { start() }
+        val root = Files.createTempDirectory("media-chain-url").toFile()
+        try {
+            server.enqueue(MockResponse().setHeader("X-Task-Id", "header-456").setBody("""{"id":"task-123"}"""))
+            server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody(okio.Buffer().write(ByteArray(32))))
+            val provider = ModelProvider(
+                "p", "test", ModelApiType.OPENAI,
+                baseUrl = server.url("/v1").toString(),
+                auth = Authorization(value = "token")
+            )
+            val chain = MediaRequestChain(
+                steps = listOf(
+                    MediaRequestStep(
+                        endpoint = "/create",
+                        headers = mapOf("X-Request-Id" to "req-123"),
+                        body = "{\"prompt\":\"{{prompt}}\"}"
+                    ),
+                    MediaRequestStep(
+                        endpoint = server.url("/media/").toString() + "{{step1.response.body.id}}?header={{step1.response.headers.X-Task-Id}}&model={{model}}",
+                        method = "GET",
+                        headers = mapOf(
+                            "X-Previous" to "{{step1.response.headers.X-Task-Id}}",
+                            "X-Original-Request" to "{{step1.request.headers.X-Request-Id}}"
+                        ),
+                        body = "{}"
+                    )
+                ),
+                finalResponse = MediaFinalResponse(type = MediaResponseType.IMAGE)
+            )
+
+            val result = MediaRequestChainExecutor(ToolHttp(ToolFiles(root))).execute(
+                chain, provider, "image-model", "draw a tree", emptyList()
+            )
+
+            assertEquals("/v1/create", server.takeRequest().path)
+            val mediaRequest = server.takeRequest()
+            assertEquals("/media/task-123?header=header-456&model=image-model", mediaRequest.path)
+            assertEquals("header-456", mediaRequest.getHeader("X-Previous"))
+            assertEquals("req-123", mediaRequest.getHeader("X-Original-Request"))
+            assertTrue(result["files"]!!.jsonArray.isNotEmpty())
+        } finally {
+            server.shutdown()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun responseObserverOnlyControlsRetryAndDoesNotBlockTheNextStep() = runBlocking {
+        val server = MockWebServer().apply { start() }
+        val root = Files.createTempDirectory("media-chain-observer").toFile()
+        try {
+            server.enqueue(MockResponse().setBody("""{"status":"failed"}"""))
+            server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody(okio.Buffer().write(ByteArray(32))))
+            val provider = ModelProvider(
+                "p", "test", ModelApiType.OPENAI,
+                baseUrl = server.url("/v1").toString(),
+                auth = Authorization(value = "token")
+            )
+            val chain = MediaRequestChain(
+                steps = listOf(
+                    MediaRequestStep(
+                        endpoint = "/create",
+                        body = "{}",
+                        observation = org.starfall.multigateway.shared.model.media.MediaResponseObservation(
+                            statusPath = "status",
+                            pendingValues = listOf("processing"),
+                            errorValues = listOf("failed")
+                        )
+                    ),
+                    MediaRequestStep(endpoint = "/media", method = "GET", body = "{}")
+                ),
+                finalResponse = MediaFinalResponse(type = MediaResponseType.IMAGE)
+            )
+
+            val result = MediaRequestChainExecutor(ToolHttp(ToolFiles(root))).execute(
+                chain, provider, "image-model", "draw a tree", emptyList()
+            )
+
+            assertEquals("/v1/create", server.takeRequest().path)
+            assertEquals("/v1/media", server.takeRequest().path)
+            assertTrue(result["files"]!!.jsonArray.isNotEmpty())
+        } finally {
+            server.shutdown()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun responseObserverCanSucceedWhenAJsonPathExistsWithoutReadingItsValue() = runBlocking {
+        val server = MockWebServer().apply { start() }
+        val root = Files.createTempDirectory("media-chain-path-observer").toFile()
+        try {
+            server.enqueue(MockResponse().setBody("{}"))
+            server.enqueue(MockResponse().setBody("""{"data":{"result":"still-processing"}}"""))
+            server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody(okio.Buffer().write(ByteArray(32))))
+            val provider = ModelProvider(
+                "p", "test", ModelApiType.OPENAI,
+                baseUrl = server.url("/v1").toString(),
+                auth = Authorization(value = "token")
+            )
+            val chain = MediaRequestChain(
+                steps = listOf(
+                    MediaRequestStep(
+                        endpoint = "/poll",
+                        body = "{}",
+                        observation = org.starfall.multigateway.shared.model.media.MediaResponseObservation(
+                            statusPath = "data.result",
+                            mode = MediaResponseObservationMode.PATH_EXISTS,
+                            pendingValues = emptyList(),
+                            retry = org.starfall.multigateway.shared.model.media.MediaRetryPolicy(
+                                maxAttempts = 2,
+                                delayMillis = 0,
+                                maxWaitMillis = 1_000
+                            )
+                        )
+                    ),
+                    MediaRequestStep(endpoint = "/media", method = "GET", body = "{}")
+                ),
+                finalResponse = MediaFinalResponse(type = MediaResponseType.IMAGE)
+            )
+
+            val result = MediaRequestChainExecutor(ToolHttp(ToolFiles(root))).execute(
+                chain, provider, "image-model", "draw a tree", emptyList()
+            )
+
+            assertEquals("/v1/poll", server.takeRequest().path)
+            assertEquals("/v1/poll", server.takeRequest().path)
+            assertEquals("/v1/media", server.takeRequest().path)
+            assertTrue(result["files"]!!.jsonArray.isNotEmpty())
         } finally {
             server.shutdown()
             root.deleteRecursively()

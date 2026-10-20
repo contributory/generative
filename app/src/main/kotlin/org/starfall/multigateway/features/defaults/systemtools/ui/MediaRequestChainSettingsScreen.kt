@@ -27,6 +27,7 @@ fun MediaRequestChainSettingsScreen(
     provider: ModelProvider,
     config: SystemToolConfig,
     onSave: (Map<String, MediaRequestProfile>, String) -> Unit,
+    onAutoSave: (Map<String, MediaRequestProfile>, String) -> Unit = { _, _ -> },
     onBack: () -> Unit,
     video: Boolean
 ) {
@@ -42,9 +43,12 @@ fun MediaRequestChainSettingsScreen(
     var activeId by remember(provider.id, video) {
         mutableStateOf(storedActiveId.takeIf { it in initialProfiles } ?: initialProfiles.keys.first())
     }
+    var baselineProfiles by remember(provider.id, video) { mutableStateOf(initialProfiles) }
+    var baselineActiveId by remember(provider.id, video) { mutableStateOf(storedActiveId) }
     var editingProfileId by remember { mutableStateOf<String?>(null) }
+    var deletingProfileId by remember { mutableStateOf<String?>(null) }
     var confirmDiscard by remember { mutableStateOf(false) }
-    val dirty = profiles != initialProfiles || activeId != storedActiveId
+    val dirty = profiles != baselineProfiles || activeId != baselineActiveId
 
     fun leave() {
         if (dirty) confirmDiscard = true else onBack()
@@ -64,6 +68,13 @@ fun MediaRequestChainSettingsScreen(
                 onSave = { updated ->
                     profiles = profiles + (updated.id to updated)
                     editingProfileId = null
+                },
+                onAutoSave = { updated ->
+                    val nextProfiles = profiles + (updated.id to updated)
+                    profiles = nextProfiles
+                    baselineProfiles = nextProfiles
+                    baselineActiveId = activeId
+                    onAutoSave(nextProfiles, activeId)
                 },
                 onBack = { editingProfileId = null }
             )
@@ -143,9 +154,15 @@ fun MediaRequestChainSettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        IconButton(onClick = { editingProfileId = profile.id }) {
-                            FluentIcon(Icons.Outlined.Edit, stringResource(R.string.media_chain_edit_profile))
-                        }
+                    IconButton(onClick = { editingProfileId = profile.id }) {
+                        FluentIcon(Icons.Outlined.Edit, stringResource(R.string.media_chain_edit_profile))
+                    }
+                    IconButton(
+                        enabled = profiles.size > 1,
+                        onClick = { deletingProfileId = profile.id }
+                    ) {
+                        FluentIcon(Icons.Outlined.Delete, stringResource(R.string.media_chain_remove_profile))
+                    }
                     }
                     if (active) {
                         Text(
@@ -158,6 +175,29 @@ fun MediaRequestChainSettingsScreen(
                 }
             }
         }
+    }
+
+    deletingProfileId?.let { profileId ->
+        AlertDialog(
+            onDismissRequest = { deletingProfileId = null },
+            title = { Text(stringResource(R.string.media_chain_remove_profile_title)) },
+            text = { Text(stringResource(R.string.media_chain_remove_profile_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val nextProfiles = profiles - profileId
+                    profiles = nextProfiles
+                    if (activeId == profileId) activeId = nextProfiles.keys.first()
+                    deletingProfileId = null
+                }) {
+                    Text(stringResource(R.string.media_chain_remove_profile))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deletingProfileId = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
     }
 
     if (confirmDiscard) AlertDialog(
