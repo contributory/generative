@@ -19,6 +19,10 @@ internal class ClaudeCodeAdapter(context: Context, attachments: AttachmentResolv
     "org:create_api_key user:profile user:inference user:sessions:claude_code user:mcp_servers user:file_upload",
     54545, "/callback", jsonTokens = true
 ) {
+    override fun sdkSystemPrompt(systemPrompt: String): String =
+        listOf("You are Claude Code, Anthropic's official CLI for Claude.", systemPrompt.trim())
+            .filter(String::isNotBlank).joinToString("\n\n")
+
     override suspend fun prepareAuthenticatedProvider(provider: ModelProvider): ModelProvider {
         val token = ensureToken(provider)
         return provider.copy(type = ModelApiType.ANTHROPIC,

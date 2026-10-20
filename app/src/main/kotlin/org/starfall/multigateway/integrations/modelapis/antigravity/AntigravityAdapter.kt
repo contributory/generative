@@ -31,6 +31,9 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
     51121, "/oauth-callback", "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",
     callbackHost = "127.0.0.1"
 ) {
+    // This endpoint wraps Gemini payloads in Antigravity's private project/request envelope.
+    override val useOfficialSdkForGeneration: Boolean = false
+
     // Antigravity's Client-Metadata header follows the reference client's IDE fingerprint.
     private val metadata =
         obj("ideType" to str("ANTIGRAVITY"), "platform" to str("MACOS"), "pluginType" to str("GEMINI"))

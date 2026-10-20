@@ -149,11 +149,11 @@ class AccountTokenUsageTest {
 
     private fun response(type: ModelApiType, includeUsage: Boolean): JsonObject {
         val content = json(when (type) {
-            ModelApiType.ANTHROPIC -> """{"content":[{"type":"text","text":"hello"}]}"""
+            ModelApiType.ANTHROPIC -> """{"id":"msg_test","type":"message","role":"assistant","model":"claude-test","content":[{"type":"text","text":"hello"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{}}"""
             ModelApiType.GOOGLE -> """{"candidates":[{"content":{"parts":[{"text":"hello"}]}}]}"""
-            ModelApiType.OPENAI_RESPONSES -> """{"status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":"hello"}]}]}"""
+            ModelApiType.OPENAI_RESPONSES -> """{"id":"resp_test","object":"response","created_at":0,"status":"completed","model":"gpt-test","output":[{"id":"msg_test","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"hello","annotations":[]}]}],"usage":{}}"""
             ModelApiType.OLLAMA -> """{"message":{"role":"assistant","content":"hello"},"done":true}"""
-            else -> """{"choices":[{"message":{"role":"assistant","content":"hello"}}]}"""
+            else -> """{"id":"chatcmpl-test","object":"chat.completion","created":0,"model":"chat","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}],"usage":{}}"""
         })
         if (!includeUsage) return content
         val fields = when (type) {
@@ -171,12 +171,19 @@ class AccountTokenUsageTest {
         val full = response(type, includeUsage)
         val events = when (type) {
             ModelApiType.ANTHROPIC -> buildList {
-                add(obj("type" to str("message_start"), "message" to if (includeUsage)
-                    obj("usage" to JsonObject(full.requireObject("usage") + ("output_tokens" to JsonPrimitive(0)))) else obj()))
+                add(obj("type" to str("message_start"), "message" to obj(
+                    "id" to str("msg_test"), "type" to str("message"), "role" to str("assistant"),
+                    "model" to str("claude-test"), "content" to JsonArray(emptyList()),
+                    "stop_reason" to JsonNull, "stop_sequence" to JsonNull,
+                    "usage" to if (includeUsage)
+                        JsonObject(full.requireObject("usage") + ("output_tokens" to JsonPrimitive(0)))
+                    else obj()
+                )))
                 add(json("""{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"hello"}}"""))
                 if (includeUsage) {
-                    add(json("""{"type":"message_delta","usage":{"output_tokens":3}}"""))
-                    add(json("""{"type":"message_delta","usage":{"output_tokens":7}}"""))
+                    add(json("""{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":3}}"""))
+                    add(json("""{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":7}}"""))
+                    add(json("""{"type":"message_stop"}"""))
                 }
             }
             ModelApiType.GOOGLE -> if (includeUsage) listOf(
@@ -190,10 +197,12 @@ class AccountTokenUsageTest {
             ModelApiType.OLLAMA -> listOf(json("""{"message":{"content":"hello"},"done":false}"""),
                 JsonObject(usageFields(full) + ("done" to JsonPrimitive(true))))
             else -> buildList {
-                add(json("""{"choices":[{"delta":{"content":"hello"}}]}"""))
+                add(json("""{"id":"chatcmpl-test","object":"chat.completion.chunk","created":0,"model":"chat","choices":[{"index":0,"delta":{"content":"hello"},"finish_reason":null}]}"""))
                 if (includeUsage) {
-                    add(json("""{"usage":{"prompt_tokens":60,"completion_tokens":3}}"""))
-                    add(obj("usage" to full.getValue("usage")))
+                    add(json("""{"id":"chatcmpl-test","object":"chat.completion.chunk","created":0,"model":"chat","choices":[],"usage":{"prompt_tokens":60,"completion_tokens":3,"total_tokens":63}}"""))
+                    add(obj("id" to str("chatcmpl-test"), "object" to str("chat.completion.chunk"),
+                        "created" to JsonPrimitive(0), "model" to str("chat"), "choices" to JsonArray(emptyList()),
+                        "usage" to full.getValue("usage")))
                 }
             }
         }

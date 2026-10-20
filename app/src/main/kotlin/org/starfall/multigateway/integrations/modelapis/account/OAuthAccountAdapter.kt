@@ -25,6 +25,13 @@ import org.starfall.multigateway.shared.networking.text
 import org.starfall.multigateway.shared.networking.providerBase
 import org.starfall.multigateway.shared.networking.modelResponse
 import org.starfall.multigateway.shared.networking.providerTokenUsage
+import org.starfall.multigateway.integrations.modelapis.ModelApiAdapter
+import org.starfall.multigateway.integrations.modelapis.ModelApiRequest
+import org.starfall.multigateway.integrations.modelapis.openai.OpenAIChatCompletionsAdapter
+import org.starfall.multigateway.integrations.modelapis.openairesponses.OpenAIResponsesAdapter
+import org.starfall.multigateway.integrations.modelapis.anthropic.AnthropicMessagesAdapter
+import org.starfall.multigateway.integrations.modelapis.gemini.GeminiAdapter
+import org.starfall.multigateway.integrations.modelapis.sdk.OfficialProviderSdk
 
 /** Shared PKCE and encrypted persistence; protocol details stay in each adapter. */
 internal abstract class OAuthAccountAdapter(
@@ -46,6 +53,17 @@ internal abstract class OAuthAccountAdapter(
     protected val http = ToolHttp()
     protected val store = AccountTokenStore(context, providerType.name.lowercase())
     private val refreshLock = Mutex()
+    protected open val useOfficialSdkForGeneration: Boolean = true
+    private val officialSdk by lazy { OfficialProviderSdk(attachments) }
+    private val officialAdapters: Map<ModelApiType, ModelApiAdapter> by lazy {
+        val sdk = officialSdk
+        listOf(
+            OpenAIChatCompletionsAdapter(sdk),
+            OpenAIResponsesAdapter(sdk),
+            AnthropicMessagesAdapter(sdk),
+            GeminiAdapter(sdk)
+        ).associateBy { it.modelApiType }
+    }
     private val redirectUri get() = registeredRedirectUri ?: "http://$callbackHost:$callbackPort$callbackPath"
     protected val marker get() = "account:${providerType.name.lowercase()}:v1"
 
@@ -119,7 +137,67 @@ internal abstract class OAuthAccountAdapter(
     }
     override fun clearCredentials(providerId: String) = store.delete(providerId)
 
+    protected open fun sdkSystemPrompt(systemPrompt: String): String = systemPrompt
+
     override fun streamEvents(provider: ModelProvider, modelName: String, messages: List<StoredMessage>,
+        systemPrompt: String, maxOutputTokens: Int): Flow<GenerationEvent> =
+        if (useOfficialSdkForGeneration) streamEventsWithSdk(provider, modelName, messages, systemPrompt, maxOutputTokens)
+        else streamEventsWithHttp(provider, modelName, messages, systemPrompt, maxOutputTokens)
+
+    private fun streamEventsWithSdk(provider: ModelProvider, modelName: String, messages: List<StoredMessage>,
+        systemPrompt: String, maxOutputTokens: Int): Flow<GenerationEvent> = flow {
+        val wire = prepareModelProvider(provider, modelName)
+        val modelConfig = provider.config.modelConfigs[modelName] ?: ModelConfiguration()
+        val requestContext = buildJsonObject {
+            put("messages", JsonArray(messages.filter { it.role != ChatRole.SYSTEM }.map { message ->
+                buildJsonObject {
+                    put("role", if (message.role == ChatRole.MODEL) "assistant" else "user")
+                    if (message.files.isEmpty()) put("content", message.content)
+                    else put("content", buildJsonArray {
+                        if (message.content.isNotBlank()) add(buildJsonObject {
+                            put("type", "text"); put("text", message.content)
+                        })
+                        message.files.forEach { reference ->
+                            val mimeType = attachments.metadata(reference)?.mimeType
+                                ?: error("Attachment metadata is missing")
+                            val image = mimeType.startsWith("image/")
+                            if (wire.type != ModelApiType.ANTHROPIC && wire.type != ModelApiType.GOOGLE) {
+                                require(image) { "Unsupported ${wire.type.displayName} attachment" }
+                            }
+                            add(buildJsonObject {
+                                put("type", when {
+                                    !image -> "document"
+                                    wire.type == ModelApiType.OPENAI_RESPONSES -> "input_image"
+                                    else -> "image_url"
+                                })
+                            })
+                        }
+                    })
+                }
+            }))
+        }
+        val normalizedPrompt = sdkSystemPrompt(systemPrompt)
+        val normalizedContext = normalizeToolRequest(provider, wire, requestContext, normalizedPrompt)
+        val requestProvider = prepareRequestProvider(provider, wire, normalizedContext)
+        val adapter = officialAdapters[requestProvider.type]
+            ?: error("No official SDK adapter is registered for ${requestProvider.type.displayName}.")
+        emitAll(adapter.stream(ModelApiRequest(
+            provider = requestProvider,
+            modelName = modelName,
+            messages = messages.filter { it.role != ChatRole.SYSTEM },
+            systemPrompt = normalizedPrompt,
+            temperature = modelConfig.temperature,
+            topP = modelConfig.topP,
+            topK = modelConfig.topK,
+            maxTokens = maxOutputTokens,
+            reasoningEffort = modelConfig.wireReasoningEffort,
+            sendThinkingContent = modelConfig.sendsThinkingBack(messages.hasToolCalls()),
+            enabledModelTools = modelConfig.enabledModelTools
+                .filter { it in modelConfig.supportedModelTools }.distinct()
+        )))
+    }.flowOn(Dispatchers.IO)
+
+    private fun streamEventsWithHttp(provider: ModelProvider, modelName: String, messages: List<StoredMessage>,
         systemPrompt: String, maxOutputTokens: Int): Flow<GenerationEvent> = channelFlow {
         val wire = prepareModelProvider(provider, modelName)
         val body = chatBody(wire.type, modelName, messages, systemPrompt, maxOutputTokens, provider.config.modelConfigs[modelName] ?: ModelConfiguration())

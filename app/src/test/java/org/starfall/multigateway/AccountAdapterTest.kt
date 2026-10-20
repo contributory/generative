@@ -218,18 +218,25 @@ class AccountAdapterTest {
                     AccountTokenStore(context, type.name.lowercase()).save(id,
                         AccountTokenState("test-access", "test-refresh", projectId = "test-project"))
                     val body = when (type) {
-                        ModelApiType.CLAUDE_CODE -> """{"content":[{"type":"thinking","thinking":"plan","signature":"signed"},{"type":"text","text":"hello"}]}"""
+                        ModelApiType.CLAUDE_CODE -> """{"id":"msg_test","type":"message","role":"assistant","model":"claude-test","content":[{"type":"thinking","thinking":"plan","signature":"signed"},{"type":"text","text":"hello"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":1,"output_tokens":1}}"""
                         ModelApiType.ANTIGRAVITY -> """{"response":{"candidates":[{"content":{"parts":[{"thought":true,"text":"plan"},{"text":"hello"}]}}]}}"""
-                        else -> """{"choices":[{"message":{"role":"assistant","content":"hello","reasoning_content":"plan"}}]}"""
+                        else -> """{"id":"chatcmpl-test","object":"chat.completion","created":0,"model":"chat","choices":[{"index":0,"message":{"role":"assistant","content":"hello","reasoning_content":"plan"},"finish_reason":"stop"}]}"""
                     }
                     val eventBody = when (type) {
                         ModelApiType.CLAUDE_CODE -> listOf(
+                            """{"type":"message_start","message":{"id":"msg_test","type":"message","role":"assistant","model":"claude-test","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":1,"output_tokens":0}}}""",
+                            """{"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":""}}""",
                             """{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"plan"}}""",
                             """{"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"signed"}}""",
-                            """{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"hello"}}"""
+                            """{"type":"content_block_stop","index":0}""",
+                            """{"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}}""",
+                            """{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"hello"}}""",
+                            """{"type":"content_block_stop","index":1}""",
+                            """{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":1}}""",
+                            """{"type":"message_stop"}"""
                         ).joinToString("") { "data: $it\n\n" }
                         ModelApiType.ANTIGRAVITY -> "data: $body\n\n"
-                        else -> """data: {"choices":[{"delta":{"content":"hello","reasoning_content":"plan"}}]}""" + "\n\ndata: [DONE]\n\n"
+                        else -> """data: {"id":"chatcmpl-test","object":"chat.completion.chunk","created":0,"model":"chat","choices":[{"index":0,"delta":{"content":"hello","reasoning_content":"plan"},"finish_reason":null}]}""" + "\n\ndata: [DONE]\n\n"
                     }
                     if (type == ModelApiType.GITHUB_COPILOT)
                         server.enqueue(MockResponse().setBody("""{"data":[{"id":"chat","supported_endpoints":["/chat/completions"]}]}"""))

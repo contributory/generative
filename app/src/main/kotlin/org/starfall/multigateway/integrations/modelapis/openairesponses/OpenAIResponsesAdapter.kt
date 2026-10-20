@@ -1,7 +1,10 @@
 package org.starfall.multigateway.integrations.modelapis.openairesponses
 
 import kotlinx.coroutines.flow.Flow
+import com.openai.models.Reasoning
+import com.openai.models.ReasoningEffort
 import com.openai.models.responses.EasyInputMessage
+import com.openai.models.responses.ResponseIncludable
 import com.openai.models.responses.ResponseCreateParams
 import com.openai.models.responses.ResponseInputItem
 import com.openai.models.responses.ResponseUsage
@@ -72,18 +75,35 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
                     add(ResponseInputItem.ofEasyInputMessage(easy.build()))
                 }
             }
-            val params = ResponseCreateParams.builder().model(modelName).maxOutputTokens(maxTokens.toLong()).store(false)
-                .inputOfResponse(inputItems)
-            val nativeTools = requestToolsForOpenAIResponses(enabledModelTools)
+            // Codex uses a private endpoint with Responses-compatible events, but its request
+            // contract differs from the public API: keep the SDK transport/parser while preserving
+            // Codex's required cache key, reasoning include, and omission of unsupported fields.
+            val codexWire = provider.config.headers["Originator"] == "codex-tui"
+            val params = ResponseCreateParams.builder().model(modelName).store(false).inputOfResponse(inputItems)
+            if (!codexWire) params.maxOutputTokens(maxTokens.toLong())
+            val nativeTools = if (codexWire) emptyList() else requestToolsForOpenAIResponses(enabledModelTools)
             if (nativeTools.isNotEmpty()) params.putAdditionalBodyProperty("tools", com.openai.core.JsonValue.from(nativeTools))
-            if (systemPrompt.isNotBlank()) params.instructions(systemPrompt)
-            temperature?.let { params.temperature(it) }
-            topP?.let { params.topP(it) }
-            reasoningEffort?.trim()?.takeIf { it.isNotEmpty() }?.let { effort ->
-                params.putAdditionalBodyProperty(
-                    "reasoning",
-                    com.openai.core.JsonValue.from(mapOf("effort" to effort))
-                )
+            if (systemPrompt.isNotBlank() || codexWire) {
+                params.instructions(systemPrompt.takeIf(String::isNotBlank)
+                    ?: "You are a coding assistant. Follow the user's request accurately and concisely.")
+            }
+            if (codexWire) {
+                provider.config.headers["Session_id"]?.takeIf(String::isNotBlank)?.let { params.promptCacheKey(it) }
+                params.include(listOf(ResponseIncludable.REASONING_ENCRYPTED_CONTENT))
+                val reasoning = Reasoning.builder().summary(Reasoning.Summary.AUTO)
+                reasoningEffort?.trim()?.takeIf(String::isNotEmpty)?.let {
+                    reasoning.effort(ReasoningEffort.of(it))
+                }
+                params.reasoning(reasoning.build())
+            } else {
+                temperature?.let { params.temperature(it) }
+                topP?.let { params.topP(it) }
+                reasoningEffort?.trim()?.takeIf { it.isNotEmpty() }?.let { effort ->
+                    params.putAdditionalBodyProperty(
+                        "reasoning",
+                        com.openai.core.JsonValue.from(mapOf("effort" to effort))
+                    )
+                }
             }
             if (!provider.config.supportStream) {
                 val response = sdk.sdkCall { client.responses().create(params.build()) }
@@ -107,6 +127,9 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
                     val event = iterator.next()
                     check(!event.error().isPresent && !event.failed().isPresent) { "OpenAI Responses stream failed" }
                     event.reasoningTextDelta().orElse(null)?.delta()?.takeIf { it.isNotEmpty() }?.let {
+                        emit(GenerationEvent.Reasoning(it))
+                    }
+                    event.reasoningSummaryTextDelta().orElse(null)?.delta()?.takeIf { it.isNotEmpty() }?.let {
                         emit(GenerationEvent.Reasoning(it))
                     }
                     event.outputTextDelta().orElse(null)?.delta()?.takeIf { it.isNotEmpty() }?.let {

@@ -1,34 +1,23 @@
 package org.starfall.multigateway.integrations.modelapis.openaicodex
 
-import java.util.Base64
 import android.content.Context
 import android.net.Uri
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.header
 import io.ktor.client.request.get
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
 import io.ktor.http.isSuccess
-import io.ktor.utils.io.readLine
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -38,20 +27,21 @@ import org.starfall.multigateway.shared.auth.OAuthCallbackService
 import org.starfall.multigateway.shared.auth.awaitLoopbackAuthorizationCode
 import org.starfall.multigateway.integrations.modelapis.account.AccountProviderAdapter
 import org.starfall.multigateway.integrations.modelapis.discoveredModel
+import org.starfall.multigateway.integrations.modelapis.ModelApiRequest
+import org.starfall.multigateway.integrations.modelapis.openairesponses.OpenAIResponsesAdapter
+import org.starfall.multigateway.integrations.modelapis.sdk.OfficialProviderSdk
 import org.starfall.multigateway.shared.model.auth.AuthMethod
 import org.starfall.multigateway.shared.model.provider.oauthCredentialId
 import org.starfall.multigateway.shared.model.language.DiscoveredModel
 import org.starfall.multigateway.shared.auth.AppAuthTransactions
 import org.starfall.multigateway.shared.auth.OAuthBrowser
 import org.starfall.multigateway.shared.model.auth.Authorization
-import org.starfall.multigateway.shared.model.ChatRole
 import org.starfall.multigateway.shared.model.generation.GenerationEvent
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.StoredMessage
 import org.starfall.multigateway.shared.model.language.wireReasoningEffort
 import org.starfall.multigateway.shared.files.AttachmentResolver
-import org.starfall.multigateway.shared.networking.providerTokenUsage
 
 /**
  * Self-contained ChatGPT Codex account adapter.
@@ -62,13 +52,14 @@ import org.starfall.multigateway.shared.networking.providerTokenUsage
  */
 internal class OpenAICodexAdapter(
     context: Context,
-    private val attachments: AttachmentResolver
+    attachments: AttachmentResolver
 ) : AccountProviderAdapter {
     override val providerType: ModelApiType = ModelApiType.OPENAI_CODEX
 
     private val appContext = context.applicationContext
     private val tokenStore = CodexTokenStore(appContext)
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+    private val sdk = OfficialProviderSdk(attachments)
     private val http = HttpClient(CIO) { install(org.starfall.multigateway.shared.logging.DebugLogKtorPlugin) }
 
     override suspend fun authorize(provider: ModelProvider): Result<ModelProvider> = runCatching {
@@ -138,7 +129,7 @@ internal class OpenAICodexAdapter(
 
         return provider.copy(
             type = ModelApiType.OPENAI_RESPONSES,
-            baseUrl = provider.baseUrl.ifBlank { ModelApiType.OPENAI_CODEX.defaultBaseUrl },
+            baseUrl = resolveEndpoint(provider.baseUrl),
             auth = Authorization(AuthMethod.BEARER_TOKEN, value = token.accessToken),
             config = provider.config.copy(headers = headers)
         )
@@ -199,85 +190,23 @@ internal class OpenAICodexAdapter(
         systemPrompt: String,
         maxOutputTokens: Int
     ): Flow<GenerationEvent> = flow {
-        val token = ensureToken(provider)
-        val sessionId = UUID.randomUUID().toString()
-        val modelConfig = provider.config.modelConfigs[modelName]
-        val request = buildRequest(
+        val wire = prepareAuthenticatedProvider(provider)
+        val instructions = systemPrompt.takeIf(String::isNotBlank)
+            ?: "You are a coding assistant. Follow the user's request accurately and concisely."
+        emitAll(OpenAIResponsesAdapter(sdk).stream(ModelApiRequest(
+            provider = wire,
             modelName = modelName,
             messages = messages,
-            systemPrompt = systemPrompt,
-            reasoningEffort = modelConfig?.wireReasoningEffort,
-            stream = provider.config.supportStream,
-            sessionId = sessionId
-        )
-
-        val response = http.post(resolveEndpoint(provider.baseUrl)) {
-            contentType(ContentType.Application.Json)
-            header("Authorization", "Bearer ${token.accessToken}")
-            header("User-Agent", CODEX_USER_AGENT)
-            header("Connection", "Keep-Alive")
-            header("Originator", "codex-tui")
-            header("Session_id", sessionId)
-            header("Conversation_id", sessionId)
-            token.accountId?.takeIf { it.isNotBlank() }?.let {
-                header("Chatgpt-Account-Id", it)
-            }
-            provider.config.headers.forEach { (name, value) -> header(name, value) }
-            setBody(request.toString())
-        }
-
-        if (!response.status.isSuccess()) {
-            error("OpenAI Codex request failed: HTTP ${response.status.value}: ${response.bodyAsText().take(2048)}")
-        }
-
-        if (!provider.config.supportStream) {
-            emitFinalResponse(json.parseToJsonElement(response.bodyAsText()).jsonObject) { emit(it) }
-            return@flow
-        }
-
-        val channel = response.bodyAsChannel()
-        val eventData = StringBuilder()
-        suspend fun consumeEvent(data: String) {
-            val event = json.parseToJsonElement(data).jsonObject
-            when (event["type"]?.jsonPrimitive?.contentOrNull) {
-                "response.output_text.delta" -> event["delta"]?.jsonPrimitive?.contentOrNull
-                    ?.takeIf { it.isNotEmpty() }
-                    ?.let { emit(GenerationEvent.Text(it)) }
-
-                "response.reasoning_text.delta",
-                "response.reasoning_summary_text.delta" -> event["delta"]?.jsonPrimitive?.contentOrNull
-                    ?.takeIf { it.isNotEmpty() }
-                    ?.let { emit(GenerationEvent.Reasoning(it)) }
-
-                "response.completed", "response.incomplete" -> {
-                    val result = event["response"] as? JsonObject ?: event
-                    providerTokenUsage(ModelApiType.OPENAI_RESPONSES, result)?.takeIf { it.isValid }
-                        ?.let { emit(GenerationEvent.Usage(it)) }
-                }
-
-                "response.failed", "error" -> error(
-                    "OpenAI Codex stream failed: ${event["error"] ?: event}"
-                )
-            }
-        }
-        while (!channel.isClosedForRead) {
-            currentCoroutineContext().ensureActive()
-            val line = channel.readLine() ?: break
-            if (line.startsWith("data:")) {
-                eventData.append(line.substringAfter("data:").trimStart()).append('\n')
-            }
-            if (line.isBlank() && eventData.isNotEmpty()) {
-                val data = eventData.toString().trim()
-                eventData.setLength(0)
-                if (data == "[DONE]") break
-                consumeEvent(data)
-            }
-        }
-        if (eventData.isNotEmpty()) {
-            val data = eventData.toString().trim()
-            if (data != "[DONE]") consumeEvent(data)
-        }
-    }.flowOn(Dispatchers.IO)
+            systemPrompt = instructions,
+            temperature = null,
+            topP = null,
+            topK = null,
+            maxTokens = maxOutputTokens,
+            reasoningEffort = provider.config.modelConfigs[modelName]?.wireReasoningEffort,
+            sendThinkingContent = false,
+            enabledModelTools = emptyList()
+        )))
+    }
 
     override fun clearCredentials(providerId: String) {
         tokenStore.delete(providerId)
@@ -326,100 +255,6 @@ internal class OpenAICodexAdapter(
                 OAuthBrowser.open(appContext, url)
             }
         }
-
-    private fun buildRequest(
-        modelName: String,
-        messages: List<StoredMessage>,
-        systemPrompt: String,
-        reasoningEffort: String?,
-        stream: Boolean,
-        sessionId: String
-    ): JsonObject = buildJsonObject {
-        put("model", modelName)
-        put(
-            "instructions",
-            systemPrompt.takeIf { it.isNotBlank() }
-                ?: "You are a coding assistant. Follow the user's request accurately and concisely."
-        )
-        put("input", buildInput(messages))
-        put("store", false)
-        put("stream", stream)
-        put("prompt_cache_key", sessionId)
-        put("include", JsonArray(listOf(JsonPrimitive("reasoning.encrypted_content"))))
-        put(
-            "reasoning",
-            buildJsonObject {
-                reasoningEffort?.takeIf { it.isNotBlank() }?.let { put("effort", it) }
-                put("summary", "auto")
-            }
-        )
-    }
-
-    private fun buildInput(messages: List<StoredMessage>): JsonArray = buildJsonArray {
-        messages.forEach { message ->
-            val role = if (message.role == ChatRole.MODEL) "assistant" else "user"
-            add(
-                buildJsonObject {
-                    put("role", role)
-                    put("content", buildJsonArray {
-                        if (message.content.isNotEmpty()) {
-                            add(buildJsonObject {
-                                put("type", if (role == "assistant") "output_text" else "input_text")
-                                put("text", message.content)
-                            })
-                        }
-                        if (role == "user") {
-                            message.files.forEach fileLoop@{ reference ->
-                                val metadata = attachments.metadata(reference) ?: return@fileLoop
-                                if (!metadata.isImage) return@fileLoop
-                                val bytes = attachments.readBytes(reference) ?: return@fileLoop
-                                val data = Base64.getEncoder().encodeToString(bytes)
-                                add(buildJsonObject {
-                                    put("type", "input_image")
-                                    put("image_url", "data:${metadata.mimeType};base64,$data")
-                                })
-                            }
-                        }
-                    })
-                }
-            )
-        }
-    }
-
-    private suspend fun emitFinalResponse(
-        response: JsonObject,
-        emit: suspend (GenerationEvent) -> Unit
-    ) {
-        val responseError = response["error"]
-        if (responseError != null && responseError !is JsonNull) {
-            error("OpenAI Codex response failed: $responseError")
-        }
-        (response["output"] as? JsonArray).orEmpty().forEach outputLoop@{ itemElement ->
-            val item = itemElement as? JsonObject ?: return@outputLoop
-            when (item["type"]?.jsonPrimitive?.contentOrNull) {
-                "message" -> (item["content"] as? JsonArray).orEmpty().forEach contentLoop@{ contentElement ->
-                    val part = contentElement as? JsonObject ?: return@contentLoop
-                    if (part["type"]?.jsonPrimitive?.contentOrNull == "output_text") {
-                        part["text"]?.jsonPrimitive?.contentOrNull
-                            ?.takeIf { it.isNotEmpty() }
-                            ?.let { emit(GenerationEvent.Text(it)) }
-                    }
-                }
-                "reasoning" -> {
-                    val parts = (item["summary"] as? JsonArray).orEmpty() +
-                        (item["content"] as? JsonArray).orEmpty()
-                    parts.forEach summaryLoop@{ summaryElement ->
-                        val summary = summaryElement as? JsonObject ?: return@summaryLoop
-                        summary["text"]?.jsonPrimitive?.contentOrNull
-                            ?.takeIf { it.isNotEmpty() }
-                            ?.let { emit(GenerationEvent.Reasoning(it)) }
-                    }
-                }
-            }
-        }
-        providerTokenUsage(ModelApiType.OPENAI_RESPONSES, response)?.takeIf { it.isValid }
-            ?.let { emit(GenerationEvent.Usage(it)) }
-    }
 
     private fun resolveEndpoint(baseUrl: String): String {
         val clean = baseUrl.trim().trimEnd('/')
