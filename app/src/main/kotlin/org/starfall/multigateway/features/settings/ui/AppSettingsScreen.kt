@@ -43,6 +43,7 @@ import android.content.res.Resources
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
+import org.starfall.multigateway.shared.model.logging.DebugLogCategory
 import org.starfall.multigateway.shared.storage.preferences.AppLanguage
 import org.starfall.multigateway.shared.storage.preferences.AppPreferences
 import org.starfall.multigateway.shared.storage.preferences.CodeBlockDisplayMode
@@ -175,6 +176,7 @@ fun PreferencesSettingsView(
     onAutoScrollChange: (Boolean) -> Unit,
     onEnableVibrationChange: (Boolean) -> Unit,
     onDebugModeChange: (Boolean) -> Unit,
+    onDebugLogCategoriesChange: (Set<DebugLogCategory>) -> Unit = {},
     onLatexModeChange: (String) -> Unit,
     onTtsReadCodeBlocksChange: (Boolean) -> Unit = {},
     onToolRoundLimitEnabledChange: (Boolean) -> Unit = {},
@@ -392,10 +394,7 @@ fun PreferencesSettingsView(
             }
         }
         item {
-            SettingsSection(stringResource(R.string.settings_developer)) {
-                PreferenceToggle(stringResource(R.string.settings_debug_logs), stringResource(R.string.settings_debug_logs_description),
-                    appPreferences.debugMode, onDebugModeChange)
-            }
+            DeveloperSettingsSection(appPreferences, onDebugModeChange, onDebugLogCategoriesChange)
         }
     }
 }
@@ -422,6 +421,7 @@ fun AppSettingsScreen(
     onAutoScrollChange: (Boolean) -> Unit,
     onEnableVibrationChange: (Boolean) -> Unit,
     onDebugModeChange: (Boolean) -> Unit,
+    onDebugLogCategoriesChange: (Set<DebugLogCategory>) -> Unit = {},
     onLatexModeChange: (String) -> Unit,
     onTtsReadCodeBlocksChange: (Boolean) -> Unit,
     onToolRoundLimitEnabledChange: (Boolean) -> Unit,
@@ -458,6 +458,7 @@ fun AppSettingsScreen(
                     onAutoScrollChange = onAutoScrollChange,
                     onEnableVibrationChange = onEnableVibrationChange,
                     onDebugModeChange = onDebugModeChange,
+                    onDebugLogCategoriesChange = onDebugLogCategoriesChange,
                     onLatexModeChange = onLatexModeChange,
                     onTtsReadCodeBlocksChange = onTtsReadCodeBlocksChange,
                     onToolRoundLimitEnabledChange = onToolRoundLimitEnabledChange,

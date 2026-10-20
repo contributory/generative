@@ -26,6 +26,7 @@ import org.starfall.multigateway.shared.model.media.MediaFileTransport
 import org.starfall.multigateway.shared.model.media.MediaFinalResponse
 import org.starfall.multigateway.shared.model.media.MediaGenerationMode
 import org.starfall.multigateway.shared.model.media.MediaRequestChain
+import org.starfall.multigateway.shared.model.media.MediaRequestMode
 import org.starfall.multigateway.shared.model.media.MediaRequestStep
 import org.starfall.multigateway.shared.model.media.MediaRequestProfile
 import org.starfall.multigateway.shared.model.media.MediaResponseType
@@ -416,6 +417,49 @@ class MediaRequestChainTest {
             assertEquals("/v1/status", server.takeRequest().path)
             assertEquals("/media.png", server.takeRequest().path)
             assertTrue(result["files"]!!.jsonArray.isNotEmpty())
+        } finally {
+            server.shutdown()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun rawFileTransportSendsTheFileBytesAsTheRequestBody() = runBlocking {
+        val server = MockWebServer().apply { start() }
+        val root = Files.createTempDirectory("media-chain-raw").toFile()
+        try {
+            val inputBytes = byteArrayOf(1, 2, 3, 4, 5)
+            root.resolve("input.bin").writeBytes(inputBytes)
+            server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody(okio.Buffer().write(byteArrayOf(
+                0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+                0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+            ))))
+            val provider = ModelProvider(
+                "p", "test", ModelApiType.OPENAI,
+                baseUrl = server.url("/v1").toString(),
+                auth = Authorization(value = "token")
+            )
+            val chain = MediaRequestChain(
+                steps = listOf(
+                    MediaRequestStep(
+                        endpoint = "/upload",
+                        mode = MediaRequestMode.RAW,
+                        fileTransport = MediaFileTransport.RAW,
+                        contentType = "application/octet-stream",
+                        body = "{{input_file[0]}}"
+                    )
+                ),
+                finalResponse = MediaFinalResponse(type = MediaResponseType.IMAGE)
+            )
+
+            MediaRequestChainExecutor(ToolHttp(ToolFiles(root))).execute(
+                chain, provider, "image-model", "draw a tree", listOf("input.bin")
+            )
+
+            val request = server.takeRequest()
+            assertEquals("/v1/upload", request.path)
+            assertEquals("application/octet-stream", request.getHeader("Content-Type"))
+            assertTrue(request.body.readByteArray().contentEquals(inputBytes))
         } finally {
             server.shutdown()
             root.deleteRecursively()

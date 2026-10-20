@@ -74,16 +74,14 @@ internal fun MediaRequestStepEditor(
             optionLabel = { transport -> fileTransportLabel(transport) },
             onSelect = { onChange(step.copy(fileTransport = it)) }
         )
-        if (step.mode == MediaRequestMode.RAW) {
-            SelectableOutlinedTextField(
-                value = step.contentType,
-                onValueChange = { onChange(step.copy(contentType = it)) },
-                label = { Text(stringResource(R.string.media_chain_custom_content_type)) },
-                supportingText = { Text(stringResource(R.string.media_chain_custom_content_type_help)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        SelectableOutlinedTextField(
+            value = step.contentType,
+            onValueChange = { onChange(step.copy(contentType = it)) },
+            label = { Text(stringResource(R.string.media_chain_custom_content_type)) },
+            supportingText = { Text(stringResource(R.string.media_chain_custom_content_type_help)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
         MediaTemplateAutocompleteField(
             value = step.body,
             onValueChange = { onChange(step.copy(body = it)) },
@@ -142,6 +140,7 @@ private fun parseHeaders(value: String): Map<String, String>? = runCatching {
     val result = linkedMapOf<String, String>()
     objectValue.forEach { (key, child) ->
         val primitive = child as? JsonPrimitive ?: return null
+        if (!primitive.isString) return null
         result[key] = primitive.content
     }
     result

@@ -19,6 +19,7 @@ import org.starfall.multigateway.features.settings.logic.SettingsViewModel
 import org.starfall.multigateway.integrations.modelapis.AiService
 import org.starfall.multigateway.shared.files.ToolFiles
 import org.starfall.multigateway.shared.icons.IconStore
+import org.starfall.multigateway.shared.logging.DebugLog
 import org.starfall.multigateway.shared.media.SpeechAudioPlayer
 import org.starfall.multigateway.shared.media.SpeechSynthesisService
 import org.starfall.multigateway.shared.media.TtsHelper
@@ -57,6 +58,10 @@ class AppContainer(context: Context) {
     val defaultDataInitializer = DefaultDataInitializer(providers, mcp, speech, preferences, icons)
 
     init {
+        // Keep the debug log's on/off state and scopes in step with App settings, from process start.
+        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+            preferences.appPreferencesFlow.collect { DebugLog.configure(it.debugMode, it.debugLogCategories) }
+        }
         aiService.providerLoader = providers::resolveProvider
         mcpService.serverLoader = mcp::resolveServer
         migrateLegacyRemoteBinaries()

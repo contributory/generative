@@ -9,6 +9,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.starfall.multigateway.shared.model.SidebarOrganization
+import org.starfall.multigateway.shared.model.logging.DebugLogCategory
 import org.starfall.multigateway.shared.storage.ImmediateState
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "app_preferences")
@@ -86,6 +87,8 @@ data class AppPreferences(
     val hideStatusBar: Boolean = false,
     val hideNavigationBar: Boolean = false,
     val debugMode: Boolean = false,
+    /** Kinds of log the floating debug panel records while [debugMode] is on. */
+    val debugLogCategories: Set<DebugLogCategory> = DebugLogCategory.all,
     val selectedLanguage: String = "en",
     /** On: follow the Android system language. Off: use [selectedLanguage]. */
     val useSystemLanguage: Boolean = true,
@@ -152,6 +155,7 @@ class AppPreferencesRepository(private val context: Context) {
         val HIDE_STATUS_BAR = booleanPreferencesKey("hide_status_bar")
         val HIDE_NAVIGATION_BAR = booleanPreferencesKey("hide_navigation_bar")
         val DEBUG_MODE = booleanPreferencesKey("debug_mode")
+        val DEBUG_LOG_CATEGORIES = stringSetPreferencesKey("debug_log_categories")
         val SELECTED_LANGUAGE = stringPreferencesKey("selected_language")
         val USE_SYSTEM_LANGUAGE = booleanPreferencesKey("use_system_language")
         val SHOW_PROFILES_AS_GRID = booleanPreferencesKey("show_profiles_as_grid")
@@ -212,6 +216,7 @@ class AppPreferencesRepository(private val context: Context) {
                 hideStatusBar = preferences[PreferenceKeys.HIDE_STATUS_BAR] ?: false,
                 hideNavigationBar = preferences[PreferenceKeys.HIDE_NAVIGATION_BAR] ?: false,
                 debugMode = preferences[PreferenceKeys.DEBUG_MODE] ?: false,
+                debugLogCategories = DebugLogCategory.fromStored(preferences[PreferenceKeys.DEBUG_LOG_CATEGORIES]),
                 selectedLanguage = preferences[PreferenceKeys.SELECTED_LANGUAGE] ?: "en",
                 useSystemLanguage = preferences[PreferenceKeys.USE_SYSTEM_LANGUAGE] ?: true,
                 showProfilesAsGrid = preferences[PreferenceKeys.SHOW_PROFILES_AS_GRID] ?: true,
@@ -414,6 +419,14 @@ class AppPreferencesRepository(private val context: Context) {
         state.mutate({ it.copy(debugMode = debug) }) {
             context.dataStore.edit { preferences ->
                 preferences[PreferenceKeys.DEBUG_MODE] = debug
+            }
+        }
+    }
+
+    suspend fun setDebugLogCategories(categories: Set<DebugLogCategory>) {
+        state.mutate({ it.copy(debugLogCategories = categories) }) {
+            context.dataStore.edit { preferences ->
+                preferences[PreferenceKeys.DEBUG_LOG_CATEGORIES] = categories.map { it.value }.toSet()
             }
         }
     }

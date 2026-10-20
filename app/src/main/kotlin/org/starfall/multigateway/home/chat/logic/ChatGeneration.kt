@@ -6,7 +6,10 @@ import org.starfall.multigateway.shared.model.ChatRole
 import org.starfall.multigateway.shared.model.Conversation
 import org.starfall.multigateway.shared.model.MessageVersion
 import org.starfall.multigateway.shared.model.StoredMessage
+import org.starfall.multigateway.shared.logging.DebugLog
 import org.starfall.multigateway.shared.model.generation.GenerationEvent
+import org.starfall.multigateway.shared.model.logging.DebugLogCategory
+import org.starfall.multigateway.shared.model.logging.DebugLogLevel
 import org.starfall.multigateway.shared.model.isErrorOnly
 import org.starfall.multigateway.shared.model.pruningEmptyResponses
 import org.starfall.multigateway.shared.model.withAttempt
@@ -131,6 +134,11 @@ internal class ChatGeneration(
                 }
             }
 
+            val startedAtMs = System.currentTimeMillis()
+            DebugLog.log(DebugLogCategory.TOKENS, "Generation") {
+                val history = snapshot?.messages.orEmpty()
+                "Context ≈ ${history.sumOf { estimateMessageTokens(it, true) }} tokens in ${history.size} messages (estimate)"
+            }
             try {
                 persist(snapshot!!)
                 chunks.collect { chunk ->
@@ -148,6 +156,7 @@ internal class ChatGeneration(
                         }
                         is GenerationEvent.Tool -> {
                             _waitingForTool.value = chunk.activity.status == "running"
+                            logToolActivity(chunk.activity)
                             // Flush pending text before inserting a tool block so its visual anchor is stable.
                             renderJob?.cancel()
                             renderJob = null
@@ -226,10 +235,17 @@ internal class ChatGeneration(
                 renderJob?.cancel()
                 renderJob = null
                 update()
+                DebugLog.log(DebugLogCategory.TOKENS, "Generation") {
+                    val ms = System.currentTimeMillis() - startedAtMs
+                    val answer = estimateTextTokens(output.toString())
+                    val reasoning = estimateTextTokens(reasoningOutput.toString())
+                    "Output ≈ $answer tokens, reasoning ≈ $reasoning tokens in $ms ms (estimate)"
+                }
             } catch (e: CancellationException) {
                 generationInterrupted = true
                 throw e
             } catch (e: Exception) {
+                DebugLog.error(DebugLogCategory.ERRORS, "Generation", "Generation failed", e)
                 renderJob?.cancel()
                 renderJob = null
                 _error.value = e.localizedMessage ?: "Generation failed"
@@ -295,6 +311,21 @@ internal class ChatGeneration(
     fun stop() { job?.cancel() }
     suspend fun stopAndJoin() { job?.cancelAndJoin() }
 }
+private fun logToolActivity(activity: org.starfall.multigateway.shared.model.ToolActivity) {
+    val failed = activity.status.contains("error", ignoreCase = true) || activity.status.contains("fail", ignoreCase = true)
+    val level = if (failed) DebugLogLevel.ERROR else DebugLogLevel.INFO
+    val message = {
+        buildString {
+            append(activity.name).append(" [").append(activity.status).append(']')
+            if (activity.summary.isNotBlank()) append(' ').append(activity.summary)
+            if (activity.arguments.isNotBlank()) append("\narguments: ").append(activity.arguments.take(1200))
+            if (activity.response.isNotBlank()) append("\nresponse: ").append(activity.response.take(1200))
+        }
+    }
+    DebugLog.log(DebugLogCategory.TOOLS, "Tool", level, message)
+    if (failed) DebugLog.log(DebugLogCategory.ERRORS, "Tool", level, message)
+}
+
 private fun visibleResponseContent(output: String): String {
     val thinking = output.startsWith("<think>")
     val end = output.indexOf("</think>")

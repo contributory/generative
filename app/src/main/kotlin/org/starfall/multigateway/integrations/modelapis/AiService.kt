@@ -12,6 +12,8 @@ import org.starfall.multigateway.integrations.modelapis.sdk.OfficialProviderSdk
 import org.starfall.multigateway.shared.auth.OAuthCallbackService
 import org.starfall.multigateway.shared.files.AttachmentResolver
 import org.starfall.multigateway.shared.files.ToolFiles
+import org.starfall.multigateway.shared.logging.DebugLog
+import org.starfall.multigateway.shared.logging.DebugLogKtorPlugin
 import org.starfall.multigateway.shared.model.ChatRole
 import org.starfall.multigateway.shared.model.MessageVersion
 import org.starfall.multigateway.shared.model.StoredMessage
@@ -24,6 +26,7 @@ import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.language.ModelType
 import org.starfall.multigateway.shared.model.language.sendsThinkingBack
 import org.starfall.multigateway.shared.model.language.wireReasoningEffort
+import org.starfall.multigateway.shared.model.logging.DebugLogCategory
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.streamEnabledFor
 import org.starfall.multigateway.shared.networking.requireNetworkCredentials
@@ -54,6 +57,7 @@ class AiService(
         install(ContentNegotiation) {
             json(json)
         }
+        install(DebugLogKtorPlugin)
     }
 
     private val adapters = ModelApiAdapterRegistry(context, sdk, httpClient, attachments, json)
@@ -256,6 +260,7 @@ class AiService(
             ?.coerceAtLeast(1)
             ?.let { minOf(it, resolved.config.maxTokens) }
             ?: resolved.config.maxTokens
+        logModelRequest(requestProvider, modelName, requestMessages, systemPrompt, maxTokens, temperature, topP, topK)
         accountAdapters.get(resolved.type)?.let { adapter ->
             emitAll(adapter.streamEvents(
                 requestProvider, modelName, requestMessages, systemPrompt, maxTokens
@@ -277,6 +282,38 @@ class AiService(
             sendThinkingContent = sendThinking,
             enabledModelTools = modelConfig.enabledModelTools.filter { it in modelConfig.supportedModelTools }.distinct()
         )))
+    }.catch { error ->
+        DebugLog.error(DebugLogCategory.ERRORS, "Model", "Request to ${provider.name} / $modelName failed", error)
+        throw error
+    }
+
+    /** Official SDK transports cannot be intercepted, so the model request is logged here for every provider. */
+    private fun logModelRequest(
+        provider: ModelProvider,
+        modelName: String,
+        messages: List<StoredMessage>,
+        systemPrompt: String,
+        maxTokens: Int,
+        temperature: Double?,
+        topP: Double?,
+        topK: Int?
+    ) {
+        DebugLog.log(DebugLogCategory.NETWORK, "Model") {
+            "→ ${provider.type.displayName} · ${provider.name} · $modelName " +
+                "(stream=${provider.config.supportStream}, ${messages.size} messages)"
+        }
+        DebugLog.log(DebugLogCategory.PAYLOAD, "Model") {
+            buildString {
+                append("model=").append(modelName).append(" maxTokens=").append(maxTokens)
+                append(" temperature=").append(temperature).append(" topP=").append(topP).append(" topK=").append(topK).append('\n')
+                if (systemPrompt.isNotBlank()) append("[system] ").append(systemPrompt.take(600)).append('\n')
+                messages.forEach { message ->
+                    append('[').append(message.role.name.lowercase()).append("] ").append(message.content.take(600))
+                    if (message.files.isNotEmpty()) append(" (+").append(message.files.size).append(" files)")
+                    append('\n')
+                }
+            }
+        }
     }
 
     suspend fun streamContent(

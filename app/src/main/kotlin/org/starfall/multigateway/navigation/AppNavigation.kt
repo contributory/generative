@@ -841,6 +841,7 @@ fun AppNavigation(
                                     onDebugModeChange = { value ->
                                         settingsViewModel.setDebugMode(value)
                                     },
+                                    onDebugLogCategoriesChange = settingsViewModel::setDebugLogCategories,
                                     onLatexModeChange = { mode ->
                                         settingsViewModel.setLatexMode(mode)
                                     },

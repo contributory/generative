@@ -20,6 +20,7 @@ import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -41,6 +42,7 @@ import org.starfall.multigateway.features.settings.logic.SettingsViewModel
 import org.starfall.multigateway.features.machines.shared.logic.RemoteMachinesViewModel
 import org.starfall.multigateway.shared.model.parseProviderLink
 import org.starfall.multigateway.shared.ui.dialogs.CrashReportDialog
+import org.starfall.multigateway.shared.ui.logging.DebugLogOverlay
 import org.starfall.multigateway.navigation.AppNavigation
 import org.starfall.multigateway.home.chat.logic.ChatViewModel
 import org.starfall.multigateway.home.shared.logic.ChatBackgroundService
@@ -140,7 +142,12 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                     AppNavigation(viewModel, configurationViewModel, settingsViewModel, remoteMachinesViewModel, container.toolFiles)
+                    // Keep Surface's behaviour of forcing its content to fill the window.
+                    Box(Modifier.fillMaxSize(), propagateMinConstraints = true) {
+                        AppNavigation(viewModel, configurationViewModel, settingsViewModel, remoteMachinesViewModel, container.toolFiles)
+                        // Drawn last so the draggable debug button and log panel float above every screen.
+                        if (appPrefs.debugMode) DebugLogOverlay()
+                    }
                 }
                 pendingCrash?.let { report ->
                     CrashReportDialog(report,

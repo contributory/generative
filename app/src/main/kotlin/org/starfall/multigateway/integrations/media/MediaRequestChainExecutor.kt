@@ -152,9 +152,11 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
         val requestBody = when (step.mode) {
             MediaRequestMode.JSON -> {
                 require(!containsFileToken(resolved)) { "JSON request steps must use base64 for input files." }
-                resolved.toString().toRequestBody("application/json".toMediaType())
+                resolved.toString().toRequestBody(
+                    step.contentType.trim().ifBlank { "application/json" }.toMediaType()
+                )
             }
-            MediaRequestMode.FORM -> formBody(resolved, inputs)
+            MediaRequestMode.FORM -> formBody(resolved, inputs, step.contentType)
             MediaRequestMode.RAW -> rawRequestBody(step, context, inputs)
         }
         val builder = http.request(
@@ -229,9 +231,11 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
         else -> error("Unsupported media request method '$method'.")
     }
 
-    private fun formBody(value: JsonElement, inputs: List<InputFile>): RequestBody {
+    private fun formBody(value: JsonElement, inputs: List<InputFile>, contentType: String): RequestBody {
         val objectValue = value as? JsonObject ?: error("Form request mappings must be a JSON object.")
-        val form = MultipartBody.Builder().setType(MultipartBody.FORM)
+        val form = MultipartBody.Builder().setType(
+            contentType.trim().ifBlank { MultipartBody.FORM.toString() }.toMediaType()
+        )
         objectValue.forEach { (key, child) ->
             val fileTokens = fileTokens(child)
             if (fileTokens.isNotEmpty()) {

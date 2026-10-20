@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.starfall.multigateway.shared.model.SidebarOrganization
+import org.starfall.multigateway.shared.model.logging.DebugLogCategory
 import org.starfall.multigateway.shared.storage.LocalWriteErrors
 import org.starfall.multigateway.shared.storage.preferences.AppPreferences
 import org.starfall.multigateway.shared.storage.preferences.AppPreferencesRepository
@@ -66,6 +67,9 @@ class SettingsViewModel(
     }
     fun setDebugMode(value: Boolean) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setDebugMode(value) }
+    }
+    fun setDebugLogCategories(value: Set<DebugLogCategory>) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setDebugLogCategories(value) }
     }
     fun setLatexMode(value: String) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setLatexMode(value) }

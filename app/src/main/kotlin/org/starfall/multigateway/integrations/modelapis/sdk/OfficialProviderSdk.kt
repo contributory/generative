@@ -121,7 +121,7 @@ internal class OfficialProviderSdk(private val attachments: AttachmentResolver) 
         val base = baseUrl(provider).removeSuffix("/models")
         val version = Regex("/(v1(?:beta|alpha)?)$").find(base)?.groupValues?.get(1)
         // Supply auth in the transport so custom headers/query auth work with gateways too.
-        val transport = OkHttpClient.Builder().addInterceptor { chain ->
+        val transport = OkHttpClient.Builder().addInterceptor(org.starfall.multigateway.shared.logging.DebugLogInterceptor()).addInterceptor { chain ->
             val request = chain.request().newBuilder()
             if (provider.auth.method == AuthMethod.PLATFORM_DEFAULT && provider.auth.token.isNotBlank()) {
                 provider.config.headers.forEach { (key, value) -> request.header(key, value) }

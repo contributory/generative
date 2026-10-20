@@ -36,7 +36,8 @@ internal fun providerBase(p: ModelProvider): String {
 class ToolHttp(
     val files: ToolFiles? = null,
     val client: OkHttpClient = OkHttpClient.Builder().connectTimeout(30, TimeUnit.SECONDS).readTimeout(180, TimeUnit.SECONDS)
-        .callTimeout(5, TimeUnit.MINUTES).followRedirects(false).build()
+        .callTimeout(5, TimeUnit.MINUTES).followRedirects(false)
+        .addInterceptor(org.starfall.multigateway.shared.logging.DebugLogInterceptor()).build()
 ) {
     fun requireFiles(): ToolFiles = files ?: error("Tool/media storage is required for this operation")
     suspend fun execute(request: Request): Response = execute(client.newCall(request))

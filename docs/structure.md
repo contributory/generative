@@ -109,6 +109,7 @@
 │   │   └── 📁 ui/
 │   │       ├── 📄 AppSettingsScreen.kt
 │   │       ├── 📄 CodeRenderingPreferences.kt
+│   │       ├── 📄 DeveloperSettingsSection.kt
 │   │       ├── 📄 MainAppbar.kt
 │   │       └── 📄 SettingsComponents.kt
 │   ├── 📁 speech/
@@ -301,6 +302,11 @@
 │   │   ├── 📄 IconStore.kt
 │   │   ├── 📄 LobeIconSource.kt
 │   │   └── 📄 LobeModelIconResolver.kt
+│   ├── 📁 logging/
+│   │   ├── 📄 DebugLog.kt
+│   │   ├── 📄 DebugLogInterceptor.kt
+│   │   ├── 📄 DebugLogKtorPlugin.kt
+│   │   └── 📄 DebugLogRedactor.kt
 │   ├── 📁 media/
 │   │   ├── 📄 MediaPlayers.kt
 │   │   ├── 📄 SpeechAudioPlayer.kt
@@ -328,6 +334,8 @@
 │   │   │   ├── 📄 ModelConfigurationReasoning.kt
 │   │   │   ├── 📄 ModelType.kt
 │   │   │   └── 📄 SendThinkingContent.kt
+│   │   ├── 📁 logging/
+│   │   │   └── 📄 DebugLogCategory.kt
 │   │   ├── 📁 media/
 │   │   │   ├── 📄 ContentApiMedia.kt
 │   │   │   ├── 📄 GeneratedMediaReference.kt
@@ -432,6 +440,10 @@
 │       ├── 📁 lists/
 │       │   ├── 📄 FadeGridListContent.kt
 │       │   └── 📄 ListOrder.kt
+│       ├── 📁 logging/
+│       │   ├── 📄 DebugLogCategoryLabel.kt
+│       │   ├── 📄 DebugLogOverlay.kt
+│       │   └── 📄 DebugLogPanel.kt
 │       ├── 📁 media/
 │       │   ├── 📄 ChatAttachmentSelection.kt
 │       │   ├── 📄 ChatFilePreview.kt

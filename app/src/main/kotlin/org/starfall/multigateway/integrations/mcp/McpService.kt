@@ -116,7 +116,10 @@ class McpSession(
     }
 
     private suspend fun connect(legacy: Boolean) {
-        val ktor = HttpClient(CIO) { install(SSE) }
+        val ktor = HttpClient(CIO) {
+            install(SSE)
+            install(org.starfall.multigateway.shared.logging.DebugLogKtorPlugin)
+        }
         val transport = if (legacy) {
             SseClientTransport(ktor, endpoint, requestBuilder = { configureRequest() })
         } else {

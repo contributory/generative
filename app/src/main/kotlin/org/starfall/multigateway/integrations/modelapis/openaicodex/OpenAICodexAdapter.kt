@@ -67,7 +67,7 @@ internal class OpenAICodexAdapter(
     private val appContext = context.applicationContext
     private val tokenStore = CodexTokenStore(appContext)
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
-    private val http = HttpClient(CIO)
+    private val http = HttpClient(CIO) { install(org.starfall.multigateway.shared.logging.DebugLogKtorPlugin) }
 
     override suspend fun authorize(provider: ModelProvider): Result<ModelProvider> = runCatching {
         require(provider.type == ModelApiType.OPENAI_CODEX) { "Provider is not OpenAI Codex." }
