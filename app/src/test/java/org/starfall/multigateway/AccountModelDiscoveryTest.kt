@@ -16,6 +16,8 @@ import org.robolectric.annotation.Config
 import org.starfall.multigateway.integrations.modelapis.antigravity.AntigravityAdapter
 import org.starfall.multigateway.shared.auth.*
 import org.starfall.multigateway.integrations.modelapis.githubcopilot.GitHubCopilotAdapter
+import org.starfall.multigateway.integrations.modelapis.githubcopilot.copilotDiscoveredModel
+import org.starfall.multigateway.integrations.modelapis.openaicodex.parseCodexModelCatalog
 import org.starfall.multigateway.shared.model.*
 import org.starfall.multigateway.shared.files.AttachmentResolver
 import org.starfall.multigateway.features.mcp.shared.ui.*
@@ -60,9 +62,9 @@ class AccountModelDiscoveryTest {
             val b = provider(ModelApiType.ANTIGRAVITY, server, "antigravity:b")
             val adapter = AntigravityAdapter(context, AttachmentResolver(context))
             val catalogA = adapter.fetchModelCatalog(a)
-            assertEquals(listOf("opaque-M7"), catalogA.map { it.id })
-            assertEquals("Premium model", catalogA.single().displayName)
-            assertEquals(0, catalogA.single().metadata["quotaInfo"]!!.jsonObject["remainingFraction"]!!.jsonPrimitive.int)
+            assertEquals(listOf("opaque-M7", "internal"), catalogA.map { it.id })
+            assertEquals("Premium model", catalogA.first().displayName)
+            assertEquals(0, catalogA.first().metadata["quotaInfo"]!!.jsonObject["remainingFraction"]!!.jsonPrimitive.int)
             assertEquals(listOf("tier-b"), adapter.fetchModels(b))
             assertEquals(listOf("refreshed"), adapter.fetchModels(a))
             val requests = List(5) { server.takeRequest(5, TimeUnit.SECONDS)!! }
@@ -80,7 +82,7 @@ class AccountModelDiscoveryTest {
                 requests.map { it.getHeader("Authorization") })
             assertEquals("project-a", store.load("antigravity:a")!!.projectId)
             assertEquals("project-b", store.load("antigravity:b")!!.projectId)
-            val selected = a.copy(config = a.config.copy(modelConfigs = mapOf("opaque-M7" to catalogA.single().configuration())))
+            val selected = a.copy(config = a.config.copy(modelConfigs = mapOf("opaque-M7" to catalogA.first().configuration())))
             val wire = adapter.prepareModelProvider(selected, "opaque-M7")
             val normalized = adapter.normalizeToolRequest(selected, wire, obj("model" to str("opaque-M7")), "")
             assertEquals("wire-model-a", normalized.text("model"))
@@ -129,8 +131,8 @@ class AccountModelDiscoveryTest {
             val b = provider(ModelApiType.GITHUB_COPILOT, server, "copilot:b")
             val service = AiService(context)
             val catalogA = service.fetchProviderModelCatalog(a)
-            assertEquals(listOf("gpt-5-test"), catalogA.map { it.id })
-            val model = catalogA.single()
+            assertEquals(listOf("gpt-5-test", "restricted", "utility", "embedding"), catalogA.map { it.id })
+            val model = catalogA.first()
             assertEquals("Available GPT", model.displayName)
             assertEquals(300000, model.contextWindowTokens)
             assertEquals(listOf("/chat/completions"), model.metadata["supported_endpoints"]!!.jsonArray.map { it.jsonPrimitive.content })
@@ -146,6 +148,40 @@ class AccountModelDiscoveryTest {
             assertEquals(listOf("Bearer token-a", "Bearer token-b", "Bearer token-a"), requests.map { it.getHeader("Authorization") })
             assertTrue(requests.all { it.path == "/models" && it.getHeader("X-GitHub-Api-Version") == "2026-06-01" })
         }
+    }
+
+    @Test fun copilotCatalogDoesNotFilterByAccountPolicyPickerOrModelType() {
+        val model = Json.parseToJsonElement("""{
+            "id":"gpt-5-preview",
+            "model_picker_enabled":false,
+            "policy":{"state":"enabled"},
+            "capabilities":{"limits":{"max_context_window_tokens":128000},"supports":{"tool_calls":true}}
+        }""").jsonObject
+        assertEquals("gpt-5-preview", copilotDiscoveredModel(model)?.id)
+
+        val disabled = Json.parseToJsonElement("""{
+            "id":"restricted",
+            "model_picker_enabled":true,
+            "policy":{"state":"disabled"}
+        }""").jsonObject
+        assertEquals("restricted", copilotDiscoveredModel(disabled)?.id)
+        val embedding = Json.parseToJsonElement("""{"id":"embedding","capabilities":{"type":"embeddings"}}""").jsonObject
+        assertEquals("embedding", copilotDiscoveredModel(embedding)?.id)
+    }
+
+    @Test fun codexCatalogUsesLiveResponseWithoutAnApplicationModelAllowlist() {
+        val catalog = parseCodexModelCatalog(Json.parseToJsonElement("""{
+            "models": [
+                {"slug":"live-model-a","display_name":"Live model A","context_window":128000},
+                {"slug":"live-model-b","display_name":"Live model B"},
+                {"slug":"internal-model","visibility":"internal"},
+                {"slug":"live-model-a","display_name":"Duplicate"},
+                {"display_name":"Missing ID"}
+            ]
+        }""").jsonObject)
+        assertEquals(listOf("live-model-a", "live-model-b", "internal-model"), catalog.map { it.id })
+        assertEquals("Live model A", catalog.first().displayName)
+        assertEquals(128000, catalog.first().contextWindowTokens)
     }
 
     @Test fun copilotRefreshDoesNotKeepRemovedModelsOrRouteThemUsingOldAccountMetadata() = runBlocking {

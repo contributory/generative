@@ -3,20 +3,21 @@ package org.starfall.multigateway.shared.auth
 import android.net.Uri
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.serialization.json.*
 import net.openid.appauth.*
+import org.json.JSONObject
+import org.starfall.multigateway.shared.logging.DebugLog
+import org.starfall.multigateway.shared.model.logging.DebugLogCategory
+import org.starfall.multigateway.shared.model.logging.DebugLogLevel
 import okhttp3.FormBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaType
-import org.json.JSONObject
+import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 import org.starfall.multigateway.shared.networking.ToolHttp
 
-/** AppAuth executes standard form token exchanges; explicit exceptions use CompatibilityOAuth. */
+/** Builds AppAuth authorization requests and exchanges OAuth tokens without OIDC ID-token validation. */
 internal object AppAuthTransactions {
     fun authorization(authorizationEndpoint: String, tokenEndpoint: String, clientId: String,
         redirectUri: String, scope: String?, additional: Map<String, String> = emptyMap()): AuthorizationRequest =
@@ -52,40 +53,30 @@ internal object AppAuthTransactions {
         auth: ClientAuthentication = NoClientAuthentication.INSTANCE, jsonBody: Boolean = false): JsonObject =
         if (jsonBody || request.configuration.tokenEndpoint.scheme != "https") {
             CompatibilityOAuth.exchangeToken(http, request, auth, jsonBody)
-        } else executeToken(context, request, auth)
+        } else executeToken(request, auth)
 
-    /** AppAuth owns form encoding, response/error parsing and token endpoint execution. */
-    internal suspend fun executeToken(context: Context, request: TokenRequest,
-        auth: ClientAuthentication = NoClientAuthentication.INSTANCE,
-        configuration: AppAuthConfiguration = AppAuthConfiguration.DEFAULT): JsonObject = withContext(Dispatchers.Main.immediate) {
-        val service = AuthorizationService(context.applicationContext, configuration)
-        try {
-            suspendCancellableCoroutine { continuation ->
-                service.performTokenRequest(request, auth) { response, exception ->
-                    if (!continuation.isActive) return@performTokenRequest
-                    if (response == null) continuation.resumeWithException(exception ?: IllegalStateException("OAuth token response is missing"))
-                    else continuation.resume(tokenPayload(response))
-                }
-            }
-        } finally {
-            withContext(NonCancellable + Dispatchers.Main.immediate) { service.dispose() }
-        }
-    }
+    /**
+     * Executes a standard form token request without AppAuth's OIDC ID-token validation.
+     * Some OAuth providers return provider-specific ID tokens that AppAuth rejects as
+     * "Invalid ID Token" even though the access/refresh-token response is usable.
+     */
+    internal suspend fun executeToken(request: TokenRequest,
+        auth: ClientAuthentication = NoClientAuthentication.INSTANCE): JsonObject =
+        withContext(Dispatchers.IO) { CompatibilityOAuth.exchangeToken(tokenHttp, request, auth) }
 
-    internal fun tokenPayload(response: TokenResponse): JsonObject = buildJsonObject {
-        response.additionalParameters.forEach { (key, value) -> put(key, value) }
-        response.accessToken?.let { put("access_token", it) }
-        response.refreshToken?.let { put("refresh_token", it) }
-        response.tokenType?.let { put("token_type", it) }
-        response.idToken?.let { put("id_token", it) }
-        response.scope?.let { put("scope", it) }
-        response.accessTokenExpirationTime?.let { put("expires_in", ((it - System.currentTimeMillis()) / 1000).coerceAtLeast(0)) }
+    private val tokenHttp by lazy {
+        ToolHttp(client = OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(180, TimeUnit.SECONDS)
+            .callTimeout(5, TimeUnit.MINUTES)
+            .followRedirects(false)
+            .build())
     }
 }
 
-/** Only protocol exceptions live here; this transport must not become the default OAuth path. */
+/** Raw OAuth token transport for providers whose token payloads AppAuth cannot parse. */
 internal object CompatibilityOAuth {
-    /** JSON bodies, cleartext MCP endpoints and Bearer fallback are explicit protocol exceptions. */
+    /** Handles form/JSON token bodies and normalizes providers that omit token_type. */
     suspend fun exchangeToken(http: ToolHttp, request: TokenRequest, auth: ClientAuthentication = NoClientAuthentication.INSTANCE,
         jsonBody: Boolean = false): JsonObject {
         val values = AppAuthTransactions.fields(request, auth)
@@ -100,7 +91,15 @@ internal object CompatibilityOAuth {
         // Some compatible servers omit token_type; retain the app's Bearer fallback.
         val normalized = JsonObject(response + (if (response["token_type"] == null)
             mapOf("token_type" to JsonPrimitive("Bearer")) else emptyMap()))
-        TokenResponse.Builder(request).fromResponseJson(JSONObject(normalized.toString())).build()
+
+        // AppAuth's parser also validates OIDC ID tokens. Keep that validation diagnostic-only:
+        // providers may return non-standard ID tokens, while the OAuth access token is still usable.
+        runCatching { TokenResponse.Builder(request).fromResponseJson(JSONObject(normalized.toString())).build() }
+            .onFailure { error ->
+                DebugLog.log(DebugLogCategory.ERRORS, "OAuth", DebugLogLevel.WARN) {
+                    "Accepted token response despite AppAuth validation warning: ${error.message ?: error::class.java.simpleName}"
+                }
+            }
         return normalized
     }
 }

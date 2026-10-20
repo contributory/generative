@@ -2,8 +2,6 @@ package org.starfall.multigateway.integrations.modelapis.antigravity
 
 /** Canonical IDs and wire routes from vscode-unify-chat-provider's model resolver. */
 internal object AntigravityModels {
-    val available = listOf("gemini-3-flash", "gemini-3.1-pro")
-
     fun resolve(model: String, effort: String? = null): String {
         val id = model.trim().removePrefix("models/")
         if (id.contains("claude")) {

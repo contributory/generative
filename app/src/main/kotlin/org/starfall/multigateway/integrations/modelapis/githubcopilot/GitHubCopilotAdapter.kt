@@ -71,10 +71,8 @@ internal class GitHubCopilotAdapter(context: Context, attachments: AttachmentRes
     }
     override suspend fun prepareModelProvider(provider: ModelProvider, modelName: String): ModelProvider {
         // Resolve against the current account's live catalog; never reuse another account's routing.
-        val catalog = fetchModelCatalog(provider)
-        val model = catalog.firstOrNull { it.id == modelName }
-            ?: error("Copilot model '$modelName' is unavailable for the selected account or disabled by its policy. Refresh models and select an available model.")
-        val supported = (model.metadata["supported_endpoints"] as? JsonArray).orEmpty()
+        val model = runCatching { fetchModelCatalog(provider).firstOrNull { it.id == modelName } }.getOrNull()
+        val supported = (model?.metadata?.get("supported_endpoints") as? JsonArray).orEmpty()
             .mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
         val wire = prepareAuthenticatedProvider(provider)
         val type = copilotProtocol(modelName, supported)
@@ -88,8 +86,11 @@ internal class GitHubCopilotAdapter(context: Context, attachments: AttachmentRes
     override suspend fun fetchModelCatalog(provider: ModelProvider): List<DiscoveredModel> {
         val wire = prepareAuthenticatedProvider(provider)
         val response = http.json(http.request(wire.baseUrl.trimEnd('/') + "/models", wire).get().build())
-        val models = response["data"] as? JsonArray ?: error("Copilot returned an unsupported model catalog")
-        return models.mapNotNull { (it as? JsonObject)?.let(::copilotDiscoveredModel) }.distinctBy { it.id }
+        val models = (response["data"] as? JsonArray)
+            ?: (response["models"] as? JsonArray)
+            ?: error("Copilot returned an unsupported model catalog")
+        return models.mapNotNull { (it as? JsonObject)?.let(::copilotDiscoveredModel) }
+            .distinctBy { it.id }
     }
     override fun normalizeToolRequest(sourceProvider: ModelProvider, wireProvider: ModelProvider,
         body: JsonObject, systemPrompt: String): JsonObject {
@@ -139,10 +140,5 @@ internal fun copilotProtocol(id: String, supported: List<String>): ModelApiType 
 
 internal fun copilotDiscoveredModel(item: JsonObject): DiscoveredModel? {
     val id = item.text("id").takeIf(String::isNotBlank) ?: return null
-    val policy = item["policy"] as? JsonObject
-    if (policy?.text("state")?.lowercase() in listOf("disabled", "blocked", "unavailable")) return null
-    if ((item["model_picker_enabled"] as? JsonPrimitive)?.booleanOrNull == false) return null
-    val capabilities = item["capabilities"] as? JsonObject
-    if (capabilities?.text("type")?.lowercase() in listOf("embeddings", "embedding")) return null
     return discoveredModel(id, item)
 }

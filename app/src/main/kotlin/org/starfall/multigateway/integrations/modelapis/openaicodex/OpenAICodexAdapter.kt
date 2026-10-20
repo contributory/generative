@@ -6,8 +6,8 @@ import android.net.Uri
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.header
-import io.ktor.client.request.post
 import io.ktor.client.request.get
+import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
@@ -37,6 +37,7 @@ import kotlinx.serialization.json.put
 import org.starfall.multigateway.shared.auth.OAuthCallbackService
 import org.starfall.multigateway.shared.auth.awaitLoopbackAuthorizationCode
 import org.starfall.multigateway.integrations.modelapis.account.AccountProviderAdapter
+import org.starfall.multigateway.integrations.modelapis.discoveredModel
 import org.starfall.multigateway.shared.model.auth.AuthMethod
 import org.starfall.multigateway.shared.model.provider.oauthCredentialId
 import org.starfall.multigateway.shared.model.language.DiscoveredModel
@@ -99,26 +100,18 @@ internal class OpenAICodexAdapter(
 
     override suspend fun fetchModelCatalog(provider: ModelProvider): List<DiscoveredModel> {
         val token = ensureToken(provider)
-        return try {
-            val response = http.get("https://chatgpt.com/backend-api/codex/models?client_version=$CLIENT_VERSION") {
-                header("Authorization", "Bearer ${token.accessToken}")
-                token.accountId?.takeIf { it.isNotBlank() }?.let { header("Chatgpt-Account-Id", it) }
-                header("Originator", CODEX_ORIGINATOR)
-                header("User-Agent", CODEX_USER_AGENT)
-            }
-            check(response.status.isSuccess()) { "Codex model catalog returned HTTP ${response.status.value}" }
-            val models = json.parseToJsonElement(response.bodyAsText()).jsonObject["models"] as? JsonArray
-                ?: error("Codex returned an unsupported model catalog")
-            models.mapNotNull { value ->
-                val item = value as? JsonObject ?: return@mapNotNull null
-                val id = item["slug"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                if (item["visibility"]?.jsonPrimitive?.contentOrNull?.lowercase() in listOf("hidden", "internal")) null
-                else DiscoveredModel(id, displayName = item["display_name"]?.jsonPrimitive?.contentOrNull.orEmpty(), metadata = item)
-            }
-        } catch (e: Exception) {
-            // Keep existing installations usable if the private catalog is unavailable.
-            SUPPORTED_MODELS.map { DiscoveredModel(it) }
+        val endpoint = "https://chatgpt.com/backend-api/codex/models?client_version=$CODEX_CLIENT_VERSION"
+        val response = http.get(endpoint) {
+            header("Authorization", "Bearer ${token.accessToken}")
+            token.accountId?.takeIf { it.isNotBlank() }?.let { header("Chatgpt-Account-Id", it) }
+            header("Originator", CODEX_ORIGINATOR)
+            header("User-Agent", CODEX_USER_AGENT)
+            header("Accept", "application/json")
         }
+        check(response.status.isSuccess()) {
+            "Codex model catalog returned HTTP ${response.status.value}"
+        }
+        return parseCodexModelCatalog(json.parseToJsonElement(response.bodyAsText()).jsonObject)
     }
 
     override suspend fun testConnection(provider: ModelProvider): Result<String> = runCatching {
@@ -310,14 +303,14 @@ internal class OpenAICodexAdapter(
     private suspend fun exchangeAuthorizationCode(code: String, verifier: String): CodexTokenState {
         val request = AppAuthTransactions.token("$ISSUER/oauth/token", CLIENT_ID,
             mapOf("grant_type" to "authorization_code", "code" to code, "redirect_uri" to REDIRECT_URI, "code_verifier" to verifier))
-        val payload = AppAuthTransactions.executeToken(appContext, request)
+        val payload = AppAuthTransactions.executeToken(request)
         return tokenStateFromResponse(payload.toString(), previousRefreshToken = null)
     }
 
     private suspend fun refresh(current: CodexTokenState): CodexTokenState {
         val request = AppAuthTransactions.token("$ISSUER/oauth/token", CLIENT_ID,
             mapOf("grant_type" to "refresh_token", "refresh_token" to current.refreshToken, "scope" to REFRESH_SCOPE))
-        val payload = AppAuthTransactions.executeToken(appContext, request)
+        val payload = AppAuthTransactions.executeToken(request)
         val next = tokenStateFromResponse(payload.toString(), previousRefreshToken = current.refreshToken)
         return next.copy(accountId = next.accountId ?: current.accountId, email = next.email ?: current.email)
     }
@@ -443,30 +436,31 @@ internal class OpenAICodexAdapter(
         const val AUTH_MARKER = "openai_codex_oauth"
         const val DEFAULT_ENDPOINT = "https://chatgpt.com/backend-api/codex/responses"
 
-        val SUPPORTED_MODELS = listOf(
-            "gpt-6-astra",
-            "gpt-5.6-sol",
-            "gpt-5.6-terra",
-            "gpt-5.6-luna",
-            "gpt-5.5",
-            "gpt-5.4",
-            "gpt-5.2",
-            "gpt-5.4-mini",
-            "gpt-5.3-codex",
-            "gpt-5.3-codex-spark"
-        )
-
         private const val CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
         private const val ISSUER = "https://auth.openai.com"
         private const val CALLBACK_PORT = 1455
         private const val REDIRECT_URI = "http://localhost:1455/auth/callback"
-        private const val CLIENT_VERSION = "0.1.0"
         private const val CODEX_ORIGINATOR = "codex-tui"
+        private const val CODEX_CLIENT_VERSION = "0.135.0"
         private const val AUTH_SCOPE = "openid email profile offline_access"
         private const val REFRESH_SCOPE = "openid profile email"
         private const val AUTH_TIMEOUT_MS = 5 * 60 * 1000L
         private const val REFRESH_BUFFER_MS = 5 * 60 * 1000L
         private const val CODEX_USER_AGENT =
-            "codex-tui/0.135.0 (Mac OS 26.5.0; arm64) iTerm.app/3.6.10 (codex-tui; 0.135.0)"
+            "codex-tui/$CODEX_CLIENT_VERSION (Android; arm64) MultiGateway"
     }
+}
+
+
+/** Parses the live Codex catalog without maintaining an application-side model allowlist. */
+internal fun parseCodexModelCatalog(response: JsonObject): List<DiscoveredModel> {
+    val models = response["models"] as? JsonArray
+        ?: error("Codex returned an unsupported model catalog")
+    return models.mapNotNull { value ->
+        val item = value as? JsonObject ?: return@mapNotNull null
+        val id = listOf("slug", "id", "model")
+            .firstNotNullOfOrNull { key -> item[key]?.jsonPrimitive?.contentOrNull?.takeIf(String::isNotBlank) }
+            ?: return@mapNotNull null
+        discoveredModel(id, item)
+    }.distinctBy { it.id }
 }

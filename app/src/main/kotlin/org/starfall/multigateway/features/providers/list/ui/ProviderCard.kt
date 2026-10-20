@@ -24,7 +24,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.starfall.multigateway.R
-import org.starfall.multigateway.shared.model.auth.AuthMethod
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderGroup
 import org.starfall.multigateway.shared.ui.layout.AdaptiveCardLayout
@@ -234,7 +233,6 @@ fun ProviderUnifiedCard(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                    if (provider.type.isAccountProvider || provider.auth.method == AuthMethod.OAUTH) ProviderOAuthStatus(provider)
                     if (!provider.type.isAccountProvider) Text(
                         text = provider.baseUrl,
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
@@ -245,18 +243,6 @@ fun ProviderUnifiedCard(
                 }
             }
         )
-    }
-}
-
-@Composable
-private fun ProviderOAuthStatus(provider: ModelProvider) {
-    val signedIn = provider.auth.method == AuthMethod.OAUTH && !provider.auth.value.isNullOrBlank()
-    val color = if (signedIn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        FluentIcon(if (signedIn) Icons.Outlined.CheckCircle else Icons.Outlined.AccountCircle,
-            contentDescription = null, modifier = Modifier.size(14.dp), tint = color)
-        Text(stringResource(if (signedIn) R.string.oauth_signed_in else R.string.oauth_signed_out),
-            style = MaterialTheme.typography.labelSmall, color = color)
     }
 }
 

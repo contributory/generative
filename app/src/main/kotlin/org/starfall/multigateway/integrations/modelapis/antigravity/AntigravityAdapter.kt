@@ -31,8 +31,17 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
     51121, "/oauth-callback", "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",
     callbackHost = "127.0.0.1"
 ) {
+    // Antigravity's Client-Metadata header follows the reference client's IDE fingerprint.
     private val metadata =
-        obj("ideType" to str("ANTIGRAVITY"), "platform" to str("WINDOWS"), "pluginType" to str("GEMINI"))
+        obj("ideType" to str("ANTIGRAVITY"), "platform" to str("MACOS"), "pluginType" to str("GEMINI"))
+
+    // loadCodeAssist/onboardUser validate this field against a different API enum;
+    // WINDOWS/MACOS are rejected there, so use the API's unspecified enum value.
+    private val codeAssistMetadata = obj(
+        "ideType" to str("ANTIGRAVITY"),
+        "platform" to str("PLATFORM_UNSPECIFIED"),
+        "pluginType" to str("GEMINI")
+    )
 
     // Match the reference provider's raw OAuth token exchange. AppAuth's OIDC token parsing
     // rejects Google's Antigravity response with "Invalid ID Token".
@@ -133,7 +142,7 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
         var lastFailure: Exception? = null
         for (base in bases(provider)) {
             try {
-                val loaded = http.post("$base/v1internal:loadCodeAssist", obj("metadata" to metadata), authenticated)
+                val loaded = http.post("$base/v1internal:loadCodeAssist", obj("metadata" to codeAssistMetadata), authenticated)
                 check(loaded["projectValidationError"] == null || loaded["projectValidationError"] == JsonNull) {
                     "Antigravity rejected the project returned by Code Assist"
                 }
@@ -142,7 +151,7 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
                     val tier = (loaded["allowedTiers"] as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }
                         .firstOrNull { (it["isDefault"] as? JsonPrimitive)?.booleanOrNull == true }
                         ?.text("id")?.takeIf(String::isNotBlank) ?: "legacy-tier"
-                    val body = obj("tierId" to str(tier), "metadata" to metadata)
+                    val body = obj("tierId" to str(tier), "metadata" to codeAssistMetadata)
                     var operation = http.post("$base/v1internal:onboardUser", body, authenticated)
                     for (attempt in 0 until 10) {
                         if ((operation["done"] as? JsonPrimitive)?.booleanOrNull == true) {
@@ -194,12 +203,7 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
                     response["models"] as? JsonObject ?: error("Antigravity returned an unsupported model catalog")
                 val catalog = models.mapNotNull { (id, value) ->
                     val item = value as? JsonObject ?: return@mapNotNull null
-                    if (id.isBlank() || (item["isInternal"] as? JsonPrimitive)?.booleanOrNull == true ||
-                        (item["modelPickerEnabled"] as? JsonPrimitive)?.booleanOrNull == false ||
-                        (item["userFacing"] as? JsonPrimitive)?.booleanOrNull == false ||
-                        item.text("visibility").lowercase() in listOf("internal", "hidden")
-                    ) null
-                    else discoveredModel(id, item)
+                    if (id.isBlank()) null else discoveredModel(id, item)
                 }
                 // Keep the generation route on the endpoint that returned this account's catalog.
                 if (token.codeAssistBaseUrl != base) projectLock.withLock {
