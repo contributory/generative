@@ -195,6 +195,14 @@ internal class RemoteMachineConnectionManager(
         val channel = session.openChannel("shell") as ChannelShell
         try {
             channel.setPtyType("xterm-256color")
+            // Ask for a UTF-8 locale; without it servers that don't set LANG themselves run the shell
+            // in the POSIX locale and mangle (or escape) every multi-byte character. Servers whose
+            // sshd lacks AcceptEnv just ignore these requests.
+            channel.setEnv("LANG", "C.UTF-8")
+            channel.setEnv("LC_ALL", "C.UTF-8")
+            // pty mode IUTF8 (opcode 42) = 1, terminated by TTY_OP_END, so the line discipline erases
+            // whole characters on Backspace instead of single bytes.
+            channel.setTerminalMode(byteArrayOf(42, 0, 0, 0, 1, 0))
             // JSch only wires the piped streams into the channel thread if they are requested BEFORE
             // connect(). Asking for them afterwards left the channel with no stdin reader (nothing the
             // user typed was ever sent) and could drop the first output bytes.

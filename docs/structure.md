@@ -24,6 +24,8 @@
 │   │       └── 📁 ui/
 │   │           ├── 📄 DefaultModelsTab.kt
 │   │           ├── 📄 ImageToolSettingsScreen.kt
+│   │           ├── 📄 MediaRequestChainSettingsScreen.kt
+│   │           ├── 📄 MediaRequestChainStepEditor.kt
 │   │           └── 📄 SystemToolsScreen.kt
 │   ├── 📁 icons/
 │   │   └── 📁 ui/
@@ -207,6 +209,7 @@
 │   │   └── 📄 McpService.kt
 │   ├── 📁 media/
 │   │   ├── 📄 ImageStreaming.kt
+│   │   ├── 📄 MediaRequestChainExecutor.kt
 │   │   ├── 📄 SystemMediaTools.kt
 │   │   └── 📄 VideoGeneration.kt
 │   ├── 📁 modelapis/
@@ -280,11 +283,11 @@
 │   │   └── 📄 ToolFiles.kt
 │   ├── 📁 helpers/
 │   │   └── 📁 media/
-│   │       ├── 📄 AgnesMedia.kt
 │   │       ├── 📄 ContentApiMedia.kt
 │   │       ├── 📄 GeneratedMediaResponses.kt
 │   │       ├── 📄 ImageEditRequests.kt
 │   │       ├── 📄 ImageGenerationOptions.kt
+│   │       ├── 📄 MediaRequestMapping.kt
 │   │       ├── 📄 MediaInputReference.kt
 │   │       ├── 📄 VideoGenerationOptions.kt
 │   │       └── 📄 VideoRequests.kt
@@ -330,6 +333,8 @@
 │   │   │   ├── 📄 GeneratedMediaReference.kt
 │   │   │   ├── 📄 ImageOptionField.kt
 │   │   │   ├── 📄 MediaInputImage.kt
+│   │   │   ├── 📄 MediaInputVideo.kt
+│   │   │   ├── 📄 MediaRequestChain.kt
 │   │   │   └── 📄 VideoApi.kt
 │   │   ├── 📁 provider/
 │   │   │   ├── 📄 ModelProvider.kt

@@ -23,6 +23,8 @@ import org.starfall.multigateway.features.providers.shared.ui.ModelConfigDialog
 import org.starfall.multigateway.features.providers.shared.ui.ModelToolsDialog
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.language.ModelType
+import org.starfall.multigateway.shared.model.media.MediaGenerationMode
+import org.starfall.multigateway.shared.model.media.MediaRequestProfile
 import org.starfall.multigateway.shared.model.language.SELECTABLE_REASONING_EFFORTS
 import org.starfall.multigateway.shared.model.language.ThinkingPassback
 import org.starfall.multigateway.shared.model.language.passbackMode
@@ -45,6 +47,8 @@ fun ModelEditorScreen(
     provider: ModelProvider,
     initialModelId: String,
     existingModelIds: Set<String>,
+    customImageMediaProfiles: Map<String, MediaRequestProfile> = emptyMap(),
+    customVideoMediaProfiles: Map<String, MediaRequestProfile> = emptyMap(),
     onSave: (String, ModelConfiguration) -> Unit,
     onBack: () -> Unit
 ) {
@@ -56,10 +60,13 @@ fun ModelEditorScreen(
     val contextWindow = contextWindowText.toIntOrNull()?.takeIf { it > 0 }
     var iconImporting by remember { mutableStateOf(false) }
     var typeExpanded by remember { mutableStateOf(false) }
+    var apiTypeExpanded by remember { mutableStateOf(false) }
+    var profileExpanded by remember { mutableStateOf(false) }
     var showSampling by remember { mutableStateOf(false) }
     var showModelTools by remember { mutableStateOf(false) }
     var showModelJsonDialog by remember { mutableStateOf(false) }
     val trimmedId = modelId.trim()
+    val customMediaProfiles = if (config.modelType == ModelType.VIDEO_GENERATION) customVideoMediaProfiles else customImageMediaProfiles
     val modelJson = if (initialModelId.isNotBlank() && trimmedId == initialModelId) config.modelJson else JsonObject(emptyMap())
     val prettyJson = remember { Json { prettyPrint = true } }
     val modelJsonCode = remember(modelJson) { prettyJson.encodeToString(JsonObject.serializer(), modelJson) }
@@ -304,6 +311,60 @@ fun ModelEditorScreen(
                         modifier = Modifier.weight(1f).testTag("model-arguments-button")
                     ) {
                         Text(stringResource(R.string.model_arguments), maxLines = 1)
+                    }
+                }
+            } else if (config.modelType == ModelType.IMAGE_GENERATION || config.modelType == ModelType.VIDEO_GENERATION) {
+                ExposedDropdownMenuBox(
+                    expanded = apiTypeExpanded,
+                    onExpandedChange = { apiTypeExpanded = !apiTypeExpanded }
+                ) {
+                    SelectableOutlinedTextField(
+                        value = stringResource(if (config.mediaApiType == MediaGenerationMode.DEFAULT) R.string.media_chain_default else R.string.media_chain_custom),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.media_api_type)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(apiTypeExpanded) },
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(expanded = apiTypeExpanded, onDismissRequest = { apiTypeExpanded = false }) {
+                        listOf(MediaGenerationMode.DEFAULT, MediaGenerationMode.CUSTOM).forEach { mode ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(if (mode == MediaGenerationMode.DEFAULT) R.string.media_chain_default else R.string.media_chain_custom)) },
+                                onClick = {
+                                    config = config.copy(
+                                        mediaApiType = mode,
+                                        mediaRequestProfileId = if (mode == MediaGenerationMode.DEFAULT) "" else config.mediaRequestProfileId
+                                    )
+                                    apiTypeExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                if (config.mediaApiType == MediaGenerationMode.CUSTOM) {
+                    ExposedDropdownMenuBox(
+                        expanded = profileExpanded,
+                        onExpandedChange = { profileExpanded = !profileExpanded }
+                    ) {
+                        SelectableOutlinedTextField(
+                            value = customMediaProfiles[config.mediaRequestProfileId]?.name.orEmpty().ifBlank { stringResource(R.string.media_chain_select_profile) },
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.media_chain_profile)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(profileExpanded) },
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(expanded = profileExpanded, onDismissRequest = { profileExpanded = false }) {
+                            customMediaProfiles.values.forEach { profile ->
+                                DropdownMenuItem(
+                                    text = { Text(profile.name) },
+                                    onClick = {
+                                        config = config.copy(mediaRequestProfileId = profile.id)
+                                        profileExpanded = false
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }

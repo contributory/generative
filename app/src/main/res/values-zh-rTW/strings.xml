@@ -99,8 +99,6 @@
     <string name="mcp_tool_list_not_cached_description">工具清單尚未快取。請先在 MCP Manage 中儲存或重新整理此伺服器。</string>
     <string name="mcp_no_globally_enabled_tools_description">沒有全域啟用的工具。</string>
     <string name="image_tool_model_options_description">只設定此模型支援的選項。留白欄位會使用提供者預設值。設定會依模型個別儲存。</string>
-    <string name="image_tool_agnes_reference_description">Agnes 參考圖片需要公開的 HTTPS URL。聊天中附加的檔案無法上傳至此 API。請使用下方的影格 URL，或在進階 JSON 中參照媒體。</string>
-    <string name="image_tool_agnes_edit_description">Agnes 支援附加的參考圖片。可在進階 JSON 的 extra_body.image 中提供公開圖片 URL。編輯時請在下方選擇回應格式；return_base64 適用於文字轉圖片。</string>
     <string name="image_tool_request_body_help">支援巢狀物件與提供者擴充功能。模型與提示詞來自聊天。</string>
     <string name="image_tool_json_invalid_hint">請修正進階 JSON 中的 JSON 以使用此表單。</string>
     <string name="image_tool_discard_video_message">影片設定尚未儲存。</string>

@@ -16,41 +16,32 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.starfall.multigateway.R
 import androidx.compose.ui.res.stringResource
-import org.starfall.multigateway.shared.helpers.media.mediaToolOptionalParams
-import org.starfall.multigateway.shared.helpers.media.optionAt
-import org.starfall.multigateway.shared.helpers.media.validateImageOptions
-import org.starfall.multigateway.shared.helpers.media.validateVideoOptions
-import org.starfall.multigateway.shared.helpers.media.videoOptionFields
-import org.starfall.multigateway.shared.helpers.media.withOption
-import org.starfall.multigateway.shared.model.media.ImageOptionField
+import org.starfall.multigateway.shared.model.media.MediaGenerationMode
 import org.starfall.multigateway.shared.ui.layout.SettingsCard
 import org.starfall.multigateway.shared.model.DEFAULT_CHAT_SUMMARY_PROMPT
 import org.starfall.multigateway.shared.model.DEFAULT_TITLE_GENERATION_PROMPT
 import org.starfall.multigateway.shared.model.SystemToolConfig
 import org.starfall.multigateway.shared.model.ToolSettings
-import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.language.ModelType
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.provider.ProviderGroup
 import org.starfall.multigateway.shared.model.systemMediaToolAvailable
 import org.starfall.multigateway.shared.ui.sheets.AppBottomSheet
-import org.starfall.multigateway.shared.ui.icons.EntityIcon
 import org.starfall.multigateway.shared.ui.icons.FluentIcon
 import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.multigateway.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.multigateway.shared.ui.layout.SlideScreenContent
-import org.starfall.multigateway.shared.ui.ToolSwitch
 import org.starfall.multigateway.shared.ui.model.ModelPickerBottomSheet
+import org.starfall.multigateway.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +55,7 @@ fun SystemToolsScreen(
     collapsedProviderIds: Set<String> = emptySet(),
     onCollapsedGroupIdsChange: (Set<String>) -> Unit = {},
     onCollapsedProviderIdsChange: (Set<String>) -> Unit = {},
+    onSaveModelConfiguration: (String, String, ModelConfiguration) -> Unit = { _, _, _ -> },
     selectedTabKey: String = "default",
     onSelectedTabKeyChange: (String) -> Unit = {},
     onEditProvider: (providerId: String) -> Unit = {},
@@ -74,24 +66,73 @@ fun SystemToolsScreen(
     var choosing by remember { mutableStateOf<String?>(null) }
     var editingPrompt by rememberSaveable { mutableStateOf<String?>(null) }
     var editingMedia by remember { mutableStateOf<String?>(null) }
+    var editingMediaCustom by remember { mutableStateOf(false) }
     val mediaConfig = settings.system[editingMedia] ?: SystemToolConfig()
     val mediaProvider = providers.find { it.id == mediaConfig.providerId }
+
+    fun openMediaSettings(name: String, custom: Boolean) {
+        editingMedia = name
+        editingMediaCustom = custom
+    }
 
     SlideScreenContent(
         editor = editingMedia?.let { name -> mediaProvider?.let { Triple(name, it, mediaConfig) } },
         label = stringResource(R.string.tool_settings_media_label)
     ) { page ->
     if (page != null) {
-        ImageToolSettingsScreen(
-            page.second,
-            page.third,
-            onSave = { options ->
-                onSave(page.first, if (page.first == "generate_video") page.third.withVideoOptions(options) else page.third.withImageOptions(options))
-                editingMedia = null
-            },
-            onBack = { editingMedia = null },
-            video = page.first == "generate_video"
-        )
+        if (editingMediaCustom) {
+            MediaRequestChainSettingsScreen(
+                page.second,
+                page.third,
+                onSave = { profiles, activeId ->
+                    val updatedConfig = if (page.first == "generate_video") {
+                        page.third.withVideoRequestProfiles(profiles, activeId)
+                    } else {
+                        page.third.withImageRequestProfiles(profiles, activeId)
+                    }
+                    onSave(page.first, updatedConfig)
+                    page.second.config.modelConfigs[page.third.modelId]?.let { model ->
+                        onSaveModelConfiguration(
+                            page.third.providerId,
+                            page.third.modelId,
+                            model.copy(mediaApiType = MediaGenerationMode.CUSTOM, mediaRequestProfileId = activeId)
+                        )
+                    }
+                    editingMedia = null
+                },
+                onBack = { editingMedia = null },
+                video = page.first == "generate_video"
+            )
+        } else {
+            ImageToolSettingsScreen(
+                page.second,
+                page.third,
+                onSave = { options, disabledParams ->
+                    val updatedConfig = if (page.first == "generate_video") {
+                        page.third.withVideoOptions(options).copy(
+                                disabledParams = disabledParams,
+                                videoGenerationMode = MediaGenerationMode.DEFAULT
+                        )
+                    } else {
+                        page.third.withImageOptions(options).copy(
+                                disabledParams = disabledParams,
+                                imageGenerationMode = MediaGenerationMode.DEFAULT
+                        )
+                    }
+                    onSave(page.first, updatedConfig)
+                    page.second.config.modelConfigs[page.third.modelId]?.let { model ->
+                        onSaveModelConfiguration(
+                            page.third.providerId,
+                            page.third.modelId,
+                            model.copy(mediaApiType = MediaGenerationMode.DEFAULT, mediaRequestProfileId = "")
+                        )
+                    }
+                    editingMedia = null
+                },
+                onBack = { editingMedia = null },
+                video = page.first == "generate_video"
+            )
+        }
     } else {
     BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
     Scaffold(
@@ -153,40 +194,76 @@ fun SystemToolsScreen(
                         Spacer(Modifier.height(8.dp))
                         HorizontalDivider()
                         Spacer(Modifier.height(8.dp))
-                        Text(stringResource(R.string.tool_optional_params_title), style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            stringResource(R.string.tool_optional_params_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        val parameterProvider = providers.find { it.id == config.providerId }
-                        val parameters = mediaToolOptionalParams(name, parameterProvider, config.modelId)
-                        if (parameters.isEmpty()) {
-                            Text("No configurable parameters for the selected model.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        if (parameters.any { it.field != null }) Text(
-                            stringResource(R.string.tool_optional_params_default_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        parameters.forEach { param ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(param.label, style = MaterialTheme.typography.bodyMedium)
-                                    Text(param.key, style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                Switch(
-                                    checked = param.key !in config.disabledParams,
-                                    onCheckedChange = { on ->
-                                        onSave(name, config.copy(disabledParams = if (on) config.disabledParams - param.key else config.disabledParams + param.key))
-                                    }
-                                )
-                            }
-                            val field = param.field
-                            if (field != null && parameterProvider != null) {
-                                MediaParameterDefault(name, config, parameterProvider, field, onSave)
-                            }
-                        }
+                         val providerForMode = providers.find { it.id == config.providerId }
+                         val modelConfig = providerForMode?.config?.modelConfigs?.get(config.modelId)
+                         val generationMode = modelConfig?.mediaApiType
+                             ?: if (name == "generate_image") config.imageGenerationMode else config.videoGenerationMode
+                         val defaultModeAvailable = providerForMode?.type?.isOpenAi == true ||
+                             providerForMode?.type == org.starfall.multigateway.shared.model.api.ModelApiType.GOOGLE
+                        val customProfile = if (generationMode == MediaGenerationMode.CUSTOM) {
+                            if (name == "generate_image") config.activeImageRequestProfile else config.activeVideoRequestProfile
+                        } else null
+                          var apiTypeExpanded by remember(name, config.providerId, config.modelId) { mutableStateOf(false) }
+                          ExposedDropdownMenuBox(
+                              expanded = apiTypeExpanded,
+                              onExpandedChange = { apiTypeExpanded = !apiTypeExpanded }
+                          ) {
+                              SelectableOutlinedTextField(
+                                  value = stringResource(if (generationMode == MediaGenerationMode.DEFAULT) R.string.media_chain_default else R.string.media_chain_custom),
+                                  onValueChange = {},
+                                  readOnly = true,
+                                  label = { Text(stringResource(R.string.media_api_type)) },
+                                  trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(apiTypeExpanded) },
+                                  modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).fillMaxWidth()
+                              )
+                              ExposedDropdownMenu(
+                                  expanded = apiTypeExpanded,
+                                  onDismissRequest = { apiTypeExpanded = false }
+                              ) {
+                                  listOf(MediaGenerationMode.DEFAULT, MediaGenerationMode.CUSTOM).forEach { mode ->
+                                      DropdownMenuItem(
+                                          text = { Text(stringResource(if (mode == MediaGenerationMode.DEFAULT) R.string.media_chain_default else R.string.media_chain_custom)) },
+                                          onClick = {
+                                              if (mode != MediaGenerationMode.DEFAULT || defaultModeAvailable) {
+                                                  val updatedModel = (modelConfig ?: ModelConfiguration()).copy(
+                                                      mediaApiType = mode,
+                                                      mediaRequestProfileId = if (mode == MediaGenerationMode.DEFAULT) "" else modelConfig?.mediaRequestProfileId.orEmpty()
+                                                  )
+                                                  if (providerForMode != null && config.modelId.isNotBlank()) {
+                                                      onSaveModelConfiguration(config.providerId, config.modelId, updatedModel)
+                                                  }
+                                                  onSave(
+                                                      name,
+                                                      if (name == "generate_image") config.withImageGenerationMode(mode)
+                                                      else config.withVideoGenerationMode(mode)
+                                                  )
+                                              }
+                                              apiTypeExpanded = false
+                                          }
+                                      )
+                                  }
+                              }
+                          }
+                          if (generationMode == MediaGenerationMode.CUSTOM) {
+                            Text(
+                                if (customProfile == null) stringResource(R.string.media_chain_custom_not_configured)
+                                else stringResource(R.string.media_chain_custom_summary),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (customProfile == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                              IconButton(onClick = { openMediaSettings(name, true) }) {
+                                  FluentIcon(Icons.Outlined.Settings, stringResource(R.string.media_chain_edit_custom))
+                              }
+                          } else {
+                             Text(
+                                 stringResource(R.string.media_chain_default_settings_hint),
+                                 style = MaterialTheme.typography.bodySmall,
+                                 color = MaterialTheme.colorScheme.onSurfaceVariant
+                             )
+                              IconButton(onClick = { if (defaultModeAvailable) openMediaSettings(name, false) }, enabled = defaultModeAvailable) {
+                                  FluentIcon(Icons.Outlined.Settings, stringResource(R.string.media_chain_open_default_settings))
+                              }
+                         }
                     }
                 }
             }
@@ -212,11 +289,10 @@ fun SystemToolsScreen(
                 }
             }
         } else DefaultModelsTab(
-            providers = providers,
-            settings = settings,
-            onChooseModel = { choosing = it },
-            onOpenMediaSettings = { editingMedia = it },
-            onEditPrompt = { editingPrompt = it }
+             providers = providers,
+             settings = settings,
+             onChooseModel = { choosing = it },
+             onEditPrompt = { editingPrompt = it }
         )
         }
         }
@@ -282,8 +358,7 @@ fun SystemToolsScreen(
             modelFilter = { provider, id, config ->
                 config.modelType == type &&
                     provider.config.modelConfigs.containsKey(id) &&
-                    provider.config.modelIds?.contains(id) != false &&
-                    (type == ModelType.TEXT_GENERATION || provider.type.isOpenAi || provider.type == ModelApiType.GOOGLE)
+                    provider.config.modelIds?.contains(id) != false
             },
             onSelectModel = { providerId, modelId ->
                 onSave(name, current.copy(providerId = providerId, modelId = modelId))
@@ -293,42 +368,5 @@ fun SystemToolsScreen(
         )
     }
     }
-    }
-}
-
-/**
- * Default value of a media-tool parameter. It is stored in the selected model's saved options, the same
- * place as the model's Image/Video settings, so it applies when the AI omits the parameter or it is turned off.
- * Only values that pass the same validation as those settings are saved.
- */
-@Composable
-private fun MediaParameterDefault(
-    name: String,
-    config: SystemToolConfig,
-    provider: ModelProvider,
-    field: ImageOptionField,
-    onSave: (String, SystemToolConfig) -> Unit
-) {
-    val video = name == "generate_video"
-    val options = if (video) config.videoOptions else config.imageOptions
-    var problem by remember(config.providerId, config.modelId, field.path) { mutableStateOf<String?>(null) }
-    var resetSignal by remember(config.providerId, config.modelId, field.path) { mutableIntStateOf(0) }
-    Column {
-        ImageOptionInput(
-            field = field,
-            value = options.optionAt(field.path),
-            resetSignal = resetSignal,
-            onFocusChange = { if (!it) problem = null }
-        ) { value ->
-            val next = options.withOption(field.path, value)
-            val failure = runCatching {
-                if (video) validateVideoOptions(provider, config.modelId, next)
-                else validateImageOptions(provider, config.modelId, next)
-            }.exceptionOrNull()
-            problem = failure?.message
-            if (failure == null) onSave(name, if (video) config.withVideoOptions(next) else config.withImageOptions(next))
-            else resetSignal++
-        }
-        problem?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
     }
 }

@@ -6,6 +6,8 @@ import java.util.UUID
 import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.language.ModelType
+import org.starfall.multigateway.shared.model.media.MediaGenerationMode
+import org.starfall.multigateway.shared.model.media.MediaRequestProfile
 
 @Serializable
 data class McpAccess(val enabled: Boolean = false, val tools: Map<String, Boolean> = emptyMap())
@@ -18,6 +20,12 @@ data class SystemToolConfig(
     val prompt: String = "",
     val imageOptionsByModel: Map<String, JsonObject> = emptyMap(),
     val videoOptionsByModel: Map<String, JsonObject> = emptyMap(),
+    val imageGenerationMode: MediaGenerationMode = MediaGenerationMode.DEFAULT,
+    val videoGenerationMode: MediaGenerationMode = MediaGenerationMode.DEFAULT,
+    val imageRequestProfiles: Map<String, MediaRequestProfile> = emptyMap(),
+    val videoRequestProfiles: Map<String, MediaRequestProfile> = emptyMap(),
+    val activeImageRequestProfileId: String = "",
+    val activeVideoRequestProfileId: String = "",
     /** Optional media-tool parameters hidden from the model and ignored if it passes them anyway. */
     val disabledParams: Set<String> = emptySet()
 ) {
@@ -32,6 +40,22 @@ data class SystemToolConfig(
 
     fun withVideoOptions(options: JsonObject) =
         copy(videoOptionsByModel = videoOptionsByModel + ("$providerId/$modelId" to options))
+
+    val activeImageRequestProfile: MediaRequestProfile?
+        get() = imageRequestProfiles[activeImageRequestProfileId]
+
+    fun withImageRequestProfiles(profiles: Map<String, MediaRequestProfile>, activeId: String) =
+        copy(imageRequestProfiles = profiles, activeImageRequestProfileId = activeId, imageGenerationMode = MediaGenerationMode.CUSTOM)
+
+    val activeVideoRequestProfile: MediaRequestProfile?
+        get() = videoRequestProfiles[activeVideoRequestProfileId]
+
+    fun withVideoRequestProfiles(profiles: Map<String, MediaRequestProfile>, activeId: String) =
+        copy(videoRequestProfiles = profiles, activeVideoRequestProfileId = activeId, videoGenerationMode = MediaGenerationMode.CUSTOM)
+
+    fun withImageGenerationMode(mode: MediaGenerationMode) = copy(imageGenerationMode = mode)
+
+    fun withVideoGenerationMode(mode: MediaGenerationMode) = copy(videoGenerationMode = mode)
 }
 
 @Serializable
@@ -164,7 +188,8 @@ internal fun List<ToolDefinition>.withUniqueWireNames(): List<ToolDefinition> {
 fun systemMediaToolAvailable(
     name: String,
     config: SystemToolConfig,
-    providers: List<ModelProvider>
+    providers: List<ModelProvider>,
+    mode: MediaGenerationMode = if (name == "generate_image") config.imageGenerationMode else config.videoGenerationMode
 ): Boolean {
     if (config.providerId.isBlank() || config.modelId.isBlank()) return false
     val requiredType = when (name) {
@@ -173,7 +198,7 @@ fun systemMediaToolAvailable(
         else -> return false
     }
     val provider = providers.find { it.id == config.providerId } ?: return false
-    if (!provider.type.isOpenAi && provider.type != ModelApiType.GOOGLE) return false
+    if (mode == MediaGenerationMode.DEFAULT && !provider.type.isOpenAi && provider.type != ModelApiType.GOOGLE) return false
     val model = provider.config.modelConfigs[config.modelId] ?: return false
     return model.modelType == requiredType && provider.config.modelIds?.contains(config.modelId) != false
 }

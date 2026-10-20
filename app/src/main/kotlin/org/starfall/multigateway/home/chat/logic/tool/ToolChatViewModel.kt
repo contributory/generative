@@ -1,6 +1,7 @@
 package org.starfall.multigateway.home.chat.logic.tool
 
 import org.starfall.multigateway.shared.model.media.ContentApiMediaResult
+import org.starfall.multigateway.shared.model.media.MediaGenerationMode
 import org.starfall.multigateway.home.shared.logic.summarizeToolResult
 import org.starfall.multigateway.home.shared.logic.ToolSummary
 
@@ -93,10 +94,13 @@ class ToolChatViewModel(
         prompt: String,
         imageOptions: JsonObject = obj(),
         attachments: List<String> = emptyList(),
-        videoOptions: JsonObject = obj()
+        videoOptions: JsonObject = obj(),
+        generationMode: MediaGenerationMode = MediaGenerationMode.DEFAULT,
+        requestChain: org.starfall.multigateway.shared.model.media.MediaRequestChain? = null
     ): Flow<GenerationEvent> = flow {
         emitAll(mediaGeneration.generateMedia(
-            aiService.resolveProvider(provider), model, kind, prompt, imageOptions, attachments, videoOptions
+            aiService.resolveProvider(provider), model, kind, prompt, imageOptions, attachments,
+            videoOptions, generationMode, requestChain
         ))
     }
 
@@ -176,6 +180,9 @@ class ToolChatViewModel(
                 val config = settings().system[name]
                 if (config?.enabled == true) {
                     val mediaProvider = providers.find { it.id == config.providerId }
+                    val mediaModel = mediaProvider?.config?.modelConfigs?.get(config.modelId)
+                    val generationMode = mediaModel?.mediaApiType
+                        ?: if (name == "generate_image") config.imageGenerationMode else config.videoGenerationMode
                     tools += ToolDefinition(
                         name = name,
                         description = if (name == "generate_image") {
@@ -183,7 +190,13 @@ class ToolChatViewModel(
                         } else {
                             "Generate a video from a detailed prompt and an optional attached/reference image or video. The app displays the saved video."
                         },
-                        schema = mediaToolSchema(name, config.disabledParams, mediaProvider, config.modelId)
+                        schema = mediaToolSchema(
+                            name,
+                            if (generationMode == MediaGenerationMode.DEFAULT) config.disabledParams
+                            else config.disabledParams + setOf("input_image_url", "input_video_url"),
+                            if (generationMode == MediaGenerationMode.DEFAULT) mediaProvider else null,
+                            if (generationMode == MediaGenerationMode.DEFAULT) config.modelId else ""
+                        )
                     )
                 }
             }
@@ -365,16 +378,29 @@ class ToolChatViewModel(
                             check(cfg.enabled) { "System tool disabled" }
                             val mediaProvider = aiService.resolveProvider(providers.find { it.id == cfg.providerId }
                                 ?: error("Select a provider for this system tool"))
-                            val kind = if (name == "generate_image") {
+                             val kind = if (name == "generate_image") {
                                 ModelType.IMAGE_GENERATION
                             } else {
                                 ModelType.VIDEO_GENERATION
                             }
-                            check(
+                             check(
                                 mediaProvider.config.modelConfigs[cfg.modelId]?.modelType == kind &&
                                     mediaProvider.config.modelIds?.contains(cfg.modelId) != false
-                            ) { "Select an available media model in System tools" }
-                            mediaGeneration.executeConfiguredTool(
+                             ) { "Select an available media model in System tools" }
+                             val mediaModel = mediaProvider.config.modelConfigs[cfg.modelId]
+                             val generationMode = mediaModel?.mediaApiType
+                                 ?: if (name == "generate_image") cfg.imageGenerationMode else cfg.videoGenerationMode
+                             val allSystemConfigs = settings().system.values
+                             val requestProfile = if (name == "generate_image") {
+                                 mediaModel?.mediaRequestProfileId?.let { id ->
+                                     allSystemConfigs.firstNotNullOfOrNull { it.imageRequestProfiles[id] }
+                                 } ?: cfg.activeImageRequestProfile
+                             } else {
+                                 mediaModel?.mediaRequestProfileId?.let { id ->
+                                     allSystemConfigs.firstNotNullOfOrNull { it.videoRequestProfiles[id] }
+                                 } ?: cfg.activeVideoRequestProfile
+                             }
+                             mediaGeneration.executeConfiguredTool(
                                 name = name,
                                 provider = mediaProvider,
                                 model = cfg.modelId,
@@ -385,7 +411,9 @@ class ToolChatViewModel(
                                 videoOptions = configuredMediaOptions(name, mediaProvider, cfg.modelId, cfg.videoOptions, args, cfg.disabledParams),
                                 inputImageUrl = if ("input_image_url" in cfg.disabledParams) null else mediaInputImageUrlArgument(args),
                                 inputVideo = if ("input_video" in cfg.disabledParams) null else mediaInputVideoArgument(args),
-                                inputVideoUrl = if ("input_video_url" in cfg.disabledParams) null else mediaInputVideoUrlArgument(args)
+                                inputVideoUrl = if ("input_video_url" in cfg.disabledParams) null else mediaInputVideoUrlArgument(args),
+                                 generationMode = generationMode,
+                                 requestChain = requestProfile?.chain
                             )
                         }
 

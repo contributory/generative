@@ -1,0 +1,83 @@
+package org.starfall.multigateway.shared.model.media
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
+enum class MediaRequestMode {
+    @SerialName("form") FORM,
+    @SerialName("json") JSON
+}
+
+@Serializable
+enum class MediaFileTransport {
+    @SerialName("file") FILE,
+    @SerialName("base64") BASE64
+}
+
+@Serializable
+enum class MediaResponseType {
+    @SerialName("json") JSON,
+    @SerialName("image") IMAGE,
+    @SerialName("video") VIDEO,
+    @SerialName("octet-stream") OCTET_STREAM
+}
+
+@Serializable
+enum class MediaGenerationMode {
+    @SerialName("default") DEFAULT,
+    @SerialName("custom") CUSTOM
+}
+
+@Serializable
+enum class MediaValueKind {
+    @SerialName("link") LINK,
+    @SerialName("base64") BASE64
+}
+
+@Serializable
+data class MediaRetryPolicy(
+    val maxAttempts: Int = 1,
+    val delayMillis: Long = 1_000L,
+    val maxWaitMillis: Long = 60_000L
+)
+
+@Serializable
+data class MediaResponseObservation(
+    val statusPath: String = "",
+    val readyValues: List<String> = listOf("completed", "complete", "succeeded", "success", "done"),
+    val pendingValues: List<String> = listOf("queued", "pending", "processing", "running", "in_progress"),
+    val errorValues: List<String> = listOf("failed", "failure", "error", "cancelled", "canceled"),
+    val retry: MediaRetryPolicy = MediaRetryPolicy()
+)
+
+@Serializable
+data class MediaRequestStep(
+    val endpoint: String = "/",
+    val method: String = "POST",
+    val headers: Map<String, String> = emptyMap(),
+    val mode: MediaRequestMode = MediaRequestMode.JSON,
+    val fileTransport: MediaFileTransport = MediaFileTransport.BASE64,
+    val body: String = "{}",
+    val observation: MediaResponseObservation = MediaResponseObservation()
+)
+
+@Serializable
+data class MediaFinalResponse(
+    val type: MediaResponseType = MediaResponseType.JSON,
+    val mediaPath: String = "",
+    val valueKind: MediaValueKind = MediaValueKind.LINK
+)
+
+@Serializable
+data class MediaRequestChain(
+    val steps: List<MediaRequestStep> = listOf(MediaRequestStep()),
+    val finalResponse: MediaFinalResponse = MediaFinalResponse()
+)
+
+@Serializable
+data class MediaRequestProfile(
+    val id: String,
+    val name: String,
+    val chain: MediaRequestChain = MediaRequestChain()
+)

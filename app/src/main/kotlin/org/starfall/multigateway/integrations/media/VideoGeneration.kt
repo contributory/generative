@@ -1,13 +1,11 @@
 package org.starfall.multigateway.integrations.media
 
-import org.starfall.multigateway.shared.model.media.VideoApi
 import org.starfall.multigateway.shared.model.media.MediaInputImage
 import org.starfall.multigateway.shared.model.media.MediaInputVideo
 import org.starfall.multigateway.shared.helpers.media.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.*
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.networking.ToolHttp
 import org.starfall.multigateway.shared.networking.obj
@@ -25,36 +23,22 @@ internal class VideoGeneration(
         provider: ModelProvider, model: String, prompt: String, image: MediaInputImage?, options: JsonObject, imageUrl: String?,
         video: MediaInputVideo? = null, videoUrl: String? = null
     ): JsonObject {
-        val api = videoApi(provider)
         require(image == null || imageUrl == null) { "Use one source image: an attachment or input_image_url." }
         require(video == null || videoUrl == null) { "Use one source video: an attachment or input_video_url." }
         imageUrl?.let(::validateVideoImageUrl)
         videoUrl?.let { validateReferenceUrl(it, "videos") }
-        val effectiveOptions = if (api == VideoApi.AGNES) agnesVideoInputs(options, imageUrl, videoUrl) else options
-        validateVideoOptions(provider, model, effectiveOptions)
+        require(imageUrl == null) { "This video API needs an attached source image, not input_image_url." }
+        require(videoUrl == null) { "This video API needs an attached source video, not input_video_url." }
+        validateVideoOptions(provider, model, options)
         val configuredBase = providerBase(provider).removeSuffix("/videos")
-        val base = if (api == VideoApi.AGNES) agnesApiBase(provider) else configuredBase
-        var job = when (api) {
-            VideoApi.OPENAI -> {
-                require(imageUrl == null) { "This video API needs an attached source image, not input_image_url." }
-                require(videoUrl == null) { "This video API needs an attached source video, not input_video_url." }
-                http.json(http.request("$base/videos", provider).post(openAiVideoRequest(model, prompt, image, video)).build())
-            }
-            VideoApi.AGNES -> {
-                require(image == null) { "Agnes Video requires public image URLs. Local file uploads are not supported by its documented API; use first-frame URL in Video settings or input_image_url." }
-                require(video == null) { "Agnes Video requires public video URLs. Local file uploads are not supported by its documented API; use input_video_url." }
-                http.post("$base/videos", agnesVideoRequest(model, prompt, options, imageUrl, videoUrl), provider)
-            }
-        }
-        val id = videoJobId(job, api)
+        val base = configuredBase
+        var job = http.json(http.request("$base/videos", provider).post(openAiVideoRequest(model, prompt, image, video)).build())
+        val id = videoJobId(job)
         validateVideoJobId(id)
         if (!isTerminalVideoJob(job)) {
-            if (id.isBlank() && api == VideoApi.OPENAI && job.text("status").isBlank()) return job
-            require(id.isNotBlank()) { "Video API returned no ${if (api == VideoApi.AGNES) "video_id" else "job ID"} to retrieve the result." }
-            val pollUrl = if (api == VideoApi.AGNES) {
-                "${base.removeSuffix("/v1")}/agnesapi".toHttpUrl().newBuilder()
-                    .addQueryParameter("video_id", id).addQueryParameter("model_name", model).build().toString()
-            } else "$base/videos/$id"
+            if (id.isBlank() && job.text("status").isBlank()) return job
+            require(id.isNotBlank()) { "Video API returned no job ID to retrieve the result." }
+            val pollUrl = "$base/videos/$id"
             job = withTimeout(pollingTimeoutMillis.milliseconds) {
                 var state = job
                 while (!isTerminalVideoJob(state)) {
@@ -65,11 +49,6 @@ internal class VideoGeneration(
             }
         }
         check(job.text("status").equals("completed", true)) { "Video generation failed or was cancelled." }
-        if (api == VideoApi.AGNES) {
-            val url = videoResultUrl(job)
-            check(url.isNotBlank()) { "Agnes completed the task without a video download URL." }
-            return obj("url" to str(url))
-        }
         // OpenAI-compatible gateways may provide a CDN URL for the common media collector.
         if (videoResultUrl(job).isNotBlank()) return obj("url" to str(videoResultUrl(job)))
         if (id.isBlank()) return job

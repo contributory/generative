@@ -204,6 +204,20 @@ internal class ChatMessageActions(
         val config = toolSettings.value.system[name]?.takeIf {
             it.providerId == provider.id && it.modelId == request.modelId
         }
+        val modelConfig = provider.config.modelConfigs[request.modelId]
+        val generationMode = modelConfig?.mediaApiType ?: config?.let {
+            if (request.kind == ModelType.IMAGE_GENERATION) it.imageGenerationMode else it.videoGenerationMode
+        } ?: org.starfall.multigateway.shared.model.media.MediaGenerationMode.DEFAULT
+        val allSystemConfigs = toolSettings.value.system.values
+        val requestProfile = if (request.kind == ModelType.IMAGE_GENERATION) {
+            modelConfig?.mediaRequestProfileId?.let { id ->
+                allSystemConfigs.firstNotNullOfOrNull { profileConfig -> profileConfig.imageRequestProfiles[id] }
+            } ?: config?.activeImageRequestProfile
+        } else {
+            modelConfig?.mediaRequestProfileId?.let { id ->
+                allSystemConfigs.firstNotNullOfOrNull { profileConfig -> profileConfig.videoRequestProfiles[id] }
+            } ?: config?.activeVideoRequestProfile
+        }
         _currentConversation.value = conversation
         viewModelScope.launch(LocalWriteErrors.handler) {
             prefsRepo.setLastActiveConversationId(conversation.id)
@@ -211,7 +225,9 @@ internal class ChatMessageActions(
         return generationFor(conversation.id).startEvents(conversation, assistant.id,
             toolChat.generateMedia(provider, request.modelId, request.kind, request.prompt,
                 config?.imageOptions ?: obj(), request.attachments,
-                videoOptions = config?.videoOptions ?: obj()))
+                videoOptions = config?.videoOptions ?: obj(),
+                generationMode = generationMode,
+                requestChain = requestProfile?.chain))
     }
 
     fun stopGeneration() { generationForCurrent()?.stop() }

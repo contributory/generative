@@ -532,7 +532,13 @@ fun AppNavigation(
                                     onCancelProviderAuthorization = configurationViewModel::cancelProviderAuthorization,
                                     onClearOAuthCredentials = configurationViewModel::clearOAuthCredentials,
                                     onTestConnection = configurationViewModel::testConnection,
-                                    onFetchModels = configurationViewModel::fetchProviderModels
+                                    onFetchModels = configurationViewModel::fetchProviderModels,
+                                    customImageMediaProfiles = toolSettings.system.values
+                                        .flatMap { it.imageRequestProfiles.values }
+                                        .associateBy { it.id },
+                                    customVideoMediaProfiles = toolSettings.system.values
+                                        .flatMap { it.videoRequestProfiles.values }
+                                        .associateBy { it.id }
                                 )
                             }
                         }
@@ -575,7 +581,13 @@ fun AppNavigation(
                                     onCancelProviderAuthorization = configurationViewModel::cancelProviderAuthorization,
                                     onClearOAuthCredentials = configurationViewModel::clearOAuthCredentials,
                                     onTestConnection = configurationViewModel::testConnection,
-                                    onFetchModels = configurationViewModel::fetchProviderModels
+                                    onFetchModels = configurationViewModel::fetchProviderModels,
+                                    customImageMediaProfiles = toolSettings.system.values
+                                        .flatMap { it.imageRequestProfiles.values }
+                                        .associateBy { it.id },
+                                    customVideoMediaProfiles = toolSettings.system.values
+                                        .flatMap { it.videoRequestProfiles.values }
+                                        .associateBy { it.id }
                                 )
                             }
                         }
@@ -693,6 +705,7 @@ fun AppNavigation(
                             collapsedProviderIds = appPrefs.modelPickerCollapsedProviders,
                             onCollapsedGroupIdsChange = settingsViewModel::setModelPickerCollapsedGroups,
                             onCollapsedProviderIdsChange = settingsViewModel::setModelPickerCollapsedProviders,
+                            onSaveModelConfiguration = configurationViewModel::saveModelConfiguration,
                             selectedTabKey = appPrefs.modelPickerSelectedTab,
                             onSelectedTabKeyChange = settingsViewModel::setModelPickerSelectedTab,
                             onEditProvider = { providerId ->

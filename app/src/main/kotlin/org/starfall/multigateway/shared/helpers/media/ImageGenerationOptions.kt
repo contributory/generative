@@ -10,10 +10,10 @@ import org.starfall.multigateway.shared.networking.str
 import org.starfall.multigateway.shared.networking.text
 
 fun imageOptionFields(provider: ModelProvider, model: String): List<ImageOptionField> =
-    if (isAgnesProvider(provider)) agnesImageOptionFields() else imageOptionFields(provider.type, model)
+    imageOptionFields(provider.type, model)
 
 fun validateImageOptions(provider: ModelProvider, model: String, options: JsonObject) {
-    if (isAgnesProvider(provider)) validateAgnesImageOptions(options) else validateImageOptions(provider.type, model, options)
+    validateImageOptions(provider.type, model, options)
 }
 
 // Endpoint body names, not SDK-specific aliases.

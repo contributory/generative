@@ -152,7 +152,7 @@ internal fun mediaToolSchema(
         ))
         if (name == "generate_video" && "input_image_url" !in disabledParams) put("input_image_url", obj(
             "type" to str("string"),
-            "description" to str("Optional public HTTPS source-image URL for Agnes Video. Use either input_image or input_image_url, not both.")
+            "description" to str("Optional public HTTPS source-image URL for video APIs. Use either input_image or input_image_url, not both.")
         ))
         if (name == "generate_video" && "input_video" !in disabledParams) put("input_video", obj(
             "type" to str("string"),
@@ -160,7 +160,7 @@ internal fun mediaToolSchema(
         ))
         if (name == "generate_video" && "input_video_url" !in disabledParams) put("input_video_url", obj(
             "type" to str("string"),
-            "description" to str("Optional public HTTPS source-video URL for Agnes Video 2.5. Use either input_video or input_video_url, not both.")
+            "description" to str("Optional public HTTPS source-video URL for video APIs. Use either input_video or input_video_url, not both.")
         ))
         if (name == "generate_image" && "input_images" !in disabledParams) put("input_images", obj(
             "type" to str("array"), "items" to obj("type" to str("string")),

@@ -38,55 +38,6 @@ import org.starfall.multigateway.home.chat.logic.tool.ToolChatViewModel
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)
 class DirectMediaAttachmentTest {
-    @Test fun directAgnesVideoModeUsesJsonAndSavedVideoOptions() = runBlocking {
-        val root = Files.createTempDirectory("direct-json-video").toFile()
-        val server = MockWebServer().apply { start() }
-        try {
-            val provider = agnesTestProvider(server)
-            server.enqueue(MockResponse().setBody(obj("status" to str("completed"), "url" to str(server.url("/agnes.mp4").toString())).toString()))
-            server.enqueue(MockResponse().setHeader("Content-Type", "video/mp4").setBody(okio.Buffer().write(
-                ByteArray(32).also { "ftyp".toByteArray().copyInto(it, 4) })))
-            val events = engine(ToolFiles(root)).generateMedia(provider, "agnes-video-2.5-flash", ModelType.VIDEO_GENERATION,
-                "animate", videoOptions = obj("seconds" to JsonPrimitive(7), "first_frame" to str("https://example.com/photo.png"))).toList()
-            val sent = server.takeRequest()
-            assertEquals("/v1/videos", sent.path)
-            assertTrue(sent.getHeader("Content-Type")!!.startsWith("application/json"))
-            val body = Json.parseToJsonElement(sent.body.readUtf8()).jsonObject
-            assertEquals("7", body.text("seconds"))
-            assertEquals("keyframe", body.text("mode"))
-            assertEquals("https://example.com/photo.png", body.text("first_frame"))
-            assertEquals("/agnes.mp4", server.takeRequest().path)
-            val activity = events.filterIsInstance<GenerationEvent.Tool>().last().activity
-            assertEquals("success", activity.status)
-            assertTrue(activity.files.any { it.endsWith(".mp4") })
-        } finally { server.shutdown(); root.deleteRecursively() }
-    }
-
-    @Test fun directAgnesImageModeSendsJsonReferencesAndDisplaysOutput() = runBlocking {
-        val root = Files.createTempDirectory("direct-agnes-image").toFile()
-        val attachment = Files.createTempFile("user-image", ".png").toFile().apply { writeBytes(referencePng) }
-        val server = MockWebServer().apply { start() }
-        try {
-            server.enqueue(MockResponse().setBody(obj("data" to JsonArray(listOf(obj(
-                "b64_json" to str(Base64.getEncoder().encodeToString(referencePng))
-            )))).toString()))
-            val events = engine(ToolFiles(root)).generateMedia(agnesTestProvider(server), "custom-image", ModelType.IMAGE_GENERATION,
-                "edit", imageOptions = obj("size" to str("2K")), attachments = listOf(attachment.absolutePath)).toList()
-            val sent = server.takeRequest()
-            assertEquals("/v1/images/generations", sent.path)
-            assertTrue(sent.getHeader("Content-Type")!!.startsWith("application/json"))
-            val body = Json.parseToJsonElement(sent.body.readUtf8()).jsonObject
-            assertEquals("2K", body.text("size"))
-            val input = body.optionAt("extra_body.image")!!.jsonArray.single().jsonPrimitive.content
-            assertTrue(input.startsWith("data:image/png;base64,"))
-            assertArrayEquals(referencePng, Base64.getDecoder().decode(input.substringAfter(',')))
-            val activity = events.filterIsInstance<GenerationEvent.Tool>().last().activity
-            assertEquals("success", activity.status)
-            assertTrue(activity.files.any { it.endsWith(".png") })
-            assertFalse(events.toString().contains(attachment.absolutePath))
-        } finally { server.shutdown(); root.deleteRecursively(); attachment.delete() }
-    }
-
     @Test fun directOpenAiImageModeUploadsMultipleAttachmentsToEditsAndKeepsOptions() = runBlocking {
         val root = Files.createTempDirectory("direct-image").toFile()
         val attachment = Files.createTempFile("user-image", ".png").toFile().apply { writeBytes(referencePng) }
@@ -180,7 +131,7 @@ class DirectMediaAttachmentTest {
     }
 
     private fun engine(files: ToolFiles): ToolChatViewModel {
-        val http = ToolHttp(files, agnesTestClient())
+        val http = ToolHttp(files)
         return ToolChatViewModel(http, McpService(http), AiService(ApplicationProvider.getApplicationContext<Context>()))
     }
 }

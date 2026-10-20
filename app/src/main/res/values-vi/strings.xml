@@ -123,8 +123,6 @@
     <string name="mcp_tool_list_not_cached_description">Danh sách công cụ chưa được lưu trong bộ nhớ đệm. Trước tiên hãy lưu hoặc làm mới server này trong MCP Manage.</string>
     <string name="mcp_no_globally_enabled_tools_description">Không có công cụ nào được bật ở cấp hệ thống.</string>
     <string name="image_tool_model_options_description">Chỉ thiết lập các tùy chọn được model này hỗ trợ. Để trống sẽ dùng mặc định của provider. Cài đặt được lưu riêng cho từng model.</string>
-    <string name="image_tool_agnes_reference_description">Ảnh tham chiếu của Agnes cần URL HTTPS công khai. File đính kèm trong chat không thể tải lên API này. Hãy dùng URL khung hình bên dưới hoặc tham chiếu media trong JSON nâng cao.</string>
-    <string name="image_tool_agnes_edit_description">Agnes hỗ trợ ảnh tham chiếu đính kèm. Có thể cung cấp URL ảnh tham chiếu công khai trong extra_body.image của JSON nâng cao. Khi chỉnh sửa, chọn định dạng phản hồi bên dưới; return_base64 áp dụng cho tạo ảnh từ văn bản.</string>
     <string name="image_tool_request_body_help">Hỗ trợ object lồng nhau và phần mở rộng của provider. Model và prompt được lấy từ chat.</string>
     <string name="image_tool_json_invalid_hint">Sửa JSON trong JSON nâng cao để sử dụng biểu mẫu.</string>
     <string name="image_tool_discard_video_message">Cài đặt video của bạn chưa được lưu.</string>

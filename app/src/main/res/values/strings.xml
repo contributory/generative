@@ -611,6 +611,7 @@
     <string name="remote_machine_terminal_input_settings" translatable="false">Terminal input mode</string>
     <string name="remote_machine_terminal_local_input" translatable="false">Local input · Enter to send</string>
     <string name="remote_machine_terminal_remote_input" translatable="false">Remote input · send as you type</string>
+    <string name="remote_machine_terminal_force_mouse" translatable="false">Mouse events · tap = click, drag = wheel</string>
     <string name="remote_machine_terminal_local_input_label" translatable="false">Local input</string>
     <string name="remote_machine_command" translatable="false">Command</string>
     <string name="remote_machine_run_command" translatable="false">Run command</string>
@@ -647,14 +648,83 @@
     <string name="mcp_tool_list_not_cached_description">Tool list is not cached. Save or refresh this server in MCP Manage first.</string>
     <string name="mcp_no_globally_enabled_tools_description">No globally enabled tools available.</string>
     <string name="image_tool_model_options_description">Only set options supported by this model. Empty fields use provider defaults. Settings are saved separately for each model.</string>
-    <string name="image_tool_agnes_reference_description">Agnes reference images require public HTTPS URLs. Files attached in chat cannot be uploaded to this API. Use frame URLs below, or reference media in Advanced JSON.</string>
-    <string name="image_tool_agnes_edit_description">Agnes supports attached reference images. Public reference-image URLs can be supplied as extra_body.image in Advanced JSON. For editing, select the response format below; return_base64 applies to text-to-image.</string>
     <string name="image_tool_request_body_help">Nested objects and provider extensions are supported. Model and prompt come from chat.</string>
     <string name="image_tool_json_invalid_hint">Fix the JSON in Advanced JSON to use the form.</string>
     <string name="image_tool_discard_video_message">Your video settings have not been saved.</string>
     <string name="image_tool_discard_image_message">Your image settings have not been saved.</string>
     <string name="image_tool_provider_default_hint">Provider default</string>
     <string name="image_tool_range_hint">Range: %1$s – %2$s</string>
+    <string name="common_discard">Discard</string>
+    <string name="media_chain_editor_description">Configure an ordered, provider-agnostic request chain for this media model. Values in the body can use the prompt, model, API token, input files and earlier responses.</string>
+    <string name="media_chain_default">Default</string>
+    <string name="media_api_type">API Type</string>
+    <string name="media_chain_custom">Custom</string>
+    <string name="media_chain_use_default">Use default</string>
+    <string name="media_chain_edit_custom">Edit custom mapping</string>
+    <string name="media_chain_custom_summary">Custom request chain is active.</string>
+    <string name="media_chain_custom_not_configured">Custom mode is selected, but no request chain is configured.</string>
+    <string name="media_chain_profile">Custom profile</string>
+    <string name="media_chain_select_profile">Select a profile</string>
+    <string name="media_chain_profile_name">Profile name</string>
+    <string name="media_chain_profile_help">Profiles are reusable across selected models. The active profile is used only in Custom mode.</string>
+    <string name="media_chain_add_profile">Add profile</string>
+    <string name="media_chain_remove_profile">Remove profile</string>
+    <string name="media_chain_profile_name_required">A custom profile name is required.</string>
+    <string name="media_chain_profiles_help">Choose a reusable request profile. The selected profile is used only in Custom mode.</string>
+    <string name="media_chain_profiles">Profiles</string>
+    <string name="media_chain_profile_step_count">%1$d request step(s)</string>
+    <string name="media_chain_active_profile">Active profile</string>
+    <string name="media_chain_edit_profile">Edit profile</string>
+    <string name="media_chain_edit_final_response">Edit mapping</string>
+    <string name="common_done">Done</string>
+    <string name="media_chain_default_settings_hint">Default tool parameters and their visibility are managed in Image/Video settings.</string>
+    <string name="media_chain_open_default_settings">Open Image/Video settings</string>
+    <string name="media_chain_steps">Request steps</string>
+    <string name="media_chain_steps_help">Each step runs in order. Use later steps for status polling or fetching a generated result.</string>
+    <string name="media_chain_step">Step %1$d</string>
+    <string name="media_chain_add_step">Add step</string>
+    <string name="media_chain_edit_step">Edit</string>
+    <string name="media_chain_remove_step">Remove step</string>
+    <string name="media_chain_one_step_required">At least one request step is required.</string>
+    <string name="media_chain_editing_step">Edit step %1$d</string>
+    <string name="media_chain_endpoint">Endpoint path</string>
+    <string name="media_chain_endpoint_help">Provider-relative path, for example /images/generations. Full URLs are not allowed.</string>
+    <string name="media_chain_method">HTTP method</string>
+    <string name="media_chain_headers">Headers</string>
+    <string name="media_chain_no_headers">No additional headers.</string>
+    <string name="media_chain_headers_help">When an API token is configured, Authorization: Bearer {{api_token}} is added by default. Add an Authorization header here to override it.</string>
+    <string name="media_chain_request_mode">Request mode</string>
+    <string name="media_chain_form">Form</string>
+    <string name="media_chain_json">JSON</string>
+    <string name="media_chain_file_transport">File transport</string>
+    <string name="media_chain_file">File</string>
+    <string name="media_chain_base64">Base64</string>
+    <string name="media_chain_request_body">JSON editor body</string>
+    <string name="media_chain_request_body_help">Use {{prompt}}, {{model}}, {{api_token}}, {{input_files}}, {{input_file[0]}} or {{response_1.path}} as values.</string>
+    <string name="media_chain_response_type">Response type</string>
+    <string name="media_chain_json_response">JSON response for this intermediate step</string>
+    <string name="media_chain_octet_stream">Binary file</string>
+    <string name="media_chain_observer">Response observer</string>
+    <string name="media_chain_status_path">Status JSON path (optional)</string>
+    <string name="media_chain_status_path_help">Leave empty when this step is already the final response.</string>
+    <string name="media_chain_ready_values">Ready values</string>
+    <string name="media_chain_pending_values">Pending values</string>
+    <string name="media_chain_error_values">Error values</string>
+    <string name="media_chain_values_help">Comma-separated, case-insensitive status values.</string>
+    <string name="media_chain_retry_policy">Bounded retry policy</string>
+    <string name="media_chain_max_attempts">Max attempts</string>
+    <string name="media_chain_delay_millis">Delay (ms)</string>
+    <string name="media_chain_max_wait_millis">Max wait (ms)</string>
+    <string name="media_chain_final_response">Final response</string>
+    <string name="media_chain_media_path">Media path in JSON response</string>
+    <string name="media_chain_media_path_help">Use dot paths and array selectors, for example data[0].url.</string>
+    <string name="media_chain_value_kind">Media value format</string>
+    <string name="media_chain_link">Link</string>
+    <string name="media_chain_invalid_configuration">Complete the required fields, use valid JSON, and keep retry values within their bounds. Raw media responses cannot use a JSON status path.</string>
+    <string name="media_chain_media_path_required">A JSON final response requires a media path.</string>
+    <string name="media_chain_discard_title">Discard changes?</string>
+    <string name="media_chain_discard_message">Your media request chain changes have not been saved.</string>
+    <string name="media_chain_keep_editing">Keep editing</string>
     <string name="speech_voice_optional_hint">Voice is optional, but this service may not work without a voice.</string>
     <string name="speech_voice_instructions_help">Tone, accent, emotion%1$s.</string>
     <string name="speech_gemini_audio_description">Gemini returns PCM audio, converted to WAV for playback.</string>

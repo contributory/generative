@@ -128,6 +128,7 @@ import org.starfall.multigateway.integrations.remote.REMOTE_TERMINAL_UI_PREFEREN
 import org.starfall.multigateway.integrations.remote.RemoteSecretRequest
 import org.starfall.multigateway.integrations.remote.RemoteTerminal
 import org.starfall.multigateway.features.machines.shared.ui.RemoteTerminalBridge
+import org.starfall.multigateway.features.machines.shared.ui.RemoteMouseTouchListener
 import org.starfall.multigateway.features.machines.shared.ui.RemoteTextField
 import org.starfall.multigateway.integrations.remote.remoteTerminalInputModePreferenceKey
 import org.starfall.multigateway.shared.model.RemoteMachine
@@ -162,7 +163,11 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
         TerminalInputMode.LOCAL.name -> TerminalInputMode.LOCAL
         else -> TerminalInputMode.REMOTE
     }
-    val bridge = remember(machine.id) { RemoteTerminalBridge(context, initialInputMode) }
+    val bridge = remember(machine.id) {
+        RemoteTerminalBridge(context, initialInputMode).also {
+            it.forceMouse = terminalPrefs.getBoolean("force_mouse", false)
+        }
+    }
     SideEffect {
         bridge.onZoomStep = { increase ->
             fontDp = (fontDp + if (increase) 1 else -1).coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP)
@@ -303,6 +308,22 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
                                     inputModeMenuExpanded = false
                                 }
                             )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        stringResource(R.string.remote_machine_terminal_force_mouse),
+                                        color = Color.White
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (bridge.forceMouse) Text("✓", color = Color(0xFF9CCC65))
+                                },
+                                onClick = {
+                                    bridge.forceMouse = !bridge.forceMouse
+                                    terminalPrefs.edit().putBoolean("force_mouse", bridge.forceMouse).apply()
+                                    inputModeMenuExpanded = false
+                                }
+                            )
                         }
                     }
                 },
@@ -323,6 +344,7 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
                     AndroidView(
                         factory = { viewContext ->
                             val view = TerminalView(viewContext, null)
+                            view.setOnTouchListener(RemoteMouseTouchListener(viewContext, view, bridge))
                             view.isFocusable = true
                             view.isFocusableInTouchMode = true
                             view.setBackgroundColor(android.graphics.Color.rgb(16, 18, 20))

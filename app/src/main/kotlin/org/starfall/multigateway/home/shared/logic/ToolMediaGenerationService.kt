@@ -13,11 +13,12 @@ import org.starfall.multigateway.shared.helpers.media.MAX_MEDIA_INPUT_BYTES
 import org.starfall.multigateway.shared.helpers.media.MAX_MEDIA_INPUT_VIDEO_BYTES
 import org.starfall.multigateway.shared.helpers.media.detectInputMediaMime
 import org.starfall.multigateway.integrations.media.SystemMediaTools
-import org.starfall.multigateway.shared.helpers.media.isAgnesProvider
 import org.starfall.multigateway.integrations.modelapis.AiService
 import org.starfall.multigateway.shared.model.ToolActivity
 import org.starfall.multigateway.shared.model.generation.GenerationEvent
 import org.starfall.multigateway.shared.model.language.ModelType
+import org.starfall.multigateway.shared.model.media.MediaRequestChain
+import org.starfall.multigateway.shared.model.media.MediaGenerationMode
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.networking.ToolHttp
 import org.starfall.multigateway.shared.networking.obj
@@ -40,11 +41,14 @@ internal class ToolMediaGenerationService(
         videoOptions: JsonObject,
         inputImageUrl: String?,
         inputVideo: String? = null,
-        inputVideoUrl: String? = null
+        inputVideoUrl: String? = null,
+        generationMode: MediaGenerationMode = MediaGenerationMode.DEFAULT,
+        requestChain: MediaRequestChain? = null
     ): JsonObject = SystemMediaTools(http).generate(
         name, provider, model, prompt, imageOptions,
         inputImage, inputImages, videoOptions = videoOptions, inputImageUrl = inputImageUrl,
-        inputVideo = inputVideo, inputVideoUrl = inputVideoUrl
+        inputVideo = inputVideo, inputVideoUrl = inputVideoUrl,
+        generationMode = generationMode, requestChain = requestChain
     )
 
     fun generateMedia(
@@ -54,7 +58,9 @@ internal class ToolMediaGenerationService(
         prompt: String,
         imageOptions: JsonObject = obj(),
         attachments: List<String> = emptyList(),
-        videoOptions: JsonObject = obj()
+        videoOptions: JsonObject = obj(),
+        generationMode: MediaGenerationMode = MediaGenerationMode.DEFAULT,
+        requestChain: MediaRequestChain? = null
     ): Flow<GenerationEvent> = flow {
         require(kind == ModelType.IMAGE_GENERATION || kind == ModelType.VIDEO_GENERATION)
         val name = if (kind == ModelType.IMAGE_GENERATION) "generate_image" else "generate_video"
@@ -68,7 +74,7 @@ internal class ToolMediaGenerationService(
             require(attachments.size <= 16) { "Image generation accepts at most 16 reference images." }
             val maxBytes = when {
                 kind == ModelType.VIDEO_GENERATION -> MAX_MEDIA_INPUT_VIDEO_BYTES
-                provider.type.isOpenAi && !isAgnesProvider(provider) -> 50L * 1024 * 1024 - 1
+                provider.type.isOpenAi -> 50L * 1024 * 1024 - 1
                 else -> MAX_MEDIA_INPUT_BYTES
             }
             val files = http.requireFiles()
@@ -91,7 +97,9 @@ internal class ToolMediaGenerationService(
                 inputImage = if (kind == ModelType.VIDEO_GENERATION && !referenceIsVideo) inputs.singleOrNull() else null,
                 inputImages = if (kind == ModelType.IMAGE_GENERATION) inputs else emptyList(),
                 videoOptions = videoOptions,
-                inputVideo = if (referenceIsVideo) inputs.single() else null)
+                inputVideo = if (referenceIsVideo) inputs.single() else null,
+                generationMode = generationMode,
+                requestChain = requestChain)
             val summary = summarizeToolResult(result, http.requireFiles())
             emit(GenerationEvent.Tool(activity.copy(status = "success", summary = summary.preview,
                 files = summary.files, response = summary.content.toString())))

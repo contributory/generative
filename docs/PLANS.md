@@ -1,23 +1,26 @@
 # Plan: Configurable Image/Video Generation API Mapping
 
-**Status:** design only; no implementation starts until this plan is approved.
+**Status:** implementation started; the request-chain design below is the implementation contract.
 
 ## Goal
 
-Remove all Agnes-specific behavior from the default image/video tools. Replace it with one provider-agnostic request/response mapper in:
+Remove all Agnes-specific behavior from the default image/video tools. Preserve the existing standard provider integrations as the Default mode, and add a provider-agnostic request/response mapper as the Custom mode in:
 
 `Default & Tools → Image/Video Generation`
 
 The configured provider base URL and secret source remain the provider/API connection responsibility. Each request step adds its own endpoint path (for example, `/video/create`), request method, and editable headers.
 
-The only editor is an embedded JSON Editor. A mode switch controls whether its mapping is serialized as a multipart form or a JSON body.
+The Default mode continues to use the existing image/video settings and standard provider API implementations. Parameter-visibility switches belong in that Image/Video settings screen, not in the separate Tools parameter list. The Custom mode uses reusable profiles with an embedded JSON Editor; a mode switch controls whether the active profile mapping is serialized as a multipart form or a JSON body.
 
 ## User-facing configuration
 
 ```text
 Default & Tools
 └── Image/Video Generation
-    ├── Request chain
+    ├── Mode: Default | Custom
+    │   ├── Default: standard API + parameter visibility in Image/Video settings
+    │   └── Custom: select or edit a reusable profile
+    ├── Request chain profile editor (Custom mode only)
     │   ├── Step 1: endpoint + method + headers + JSON Editor
     │   ├── Step 2..N: endpoint + method + headers + JSON Editor
     │   ├── Mode per step: Form | JSON
@@ -171,16 +174,19 @@ Local generated media ──► chat result
 ## Implementation slices
 
 1. Delete Agnes detection, Agnes-only request builders, validations, URL rules, and response handling.
-2. Add persisted request-chain, per-step header, response-observer, retry, and final media-mapping models with safe defaults and migration support.
-3. Add a compact chain overview to Default & Tools and edit each request/response/retry configuration in dialogs or secondary screens to avoid overflow.
-4. Implement typed variable substitution for global variables (including `{{api_token}}`) and `{{response_n.path}}`, default/overridden authorization headers, form/JSON request construction, endpoint resolution, file/base64 conversion, and validation errors.
-5. Implement response observation, ready/pending/error classification, bounded delay/attempt/time-window retries, and clear API error propagation.
-6. Implement final JSON-path extraction and direct image/video/octet-stream decoding.
-7. Add tests for indexed/list files, both transports, multi-step response references, status classification, retry limits, all response forms, wildcard paths, invalid templates, and missing media values.
+2. Preserve the standard Default provider execution path, move Default parameter-visibility switches into Image/Video settings, and add an explicit persisted Default/Custom mode.
+3. Add persisted reusable Custom profiles (not keyed by model), with per-step header, response-observer, retry, and final media-mapping models with safe defaults and migration support.
+4. Add a compact mode-aware overview to Default & Tools and edit each request/response/retry configuration in dialogs or secondary screens to avoid overflow.
+5. Implement typed variable substitution for global variables (including `{{api_token}}`) and `{{response_n.path}}`, default/overridden authorization headers, form/JSON request construction, endpoint resolution, file/base64 conversion, and validation errors.
+6. Implement response observation, ready/pending/error classification, bounded delay/attempt/time-window retries, and clear API error propagation.
+7. Implement final JSON-path extraction and direct image/video/octet-stream decoding.
+8. Add tests for default/custom routing, indexed/list files, both transports, multi-step response references, status classification, retry limits, all response forms, wildcard paths, invalid templates, and missing media values.
 
 ## Acceptance criteria
 
 - No image/video execution path depends on the provider being named Agnes.
+- Default mode continues to use the existing standard provider API path; Custom mode is the only mode that runs the request-chain executor.
+- Custom request chains are saved as reusable named profiles and remain available when the selected model changes.
 - A user can send a prompt and zero or more input files through either Form or JSON.
 - A user can choose file or base64 for each mapped file value, including list and indexed variables.
 - A user can configure the endpoint and method for every request step, including a create request and a later result request.

@@ -46,6 +46,7 @@ import org.starfall.multigateway.shared.model.auth.editMethod
 import org.starfall.multigateway.shared.model.language.DiscoveredModel
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.provider.ModelProvider
+import org.starfall.multigateway.shared.model.media.MediaRequestProfile
 import org.starfall.multigateway.shared.model.provider.ProviderOAuthAccount
 import org.starfall.multigateway.shared.model.provider.oauthAccountsWithCurrent
 import org.starfall.multigateway.shared.model.provider.oauthCredentialId
@@ -76,7 +77,9 @@ fun ProviderEditorScreen(
     onTestConnection: (suspend (ModelProvider, String) -> Result<String>)? = null,
     onFetchModels: (suspend (ModelProvider) -> List<DiscoveredModel>)? = null,
     onSaveModels: (String, Map<String, ModelConfiguration>) -> Unit, onReorderModels: (String, List<String>) -> Unit,
-    onDismiss: () -> Unit, onSave: (ModelProvider) -> Unit
+    onDismiss: () -> Unit, onSave: (ModelProvider) -> Unit,
+    customImageMediaProfiles: Map<String, MediaRequestProfile> = emptyMap(),
+    customVideoMediaProfiles: Map<String, MediaRequestProfile> = emptyMap()
 ) {
     val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf(initialProvider.name) }
@@ -204,6 +207,8 @@ fun ProviderEditorScreen(
     SlideScreenContent(editor = editingModel, label = "Model editor") { modelId ->
         if (modelId != null) key(modelId) {
             ModelEditorScreen(initialProvider.copy(type = type, config = requestConfig()), modelId, models.keys,
+                customImageMediaProfiles = customImageMediaProfiles,
+                customVideoMediaProfiles = customVideoMediaProfiles,
                 onSave = { id, config -> memory.remember(id, config); updateModels((models - modelId) + (id to config)); editingModel = null },
                 onBack = { editingModel = null })
         } else {

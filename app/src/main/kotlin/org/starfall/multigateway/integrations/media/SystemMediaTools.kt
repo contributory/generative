@@ -1,8 +1,9 @@
 package org.starfall.multigateway.integrations.media
 
-import org.starfall.multigateway.shared.model.media.VideoApi
 import org.starfall.multigateway.shared.model.media.MediaInputImage
 import org.starfall.multigateway.shared.model.media.MediaInputVideo
+import org.starfall.multigateway.shared.model.media.MediaGenerationMode
+import org.starfall.multigateway.shared.model.media.MediaRequestChain
 import org.starfall.multigateway.shared.helpers.media.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
@@ -15,16 +16,24 @@ import org.starfall.multigateway.shared.networking.str
 import org.starfall.multigateway.shared.networking.text
 
 class SystemMediaTools(private val http: ToolHttp) {
-    suspend fun generate(kind: String, provider: ModelProvider, model: String, prompt: String, imageOptions: JsonObject = obj(), inputImage: String? = null, inputImages: List<String> = emptyList(), videoOptions: JsonObject = obj(), inputImageUrl: String? = null, inputVideo: String? = null, inputVideoUrl: String? = null): JsonObject = withContext(Dispatchers.IO) {
+    suspend fun generate(kind: String, provider: ModelProvider, model: String, prompt: String, imageOptions: JsonObject = obj(), inputImage: String? = null, inputImages: List<String> = emptyList(), videoOptions: JsonObject = obj(), inputImageUrl: String? = null, inputVideo: String? = null, inputVideoUrl: String? = null, generationMode: MediaGenerationMode = MediaGenerationMode.DEFAULT, requestChain: MediaRequestChain? = null): JsonObject = withContext(Dispatchers.IO) {
         val files = http.requireFiles()
         require(kind in setOf("generate_image", "generate_video")) { "Unsupported media tool" }
         require(prompt.isNotBlank() && prompt.length <= 32000) { "A prompt of 1–32000 characters is required" }
+        if (generationMode == MediaGenerationMode.CUSTOM) {
+            val customChain = requestChain ?: error("Custom media generation is selected, but no request chain is configured.")
+            require(inputImageUrl == null && inputVideoUrl == null) {
+                "Configured request chains use attached files; map URL inputs explicitly in a future request variable."
+            }
+            val references = if (kind == "generate_image") inputImages else listOfNotNull(inputImage, inputVideo)
+            return@withContext MediaRequestChainExecutor(http).execute(customChain, provider, model, prompt, references)
+        }
         require(inputImages.isEmpty() || kind == "generate_image") { "input_images is only supported by generate_image. Video generation accepts one input_image." }
         require(inputImages.size <= 16) { "Image generation accepts at most 16 reference images." }
         if (inputImages.isNotEmpty()) require(provider.type.isOpenAi || provider.type == ModelApiType.GOOGLE) {
             "This provider does not support image editing. Select an OpenAI-compatible or Gemini image provider."
         }
-        val referenceImages = inputImages.map { resolveInputImage(it, files, if (provider.type.isOpenAi && !isAgnesProvider(provider)) 50L * 1024 * 1024 - 1 else MAX_MEDIA_INPUT_BYTES) }
+        val referenceImages = inputImages.map { resolveInputImage(it, files, if (provider.type.isOpenAi) 50L * 1024 * 1024 - 1 else MAX_MEDIA_INPUT_BYTES) }
         val image = inputImage?.let {
             require(kind == "generate_video") { "input_image is only supported by generate_video." }
             require(provider.type.isOpenAi || provider.type == ModelApiType.GOOGLE) {
@@ -45,9 +54,7 @@ class SystemMediaTools(private val http: ToolHttp) {
         val base = providerBase(provider)
         val response = when(provider.type) {
             ModelApiType.OPENAI, ModelApiType.OPENAI_RESPONSES -> if(kind == "generate_image") {
-                if (isAgnesProvider(provider)) {
-                    http.postMedia("${agnesApiBase(provider)}/images/generations", agnesImageRequest(model, prompt, imageOptions, referenceImages), provider)
-                } else if (referenceImages.isEmpty()) {
+                if (referenceImages.isEmpty()) {
                     http.postMedia("$base/images/generations", imageGenerationRequest(provider.type, model, prompt, imageOptions), provider)
                 } else {
                     http.postMedia("$base/images/edits", openAiImageEditRequest(model, prompt, imageOptions, referenceImages), provider)

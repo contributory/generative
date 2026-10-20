@@ -99,8 +99,6 @@
     <string name="mcp_tool_list_not_cached_description">Die Tool-Liste ist nicht zwischengespeichert. Speichere oder aktualisiere diesen Server zuerst in MCP Manage.</string>
     <string name="mcp_no_globally_enabled_tools_description">Keine global aktivierten Tools verfügbar.</string>
     <string name="image_tool_model_options_description">Lege nur von diesem Modell unterstützte Optionen fest. Leere Felder verwenden die Anbieterstandards. Einstellungen werden für jedes Modell separat gespeichert.</string>
-    <string name="image_tool_agnes_reference_description">Agnes-Referenzbilder benötigen öffentliche HTTPS-URLs. Im Chat angehängte Dateien können nicht an diese API hochgeladen werden. Verwende unten Frame-URLs oder verweise in erweitertem JSON auf Medien.</string>
-    <string name="image_tool_agnes_edit_description">Agnes unterstützt angehängte Referenzbilder. Öffentliche Referenzbild-URLs können als extra_body.image im erweiterten JSON angegeben werden. Wähle zum Bearbeiten unten das Antwortformat; return_base64 gilt für Text-zu-Bild.</string>
     <string name="image_tool_request_body_help">Verschachtelte Objekte und Anbietererweiterungen werden unterstützt. Modell und Prompt stammen aus dem Chat.</string>
     <string name="image_tool_json_invalid_hint">Korrigiere das JSON im erweiterten JSON, um das Formular zu verwenden.</string>
     <string name="image_tool_discard_video_message">Deine Videoeinstellungen wurden nicht gespeichert.</string>

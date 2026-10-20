@@ -2,7 +2,6 @@ package org.starfall.multigateway.shared.helpers.media
 
 import kotlinx.serialization.json.*
 import org.starfall.multigateway.shared.model.media.GeneratedMediaReference
-import org.starfall.multigateway.shared.model.media.VideoApi
 
 /** Extract output file references and remote URLs without performing network I/O. */
 internal fun generatedMediaReferences(response: JsonElement, baseUrl: String): List<GeneratedMediaReference> {
@@ -34,9 +33,9 @@ internal fun generatedMediaReferences(response: JsonElement, baseUrl: String): L
 }
 
 /** Provider video-operation response fields are parsed here, away from the polling client. */
-internal fun videoJobId(job: JsonObject, api: VideoApi): String {
+internal fun videoJobId(job: JsonObject): String {
     fun string(key: String) = (job[key] as? JsonPrimitive)?.contentOrNull.orEmpty()
-    return if (api == VideoApi.AGNES) string("video_id") else string("id").ifBlank { string("task_id") }
+    return string("id").ifBlank { string("task_id") }
 }
 
 internal fun isTerminalVideoJob(job: JsonObject): Boolean =

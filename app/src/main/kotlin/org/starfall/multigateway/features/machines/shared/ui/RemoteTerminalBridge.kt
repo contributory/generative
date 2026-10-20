@@ -48,6 +48,11 @@ internal class RemoteTerminalBridge(
 
     /** Called when the user pinches: true = bigger text, false = smaller text. */
     var onZoomStep: (Boolean) -> Unit = {}
+    /**
+     * When on, taps and drags inside full-screen apps are sent to the server as mouse reports
+     * (tap = left click, drag = wheel) even if the app never asked for mouse tracking.
+     */
+    var forceMouse by mutableStateOf(false)
     var ctrlActive by mutableStateOf(false)
     var altActive by mutableStateOf(false)
     var inputMode by mutableStateOf(initialInputMode)
@@ -236,8 +241,30 @@ internal class RemoteTerminalBridge(
             pending.write(bytes)
             return
         }
+        val terminalView = view
+        // TerminalView.onScreenUpdated() snaps back to the bottom on every update, so while a command
+        // kept printing (build, tail -f, ...) the user could never scroll up. When the user has
+        // scrolled back, keep the same lines on screen instead: shift the top row by the number of
+        // rows that scrolled into the history and just redraw.
+        val scrolledBack = terminalView != null && terminalView.topRow < 0 && !emulator.isAlternateBufferActive
         emulator.append(bytes, bytes.size)
-        view?.onScreenUpdated()
+        if (scrolledBack && terminalView != null) {
+            val history = emulator.screen.activeTranscriptRows
+            terminalView.topRow = (terminalView.topRow - emulator.scrollCounter).coerceIn(-history, 0)
+            emulator.clearScrollCounter()
+            terminalView.invalidate()
+        } else {
+            terminalView?.onScreenUpdated()
+        }
+    }
+
+    /** Jumps back to the live screen when the user types, like any terminal does. */
+    private fun snapToBottom() {
+        val terminalView = view ?: return
+        if (terminalView.topRow != 0) {
+            terminalView.topRow = 0
+            terminalView.invalidate()
+        }
     }
 
     fun close() {
@@ -281,12 +308,19 @@ internal class RemoteTerminalBridge(
         }
     }
 
+    /** Sends an xterm SGR (1006) mouse report; [column] and [row] are 1-based cells. */
+    fun sendMouseReport(button: Int, column: Int, row: Int, pressed: Boolean) {
+        sendRemote("\u001b[<$button;$column;$row${if (pressed) 'M' else 'm'}".toByteArray(Charsets.US_ASCII))
+    }
+
     private fun sendText(value: String) {
+        snapToBottom()
         if (inputMode == TerminalInputMode.LOCAL) insertLocalText(value)
         else sendRemote(value.toByteArray(Charsets.UTF_8))
     }
 
     private fun sendCodePoint(codePoint: Int, ctrl: Boolean, alt: Boolean) {
+        snapToBottom()
         if (inputMode == TerminalInputMode.LOCAL) {
             if (ctrl) {
                 handleLocalControl(codePoint, alt)
@@ -337,6 +371,7 @@ internal class RemoteTerminalBridge(
 
     /** Sends an escape sequence, adding xterm modifier parameters / application cursor mode. */
     fun sendSpecial(sequence: String, ctrl: Boolean = ctrlActive, alt: Boolean = altActive) {
+        snapToBottom()
         if (inputMode == TerminalInputMode.LOCAL && sequence in setOf("\r", "\n")) {
             submitLocalInput()
             clearModifiers()
@@ -505,5 +540,74 @@ internal class RemoteTerminalBridge(
             flushPending()
         }
         reportSize()
+    }
+}
+
+/**
+ * Touch listener for TerminalView (a final class, so it cannot be subclassed). With
+ * [RemoteTerminalBridge.forceMouse] on it turns single-finger gestures into mouse reports sent
+ * straight to the server: tap = left click, drag = mouse wheel. It only steps in for full-screen
+ * apps (alternate screen) or when the app already tracks the mouse; a plain shell keeps its local
+ * scrollback. Pinch and text selection still go to TerminalView's own handling.
+ */
+internal class RemoteMouseTouchListener(
+    context: android.content.Context,
+    private val view: TerminalView,
+    private val bridge: RemoteTerminalBridge
+) : android.view.View.OnTouchListener {
+    private var scrollRemainder = 0f
+
+    private val detector = android.view.GestureDetector(
+        context,
+        object : android.view.GestureDetector.SimpleOnGestureListener() {
+            override fun onDown(e: MotionEvent) = true
+
+            override fun onSingleTapUp(e: MotionEvent): Boolean {
+                val (column, row) = cellAt(e)
+                bridge.sendMouseReport(MOUSE_LEFT, column, row, pressed = true)
+                bridge.sendMouseReport(MOUSE_LEFT, column, row, pressed = false)
+                bridge.onSingleTapUp(e)
+                return true
+            }
+
+            override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
+                val rows = view.mEmulator?.mRows?.takeIf { it > 0 } ?: return true
+                val lineHeight = view.height.toFloat() / rows
+                scrollRemainder += distanceY
+                val steps = (scrollRemainder / lineHeight).toInt()
+                if (steps == 0) return true
+                scrollRemainder -= steps * lineHeight
+                val (column, row) = cellAt(e2)
+                // Finger moving up (positive distance) scrolls the content up, i.e. wheel down.
+                val button = if (steps > 0) MOUSE_WHEEL_DOWN else MOUSE_WHEEL_UP
+                repeat(kotlin.math.abs(steps).coerceAtMost(MAX_WHEEL_STEPS)) {
+                    bridge.sendMouseReport(button, column, row, pressed = true)
+                }
+                return true
+            }
+        }
+    ).apply { setIsLongpressEnabled(false) }
+
+    private fun cellAt(event: MotionEvent): Pair<Int, Int> {
+        val cell = view.getColumnAndRow(event, false)
+        return (cell[0] + 1) to (cell[1] + 1)
+    }
+
+    override fun onTouch(v: android.view.View, event: MotionEvent): Boolean {
+        val emulator = view.mEmulator
+        val takeOver = bridge.forceMouse && emulator != null && !view.isSelectingText &&
+            (emulator.isAlternateBufferActive || emulator.isMouseTrackingActive) &&
+            event.pointerCount == 1 && event.actionMasked != MotionEvent.ACTION_POINTER_DOWN
+        if (!takeOver) return false
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) scrollRemainder = 0f
+        detector.onTouchEvent(event)
+        return true
+    }
+
+    private companion object {
+        const val MOUSE_LEFT = 0
+        const val MOUSE_WHEEL_UP = 64
+        const val MOUSE_WHEEL_DOWN = 65
+        const val MAX_WHEEL_STEPS = 10
     }
 }

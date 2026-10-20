@@ -99,8 +99,6 @@
     <string name="mcp_tool_list_not_cached_description">ツール一覧がキャッシュされていません。先に MCP Manage でこのサーバーを保存または更新してください。</string>
     <string name="mcp_no_globally_enabled_tools_description">全体で有効になっているツールはありません。</string>
     <string name="image_tool_model_options_description">このモデルが対応するオプションのみ設定してください。空欄にはプロバイダーのデフォルトを使用します。設定はモデルごとに保存されます。</string>
-    <string name="image_tool_agnes_reference_description">Agnes の参照画像には公開 HTTPS URL が必要です。チャットに添付したファイルはこの API にアップロードできません。下のフレーム URL を使うか、高度な JSON でメディアを参照してください。</string>
-    <string name="image_tool_agnes_edit_description">Agnes は添付された参照画像に対応しています。公開 URL は高度な JSON の extra_body.image に指定できます。編集する場合は下で応答形式を選択してください。return_base64 はテキストから画像への生成に適用されます。</string>
     <string name="image_tool_request_body_help">ネストしたオブジェクトとプロバイダー拡張に対応しています。モデルとプロンプトはチャットから取得します。</string>
     <string name="image_tool_json_invalid_hint">フォームを使用するには、高度な JSON の JSON を修正してください。</string>
     <string name="image_tool_discard_video_message">動画の設定は保存されていません。</string>

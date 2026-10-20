@@ -23,11 +23,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.starfall.multigateway.R
 import androidx.compose.ui.res.stringResource
-import org.starfall.multigateway.shared.helpers.media.videoOptionFields
 import org.starfall.multigateway.shared.ui.layout.SettingsCard
 import org.starfall.multigateway.shared.model.SystemToolConfig
 import org.starfall.multigateway.shared.model.language.ModelConfiguration
-import org.starfall.multigateway.shared.model.language.ModelType
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.ui.sheets.AppBottomSheet
 import org.starfall.multigateway.shared.ui.icons.EntityIcon
@@ -44,7 +42,6 @@ fun DefaultModelsTab(
     providers: List<ModelProvider>,
     settings: ToolSettings,
     onChooseModel: (String) -> Unit,
-    onOpenMediaSettings: (String) -> Unit,
     onEditPrompt: (String) -> Unit
 ) {
     LazyColumn(
@@ -59,15 +56,16 @@ fun DefaultModelsTab(
             val config = settings.system[name] ?: SystemToolConfig()
             val provider = providers.find { it.id == config.providerId }
             val model = provider?.config?.modelConfigs?.get(config.modelId)
-            val available = systemMediaToolAvailable(name, config, providers)
+            val mode = model?.mediaApiType
+                ?: if (name == "generate_image") config.imageGenerationMode else config.videoGenerationMode
+            val available = systemMediaToolAvailable(name, config, providers, mode)
             MediaDefaultModelCard(
                 name = name,
-                config = config,
+                modelId = config.modelId,
                 provider = provider,
                 model = model,
                 available = available,
-                onChooseModel = { onChooseModel(name) },
-                onOpenSettings = { onOpenMediaSettings(name) }
+                onChooseModel = { onChooseModel(name) }
             )
         }
 
@@ -154,12 +152,11 @@ private fun DefaultModelSelector(
 @Composable
 private fun MediaDefaultModelCard(
     name: String,
-    config: SystemToolConfig,
+    modelId: String,
     provider: ModelProvider?,
     model: ModelConfiguration?,
     available: Boolean,
-    onChooseModel: () -> Unit,
-    onOpenSettings: () -> Unit
+    onChooseModel: () -> Unit
 ) {
     val image = name == "generate_image"
     val title = stringResource(if (image) R.string.tool_image_generation_title else R.string.tool_video_generation_title)
@@ -168,9 +165,6 @@ private fun MediaDefaultModelCard(
     } else {
         stringResource(R.string.tool_generate_video_description)
     }
-    val modelType = if (image) ModelType.IMAGE_GENERATION else ModelType.VIDEO_GENERATION
-    val settingsAvailable = provider != null && model?.modelType == modelType &&
-        (image || videoOptionFields(provider, config.modelId).isNotEmpty() || config.videoOptions.isNotEmpty())
 
     SettingsCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -199,7 +193,7 @@ private fun MediaDefaultModelCard(
             }
         }
         Spacer(Modifier.height(14.dp))
-        DefaultModelSelector(provider, config.modelId, model, onClick = onChooseModel)
+        DefaultModelSelector(provider, modelId, model, onClick = onChooseModel)
         if (!available) {
             Text(
                 stringResource(R.string.tool_select_compatible_model_hint),
@@ -207,14 +201,6 @@ private fun MediaDefaultModelCard(
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(top = 8.dp)
             )
-        }
-        Row(
-            Modifier.fillMaxWidth().padding(top = 4.dp),
-            horizontalArrangement = Arrangement.End
-        ) {
-            TextButton(enabled = settingsAvailable, onClick = onOpenSettings) {
-                Text(stringResource(if (image) R.string.tool_image_settings else R.string.tool_video_settings))
-            }
         }
     }
 }

@@ -99,8 +99,6 @@
     <string name="mcp_tool_list_not_cached_description">La liste des outils n’est pas en cache. Enregistrez ou actualisez d’abord ce serveur dans MCP Manage.</string>
     <string name="mcp_no_globally_enabled_tools_description">Aucun outil activé globalement n’est disponible.</string>
     <string name="image_tool_model_options_description">Ne définissez que les options prises en charge par ce modèle. Les champs vides utilisent les valeurs par défaut du fournisseur. Les réglages sont enregistrés séparément pour chaque modèle.</string>
-    <string name="image_tool_agnes_reference_description">Les images de référence Agnes nécessitent des URL HTTPS publiques. Les fichiers joints dans le chat ne peuvent pas être envoyés à cette API. Utilisez les URL d’images ci-dessous ou référencez des médias dans le JSON avancé.</string>
-    <string name="image_tool_agnes_edit_description">Agnes accepte les images de référence jointes. Des URL publiques peuvent être fournies dans extra_body.image du JSON avancé. Pour modifier une image, choisissez le format de réponse ci-dessous ; return_base64 s’applique au texte vers image.</string>
     <string name="image_tool_request_body_help">Les objets imbriqués et les extensions du fournisseur sont pris en charge. Le modèle et le prompt viennent du chat.</string>
     <string name="image_tool_json_invalid_hint">Corrigez le JSON dans le JSON avancé pour utiliser le formulaire.</string>
     <string name="image_tool_discard_video_message">Vos réglages vidéo n’ont pas été enregistrés.</string>

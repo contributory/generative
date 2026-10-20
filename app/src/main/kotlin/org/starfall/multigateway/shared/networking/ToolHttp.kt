@@ -61,7 +61,12 @@ class ToolHttp(
             } finally { cancelRead.cancel() }
         }
     }
-    fun request(url: String, provider: ModelProvider? = null): Request.Builder {
+    fun request(
+        url: String,
+        provider: ModelProvider? = null,
+        extraHeaders: Map<String, String> = emptyMap(),
+        defaultBearerToken: String? = null
+    ): Request.Builder {
         provider?.requireNetworkCredentials()
         val builder = Request.Builder().url(url).header("Accept", "application/json")
         provider?.let { p ->
@@ -72,6 +77,14 @@ class ToolHttp(
             }
             if (p.type == ModelApiType.ANTHROPIC) builder.header("anthropic-version", "2023-06-01")
             p.config.headers.forEach { (k,v) -> builder.header(k,v) }
+        }
+        if (!defaultBearerToken.isNullOrBlank() && extraHeaders.keys.none { it.equals("Authorization", ignoreCase = true) }) {
+            builder.header("Authorization", "Bearer ${defaultBearerToken.trim().removePrefix("Bearer ").trim()}")
+        }
+        extraHeaders.forEach { (key, value) ->
+            require(key.isNotBlank() && !key.contains('\r') && !key.contains('\n')) { "Invalid request header name." }
+            require(!value.contains('\r') && !value.contains('\n')) { "Invalid request header value." }
+            builder.header(key, value)
         }
         return builder
     }

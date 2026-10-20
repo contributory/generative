@@ -4,6 +4,7 @@ import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import org.starfall.multigateway.shared.model.media.MediaGenerationMode
 
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
@@ -46,7 +47,11 @@ data class ModelConfiguration(
     val icon: String? = null,
     @SerialName("model_json")
     @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val modelJson: kotlinx.serialization.json.JsonObject = kotlinx.serialization.json.JsonObject(emptyMap())
+    val modelJson: kotlinx.serialization.json.JsonObject = kotlinx.serialization.json.JsonObject(emptyMap()),
+    /** API integration selected for image/video models; omitted legacy values use the standard API. */
+    val mediaApiType: MediaGenerationMode = MediaGenerationMode.DEFAULT,
+    /** Reusable Custom profile selected for this image/video model. */
+    val mediaRequestProfileId: String = ""
 ) {
     val supportedModelTools: List<String>
         get() = modelTools.ifEmpty { modelToolsFromMetadata(modelJson) }

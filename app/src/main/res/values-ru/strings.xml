@@ -99,8 +99,6 @@
     <string name="mcp_tool_list_not_cached_description">Список инструментов не кэширован. Сначала сохраните или обновите этот сервер в MCP Manage.</string>
     <string name="mcp_no_globally_enabled_tools_description">Нет глобально включённых инструментов.</string>
     <string name="image_tool_model_options_description">Указывайте только параметры, поддерживаемые этой моделью. Пустые поля используют значения поставщика по умолчанию. Настройки сохраняются отдельно для каждой модели.</string>
-    <string name="image_tool_agnes_reference_description">Для эталонных изображений Agnes нужны общедоступные HTTPS-URL. Файлы, прикреплённые в чате, нельзя загрузить в этот API. Используйте URL кадров ниже или укажите медиа в расширенном JSON.</string>
-    <string name="image_tool_agnes_edit_description">Agnes поддерживает прикреплённые эталонные изображения. Общедоступные URL можно указать в extra_body.image расширенного JSON. Для редактирования выберите формат ответа ниже; return_base64 применяется к преобразованию текста в изображение.</string>
     <string name="image_tool_request_body_help">Поддерживаются вложенные объекты и расширения поставщика. Модель и промпт берутся из чата.</string>
     <string name="image_tool_json_invalid_hint">Исправьте JSON в расширенном JSON, чтобы использовать форму.</string>
     <string name="image_tool_discard_video_message">Настройки видео не сохранены.</string>

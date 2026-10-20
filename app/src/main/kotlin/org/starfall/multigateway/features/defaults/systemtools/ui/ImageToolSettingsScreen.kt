@@ -23,38 +23,36 @@ import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.multigateway.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import org.starfall.multigateway.shared.ui.text.SelectableOutlinedTextField
-import org.starfall.multigateway.shared.helpers.media.isAgnesProvider
 import org.starfall.multigateway.shared.model.media.ImageOptionField
 import org.starfall.multigateway.shared.helpers.media.imageOptionFields
 import org.starfall.multigateway.shared.helpers.media.validateImageOptions
 import org.starfall.multigateway.shared.helpers.media.optionAt
 import org.starfall.multigateway.shared.helpers.media.withOption
-import org.starfall.multigateway.shared.model.media.VideoApi
-import org.starfall.multigateway.shared.helpers.media.videoApi
 import org.starfall.multigateway.shared.helpers.media.videoOptionFields
 import org.starfall.multigateway.shared.helpers.media.validateVideoOptions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ImageToolSettingsScreen(provider: ModelProvider, config: SystemToolConfig, onSave: (JsonObject) -> Unit, onBack: () -> Unit, video: Boolean = false) {
+fun ImageToolSettingsScreen(provider: ModelProvider, config: SystemToolConfig, onSave: (JsonObject, Set<String>) -> Unit, onBack: () -> Unit, video: Boolean = false) {
     val format = remember { Json { prettyPrint = true } }
     val savedOptions = if (video) config.videoOptions else config.imageOptions
     var draft by rememberSaveable(provider.id, config.modelId, video) { mutableStateOf(format.encodeToString(JsonObject.serializer(), savedOptions)) }
     var advanced by rememberSaveable { mutableStateOf(false) }
+    var disabledParams by remember(provider.id, config.modelId, video) { mutableStateOf(config.disabledParams) }
     var confirmDiscard by remember { mutableStateOf(false) }
     val parsed = runCatching { Json.parseToJsonElement(draft).jsonObject }.getOrNull()
     val error = if (parsed == null) stringResource(R.string.speech_json_invalid_hint) else runCatching {
         if (video) validateVideoOptions(provider, config.modelId, parsed)
         else validateImageOptions(provider, config.modelId, parsed)
     }.exceptionOrNull()?.message
-    val dirty = parsed != savedOptions
+    val dirty = parsed != savedOptions || disabledParams != config.disabledParams
     fun back() { if (dirty) confirmDiscard = true else onBack() }
     BackHandler(enabled = LocalScreenTransitionActive.current) { back() }
     Scaffold(
         topBar = { TopAppBar(
             title = { Text(if (video) "Video settings" else "Image settings") },
             navigationIcon = { IconButton(onClick = { back() }) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-            actions = { Button(enabled = error == null, onClick = { parsed?.let(onSave) }, modifier = Modifier.padding(end = 8.dp)) { Text("Save") } }
+                    actions = { Button(enabled = error == null, onClick = { parsed?.let { onSave(it, disabledParams) } }, modifier = Modifier.padding(end = 8.dp)) { Text("Save") } }
         ) }
     ) { padding ->
         LazyColumn(
@@ -67,14 +65,6 @@ fun ImageToolSettingsScreen(provider: ModelProvider, config: SystemToolConfig, o
                 Text(stringResource(R.string.image_tool_model_options_description),
                     style = MaterialTheme.typography.bodySmall)
             }
-            if (video && videoApi(provider) == VideoApi.AGNES) item {
-                Text(stringResource(R.string.image_tool_agnes_reference_description),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            if (!video && isAgnesProvider(provider)) item {
-                Text(stringResource(R.string.image_tool_agnes_edit_description),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
             item { ToolSwitch("Advanced JSON", advanced) { advanced = it } }
             if (advanced) item {
                 SelectableOutlinedTextField(
@@ -85,13 +75,23 @@ fun ImageToolSettingsScreen(provider: ModelProvider, config: SystemToolConfig, o
                 )
             } else if (parsed != null) {
                 items(if (video) videoOptionFields(provider, config.modelId) else imageOptionFields(provider, config.modelId), key = { it.path }) { field ->
-                    ImageOptionInput(field, parsed.optionAt(field.path)) { value ->
-                        draft = format.encodeToString(JsonObject.serializer(), parsed.withOption(field.path, value))
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            ImageOptionInput(field, parsed.optionAt(field.path)) { value ->
+                                draft = format.encodeToString(JsonObject.serializer(), parsed.withOption(field.path, value))
+                            }
+                        }
+                        Switch(
+                            checked = field.path !in disabledParams,
+                            onCheckedChange = { enabled ->
+                                disabledParams = if (enabled) disabledParams - field.path else disabledParams + field.path
+                            }
+                        )
                     }
                 }
             } else item { Text(stringResource(R.string.image_tool_json_invalid_hint), color = MaterialTheme.colorScheme.error) }
             error?.let { problem -> item { Text(problem, color = MaterialTheme.colorScheme.error) } }
-            item { TextButton(onClick = { draft = "{}" }) { Text("Reset this model to defaults") } }
+            item { TextButton(onClick = { draft = "{}"; disabledParams = emptySet() }) { Text("Reset this model to defaults") } }
         }
     }
     if (confirmDiscard) AlertDialog(
