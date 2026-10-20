@@ -141,7 +141,7 @@ fun ConversationSummaryBottomSheet(
                         tokensPerChunk = chunkTokens ?: 20_000
                     )
                     if (onStart(request)) onDismiss()
-                    else error = "Configure a Chat Summary text model in Default & Tools, or stop the current generation first."
+                    else error = "Configure a Chat Summary text model in Chat Options, or stop the current generation first."
                 },
                 enabled = targetValid && chunkValid,
                 modifier = Modifier.fillMaxWidth()

@@ -393,10 +393,10 @@
     <string name="settings_category_app_data_description">Conversation history &amp; application reset</string>
     <string name="settings_category_about">About</string>
     <string name="settings_category_about_description">App information, software updates &amp; license</string>
-    <string name="settings_default_models">Default</string>
-    <string name="settings_default_and_tools">Default &amp; Tools</string>
-    <string name="settings_tools_tab">Tools</string>
-    <string name="settings_default_models_description">Image, video &amp; conversation helpers</string>
+    <string name="settings_chat_options">Chat Options</string>
+    <string name="settings_chat_options_description">Conversation helpers and default chat models</string>
+    <string name="settings_tools_editor">Tools Editor</string>
+    <string name="settings_tools_editor_description">Configure media generation and file tools</string>
     <string name="settings_providers">Providers</string>
     <string name="settings_providers_description">AI providers, models &amp; API connections</string>
     <string name="settings_mcp_manage">MCP Manage</string>

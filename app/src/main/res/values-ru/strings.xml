@@ -30,7 +30,6 @@
     <string name="settings_category_app_settings_description">Внешний вид, настройки и поведение приложения</string>
     <string name="settings_category_app_data_description">История разговоров и сброс приложения</string>
     <string name="settings_category_about_description">Информация о приложении, обновления и лицензия</string>
-    <string name="settings_default_models_description">Помощники для изображений, видео и разговоров</string>
     <string name="settings_providers_description">Поставщики ИИ, модели и подключения API</string>
     <string name="settings_mcp_manage_description">Серверы инструментов и интеграции</string>
     <string name="settings_speech_services_description">Поставщики синтеза речи и голоса</string>

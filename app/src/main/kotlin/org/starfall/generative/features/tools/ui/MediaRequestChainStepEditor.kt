@@ -1,4 +1,4 @@
-package org.starfall.generative.features.defaults.systemtools.ui
+package org.starfall.generative.features.tools.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions

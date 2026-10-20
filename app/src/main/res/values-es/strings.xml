@@ -30,7 +30,6 @@
     <string name="settings_category_app_settings_description">Apariencia, preferencias y comportamiento de la aplicación</string>
     <string name="settings_category_app_data_description">Historial de conversaciones y restablecimiento de la aplicación</string>
     <string name="settings_category_about_description">Información de la aplicación, actualizaciones y licencia</string>
-    <string name="settings_default_models_description">Ayudas para imágenes, vídeos y conversaciones</string>
     <string name="settings_providers_description">Proveedores de IA, modelos y conexiones API</string>
     <string name="settings_mcp_manage_description">Servidores de herramientas e integraciones</string>
     <string name="settings_speech_services_description">Proveedores de texto a voz y voces</string>

@@ -61,7 +61,8 @@ fun FeaturesScreen(
     logoImage: String? = null,
     onLogoImageChange: (String?) -> Unit = {},
     onBack: () -> Unit = {},
-    onNavigateToDefaultModels: () -> Unit = {},
+    onNavigateToChatOptions: () -> Unit = {},
+    onNavigateToToolsEditor: () -> Unit = {},
     onNavigateToProviders: () -> Unit = {},
     onNavigateToMcp: () -> Unit = {},
     onNavigateToSpeech: () -> Unit = {},
@@ -193,8 +194,21 @@ fun FeaturesScreen(
         item(key = "configuration-heading") {
             SectionHeading(stringResource(R.string.settings_group_configuration))
         }
-        item(key = "default-models") {
-            FeatureItem(stringResource(R.string.settings_default_and_tools), stringResource(R.string.settings_default_models_description), FluentUi.Regular.WrenchScrewdriver, onNavigateToDefaultModels)
+        item(key = "chat-options") {
+            FeatureItem(
+                stringResource(R.string.settings_chat_options),
+                stringResource(R.string.settings_chat_options_description),
+                FluentUi.Regular.Chat,
+                onNavigateToChatOptions
+            )
+        }
+        item(key = "tools-editor") {
+            FeatureItem(
+                stringResource(R.string.settings_tools_editor),
+                stringResource(R.string.settings_tools_editor_description),
+                FluentUi.Regular.WrenchScrewdriver,
+                onNavigateToToolsEditor
+            )
         }
         item(key = "providers") {
             FeatureItem(stringResource(R.string.settings_providers), stringResource(R.string.settings_providers_description), FluentUi.Regular.Cloud, onNavigateToProviders)

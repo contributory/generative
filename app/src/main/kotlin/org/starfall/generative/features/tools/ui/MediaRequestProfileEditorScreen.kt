@@ -1,4 +1,4 @@
-package org.starfall.generative.features.defaults.systemtools.ui
+package org.starfall.generative.features.tools.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable

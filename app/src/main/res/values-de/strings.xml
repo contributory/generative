@@ -30,7 +30,6 @@
     <string name="settings_category_app_settings_description">Aussehen, Einstellungen und App-Verhalten</string>
     <string name="settings_category_app_data_description">Unterhaltungsverlauf und App-Zurücksetzung</string>
     <string name="settings_category_about_description">App-Informationen, Softwareupdates und Lizenz</string>
-    <string name="settings_default_models_description">Hilfen für Bilder, Videos und Unterhaltungen</string>
     <string name="settings_providers_description">KI-Anbieter, Modelle und API-Verbindungen</string>
     <string name="settings_mcp_manage_description">Tool-Server und Integrationen</string>
     <string name="settings_speech_services_description">Text-to-Speech-Anbieter und Stimmen</string>

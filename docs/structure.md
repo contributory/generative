@@ -19,14 +19,9 @@
 │   │   │   └── 📄 ProvidersExport.kt
 │   │   └── 📁 ui/
 │   │       └── 📄 AppDataScreen.kt
-│   ├── 📁 defaults/
-│   │   └── 📁 systemtools/
-│   │       └── 📁 ui/
-│   │           ├── 📄 DefaultModelsTab.kt
-│   │           ├── 📄 ImageToolSettingsScreen.kt
-│   │           ├── 📄 MediaRequestChainSettingsScreen.kt
-│   │           ├── 📄 MediaRequestChainStepEditor.kt
-│   │           └── 📄 SystemToolsScreen.kt
+│   ├── 📁 chatoptions/
+│   │   └── 📁 ui/
+│   │       └── 📄 ChatOptionsScreen.kt
 │   ├── 📁 icons/
 │   │   └── 📁 ui/
 │   │       └── 📄 IconsScreen.kt
@@ -115,9 +110,17 @@
 │   ├── 📁 speech/
 │   │   └── 📁 ui/
 │   │       └── 📄 SpeechServicesScreen.kt
-│   └── 📁 storage/
+│   ├── 📁 storage/
+│   │   └── 📁 ui/
+│   │       └── 📄 StorageScreen.kt
+│   └── 📁 tools/
 │       └── 📁 ui/
-│           └── 📄 StorageScreen.kt
+│           ├── 📄 ImageToolSettingsScreen.kt
+│           ├── 📄 MediaRequestChainSettingsScreen.kt
+│           ├── 📄 MediaRequestChainStepEditor.kt
+│           ├── 📄 MediaRequestProfileEditorScreen.kt
+│           ├── 📄 MediaTemplateAutocompleteField.kt
+│           └── 📄 ToolsEditorScreen.kt
 ├── 📁 home/
 │   ├── 📁 chat/
 │   │   ├── 📁 logic/
@@ -514,7 +517,8 @@
 
 | FeaturesScreen entry | Folder |
 | --- | --- |
-| Default models & tools | `defaults/` |
+| Chat Options | `chatoptions/` |
+| Tools Editor | `tools/` |
 | Providers | `providers/` |
 | MCP | `mcp/` |
 | Speech services | `speech/` |

@@ -30,7 +30,6 @@
     <string name="settings_category_app_settings_description">外觀、偏好設定與應用程式行為</string>
     <string name="settings_category_app_data_description">對話記錄與應用程式重設</string>
     <string name="settings_category_about_description">應用程式資訊、軟體更新與授權</string>
-    <string name="settings_default_models_description">圖片、影片與對話輔助功能</string>
     <string name="settings_providers_description">AI 提供者、模型與 API 連線</string>
     <string name="settings_mcp_manage_description">工具伺服器與整合</string>
     <string name="settings_speech_services_description">文字轉語音提供者與語音</string>

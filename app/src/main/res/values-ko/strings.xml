@@ -30,7 +30,6 @@
     <string name="settings_category_app_settings_description">모양, 환경설정 및 앱 동작</string>
     <string name="settings_category_app_data_description">대화 기록 및 앱 초기화</string>
     <string name="settings_category_about_description">앱 정보, 소프트웨어 업데이트 및 라이선스</string>
-    <string name="settings_default_models_description">이미지, 동영상 및 대화 도우미</string>
     <string name="settings_providers_description">AI 제공업체, 모델 및 API 연결</string>
     <string name="settings_mcp_manage_description">도구 서버 및 통합</string>
     <string name="settings_speech_services_description">텍스트 음성 변환 제공업체 및 음성</string>

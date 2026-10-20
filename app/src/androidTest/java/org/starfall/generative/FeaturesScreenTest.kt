@@ -79,7 +79,8 @@ class FeaturesScreenTest {
                         )
                     }
                     else -> FeaturesScreen(
-                        onNavigateToDefaultModels = { destinations.add("Default Models") },
+                        onNavigateToChatOptions = { destinations.add("Chat Options") },
+                        onNavigateToToolsEditor = { destinations.add("Tools Editor") },
                         onNavigateToProviders = { destinations.add("Providers") },
                         onNavigateToMcp = { destinations.add("MCP Manage") },
                         onNavigateToSpeech = { destinations.add("Speech Services") },
@@ -100,10 +101,11 @@ class FeaturesScreenTest {
         val destinations = mutableListOf<String>()
         showFeatures(destinations)
         compose.onNodeWithText("Configuration").assertIsDisplayed()
-        val items = listOf("Default & Tools", "Providers", "MCP Manage", "Speech Services", "Storage")
+        compose.onNodeWithText("Default & Tools").assertDoesNotExist()
+        val items = listOf("Chat Options", "Tools Editor", "Providers", "MCP Manage", "Speech Services", "Storage")
         items.forEach { scrollListTo(it); compose.onNodeWithText(it).performClick() }
         compose.onNodeWithText("System Settings").performScrollTo().assertIsDisplayed()
-        val expected = listOf("Default Models", "Providers", "MCP Manage", "Speech Services", "Storage")
+        val expected = listOf("Chat Options", "Tools Editor", "Providers", "MCP Manage", "Speech Services", "Storage")
         compose.runOnIdle { assertEquals(expected, destinations) }
     }
 

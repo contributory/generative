@@ -36,7 +36,6 @@
     <string name="settings_category_app_settings_description">Giao diện, tùy chọn và hành vi của ứng dụng</string>
     <string name="settings_category_app_data_description">Lịch sử hội thoại và đặt lại ứng dụng</string>
     <string name="settings_category_about_description">Thông tin ứng dụng, cập nhật phần mềm và giấy phép</string>
-    <string name="settings_default_models_description">Công cụ hỗ trợ hình ảnh, video và hội thoại</string>
     <string name="settings_providers_description">Provider AI, model và kết nối API</string>
     <string name="settings_mcp_manage_description">Server công cụ và các tích hợp</string>
     <string name="settings_speech_services_description">Provider chuyển văn bản thành giọng nói</string>

@@ -1,4 +1,4 @@
-package org.starfall.generative.features.defaults.systemtools.ui
+package org.starfall.generative.features.tools.ui
 
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.DropdownMenuItem

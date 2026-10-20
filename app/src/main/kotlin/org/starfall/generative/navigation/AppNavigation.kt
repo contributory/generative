@@ -37,7 +37,7 @@ import org.starfall.generative.features.appdata.logic.buildJsonExport
 import org.starfall.generative.features.appdata.logic.parseFullAppDataExport
 import org.starfall.generative.shared.model.JsonExportKind
 import org.starfall.generative.features.appdata.ui.AppDataScreen
-import org.starfall.generative.features.defaults.systemtools.ui.SystemToolsScreen
+import org.starfall.generative.features.chatoptions.ui.ChatOptionsScreen
 import org.starfall.generative.features.icons.ui.IconsScreen
 import org.starfall.generative.features.machines.details.ui.MachineDetailsScreen
 import org.starfall.generative.features.machines.details.ui.RemoteMachineSettings
@@ -55,6 +55,7 @@ import org.starfall.generative.features.settings.ui.AppSettingsScreen
 import org.starfall.generative.features.settings.ui.MainAppbar
 import org.starfall.generative.features.speech.ui.SpeechServicesScreen
 import org.starfall.generative.features.storage.ui.StorageScreen
+import org.starfall.generative.features.tools.ui.ToolsEditorScreen
 import org.starfall.generative.home.chat.logic.ChatViewModel
 import org.starfall.generative.home.chat.logic.contextWindowStatus
 import org.starfall.generative.home.chat.ui.ChatScreen
@@ -90,7 +91,8 @@ enum class AppDestination(val route: String) {
     MCP("mcp"),
     SPEECH("speech"),
     FEATURES("features"),
-    SYSTEM_TOOLS("system_tools"),
+    CHAT_OPTIONS("chat_options"),
+    TOOLS_EDITOR("system_tools"),
     STORAGE("storage"),
     REMOTE_MACHINES("remote_machines"),
     MENU("menu"),
@@ -696,8 +698,28 @@ fun AppNavigation(
                         )
                     }
 
-                    composable(AppDestination.SYSTEM_TOOLS.route) {
-                        SystemToolsScreen(
+                    composable(AppDestination.CHAT_OPTIONS.route) {
+                        ChatOptionsScreen(
+                            providers = providers,
+                            settings = toolSettings,
+                            providerGroups = providerGroups,
+                            collapsedGroupIds = appPrefs.modelPickerCollapsedGroups,
+                            collapsedProviderIds = appPrefs.modelPickerCollapsedProviders,
+                            onCollapsedGroupIdsChange = settingsViewModel::setModelPickerCollapsedGroups,
+                            onCollapsedProviderIdsChange = settingsViewModel::setModelPickerCollapsedProviders,
+                            onSave = viewModel::setSystemTool,
+                            selectedTabKey = appPrefs.modelPickerSelectedTab,
+                            onSelectedTabKeyChange = settingsViewModel::setModelPickerSelectedTab,
+                            onEditProvider = { providerId ->
+                                navController.navigate("providers/edit/${Uri.encode(providerId)}") {
+                                    launchSingleTop = true
+                                }
+                            },
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                    composable(AppDestination.TOOLS_EDITOR.route) {
+                        ToolsEditorScreen(
                             providers = providers,
                             settings = toolSettings,
                             onSave = viewModel::setSystemTool,
@@ -777,7 +799,8 @@ fun AppNavigation(
                                 logoImage = appPrefs.featuresLogoImage,
                                 onLogoImageChange = settingsViewModel::setFeaturesLogoImage,
                                 onBack = { navController.popBackStack() },
-                                onNavigateToDefaultModels = { openConfiguration(AppDestination.SYSTEM_TOOLS) },
+                                onNavigateToChatOptions = { openConfiguration(AppDestination.CHAT_OPTIONS) },
+                                onNavigateToToolsEditor = { openConfiguration(AppDestination.TOOLS_EDITOR) },
                                 onNavigateToProviders = { openConfiguration(AppDestination.PROVIDERS) },
                                 onNavigateToMcp = { openConfiguration(AppDestination.MCP) },
                                 onNavigateToSpeech = { openConfiguration(AppDestination.SPEECH) },

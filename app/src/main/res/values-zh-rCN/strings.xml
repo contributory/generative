@@ -30,7 +30,6 @@
     <string name="settings_category_app_settings_description">外观、偏好设置和应用行为</string>
     <string name="settings_category_app_data_description">对话记录和应用重置</string>
     <string name="settings_category_about_description">应用信息、软件更新和许可证</string>
-    <string name="settings_default_models_description">图像、视频和对话辅助功能</string>
     <string name="settings_providers_description">AI 提供商、模型和 API 连接</string>
     <string name="settings_mcp_manage_description">工具服务器和集成</string>
     <string name="settings_speech_services_description">文字转语音提供商和语音</string>
