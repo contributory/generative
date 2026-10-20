@@ -1,3 +1,10 @@
+val gitCommitHash = providers.exec {
+    commandLine("git", "rev-parse", "--short=8", "HEAD")
+}.standardOutput.asText.get().trim()
+
+val gitCommitNumber = gitCommitHash.filter { it.isDigit() }
+
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -15,7 +22,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0.0"
+        versionName = "1.0.0_$gitCommitNumber"
 
         manifestPlaceholders["appAuthRedirectScheme"] = "generative-oauth"
 
