@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -39,7 +40,7 @@ fun EntityIcon(
     image: String?,
     modifier: Modifier = Modifier.size(42.dp),
     text: String? = null,
-    fallback: Int? = null,
+    fallback: Any? = null,
     matchName: String? = null,
     /** Tried only if [matchName] finds no logo (e.g. the model id behind a display name). */
     fallbackMatchName: String? = null,
@@ -73,10 +74,25 @@ fun EntityIcon(
                 if (fallbackContent != null) {
                     // Wait for the first lookup so a folder logo never flashes the substitute first.
                     if (resolved) fallbackContent()
-                } else if (fallback != null) FluentIcon(fallback, contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxSize().padding(9.dp))
-                else Text(text?.takeIf { it.isNotBlank() } ?: "?",
-                    style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                } else when (val fallbackIcon = fallback) {
+                    is ImageVector -> FluentIcon(
+                        imageVector = fallbackIcon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.fillMaxSize().padding(9.dp)
+                    )
+                    is Int -> FluentIcon(
+                        imageVector = fallbackIcon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.fillMaxSize().padding(9.dp)
+                    )
+                    else -> Text(
+                        text?.takeIf { it.isNotBlank() } ?: "?",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             } else AsyncImage(data, contentDescription = null,
                 modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
                 onError = { if (image != null && !explicitFailed) explicitFailed = true })
@@ -89,7 +105,7 @@ fun IconPickerRow(
     image: String?,
     onChange: (String?) -> Unit,
     text: String? = null,
-    fallback: Int? = null,
+    fallback: Any? = null,
     onBusyChange: (Boolean) -> Unit = {},
     matchName: String? = null,
     fallbackMatchName: String? = null,

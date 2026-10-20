@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
@@ -460,7 +461,7 @@ private fun compactContextWindow(tokens: Int): String {
 @Composable
 private fun ModelBadge(
     label: String,
-    icon: Int? = null,
+    icon: ImageVector? = null,
     iconOnly: Boolean = false,
     colors: ChipColors = AssistChipDefaults.assistChipColors()
 ) {

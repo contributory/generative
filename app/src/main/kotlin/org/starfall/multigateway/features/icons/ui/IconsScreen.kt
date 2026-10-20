@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -30,6 +29,7 @@ import kotlinx.coroutines.withContext
 import org.starfall.multigateway.R
 import org.starfall.multigateway.shared.icons.IconStore
 import org.starfall.multigateway.shared.icons.model.StoredIcon
+import org.starfall.multigateway.shared.ui.icons.FluentUi
 
 @Composable
 fun IconsScreen() {
@@ -118,7 +118,7 @@ fun IconsScreen() {
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 label = { Text(stringResource(R.string.icon_cache_search)) },
-                leadingIcon = { Icon(painterResource(R.drawable.ic_fluent_search_24_regular), null) }
+                leadingIcon = { Icon(FluentUi.Regular.Search, null) }
             )
             Row(
                 Modifier.fillMaxWidth(),
@@ -130,7 +130,7 @@ fun IconsScreen() {
                 IconButton(enabled = !busy, onClick = {
                     picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }) {
-                    Icon(painterResource(R.drawable.ic_fluent_image_add_24_regular), stringResource(R.string.icon_cache_add))
+                    Icon(FluentUi.Regular.ImageAdd, stringResource(R.string.icon_cache_add))
                 }
             }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -171,7 +171,7 @@ fun IconsScreen() {
                         }
                         Box {
                             IconButton(enabled = !busy, onClick = { menu = true }) {
-                                Icon(painterResource(R.drawable.ic_fluent_more_vertical_24_regular),
+                                Icon(FluentUi.Regular.MoreVertical,
                                     stringResource(R.string.icon_cache_actions))
                             }
                             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -230,7 +230,7 @@ fun IconsScreen() {
                                             busy = false
                                         }
                                     }
-                                }) { Icon(painterResource(R.drawable.ic_fluent_dismiss_24_regular), stringResource(R.string.remove_icon)) }
+                                }) { Icon(FluentUi.Regular.Dismiss, stringResource(R.string.remove_icon)) }
                             }
                         }
                     }
@@ -250,12 +250,12 @@ fun IconsScreen() {
                                 )
                                 IconButton(enabled = !busy, onClick = {
                                     patterns = patterns.filterIndexed { i, _ -> i != index }
-                                }) { Icon(painterResource(R.drawable.ic_fluent_dismiss_24_regular), stringResource(R.string.icon_cache_delete)) }
+                                }) { Icon(FluentUi.Regular.Dismiss, stringResource(R.string.icon_cache_delete)) }
                             }
                         }
                     }
                     TextButton(enabled = !busy, onClick = { patterns = patterns + "" }) {
-                        Icon(painterResource(R.drawable.ic_fluent_add_24_regular), contentDescription = null)
+                        Icon(FluentUi.Regular.Add, contentDescription = null)
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.icon_cache_add_match))
                     }
@@ -292,7 +292,7 @@ private fun StoredIconPreview(
                 contentScale = ContentScale.Fit)
         } else {
             Box(contentAlignment = Alignment.Center) {
-                Icon(painterResource(R.drawable.ic_fluent_image_off_24_regular), null,
+                Icon(FluentUi.Regular.ImageOff, null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

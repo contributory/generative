@@ -14,8 +14,8 @@ The existing UI generally follows this direction, but there are legacy icon alia
 
 Source: [Fluent UI System Icons](https://composables.com/icons/icon-libraries/fluentui-system-icons).
 
-- Get **only the individual icons the app needs** as Android **Vector Drawable XML** files and place them in `app/src/main/res/drawable/`. Do not add the icon library as a Gradle dependency or import its full collection; keep APK resources lean.
+- Prefer downloading **individual Kotlin Compose `ImageVector` sources** with `python scripts/get_icon.py <icon>`; they live under `shared/ui/icons/fluentui/<style>/` and are registered automatically in `FluentUi.Regular`, `FluentUi.Filled`, and the corresponding style object. Do not add the whole icon library as a Gradle dependency.
 - Use **Regular** as the default for common actions and navigation. Use **Light** when a deliberately lighter stroke suits the context. Keep the style consistent among related actions and states; do not mix styles arbitrarily.
-- Follow the existing resource naming pattern, such as `ic_fluent_add_24_regular.xml` or `ic_fluent_add_24_light.xml`. Prefer 24dp for standard action icons, adjusting size only for clear hierarchy or layout needs.
-- Render icons through `FluentIcon` and use the shared icon mapping in `shared/ui/icons/Icons.kt` where appropriate. Tint with `MaterialTheme.colorScheme`; avoid hard-coded icon colors. Icon-only controls need a meaningful content description, while decorative icons or icons next to an equivalent label should not repeat it.
+- Use `FluentIcon(FluentUi.Regular.ArrowClockwise, ...)` or `Icon(imageVector = FluentUi.Regular.ArrowClockwise, ...)` for Kotlin-vector usage. `Icons.Outlined`, `Icons.Default`, `Icons.Filled`, and `Icons.AutoMirrored` preserve older Material symbol names while mapping Fluent UI icons to `ImageVector`. Keep Fluent icons as individual Kotlin sources; do not reintroduce Fluent drawable XMLs. Non-Fluent icons such as `Terminal` may remain drawable-backed.
+- Tint with `MaterialTheme.colorScheme`; avoid hard-coded icon colors. Icon-only controls need a meaningful content description, while decorative icons or icons next to an equivalent label should not repeat it.
 - Choose icons by meaning and clarity, not merely appearance. Keep the app logo and other branded artwork separate from action icons.

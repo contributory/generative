@@ -432,9 +432,15 @@
 │       │   ├── 📄 CrashReportDialog.kt
 │       │   └── 📄 FaviconDialog.kt
 │       ├── 📁 icons/
+│       │   ├── 📁 fluentui/
+│       │   │   ├── 📁 regular/ (downloaded ImageVector sources)
+│       │   │   ├── 📁 filled/
+│       │   │   ├── 📁 light/
+│       │   │   └── 📁 color/
 │       │   ├── 📄 EntityIcon.kt
 │       │   ├── 📄 FluentIcon.kt
-│       │   └── 📄 Icons.kt
+│       │   ├── 📄 FluentUi.kt (generated typed icon registry)
+│       │   └── 📄 Icons.kt (Material-name compatibility aliases)
 │       ├── 📁 layout/
 │       │   ├── 📄 AdaptiveCardLayout.kt
 │       │   ├── 📄 AmoledBorder.kt

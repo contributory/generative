@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -109,7 +110,7 @@ fun QuickActionsBottomSheet(
 
 @Composable
 private fun AddActionTile(
-    icon: Int,
+    icon: ImageVector,
     label: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
@@ -144,7 +145,7 @@ private fun AddActionTile(
 
 @Composable
 private fun AddActionRow(
-    icon: Int,
+    icon: ImageVector,
     title: String,
     subtitle: String,
     onClick: () -> Unit

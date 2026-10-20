@@ -45,9 +45,9 @@ fun ChatAppBar(
     onOpenDrawer: () -> Unit,
     onNewChat: () -> Unit,
     onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier,
     featuresLogoImage: String? = null,
-    onOpenModelPicker: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onOpenModelPicker: () -> Unit = {}
 ) {
     val statusBarHeight = with(LocalDensity.current) {
         WindowInsets.statusBars.getTop(this).toDp()

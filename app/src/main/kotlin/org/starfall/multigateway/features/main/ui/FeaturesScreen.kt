@@ -36,11 +36,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,6 +51,7 @@ import kotlinx.coroutines.withContext
 import org.starfall.multigateway.R
 import org.starfall.multigateway.shared.icons.IconStore
 import org.starfall.multigateway.shared.ui.FeaturesLogoImage
+import org.starfall.multigateway.shared.ui.icons.FluentUi
 
 /** Main feature directory. Deliberately has no page title; the themed app logo is its header. */
 @OptIn(ExperimentalFoundationApi::class)
@@ -193,38 +194,38 @@ fun FeaturesScreen(
             SectionHeading(stringResource(R.string.settings_group_configuration))
         }
         item(key = "default-models") {
-            FeatureItem(stringResource(R.string.settings_default_and_tools), stringResource(R.string.settings_default_models_description), R.drawable.ic_fluent_wrench_screwdriver_24_regular, onNavigateToDefaultModels)
+            FeatureItem(stringResource(R.string.settings_default_and_tools), stringResource(R.string.settings_default_models_description), FluentUi.Regular.WrenchScrewdriver, onNavigateToDefaultModels)
         }
         item(key = "providers") {
-            FeatureItem(stringResource(R.string.settings_providers), stringResource(R.string.settings_providers_description), R.drawable.ic_fluent_cloud_24_regular, onNavigateToProviders)
+            FeatureItem(stringResource(R.string.settings_providers), stringResource(R.string.settings_providers_description), FluentUi.Regular.Cloud, onNavigateToProviders)
         }
         item(key = "mcp") {
-            FeatureItem(stringResource(R.string.settings_mcp_manage), stringResource(R.string.settings_mcp_manage_description), R.drawable.ic_fluent_puzzle_piece_24_regular, onNavigateToMcp)
+            FeatureItem(stringResource(R.string.settings_mcp_manage), stringResource(R.string.settings_mcp_manage_description), FluentUi.Regular.PuzzlePiece, onNavigateToMcp)
         }
         item(key = "speech") {
-            FeatureItem(stringResource(R.string.settings_speech_services), stringResource(R.string.settings_speech_services_description), R.drawable.ic_fluent_person_voice_24_regular, onNavigateToSpeech)
+            FeatureItem(stringResource(R.string.settings_speech_services), stringResource(R.string.settings_speech_services_description), FluentUi.Regular.PersonVoice, onNavigateToSpeech)
         }
         item(key = "remote-machines") {
-            FeatureItem(stringResource(R.string.settings_remote_machines), stringResource(R.string.settings_remote_machines_description), R.drawable.ic_fluent_desktop_24_regular, onNavigateToRemoteMachines)
+            FeatureItem(stringResource(R.string.settings_remote_machines), stringResource(R.string.settings_remote_machines_description), FluentUi.Regular.Desktop, onNavigateToRemoteMachines)
         }
         item(key = "storage") {
-            FeatureItem(stringResource(R.string.settings_storage), stringResource(R.string.settings_storage_description), R.drawable.ic_fluent_folder_open_24_regular, onNavigateToStorage)
+            FeatureItem(stringResource(R.string.settings_storage), stringResource(R.string.settings_storage_description), FluentUi.Regular.FolderOpen, onNavigateToStorage)
         }
         item(key = "system-heading") {
             Spacer(Modifier.height(8.dp))
             SectionHeading(stringResource(R.string.settings_group_system))
         }
         item(key = "app-settings") {
-            FeatureItem(stringResource(R.string.settings_category_app_settings), stringResource(R.string.settings_category_app_settings_description), R.drawable.ic_fluent_settings_24_regular, onNavigateToAppSettings)
+            FeatureItem(stringResource(R.string.settings_category_app_settings), stringResource(R.string.settings_category_app_settings_description), FluentUi.Regular.Settings, onNavigateToAppSettings)
         }
         item(key = "icons") {
-            FeatureItem(stringResource(R.string.icon_settings_title), stringResource(R.string.icon_settings_description), R.drawable.ic_fluent_image_24_regular, onNavigateToIcons)
+            FeatureItem(stringResource(R.string.icon_settings_title), stringResource(R.string.icon_settings_description), FluentUi.Regular.Image, onNavigateToIcons)
         }
         item(key = "app-data") {
-            FeatureItem(stringResource(R.string.settings_category_app_data), stringResource(R.string.settings_category_app_data_description), R.drawable.ic_fluent_history_24_regular, onNavigateToAppData)
+            FeatureItem(stringResource(R.string.settings_category_app_data), stringResource(R.string.settings_category_app_data_description), FluentUi.Regular.History, onNavigateToAppData)
         }
         item(key = "about") {
-            FeatureItem(stringResource(R.string.settings_category_about), stringResource(R.string.settings_category_about_description), R.drawable.ic_fluent_info_24_regular, onNavigateToAbout)
+            FeatureItem(stringResource(R.string.settings_category_about), stringResource(R.string.settings_category_about_description), FluentUi.Regular.Info, onNavigateToAbout)
         }
     }
 }
@@ -244,7 +245,7 @@ private fun SectionHeading(title: String) {
 private fun FeatureItem(
     title: String,
     subtitle: String,
-    icon: Int,
+    icon: ImageVector,
     onClick: () -> Unit
 ) {
     Surface(
@@ -264,14 +265,14 @@ private fun FeatureItem(
                 modifier = Modifier.size(46.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(painterResource(icon), contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(24.dp))
+                    Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(24.dp))
                 }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Icon(painterResource(R.drawable.ic_fluent_arrow_forward_24_regular), contentDescription = null,
+            Icon(imageVector = FluentUi.Regular.ArrowForward, contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
         }
     }
