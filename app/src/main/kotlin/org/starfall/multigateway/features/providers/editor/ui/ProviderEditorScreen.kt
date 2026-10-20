@@ -61,6 +61,7 @@ import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.multigateway.shared.ui.menus.RoundedDropdownMenuItem
 import org.starfall.multigateway.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.multigateway.shared.ui.text.HeaderNameField
 import org.starfall.multigateway.shared.ui.layout.SlideScreenContent
 import org.starfall.multigateway.shared.ui.lists.moved
 import org.starfall.multigateway.shared.ui.icons.providerInitials
@@ -213,7 +214,7 @@ fun ProviderEditorScreen(
                 onBack = { editingModel = null })
         } else {
             Scaffold(modifier = Modifier.fillMaxSize(), topBar = {
-                TopAppBar(title = { Text(if (isNew) stringResource(R.string.new_provider) else name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                TopAppBar(title = { HeaderNameField(name, { name = it }, placeholder = type.defaultName) },
                     navigationIcon = { IconButton(onClick = onDismiss) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                     actions = {
                         if (pager.currentPage == 0) Button(enabled = valid && !oauthAuthorizing && !iconImporting,
@@ -259,7 +260,6 @@ fun ProviderEditorScreen(
                                     }) }
                                 }
                             }
-                            SelectableOutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.common_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                             if (!type.isAccountProvider) ProviderBaseUrlField(type, baseUrl, urlValid) { baseUrl = it }
                             if (!type.isAccountProvider && baseUrl.trim().startsWith("http://", true)) Text(stringResource(R.string.http_unencrypted_provider_warning),
                                 color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)

@@ -40,7 +40,7 @@ internal fun mcpTransportLabel(protocol: McpProtocol) = stringResource(
 
 @Composable
 internal fun McpConnectionSettings(
-    name: String, icon: String?, onIconChange: (String?) -> Unit, onIconBusyChange: (Boolean) -> Unit, onNameChange: (String) -> Unit,
+    name: String, icon: String?, onIconChange: (String?) -> Unit, onIconBusyChange: (Boolean) -> Unit,
     protocol: McpProtocol, onProtocolChange: (McpProtocol) -> Unit, url: String, onUrlChange: (String) -> Unit,
     authMethod: McpAuthMethod, onAuthMethodChange: (McpAuthMethod) -> Unit,
     authKey: String, onAuthKeyChange: (String) -> Unit, authValue: String, onAuthValueChange: (String) -> Unit, authValid: Boolean,
@@ -56,9 +56,6 @@ internal fun McpConnectionSettings(
     Column(modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         IconPickerRow(icon, onIconChange, text = providerInitials(name), fallback = Icons.Outlined.Extension,
             onBusyChange = onIconBusyChange, matchName = name, faviconBaseUrl = url)
-        Text(stringResource(R.string.display_name), style = MaterialTheme.typography.titleSmall)
-        SelectableOutlinedTextField(name, onNameChange, placeholder = { Text(stringResource(R.string.common_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        HorizontalDivider()
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.legacy_sse), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             Switch(protocol == McpProtocol.SSE, onCheckedChange = { onProtocolChange(if (it) McpProtocol.SSE else McpProtocol.STREAMABLE_HTTP) })

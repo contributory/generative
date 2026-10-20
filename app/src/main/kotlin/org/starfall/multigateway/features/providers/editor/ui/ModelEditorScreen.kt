@@ -38,6 +38,7 @@ import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.multigateway.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import org.starfall.multigateway.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.multigateway.shared.ui.text.HeaderNameField
 import org.starfall.multigateway.shared.ui.code.CodeBlockSurface
 import org.starfall.multigateway.shared.ui.model.modelInitial
 
@@ -110,7 +111,14 @@ fun ModelEditorScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(stringResource(if (initialModelId.isBlank()) R.string.add_model_title else R.string.edit_model_title))
+                    // Blank display name falls back to the model ID, so the ID doubles as the hint.
+                    HeaderNameField(
+                        value = config.displayName,
+                        onValueChange = { config = config.copy(displayName = it) },
+                        placeholder = trimmedId.ifBlank {
+                            stringResource(if (initialModelId.isBlank()) R.string.add_model_title else R.string.edit_model_title)
+                        }
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -147,14 +155,6 @@ fun ModelEditorScreen(
                 supportingText = { Text(idError ?: idApiHint) },
                 isError = idError != null,
                 maxLines = 3,
-                modifier = Modifier.fillMaxWidth()
-            )
-            SelectableOutlinedTextField(
-                value = config.displayName,
-                onValueChange = { config = config.copy(displayName = it) },
-                label = { Text(stringResource(R.string.display_name)) },
-                supportingText = { Text(stringResource(R.string.model_display_name_hint)) },
-                singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
             ExposedDropdownMenuBox(expanded = typeExpanded, onExpandedChange = { typeExpanded = !typeExpanded }) {

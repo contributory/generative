@@ -3,6 +3,7 @@ package org.starfall.multigateway
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonArray
@@ -62,6 +63,13 @@ class MediaRequestChainTest {
             val resolved = resolveMediaTemplate(Json.parseToJsonElement(source), context(), MediaFileTransport.BASE64)
             assertTrue(resolved is JsonObject)
         }
+        val missing = resolveMediaTemplate(
+            Json.parseToJsonElement("""{"files":"{{input_files}}","file":"{{input_file[0]}}"}"""),
+            context(),
+            MediaFileTransport.BASE64
+        ).jsonObject
+        assertEquals("[]", missing["files"].toString())
+        assertEquals(JsonNull, missing["file"])
     }
 
     @Test fun requestVariablesAllowWhitespaceInsideDoubleBraces() {
@@ -282,7 +290,11 @@ class MediaRequestChainTest {
         val root = Files.createTempDirectory("media-chain-url").toFile()
         try {
             server.enqueue(MockResponse().setHeader("X-Task-Id", "header-456").setBody("""{"id":"task-123"}"""))
-            server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody(okio.Buffer().write(ByteArray(32))))
+            server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody(okio.Buffer().write(byteArrayOf(
+                0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+                0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+            ))))
             val provider = ModelProvider(
                 "p", "test", ModelApiType.OPENAI,
                 baseUrl = server.url("/v1").toString(),
@@ -329,7 +341,11 @@ class MediaRequestChainTest {
         val root = Files.createTempDirectory("media-chain-observer").toFile()
         try {
             server.enqueue(MockResponse().setBody("""{"status":"failed"}"""))
-            server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody(okio.Buffer().write(ByteArray(32))))
+            server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody(okio.Buffer().write(byteArrayOf(
+                0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+                0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+            ))))
             val provider = ModelProvider(
                 "p", "test", ModelApiType.OPENAI,
                 baseUrl = server.url("/v1").toString(),
@@ -357,6 +373,48 @@ class MediaRequestChainTest {
 
             assertEquals("/v1/create", server.takeRequest().path)
             assertEquals("/v1/media", server.takeRequest().path)
+            assertTrue(result["files"]!!.jsonArray.isNotEmpty())
+        } finally {
+            server.shutdown()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun finalResponseCanReadTheBodyFromAnEarlierStep() = runBlocking {
+        val server = MockWebServer().apply { start() }
+        val root = Files.createTempDirectory("media-chain-final-source").toFile()
+        try {
+            server.enqueue(MockResponse().setBody("""{"image":"${server.url("/media.png")}"}"""))
+            server.enqueue(MockResponse().setBody("""{"status":"done"}"""))
+            server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody(okio.Buffer().write(byteArrayOf(
+                0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+                0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+            ))))
+            val provider = ModelProvider(
+                "p", "test", ModelApiType.OPENAI,
+                baseUrl = server.url("/v1").toString(),
+                auth = Authorization(value = "token")
+            )
+            val chain = MediaRequestChain(
+                steps = listOf(
+                    MediaRequestStep(endpoint = "/create", body = "{}"),
+                    MediaRequestStep(endpoint = "/status", method = "GET", body = "{}")
+                ),
+                finalResponse = MediaFinalResponse(
+                    type = MediaResponseType.JSON,
+                    mediaPath = "image",
+                    sourceStep = 1
+                )
+            )
+
+            val result = MediaRequestChainExecutor(ToolHttp(ToolFiles(root))).execute(
+                chain, provider, "image-model", "draw a tree", emptyList()
+            )
+
+            assertEquals("/v1/create", server.takeRequest().path)
+            assertEquals("/v1/status", server.takeRequest().path)
+            assertEquals("/media.png", server.takeRequest().path)
             assertTrue(result["files"]!!.jsonArray.isNotEmpty())
         } finally {
             server.shutdown()
@@ -405,6 +463,45 @@ class MediaRequestChainTest {
             assertEquals("/v1/poll", server.takeRequest().path)
             assertEquals("/v1/media", server.takeRequest().path)
             assertTrue(result["files"]!!.jsonArray.isNotEmpty())
+        } finally {
+            server.shutdown()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun disabledResponseObserverSkipsRetryAndContinuesToTheNextStep() = runBlocking {
+        val server = MockWebServer().apply { start() }
+        val root = Files.createTempDirectory("media-chain-observer-disabled").toFile()
+        try {
+            server.enqueue(MockResponse().setBody("""{"status":"processing"}"""))
+            server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody(okio.Buffer().write(ByteArray(32))))
+            val provider = ModelProvider(
+                "p", "test", ModelApiType.OPENAI,
+                baseUrl = server.url("/v1").toString(),
+                auth = Authorization(value = "token")
+            )
+            val chain = MediaRequestChain(
+                steps = listOf(
+                    MediaRequestStep(
+                        endpoint = "/poll",
+                        body = "{}",
+                        observation = org.starfall.multigateway.shared.model.media.MediaResponseObservation(
+                            enabled = false,
+                            statusPath = "status",
+                            pendingValues = listOf("processing")
+                        )
+                    ),
+                    MediaRequestStep(endpoint = "/media", method = "GET", body = "{}")
+                ),
+                finalResponse = MediaFinalResponse(type = MediaResponseType.IMAGE)
+            )
+
+            MediaRequestChainExecutor(ToolHttp(ToolFiles(root))).execute(
+                chain, provider, "image-model", "draw a tree", emptyList()
+            )
+
+            assertEquals("/v1/poll", server.takeRequest().path)
+            assertEquals("/v1/media", server.takeRequest().path)
         } finally {
             server.shutdown()
             root.deleteRecursively()

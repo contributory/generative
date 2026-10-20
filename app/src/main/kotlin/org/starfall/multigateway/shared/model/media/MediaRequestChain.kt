@@ -6,13 +6,15 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class MediaRequestMode {
     @SerialName("form") FORM,
-    @SerialName("json") JSON
+    @SerialName("json") JSON,
+    @SerialName("raw") RAW
 }
 
 @Serializable
 enum class MediaFileTransport {
     @SerialName("file") FILE,
-    @SerialName("base64") BASE64
+    @SerialName("base64") BASE64,
+    @SerialName("raw") RAW
 }
 
 @Serializable
@@ -52,13 +54,18 @@ enum class MediaResponseObservationMode {
 
 @Serializable
 data class MediaResponseObservation(
+    /** Null preserves legacy profiles: a non-empty status path means the observer was enabled. */
+    val enabled: Boolean? = null,
     val statusPath: String = "",
     val mode: MediaResponseObservationMode = MediaResponseObservationMode.VALUE,
     val readyValues: List<String> = listOf("completed", "complete", "succeeded", "success", "done"),
     val pendingValues: List<String> = listOf("queued", "pending", "processing", "running", "in_progress"),
     val errorValues: List<String> = listOf("failed", "failure", "error", "cancelled", "canceled"),
     val retry: MediaRetryPolicy = MediaRetryPolicy()
-)
+) {
+    val isEnabled: Boolean
+        get() = enabled ?: statusPath.isNotBlank()
+}
 
 @Serializable
 data class MediaRequestStep(
@@ -67,6 +74,8 @@ data class MediaRequestStep(
     val headers: Map<String, String> = emptyMap(),
     val mode: MediaRequestMode = MediaRequestMode.JSON,
     val fileTransport: MediaFileTransport = MediaFileTransport.BASE64,
+    /** Optional MIME type for raw request bodies. */
+    val contentType: String = "",
     val body: String = "{}",
     val observation: MediaResponseObservation = MediaResponseObservation()
 )
@@ -75,7 +84,9 @@ data class MediaRequestStep(
 data class MediaFinalResponse(
     val type: MediaResponseType = MediaResponseType.JSON,
     val mediaPath: String = "",
-    val valueKind: MediaValueKind = MediaValueKind.LINK
+    val valueKind: MediaValueKind = MediaValueKind.LINK,
+    /** 1-based step whose response body is read; null keeps the final step as the source. */
+    val sourceStep: Int? = null
 )
 
 @Serializable

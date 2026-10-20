@@ -156,7 +156,7 @@ User / AI tool call
         │ prompt + model ID + input files
         ▼
 Image/Video tool
-        │ resolve global variables, headers, and {{stepN.response.path}}
+        │ resolve global variables, headers, and {{stepN.response.body.path}}
         ▼
 Request chain
         │
@@ -178,9 +178,9 @@ Local generated media ──► chat result
 2. Preserve the standard Default provider execution path, move Default parameter-visibility switches into Image/Video settings, and add an explicit persisted Default/Custom mode.
 3. Add persisted reusable Custom profiles (not keyed by model), with per-step header, response-observer, retry, and final media-mapping models with safe defaults and migration support.
 4. Add a compact mode-aware overview to Default & Tools and edit each request/response/retry configuration in dialogs or secondary screens to avoid overflow.
-5. Implement typed variable substitution for global variables (including `{{api_token}}`), `{{stepN.response.path}}`, and `{{stepN.headers.name}}`, default/overridden authorization headers, form/JSON request construction, endpoint resolution, file/base64 conversion, and validation errors.
-6. Implement response observation, ready/pending/error classification, bounded delay/attempt/time-window retries, and clear API error propagation.
-7. Implement final JSON-path extraction and direct image/video/octet-stream decoding.
+5. Implement typed variable substitution for global variables (including `{{api_token}}`), `{{stepN.response.body.path}}`, `{{stepN.response.headers.name}}`, `{{stepN.request.headers.name}}`, and step URLs, default/overridden authorization headers, form/JSON request construction, endpoint resolution, file/base64 conversion, and validation errors.
+6. Implement optional response observation with path-exists or pending-value modes, bounded delay/attempt/time-window retries, and clear step-specific API error propagation.
+7. Implement final JSON-path extraction from a user-selected step body and direct image/video/octet-stream decoding.
 8. Add tests for default/custom routing, indexed/list files, both transports, multi-step response references, status classification, retry limits, all response forms, wildcard paths, invalid templates, and missing media values.
 
 ## Acceptance criteria
@@ -193,8 +193,8 @@ Local generated media ──► chat result
 - A user can configure the endpoint and method for every request step, including a create request and a later result request.
 - Every step can access the global variables, including `{{api_token}}`, and JSON paths from earlier responses.
 - A user can edit headers for every request step; a configured token defaults to `Authorization: Bearer {{api_token}}`, while an explicit authorization header overrides it.
-- A user can classify intermediate responses as ready, pending, or error and retry pending responses only within configured bounds.
-- A user can extract one or many media values from the final JSON response using a user-defined path, or receive raw media bytes directly.
+- A user can enable or disable response observation per step, choose path-exists or pending-value behavior, and retry only within configured bounds.
+- A user can select which completed step body supplies the final JSON-path extraction, or receive raw media bytes directly from the final step.
 - Invalid request JSON, invalid endpoint paths, unresolved variables, invalid response paths, unmatched status rules, exhausted retries, and unsupported media values produce clear errors instead of silently losing output.
 
 ## One assumption to confirm

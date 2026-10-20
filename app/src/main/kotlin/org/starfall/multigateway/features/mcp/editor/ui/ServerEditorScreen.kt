@@ -1,4 +1,5 @@
 package org.starfall.multigateway.features.mcp.editor.ui
+import org.starfall.multigateway.shared.ui.text.HeaderNameField
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
@@ -82,8 +83,7 @@ fun ServerEditorScreen(
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Scaffold(topBar = {
             TopAppBar(
-                title = { Text(stringResource(if (isNew) R.string.add_mcp_server_title else R.string.configure_mcp_server_title),
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)) },
+                title = { HeaderNameField(name, { name = it }, placeholder = stringResource(R.string.common_name)) },
                 navigationIcon = { IconButton(onClick = onDismiss) {
                     FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                 } },
@@ -97,7 +97,7 @@ fun ServerEditorScreen(
                     Tab(selectedTab == 1, { selectedTab = 1 }, text = { Text(stringResource(R.string.mcp_tools), fontWeight = FontWeight.SemiBold) })
                 }
                 if (selectedTab == 0) McpConnectionSettings(
-                    name = name, icon = serverIcon, onIconChange = { serverIcon = it }, onIconBusyChange = { iconImporting = it }, onNameChange = { name = it },
+                    name = name, icon = serverIcon, onIconChange = { serverIcon = it }, onIconBusyChange = { iconImporting = it },
                     protocol = protocol, onProtocolChange = { protocol = it }, url = url,
                     onUrlChange = { changed -> if (authMethod == McpAuthMethod.OAUTH2 && changed.trim() != url.trim()) oauthAuthorized = false; url = changed },
                     authMethod = authMethod, onAuthMethodChange = { method ->

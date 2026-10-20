@@ -115,8 +115,7 @@ private fun resolvePlaceholder(
     }
     name.matches(Regex("input_file\\[\\d+\\]")) -> {
         val index = name.substringAfter('[').substringBefore(']').toInt()
-        require(index in context.inputFiles.indices) { "{{input_file[$index]}} is not available." }
-        resolveInputFile(context.inputFiles[index], index, fileTransport)
+        context.inputFiles.getOrNull(index)?.let { resolveInputFile(it, index, fileTransport) } ?: JsonNull
     }
     name.startsWith("step") -> resolveStepPlaceholder(name, context)
     // Keep decoding profiles created before the stepN.* syntax was introduced.
@@ -131,7 +130,7 @@ private fun resolveInputFile(
     transport: MediaFileTransport
 ): JsonElement = when (transport) {
     MediaFileTransport.BASE64 -> JsonPrimitive(input.base64)
-    MediaFileTransport.FILE -> JsonPrimitive("$MEDIA_FILE_TOKEN_PREFIX$index")
+    MediaFileTransport.FILE, MediaFileTransport.RAW -> JsonPrimitive("$MEDIA_FILE_TOKEN_PREFIX$index")
 }
 
 private fun resolveStepPlaceholder(name: String, context: MediaTemplateContext): JsonElement {

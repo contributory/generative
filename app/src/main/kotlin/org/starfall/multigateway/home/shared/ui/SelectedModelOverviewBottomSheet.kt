@@ -1,6 +1,8 @@
 package org.starfall.multigateway.home.shared.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -97,6 +99,8 @@ internal fun SelectedModelOverviewBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // Expanded Model Options can exceed the sheet's max height; scroll instead of overlapping.
+                .verticalScroll(rememberScrollState())
                 .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {

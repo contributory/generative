@@ -1,5 +1,6 @@
 package org.starfall.multigateway.integrations.media
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.*
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -64,43 +65,53 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
         val responses = mutableListOf<JsonElement>()
         val responseHeaders = mutableListOf<Map<String, String>>()
         val steps = mutableListOf<MediaStepTemplateContext>()
+        val results = mutableListOf<StepResult>()
         var last = StepResult(JsonObject(emptyMap()))
         chain.steps.forEachIndexed { index, step ->
-            var attempts = 0
-            val startedAt = System.currentTimeMillis()
-            while (true) {
-                attempts++
-                val context = MediaTemplateContext(
-                    prompt = prompt,
-                    model = model,
-                    apiToken = provider.auth.token,
-                    inputFiles = inputs.map { it.template },
-                    responses = responses.toList(),
-                    responseHeaders = responseHeaders.toList(),
-                    steps = steps.toList()
-                )
-                last = executeStep(
-                    provider,
-                    step,
-                    context,
-                    inputs,
-                    isFinal = index == chain.steps.lastIndex,
-                    finalResponseType = chain.finalResponse.type
-                )
-                if (!shouldRetry(step, last.value)) break
-                val policy = step.observation.retry
-                val elapsed = System.currentTimeMillis() - startedAt
-                val canRetry = attempts < policy.maxAttempts.coerceAtLeast(1) &&
-                    elapsed + policy.delayMillis.coerceAtLeast(0) <= policy.maxWaitMillis.coerceAtLeast(0)
-                if (!canRetry) {
-                    error("Media API did not become ready within the configured retry limit: ${safeResponse(last.value, provider)}")
+            try {
+                var attempts = 0
+                val startedAt = System.currentTimeMillis()
+                while (true) {
+                    attempts++
+                    val context = MediaTemplateContext(
+                        prompt = prompt,
+                        model = model,
+                        apiToken = provider.auth.token,
+                        inputFiles = inputs.map { it.template },
+                        responses = responses.toList(),
+                        responseHeaders = responseHeaders.toList(),
+                        steps = steps.toList()
+                    )
+                    last = executeStep(
+                        provider,
+                        step,
+                        context,
+                        inputs,
+                        isFinal = index == chain.steps.lastIndex,
+                        finalResponseType = chain.finalResponse.type
+                    )
+                    if (!shouldRetry(step, last.value)) break
+                    val policy = step.observation.retry
+                    val elapsed = System.currentTimeMillis() - startedAt
+                    val canRetry = attempts < policy.maxAttempts.coerceAtLeast(1) &&
+                        elapsed + policy.delayMillis.coerceAtLeast(0) <= policy.maxWaitMillis.coerceAtLeast(0)
+                    if (!canRetry) {
+                        error("Media API did not become ready within the configured retry limit: ${safeResponse(last.value, provider)}")
+                    }
+                    delay(policy.delayMillis.coerceAtLeast(0))
                 }
-                delay(policy.delayMillis.coerceAtLeast(0))
+                responses += last.value
+                responseHeaders += last.responseHeaders
+                steps += last.step ?: error("Media request step did not produce request/response metadata.")
+                results += last
+                if (index == chain.steps.lastIndex) return finish(chain, results, provider)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                if (failure.message?.startsWith("Final response extraction") == true) throw failure
+                val detail = failure.message?.takeIf { it.isNotBlank() } ?: failure::class.simpleName.orEmpty()
+                throw IllegalStateException("Media request step ${index + 1} failed: $detail", failure)
             }
-            responses += last.value
-            responseHeaders += last.responseHeaders
-            steps += last.step ?: error("Media request step did not produce request/response metadata.")
-            if (index == chain.steps.lastIndex) return finish(chain, last, provider)
         }
         error("Media request chain did not produce a final response.")
     }
@@ -130,16 +141,21 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
         val headers = step.headers.entries.associate { (key, value) ->
             resolveText(key, context) to resolveText(value, context)
         }
-        val body = step.body.trim().ifBlank { "{}" }
-        val template = runCatching { json.parseToJsonElement(body) }
-            .getOrElse { error("Request step JSON is invalid: ${it.message.orEmpty()}") }
-        val resolved = resolveMediaTemplate(template, context, step.fileTransport)
+        val body = step.body.trim().ifBlank { if (step.mode == MediaRequestMode.RAW) "" else "{}" }
+        val resolved = if (step.mode == MediaRequestMode.RAW) {
+            JsonPrimitive(body)
+        } else {
+            val template = runCatching { json.parseToJsonElement(body) }
+                .getOrElse { error("Request step JSON is invalid: ${it.message.orEmpty()}") }
+            resolveMediaTemplate(template, context, step.fileTransport)
+        }
         val requestBody = when (step.mode) {
             MediaRequestMode.JSON -> {
                 require(!containsFileToken(resolved)) { "JSON request steps must use base64 for input files." }
                 resolved.toString().toRequestBody("application/json".toMediaType())
             }
             MediaRequestMode.FORM -> formBody(resolved, inputs)
+            MediaRequestMode.RAW -> rawRequestBody(step, context, inputs)
         }
         val builder = http.request(
             endpoint,
@@ -230,6 +246,23 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
         return form.build()
     }
 
+    private fun rawRequestBody(
+        step: MediaRequestStep,
+        context: MediaTemplateContext,
+        inputs: List<InputFile>
+    ): RequestBody {
+        val source = Regex("""^\{\{\s*input_file\[(\d+)\]\s*\}\}$""").matchEntire(step.body.trim())
+        val input = source?.groupValues?.get(1)?.toIntOrNull()?.let { inputs.getOrNull(it) }
+        val contentType = step.contentType.trim().ifBlank {
+            input?.template?.mimeType?.takeIf { it.isNotBlank() } ?: "application/octet-stream"
+        }.toMediaType()
+        if (source != null && step.fileTransport == MediaFileTransport.RAW) {
+            return input?.file?.asRequestBody(contentType) ?: ByteArray(0).toRequestBody(contentType)
+        }
+        val text = resolveText(step.body, context)
+        return text.toRequestBody(contentType)
+    }
+
     private fun formValue(value: JsonElement): String = when (value) {
         is JsonPrimitive -> value.content
         else -> value.toString()
@@ -256,6 +289,7 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
      * API response whose status is configured as an error.
      */
     private fun shouldRetry(step: MediaRequestStep, response: JsonElement): Boolean {
+        if (!step.observation.isEnabled) return false
         val path = step.observation.statusPath.trim()
         if (path.isBlank()) return false
         val selected = runCatching { selectMediaPath(response, path) }.getOrNull()
@@ -268,6 +302,26 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
     }
 
     private suspend fun finish(
+        chain: MediaRequestChain,
+        results: List<StepResult>,
+        provider: ModelProvider
+    ): JsonObject {
+        val sourceStepNumber = chain.finalResponse.sourceStep ?: results.size
+        return try {
+            val sourceIndex = sourceStepNumber - 1
+            require(sourceIndex in results.indices) {
+                "Final response source step must refer to a completed request step."
+            }
+            finishFromResult(chain, results[sourceIndex], provider)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            val detail = failure.message?.takeIf { it.isNotBlank() } ?: failure::class.simpleName.orEmpty()
+            throw IllegalStateException("Final response extraction for step $sourceStepNumber failed: $detail", failure)
+        }
+    }
+
+    private suspend fun finishFromResult(
         chain: MediaRequestChain,
         result: StepResult,
         provider: ModelProvider

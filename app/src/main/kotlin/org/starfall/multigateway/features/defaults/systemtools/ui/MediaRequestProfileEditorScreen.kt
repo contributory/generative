@@ -229,6 +229,7 @@ internal fun MediaRequestProfileEditorScreen(
                 }
                 MediaFinalResponseEditor(
                     finalResponse = draft.chain.finalResponse,
+                    stepCount = draft.chain.steps.size,
                     onChange = { updated ->
                         draft = draft.copy(chain = draft.chain.copy(finalResponse = updated))
                     }
