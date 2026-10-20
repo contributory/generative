@@ -7,6 +7,8 @@
     <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
 
     <string name="app_name">MultiGateway</string>
+    <string name="features_logo_choose_image">Choose Image</string>
+    <string name="features_logo_remove">Remove</string>
     <string name="message_text_size">Message text size</string>
     <string name="message_text_size_hint">%1$d sp</string>
     <string name="message_text_size_custom_hint">Off: follow the Android system font size</string>
@@ -785,8 +787,15 @@
     <string name="screen_wakelock_all">On</string>
     <string name="screen_wakelock_except_tool_calls">Auto</string>
     <string name="context_window_compact_hint">Tap the circle to compact the context window</string>
+    <string name="context_window_source_api">API usage (latest matching request)</string>
+    <string name="context_window_source_estimated">Estimated — API usage unavailable for this context</string>
+    <string name="context_window_source_mixed">API usage + estimated new messages</string>
+    <string name="context_window_api_breakdown">Input: %1$s · Output: %2$s tokens</string>
+    <string name="context_window_api_input_only">Input: %1$s tokens · Output usage unavailable</string>
     <string name="headers" translatable="false">Headers</string>
     <string name="mcp_enable">Enable</string>
     <string name="mcp_enabled">Enabled</string>
     <string name="drag_to_exit_folder_hint">Drag up to the app bar or down to the navigation bar to leave the folder</string>
+    <string name="conversation_summary_invalid_target">Enter a whole number of target tokens from 1 to 2147483647. The summary must also fit the selected summary model’s context and output limits.</string>
+    <string name="conversation_summary_invalid_chunk">Enter a whole number from 1 to 100000 tokens per pass.</string>
 </resources>

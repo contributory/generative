@@ -2,7 +2,9 @@ package org.starfall.multigateway.integrations.modelapis.openai
 
 import kotlinx.coroutines.flow.Flow
 import com.openai.models.chat.completions.ChatCompletionCreateParams
+import com.openai.models.chat.completions.ChatCompletionStreamOptions
 import com.openai.models.chat.completions.ChatCompletionUserMessageParam
+import com.openai.models.completions.CompletionUsage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -85,17 +87,32 @@ internal class OpenAIChatCompletionsAdapter(private val sdk: OfficialProviderSdk
                     reasoningFrom(message._additionalProperties())?.let { emit(GenerationEvent.Reasoning(it)) }
                     message.content().orElse(null)?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
                 }
+                response._usage().asKnown().orElse(null)?.tokenUsage()?.let { emit(GenerationEvent.Usage(it)) }
                 return@useClient
             }
 
+            params.streamOptions(ChatCompletionStreamOptions.builder().includeUsage(true).build())
             sdk.sdkCall { client.chat().completions().createStreaming(params.build()) }.use { response ->
                 val iterator = response.stream().iterator()
+                var usage: TokenUsage? = null
                 while (sdk.sdkCall { iterator.hasNext() }) {
-                    val delta = iterator.next().choices().firstOrNull()?.delta() ?: continue
+                    val chunk = iterator.next()
+                    // The final usage chunk has no choices, so inspect it before the content early exit.
+                    chunk._usage().asKnown().orElse(null)?.tokenUsage()?.let { usage = it }
+                    val delta = chunk._choices().asKnown().orElse(emptyList()).firstOrNull()?.delta() ?: continue
                     reasoningFrom(delta._additionalProperties())?.let { emit(GenerationEvent.Reasoning(it)) }
                     delta.content().orElse(null)?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
                 }
+                usage?.let { emit(GenerationEvent.Usage(it)) }
             }
         }
     }.flowOn(Dispatchers.IO)
+}
+
+private fun CompletionUsage.tokenUsage(): TokenUsage? {
+    val input = _promptTokens().asKnown().orElse(null) ?: return null
+    val outputField = _completionTokens()
+    val output = outputField.asKnown().orElse(null)
+    if (output == null && !outputField.isMissing() && !outputField.isNull()) return null
+    return TokenUsage(input, output).takeIf { it.isValid }
 }

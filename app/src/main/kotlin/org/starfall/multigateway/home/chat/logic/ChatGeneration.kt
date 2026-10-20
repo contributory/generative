@@ -53,7 +53,8 @@ internal class ChatGeneration(
         chunks: Flow<GenerationEvent>,
         rollbackConversation: Conversation? = null,
         // Continue the response already stored in [messageId] instead of starting it from empty.
-        resume: Boolean = false
+        resume: Boolean = false,
+        usageContextKey: String? = null
     ): Boolean {
         if (_busy.value) return false
         _busy.value = true
@@ -153,6 +154,16 @@ internal class ChatGeneration(
                                 appendLimited(reasoningSignatureOutput, it, MAX_GENERATION_SIGNATURE_CHARS, "Reasoning signature")
                             }
                             scheduleUpdate()
+                        }
+                        is GenerationEvent.Usage -> {
+                            if (usageContextKey != null && chunk.usage.isValid) {
+                                renderJob?.cancel()
+                                renderJob = null
+                                update()
+                                snapshot = recordContextUsage(snapshot!!, activeMessageId, chunk.usage, usageContextKey)
+                                publish(snapshot!!)
+                                persist(snapshot!!)
+                            }
                         }
                         is GenerationEvent.Tool -> {
                             _waitingForTool.value = chunk.activity.status == "running"

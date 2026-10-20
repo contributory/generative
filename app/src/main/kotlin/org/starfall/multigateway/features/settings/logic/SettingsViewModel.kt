@@ -35,6 +35,9 @@ class SettingsViewModel(
     fun setUseDynamicColor(value: Boolean) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setUseDynamicColor(value) }
     }
+    fun setFeaturesLogoImage(value: String?) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setFeaturesLogoImage(value) }
+    }
     fun setColorSchemeName(value: String) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setColorSchemeName(value) }
     }

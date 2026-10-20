@@ -355,6 +355,7 @@ fun AppNavigation(
                     onNavigateToSettings = {
                         navigate(AppDestination.FEATURES)
                     },
+                    featuresLogoImage = appPrefs.featuresLogoImage,
                     onCloseDrawer = {
                         coroutineScope.launch { drawerState.close() }
                     }
@@ -397,7 +398,8 @@ fun AppNavigation(
                         modelPickerSelectedTab = appPrefs.modelPickerSelectedTab,
                         onModelPickerSelectedTabChange = settingsViewModel::setModelPickerSelectedTab,
                         selectedProviderId = chatProviderId,
-                        selectedModelName = chatModelId,
+                         selectedModelName = chatModelId,
+                         featuresLogoImage = appPrefs.featuresLogoImage,
                         autoScroll = appPrefs.autoScroll,
                         onSendMedia = viewModel::sendMedia,
                         onResendUserMessage = viewModel::resendUserMessage,
@@ -772,6 +774,8 @@ fun AppNavigation(
                         Scaffold { padding ->
                             FeaturesScreen(
                                 modifier = Modifier.padding(padding),
+                                logoImage = appPrefs.featuresLogoImage,
+                                onLogoImageChange = settingsViewModel::setFeaturesLogoImage,
                                 onBack = { navController.popBackStack() },
                                 onNavigateToDefaultModels = { openConfiguration(AppDestination.SYSTEM_TOOLS) },
                                 onNavigateToProviders = { openConfiguration(AppDestination.PROVIDERS) },

@@ -15,6 +15,8 @@ import org.starfall.multigateway.shared.model.ConversationSummary
 import org.starfall.multigateway.shared.model.MessageVersion
 import org.starfall.multigateway.shared.model.StoredMessage
 import org.starfall.multigateway.shared.model.ToolActivity
+import org.starfall.multigateway.shared.model.generation.ContextUsageSnapshot
+import org.starfall.multigateway.shared.model.generation.TokenUsage
 import org.starfall.multigateway.shared.model.pruningEmptyResponses
 import org.starfall.multigateway.shared.storage.database.AppDatabase
 import org.starfall.multigateway.shared.storage.database.entities.ConversationEntity
@@ -144,7 +146,8 @@ class ConversationRepository(private val db: AppDatabase) {
                     modelId = version.modelId,
                     modelDisplayName = version.modelDisplayName,
                     generationInterrupted = version.generationInterrupted,
-                    generationError = version.generationError
+                    generationError = version.generationError,
+                    contextUsage = version.toContextUsage()
                 )
             }
             StoredMessage(
@@ -209,6 +212,7 @@ class ConversationRepository(private val db: AppDatabase) {
         else dao.deleteMessageVersionsExcept(conversationId, message.id, versionIndexes)
 
         message.versions.forEachIndexed { versionIndex, version ->
+            val contextUsage = version.contextUsage?.validated()
             val entity = MessageVersionEntity(
                 conversationId = conversationId,
                 messageId = message.id,
@@ -222,7 +226,11 @@ class ConversationRepository(private val db: AppDatabase) {
                 modelId = version.modelId,
                 modelDisplayName = version.modelDisplayName,
                 generationInterrupted = version.generationInterrupted,
-                generationError = version.generationError
+                generationError = version.generationError,
+                usageInputTokens = contextUsage?.usage?.inputTokens,
+                usageOutputTokens = contextUsage?.usage?.outputTokens,
+                usageContextKey = contextUsage?.contextKey,
+                usageMessagesFingerprint = contextUsage?.messagesFingerprint
             )
             val previous = existingVersions.firstOrNull { it.versionIndex == versionIndex }
             if (previous == null) dao.insertMessageVersion(entity)
@@ -281,6 +289,21 @@ class ConversationRepository(private val db: AppDatabase) {
         profileId = conversation.profileId,
         reasoningEffort = conversation.reasoningEffort
     )
+
+    private fun MessageVersionEntity.toContextUsage(): ContextUsageSnapshot? {
+        val inputTokens = usageInputTokens ?: return null
+        val contextKey = usageContextKey ?: return null
+        val messagesFingerprint = usageMessagesFingerprint ?: return null
+        return ContextUsageSnapshot(
+            usage = TokenUsage(inputTokens, usageOutputTokens),
+            contextKey = contextKey,
+            messagesFingerprint = messagesFingerprint
+        ).validated()
+    }
+
+    private fun ContextUsageSnapshot.validated(): ContextUsageSnapshot? = takeIf {
+        usage.isValid && contextKey.isNotBlank() && messagesFingerprint.isNotBlank()
+    }
 
     private fun ConversationSummaryEntity.toModel() = ConversationSummary(
         id = id,

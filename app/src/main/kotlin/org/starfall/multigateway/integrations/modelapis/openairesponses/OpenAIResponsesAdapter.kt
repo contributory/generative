@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import com.openai.models.responses.EasyInputMessage
 import com.openai.models.responses.ResponseCreateParams
 import com.openai.models.responses.ResponseInputItem
+import com.openai.models.responses.ResponseUsage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -95,11 +96,13 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
                         content.outputText().orElse(null)?.text()?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
                     }
                 }
+                response._usage().asKnown().orElse(null)?.tokenUsage()?.let { emit(GenerationEvent.Usage(it)) }
                 return@useClient
             }
             sdk.sdkCall { client.responses().createStreaming(params.build()) }.use { response ->
                 val iterator = response.stream().iterator()
                 var finished = false
+                var usage: TokenUsage? = null
                 while (sdk.sdkCall { iterator.hasNext() }) {
                     val event = iterator.next()
                     check(!event.error().isPresent && !event.failed().isPresent) { "OpenAI Responses stream failed" }
@@ -109,12 +112,26 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
                     event.outputTextDelta().orElse(null)?.delta()?.takeIf { it.isNotEmpty() }?.let {
                         emit(GenerationEvent.Text(it))
                     }
-                    if (event.completed().isPresent || event.incomplete().isPresent) finished = true
+                    if (event.completed().isPresent || event.incomplete().isPresent) {
+                        finished = true
+                        val finalResponse = event.completed().orElse(null)?._response()?.asKnown()?.orElse(null)
+                            ?: event.incomplete().orElse(null)?._response()?.asKnown()?.orElse(null)
+                        finalResponse?._usage()?.asKnown()?.orElse(null)?.tokenUsage()?.let { usage = it }
+                    }
                 }
                 check(finished) { "OpenAI Responses stream ended without a final response" }
+                usage?.let { emit(GenerationEvent.Usage(it)) }
             }
         }
     }.flowOn(Dispatchers.IO)
+}
+
+private fun ResponseUsage.tokenUsage(): TokenUsage? {
+    val input = _inputTokens().asKnown().orElse(null) ?: return null
+    val outputField = _outputTokens()
+    val output = outputField.asKnown().orElse(null)
+    if (output == null && !outputField.isMissing() && !outputField.isNull()) return null
+    return TokenUsage(input, output).takeIf { it.isValid }
 }
 
 

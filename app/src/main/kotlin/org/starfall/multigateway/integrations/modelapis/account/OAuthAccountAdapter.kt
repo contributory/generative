@@ -24,19 +24,20 @@ import org.starfall.multigateway.shared.networking.str
 import org.starfall.multigateway.shared.networking.text
 import org.starfall.multigateway.shared.networking.providerBase
 import org.starfall.multigateway.shared.networking.modelResponse
+import org.starfall.multigateway.shared.networking.providerTokenUsage
 
 /** Shared PKCE and encrypted persistence; protocol details stay in each adapter. */
 internal abstract class OAuthAccountAdapter(
     context: Context,
     private val attachments: AttachmentResolver,
     final override val providerType: ModelApiType,
-    private val clientId: String,
+    protected val clientId: String,
     private val authorizationUrl: String,
-    private val tokenUrl: String,
+    protected val tokenUrl: String,
     private val scope: String,
     private val callbackPort: Int,
     private val callbackPath: String,
-    private val clientSecret: String? = null,
+    protected val clientSecret: String? = null,
     private val jsonTokens: Boolean = false,
     private val callbackHost: String = "localhost",
     private val registeredRedirectUri: String? = null
@@ -62,8 +63,7 @@ internal abstract class OAuthAccountAdapter(
         require(clientId.isNotBlank() && (clientSecret == null || clientSecret.isNotBlank())) {
             "${providerType.displayName} OAuth client configuration is missing from this build."
         }
-        val extra = if (jsonTokens) mapOf("code" to "true")
-            else mapOf("access_type" to "offline", "prompt" to "consent")
+        val extra = authorizationAdditionalParameters()
         val request = AppAuthTransactions.authorization(authorizationUrl, tokenUrl, clientId, redirectUri, scope, extra)
         OAuthCallbackService.keepAlive(appContext) {
             val code = if (request.redirectUri.scheme == "multigateway-oauth") {
@@ -87,6 +87,10 @@ internal abstract class OAuthAccountAdapter(
 
     protected open suspend fun enrichToken(token: AccountTokenState): AccountTokenState = token
 
+    protected open fun authorizationAdditionalParameters(): Map<String, String> =
+        if (jsonTokens) mapOf("code" to "true")
+        else mapOf("access_type" to "offline", "prompt" to "consent")
+
     protected suspend fun ensureToken(provider: ModelProvider): AccountTokenState = refreshLock.withLock {
         require(provider.type == providerType && provider.auth.method == AuthMethod.OAUTH && provider.auth.value == marker) {
             "${providerType.displayName} is not authorized. Sign in from Provider settings."
@@ -99,7 +103,7 @@ internal abstract class OAuthAccountAdapter(
         } else current
     }
 
-    private suspend fun exchange(fields: Map<String, String>, previous: AccountTokenState? = null): AccountTokenState {
+    protected open suspend fun exchange(fields: Map<String, String>, previous: AccountTokenState? = null): AccountTokenState {
         val payload = AppAuthTransactions.exchange(appContext, http, AppAuthTransactions.token(tokenUrl, clientId, fields),
             AppAuthTransactions.authentication(if (clientSecret == null) "none" else "client_secret_post", clientSecret),
             jsonBody = jsonTokens)
@@ -165,6 +169,7 @@ internal abstract class OAuthAccountAdapter(
                 }
             }
         }
+        providerTokenUsage(wire.type, response)?.takeIf { it.isValid }?.let { send(GenerationEvent.Usage(it)) }
     }.flowOn(Dispatchers.IO)
 
     private fun chatBody(type: ModelApiType, model: String, messages: List<StoredMessage>, prompt: String, maxTokens: Int, config: ModelConfiguration): JsonObject {

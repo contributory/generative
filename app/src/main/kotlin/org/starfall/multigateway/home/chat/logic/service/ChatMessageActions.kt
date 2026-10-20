@@ -22,6 +22,8 @@ import org.starfall.multigateway.shared.model.ToolSettings
 import org.starfall.multigateway.shared.model.generation.GenerationEvent
 import org.starfall.multigateway.shared.model.language.ModelType
 import org.starfall.multigateway.home.chat.logic.effectiveContext
+import org.starfall.multigateway.home.chat.logic.contextUsageKey
+import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.networking.obj
 import org.starfall.multigateway.shared.storage.ConversationRepository
@@ -163,7 +165,10 @@ internal class ChatMessageActions(
         val started = generationFor(conv.id).startEvents(
             conv,
             assistant.id,
-            toolEvents(provider, modelId, context.messages, context.systemPrompt, conv.id)
+            toolEvents(provider, modelId, context.messages, context.systemPrompt, conv.id),
+            usageContextKey = contextUsageKey(conv, prefs.effectiveSystemPrompt,
+                baseProvider.config.modelConfigs[modelId] ?: ModelConfiguration(displayName = modelId),
+                prefs.promptRoleMessages(), toolSettings.value)
         )
         if (started && !conv.startedWithDirectMedia() && shouldGenerateConversationTitle(
                 userText,
@@ -392,7 +397,10 @@ internal class ChatMessageActions(
             responseId,
             toolEvents(configuredProvider, modelId, context.messages, context.systemPrompt, conversation.id),
             rollbackConversation = rollbackConversation,
-            resume = resume
+            resume = resume,
+            usageContextKey = contextUsageKey(conversation, preferences.effectiveSystemPrompt,
+                provider.config.modelConfigs[modelId] ?: ModelConfiguration(displayName = modelId),
+                preferences.promptRoleMessages(), toolSettings.value)
         )
     }
 

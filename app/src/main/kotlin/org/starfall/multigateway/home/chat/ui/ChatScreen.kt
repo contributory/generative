@@ -102,6 +102,7 @@ fun ChatScreen(
     onOpenDrawer: () -> Unit,
     onNewChat: () -> Unit,
     onOpenSettings: () -> Unit,
+    featuresLogoImage: String? = null,
     onRegenerate: (String) -> Unit,
     onRetryFromError: (String) -> Unit = {},
     onEditMessage: (messageId: String, newContent: String, files: List<String>) -> Boolean,
@@ -771,6 +772,8 @@ fun ChatScreen(
                 editDraft = editDraft,
                 onCancelEdit = { editDraft = null },
                 onStopGenerating = onStopGenerating,
+                contextWindowStatus = contextWindowStatus,
+                onOpenSummary = { showContextSummarySheet = true },
                 selectedModelName = selectedModelName,
                 providers = providers,
                 providerGroups = providerGroups,
@@ -798,12 +801,11 @@ fun ChatScreen(
         ChatAppBar(
             modelName = selectedModelDisplayName,
             providerName = selectedProvider?.name.orEmpty(),
-            contextWindowStatus = contextWindowStatus,
             onOpenDrawer = onOpenDrawer,
             onNewChat = onNewChat,
             onOpenSettings = onOpenSettings,
+            featuresLogoImage = featuresLogoImage,
             onOpenModelPicker = { modelPickerOpenRequest++ },
-            onOpenSummary = { showContextSummarySheet = true },
             modifier = Modifier.align(Alignment.TopCenter)
                 .onSizeChanged { appBarHeightPx = it.height }
         )

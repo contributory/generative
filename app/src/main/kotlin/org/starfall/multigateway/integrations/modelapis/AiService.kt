@@ -258,7 +258,6 @@ class AiService(
         val topK = modelConfig.topK
         val maxTokens = maxOutputTokens
             ?.coerceAtLeast(1)
-            ?.let { minOf(it, resolved.config.maxTokens) }
             ?: resolved.config.maxTokens
         logModelRequest(requestProvider, modelName, requestMessages, systemPrompt, maxTokens, temperature, topP, topK)
         accountAdapters.get(resolved.type)?.let { adapter ->

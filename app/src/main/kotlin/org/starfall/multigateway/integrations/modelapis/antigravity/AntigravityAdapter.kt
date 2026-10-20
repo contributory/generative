@@ -1,6 +1,8 @@
 package org.starfall.multigateway.integrations.modelapis.antigravity
 
 import android.content.Context
+import okhttp3.FormBody
+import org.starfall.multigateway.shared.logging.DebugLogInterceptor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
@@ -16,6 +18,7 @@ import org.starfall.multigateway.shared.model.provider.*
 import org.starfall.multigateway.shared.files.AttachmentResolver
 import org.starfall.multigateway.integrations.modelapis.discoveredModel
 import java.util.UUID
+import org.starfall.multigateway.shared.networking.ToolHttp
 import org.starfall.multigateway.shared.networking.obj
 import org.starfall.multigateway.shared.networking.str
 import org.starfall.multigateway.shared.networking.text
@@ -24,12 +27,67 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
     context, attachments, ModelApiType.ANTIGRAVITY,
     "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com",
     "https://accounts.google.com/o/oauth2/v2/auth", "https://oauth2.googleapis.com/token",
-    "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/cclog https://www.googleapis.com/auth/experimentsandconfigs openid",
+    "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/cclog https://www.googleapis.com/auth/experimentsandconfigs",
     51121, "/oauth-callback", "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",
     callbackHost = "127.0.0.1"
 ) {
     private val metadata =
-        obj("ideType" to str("ANTIGRAVITY"), "platform" to str("PLATFORM_UNSPECIFIED"), "pluginType" to str("GEMINI"))
+        obj("ideType" to str("ANTIGRAVITY"), "platform" to str("WINDOWS"), "pluginType" to str("GEMINI"))
+
+    // Match the reference provider's raw OAuth token exchange. AppAuth's OIDC token parsing
+    // rejects Google's Antigravity response with "Invalid ID Token".
+    private val oauthHttp by lazy {
+        ToolHttp(client = http.client.newBuilder().apply {
+            interceptors().removeAll { it is DebugLogInterceptor }
+        }.build())
+    }
+
+    override fun authorizationAdditionalParameters(): Map<String, String> = mapOf(
+        "access_type" to "offline",
+        "prompt" to "consent",
+        "include_granted_scopes" to "true"
+    )
+
+    override suspend fun exchange(
+        fields: Map<String, String>,
+        previous: AccountTokenState?
+    ): AccountTokenState {
+        val form = FormBody.Builder().apply {
+            add("client_id", clientId)
+            clientSecret?.let { add("client_secret", it) }
+            fields.filterKeys { it != "state" }.forEach { (key, value) -> add(key, value) }
+        }.build()
+        val request = oauthHttp.request(
+            tokenUrl,
+            extraHeaders = mapOf(
+                "Accept" to "*/*",
+                "User-Agent" to GEMINI_CLI_USER_AGENT,
+                "X-Goog-Api-Client" to GEMINI_CLI_API_CLIENT
+            )
+        ).post(form).build()
+        return accountTokenFromResponse(oauthHttp.json(request), previous)
+    }
+
+    override suspend fun enrichToken(token: AccountTokenState): AccountTokenState {
+        require(token.refreshToken.isNotBlank()) {
+            "Google did not return an Antigravity refresh token. Sign in again and grant offline access."
+        }
+        val userInfo = try {
+            oauthHttp.json(oauthHttp.request(
+                GOOGLE_USERINFO_URL,
+                extraHeaders = mapOf(
+                    "Authorization" to "Bearer ${token.accessToken}",
+                    "User-Agent" to GEMINI_CLI_USER_AGENT,
+                    "X-Goog-Api-Client" to GEMINI_CLI_API_CLIENT
+                )
+            ).get().build())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+        return token.copy(email = userInfo?.text("email")?.takeIf(String::isNotBlank) ?: token.email)
+    }
 
     private fun wire(provider: ModelProvider, token: AccountTokenState) = provider.copy(
         type = ModelApiType.GOOGLE,
@@ -44,6 +102,13 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
     )
 
     private val projectLock = Mutex()
+
+    private companion object {
+        const val GEMINI_CLI_USER_AGENT = "GeminiCLI/0.1.5 (Windows; AMD64)"
+        const val GEMINI_CLI_API_CLIENT = "gl-node/22.18.0"
+        const val GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v1/userinfo?alt=json"
+    }
+
     override suspend fun prepareAuthenticatedProvider(provider: ModelProvider): ModelProvider =
         wire(provider, ensureToken(provider))
 

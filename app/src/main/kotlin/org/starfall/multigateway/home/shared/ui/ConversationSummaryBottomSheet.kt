@@ -7,9 +7,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
+import org.starfall.multigateway.R
 import org.starfall.multigateway.shared.model.ConversationSummaryRequest
 import org.starfall.multigateway.shared.ui.sheets.AppBottomSheet
 import org.starfall.multigateway.shared.ui.text.SelectableOutlinedTextField
@@ -31,8 +33,13 @@ fun ConversationSummaryBottomSheet(
 
     val targetTokens = if (customTarget) customTargetText.toIntOrNull() else targetSlider.roundToInt()
     val chunkTokens = if (customChunk) customChunkText.toIntOrNull() else chunkSlider.roundToInt()
-    val valid = targetTokens != null && targetTokens in 1..6000 &&
-        (!chunked || (chunkTokens != null && chunkTokens in 1..100_000))
+    val targetValid = targetTokens != null && targetTokens > 0
+    val chunkValid = !chunked || (chunkTokens != null && chunkTokens in 1..100_000)
+    val validationError = when {
+        !targetValid -> stringResource(R.string.conversation_summary_invalid_target)
+        !chunkValid -> stringResource(R.string.conversation_summary_invalid_chunk)
+        else -> null
+    }
 
     AppBottomSheet(
         onDismissRequest = onDismiss
@@ -71,8 +78,9 @@ fun ConversationSummaryBottomSheet(
             if (customTarget) {
                 SelectableOutlinedTextField(
                     value = customTargetText,
-                    onValueChange = { customTargetText = it.filter(Char::isDigit) },
+                    onValueChange = { customTargetText = it; error = null },
                     label = { Text("Target tokens") },
+                    isError = !targetValid,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -110,8 +118,9 @@ fun ConversationSummaryBottomSheet(
                 if (customChunk) {
                     SelectableOutlinedTextField(
                         value = customChunkText,
-                        onValueChange = { customChunkText = it.filter(Char::isDigit) },
+                        onValueChange = { customChunkText = it; error = null },
                         label = { Text("Tokens / pass") },
+                        isError = !chunkValid,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -119,8 +128,9 @@ fun ConversationSummaryBottomSheet(
                 }
             }
 
-            if (error != null) {
-                Text(error.orEmpty(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            val displayedError = validationError ?: error
+            if (displayedError != null) {
+                Text(displayedError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
 
             Button(
@@ -133,7 +143,7 @@ fun ConversationSummaryBottomSheet(
                     if (onStart(request)) onDismiss()
                     else error = "Configure a Chat Summary text model in Default & Tools, or stop the current generation first."
                 },
-                enabled = valid,
+                enabled = targetValid && chunkValid,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Start summary")

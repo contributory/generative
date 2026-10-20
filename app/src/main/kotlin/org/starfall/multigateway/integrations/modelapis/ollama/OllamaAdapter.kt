@@ -18,6 +18,7 @@ import org.starfall.multigateway.shared.model.provider.*
 import org.starfall.multigateway.shared.files.AttachmentResolver
 import org.starfall.multigateway.integrations.modelapis.ModelApiAdapter
 import org.starfall.multigateway.integrations.modelapis.ModelApiRequest
+import org.starfall.multigateway.shared.networking.providerTokenUsage
 import java.util.Base64
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -114,15 +115,26 @@ internal class OllamaAdapter(
                 setBody(body.toString())
             }
             check(response.status.isSuccess()) { "Ollama request failed: HTTP ${response.status.value}" }
+            if (!provider.config.supportStream) {
+                val parsed = json.parseToJsonElement(response.bodyAsText()).jsonObject
+                parsed["message"]?.jsonObject?.get("content")?.jsonPrimitive?.contentOrNull
+                    ?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
+                parsed["error"]?.jsonPrimitive?.contentOrNull?.let { error(it) }
+                providerTokenUsage(modelApiType, parsed)?.let { emit(GenerationEvent.Usage(it)) }
+                return@flow
+            }
             val channel = response.bodyAsChannel()
+            var usage: TokenUsage? = null
             while (!channel.isClosedForRead) {
                 val line = channel.readLine() ?: break
                 if (line.isBlank()) continue
                 val parsed = runCatching { json.parseToJsonElement(line).jsonObject }.getOrNull() ?: continue
+                providerTokenUsage(modelApiType, parsed)?.let { usage = it }
                 parsed["message"]?.jsonObject?.get("content")?.jsonPrimitive?.contentOrNull
                     ?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
                 parsed["error"]?.jsonPrimitive?.contentOrNull?.let { error(it) }
             }
+            usage?.let { emit(GenerationEvent.Usage(it)) }
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
             throw cancelled
         } catch (e: Exception) {

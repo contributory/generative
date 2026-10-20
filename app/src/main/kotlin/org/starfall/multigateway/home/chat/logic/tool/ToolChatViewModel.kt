@@ -290,6 +290,7 @@ class ToolChatViewModel(
                 }
 
                 val streaming = selectedProvider.streamEnabledFor(model)
+                var turnUsage: org.starfall.multigateway.shared.model.generation.TokenUsage? = null
                 val turn = toolRequest.request(
                     selectedProvider,
                     model,
@@ -298,7 +299,8 @@ class ToolChatViewModel(
                     prompt,
                     sendThinking = sendThinkingContent,
                     onText = { send(GenerationEvent.Text(it)) },
-                    onReasoning = { send(GenerationEvent.Reasoning(it)) }
+                    onReasoning = { send(GenerationEvent.Reasoning(it)) },
+                    onUsage = { turnUsage = it }
                 )
                 val reasoningSignature = turn.text("reasoning_signature").takeIf { it.isNotBlank() }
                 if (!streaming) {
@@ -311,6 +313,7 @@ class ToolChatViewModel(
                 } else if (reasoningSignature != null) {
                     send(GenerationEvent.Reasoning("", reasoningSignature))
                 }
+                turnUsage?.let { send(GenerationEvent.Usage(it)) }
 
                 val calls = turn["tool_calls"] as? JsonArray ?: JsonArray(emptyList())
                 if (calls.isEmpty()) return@channelFlow

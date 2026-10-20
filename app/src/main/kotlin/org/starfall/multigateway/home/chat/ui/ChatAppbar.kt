@@ -1,6 +1,5 @@
 package org.starfall.multigateway.home.chat.ui
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -36,6 +35,7 @@ import org.starfall.multigateway.shared.model.language.ModelConfiguration
 import org.starfall.multigateway.shared.model.language.sendsThinkingBack
 import org.starfall.multigateway.shared.ui.icons.FluentIcon
 import org.starfall.multigateway.shared.ui.icons.Icons
+import org.starfall.multigateway.shared.ui.FeaturesLogoImage
 import org.starfall.multigateway.home.chat.model.ContextWindowStatus
 
 @Composable
@@ -45,15 +45,13 @@ fun ChatAppBar(
     onOpenDrawer: () -> Unit,
     onNewChat: () -> Unit,
     onOpenSettings: () -> Unit,
+    featuresLogoImage: String? = null,
     onOpenModelPicker: () -> Unit = {},
-    onOpenSummary: () -> Unit = {},
-    contextWindowStatus: ContextWindowStatus? = null,
     modifier: Modifier = Modifier
 ) {
     val statusBarHeight = with(LocalDensity.current) {
         WindowInsets.statusBars.getTop(this).toDp()
     }
-    var contextMenuVisible by remember { mutableStateOf(false) }
     val displayedModelName = modelName.substringAfterLast('/').ifBlank { modelName }
 
     Box(
@@ -134,28 +132,6 @@ fun ChatAppBar(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                contextWindowStatus?.let { status ->
-                    Box {
-                        ContextWindowIndicator(
-                            status = status,
-                            onClick = { contextMenuVisible = true }
-                        )
-                        DropdownMenu(
-                            expanded = contextMenuVisible,
-                            onDismissRequest = { contextMenuVisible = false },
-                            modifier = Modifier.width(228.dp)
-                        ) {
-                            ContextWindowDetails(
-                                status = status,
-                                onCompact = {
-                                    contextMenuVisible = false
-                                    onOpenSummary()
-                                }
-                            )
-                        }
-                    }
-                }
-
                 Surface(
                     modifier = Modifier
                         .size(48.dp)
@@ -186,13 +162,7 @@ fun ChatAppBar(
                     tonalElevation = 2.dp
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Image(
-                            painter = painterResource(R.drawable.multigateway_launcher_round),
-                            contentDescription = "Features",
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                        )
+                        FeaturesLogoImage(featuresLogoImage, Modifier.size(40.dp).clip(CircleShape))
                     }
                 }
             }
@@ -229,15 +199,35 @@ internal fun ContextWindowDetails(status: ContextWindowStatus, onCompact: () -> 
             ContextWindowRing(status, 96.dp)
         }
         Text(
-            text = "${formatContextTokens(status.estimatedTokens)} / ${formatContextTokens(status.limit.toLong())} tokens",
+            text = "${formatContextTokens(status.usedTokens)} / ${formatContextTokens(status.limit.toLong())} tokens",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        Text(
+            text = stringResource(when {
+                status.apiUsage == null -> R.string.context_window_source_estimated
+                status.estimatedAdditionalTokens > 0 -> R.string.context_window_source_mixed
+                else -> R.string.context_window_source_api
+            }),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        status.apiUsage?.let { usage ->
+            Text(
+                text = if (usage.outputTokens != null) stringResource(R.string.context_window_api_breakdown,
+                    formatContextTokens(usage.inputTokens), formatContextTokens(usage.outputTokens))
+                else stringResource(R.string.context_window_api_input_only, formatContextTokens(usage.inputTokens)),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 @Composable
 internal fun ContextWindowRing(status: ContextWindowStatus, size: androidx.compose.ui.unit.Dp) {
-    val progress = (status.estimatedTokens.toFloat() / status.limit.coerceAtLeast(1)).coerceIn(0f, 1f)
+    val progress = (status.usedTokens.toFloat() / status.limit.coerceAtLeast(1)).coerceIn(0f, 1f)
     val color = when {
         status.percentage >= 90 -> MaterialTheme.colorScheme.error
         status.percentage >= 75 -> MaterialTheme.colorScheme.tertiary

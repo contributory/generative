@@ -8,6 +8,7 @@ sealed interface GenerationEvent {
     data class Text(val text: String) : GenerationEvent
     data class Reasoning(val text: String, val signature: String? = null) : GenerationEvent
     data class Tool(val activity: ToolActivity) : GenerationEvent
+    data class Usage(val usage: TokenUsage) : GenerationEvent
     /** A user message inserted between a completed tool turn and the next model turn. */
     data class UserMessage(val message: StoredMessage) : GenerationEvent
 }

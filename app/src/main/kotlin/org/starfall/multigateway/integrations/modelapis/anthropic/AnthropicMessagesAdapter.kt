@@ -2,6 +2,7 @@ package org.starfall.multigateway.integrations.modelapis.anthropic
 
 import kotlinx.coroutines.flow.Flow
 import com.anthropic.models.messages.MessageCreateParams
+import com.anthropic.core.JsonField
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -98,20 +99,36 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
                 }
             }
 
+            val tokenUsage = AnthropicTokenUsage()
             if (!provider.config.supportStream) {
-                sdk.sdkCall { client.messages().create(params.build()) }.content().forEach { block ->
+                val response = sdk.sdkCall { client.messages().create(params.build()) }
+                response.content().forEach { block ->
                     block.thinking().orElse(null)?.let { thinking ->
                         emit(GenerationEvent.Reasoning(thinking.thinking(), thinking.signature()))
                     }
                     block.text().orElse(null)?.text()?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
                 }
+                response._usage().asKnown().orElse(null)?.let { usage ->
+                    tokenUsage.update(usage._inputTokens(), usage._cacheCreationInputTokens(),
+                        usage._cacheReadInputTokens(), usage._outputTokens())
+                }
+                tokenUsage.usage?.let { emit(GenerationEvent.Usage(it)) }
                 return@useClient
             }
 
             sdk.sdkCall { client.messages().createStreaming(params.build()) }.use { response ->
                 val iterator = response.stream().iterator()
                 while (sdk.sdkCall { iterator.hasNext() }) {
-                    val delta = iterator.next().contentBlockDelta().orElse(null)?.delta() ?: continue
+                    val event = iterator.next()
+                    event.messageStart().orElse(null)?.message()?._usage()?.asKnown()?.orElse(null)?.let { usage ->
+                        tokenUsage.update(usage._inputTokens(), usage._cacheCreationInputTokens(),
+                            usage._cacheReadInputTokens(), usage._outputTokens())
+                    }
+                    event.messageDelta().orElse(null)?._usage()?.asKnown()?.orElse(null)?.let { usage ->
+                        tokenUsage.update(usage._inputTokens(), usage._cacheCreationInputTokens(),
+                            usage._cacheReadInputTokens(), usage._outputTokens())
+                    }
+                    val delta = event.contentBlockDelta().orElse(null)?.delta() ?: continue
                     delta.thinking().orElse(null)?.thinking()?.takeIf { it.isNotEmpty() }?.let {
                         emit(GenerationEvent.Reasoning(it))
                     }
@@ -120,9 +137,41 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
                     }
                     delta.text().orElse(null)?.text()?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
                 }
+                tokenUsage.usage?.let { emit(GenerationEvent.Usage(it)) }
             }
         }
     }.flowOn(Dispatchers.IO)
+}
+
+/** Anthropic deltas are cumulative; only cache categories are additive to the base input count. */
+private class AnthropicTokenUsage {
+    private var input: Long? = null
+    private var cacheCreation = 0L
+    private var cacheRead = 0L
+    private var output: Long? = null
+    var usage: TokenUsage? = null
+        private set
+
+    fun update(inputField: JsonField<Long>, creationField: JsonField<Long>,
+               readField: JsonField<Long>, outputField: JsonField<Long>) {
+        val counts = listOf(inputField, creationField, readField, outputField).map { field ->
+            if (field.isMissing() || field.isNull()) null
+            else field.asKnown().orElse(null)?.takeIf { it >= 0 } ?: return
+        }
+        val nextInput = counts[0] ?: input
+        val nextCreation = counts[1] ?: cacheCreation
+        val nextRead = counts[2] ?: cacheRead
+        val nextOutput = counts[3] ?: output
+        val totalInput = nextInput?.let {
+            runCatching { Math.addExact(Math.addExact(it, nextCreation), nextRead) }.getOrNull() ?: return
+        }
+        val nextUsage = totalInput?.let { TokenUsage(it, nextOutput).takeIf { value -> value.isValid } ?: return }
+        input = nextInput
+        cacheCreation = nextCreation
+        cacheRead = nextRead
+        output = nextOutput
+        usage = nextUsage
+    }
 }
 
 

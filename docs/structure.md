@@ -145,6 +145,8 @@
 │   │   │   ├── 📄 ChatSpeechCoordinator.kt
 │   │   │   ├── 📄 ChatViewModel.kt
 │   │   │   ├── 📄 ContextWindowLogic.kt
+│   │   │   ├── 📄 ContextUsageLogic.kt
+│   │   │   ├── 📄 ConversationSummaryGeneration.kt
 │   │   │   ├── 📄 ConversationSummaryCoordinator.kt
 │   │   │   ├── 📄 SendFileTool.kt
 │   │   │   └── 📄 UserMessageRetry.kt
@@ -323,6 +325,7 @@
 │   │   │   └── 📄 CredentialLoadState.kt
 │   │   ├── 📁 generation/
 │   │   │   ├── 📄 GenerationEvent.kt
+│   │   │   ├── 📄 TokenUsage.kt
 │   │   │   └── 📄 StoredMessageExtensions.kt
 │   │   ├── 📁 language/
 │   │   │   ├── 📄 Capabilities.kt
@@ -371,6 +374,7 @@
 │   │   └── 📄 Tools.kt
 │   ├── 📁 networking/
 │   │   ├── 📄 ProviderParsing.kt
+│   │   ├── 📄 ProviderUsage.kt
 │   │   ├── 📄 ToolHttp.kt
 │   │   └── 📄 ToolStreaming.kt
 │   ├── 📁 preview/
@@ -539,6 +543,13 @@
 
 ## Main feature
 
-- `features/main/ui/FeaturesScreen.kt` is the untitled feature directory; its header displays the appropriate light/dark app logo.
+- `features/main/ui/FeaturesScreen.kt` is the untitled feature directory; its header displays the light-background app logo in every theme.
 
-- Theme-specific feature header assets are `drawable-nodpi/multigateway_logo_light.png` and `drawable-nodpi/multigateway_logo_dark.png`.
+- The feature header asset is `drawable-nodpi/multigateway_logo_light.png`.
+
+## Context and summary accounting
+
+- API adapters emit one normalized usage snapshot per model request, including streaming/tool rounds. Context usage is the latest matching request's input plus its reported output, not a sum across requests. Cached input follows each protocol's accounting without double counting.
+- Usage is stored with each response version in nullable relational columns (Room v12). Hashed history/configuration keys prevent reuse after an edit, branch, model/provider change, prompt/tool-settings change or compact. Old/imported history without usage falls back to the local estimator; new messages after a valid snapshot add only an explicitly labeled local estimate.
+- The context details distinguish API usage, estimates and mixed counts. A missing output count remains explicitly unavailable rather than becoming a fabricated zero. The maximum context capacity still comes from model configuration/catalog metadata.
+- Custom summary targets are not restricted to the slider's 6000-token range. Summary requests override the provider's default output budget, while explicit model output limits and input-plus-output context budgets remain enforced. Multiple-pass summaries reserve room for the requested final output.

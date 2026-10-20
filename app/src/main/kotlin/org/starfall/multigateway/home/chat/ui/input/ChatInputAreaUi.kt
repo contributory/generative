@@ -12,6 +12,12 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -42,6 +48,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,6 +77,9 @@ import org.starfall.multigateway.shared.model.language.supportedReasoningEfforts
 import org.starfall.multigateway.home.chat.logic.input.ChatInputEditDraft
 import org.starfall.multigateway.home.chat.logic.input.DirectMediaRequest
 import org.starfall.multigateway.home.chat.logic.input.MAX_CLIPBOARD_IMAGE_BYTES
+import org.starfall.multigateway.home.chat.model.ContextWindowStatus
+import org.starfall.multigateway.home.chat.ui.ContextWindowDetails
+import org.starfall.multigateway.home.chat.ui.ContextWindowIndicator
 import org.starfall.multigateway.home.chat.logic.input.canSendChatInput
 import org.starfall.multigateway.home.chat.logic.input.directMediaHint
 import org.starfall.multigateway.home.chat.logic.input.filterMediaProvidersForKind
@@ -88,6 +98,8 @@ fun UserInputArea(
     editDraft: ChatInputEditDraft?,
     onCancelEdit: () -> Unit,
     onStopGenerating: () -> Unit,
+    contextWindowStatus: ContextWindowStatus? = null,
+    onOpenSummary: () -> Unit = {},
     selectedModelName: String,
     providers: List<ModelProvider>,
     providerGroups: List<ProviderGroup> = emptyList(),
@@ -114,6 +126,8 @@ fun UserInputArea(
     modifier: Modifier = Modifier
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue()) }
+    var inputFocused by remember { mutableStateOf(false) }
+    var contextWindowMenuVisible by remember { mutableStateOf(false) }
     val textState = textFieldValue.text
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -173,6 +187,7 @@ fun UserInputArea(
     val stackInputActions = attachments.isNotEmpty() || inputLineCount >= 3
     // From five lines on, the buttons drop below the text so it can use the full width.
     val buttonsBelow = inputLineCount >= 5
+    val contextWindowAboveInput = inputFocused && inputLineCount < 5
     // The whole input grows to half the screen for text only, 60% when attachments are shown.
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
     val maxInputHeight = (screenHeightDp * if (attachments.isNotEmpty()) 0.6f else 0.5f).dp
@@ -265,6 +280,35 @@ fun UserInputArea(
             modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
+        if (contextWindowStatus != null) {
+            AnimatedVisibility(
+                visible = contextWindowAboveInput,
+                enter = fadeIn(tween(160)) + expandVertically(expandFrom = Alignment.Bottom) +
+                    slideInVertically(tween(180)) { it / 2 },
+                exit = fadeOut(tween(100)) + shrinkVertically(shrinkTowards = Alignment.Bottom) +
+                    slideOutVertically(tween(160)) { -it / 2 }
+            ) {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                    ContextWindowIndicator(
+                        status = contextWindowStatus,
+                        onClick = { contextWindowMenuVisible = true }
+                    )
+                    DropdownMenu(
+                        expanded = contextWindowMenuVisible,
+                        onDismissRequest = { contextWindowMenuVisible = false },
+                        modifier = Modifier.width(228.dp)
+                    ) {
+                        ContextWindowDetails(
+                            status = contextWindowStatus,
+                            onCompact = {
+                                contextWindowMenuVisible = false
+                                onOpenSummary()
+                            }
+                        )
+                    }
+                }
+            }
+        }
         Surface(
             modifier = Modifier
                 .widthIn(max = 720.dp)
@@ -372,6 +416,33 @@ fun UserInputArea(
                     }
                 }
                     val actionButtons: @Composable () -> Unit = {
+                    if (contextWindowStatus != null) {
+                        AnimatedVisibility(
+                            visible = !contextWindowAboveInput,
+                            enter = fadeIn(tween(160)) + slideInHorizontally(tween(180)) { -it / 2 },
+                            exit = fadeOut(tween(100)) + slideOutHorizontally(tween(160)) { -it / 2 }
+                        ) {
+                            Box {
+                                ContextWindowIndicator(
+                                    status = contextWindowStatus,
+                                    onClick = { contextWindowMenuVisible = true }
+                                )
+                                DropdownMenu(
+                                    expanded = contextWindowMenuVisible,
+                                    onDismissRequest = { contextWindowMenuVisible = false },
+                                    modifier = Modifier.width(228.dp)
+                                ) {
+                                    ContextWindowDetails(
+                                        status = contextWindowStatus,
+                                        onCompact = {
+                                            contextWindowMenuVisible = false
+                                            onOpenSummary()
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                     Box(
                         modifier = Modifier
                             .size(44.dp)
@@ -493,6 +564,7 @@ fun UserInputArea(
                         modifier = Modifier
                             .weight(1f)
                             .padding(horizontal = if (buttonsBelow) 14.dp else 8.dp, vertical = 10.dp)
+                            .onFocusChanged { inputFocused = it.isFocused }
                             .selectAllOnTripleClick {
                                 textFieldValue = textFieldValue.copy(
                                     selection = TextRange(0, textFieldValue.text.length)

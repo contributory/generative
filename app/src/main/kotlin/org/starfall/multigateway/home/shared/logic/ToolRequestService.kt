@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.*
 import org.starfall.multigateway.shared.model.StoredMessage
 import org.starfall.multigateway.shared.model.provider.ModelProvider
 import org.starfall.multigateway.shared.model.generation.GenerationEvent
+import org.starfall.multigateway.shared.model.generation.TokenUsage
 import kotlinx.serialization.json.*
 import org.starfall.multigateway.integrations.modelapis.AiService
 import org.starfall.multigateway.shared.model.ToolDefinition
@@ -21,6 +22,7 @@ import org.starfall.multigateway.shared.networking.modelResponse
 import org.starfall.multigateway.shared.networking.obj
 import org.starfall.multigateway.shared.networking.providerBase
 import org.starfall.multigateway.shared.networking.providerTurn
+import org.starfall.multigateway.shared.networking.providerTokenUsage
 import org.starfall.multigateway.shared.networking.requireArray
 import org.starfall.multigateway.shared.networking.requireObject
 import org.starfall.multigateway.shared.networking.str
@@ -59,7 +61,8 @@ internal class ToolRequestService(
         prompt: String,
         sendThinking: Boolean,
         onText: suspend (String) -> Unit,
-        onReasoning: suspend (String) -> Unit
+        onReasoning: suspend (String) -> Unit,
+        onUsage: suspend (TokenUsage) -> Unit = {}
     ): JsonObject {
         val defs = JsonArray(tools.map { obj("type" to str("function"),"function" to obj("name" to str(it.name),"description" to str(it.description),"parameters" to it.schema)) })
         val wireProvider = aiService.prepareAccountProvider(p, model)
@@ -68,9 +71,11 @@ internal class ToolRequestService(
         suspend fun modelResponse(url: String, body: JsonObject, provider: ModelProvider,
             stream: Boolean, text: suspend (String) -> Unit, reasoning: suspend (String) -> Unit = {}): JsonObject {
             val requestBody = if (p.type == ModelApiType.ANTIGRAVITY) JsonObject(body + ("model" to str(model))) else body
-            return http.modelResponse(aiService.accountRequestUrl(p, provider, url),
+            val response = http.modelResponse(aiService.accountRequestUrl(p, provider, url),
                 aiService.normalizeAccountToolRequest(p, provider, requestBody, prompt), aiService.prepareAccountRequest(p, provider, requestBody), stream, text, reasoning,
                 { aiService.unwrapAccountResponse(p, it) })
+            providerTokenUsage(provider.type, response)?.takeIf { it.isValid }?.let { onUsage(it) }
+            return response
         }
 
         return when(wireProvider.type) {

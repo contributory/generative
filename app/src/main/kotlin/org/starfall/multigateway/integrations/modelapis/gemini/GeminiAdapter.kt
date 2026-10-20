@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import com.google.genai.Client
 import com.google.genai.types.Content
 import com.google.genai.types.GenerateContentConfig
+import com.google.genai.types.GenerateContentResponseUsageMetadata
 import com.google.genai.types.Part
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flow
@@ -70,18 +71,36 @@ internal class GeminiAdapter(private val sdk: OfficialProviderSdk) : ModelApiAda
             topP?.let { config.topP(it.toFloat()) }
             topK?.let { config.topK(it.toFloat()) }
             if (!provider.config.supportStream) {
-                sdk.sdkCall { client.models.generateContent(modelName.removePrefix("models/"), contents, config.build()) }
-                    .text()?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
+                val response = sdk.sdkCall { client.models.generateContent(modelName.removePrefix("models/"), contents, config.build()) }
+                response.text()?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
+                response.usageMetadata().orElse(null)?.tokenUsage()?.let { emit(GenerationEvent.Usage(it)) }
                 return@use
             }
             sdk.sdkCall { client.models.generateContentStream(modelName.removePrefix("models/"), contents, config.build()) }.use { response ->
                 val iterator = response.iterator()
+                var usage: TokenUsage? = null
                 while (sdk.sdkCall { iterator.hasNext() }) {
-                    iterator.next().text()?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
+                    val chunk = iterator.next()
+                    chunk.usageMetadata().orElse(null)?.tokenUsage()?.let { usage = it }
+                    chunk.text()?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
                 }
+                usage?.let { emit(GenerationEvent.Usage(it)) }
             }
         }
     }.flowOn(Dispatchers.IO)
+}
+
+private fun GenerateContentResponseUsageMetadata.tokenUsage(): TokenUsage? {
+    // promptTokenCount already includes cachedContentTokenCount; thoughts are separate from candidates.
+    val prompt = promptTokenCount().orElse(null)?.toLong() ?: return null
+    val toolInput = toolUsePromptTokenCount().orElse(0).toLong()
+    if (prompt < 0 || toolInput < 0) return null
+    val input = prompt + toolInput
+    val candidates = candidatesTokenCount().orElse(null)?.toLong()
+    val thoughts = thoughtsTokenCount().orElse(null)?.toLong()
+    if ((candidates != null && candidates < 0) || (thoughts != null && thoughts < 0)) return null
+    val output = if (candidates == null && thoughts == null) null else (candidates ?: 0L) + (thoughts ?: 0L)
+    return TokenUsage(input, output).takeIf { it.isValid }
 }
 
 

@@ -15,7 +15,6 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -50,6 +49,7 @@ import org.starfall.multigateway.shared.ui.icons.FluentIcon
 import org.starfall.multigateway.shared.ui.icons.Icons
 import org.starfall.multigateway.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import org.starfall.multigateway.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.multigateway.shared.ui.FeaturesLogoImage
 import org.starfall.multigateway.shared.ui.layout.amoledEdgeBorder
 import org.starfall.multigateway.shared.ui.layout.windowHeightIn
 import org.starfall.multigateway.shared.ui.layout.windowWidth
@@ -73,6 +73,7 @@ fun LeftSideDrawer(
     onDeleteConversation: (String) -> Unit,
     onUpdateDefaultSystemPrompt: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
+    featuresLogoImage: String? = null,
     onCloseDrawer: () -> Unit,
     promptLibrary: PromptLibrary? = null,
     onPromptLibraryChange: (PromptLibrary) -> Unit = {},
@@ -279,11 +280,9 @@ fun LeftSideDrawer(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Spacer(Modifier.width(4.dp))
                         IconButton(onClick = { promptDialog = true }, modifier = Modifier.size(40.dp)) { FluentIcon(Icons.Outlined.DocumentSparkle, "Prompts") }
-                        IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) { Image(
-                            painter = painterResource(R.drawable.multigateway_launcher_round),
-                            contentDescription = "Features",
-                            modifier = Modifier.size(36.dp).clip(CircleShape)
-                        ) }
+                        IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) {
+                            FeaturesLogoImage(featuresLogoImage, Modifier.size(36.dp).clip(CircleShape))
+                        }
                     }
                 }
                 Spacer(Modifier.width(8.dp))

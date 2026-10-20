@@ -26,6 +26,9 @@ internal data class ChatContextEstimate(
     val preferences: AppPreferences,
     val model: ModelConfiguration?,
     val status: ContextWindowStatus?,
+    val providerId: String,
+    val modelId: String,
+    val toolSettings: ToolSettings,
 )
 
 /** Resolves the active chat model and derives context-window state without mixing it into actions. */
@@ -39,8 +42,9 @@ internal class ChatModelContextCoordinator(
     val contextEstimate: StateFlow<ChatContextEstimate?> = combine(
         currentConversation,
         appPreferences,
-        providers
-    ) { conversation, preferences, availableProviders ->
+        providers,
+        toolSettings
+    ) { conversation, preferences, availableProviders, currentToolSettings ->
         val conversationProvider = conversation?.takeIf {
             preferences.persistSelectedModel && it.messages.isNotEmpty()
         }?.let { selected ->
@@ -72,9 +76,15 @@ internal class ChatModelContextCoordinator(
                     conversation,
                     preferences.effectiveSystemPrompt,
                     config,
-                    preferences.promptRoleMessages()
+                    preferences.promptRoleMessages(),
+                    provider?.id.orEmpty(),
+                    modelId,
+                    currentToolSettings
                 )
-            }
+            },
+            providerId = provider?.id.orEmpty(),
+            modelId = modelId,
+            toolSettings = currentToolSettings
         )
     }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Eagerly, null)
 
@@ -88,13 +98,18 @@ internal class ChatModelContextCoordinator(
         incoming: StoredMessage? = null,
     ): ContextWindowStatus? {
         return contextEstimate.value?.takeIf {
-            it.conversation === conversation && it.preferences == preferences && it.model == model
+            it.conversation === conversation && it.preferences == preferences && it.model == model &&
+                it.providerId == preferences.selectedProviderId && it.modelId == preferences.selectedModelId &&
+                it.toolSettings == toolSettings.value
         }?.status ?: if (incoming != null) {
             calculateContextWindowStatus(
                 conversation,
                 preferences.effectiveSystemPrompt,
                 model,
-                preferences.promptRoleMessages()
+                preferences.promptRoleMessages(),
+                preferences.selectedProviderId,
+                preferences.selectedModelId,
+                toolSettings.value
             )
         } else {
             null

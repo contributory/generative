@@ -34,8 +34,11 @@ internal class AutomaticConversationSummaryCoordinator(
         val model = providers.value.find { it.id == preferences.selectedProviderId }
             ?.config?.modelConfigs?.get(preferences.selectedModelId) ?: return false
         val status = modelContext.statusFor(current, preferences, model, incoming) ?: return false
+        val additional = incoming?.let { estimateMessageTokens(it, false) } ?: 0
         val projected = status.copy(
-            estimatedTokens = status.estimatedTokens + (incoming?.let { estimateMessageTokens(it, false) } ?: 0)
+            estimatedTokens = status.usedTokens + additional.coerceAtMost(Long.MAX_VALUE - status.usedTokens),
+            estimatedAdditionalTokens = status.estimatedAdditionalTokens +
+                additional.coerceAtMost(Long.MAX_VALUE - status.estimatedAdditionalTokens)
         )
         if (model.modelType != ModelType.TEXT_GENERATION ||
             !projected.reachedPercent(preferences.autoSummaryPercent)

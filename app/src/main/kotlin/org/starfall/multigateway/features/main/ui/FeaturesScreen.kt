@@ -1,8 +1,12 @@
 package org.starfall.multigateway.features.main.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,23 +24,41 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import java.util.concurrent.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.starfall.multigateway.R
+import org.starfall.multigateway.shared.icons.IconStore
+import org.starfall.multigateway.shared.ui.FeaturesLogoImage
 
 /** Main feature directory. Deliberately has no page title; the themed app logo is its header. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FeaturesScreen(
     modifier: Modifier = Modifier,
+    logoImage: String? = null,
+    onLogoImageChange: (String?) -> Unit = {},
     onBack: () -> Unit = {},
     onNavigateToDefaultModels: () -> Unit = {},
     onNavigateToProviders: () -> Unit = {},
@@ -49,24 +71,48 @@ fun FeaturesScreen(
     onNavigateToAppData: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {}
 ) {
-    val logo = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) {
-        R.drawable.multigateway_logo_dark
-    } else {
-        R.drawable.multigateway_logo_light
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val iconStore = remember(context) { IconStore(context) }
+    var logoMenuExpanded by remember { mutableStateOf(false) }
+    var logoBusy by remember { mutableStateOf(false) }
+    val logoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            logoBusy = true
+            try {
+                val previous = logoImage
+                val replacement = withContext(Dispatchers.IO) {
+                    iconStore.importImage(uri, shared = false)
+                }
+                previous?.let { old ->
+                    withContext(Dispatchers.IO) { runCatching { iconStore.delete(old) } }
+                }
+                onLogoImageChange(replacement)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Keep the existing logo if the selected image cannot be imported.
+            } finally {
+                logoBusy = false
+            }
+        }
     }
 
     val edgeSwipeStarted = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     val edgeSwipeDistance = androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-    val edgeWidthPx = with(androidx.compose.ui.platform.LocalDensity.current) { 24.dp.toPx() }
+    val gestureStartWidthPx = with(LocalDensity.current) {
+        (LocalConfiguration.current.screenWidthDp.dp.toPx() / 2f)
+    }
     val backThresholdPx = with(androidx.compose.ui.platform.LocalDensity.current) { 80.dp.toPx() }
 
     LazyColumn(
         modifier = modifier.fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .pointerInput(onBack, edgeWidthPx, backThresholdPx) {
+            .pointerInput(onBack, gestureStartWidthPx, backThresholdPx) {
                 detectHorizontalDragGestures(
                     onDragStart = { offset ->
-                        edgeSwipeStarted.value = offset.x <= edgeWidthPx
+                        edgeSwipeStarted.value = offset.x <= gestureStartWidthPx
                         edgeSwipeDistance.floatValue = 0f
                     },
                     onHorizontalDrag = { change, dragAmount ->
@@ -97,11 +143,50 @@ fun FeaturesScreen(
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(logo),
-                    contentDescription = stringResource(R.string.app_name),
-                    modifier = Modifier.size(84.dp)
-                )
+                Box {
+                    Box(
+                        modifier = Modifier
+                            .size(84.dp)
+                            .combinedClickable(
+                                onClick = {},
+                                onLongClick = { if (!logoBusy) logoMenuExpanded = true }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        FeaturesLogoImage(logoImage, Modifier.size(84.dp))
+                    }
+                    DropdownMenu(
+                        expanded = logoMenuExpanded,
+                        onDismissRequest = { logoMenuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.features_logo_choose_image)) },
+                            enabled = !logoBusy,
+                            onClick = {
+                                logoMenuExpanded = false
+                                logoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.features_logo_remove)) },
+                            enabled = !logoBusy && logoImage != null,
+                            onClick = {
+                                logoMenuExpanded = false
+                                logoImage?.let { old ->
+                                    scope.launch {
+                                        logoBusy = true
+                                        try {
+                                            withContext(Dispatchers.IO) { iconStore.delete(old) }
+                                            onLogoImageChange(null)
+                                        } finally {
+                                            logoBusy = false
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
             }
         }
         item(key = "configuration-heading") {

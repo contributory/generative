@@ -2,6 +2,7 @@ package org.starfall.multigateway.shared.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import org.starfall.multigateway.shared.model.generation.ContextUsageSnapshot
 
 enum class ChatRole {
     @SerialName("user") USER,
@@ -22,7 +23,8 @@ data class MessageVersion(
     @SerialName("model_id") val modelId: String = "",
     @SerialName("model_display_name") val modelDisplayName: String = "",
     @SerialName("generation_interrupted") val generationInterrupted: Boolean = false,
-    @SerialName("generation_error") val generationError: String? = null
+    @SerialName("generation_error") val generationError: String? = null,
+    @SerialName("context_usage") val contextUsage: ContextUsageSnapshot? = null
 )
 
 @Serializable

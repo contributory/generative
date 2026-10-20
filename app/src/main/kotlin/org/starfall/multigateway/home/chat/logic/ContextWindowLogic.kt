@@ -5,6 +5,7 @@ import org.starfall.multigateway.shared.model.ChatRole
 import org.starfall.multigateway.shared.model.Conversation
 import org.starfall.multigateway.shared.model.MessageVersion
 import org.starfall.multigateway.shared.model.StoredMessage
+import org.starfall.multigateway.shared.model.ToolSettings
 import org.starfall.multigateway.shared.model.SummaryRole
 import org.starfall.multigateway.shared.model.generation.hasToolCalls
 import org.starfall.multigateway.shared.model.language.DEFAULT_CONTEXT_WINDOW_TOKENS
@@ -28,13 +29,20 @@ internal fun estimateMessageTokens(message: StoredMessage, includeReasoning: Boo
         message.activeVersion.toolActivity.sumOf { estimateTextTokens(it.arguments) + estimateTextTokens(it.response) } +
         message.files.size * 1024L
 internal fun contextWindowStatus(conversation: Conversation, prompt: String, config: ModelConfiguration,
-    prefixMessages: List<StoredMessage> = emptyList()): ContextWindowStatus {
+    prefixMessages: List<StoredMessage> = emptyList(),
+    providerId: String = conversation.providerId, modelId: String = conversation.modelId,
+    toolSettings: ToolSettings? = null): ContextWindowStatus {
     val effective = effectiveContext(conversation, conversation.messages, prompt)
     val allMessages = prefixMessages + effective.messages
     val includeReasoning = config.sendsThinkingBack(allMessages.hasToolCalls())
+    val limit = config.contextWindowTokens.takeIf { it > 0 } ?: DEFAULT_CONTEXT_WINDOW_TOKENS
+    if (conversation.messages.any { it.activeVersion.contextUsage != null }) {
+        apiContextWindowStatus(conversation, contextUsageKey(conversation, prompt, config, prefixMessages, toolSettings),
+            providerId, modelId, limit, includeReasoning)?.let { return it }
+    }
     val count = estimateTextTokens(effective.systemPrompt) +
         allMessages.sumOf { estimateMessageTokens(it, includeReasoning) }
-    return ContextWindowStatus(count, config.contextWindowTokens.takeIf { it > 0 } ?: DEFAULT_CONTEXT_WINDOW_TOKENS)
+    return ContextWindowStatus(count, limit)
 }
 internal fun chunkSummaryMessages(messages: List<StoredMessage>, tokenLimit: Int): List<List<StoredMessage>> {
     val limit = tokenLimit.coerceAtLeast(16)
@@ -123,4 +131,3 @@ private fun splitSummaryText(text: String, tokenLimit: Int): List<String> {
     }
     return result
 }
-

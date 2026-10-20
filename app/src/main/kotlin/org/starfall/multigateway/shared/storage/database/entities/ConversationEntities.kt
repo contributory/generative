@@ -51,7 +51,11 @@ data class MessageVersionEntity(
     val modelId: String,
     val modelDisplayName: String,
     val generationInterrupted: Boolean,
-    val generationError: String?
+    val generationError: String?,
+    val usageInputTokens: Long? = null,
+    val usageOutputTokens: Long? = null,
+    val usageContextKey: String? = null,
+    val usageMessagesFingerprint: String? = null
 )
 
 @Entity(

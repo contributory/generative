@@ -92,6 +92,8 @@ data class AppPreferences(
     val selectedLanguage: String = "en",
     /** On: follow the Android system language. Off: use [selectedLanguage]. */
     val useSystemLanguage: Boolean = true,
+    /** App-owned image used for the Features entry points and the Features screen header. */
+    val featuresLogoImage: String? = null,
     val showProfilesAsGrid: Boolean = true,
     val showProvidersAsGrid: Boolean = false,
     val showMcpAsGrid: Boolean = false,
@@ -158,6 +160,7 @@ class AppPreferencesRepository(private val context: Context) {
         val DEBUG_LOG_CATEGORIES = stringSetPreferencesKey("debug_log_categories")
         val SELECTED_LANGUAGE = stringPreferencesKey("selected_language")
         val USE_SYSTEM_LANGUAGE = booleanPreferencesKey("use_system_language")
+        val FEATURES_LOGO_IMAGE = stringPreferencesKey("features_logo_image")
         val SHOW_PROFILES_AS_GRID = booleanPreferencesKey("show_profiles_as_grid")
         val SHOW_PROVIDERS_AS_GRID = booleanPreferencesKey("show_providers_as_grid")
         val SHOW_MCP_AS_GRID = booleanPreferencesKey("show_mcp_as_grid")
@@ -219,6 +222,7 @@ class AppPreferencesRepository(private val context: Context) {
                 debugLogCategories = DebugLogCategory.fromStored(preferences[PreferenceKeys.DEBUG_LOG_CATEGORIES]),
                 selectedLanguage = preferences[PreferenceKeys.SELECTED_LANGUAGE] ?: "en",
                 useSystemLanguage = preferences[PreferenceKeys.USE_SYSTEM_LANGUAGE] ?: true,
+                featuresLogoImage = preferences[PreferenceKeys.FEATURES_LOGO_IMAGE]?.takeIf { it.isNotBlank() },
                 showProfilesAsGrid = preferences[PreferenceKeys.SHOW_PROFILES_AS_GRID] ?: true,
                 showProvidersAsGrid = preferences[PreferenceKeys.SHOW_PROVIDERS_AS_GRID] ?: false,
                 showMcpAsGrid = preferences[PreferenceKeys.SHOW_MCP_AS_GRID] ?: false,
@@ -324,6 +328,15 @@ class AppPreferencesRepository(private val context: Context) {
         state.mutate({ it.copy(useDynamicColor = useDynamic) }) {
             context.dataStore.edit { preferences ->
                 preferences[PreferenceKeys.USE_DYNAMIC_COLOR] = useDynamic
+            }
+        }
+    }
+
+    suspend fun setFeaturesLogoImage(image: String?) {
+        state.mutate({ it.copy(featuresLogoImage = image?.takeIf { value -> value.isNotBlank() }) }) {
+            context.dataStore.edit { preferences ->
+                if (image.isNullOrBlank()) preferences.remove(PreferenceKeys.FEATURES_LOGO_IMAGE)
+                else preferences[PreferenceKeys.FEATURES_LOGO_IMAGE] = image
             }
         }
     }

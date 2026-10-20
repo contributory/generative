@@ -23,7 +23,14 @@ internal suspend fun ToolHttp.modelResponse(
     val anthropic = provider.type == ModelApiType.ANTHROPIC
     val responses = provider.type == ModelApiType.OPENAI_RESPONSES
     val target = if (google) url.replace(":generateContent", ":streamGenerateContent") + "?alt=sse" else url
-    val payload = if (google) body else JsonObject(body + ("stream" to JsonPrimitive(true)))
+    val payload = if (google) body else buildJsonObject {
+        body.forEach { (key, value) -> put(key, value) }
+        put("stream", true)
+        if (provider.type == ModelApiType.OPENAI) {
+            put("stream_options", JsonObject((body["stream_options"] as? JsonObject).orEmpty() +
+                ("include_usage" to JsonPrimitive(true))))
+        }
+    }
 
     return withContext(Dispatchers.IO) {
         withResponse(request(target, provider).post(payload.toString().toRequestBody("application/json".toMediaType())).build()) { response ->
@@ -35,6 +42,8 @@ internal suspend fun ToolHttp.modelResponse(
             val reasoningSignature = StringBuilder()
             val arguments = mutableMapOf<Int, StringBuilder>()
             val googleParts = mutableListOf<JsonElement>()
+            val usageFields = mutableMapOf<String, JsonElement>()
+            var validUsageFields: Map<String, JsonElement>? = null
             var finalResponse: JsonObject? = null
 
             suspend fun consume(raw: JsonObject) {
@@ -42,6 +51,29 @@ internal suspend fun ToolHttp.modelResponse(
                 received = true
                 if (value["error"] != null || value.text("type") == "error") {
                     error("Provider stream error: " + safeError(value["error"], requestSecrets(response.request)))
+                }
+                // Usage chunks are cumulative snapshots. Only Anthropic splits one snapshot
+                // between message_start (input/cache counts) and message_delta (output count).
+                when {
+                    anthropic -> {
+                        val usage = (if (value.text("type") == "message_start")
+                            (value["message"] as? JsonObject)?.get("usage") else value["usage"]) as? JsonObject
+                        if (usage != null) usageFields["usage"] = JsonObject(
+                            (usageFields["usage"] as? JsonObject).orEmpty() + usage.filterValues { it != JsonNull }
+                        )
+                    }
+                    google -> (value["usageMetadata"] as? JsonObject)?.let { usageFields["usageMetadata"] = it }
+                    ollama -> listOf("prompt_eval_count", "eval_count").forEach { key ->
+                        value[key]?.takeIf { it != JsonNull }?.let { usageFields[key] = it }
+                    }
+                    else -> {
+                        val nestedUsage = if (responses) (value["response"] as? JsonObject)?.get("usage") else null
+                        val usage = nestedUsage as? JsonObject ?: value["usage"] as? JsonObject
+                        if (usage != null) usageFields["usage"] = usage
+                    }
+                }
+                if (providerTokenUsage(provider.type, JsonObject(usageFields)) != null) {
+                    validUsageFields = usageFields.toMap()
                 }
                 suspend fun emitText(chunk: String) {
                     if (chunk.isNotEmpty()) {
@@ -67,7 +99,8 @@ internal suspend fun ToolHttp.modelResponse(
                         "response.failed" -> error("OpenAI Responses stream failed: " + safeError(value.requireObject("response")["error"], requestSecrets(response.request)))
                     }
                     google -> {
-                        value.requireArray("candidates")
+                        if ((value["candidates"] != null && value["candidates"] != JsonNull) ||
+                            value["usageMetadata"] !is JsonObject) value.requireArray("candidates")
                         (value["candidates"] as? JsonArray).orEmpty().firstOrNull()?.jsonObject
                             ?.get("content")?.jsonObject?.get("parts")?.jsonArray.orEmpty().forEach { part ->
                                 val p = part.jsonObject
@@ -97,8 +130,10 @@ internal suspend fun ToolHttp.modelResponse(
                         }
                     }
                     else -> {
-                        if (!ollama) value.requireArray("choices")
-                        else if (value["message"] !is JsonObject && (value["done"] as? JsonPrimitive)?.booleanOrNull != true) {
+                        if (!ollama) {
+                            if ((value["choices"] != null && value["choices"] != JsonNull) ||
+                                value["usage"] !is JsonObject) value.requireArray("choices")
+                        } else if (value["message"] !is JsonObject && (value["done"] as? JsonPrimitive)?.booleanOrNull != true) {
                             error("Ollama response has no message")
                         }
                         val delta = if (ollama) value["message"] as? JsonObject
@@ -158,7 +193,7 @@ internal suspend fun ToolHttp.modelResponse(
             }
             check(received) { "Provider stream ended without a response" }
 
-            when {
+            val result = when {
                 responses -> finalResponse ?: error("OpenAI Responses stream ended without a final response")
                 google -> obj("candidates" to JsonArray(listOf(obj("content" to obj("parts" to JsonArray(
                     (if (reasoning.isNotEmpty()) listOf(obj("text" to str(reasoning.toString()), "thought" to JsonPrimitive(true))) else emptyList()) +
@@ -192,6 +227,7 @@ internal suspend fun ToolHttp.modelResponse(
                     else obj("choices" to JsonArray(listOf(obj("message" to message))))
                 }
             }
+            JsonObject(result + (validUsageFields ?: usageFields))
         }
     }
 }

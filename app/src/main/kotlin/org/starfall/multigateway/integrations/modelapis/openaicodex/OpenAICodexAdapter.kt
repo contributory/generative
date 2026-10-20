@@ -50,6 +50,7 @@ import org.starfall.multigateway.shared.model.api.ModelApiType
 import org.starfall.multigateway.shared.model.StoredMessage
 import org.starfall.multigateway.shared.model.language.wireReasoningEffort
 import org.starfall.multigateway.shared.files.AttachmentResolver
+import org.starfall.multigateway.shared.networking.providerTokenUsage
 
 /**
  * Self-contained ChatGPT Codex account adapter.
@@ -243,6 +244,29 @@ internal class OpenAICodexAdapter(
 
         val channel = response.bodyAsChannel()
         val eventData = StringBuilder()
+        suspend fun consumeEvent(data: String) {
+            val event = json.parseToJsonElement(data).jsonObject
+            when (event["type"]?.jsonPrimitive?.contentOrNull) {
+                "response.output_text.delta" -> event["delta"]?.jsonPrimitive?.contentOrNull
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { emit(GenerationEvent.Text(it)) }
+
+                "response.reasoning_text.delta",
+                "response.reasoning_summary_text.delta" -> event["delta"]?.jsonPrimitive?.contentOrNull
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { emit(GenerationEvent.Reasoning(it)) }
+
+                "response.completed", "response.incomplete" -> {
+                    val result = event["response"] as? JsonObject ?: event
+                    providerTokenUsage(ModelApiType.OPENAI_RESPONSES, result)?.takeIf { it.isValid }
+                        ?.let { emit(GenerationEvent.Usage(it)) }
+                }
+
+                "response.failed", "error" -> error(
+                    "OpenAI Codex stream failed: ${event["error"] ?: event}"
+                )
+            }
+        }
         while (!channel.isClosedForRead) {
             currentCoroutineContext().ensureActive()
             val line = channel.readLine() ?: break
@@ -253,22 +277,12 @@ internal class OpenAICodexAdapter(
                 val data = eventData.toString().trim()
                 eventData.setLength(0)
                 if (data == "[DONE]") break
-                val event = json.parseToJsonElement(data).jsonObject
-                when (event["type"]?.jsonPrimitive?.contentOrNull) {
-                    "response.output_text.delta" -> event["delta"]?.jsonPrimitive?.contentOrNull
-                        ?.takeIf { it.isNotEmpty() }
-                        ?.let { emit(GenerationEvent.Text(it)) }
-
-                    "response.reasoning_text.delta",
-                    "response.reasoning_summary_text.delta" -> event["delta"]?.jsonPrimitive?.contentOrNull
-                        ?.takeIf { it.isNotEmpty() }
-                        ?.let { emit(GenerationEvent.Reasoning(it)) }
-
-                    "response.failed", "error" -> error(
-                        "OpenAI Codex stream failed: ${event["error"] ?: event}"
-                    )
-                }
+                consumeEvent(data)
             }
+        }
+        if (eventData.isNotEmpty()) {
+            val data = eventData.toString().trim()
+            if (data != "[DONE]") consumeEvent(data)
         }
     }.flowOn(Dispatchers.IO)
 
@@ -387,7 +401,6 @@ internal class OpenAICodexAdapter(
         if (responseError != null && responseError !is JsonNull) {
             error("OpenAI Codex response failed: $responseError")
         }
-
         (response["output"] as? JsonArray).orEmpty().forEach outputLoop@{ itemElement ->
             val item = itemElement as? JsonObject ?: return@outputLoop
             when (item["type"]?.jsonPrimitive?.contentOrNull) {
@@ -411,6 +424,8 @@ internal class OpenAICodexAdapter(
                 }
             }
         }
+        providerTokenUsage(ModelApiType.OPENAI_RESPONSES, response)?.takeIf { it.isValid }
+            ?.let { emit(GenerationEvent.Usage(it)) }
     }
 
     private fun resolveEndpoint(baseUrl: String): String {
