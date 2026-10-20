@@ -30,13 +30,12 @@
     <string name="settings_category_app_settings_description">Aussehen, Einstellungen und App-Verhalten</string>
     <string name="settings_category_app_data_description">Unterhaltungsverlauf und App-Zurücksetzung</string>
     <string name="settings_category_about_description">App-Informationen, Softwareupdates und Lizenz</string>
-    <string name="settings_default_models_description">Hilfen für Bilder, Videos und Unterhaltungen</string>
     <string name="settings_providers_description">KI-Anbieter, Modelle und API-Verbindungen</string>
     <string name="settings_mcp_manage_description">Tool-Server und Integrationen</string>
     <string name="settings_speech_services_description">Text-to-Speech-Anbieter und Stimmen</string>
     <string name="speech_services_description">Android-TTS oder TTS-Modelle von Anbietern verwenden</string>
     <string name="settings_storage_description">Von deinen Tools erstellte Dateien</string>
-    <string name="settings_theme_description">Lege das Erscheinungsbild von MultiGateway fest</string>
+    <string name="settings_theme_description">Lege das Erscheinungsbild von Generative fest</string>
     <string name="settings_amoled_description">Im dunklen Modus vollständig schwarze Flächen verwenden</string>
     <string name="settings_dynamic_color_description">Farben deines Hintergrundbilds ab Android 12 verwenden</string>
     <string name="settings_immersive_mode_description">Die Statusleiste während des Chats ausblenden</string>
@@ -54,7 +53,7 @@
     <string name="settings_export_data_description">Konfiguration oder Unterhaltungsverlauf als JSON-Dateien speichern.</string>
     <string name="settings_clear_all_chats_message">Möchtest du wirklich alle Unterhaltungen löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.</string>
     <string name="settings_factory_reset_message">Dadurch werden alle Unterhaltungen und Anbieter-Zugangsdaten gelöscht.</string>
-    <string name="settings_find_latest_release">Die neueste MultiGateway-Version auf GitHub finden.</string>
+    <string name="settings_find_latest_release">Die neueste Generative-Version auf GitHub finden.</string>
     <string name="settings_universal_description">Universelle KI-Plattform für Android</string>
     <string name="message_text_size_hint">%1$d sp</string>
     <string name="message_text_size_custom_hint">Aus: Android-Systemschriftgröße verwenden</string>
@@ -71,8 +70,8 @@
     <string name="no_mcp_servers_hint">Tippe auf +, um Model-Context-Protocol-Server zu verbinden</string>
     <string name="server_url_help">URL-Adresse für den %1$s-Server</string>
     <string name="mcp_auth_help">Für MCP-Anfragen verwendete Authentifizierung</string>
-    <string name="mcp_oauth_discovery_help">MultiGateway ermittelt OAuth-Metadaten vom MCP-Server und verwendet dann Authorization Code + PKCE. Lasse die Client-ID leer, um bei unterstützter dynamischer Registrierung einen Client zu registrieren.</string>
-    <string name="mcp_oauth_client_id_help">Nur eingeben, wenn der Autorisierungsserver keine dynamische Clientregistrierung unterstützt oder du MultiGateway bereits manuell registriert hast.</string>
+    <string name="mcp_oauth_discovery_help">Generative ermittelt OAuth-Metadaten vom MCP-Server und verwendet dann Authorization Code + PKCE. Lasse die Client-ID leer, um bei unterstützter dynamischer Registrierung einen Client zu registrieren.</string>
+    <string name="mcp_oauth_client_id_help">Nur eingeben, wenn der Autorisierungsserver keine dynamische Clientregistrierung unterstützt oder du Generative bereits manuell registriert hast.</string>
     <string name="mcp_oauth_client_secret_help">Optional. Verwende nur ein Geheimnis für einen zuvor registrierten vertraulichen Client.</string>
     <string name="mcp_oauth_redirect_uri_help">Verwende exakt die für diesen Client registrierte Rückruf-URL. Standard: %1$s</string>
     <string name="mcp_custom_headers_help">Benutzerdefinierte HTTP-Header für MCP-Serveranfragen hinzufügen</string>
@@ -99,8 +98,6 @@
     <string name="mcp_tool_list_not_cached_description">Die Tool-Liste ist nicht zwischengespeichert. Speichere oder aktualisiere diesen Server zuerst in MCP Manage.</string>
     <string name="mcp_no_globally_enabled_tools_description">Keine global aktivierten Tools verfügbar.</string>
     <string name="image_tool_model_options_description">Lege nur von diesem Modell unterstützte Optionen fest. Leere Felder verwenden die Anbieterstandards. Einstellungen werden für jedes Modell separat gespeichert.</string>
-    <string name="image_tool_agnes_reference_description">Agnes-Referenzbilder benötigen öffentliche HTTPS-URLs. Im Chat angehängte Dateien können nicht an diese API hochgeladen werden. Verwende unten Frame-URLs oder verweise in erweitertem JSON auf Medien.</string>
-    <string name="image_tool_agnes_edit_description">Agnes unterstützt angehängte Referenzbilder. Öffentliche Referenzbild-URLs können als extra_body.image im erweiterten JSON angegeben werden. Wähle zum Bearbeiten unten das Antwortformat; return_base64 gilt für Text-zu-Bild.</string>
     <string name="image_tool_request_body_help">Verschachtelte Objekte und Anbietererweiterungen werden unterstützt. Modell und Prompt stammen aus dem Chat.</string>
     <string name="image_tool_json_invalid_hint">Korrigiere das JSON im erweiterten JSON, um das Formular zu verwenden.</string>
     <string name="image_tool_discard_video_message">Deine Videoeinstellungen wurden nicht gespeichert.</string>
@@ -152,7 +149,7 @@
     <string name="model_tool_name">Toolname</string>
     <string name="model_tools_editor_hint">Wähle Standardtools aus, füge benutzerdefinierte Toolnamen hinzu und aktiviere oder deaktiviere einzelne Tools.</string>
     <string name="model_tools_hint">Aktiviere integrierte Tools, die dieses Modell unterstützt. Sie werden direkt mit der Modell-API-Anfrage gesendet.</string>
-    <string name="model_tools_unsupported_provider">Diese Provider-API unterstützt integrierte Modelltools in MultiGateway derzeit nicht.</string>
+    <string name="model_tools_unsupported_provider">Diese Provider-API unterstützt integrierte Modelltools in Generative derzeit nicht.</string>
     <string name="remote_machine_google_missing_resolution">Google erfordert eine Interaktion zur Autorisierung, hat aber keinen nächsten Schritt zurückgegeben.</string>
     <string name="remote_machine_google_no_access_token">Google hat kein Zugriffstoken zurückgegeben.</string>
     <string name="remote_machine_oauth_client_type">OAuth-Clienttyp</string>

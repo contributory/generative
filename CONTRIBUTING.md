@@ -1,6 +1,6 @@
-# Contributing to MultiGateway
+# Contributing to Generative
 
-Thank you for your interest in MultiGateway. Contributions should improve the app for its users, keep existing user data safe, and fit the current Kotlin/Jetpack Compose architecture. You do not need to be a professional Android developer to report a problem, suggest an improvement, or help with documentation; code changes should follow the repository guidance below.
+Thank you for your interest in Generative. Contributions should improve the app for its users, keep existing user data safe, and fit the current Kotlin/Jetpack Compose architecture. You do not need to be a professional Android developer to report a problem, suggest an improvement, or help with documentation; code changes should follow the repository guidance below.
 
 ## What you may contribute
 
@@ -45,7 +45,7 @@ Useful commands:
 
 ## Code organization and architecture
 
-The current implementation is under `app/src/main/kotlin/org/starfall/multigateway/`. Place changes according to responsibility and who uses the code:
+The current implementation is under `app/src/main/kotlin/org/starfall/generative/`. Place changes according to responsibility and who uses the code:
 
 - `features/`: independent feature screens and their feature-specific state/logic.
 - `home/`: chat, conversation drawer, and chat-related shared UI and logic.

@@ -6,5 +6,8 @@ build/
 *.aar
 local.properties
 .audit/
-multigateway.jks
+generative.jks
 .env
+
+# Legacy local signing key filename
+multigen.jks

@@ -1,7 +1,7 @@
-# MultiGateway Structure
+# Generative Structure
 
 ```text
-📦 org.starfall.multigateway/
+📦 org.starfall.generative/
 ├── 📁 appwiring/
 │   ├── 📄 AppContainer.kt
 │   └── 📄 DefaultDataInitializer.kt
@@ -19,12 +19,9 @@
 │   │   │   └── 📄 ProvidersExport.kt
 │   │   └── 📁 ui/
 │   │       └── 📄 AppDataScreen.kt
-│   ├── 📁 defaults/
-│   │   └── 📁 systemtools/
-│   │       └── 📁 ui/
-│   │           ├── 📄 DefaultModelsTab.kt
-│   │           ├── 📄 ImageToolSettingsScreen.kt
-│   │           └── 📄 SystemToolsScreen.kt
+│   ├── 📁 chatoptions/
+│   │   └── 📁 ui/
+│   │       └── 📄 ChatOptionsScreen.kt
 │   ├── 📁 icons/
 │   │   └── 📁 ui/
 │   │       └── 📄 IconsScreen.kt
@@ -107,14 +104,23 @@
 │   │   └── 📁 ui/
 │   │       ├── 📄 AppSettingsScreen.kt
 │   │       ├── 📄 CodeRenderingPreferences.kt
+│   │       ├── 📄 DeveloperSettingsSection.kt
 │   │       ├── 📄 MainAppbar.kt
 │   │       └── 📄 SettingsComponents.kt
 │   ├── 📁 speech/
 │   │   └── 📁 ui/
 │   │       └── 📄 SpeechServicesScreen.kt
-│   └── 📁 storage/
+│   ├── 📁 storage/
+│   │   └── 📁 ui/
+│   │       └── 📄 StorageScreen.kt
+│   └── 📁 tools/
 │       └── 📁 ui/
-│           └── 📄 StorageScreen.kt
+│           ├── 📄 ImageToolSettingsScreen.kt
+│           ├── 📄 MediaRequestChainSettingsScreen.kt
+│           ├── 📄 MediaRequestChainStepEditor.kt
+│           ├── 📄 MediaRequestProfileEditorScreen.kt
+│           ├── 📄 MediaTemplateAutocompleteField.kt
+│           └── 📄 ToolsEditorScreen.kt
 ├── 📁 home/
 │   ├── 📁 chat/
 │   │   ├── 📁 logic/
@@ -142,6 +148,8 @@
 │   │   │   ├── 📄 ChatSpeechCoordinator.kt
 │   │   │   ├── 📄 ChatViewModel.kt
 │   │   │   ├── 📄 ContextWindowLogic.kt
+│   │   │   ├── 📄 ContextUsageLogic.kt
+│   │   │   ├── 📄 ConversationSummaryGeneration.kt
 │   │   │   ├── 📄 ConversationSummaryCoordinator.kt
 │   │   │   ├── 📄 SendFileTool.kt
 │   │   │   └── 📄 UserMessageRetry.kt
@@ -207,6 +215,7 @@
 │   │   └── 📄 McpService.kt
 │   ├── 📁 media/
 │   │   ├── 📄 ImageStreaming.kt
+│   │   ├── 📄 MediaRequestChainExecutor.kt
 │   │   ├── 📄 SystemMediaTools.kt
 │   │   └── 📄 VideoGeneration.kt
 │   ├── 📁 modelapis/
@@ -280,11 +289,11 @@
 │   │   └── 📄 ToolFiles.kt
 │   ├── 📁 helpers/
 │   │   └── 📁 media/
-│   │       ├── 📄 AgnesMedia.kt
 │   │       ├── 📄 ContentApiMedia.kt
 │   │       ├── 📄 GeneratedMediaResponses.kt
 │   │       ├── 📄 ImageEditRequests.kt
 │   │       ├── 📄 ImageGenerationOptions.kt
+│   │       ├── 📄 MediaRequestMapping.kt
 │   │       ├── 📄 MediaInputReference.kt
 │   │       ├── 📄 VideoGenerationOptions.kt
 │   │       └── 📄 VideoRequests.kt
@@ -298,6 +307,11 @@
 │   │   ├── 📄 IconStore.kt
 │   │   ├── 📄 LobeIconSource.kt
 │   │   └── 📄 LobeModelIconResolver.kt
+│   ├── 📁 logging/
+│   │   ├── 📄 DebugLog.kt
+│   │   ├── 📄 DebugLogInterceptor.kt
+│   │   ├── 📄 DebugLogKtorPlugin.kt
+│   │   └── 📄 DebugLogRedactor.kt
 │   ├── 📁 media/
 │   │   ├── 📄 MediaPlayers.kt
 │   │   ├── 📄 SpeechAudioPlayer.kt
@@ -314,6 +328,7 @@
 │   │   │   └── 📄 CredentialLoadState.kt
 │   │   ├── 📁 generation/
 │   │   │   ├── 📄 GenerationEvent.kt
+│   │   │   ├── 📄 TokenUsage.kt
 │   │   │   └── 📄 StoredMessageExtensions.kt
 │   │   ├── 📁 language/
 │   │   │   ├── 📄 Capabilities.kt
@@ -325,11 +340,15 @@
 │   │   │   ├── 📄 ModelConfigurationReasoning.kt
 │   │   │   ├── 📄 ModelType.kt
 │   │   │   └── 📄 SendThinkingContent.kt
+│   │   ├── 📁 logging/
+│   │   │   └── 📄 DebugLogCategory.kt
 │   │   ├── 📁 media/
 │   │   │   ├── 📄 ContentApiMedia.kt
 │   │   │   ├── 📄 GeneratedMediaReference.kt
 │   │   │   ├── 📄 ImageOptionField.kt
 │   │   │   ├── 📄 MediaInputImage.kt
+│   │   │   ├── 📄 MediaInputVideo.kt
+│   │   │   ├── 📄 MediaRequestChain.kt
 │   │   │   └── 📄 VideoApi.kt
 │   │   ├── 📁 provider/
 │   │   │   ├── 📄 ModelProvider.kt
@@ -358,6 +377,7 @@
 │   │   └── 📄 Tools.kt
 │   ├── 📁 networking/
 │   │   ├── 📄 ProviderParsing.kt
+│   │   ├── 📄 ProviderUsage.kt
 │   │   ├── 📄 ToolHttp.kt
 │   │   └── 📄 ToolStreaming.kt
 │   ├── 📁 preview/
@@ -415,9 +435,15 @@
 │       │   ├── 📄 CrashReportDialog.kt
 │       │   └── 📄 FaviconDialog.kt
 │       ├── 📁 icons/
+│       │   ├── 📁 fluentui/
+│       │   │   ├── 📁 regular/ (downloaded ImageVector sources)
+│       │   │   ├── 📁 filled/
+│       │   │   ├── 📁 light/
+│       │   │   └── 📁 color/
 │       │   ├── 📄 EntityIcon.kt
 │       │   ├── 📄 FluentIcon.kt
-│       │   └── 📄 Icons.kt
+│       │   ├── 📄 FluentUi.kt (generated typed icon registry)
+│       │   └── 📄 Icons.kt (Material-name compatibility aliases)
 │       ├── 📁 layout/
 │       │   ├── 📄 AdaptiveCardLayout.kt
 │       │   ├── 📄 AmoledBorder.kt
@@ -427,6 +453,10 @@
 │       ├── 📁 lists/
 │       │   ├── 📄 FadeGridListContent.kt
 │       │   └── 📄 ListOrder.kt
+│       ├── 📁 logging/
+│       │   ├── 📄 DebugLogCategoryLabel.kt
+│       │   ├── 📄 DebugLogOverlay.kt
+│       │   └── 📄 DebugLogPanel.kt
 │       ├── 📁 media/
 │       │   ├── 📄 ChatAttachmentSelection.kt
 │       │   ├── 📄 ChatFilePreview.kt
@@ -457,7 +487,7 @@
 │       ├── 📄 ToolControls.kt
 │       └── 📄 ToolSwitch.kt
 ├── 📄 MainActivity.kt
-└── 📄 MultiGatewayApplication.kt
+└── 📄 GenerativeApplication.kt
 ```
 ## Legend
 
@@ -487,7 +517,8 @@
 
 | FeaturesScreen entry | Folder |
 | --- | --- |
-| Default models & tools | `defaults/` |
+| Chat Options | `chatoptions/` |
+| Tools Editor | `tools/` |
 | Providers | `providers/` |
 | MCP | `mcp/` |
 | Speech services | `speech/` |
@@ -522,6 +553,13 @@
 
 ## Main feature
 
-- `features/main/ui/FeaturesScreen.kt` is the untitled feature directory; its header displays the appropriate light/dark app logo.
+- `features/main/ui/FeaturesScreen.kt` is the untitled feature directory; its header displays the light-background app logo in every theme.
 
-- Theme-specific feature header assets are `drawable-nodpi/multigateway_logo_light.png` and `drawable-nodpi/multigateway_logo_dark.png`.
+- The feature header asset is `drawable-nodpi/generative_logo_light.png`.
+
+## Context and summary accounting
+
+- API adapters emit one normalized usage snapshot per model request, including streaming/tool rounds. Context usage is the latest matching request's input plus its reported output, not a sum across requests. Cached input follows each protocol's accounting without double counting.
+- Usage is stored with each response version in nullable relational columns (Room v12). Hashed history/configuration keys prevent reuse after an edit, branch, model/provider change, prompt/tool-settings change or compact. Old/imported history without usage falls back to the local estimator; new messages after a valid snapshot add only an explicitly labeled local estimate.
+- The context details distinguish API usage, estimates and mixed counts. A missing output count remains explicitly unavailable rather than becoming a fabricated zero. The maximum context capacity still comes from model configuration/catalog metadata.
+- Custom summary targets are not restricted to the slider's 6000-token range. Summary requests override the provider's default output budget, while explicit model output limits and input-plus-output context budgets remain enforced. Multiple-pass summaries reserve room for the requested final output.

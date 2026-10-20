@@ -6,21 +6,21 @@ plugins {
 }
 
 android {
-    namespace = "org.starfall.multigateway"
+    namespace = "org.starfall.generative"
     compileSdk = 37
     buildToolsVersion = "36.0.0"
 
     defaultConfig {
-        applicationId = "org.starfall.multigateway"
+        applicationId = "org.starfall.generative"
         minSdk = 26
         targetSdk = 36
-        versionCode = 51
-        versionName = "1.4.17"
+        versionCode = 1
+        versionName = "1.0.0"
 
-        manifestPlaceholders["appAuthRedirectScheme"] = "multigateway-oauth"
+        manifestPlaceholders["appAuthRedirectScheme"] = "generative-oauth"
 
         testInstrumentationRunner = if (providers.gradleProperty("migrationUiRunner").orNull == "true") {
-            "org.starfall.multigateway.MigrationUiTestRunner"
+            "org.starfall.generative.MigrationUiTestRunner"
         } else "androidx.test.runner.AndroidJUnitRunner"
     }
 

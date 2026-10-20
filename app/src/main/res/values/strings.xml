@@ -6,7 +6,9 @@
     <string name="remote_machine_binary_test_arguments_help">Separate arguments with spaces. Each space-delimited item is passed as a separate argument; quotes are not interpreted.</string>
     <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
 
-    <string name="app_name">MultiGateway</string>
+    <string name="app_name">Generative</string>
+    <string name="features_logo_choose_image">Choose Image</string>
+    <string name="features_logo_remove">Remove</string>
     <string name="message_text_size">Message text size</string>
     <string name="message_text_size_hint">%1$d sp</string>
     <string name="message_text_size_custom_hint">Off: follow the Android system font size</string>
@@ -195,7 +197,7 @@
     <string name="model_tool_custom">Custom tool</string>
     <string name="model_tool_add">Add</string>
     <string name="model_tools_editor_hint">Choose default tools, add custom tool names, and toggle each tool on or off.</string>
-    <string name="model_tools_unsupported_provider">This provider API does not expose built-in model tools in MultiGateway yet.</string>
+    <string name="model_tools_unsupported_provider">This provider API does not expose built-in model tools in Generative yet.</string>
 
     <string name="mcp_servers_title">MCP Servers</string>
     <string name="mcp_servers_description">Model Context Protocol tools</string>
@@ -223,9 +225,9 @@
     <string name="mcp_auth_type">Type: %1$s</string>
     <string name="header_key">Header key</string>
     <string name="query_parameter_name">Query parameter name</string>
-    <string name="mcp_oauth_discovery_help">MultiGateway discovers OAuth metadata from the MCP server, then uses Authorization Code + PKCE. Leave Client ID empty to use dynamic client registration when supported.</string>
+    <string name="mcp_oauth_discovery_help">Generative discovers OAuth metadata from the MCP server, then uses Authorization Code + PKCE. Leave Client ID empty to use dynamic client registration when supported.</string>
     <string name="mcp_oauth_client_id_optional">Optional pre-registered Client ID</string>
-    <string name="mcp_oauth_client_id_help">Only enter this when the authorization server does not support dynamic client registration or you already registered MultiGateway manually.</string>
+    <string name="mcp_oauth_client_id_help">Only enter this when the authorization server does not support dynamic client registration or you already registered Generative manually.</string>
     <string name="mcp_oauth_authorized">OAuth authorization active</string>
     <string name="mcp_oauth_not_authorized">Not authorized</string>
     <string name="mcp_reauthorize_oauth">Re-authorize OAuth</string>
@@ -391,10 +393,10 @@
     <string name="settings_category_app_data_description">Conversation history &amp; application reset</string>
     <string name="settings_category_about">About</string>
     <string name="settings_category_about_description">App information, software updates &amp; license</string>
-    <string name="settings_default_models">Default</string>
-    <string name="settings_default_and_tools">Default &amp; Tools</string>
-    <string name="settings_tools_tab">Tools</string>
-    <string name="settings_default_models_description">Image, video &amp; conversation helpers</string>
+    <string name="settings_chat_options">Chat Options</string>
+    <string name="settings_chat_options_description">Conversation helpers and default chat models</string>
+    <string name="settings_tools_editor">Tools Editor</string>
+    <string name="settings_tools_editor_description">Configure media generation and file tools</string>
     <string name="settings_providers">Providers</string>
     <string name="settings_providers_description">AI providers, models &amp; API connections</string>
     <string name="settings_mcp_manage">MCP Manage</string>
@@ -406,7 +408,7 @@
     <string name="settings_remote_machines" translatable="false">Remote Machines</string>
     <string name="settings_remote_machines_description" translatable="false">SSH and Google Cloud Shell connections</string>
     <string name="settings_theme">Theme</string>
-    <string name="settings_theme_description">Choose how MultiGateway looks</string>
+    <string name="settings_theme_description">Choose how Generative looks</string>
     <string name="settings_theme_system">System</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
@@ -464,6 +466,21 @@
     <string name="settings_developer">Developer</string>
     <string name="settings_debug_logs">Developer Debug Logs</string>
     <string name="settings_debug_logs_description">Show token metrics, request payloads and network logs</string>
+    <string name="settings_debug_log_scope">Log scope</string>
+    <string name="settings_debug_log_scope_description">Choose which kinds of log the floating debug panel records.</string>
+    <string name="debug_log_category_network">Network</string>
+    <string name="debug_log_category_payload">Payloads</string>
+    <string name="debug_log_category_tools">Tools</string>
+    <string name="debug_log_category_tokens">Tokens</string>
+    <string name="debug_log_category_errors">Errors</string>
+    <string name="debug_log_title">Debug logs</string>
+    <string name="debug_log_toggle">Show or hide debug logs</string>
+    <string name="debug_log_copy_entry">Copy this log</string>
+    <string name="debug_log_copy_all">Copy all logs</string>
+    <string name="debug_log_clear_all">Clear all logs</string>
+    <string name="debug_log_copied">Copied to clipboard</string>
+    <string name="debug_log_copy_failed">Could not copy the log</string>
+    <string name="debug_log_empty">No logs yet. Activity in the selected scopes appears here live.</string>
     <string name="settings_data_overview">Data overview</string>
     <string name="settings_chats">Chats</string>
     <string name="settings_manage_data">Manage data</string>
@@ -498,7 +515,7 @@
     <string name="settings_download_apk_variants">Download APK Variants</string>
     <string name="settings_download_apk">Download APK</string>
     <string name="settings_open_github_release">Open GitHub Release Page</string>
-    <string name="settings_find_latest_release">Find the latest MultiGateway release on GitHub.</string>
+    <string name="settings_find_latest_release">Find the latest Generative release on GitHub.</string>
     <string name="remote_machines_title" translatable="false">Remote Machines</string>
     <string name="remote_machines_description" translatable="false">SSH and Google Cloud Shell connections</string>
     <string name="remote_machine_add" translatable="false">Add machine</string>
@@ -611,6 +628,7 @@
     <string name="remote_machine_terminal_input_settings" translatable="false">Terminal input mode</string>
     <string name="remote_machine_terminal_local_input" translatable="false">Local input · Enter to send</string>
     <string name="remote_machine_terminal_remote_input" translatable="false">Remote input · send as you type</string>
+    <string name="remote_machine_terminal_force_mouse" translatable="false">Mouse events · tap = click, drag = wheel</string>
     <string name="remote_machine_terminal_local_input_label" translatable="false">Local input</string>
     <string name="remote_machine_command" translatable="false">Command</string>
     <string name="remote_machine_run_command" translatable="false">Run command</string>
@@ -637,6 +655,7 @@
     <string name="tool_generate_image_description">Generate images from prompts using the selected model.</string>
     <string name="tool_generate_video_description">Generate videos from prompts using the selected model.</string>
     <string name="tool_optional_params_title">Optional parameters</string>
+    <string name="tool_optional_params_default_hint">A parameter with a value field can also have a default. It is used when the AI leaves the parameter out, and always applies when the parameter is turned off. Defaults are saved per model and shared with that model\u2019s Image/Video settings.</string>
     <string name="tool_optional_params_description">Turn a parameter off to hide it from the AI and ignore it if the AI passes it anyway.</string>
     <string name="tool_select_compatible_model_hint">Select a compatible model to enable this tool.</string>
     <string name="tool_image_settings">Image settings</string>
@@ -646,14 +665,98 @@
     <string name="mcp_tool_list_not_cached_description">Tool list is not cached. Save or refresh this server in MCP Manage first.</string>
     <string name="mcp_no_globally_enabled_tools_description">No globally enabled tools available.</string>
     <string name="image_tool_model_options_description">Only set options supported by this model. Empty fields use provider defaults. Settings are saved separately for each model.</string>
-    <string name="image_tool_agnes_reference_description">Agnes reference images require public HTTPS URLs. Files attached in chat cannot be uploaded to this API. Use frame URLs below, or reference media in Advanced JSON.</string>
-    <string name="image_tool_agnes_edit_description">Agnes supports attached reference images. Public reference-image URLs can be supplied as extra_body.image in Advanced JSON. For editing, select the response format below; return_base64 applies to text-to-image.</string>
     <string name="image_tool_request_body_help">Nested objects and provider extensions are supported. Model and prompt come from chat.</string>
     <string name="image_tool_json_invalid_hint">Fix the JSON in Advanced JSON to use the form.</string>
     <string name="image_tool_discard_video_message">Your video settings have not been saved.</string>
     <string name="image_tool_discard_image_message">Your image settings have not been saved.</string>
     <string name="image_tool_provider_default_hint">Provider default</string>
     <string name="image_tool_range_hint">Range: %1$s – %2$s</string>
+    <string name="common_discard">Discard</string>
+    <string name="media_chain_editor_description">Configure an ordered, provider-agnostic request chain for this media model. Values in the body can use the prompt, model, API token, input files and earlier responses.</string>
+    <string name="media_chain_default">Default</string>
+    <string name="media_api_type">API Type</string>
+    <string name="media_chain_custom">Custom</string>
+    <string name="media_chain_use_default">Use default</string>
+    <string name="media_chain_edit_custom">Edit custom mapping</string>
+    <string name="media_chain_custom_summary">Custom request chain is active.</string>
+    <string name="media_chain_custom_not_configured">Custom mode is selected, but no request chain is configured.</string>
+    <string name="media_chain_profile">Custom profile</string>
+    <string name="media_chain_select_profile">Select a profile</string>
+    <string name="media_chain_profile_name">Profile name</string>
+    <string name="media_chain_profile_help">Profiles are reusable across selected models. The active profile is used only in Custom mode.</string>
+    <string name="media_chain_add_profile">Add profile</string>
+    <string name="media_chain_remove_profile">Remove profile</string>
+    <string name="media_chain_remove_profile_title">Remove custom profile?</string>
+    <string name="media_chain_remove_profile_message">This profile and its request steps will be removed from the reusable profile list.</string>
+    <string name="media_chain_profile_name_required">A custom profile name is required.</string>
+    <string name="media_chain_profiles_help">Choose a reusable request profile. The selected profile is used only in Custom mode.</string>
+    <string name="media_chain_profiles">Profiles</string>
+    <string name="media_chain_profile_step_count">%1$d request step(s)</string>
+    <string name="media_chain_active_profile">Active profile</string>
+    <string name="media_chain_edit_profile">Edit profile</string>
+    <string name="media_chain_edit_final_response">Edit mapping</string>
+    <string name="common_done">Done</string>
+    <string name="media_chain_default_settings_hint">Default tool parameters and their visibility are managed in Image/Video settings.</string>
+    <string name="media_chain_open_default_settings">Open Image/Video settings</string>
+    <string name="media_chain_steps">Request steps</string>
+    <string name="media_chain_steps_help">Each step runs in order. Use later steps for status polling or fetching a generated result.</string>
+    <string name="media_chain_step">Step %1$d</string>
+    <string name="media_chain_add_step">Add step</string>
+    <string name="media_chain_edit_step">Edit</string>
+    <string name="media_chain_remove_step">Remove step</string>
+    <string name="media_chain_one_step_required">At least one request step is required.</string>
+    <string name="media_chain_editing_step">Edit step %1$d</string>
+    <string name="media_chain_endpoint">Endpoint URL or path</string>
+    <string name="media_chain_endpoint_help">Use a provider-relative path or complete HTTP(S) URL. Variables such as {{model}} and {{step1.response.body.data.id}} are supported.</string>
+    <string name="media_chain_method">HTTP method</string>
+    <string name="media_chain_headers">Headers Editor</string>
+    <string name="media_chain_headers_editor">Headers JSON</string>
+    <string name="media_chain_headers_json_invalid">Enter a valid JSON object with string header values.</string>
+    <string name="media_chain_no_headers">No additional headers.</string>
+    <string name="media_chain_headers_help">Enter a JSON object. Header names and values support variables. Authorization: Bearer {{api_token}} is added by default when a token is configured.</string>
+    <string name="media_chain_content_type">Content Type</string>
+    <string name="media_chain_content_type_json">application/json</string>
+    <string name="media_chain_content_type_form">multipart/form-data</string>
+    <string name="media_chain_content_type_raw">Raw bytes</string>
+    <string name="media_chain_custom_content_type">Custom content type</string>
+    <string name="media_chain_custom_content_type_help">Optional MIME override. Empty uses application/json, multipart/form-data, or the input file MIME type for raw bytes.</string>
+    <string name="media_chain_form">Form</string>
+    <string name="media_chain_json">JSON</string>
+    <string name="media_chain_file_transport">File transport</string>
+    <string name="media_chain_file">File</string>
+    <string name="media_chain_base64">Base64</string>
+    <string name="media_chain_raw">Raw</string>
+    <string name="media_chain_body_editor">Body Editor</string>
+    <string name="media_chain_request_body">Body Editor</string>
+    <string name="media_chain_request_body_help">JSON/Form bodies support {{prompt}}, {{model}}, {{api_token}}, {{input_files}}, {{input_file[0]}}, {{step1.response.body.path}} and {{step1.response.headers.someheaderkey}}. Raw mode can send {{input_file[0]}} as direct bytes.</string>
+    <string name="media_chain_response_type">Response type</string>
+    <string name="media_chain_json_response">JSON response for this intermediate step</string>
+    <string name="media_chain_octet_stream">Binary file</string>
+    <string name="media_chain_observer">Retry observer</string>
+    <string name="media_chain_observer_disabled">Retry observer is disabled for this step.</string>
+    <string name="media_chain_observer_mode">Success condition</string>
+    <string name="media_chain_observer_path_exists">Path exists</string>
+    <string name="media_chain_observer_read_value">Read values</string>
+    <string name="media_chain_status_path">Status JSON path (optional)</string>
+    <string name="media_chain_status_path_help">Path exists succeeds when the path is present. Read values retries for configured pending values; any other response continues to the next step.</string>
+    <string name="media_chain_pending_values">Pending values</string>
+    <string name="media_chain_values_help">Comma-separated, case-insensitive status values.</string>
+    <string name="media_chain_retry_policy">Bounded retry policy</string>
+    <string name="media_chain_max_attempts">Max attempts</string>
+    <string name="media_chain_delay_millis">Delay (ms)</string>
+    <string name="media_chain_max_wait_millis">Max wait (ms)</string>
+    <string name="media_chain_final_response">Final response</string>
+    <string name="media_chain_final_source_step">Read response body from</string>
+    <string name="media_chain_last_step">Last step</string>
+    <string name="media_chain_media_path">Media path in JSON response</string>
+    <string name="media_chain_media_path_help">Use dot paths and array selectors, for example data[0].url.</string>
+    <string name="media_chain_value_kind">Media value format</string>
+    <string name="media_chain_link">Link</string>
+    <string name="media_chain_invalid_configuration">Complete the required fields, use valid JSON, and keep retry values within their bounds. Raw media responses cannot use a JSON status path.</string>
+    <string name="media_chain_media_path_required">A JSON final response requires a media path.</string>
+    <string name="media_chain_discard_title">Discard changes?</string>
+    <string name="media_chain_discard_message">Your media request chain changes have not been saved.</string>
+    <string name="media_chain_keep_editing">Keep editing</string>
     <string name="speech_voice_optional_hint">Voice is optional, but this service may not work without a voice.</string>
     <string name="speech_voice_instructions_help">Tone, accent, emotion%1$s.</string>
     <string name="speech_gemini_audio_description">Gemini returns PCM audio, converted to WAV for playback.</string>
@@ -684,8 +787,15 @@
     <string name="screen_wakelock_all">On</string>
     <string name="screen_wakelock_except_tool_calls">Auto</string>
     <string name="context_window_compact_hint">Tap the circle to compact the context window</string>
+    <string name="context_window_source_api">API usage (latest matching request)</string>
+    <string name="context_window_source_estimated">Estimated — API usage unavailable for this context</string>
+    <string name="context_window_source_mixed">API usage + estimated new messages</string>
+    <string name="context_window_api_breakdown">Input: %1$s · Output: %2$s tokens</string>
+    <string name="context_window_api_input_only">Input: %1$s tokens · Output usage unavailable</string>
     <string name="headers" translatable="false">Headers</string>
     <string name="mcp_enable">Enable</string>
     <string name="mcp_enabled">Enabled</string>
     <string name="drag_to_exit_folder_hint">Drag up to the app bar or down to the navigation bar to leave the folder</string>
+    <string name="conversation_summary_invalid_target">Enter a whole number of target tokens from 1 to 2147483647. The summary must also fit the selected summary model’s context and output limits.</string>
+    <string name="conversation_summary_invalid_chunk">Enter a whole number from 1 to 100000 tokens per pass.</string>
 </resources>

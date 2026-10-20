@@ -30,13 +30,12 @@
     <string name="settings_category_app_settings_description">Внешний вид, настройки и поведение приложения</string>
     <string name="settings_category_app_data_description">История разговоров и сброс приложения</string>
     <string name="settings_category_about_description">Информация о приложении, обновления и лицензия</string>
-    <string name="settings_default_models_description">Помощники для изображений, видео и разговоров</string>
     <string name="settings_providers_description">Поставщики ИИ, модели и подключения API</string>
     <string name="settings_mcp_manage_description">Серверы инструментов и интеграции</string>
     <string name="settings_speech_services_description">Поставщики синтеза речи и голоса</string>
     <string name="speech_services_description">Использовать Android TTS или модели TTS от поставщиков</string>
     <string name="settings_storage_description">Файлы, созданные инструментами</string>
-    <string name="settings_theme_description">Выберите внешний вид MultiGateway</string>
+    <string name="settings_theme_description">Выберите внешний вид Generative</string>
     <string name="settings_amoled_description">Использовать полностью чёрные поверхности в тёмном режиме</string>
     <string name="settings_dynamic_color_description">Использовать цвета обоев на Android 12 и новее</string>
     <string name="settings_immersive_mode_description">Скрывать строку состояния во время чата</string>
@@ -54,7 +53,7 @@
     <string name="settings_export_data_description">Сохранять конфигурацию или историю разговоров в файлы JSON.</string>
     <string name="settings_clear_all_chats_message">Удалить все разговоры? Это действие нельзя отменить.</string>
     <string name="settings_factory_reset_message">Все разговоры и учётные данные поставщиков будут удалены.</string>
-    <string name="settings_find_latest_release">Найти последний выпуск MultiGateway на GitHub.</string>
+    <string name="settings_find_latest_release">Найти последний выпуск Generative на GitHub.</string>
     <string name="settings_universal_description">Универсальная платформа ИИ для Android</string>
     <string name="message_text_size_hint">%1$d sp</string>
     <string name="message_text_size_custom_hint">Выкл.: использовать размер шрифта Android</string>
@@ -71,8 +70,8 @@
     <string name="no_mcp_servers_hint">Нажмите +, чтобы подключить серверы Model Context Protocol</string>
     <string name="server_url_help">URL-адрес сервера %1$s</string>
     <string name="mcp_auth_help">Аутентификация для запросов MCP</string>
-    <string name="mcp_oauth_discovery_help">MultiGateway получает метаданные OAuth с MCP-сервера и использует Authorization Code + PKCE. Оставьте Client ID пустым, чтобы использовать динамическую регистрацию, если она поддерживается.</string>
-    <string name="mcp_oauth_client_id_help">Указывайте только если сервер авторизации не поддерживает динамическую регистрацию или MultiGateway уже зарегистрирован вручную.</string>
+    <string name="mcp_oauth_discovery_help">Generative получает метаданные OAuth с MCP-сервера и использует Authorization Code + PKCE. Оставьте Client ID пустым, чтобы использовать динамическую регистрацию, если она поддерживается.</string>
+    <string name="mcp_oauth_client_id_help">Указывайте только если сервер авторизации не поддерживает динамическую регистрацию или Generative уже зарегистрирован вручную.</string>
     <string name="mcp_oauth_client_secret_help">Необязательно. Используйте только секрет, выданный предварительно зарегистрированному конфиденциальному клиенту.</string>
     <string name="mcp_oauth_redirect_uri_help">Используйте точный URL обратного вызова, зарегистрированный для этого клиента. По умолчанию: %1$s</string>
     <string name="mcp_custom_headers_help">Добавить пользовательские HTTP-заголовки к запросам MCP-сервера</string>
@@ -99,8 +98,6 @@
     <string name="mcp_tool_list_not_cached_description">Список инструментов не кэширован. Сначала сохраните или обновите этот сервер в MCP Manage.</string>
     <string name="mcp_no_globally_enabled_tools_description">Нет глобально включённых инструментов.</string>
     <string name="image_tool_model_options_description">Указывайте только параметры, поддерживаемые этой моделью. Пустые поля используют значения поставщика по умолчанию. Настройки сохраняются отдельно для каждой модели.</string>
-    <string name="image_tool_agnes_reference_description">Для эталонных изображений Agnes нужны общедоступные HTTPS-URL. Файлы, прикреплённые в чате, нельзя загрузить в этот API. Используйте URL кадров ниже или укажите медиа в расширенном JSON.</string>
-    <string name="image_tool_agnes_edit_description">Agnes поддерживает прикреплённые эталонные изображения. Общедоступные URL можно указать в extra_body.image расширенного JSON. Для редактирования выберите формат ответа ниже; return_base64 применяется к преобразованию текста в изображение.</string>
     <string name="image_tool_request_body_help">Поддерживаются вложенные объекты и расширения поставщика. Модель и промпт берутся из чата.</string>
     <string name="image_tool_json_invalid_hint">Исправьте JSON в расширенном JSON, чтобы использовать форму.</string>
     <string name="image_tool_discard_video_message">Настройки видео не сохранены.</string>
@@ -152,7 +149,7 @@
     <string name="model_tool_name">Название инструмента</string>
     <string name="model_tools_editor_hint">Выберите инструменты по умолчанию, добавьте названия пользовательских инструментов и включайте или выключайте каждый инструмент.</string>
     <string name="model_tools_hint">Включите встроенные инструменты, поддерживаемые этой моделью. Они передаются напрямую в запрос к API модели.</string>
-    <string name="model_tools_unsupported_provider">API этого провайдера пока не поддерживает встроенные инструменты модели в MultiGateway.</string>
+    <string name="model_tools_unsupported_provider">API этого провайдера пока не поддерживает встроенные инструменты модели в Generative.</string>
     <string name="remote_machine_google_missing_resolution">Для авторизации Google требуется взаимодействие, но следующий шаг не был возвращён.</string>
     <string name="remote_machine_google_no_access_token">Google не вернул токен доступа.</string>
     <string name="remote_machine_oauth_client_type">Тип клиента OAuth</string>

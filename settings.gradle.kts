@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MultiGateway"
+rootProject.name = "Generative"
 include(":app")
