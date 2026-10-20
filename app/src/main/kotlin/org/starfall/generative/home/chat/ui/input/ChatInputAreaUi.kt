@@ -319,7 +319,8 @@ fun UserInputArea(
             border = BorderStroke(1.dp, if (mediaKind != null) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                 else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
             tonalElevation = if (amoledMode) 0.dp else 2.dp,
-            shadowElevation = if (amoledMode) 0.dp else 3.dp
+            // No shadowElevation: the surface is translucent, so its shadow would show through inside.
+            shadowElevation = 0.dp
         ) {
             Column(modifier = Modifier.fillMaxWidth().heightIn(max = maxInputHeight)) {
                 if (mediaKind != null) {
