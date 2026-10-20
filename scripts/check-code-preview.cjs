@@ -4,7 +4,7 @@ const path = require('path');
 const assert = require('assert');
 const {execFileSync} = require('child_process');
 const assets = path.resolve(__dirname, '../app/src/main/assets/code-preview');
-const documentSource = fs.readFileSync(path.resolve(__dirname, '../app/src/main/kotlin/org/starfall/multigateway/ui/preview/CodePreviewDocument.kt'), 'utf8');
+const documentSource = fs.readFileSync(path.resolve(__dirname, '../app/src/main/kotlin/org/starfall/generative/ui/preview/CodePreviewDocument.kt'), 'utf8');
 const libraryUrls = [...documentSource.matchAll(/"(https:\/\/unpkg\.com\/[^"]+)"/g)].map(match => match[1]);
 assert.equal(libraryUrls.length, 3);
 // Fetch the exact CDN versions in memory for browser checks; no vendor files live in app assets.
@@ -29,16 +29,16 @@ const scriptTags = libraryUrls.map(url => `<script src="${url}"></script>`).join
  try {
   for(const [name,source,language,check] of tests){
    const page=await browser.newPage();
-   await page.route('https://preview.multigateway.invalid/runtime/**',route=>route.fulfill({contentType:'application/javascript',body:fs.readFileSync(path.join(assets,route.request().url().split('/').pop()))}));
+   await page.route('https://preview.generative.invalid/runtime/**',route=>route.fulfill({contentType:'application/javascript',body:fs.readFileSync(path.join(assets,route.request().url().split('/').pop()))}));
    await page.route('https://unpkg.com/**', route => route.fulfill({contentType:'application/javascript', body:libraries.get(route.request().url())}));
    const encoded=Buffer.from(source).toString('base64');
-   await page.setContent(`<html><head><script src="https://preview.multigateway.invalid/runtime/runtime.js"></script>${scriptTags}</head><body><div id="root"></div><pre id="preview-console"></pre><script>runCodePreview("${encoded}","${language}")</script></body></html>`);
+   await page.setContent(`<html><head><script src="https://preview.generative.invalid/runtime/runtime.js"></script>${scriptTags}</head><body><div id="root"></div><pre id="preview-console"></pre><script>runCodePreview("${encoded}","${language}")</script></body></html>`);
    await check(page); console.log('PASS',name); await page.close();
   }
   const offline = await browser.newPage();
-  await offline.route('https://preview.multigateway.invalid/runtime/runtime.js', route => route.fulfill({contentType:'application/javascript', body:fs.readFileSync(path.join(assets, 'runtime.js'))}));
+  await offline.route('https://preview.generative.invalid/runtime/runtime.js', route => route.fulfill({contentType:'application/javascript', body:fs.readFileSync(path.join(assets, 'runtime.js'))}));
   await offline.route('https://unpkg.com/**', route => route.abort());
-  await offline.setContent(`<html><head><script src="https://preview.multigateway.invalid/runtime/runtime.js"></script>${scriptTags}</head><body><div id="root"></div><pre id="preview-console"></pre><script>runCodePreview("${Buffer.from('export default () => <p>Hello</p>').toString('base64')}","jsx")</script></body></html>`);
+  await offline.setContent(`<html><head><script src="https://preview.generative.invalid/runtime/runtime.js"></script>${scriptTags}</head><body><div id="root"></div><pre id="preview-console"></pre><script>runCodePreview("${Buffer.from('export default () => <p>Hello</p>').toString('base64')}","jsx")</script></body></html>`);
   await offline.locator('#preview-error').waitFor();
   assert((await offline.locator('#preview-error').innerText()).includes('internet connection'));
   console.log('PASS CDN loading failure');

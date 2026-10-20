@@ -14,7 +14,7 @@ from pathlib import Path
 
 BASE_URL = "https://composables.com/download/icons"
 REPO_ROOT = Path(__file__).resolve().parent.parent
-KOTLIN_ROOT = REPO_ROOT / "app" / "src" / "main" / "kotlin" / "org" / "starfall" / "multigateway" / "shared" / "ui" / "icons"
+KOTLIN_ROOT = REPO_ROOT / "app" / "src" / "main" / "kotlin" / "org" / "starfall" / "generative" / "shared" / "ui" / "icons"
 REGISTRY = KOTLIN_ROOT / "FluentUi.kt"
 LIBRARY_ALIASES = {
     "fluentui": "fluentui-system-icons",
@@ -72,7 +72,7 @@ def download_icon(library: str, style: str | None, icon: str) -> str:
     if style:
         url += "?" + urllib.parse.urlencode({"v": style})
     request = urllib.request.Request(url, headers={
-        "User-Agent": "MultiGateway-get-icon/1.0 (+https://composables.com/icons)",
+        "User-Agent": "Generative-get-icon/1.0 (+https://composables.com/icons)",
         "Accept": "text/x-kotlin,text/plain,*/*;q=0.8",
     })
     try:
@@ -108,8 +108,8 @@ def package_for(target: Path) -> str:
         relative = target.parent.relative_to(KOTLIN_ROOT)
     except ValueError:
         # Keep --output useful for temporary exports and tests outside the project.
-        return "org.starfall.multigateway.shared.ui.icons"
-    return "org.starfall.multigateway.shared.ui.icons" + ("." + ".".join(relative.parts) if relative.parts else "")
+        return "org.starfall.generative.shared.ui.icons"
+    return "org.starfall.generative.shared.ui.icons" + ("." + ".".join(relative.parts) if relative.parts else "")
 
 
 def add_package(content: str, package: str) -> str:
@@ -141,7 +141,7 @@ def update_registry(style: str, icon: str) -> None:
                 source_symbol = match.group(1)
                 alias = f"{prop}FluentVector"
                 imports.append(
-                    f"import org.starfall.multigateway.shared.ui.icons.fluentui.{item_style}.{source_symbol} as {alias}"
+                    f"import org.starfall.generative.shared.ui.icons.fluentui.{item_style}.{source_symbol} as {alias}"
                 )
                 props.append((prop, alias))
         objects.append(f"    object {item_style.title()} {{")
@@ -151,7 +151,7 @@ def update_registry(style: str, icon: str) -> None:
         objects.append("    }")
 
     header = (
-        "package org.starfall.multigateway.shared.ui.icons\n\n"
+        "package org.starfall.generative.shared.ui.icons\n\n"
         + "\n".join(sorted(imports))
         + "\n\nimport androidx.compose.ui.graphics.vector.ImageVector\n\n"
         + "/** Typed Compose icons downloaded individually from Composables; compatibility names are exposed through [Icons]. */\n"

@@ -1,18 +1,19 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
+# Keep adaptive foreground artwork inside Android's safe area.
+logo="docs/generative_logo.png"
 declare -A sizes=( ["mdpi"]="108x108" ["hdpi"]="162x162" ["xhdpi"]="216x216" ["xxhdpi"]="324x324" ["xxxhdpi"]="432x432" )
 
 for density in "${!sizes[@]}"; do
     size=${sizes[$density]}
-    
-    mkdir -p "app/src/main/res/mipmap-$density"
-    convert light-logo.png -resize $size "app/src/main/res/mipmap-$density/ic_launcher_foreground.png"
-    
-    mkdir -p "app/src/main/res/mipmap-night-$density"
-    convert dark-logo.png -resize $size "app/src/main/res/mipmap-night-$density/ic_launcher_foreground.png"
+    for mode in light night; do
+        if [[ "$mode" == "night" ]]; then
+            dir="app/src/main/res/mipmap-night-$density"
+        else
+            dir="app/src/main/res/mipmap-$density"
+        fi
+        mkdir -p "$dir"
+        convert "$logo" -trim +repage -resize '72%x72%' -gravity center -background none -extent "$size" "$dir/ic_launcher_foreground.png"
+    done
 done
-
-# Remove the one we mistakenly placed in drawable
-rm -f app/src/main/res/drawable/ic_launcher_foreground.png
-rm -f app/src/main/res/drawable-night/ic_launcher_foreground.png

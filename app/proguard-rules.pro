@@ -6,8 +6,8 @@
 
 # JSch instantiates its algorithm implementations by class name.
 -keep class com.jcraft.jsch.** { *; }
--keep class org.starfall.multigateway.extservices.remote.AndroidSignatureEd25519 { *; }
--keep class org.starfall.multigateway.extservices.remote.AndroidKeyPairGenEdDSA { *; }
+-keep class org.starfall.generative.extservices.remote.AndroidSignatureEd25519 { *; }
+-keep class org.starfall.generative.extservices.remote.AndroidKeyPairGenEdDSA { *; }
 -keep class net.i2p.crypto.eddsa.** { *; }
 -dontwarn sun.security.x509.**
 

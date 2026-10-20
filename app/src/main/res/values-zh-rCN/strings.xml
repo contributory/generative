@@ -36,7 +36,7 @@
     <string name="settings_speech_services_description">文字转语音提供商和语音</string>
     <string name="speech_services_description">使用 Android TTS 或提供商的 TTS 模型</string>
     <string name="settings_storage_description">工具创建的文件</string>
-    <string name="settings_theme_description">选择 MultiGateway 的外观</string>
+    <string name="settings_theme_description">选择 Generative 的外观</string>
     <string name="settings_amoled_description">在深色模式下使用纯黑表面</string>
     <string name="settings_dynamic_color_description">在 Android 12 及更高版本中使用壁纸颜色</string>
     <string name="settings_immersive_mode_description">聊天时隐藏状态栏</string>
@@ -54,7 +54,7 @@
     <string name="settings_export_data_description">将配置或对话记录保存为 JSON 文件。</string>
     <string name="settings_clear_all_chats_message">确定要删除所有对话吗？此操作无法撤销。</string>
     <string name="settings_factory_reset_message">这将清除所有对话和提供商凭据。</string>
-    <string name="settings_find_latest_release">在 GitHub 上查找最新的 MultiGateway 发布版本。</string>
+    <string name="settings_find_latest_release">在 GitHub 上查找最新的 Generative 发布版本。</string>
     <string name="settings_universal_description">适用于 Android 的通用 AI 平台</string>
     <string name="message_text_size_hint">%1$d sp</string>
     <string name="message_text_size_custom_hint">关闭：使用 Android 系统字体大小</string>
@@ -71,8 +71,8 @@
     <string name="no_mcp_servers_hint">点击 + 以连接 Model Context Protocol 服务器</string>
     <string name="server_url_help">%1$s 服务器的 URL 地址</string>
     <string name="mcp_auth_help">MCP 请求使用的身份验证</string>
-    <string name="mcp_oauth_discovery_help">MultiGateway 从 MCP 服务器发现 OAuth 元数据，然后使用 Authorization Code + PKCE。如果支持动态客户端注册，请将 Client ID 留空。</string>
-    <string name="mcp_oauth_client_id_help">仅当授权服务器不支持动态客户端注册，或你已手动注册 MultiGateway 时输入。</string>
+    <string name="mcp_oauth_discovery_help">Generative 从 MCP 服务器发现 OAuth 元数据，然后使用 Authorization Code + PKCE。如果支持动态客户端注册，请将 Client ID 留空。</string>
+    <string name="mcp_oauth_client_id_help">仅当授权服务器不支持动态客户端注册，或你已手动注册 Generative 时输入。</string>
     <string name="mcp_oauth_client_secret_help">可选。仅使用为预注册机密客户端签发的密钥。</string>
     <string name="mcp_oauth_redirect_uri_help">使用为此客户端注册的准确回调 URL。默认值：%1$s</string>
     <string name="mcp_custom_headers_help">为 MCP 服务器请求添加自定义 HTTP 标头</string>
@@ -150,7 +150,7 @@
     <string name="model_tool_name">工具名称</string>
     <string name="model_tools_editor_hint">选择默认工具、添加自定义工具名称，并分别启用或停用各个工具。</string>
     <string name="model_tools_hint">启用此模型支持的内置工具。这些工具会直接随模型 API 请求发送。</string>
-    <string name="model_tools_unsupported_provider">此提供商的 API 暂不支持 MultiGateway 中的内置模型工具。</string>
+    <string name="model_tools_unsupported_provider">此提供商的 API 暂不支持 Generative 中的内置模型工具。</string>
     <string name="remote_machine_google_missing_resolution">Google 授权需要用户交互，但未返回后续处理步骤。</string>
     <string name="remote_machine_google_no_access_token">Google 未返回访问令牌。</string>
     <string name="remote_machine_oauth_client_type">OAuth 客户端类型</string>

@@ -1,7 +1,7 @@
-# MultiGateway Structure
+# Generative Structure
 
 ```text
-📦 org.starfall.multigateway/
+📦 org.starfall.generative/
 ├── 📁 appwiring/
 │   ├── 📄 AppContainer.kt
 │   └── 📄 DefaultDataInitializer.kt
@@ -484,7 +484,7 @@
 │       ├── 📄 ToolControls.kt
 │       └── 📄 ToolSwitch.kt
 ├── 📄 MainActivity.kt
-└── 📄 MultiGatewayApplication.kt
+└── 📄 GenerativeApplication.kt
 ```
 ## Legend
 
@@ -551,7 +551,7 @@
 
 - `features/main/ui/FeaturesScreen.kt` is the untitled feature directory; its header displays the light-background app logo in every theme.
 
-- The feature header asset is `drawable-nodpi/multigateway_logo_light.png`.
+- The feature header asset is `drawable-nodpi/generative_logo_light.png`.
 
 ## Context and summary accounting
 

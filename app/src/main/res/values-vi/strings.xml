@@ -19,7 +19,7 @@
     <string name="model_tool_custom">Tool tùy chỉnh</string>
     <string name="model_tool_add">Thêm</string>
     <string name="model_tools_editor_hint">Chọn tool mặc định, thêm tên tool tùy chỉnh và bật hoặc tắt từng tool.</string>
-    <string name="model_tools_unsupported_provider">API của provider này hiện chưa hỗ trợ model tools tích hợp trong MultiGateway.</string>
+    <string name="model_tools_unsupported_provider">API của provider này hiện chưa hỗ trợ model tools tích hợp trong Generative.</string>
     <string name="thinking">Đang suy nghĩ</string>
     <string name="thinking_streaming">Đang suy nghĩ...</string>
     <string name="thought_process">Quá trình suy luận</string>
@@ -42,7 +42,7 @@
     <string name="settings_speech_services_description">Provider chuyển văn bản thành giọng nói</string>
     <string name="speech_services_description">Dùng Android TTS hoặc model TTS từ Providers</string>
     <string name="settings_storage_description">Các file do công cụ tạo</string>
-    <string name="settings_theme_description">Chọn giao diện của MultiGateway</string>
+    <string name="settings_theme_description">Chọn giao diện của Generative</string>
     <string name="settings_amoled_description">Dùng bề mặt màu đen hoàn toàn ở chế độ tối</string>
     <string name="settings_dynamic_color_description">Dùng màu từ hình nền trên Android 12 trở lên</string>
     <string name="settings_immersive_mode_description">Ẩn thanh trạng thái khi trò chuyện</string>
@@ -110,8 +110,8 @@
     <string name="no_mcp_servers_hint">Nhấn + để kết nối Model Context Protocol server</string>
     <string name="server_url_help">Địa chỉ URL cho server %1$s</string>
     <string name="mcp_auth_help">Cơ chế xác thực dùng cho yêu cầu MCP</string>
-    <string name="mcp_oauth_discovery_help">MultiGateway tự dò metadata OAuth từ MCP server rồi dùng Authorization Code + PKCE. Để trống Client ID để đăng ký client động khi server hỗ trợ.</string>
-    <string name="mcp_oauth_client_id_help">Chỉ nhập khi authorization server không hỗ trợ đăng ký client động hoặc bạn đã đăng ký MultiGateway thủ công.</string>
+    <string name="mcp_oauth_discovery_help">Generative tự dò metadata OAuth từ MCP server rồi dùng Authorization Code + PKCE. Để trống Client ID để đăng ký client động khi server hỗ trợ.</string>
+    <string name="mcp_oauth_client_id_help">Chỉ nhập khi authorization server không hỗ trợ đăng ký client động hoặc bạn đã đăng ký Generative thủ công.</string>
     <string name="mcp_oauth_client_secret_help">Không bắt buộc. Chỉ dùng secret được cấp cho confidential client đã đăng ký trước.</string>
     <string name="mcp_oauth_redirect_uri_help">Nhập chính xác callback URL đã đăng ký cho client này. Mặc định: %1$s</string>
     <string name="mcp_custom_headers_help">Thêm HTTP header tùy chỉnh cho yêu cầu MCP server</string>

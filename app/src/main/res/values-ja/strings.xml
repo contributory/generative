@@ -36,7 +36,7 @@
     <string name="settings_speech_services_description">音声合成プロバイダーと音声</string>
     <string name="speech_services_description">Android の TTS またはプロバイダーの TTS モデルを使用</string>
     <string name="settings_storage_description">ツールが作成したファイル</string>
-    <string name="settings_theme_description">MultiGateway の外観を選択</string>
+    <string name="settings_theme_description">Generative の外観を選択</string>
     <string name="settings_amoled_description">ダークモードで完全な黒の背景を使用</string>
     <string name="settings_dynamic_color_description">Android 12 以降で壁紙の色を使用</string>
     <string name="settings_immersive_mode_description">チャット中にステータスバーを非表示</string>
@@ -54,7 +54,7 @@
     <string name="settings_export_data_description">設定または会話履歴を JSON ファイルとして保存</string>
     <string name="settings_clear_all_chats_message">すべての会話を削除しますか？この操作は元に戻せません。</string>
     <string name="settings_factory_reset_message">すべての会話とプロバイダーの認証情報を消去します。</string>
-    <string name="settings_find_latest_release">GitHub で最新の MultiGateway リリースを確認します。</string>
+    <string name="settings_find_latest_release">GitHub で最新の Generative リリースを確認します。</string>
     <string name="settings_universal_description">Android 向けユニバーサル AI プラットフォーム</string>
     <string name="message_text_size_hint">%1$d sp</string>
     <string name="message_text_size_custom_hint">オフ：Android システムのフォントサイズを使用</string>
@@ -71,8 +71,8 @@
     <string name="no_mcp_servers_hint">+ をタップして Model Context Protocol サーバーに接続</string>
     <string name="server_url_help">%1$s サーバーの URL アドレス</string>
     <string name="mcp_auth_help">MCP リクエストに使用する認証</string>
-    <string name="mcp_oauth_discovery_help">MultiGateway は MCP サーバーから OAuth メタデータを取得し、Authorization Code + PKCE を使用します。動的クライアント登録に対応している場合は、Client ID を空欄にしてください。</string>
-    <string name="mcp_oauth_client_id_help">認可サーバーが動的クライアント登録に対応していない場合、または MultiGateway を手動で登録済みの場合のみ入力してください。</string>
+    <string name="mcp_oauth_discovery_help">Generative は MCP サーバーから OAuth メタデータを取得し、Authorization Code + PKCE を使用します。動的クライアント登録に対応している場合は、Client ID を空欄にしてください。</string>
+    <string name="mcp_oauth_client_id_help">認可サーバーが動的クライアント登録に対応していない場合、または Generative を手動で登録済みの場合のみ入力してください。</string>
     <string name="mcp_oauth_client_secret_help">任意。事前登録された機密クライアント用に発行されたシークレットのみ使用してください。</string>
     <string name="mcp_oauth_redirect_uri_help">このクライアントに登録した正確なコールバック URL を使用してください。デフォルト：%1$s</string>
     <string name="mcp_custom_headers_help">MCP サーバーのリクエストにカスタム HTTP ヘッダーを追加</string>
@@ -150,7 +150,7 @@
     <string name="model_tool_name">ツール名</string>
     <string name="model_tools_editor_hint">既定のツールを選択し、カスタムツール名を追加して、各ツールのオン・オフを切り替えます。</string>
     <string name="model_tools_hint">このモデルが対応する組み込みツールを有効にします。ツールはモデル API リクエストに直接送信されます。</string>
-    <string name="model_tools_unsupported_provider">このプロバイダー API は、MultiGateway の組み込みモデルツールにまだ対応していません。</string>
+    <string name="model_tools_unsupported_provider">このプロバイダー API は、Generative の組み込みモデルツールにまだ対応していません。</string>
     <string name="remote_machine_google_missing_resolution">Google の認証には操作が必要ですが、次の処理情報が返されませんでした。</string>
     <string name="remote_machine_google_no_access_token">Google からアクセストークンが返されませんでした。</string>
     <string name="remote_machine_oauth_client_type">OAuth クライアントの種類</string>

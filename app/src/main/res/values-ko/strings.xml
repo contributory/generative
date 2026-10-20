@@ -36,7 +36,7 @@
     <string name="settings_speech_services_description">텍스트 음성 변환 제공업체 및 음성</string>
     <string name="speech_services_description">Android TTS 또는 제공업체의 TTS 모델 사용</string>
     <string name="settings_storage_description">도구가 만든 파일</string>
-    <string name="settings_theme_description">MultiGateway의 모양 선택</string>
+    <string name="settings_theme_description">Generative의 모양 선택</string>
     <string name="settings_amoled_description">어두운 모드에서 완전한 검은색 표면 사용</string>
     <string name="settings_dynamic_color_description">Android 12 이상에서 배경화면 색상 사용</string>
     <string name="settings_immersive_mode_description">채팅 중 상태 표시줄 숨기기</string>
@@ -54,7 +54,7 @@
     <string name="settings_export_data_description">구성 또는 대화 기록을 JSON 파일로 저장</string>
     <string name="settings_clear_all_chats_message">모든 대화를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
     <string name="settings_factory_reset_message">모든 대화와 제공업체 인증 정보를 삭제합니다.</string>
-    <string name="settings_find_latest_release">GitHub에서 최신 MultiGateway 릴리스를 확인합니다.</string>
+    <string name="settings_find_latest_release">GitHub에서 최신 Generative 릴리스를 확인합니다.</string>
     <string name="settings_universal_description">Android용 범용 AI 플랫폼</string>
     <string name="message_text_size_hint">%1$d sp</string>
     <string name="message_text_size_custom_hint">끔: Android 시스템 글꼴 크기 사용</string>
@@ -71,8 +71,8 @@
     <string name="no_mcp_servers_hint">+를 눌러 Model Context Protocol 서버에 연결</string>
     <string name="server_url_help">%1$s 서버의 URL 주소</string>
     <string name="mcp_auth_help">MCP 요청에 사용하는 인증</string>
-    <string name="mcp_oauth_discovery_help">MultiGateway는 MCP 서버에서 OAuth 메타데이터를 찾은 다음 Authorization Code + PKCE를 사용합니다. 동적 클라이언트 등록을 지원하면 Client ID를 비워 두세요.</string>
-    <string name="mcp_oauth_client_id_help">인증 서버가 동적 클라이언트 등록을 지원하지 않거나 MultiGateway를 이미 수동으로 등록한 경우에만 입력하세요.</string>
+    <string name="mcp_oauth_discovery_help">Generative는 MCP 서버에서 OAuth 메타데이터를 찾은 다음 Authorization Code + PKCE를 사용합니다. 동적 클라이언트 등록을 지원하면 Client ID를 비워 두세요.</string>
+    <string name="mcp_oauth_client_id_help">인증 서버가 동적 클라이언트 등록을 지원하지 않거나 Generative를 이미 수동으로 등록한 경우에만 입력하세요.</string>
     <string name="mcp_oauth_client_secret_help">선택사항입니다. 사전 등록된 기밀 클라이언트에 발급된 시크릿만 사용하세요.</string>
     <string name="mcp_oauth_redirect_uri_help">이 클라이언트에 등록된 정확한 콜백 URL을 사용하세요. 기본값: %1$s</string>
     <string name="mcp_custom_headers_help">MCP 서버 요청에 사용자 지정 HTTP 헤더 추가</string>
@@ -150,7 +150,7 @@
     <string name="model_tool_name">도구 이름</string>
     <string name="model_tools_editor_hint">기본 도구를 선택하고 사용자 지정 도구 이름을 추가한 다음 각 도구를 켜거나 끄세요.</string>
     <string name="model_tools_hint">이 모델이 지원하는 기본 제공 도구를 활성화합니다. 도구는 모델 API 요청에 직접 포함됩니다.</string>
-    <string name="model_tools_unsupported_provider">이 제공업체 API는 아직 MultiGateway의 기본 제공 모델 도구를 지원하지 않습니다.</string>
+    <string name="model_tools_unsupported_provider">이 제공업체 API는 아직 Generative의 기본 제공 모델 도구를 지원하지 않습니다.</string>
     <string name="remote_machine_google_missing_resolution">Google에서 인증을 위해 사용자 상호작용이 필요하지만 다음 단계 정보를 반환하지 않았습니다.</string>
     <string name="remote_machine_google_no_access_token">Google에서 액세스 토큰을 반환하지 않았습니다.</string>
     <string name="remote_machine_oauth_client_type">OAuth 클라이언트 유형</string>

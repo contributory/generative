@@ -1,6 +1,6 @@
 workflows:
   android-debug:
-    name: MultiGateway Android Debug
+    name: Generative Android Debug
     instance_type: mac_mini_m2
     max_build_duration: 60
     environment:
@@ -20,12 +20,12 @@ workflows:
         script: |
           chmod +x gradlew
           ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --no-daemon --stacktrace
-          python3 scripts/name-apks.py app/build/outputs/apk/debug MultiGateway-debug.apk
+          python3 scripts/name-apks.py app/build/outputs/apk/debug Generative-debug.apk
     artifacts:
-      - app/build/outputs/apk/debug/MultiGateway-debug.apk
+      - app/build/outputs/apk/debug/Generative-debug.apk
 
   android-release:
-    name: MultiGateway Android Release
+    name: Generative Android Release
     instance_type: mac_mini_m2
     max_build_duration: 60
     environment:
@@ -33,9 +33,9 @@ workflows:
       groups:
         - github_release
       vars:
-        GITHUB_RELEASE_REPO: starfall-org/multigateway
+        GITHUB_RELEASE_REPO: starfall-org/generative
       android_signing:
-        - MultiGateway
+        - Generative
     scripts:
       - name: Set up Android SDK 37
         ignore_failure: false
@@ -73,7 +73,7 @@ workflows:
           set -euo pipefail
           chmod +x gradlew
           ./gradlew :app:assembleRelease --no-daemon --stacktrace
-          python3 scripts/name-apks.py app/build/outputs/apk/release MultiGateway.apk
+          python3 scripts/name-apks.py app/build/outputs/apk/release Generative.apk
       - name: Publish APKs and SHA-1 checksums to GitHub Release
         ignore_failure: false
         script: |
@@ -82,5 +82,5 @@ workflows:
           export GITHUB_RELEASE_TAG
           bash scripts/publish-github-release.sh
     artifacts:
-      - app/build/outputs/apk/release/MultiGateway.apk
+      - app/build/outputs/apk/release/Generative.apk
       - app/build/outputs/apk/release/*.sha1

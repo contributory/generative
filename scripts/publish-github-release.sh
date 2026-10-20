@@ -4,7 +4,7 @@ set -euo pipefail
 GITHUB_RELEASE_TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
 : "${GITHUB_RELEASE_TOKEN:?Set secret GITHUB_TOKEN (or GH_TOKEN) in Codemagic environment group github_release}"
 export GH_TOKEN="$GITHUB_RELEASE_TOKEN"
-repo="${GITHUB_RELEASE_REPO:-starfall-org/multigateway}"
+repo="${GITHUB_RELEASE_REPO:-starfall-org/generative}"
 cd "${CM_BUILD_DIR:-${AC_REPOSITORY_DIR:-$(git rev-parse --show-toplevel)}}"
 command -v gh >/dev/null || { echo 'GitHub CLI (gh) is required.' >&2; exit 1; }
 
@@ -53,13 +53,13 @@ if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
   echo "Release $tag already exists; tag moved to $short_commit and matching artifacts will be replaced."
 else
   gh release create "$tag" --repo "$repo" \
-    --title "MultiGateway $tag" --generate-notes --latest
+    --title "Generative $tag" --generate-notes --latest
 fi
 
 # Prefix GitHub's generated changelog with release metadata that makes the
 # downloadable files and verification method obvious at a glance.
 release_body="$(gh release view "$tag" --repo "$repo" --json body --jq '.body // ""')"
-release_marker='<!-- multigateway-release-info -->'
+release_marker='<!-- generative-release-info -->'
 ai_notes=""
 ai_base="${RELEASE_NOTES_API_BASE_URL:-${AI_BASE_URL:-}}"
 ai_key="${RELEASE_NOTES_API_KEY:-${AI_API_KEY:-}}"
@@ -91,7 +91,7 @@ import json, sys
 model, messages_path, request_path = sys.argv[1:]
 commit_messages = open(messages_path, encoding="utf-8").read().strip()
 payload = {"model": model, "temperature": 0.2, "messages": [
-    {"role": "system", "content": "Write concise English release notes for end users of the MultiGateway Android app using only the supplied commit messages. Describe likely user-visible features, usability improvements, and fixes. Do not mention internal code, refactoring, tests, CI, commit history, or developer tasks. Do not invent details not supported by the messages. Return 2-6 short Markdown bullets only."},
+    {"role": "system", "content": "Write concise English release notes for end users of the Generative Android app using only the supplied commit messages. Describe likely user-visible features, usability improvements, and fixes. Do not mention internal code, refactoring, tests, CI, commit history, or developer tasks. Do not invent details not supported by the messages. Return 2-6 short Markdown bullets only."},
     {"role": "user", "content": "Commit messages for this release:\n" + (commit_messages or "No commit messages available; provide one conservative general maintenance note.")},
 ]}
 with open(request_path, "w", encoding="utf-8") as stream:
@@ -155,8 +155,8 @@ trap 'rm -f "$notes_file"' EXIT
 
 {
   printf '%s\n' "$release_marker"
-  printf '## MultiGateway %s\n\n' "$tag"
-  printf 'Android release build for **MultiGateway %s**.\n\n' "$version"
+  printf '## Generative %s\n\n' "$tag"
+  printf 'Android release build for **Generative %s**.\n\n' "$version"
   printf -- '- **Version:** `%s`\n' "$version"
   printf -- '- **Git tag:** `%s`\n' "$tag"
   printf -- '- **Commit:** `%s`\n\n' "$short_commit"
@@ -172,7 +172,7 @@ trap 'rm -f "$notes_file"' EXIT
   printf '\n### What changed\n\n%s\n' "$ai_notes"
 } > "$notes_file"
 
-gh release edit "$tag" --repo "$repo" --title "MultiGateway $tag" --notes-file "$notes_file"
+gh release edit "$tag" --repo "$repo" --title "Generative $tag" --notes-file "$notes_file"
 
 gh release upload "$tag" "${apks[@]}" "${checksums[@]}" --repo "$repo" --clobber
 gh release edit "$tag" --repo "$repo" --draft=false --latest

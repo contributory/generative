@@ -23,7 +23,7 @@
     </queries>
 
     <application
-        android:name=".MultiGatewayApplication"
+        android:name=".GenerativeApplication"
         android:allowBackup="false"
         android:fullBackupContent="@xml/backup_rules"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -32,7 +32,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
-        android:theme="@style/Theme.MultiGateway">
+        android:theme="@style/Theme.Generative">
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.tool-files"
@@ -42,19 +42,19 @@
         </provider>
         <activity android:name=".shared.ui.auth.AppAuthResultActivity" android:exported="false" />
         <activity android:name=".shared.ui.auth.OAuthBrowserActivity"
-            android:exported="false" android:theme="@style/Theme.MultiGateway" />
+            android:exported="false" android:theme="@style/Theme.Generative" />
         <service android:name=".shared.auth.OAuthBrowserKeepAliveService"
             android:exported="true" />
         <activity
             android:name=".shared.preview.CodePreviewActivity"
             android:exported="false"
-            android:theme="@style/Theme.MultiGateway" />
+            android:theme="@style/Theme.Generative" />
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTask"
             android:windowSoftInputMode="stateHidden|adjustResize"
             android:exported="true"
-            android:theme="@style/Theme.MultiGateway">
+            android:theme="@style/Theme.Generative">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -63,7 +63,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="multigateway" android:host="provider" />
+                <data android:scheme="generative" android:host="provider" />
             </intent-filter>
             <intent-filter android:label="Add provider">
                 <action android:name="android.intent.action.VIEW" />
@@ -74,7 +74,7 @@
         </activity>
 
         <service
-            android:name="org.starfall.multigateway.shared.auth.OAuthCallbackService"
+            android:name="org.starfall.generative.shared.auth.OAuthCallbackService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse">
@@ -83,7 +83,7 @@
         </service>
 
         <service
-            android:name="org.starfall.multigateway.home.shared.logic.ChatBackgroundService"
+            android:name="org.starfall.generative.home.shared.logic.ChatBackgroundService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse">
