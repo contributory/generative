@@ -4,6 +4,19 @@ val gitCommitHash = providers.exec {
 
 val gitCommitNumber = gitCommitHash.filter { it.isDigit() }
 
+// CI checkouts are often detached, so prefer the branch name the CI exposes.
+val gitBranch = (System.getenv("GITHUB_REF_NAME") ?: System.getenv("BRANCH_NAME"))?.takeIf { it.isNotBlank() }
+    ?: providers.exec {
+        commandLine("git", "rev-parse", "--abbrev-ref", "HEAD")
+        isIgnoreExitValue = true
+    }.standardOutput.asText.get().trim()
+
+// main keeps the plain version; any other branch puts its (sanitized) name in the middle.
+val versionSuffix = gitBranch
+    .takeIf { it.isNotBlank() && it != "main" && it != "HEAD" }
+    ?.let { "-" + it.replace(Regex("[^A-Za-z0-9]+"), "-").trim('-').take(4).trim('-') }
+    .orEmpty()
+
 
 plugins {
     id("com.android.application")
@@ -22,7 +35,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0.0-$gitCommitNumber"
+        versionName = "1.0.0$versionSuffix-$gitCommitNumber"
 
         manifestPlaceholders["appAuthRedirectScheme"] = "generative-oauth"
 
