@@ -15,7 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -41,7 +40,7 @@ import androidx.core.content.pm.PackageInfoCompat
 import org.starfall.generative.R
 import org.starfall.generative.features.about.logic.GitHubReleaseInfo
 import org.starfall.generative.features.about.logic.compareReleaseVersions
-import org.starfall.generative.features.about.logic.fetchLatestGitHubReleases
+import org.starfall.generative.features.about.logic.fetchLatestGitHubRelease
 
 @Composable
 fun AboutScreen(modifier: Modifier = Modifier) {
@@ -85,15 +84,19 @@ private fun UpdateSection() {
     val currentVersion = remember(context) { context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty() }
     var refreshKey by remember { mutableIntStateOf(0) }
     var isChecking by remember { mutableStateOf(false) }
-    var releases by remember { mutableStateOf<List<GitHubReleaseInfo>>(emptyList()) }
+    var hasChecked by remember { mutableStateOf(false) }
+    var latestRelease by remember { mutableStateOf<GitHubReleaseInfo?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(refreshKey) {
         if (refreshKey == 0) return@LaunchedEffect
         isChecking = true
         error = null
-        runCatching { fetchLatestGitHubReleases() }
-            .onSuccess { releases = it }
+        runCatching { fetchLatestGitHubRelease() }
+            .onSuccess {
+                latestRelease = it
+                hasChecked = true
+            }
             .onFailure { error = it.localizedMessage ?: context.getString(R.string.settings_update_error) }
         isChecking = false
     }
@@ -105,6 +108,7 @@ private fun UpdateSection() {
                 Text("⟳", style = MaterialTheme.typography.titleLarge)
             }
         }
+        val latest = latestRelease
         when {
             isChecking -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -114,10 +118,9 @@ private fun UpdateSection() {
                 Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                 TextButton(onClick = { refreshKey++ }) { Text(stringResource(R.string.settings_try_again)) }
             }
-            releases.isNotEmpty() -> releases.forEachIndexed { index, release ->
-                if (index > 0) HorizontalDivider()
-                ReleaseEntry(release, updateAvailable = compareReleaseVersions(currentVersion, release.tagName) < 0)
-            }
+            latest != null && compareReleaseVersions(currentVersion, latest.tagName) < 0 -> ReleaseEntry(latest)
+            hasChecked -> Text(stringResource(R.string.settings_up_to_date, currentVersion),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             else -> {
                 Text(stringResource(R.string.settings_find_latest_release), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 FilledTonalButton(onClick = { refreshKey++ }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Text(stringResource(R.string.settings_check_for_updates)) }
@@ -127,21 +130,12 @@ private fun UpdateSection() {
 }
 
 @Composable
-private fun ReleaseEntry(latest: GitHubReleaseInfo, updateAvailable: Boolean) {
+private fun ReleaseEntry(latest: GitHubReleaseInfo) {
     val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(latest.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f, fill = false))
-            if (latest.isPrerelease) {
-                Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.errorContainer) {
-                    Text(stringResource(R.string.settings_unstable_release), modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onErrorContainer)
-                }
-            }
-        }
-        Text(stringResource(if (updateAvailable) R.string.settings_update_available else R.string.settings_up_to_date, latest.tagName), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(latest.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.settings_update_available, latest.tagName), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (latest.body.isNotBlank()) Text(latest.body, style = MaterialTheme.typography.bodySmall, maxLines = 8, overflow = TextOverflow.Ellipsis)
-        if (!updateAvailable) return@Column
         if (latest.apkAssets.isNotEmpty()) {
             latest.apkAssets.forEach { asset ->
                 OutlinedButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(asset.downloadUrl))) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {

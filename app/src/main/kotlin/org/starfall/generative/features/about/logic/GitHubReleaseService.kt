@@ -8,15 +8,14 @@ import java.net.URL
 
 internal data class ApkAsset(val name: String, val sizeBytes: Long, val downloadUrl: String)
 internal data class GitHubReleaseInfo(val tagName: String, val title: String, val body: String,
-    val pageUrl: String, val apkAssets: List<ApkAsset>, val isPrerelease: Boolean = false)
+    val pageUrl: String, val apkAssets: List<ApkAsset>)
 
 /**
- * The newest stable release, plus the newest pre-release (flagged [GitHubReleaseInfo.isPrerelease]) when it
- * is newer than that stable release or no stable release exists. `/releases/latest` is not used because
- * GitHub never returns pre-releases from it.
+ * The latest stable release published on GitHub. The `/releases/latest` endpoint excludes drafts and
+ * pre-releases, so pre-release builds are never offered here.
  */
-internal suspend fun fetchLatestGitHubReleases(): List<GitHubReleaseInfo> = withContext(Dispatchers.IO) {
-    val connection = (URL("https://api.github.com/repos/starfall-org/generative/releases?per_page=30").openConnection() as HttpURLConnection).apply {
+internal suspend fun fetchLatestGitHubRelease(): GitHubReleaseInfo? = withContext(Dispatchers.IO) {
+    val connection = (URL("https://api.github.com/repos/starfall-org/generative/releases/latest").openConnection() as HttpURLConnection).apply {
         requestMethod = "GET"
         connectTimeout = 10_000
         readTimeout = 15_000
@@ -26,17 +25,9 @@ internal suspend fun fetchLatestGitHubReleases(): List<GitHubReleaseInfo> = with
     }
     try {
         val code = connection.responseCode
+        if (code == HttpURLConnection.HTTP_NOT_FOUND) return@withContext null
         if (code !in 200..299) error("GitHub returned HTTP $code")
-        val releases = Json.parseToJsonElement(connection.inputStream.bufferedReader().use { it.readText() }).jsonArray
-            .map { it.jsonObject }
-            .filter { it["draft"]?.jsonPrimitive?.booleanOrNull != true }
-            .map(::parseRelease)
-        // The API lists releases newest first.
-        val stable = releases.firstOrNull { !it.isPrerelease }
-        val preRelease = releases.filter { it.isPrerelease }
-            .maxWithOrNull { a, b -> compareReleaseVersions(a.tagName, b.tagName) }
-            ?.takeIf { stable == null || compareReleaseVersions(it.tagName, stable.tagName) > 0 }
-        listOfNotNull(stable, preRelease)
+        parseRelease(Json.parseToJsonElement(connection.inputStream.bufferedReader().use { it.readText() }).jsonObject)
     } finally { connection.disconnect() }
 }
 
@@ -50,7 +41,7 @@ private fun parseRelease(root: JsonObject): GitHubReleaseInfo {
         .map { asset -> ApkAsset(asset["name"]?.jsonPrimitive?.content.orEmpty(),
             asset["size"]?.jsonPrimitive?.content?.toLongOrNull() ?: 0L,
             asset["browser_download_url"]?.jsonPrimitive?.content.orEmpty()) }
-    return GitHubReleaseInfo(tag, title, body, page, assets, root["prerelease"]?.jsonPrimitive?.booleanOrNull == true)
+    return GitHubReleaseInfo(tag, title, body, page, assets)
 }
 
 // Versions look like "1.0.2-123" (main) or "1.0.2-123dev" (other branches): base version, then the

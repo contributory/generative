@@ -515,7 +515,6 @@
     <string name="settings_download_apk_variants">Download APK Variants</string>
     <string name="settings_download_apk">Download APK</string>
     <string name="settings_open_github_release">Open GitHub Release Page</string>
-    <string name="settings_unstable_release">Unstable (pre-release)</string>
     <string name="settings_find_latest_release">Find the latest Generative release on GitHub.</string>
     <string name="remote_machines_title" translatable="false">Remote Machines</string>
     <string name="remote_machines_description" translatable="false">SSH and Google Cloud Shell connections</string>
