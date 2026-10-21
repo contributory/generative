@@ -2,7 +2,7 @@ package org.starfall.generative.home.chat.logic.tool
 
 import org.starfall.generative.shared.model.media.ContentApiMediaResult
 import org.starfall.generative.shared.model.media.MediaGenerationMode
-import org.starfall.generative.home.shared.logic.summarizeToolResult
+import org.starfall.generative.home.shared.logic.prepareToolResult
 import org.starfall.generative.home.shared.logic.ToolSummary
 
 import kotlinx.coroutines.*
@@ -373,7 +373,7 @@ class ToolChatViewModel(
                             ) { "MCP tool disabled" }
                             toolExecution.callMcpTool(
                                 sessions[tool.serverId] ?: error("MCP session unavailable"),
-                                tool.originalName, configuredMcpArguments(tool, args, settings()), retainLongTextInMemory = !contentApi
+                                tool.originalName, configuredMcpArguments(tool, args, settings())
                             )
                         } else if (name == SEND_FILE_TOOL_NAME) {
                             check(settings().sendFileEnabled) { "Send File tool disabled" }
@@ -426,11 +426,11 @@ class ToolChatViewModel(
                         val contentApiMedia = if (contentApi) resolveContentApiMedia(result, http) else null
                         if (contentApiMedia != null) result = contentApiMedia.content
                         val summary = if (contentApi || mediaTool) {
-                            summarizeToolResult(result, http.requireFiles())
+                            prepareToolResult(result, http.requireFiles())
                         } else {
-                            summarizeGenericToolResult(result)
+                            prepareGenericToolResult(result)
                         }
-                        // The model may only get a bounded view of the result, but the UI keeps the complete response.
+                        // Keep the complete processed result as tool content; the preview below is UI metadata only.
                         val completeResponse = result.toString()
                         result = summary.content
                         if (mediaTool) {
@@ -474,13 +474,13 @@ class ToolChatViewModel(
                         result = obj(
                             "isError" to JsonPrimitive(true),
                             "status" to str("error"),
-                            "error" to str(e.message.orEmpty().take(500))
+                            "error" to str(e.message.orEmpty())
                         )
                         send(
                             GenerationEvent.Tool(
                                 activity.copy(
                                     status = "error",
-                                    summary = e.message.orEmpty().take(500),
+                                    summary = e.message.orEmpty(),
                                     response = result.toString()
                                 )
                             )

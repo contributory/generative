@@ -23,7 +23,7 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.networking.ToolHttp
 import org.starfall.generative.shared.networking.obj
 import org.starfall.generative.shared.networking.str
-import org.starfall.generative.home.shared.logic.summarizeToolResult
+import org.starfall.generative.home.shared.logic.prepareToolResult
 
 /** Handles direct image/video generation and emits its progress as tool events. */
 internal class ToolMediaGenerationService(
@@ -100,7 +100,7 @@ internal class ToolMediaGenerationService(
                 inputVideo = if (referenceIsVideo) inputs.single() else null,
                 generationMode = generationMode,
                 requestChain = requestChain)
-            val summary = summarizeToolResult(result, http.requireFiles())
+            val summary = prepareToolResult(result, http.requireFiles())
             emit(GenerationEvent.Tool(activity.copy(status = "success", summary = summary.preview,
                 files = summary.files, response = summary.content.toString())))
         } catch (e: CancellationException) {

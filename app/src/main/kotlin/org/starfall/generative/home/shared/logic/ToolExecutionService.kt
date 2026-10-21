@@ -22,9 +22,8 @@ internal class ToolExecutionService(
     suspend fun callMcpTool(
         session: McpSession,
         name: String,
-        arguments: JsonObject,
-        retainLongTextInMemory: Boolean
-    ): JsonObject = session.call(name, arguments, retainLongTextInMemory)
+        arguments: JsonObject
+    ): JsonObject = session.call(name, arguments)
 
     suspend fun executeRemoteTool(
         machine: RemoteMachine,

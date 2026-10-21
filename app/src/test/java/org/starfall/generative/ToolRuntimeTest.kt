@@ -64,13 +64,14 @@ class ToolRuntimeTest {
             assertTrue(root.listFiles()!!.isEmpty())
         } finally {root.deleteRecursively()}
     }
-    @Test fun hugeTextIsBoundedAndMalformedJsonDoesNotRemainOnDisk() = runBlocking {
+    @Test fun hugeTextIsPreservedAndMalformedJsonDoesNotRemainOnDisk() = runBlocking {
         val root=Files.createTempDirectory("tool-text-test").toFile()
         try {
             val store=ToolFiles(root)
-            val output=store.sanitize(StringReader("{\"text\":\"${"x".repeat(100000)}\"}"))
-            assertTrue(output.length<66000)
-            assertTrue(Json.parseToJsonElement(output).jsonObject.containsKey("text"))
+            val text = "x".repeat(2_100_000)
+            val output=store.sanitize(StringReader("{\"text\":\"$text\"}"))
+            val parsed = Json.parseToJsonElement(output).jsonObject["text"]!!.jsonPrimitive.content
+            assertEquals(text, parsed)
             runCatching{store.sanitize(StringReader("{\"b64_json\":\"${"A".repeat(20000)}"))}
             assertTrue(root.listFiles()!!.none { it.name.endsWith(".part") })
             assertEquals(0,store.list().size)

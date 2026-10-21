@@ -71,7 +71,7 @@ private suspend fun replayResult(activity: ToolActivity, files: ToolFiles): Json
             "error" to str("Tool call was stopped before it finished.")
         )
         parsed != null && (activity.status == "error" || activity.responsePreviewLimit > 0) ->
-            if (activity.status == "error") parsed else summarizeGenericToolResult(parsed).content
+            if (activity.status == "error") parsed else prepareGenericToolResult(parsed).content
         else -> obj("status" to str(activity.status), "summary" to str(activity.summary.take(2000)))
     }
     // Generated media stays hidden from the model: it only needs to know the media was created.

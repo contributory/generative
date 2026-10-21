@@ -12,7 +12,7 @@ internal data class ToolSummary(
 
 /** Summary for generated media and Content-API responses. */
 @Suppress("UNUSED_PARAMETER")
-internal fun summarizeToolResult(result: JsonObject, files: ToolFiles): ToolSummary {
+internal fun prepareToolResult(result: JsonObject, files: ToolFiles): ToolSummary {
     val media = Regex("tool-file:([a-zA-Z0-9._-]+)").findAll(result.toString()).map { it.groupValues[1] }.distinct().take(32).toList()
     val isError = (result["isError"] as? JsonPrimitive)?.booleanOrNull == true
     val preview = when {
