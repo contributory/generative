@@ -74,16 +74,16 @@ import com.termux.view.TerminalView
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.coroutineContext
 import org.starfall.generative.R
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
 import org.starfall.generative.features.machines.shared.ui.RemoteMouseTouchListener
 import org.starfall.generative.features.machines.shared.ui.RemoteTerminalBridge
+import org.starfall.generative.features.machines.shared.ui.RemoteTerminalSessions
+import org.starfall.generative.features.machines.shared.ui.TerminalSlot
 import org.starfall.generative.features.machines.shared.ui.RemoteTextField
 import org.starfall.generative.features.machines.shared.ui.TerminalInputMode
 import org.starfall.generative.integrations.remote.REMOTE_TERMINAL_UI_PREFERENCES
@@ -101,13 +101,6 @@ import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 private val TerminalBackground = Color(0xFF0B0D0F)
 private val TerminalChromeText = Color.White
 
-internal class TerminalSlot(
-    val terminal: RemoteTerminal,
-    val bridge: RemoteTerminalBridge
-) {
-    var readerJob: Job? = null
-}
-
 private class PendingSecretRequest(
     val request: RemoteSecretRequest,
     val answer: CompletableDeferred<String?>
@@ -121,10 +114,14 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
     val terminalPrefs = remember {
         context.getSharedPreferences(REMOTE_TERMINAL_UI_PREFERENCES, Context.MODE_PRIVATE)
     }
-    var terminalSlots by remember(machine.id) { mutableStateOf<List<TerminalSlot>>(emptyList()) }
-    var activeTerminalId by remember(machine.id) { mutableStateOf<String?>(null) }
+    // Sessions live in a process-wide registry so they survive leaving this screen.
+    val terminalSlots = RemoteTerminalSessions.slotsFor(machine.id)
+    val activeTerminalId = RemoteTerminalSessions.activeIdFor(machine.id)
     var connecting by remember(machine.id) { mutableStateOf(false) }
-    var error by remember(machine.id) { mutableStateOf<String?>(null) }
+    var openError by remember(machine.id) { mutableStateOf<String?>(null) }
+    val error = openError ?: if (RemoteTerminalSessions.connectionLost(machine.id)) {
+        stringResource(R.string.remote_machine_terminal_connection_lost)
+    } else null
     var secretRequest by remember(machine.id) { mutableStateOf<PendingSecretRequest?>(null) }
     var passwordInput by remember(machine.id) { mutableStateOf("") }
     var showPromptPassword by remember(machine.id) { mutableStateOf(false) }
@@ -140,7 +137,6 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
     val textSizePx = (fontDp * density).toInt()
     val activeSlot = terminalSlots.firstOrNull { it.terminal.id == activeTerminalId }
     val activeBridge = activeSlot?.bridge
-    val currentSlots by rememberUpdatedState(terminalSlots)
     val currentSecretRequest by rememberUpdatedState(secretRequest)
 
     fun setFontDp(value: Int) {
@@ -148,35 +144,18 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
         terminalPrefs.edit().putInt("font_dp", fontDp).apply()
     }
 
-    fun closeSlot(slot: TerminalSlot) {
-        slot.readerJob?.cancel()
-        slot.bridge.close()
-        // Closing the last registered terminal disconnects the machine (see the connection
-        // manager), so no separate disconnect call is needed here.
-        slot.terminal.close()
-        val index = terminalSlots.indexOf(slot)
-        terminalSlots = terminalSlots.filterNot { it === slot }
-        if (activeTerminalId == slot.terminal.id) {
-            activeTerminalId = terminalSlots.getOrNull(index.coerceAtLeast(0).coerceAtMost(terminalSlots.lastIndex))?.terminal?.id
-                ?: terminalSlots.lastOrNull()?.terminal?.id
-        }
-    }
+    fun closeSlot(slot: TerminalSlot) = RemoteTerminalSessions.close(machine.id, slot)
 
-    fun closeAllTerminals() {
+    // Leaving the screen keeps the sessions alive; only a pending password prompt is dropped.
+    fun leaveScreen() {
         currentSecretRequest?.answer?.complete(null)
-        currentSlots.forEach { slot ->
-            slot.readerJob?.cancel()
-            slot.bridge.close()
-            slot.terminal.close()
-        }
-        terminalSlots = emptyList()
-        activeTerminalId = null
     }
 
     fun openTerminal() {
         scope.launch {
             connecting = true
-            error = null
+            openError = null
+            RemoteTerminalSessions.clearConnectionLost(machine.id)
             try {
                 val opened = viewModel.openTerminal(machine) { request ->
                     // The SSH thread pauses here only after the server requests an unsaved secret.
@@ -199,48 +178,20 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
                     TerminalInputMode.LOCAL.name -> TerminalInputMode.LOCAL
                     else -> TerminalInputMode.REMOTE
                 }
-                val newBridge = RemoteTerminalBridge(context, currentInputMode).also { bridge ->
+                if (!isActive) {
+                    // The user left while connecting: do not leave an unowned shell behind.
+                    opened.close()
+                    throw CancellationException()
+                }
+                val newBridge = RemoteTerminalBridge(context.applicationContext, currentInputMode).also { bridge ->
                     bridge.forceMouse = terminalPrefs.getBoolean("force_mouse", false)
-                    bridge.onZoomStep = { increase -> setFontDp(fontDp + if (increase) 1 else -1) }
                     bridge.attachRemote(opened)
                 }
-                val slot = TerminalSlot(opened, newBridge)
-                terminalSlots = terminalSlots + slot
-                activeTerminalId = opened.id
-                slot.readerJob = launch(Dispatchers.IO) {
-                    val buffer = ByteArray(4096)
-                    try {
-                        while (true) {
-                            val count = opened.input.read(buffer)
-                            if (count < 0) break
-                            val chunk = buffer.copyOf(count)
-                            withContext(Dispatchers.Main) { newBridge.append(chunk) }
-                        }
-                    } catch (cancelled: CancellationException) {
-                        throw cancelled
-                    } catch (_: java.io.IOException) {
-                        // Stream closed: handled below like an end of stream.
-                    }
-                    // The remote side ended the session (not a local close, which cancels us).
-                    if (coroutineContext.isActive) {
-                        val cleanExit = opened.exitStatus >= 0
-                        withContext(Dispatchers.Main) {
-                            terminalSlots = terminalSlots.filterNot { it === slot }
-                            if (activeTerminalId == opened.id) {
-                                activeTerminalId = terminalSlots.lastOrNull()?.terminal?.id
-                            }
-                            newBridge.close()
-                            opened.close()
-                            if (!cleanExit && terminalSlots.isEmpty()) {
-                                error = context.getString(R.string.remote_machine_terminal_connection_lost)
-                            }
-                        }
-                    }
-                }
+                RemoteTerminalSessions.register(machine.id, opened, newBridge)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Throwable) {
-                error = failure.message?.takeIf { it.isNotBlank() }
+                openError = failure.message?.takeIf { it.isNotBlank() }
                     ?: context.getString(R.string.remote_machine_terminal_connection_failed)
             } finally {
                 connecting = false
@@ -249,11 +200,20 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
     }
 
     // Phone back button: disconnect explicitly (same as the app bar back arrow).
-    BackHandler(enabled = LocalScreenTransitionActive.current) { closeAllTerminals(); onBack() }
+    BackHandler(enabled = LocalScreenTransitionActive.current) { leaveScreen(); onBack() }
     DisposableEffect(machine.id) {
-        onDispose { closeAllTerminals() }
+        onDispose { leaveScreen() }
     }
-    LaunchedEffect(machine.id) { openTerminal() }
+    // Pinch zoom callbacks belong to this composition, so (re)bind them on every entry.
+    DisposableEffect(terminalSlots) {
+        terminalSlots.forEach { slot ->
+            slot.bridge.onZoomStep = { increase -> setFontDp(fontDp + if (increase) 1 else -1) }
+        }
+        onDispose { terminalSlots.forEach { it.bridge.onZoomStep = {} } }
+    }
+    LaunchedEffect(machine.id) {
+        if (RemoteTerminalSessions.slotsFor(machine.id).isEmpty()) openTerminal()
+    }
     // Keep IME/keyboard focus on the session the user is looking at, not on a hidden one.
     LaunchedEffect(activeTerminalId, terminalSlots) {
         activeSlot?.bridge?.focusTerminalView()
@@ -280,7 +240,7 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { closeAllTerminals(); onBack() }) {
+                    IconButton(onClick = { leaveScreen(); onBack() }) {
                         FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     }
                 },
@@ -312,7 +272,7 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
                         activeTerminalId = activeTerminalId,
                         connecting = connecting,
                         onSelect = { slot ->
-                            activeTerminalId = slot.terminal.id
+                            RemoteTerminalSessions.setActive(machine.id, slot.terminal.id)
                             slot.bridge.focusTerminalView()
                         },
                         onClose = { slot -> closeSlot(slot) },
@@ -383,6 +343,7 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
                                     } else {
                                         Modifier.size(0.dp)
                                     },
+                                    onRelease = { view -> slot.bridge.detachView(view) },
                                     update = { view ->
                                         // Do not request focus here: update also runs while the
                                         // local IME editor is focused, and stealing focus back
@@ -508,7 +469,6 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
         AppAlertDialog(
             onDismissRequest = {
                 pending.answer.complete(null)
-                closeAllTerminals()
                 onBack()
             },
             title = {
@@ -560,7 +520,6 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
             dismissButton = {
                 TextButton(onClick = {
                     pending.answer.complete(null)
-                    closeAllTerminals()
                     onBack()
                 }) {
                     Text(stringResource(R.string.common_cancel))

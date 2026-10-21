@@ -17,7 +17,6 @@ import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
 import com.termux.view.TerminalView
 import com.termux.view.TerminalViewClient
-import java.io.ByteArrayOutputStream
 import org.starfall.generative.integrations.remote.RemoteTerminal
 
 /**
@@ -38,7 +37,10 @@ internal class RemoteTerminalBridge(
     private var remote: RemoteTerminal? = null
     private var closed = false
     private var emulatorReady = false
-    private val pending = ByteArrayOutputStream()
+    // Everything the remote side printed (most recent part), replayed into a fresh emulator when the
+    // terminal screen is reopened, so a session keeps its screen after the user leaves and returns.
+    private val history = java.util.ArrayDeque<ByteArray>()
+    private var historySize = 0
 
     /** Called when the user pinches: true = bigger text, false = smaller text. */
     var onZoomStep: (Boolean) -> Unit = {}
@@ -178,18 +180,32 @@ internal class RemoteTerminalBridge(
         }
     }
 
-    /** Creates the silent local session TerminalView needs for its emulator lifecycle. */
+    /**
+     * Creates the silent local session TerminalView needs for its emulator lifecycle. Called again
+     * whenever the screen is reopened: the new emulator is refilled from [history].
+     */
     fun createSession(filesDir: java.io.File): TerminalSession {
+        session?.finishIfRunning()
+        emulatorReady = false
         // The renderer receives remote bytes through append() and sends input through sendRemote().
-        // There is no local shell command to echo into the terminal and no FIFO to clean up.
         val created = TerminalSession(
-            // TerminalSession passes these as arguments to shellPath, so -c must be the first arg.
+            // The array is the complete argv (no program name is prepended), so argv[0] must come
+            // first; without it sh took "-c" as its name and tried to run the command as a script
+            // file ("exec /system/bin/cat >/dev/null: No such file or directory", code 127).
+            // stty -echo stops the pty from echoing the emulator's own query replies back on screen.
             "/system/bin/sh", filesDir.absolutePath,
-            arrayOf("-c", "exec /system/bin/cat >/dev/null"),
+            arrayOf("sh", "-c", "/system/bin/stty -echo 2>/dev/null; exec /system/bin/cat >/dev/null"),
             emptyArray(), 2_000, this
         )
         session = created
         return created
+    }
+
+    /** The screen was destroyed (user left); the remote session keeps running and recording. */
+    fun detachView(released: TerminalView) {
+        if (view !== released) return
+        view = null
+        emulatorReady = false
     }
 
     fun attachRemote(terminal: RemoteTerminal) {
@@ -197,7 +213,6 @@ internal class RemoteTerminalBridge(
         closed = false
         // close() shuts the sender down, but this bridge is reused when the user retries after a lost connection.
         if (sender.isShutdown) sender = newSender()
-        flushPending()
         reportSize()
     }
 
@@ -212,12 +227,14 @@ internal class RemoteTerminalBridge(
 
     fun append(bytes: ByteArray) {
         if (closed) return
+        if (bytes.isEmpty()) return
         submittedLocalInput = null
-        val emulator = session?.emulator
-        if (!emulatorReady || emulator == null) {
-            pending.write(bytes)
-            return
-        }
+        record(bytes)
+        if (emulatorReady) writeToEmulator(bytes)
+    }
+
+    private fun writeToEmulator(bytes: ByteArray) {
+        val emulator = session?.emulator ?: return
         val terminalView = view
         // TerminalView.onScreenUpdated() snaps back to the bottom on every update, so while a command
         // kept printing (build, tail -f, ...) the user could never scroll up. When the user has
@@ -226,13 +243,19 @@ internal class RemoteTerminalBridge(
         val scrolledBack = terminalView != null && terminalView.topRow < 0 && !emulator.isAlternateBufferActive
         emulator.append(bytes, bytes.size)
         if (scrolledBack && terminalView != null) {
-            val history = emulator.screen.activeTranscriptRows
-            terminalView.topRow = (terminalView.topRow - emulator.scrollCounter).coerceIn(-history, 0)
+            val transcript = emulator.screen.activeTranscriptRows
+            terminalView.topRow = (terminalView.topRow - emulator.scrollCounter).coerceIn(-transcript, 0)
             emulator.clearScrollCounter()
             terminalView.invalidate()
         } else {
             terminalView?.onScreenUpdated()
         }
+    }
+
+    private fun record(bytes: ByteArray) {
+        history.addLast(bytes)
+        historySize += bytes.size
+        while (historySize > MAX_HISTORY_BYTES && history.size > 1) historySize -= history.removeFirst().size
     }
 
     /** Jumps back to the live screen when the user types, like any terminal does. */
@@ -251,13 +274,6 @@ internal class RemoteTerminalBridge(
         session = null
         view = null
         sender.shutdown()
-    }
-
-    private fun flushPending() {
-        if (!emulatorReady || pending.size() == 0) return
-        val bytes = pending.toByteArray()
-        pending.reset()
-        append(bytes)
     }
 
     // Socket writes throw NetworkOnMainThreadException on Android's main thread, and keys/paste
@@ -422,6 +438,10 @@ internal class RemoteTerminalBridge(
         return true
     }
 
+    private companion object {
+        const val MAX_HISTORY_BYTES = 512 * 1024
+    }
+
     // TerminalSessionClient
     override fun onTextChanged(changedSession: TerminalSession) { view?.onScreenUpdated() }
     override fun onTitleChanged(changedSession: TerminalSession) = Unit
@@ -531,7 +551,7 @@ internal class RemoteTerminalBridge(
         emulatorReady = true
         if (first) {
             session?.reset()
-            flushPending()
+            history.forEach(::writeToEmulator)
         }
         reportSize()
     }

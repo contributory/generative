@@ -56,6 +56,7 @@ import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import org.starfall.generative.features.machines.shared.ui.RemoteStatusDot
 import org.starfall.generative.features.machines.shared.ui.RemoteTerminalBridge
+import org.starfall.generative.features.machines.shared.ui.TerminalSlot
 import org.starfall.generative.features.machines.shared.ui.TerminalInputMode
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.ui.icons.FluentIcon
