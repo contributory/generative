@@ -17,6 +17,7 @@ import org.starfall.generative.shared.logging.DebugLogKtorPlugin
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
+import org.starfall.generative.shared.model.withoutEmptyModelMessages
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.auth.CredentialLoadState
 import org.starfall.generative.shared.model.generation.GenerationEvent
@@ -252,7 +253,7 @@ class AiService(
         val modelConfig = resolved.config.modelConfigs[modelName] ?: ModelConfiguration()
         val sendThinking = modelConfig.sendsThinkingBack(messages.hasToolCalls())
         val requestProvider = resolved.copy(config = resolved.config.copy(supportStream = resolved.streamEnabledFor(modelName)))
-        val requestMessages = filterAttachmentsForProvider(requestProvider, modelConfig, messages)
+        val requestMessages = filterAttachmentsForProvider(requestProvider, modelConfig, messages.withoutEmptyModelMessages())
         val temperature = modelConfig.temperature
         val topP = modelConfig.topP
         val topK = modelConfig.topK

@@ -479,7 +479,7 @@ private fun CompletedAssistantContent(
         Column {
             if (blocks.isEmpty()) {
                 if (content.isNotBlank()) {
-                    SmoothStreamingMarkdownMessage(content, isStreaming = animateStreamingContent)
+                    SmoothStreamingMarkdownMessage(content.trimEnd(), isStreaming = animateStreamingContent)
                 }
             } else {
                 var cursor = 0
@@ -564,7 +564,7 @@ private fun CompletedAssistantContent(
                 if (cursor < content.length) {
                     val remaining = content.substring(cursor)
                     if (remaining.isNotBlank()) {
-                        SmoothStreamingMarkdownMessage(remaining, isStreaming = animateStreamingContent)
+                        SmoothStreamingMarkdownMessage(remaining.trimEnd(), isStreaming = animateStreamingContent)
                     }
                 }
             }

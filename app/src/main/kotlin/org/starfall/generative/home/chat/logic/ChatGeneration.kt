@@ -20,6 +20,8 @@ private const val LARGE_STREAM_THRESHOLD_CHARS = 32_000
 private const val VERY_LARGE_STREAM_THRESHOLD_CHARS = 128_000
 private const val MAX_GENERATION_TEXT_CHARS = 512_000
 private const val MAX_GENERATION_SIGNATURE_CHARS = 64_000
+// While streaming, the partial answer is checkpointed this often so a crash or process kill keeps it.
+private const val PARTIAL_SAVE_INTERVAL_MS = 2_000L
 
 /** A single generation owns its conversation snapshot, independently of navigation. */
 internal class ChatGeneration(
@@ -135,6 +137,25 @@ internal class ChatGeneration(
                 }
             }
 
+            var lastCheckpointAt = System.currentTimeMillis()
+            suspend fun checkpointPartialResponse() {
+                val now = System.currentTimeMillis()
+                if (now - lastCheckpointAt < PARTIAL_SAVE_INTERVAL_MS) return
+                if (output.isBlank() && reasoningOutput.isBlank()) return
+                lastCheckpointAt = now
+                renderJob?.cancel()
+                renderJob = null
+                update()
+                try {
+                    persist(snapshot!!)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // A failed checkpoint must not abort the generation; the final save still runs.
+                    DebugLog.error(DebugLogCategory.ERRORS, "Generation", "Could not save partial response", e)
+                }
+            }
+
             val startedAtMs = System.currentTimeMillis()
             DebugLog.log(DebugLogCategory.TOKENS, "Generation") {
                 val history = snapshot?.messages.orEmpty()
@@ -147,6 +168,7 @@ internal class ChatGeneration(
                         is GenerationEvent.Text -> {
                             appendLimited(output, chunk.text, MAX_GENERATION_TEXT_CHARS, "Answer")
                             scheduleUpdate()
+                            checkpointPartialResponse()
                         }
                         is GenerationEvent.Reasoning -> {
                             appendLimited(reasoningOutput, chunk.text, MAX_GENERATION_TEXT_CHARS, "Reasoning")
@@ -154,6 +176,7 @@ internal class ChatGeneration(
                                 appendLimited(reasoningSignatureOutput, it, MAX_GENERATION_SIGNATURE_CHARS, "Reasoning signature")
                             }
                             scheduleUpdate()
+                            checkpointPartialResponse()
                         }
                         is GenerationEvent.Usage -> {
                             if (usageContextKey != null && chunk.usage.isValid) {

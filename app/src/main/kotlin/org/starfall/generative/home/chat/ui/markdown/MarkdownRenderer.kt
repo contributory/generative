@@ -5,7 +5,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -110,8 +109,7 @@ fun MarkdownRenderer(
         state = parsed,
         modifier = modifier
             .then(if (trimLeadingBlockSpace) Modifier.trimLeadingSpace(MARKDOWN_BLOCK_PADDING) else Modifier)
-            .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)
-            .then(if (isStreaming) Modifier else Modifier.animateContentSize()),
+            .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier),
         colors = markdownColor(),
         typography = markdownTypography(
             h1 = type.headlineSmall.copy(fontFamily = messageFont, fontWeight = FontWeight.Bold, fontSize = bodySize * 1.375f, color = MaterialTheme.colorScheme.primary),

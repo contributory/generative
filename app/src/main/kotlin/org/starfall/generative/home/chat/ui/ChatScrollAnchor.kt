@@ -121,7 +121,7 @@ internal fun ChatAnchorEffects(
                 if (item == null) {
                     listState.animateScrollToItem(index, 0)
                 } else {
-                    val delta = item.offset - info.beforeContentPadding
+                    val delta = item.offset
                     if (abs(delta) <= SETTLE_TOLERANCE_PX) return@LaunchedEffect
                     listState.animateScrollBy(delta.toFloat())
                 }
