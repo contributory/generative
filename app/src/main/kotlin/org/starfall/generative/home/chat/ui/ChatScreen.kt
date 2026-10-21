@@ -166,6 +166,10 @@ fun ChatScreen(
     val messages = remember(conversationMessages, queuedMessages) {
         conversationMessages + queuedMessages
     }
+    // A just-sent message is the anchor. A chat that merely ends with a user message (reopened, or
+    // still unanswered) gets the same tail padding for it, so it can be dragged flush under the app bar.
+    val tailAnchorId = anchor.messageId
+        ?: messages.lastOrNull()?.takeIf { it.role == ChatRole.USER && !it.isQueued }?.id
     // A user message entering history is a send, whichever way it got there (typed now, handed over
     // by the tool loop with its queued id, or drained from the queue under a new id). Detecting it
     // here, in the apply phase, runs before any LaunchedEffect of this commit starts, so every scroll
@@ -508,8 +512,8 @@ fun ChatScreen(
             val visibleChatPx = with(density) {
                 (maxHeight - (appBarHeight + 8.dp) - bottomClearance).coerceAtLeast(0.dp).roundToPx()
             }
-            val anchorTailIds = remember(messages, anchor.messageId) {
-                val index = messages.indexOfFirst { it.id == anchor.messageId }
+            val anchorTailIds = remember(messages, tailAnchorId) {
+                val index = messages.indexOfFirst { it.id == tailAnchorId }
                 if (index < 0) emptyList() else messages.drop(index).map { it.id }
             }
             ChatAnchorEffects(
@@ -544,7 +548,8 @@ fun ChatScreen(
                     Column(
                         Modifier.anchorTailItem(
                             anchor, msg.id, msg.id == messages.last().id,
-                            anchorTailIds.dropLast(1), visibleChatPx
+                            anchorTailIds.dropLast(1), visibleChatPx,
+                            padNewest = tailAnchorId != null
                         )
                     ) {
 

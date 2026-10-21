@@ -25,7 +25,9 @@ private const val SETTLE_TOLERANCE_PX = 2
  * The scroll position of a just-sent user message: flush under the app bar. When a message is sent,
  * including a pending one that starts once the previous response ends, [ChatAnchorEffects] places it
  * there once; the user can drag it away and back. Only user messages get this: [anchorTailItem]
- * keeps the content tall enough to reach it, and AI messages scroll as before.
+ * keeps the content tall enough to reach it, and AI messages scroll as before. A chat that is opened
+ * ending with a user message is padded the same way (without a settle), so that message can be dragged
+ * there too.
  *
  * Every other automatic scroll (following a streaming reply, jump to latest, opening a chat) must stay
  * out of the way while [settling], and must not use "scroll to the end of the content", which with the
@@ -135,20 +137,23 @@ internal fun ChatAnchorEffects(
 
 /**
  * Measures an item and records its natural height; the newest item is then padded to at least
- * [ChatScrollAnchor.newestItemMinHeight]. Because the padding is decided in the same measure pass as
- * the item's own size, content that shrinks (a placeholder replaced by short text) never lets the list
- * clamp its scroll position the way a separate spacer, updated a frame later, would.
+ * [ChatScrollAnchor.newestItemMinHeight] when [padNewest] is set. The caller sets it for a just-sent
+ * message and for a chat that ends with a user message, so that message can be dragged under the
+ * app bar. Because the padding is decided in the same measure pass as the item's own size, content
+ * that shrinks (a placeholder replaced by short text) never lets the list clamp its scroll position
+ * the way a separate spacer, updated a frame later, would.
  */
 internal fun Modifier.anchorTailItem(
     anchor: ChatScrollAnchor,
     id: String,
     isNewest: Boolean,
     precedingIds: List<String>,
-    visiblePx: Int
+    visiblePx: Int,
+    padNewest: Boolean
 ): Modifier = layout { measurable, constraints ->
     val placeable = measurable.measure(constraints)
     anchor.recordHeight(id, placeable.height, notify = !isNewest)
-    val height = if (isNewest && anchor.messageId != null) {
+    val height = if (isNewest && padNewest) {
         maxOf(placeable.height, anchor.newestItemMinHeight(visiblePx, precedingIds))
     } else placeable.height
     layout(placeable.width, height) { placeable.placeRelative(0, 0) }
