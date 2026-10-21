@@ -11,3 +11,4 @@ generative.jks
 
 # Legacy local signing key filename
 multigen.jks
+generative-release.jks
