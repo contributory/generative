@@ -24,6 +24,7 @@
     <string name="settings_speech_services_description">Fournisseurs de synthèse vocale et voix</string>
     <string name="speech_services_description">Utiliser la synthèse vocale Android ou les modèles TTS des fournisseurs</string>
     <string name="settings_storage_description">Fichiers créés par vos outils</string>
+    <string name="storage_open_in_files_failed">Impossible d’ouvrir le gestionnaire de fichiers du système.</string>
     <string name="settings_theme_description">Choisissez l’apparence de Generative</string>
     <string name="settings_amoled_description">Utiliser des surfaces entièrement noires en mode sombre</string>
     <string name="settings_dynamic_color_description">Utiliser les couleurs du fond d’écran sous Android 12 et versions ultérieures</string>
@@ -140,6 +141,13 @@
     <string name="model_tools_hint">Activez les outils intégrés pris en charge par ce modèle. Ils sont envoyés directement dans la requête à l’API du modèle.</string>
     <string name="model_tools_unsupported_provider">L’API de ce fournisseur ne prend pas encore en charge les outils intégrés du modèle dans Generative.</string>
     <string name="remote_machine_google_missing_resolution">Google exige une interaction pour autoriser l’accès, mais n’a renvoyé aucune étape suivante.</string>
+    <string name="remote_machine_identity_file_help">Chemin vers la clé privée, ou nom d’une clé importée dans Remote Settings. La clé elle-même n’est jamais enregistrée dans la machine. Laissez vide si aucune clé n’est nécessaire.</string>
+    <string name="remote_machine_terminal_connected">Connecté</string>
+    <string name="remote_machine_terminal_disconnected">Déconnecté</string>
+    <string name="remote_machine_terminal_no_sessions_hint">Cette machine se déconnecte lorsque sa dernière session de terminal est fermée. Ouvrez une nouvelle session pour vous reconnecter.</string>
+    <string name="remote_machine_terminal_connection_lost">Connexion perdue</string>
+    <string name="remote_machine_terminal_connection_failed">Échec de la connexion</string>
+    <string name="remote_machine_not_configured">Non configuré</string>
     <string name="remote_machine_google_no_access_token">Google n’a renvoyé aucun jeton d’accès.</string>
     <string name="remote_machine_oauth_client_type">Type de client OAuth</string>
     <string name="remote_machine_oauth_type_android">Application Android</string>

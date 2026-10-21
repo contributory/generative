@@ -24,6 +24,7 @@
     <string name="settings_speech_services_description">音声合成プロバイダーと音声</string>
     <string name="speech_services_description">Android の TTS またはプロバイダーの TTS モデルを使用</string>
     <string name="settings_storage_description">ツールが作成したファイル</string>
+    <string name="storage_open_in_files_failed">システムのファイルマネージャーを開けませんでした。</string>
     <string name="settings_theme_description">Generative の外観を選択</string>
     <string name="settings_amoled_description">ダークモードで完全な黒の背景を使用</string>
     <string name="settings_dynamic_color_description">Android 12 以降で壁紙の色を使用</string>
@@ -140,6 +141,13 @@
     <string name="model_tools_hint">このモデルが対応する組み込みツールを有効にします。ツールはモデル API リクエストに直接送信されます。</string>
     <string name="model_tools_unsupported_provider">このプロバイダー API は、Generative の組み込みモデルツールにまだ対応していません。</string>
     <string name="remote_machine_google_missing_resolution">Google の認証には操作が必要ですが、次の処理情報が返されませんでした。</string>
+    <string name="remote_machine_identity_file_help">秘密鍵へのパス、または Remote Settings にアップロードしたキーの名前。キー自体がマシンに保存されることはありません。キーが不要な場合は空欄のままにしてください。</string>
+    <string name="remote_machine_terminal_connected">接続済み</string>
+    <string name="remote_machine_terminal_disconnected">未接続</string>
+    <string name="remote_machine_terminal_no_sessions_hint">このマシンは、最後のターミナルセッションが閉じられると切断されます。再接続するには新しいセッションを開いてください。</string>
+    <string name="remote_machine_terminal_connection_lost">接続が切断されました</string>
+    <string name="remote_machine_terminal_connection_failed">接続に失敗しました</string>
+    <string name="remote_machine_not_configured">未設定</string>
     <string name="remote_machine_google_no_access_token">Google からアクセストークンが返されませんでした。</string>
     <string name="remote_machine_oauth_client_type">OAuth クライアントの種類</string>
     <string name="remote_machine_oauth_type_android">Android アプリ</string>

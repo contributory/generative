@@ -145,7 +145,7 @@ internal class RemoteMachineAssetsService(
     internal fun cloudShellPublicKey(machine: RemoteMachine): String? {
         val identityFile = machine.identityFile.trim().takeIf(String::isNotBlank) ?: return null
         val file = resolveIdentity(identityFile)
-            ?: error("Identity file not found: ${identityFile.substringAfterLast('/')}. Upload it in Remote Machines settings or fix IdentityFile.")
+            ?: error("Identity file not found: ${identityFile.substringAfterLast('/')}. Upload it in Remote Settings or fix IdentityFile.")
         uploadedPublicKey(file)?.let { return it }
         val jsch = JSch()
         if (machine.identityPassphrase.isBlank()) jsch.addIdentity(file.absolutePath)

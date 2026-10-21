@@ -35,6 +35,7 @@ import kotlinx.coroutines.withContext
 import androidx.compose.ui.layout.ContentScale
 import java.io.File
 import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.files.openAppStorageInDocumentsUi
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.dialogs.AppDialog as Dialog
 import org.starfall.generative.shared.ui.media.ChatFilePreview
@@ -110,6 +111,18 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        if (!openAppStorageInDocumentsUi(context)) {
+                            Toast.makeText(context, R.string.storage_open_in_files_failed, Toast.LENGTH_SHORT).show()
+                        }
+                    }) {
+                        FluentIcon(
+                            Icons.Outlined.OpenInBrowser,
+                            contentDescription = stringResource(R.string.storage_open_in_files)
+                        )
                     }
                 }
             )

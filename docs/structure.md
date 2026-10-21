@@ -29,7 +29,9 @@
 │   │   ├── 📁 details/
 │   │   │   └── 📁 ui/
 │   │   │       ├── 📄 MachineDetailsScreen.kt
+│   │   │       ├── 📄 RemoteMachineAdvancedDialogs.kt
 │   │   │       ├── 📄 RemoteMachineSettings.kt
+│   │   │       ├── 📄 RemoteTerminalPanels.kt
 │   │   │       └── 📄 RemoteTerminalScreen.kt
 │   │   ├── 📁 list/
 │   │   │   └── 📁 ui/
@@ -283,6 +285,7 @@
 │   ├── 📁 code/
 │   │   └── 📄 CodeSyntaxHighlighting.kt
 │   ├── 📁 files/
+│   │   ├── 📄 AppDocumentsProvider.kt
 │   │   ├── 📄 AttachmentResolver.kt
 │   │   ├── 📄 ConversationUploads.kt
 │   │   ├── 📄 CrashReports.kt

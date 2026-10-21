@@ -399,6 +399,8 @@
     <string name="settings_speech_services_description">Text-to-speech providers &amp; voices</string>
     <string name="settings_storage">Storage</string>
     <string name="settings_storage_description">Files created by your tools</string>
+    <string name="storage_open_in_files" translatable="false">Open in Files</string>
+    <string name="storage_open_in_files_failed">Could not open the system file manager.</string>
     <string name="settings_remote_machines" translatable="false">Remote Machines</string>
     <string name="settings_remote_machines_description" translatable="false">SSH and Google Cloud Shell connections</string>
     <string name="settings_theme">Theme</string>
@@ -515,7 +517,7 @@
     <string name="remote_machine_add" translatable="false">Add machine</string>
     <string name="remote_machine_reorder" translatable="false">Reorder machines</string>
     <string name="remote_machine_done_reordering" translatable="false">Done reordering</string>
-    <string name="remote_machine_settings" translatable="false">Remote Machines settings</string>
+    <string name="remote_machine_settings" translatable="false">Remote Settings</string>
     <string name="remote_machine_empty" translatable="false">No remote machines</string>
     <string name="remote_machine_empty_hint" translatable="false">Add an SSH or Google Cloud Shell connection to open a terminal.</string>
     <string name="remote_machine_unnamed" translatable="false">Unnamed machine</string>
@@ -524,8 +526,7 @@
     <string name="remote_machine_open_terminal" translatable="false">Open terminal</string>
     <string name="remote_machine_delete_title" translatable="false">Delete remote machine</string>
     <string name="remote_machine_delete_message" translatable="false">Delete “%1$s”? Saved credentials and its local identity reference will be removed.</string>
-    <string name="remote_machine_add_title" translatable="false">Add remote machine</string>
-    <string name="remote_machine_edit_title" translatable="false">Edit remote machine</string>
+    <string name="remote_machine_editor_title" translatable="false">Machine Editor</string>
     <string name="remote_machine_basic_section" translatable="false">Basic information</string>
     <string name="remote_machine_connection_section" translatable="false">Connection</string>
     <string name="remote_machine_type_label" translatable="false">Machine type</string>
@@ -546,7 +547,7 @@
     <string name="remote_machine_identity_missing" translatable="false">No identity file selected</string>
     <string name="remote_machine_choose_key" translatable="false">Choose uploaded key</string>
     <string name="remote_machine_identity_file" translatable="false">IdentityFile</string>
-    <string name="remote_machine_identity_file_help" translatable="false">Path to the private key, or the name of a key uploaded in Remote Machines settings. The key itself is never stored in the machine. Leave empty if no key is needed.</string>
+    <string name="remote_machine_identity_file_help">Path to the private key, or the name of a key uploaded in Remote Settings. The key itself is never stored in the machine. Leave empty if no key is needed.</string>
     <string name="remote_machine_no_uploaded_keys" translatable="false">No keys uploaded yet</string>
     <string name="remote_machine_ssh_keys" translatable="false">SSH keys</string>
     <string name="remote_machine_ssh_keys_help" translatable="false">Upload a private key once and point any number of machines at it through IdentityFile. Google Cloud Shell also needs the matching public key (.pub): upload it with the button on each key.</string>
@@ -633,6 +634,24 @@
     <string name="remote_machine_terminal_add" translatable="false">Open another terminal</string>
     <string name="remote_machine_terminal_close" translatable="false">Close terminal</string>
     <string name="remote_machine_terminal_tab" translatable="false">Terminal %1$d</string>
+    <string name="remote_machine_terminal_sessions" translatable="false">Sessions</string>
+    <string name="remote_machine_terminal_toggle_sessions" translatable="false">Show or hide terminal sessions</string>
+    <string name="remote_machine_terminal_connected">Connected</string>
+    <string name="remote_machine_terminal_disconnected">Disconnected</string>
+    <string name="remote_machine_terminal_no_sessions" translatable="false">No terminal sessions</string>
+    <string name="remote_machine_terminal_no_sessions_hint">This machine disconnects when its last terminal session is closed. Open a new session to connect again.</string>
+    <string name="remote_machine_terminal_close_session" translatable="false">Close this session</string>
+    <string name="remote_machine_terminal_input_local_short" translatable="false">Local</string>
+    <string name="remote_machine_terminal_input_remote_short" translatable="false">Direct</string>
+    <string name="remote_machine_terminal_mouse_short" translatable="false">Mouse</string>
+    <string name="remote_machine_terminal_editor_short" translatable="false">Editor</string>
+    <string name="remote_machine_terminal_font_smaller" translatable="false">Decrease font size</string>
+    <string name="remote_machine_terminal_font_larger" translatable="false">Increase font size</string>
+    <string name="remote_machine_terminal_new_short" translatable="false">New</string>
+    <string name="remote_machine_terminal_choose_machine" translatable="false">Running machines</string>
+    <string name="remote_machine_terminal_connection_lost">Connection lost</string>
+    <string name="remote_machine_terminal_connection_failed">Connection failed</string>
+    <string name="remote_machine_not_configured">Not configured</string>
     <string name="remote_machine_command" translatable="false">Command</string>
     <string name="remote_machine_run_command" translatable="false">Run command</string>
     <string name="settings_version">Version %1$s (%2$d)</string>

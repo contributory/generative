@@ -24,6 +24,7 @@
     <string name="settings_speech_services_description">Поставщики синтеза речи и голоса</string>
     <string name="speech_services_description">Использовать Android TTS или модели TTS от поставщиков</string>
     <string name="settings_storage_description">Файлы, созданные инструментами</string>
+    <string name="storage_open_in_files_failed">Не удалось открыть системный файловый менеджер.</string>
     <string name="settings_theme_description">Выберите внешний вид Generative</string>
     <string name="settings_amoled_description">Использовать полностью чёрные поверхности в тёмном режиме</string>
     <string name="settings_dynamic_color_description">Использовать цвета обоев на Android 12 и новее</string>
@@ -140,6 +141,13 @@
     <string name="model_tools_hint">Включите встроенные инструменты, поддерживаемые этой моделью. Они передаются напрямую в запрос к API модели.</string>
     <string name="model_tools_unsupported_provider">API этого провайдера пока не поддерживает встроенные инструменты модели в Generative.</string>
     <string name="remote_machine_google_missing_resolution">Для авторизации Google требуется взаимодействие, но следующий шаг не был возвращён.</string>
+    <string name="remote_machine_identity_file_help">Путь к закрытому ключу или имя ключа, загруженного в Remote Settings. Сам ключ никогда не сохраняется в параметрах машины. Оставьте поле пустым, если ключ не нужен.</string>
+    <string name="remote_machine_terminal_connected">Подключено</string>
+    <string name="remote_machine_terminal_disconnected">Отключено</string>
+    <string name="remote_machine_terminal_no_sessions_hint">Соединение с этой машиной будет разорвано, когда закроется её последний терминальный сеанс. Откройте новый сеанс, чтобы подключиться снова.</string>
+    <string name="remote_machine_terminal_connection_lost">Соединение потеряно</string>
+    <string name="remote_machine_terminal_connection_failed">Не удалось подключиться</string>
+    <string name="remote_machine_not_configured">Не настроено</string>
     <string name="remote_machine_google_no_access_token">Google не вернул токен доступа.</string>
     <string name="remote_machine_oauth_client_type">Тип клиента OAuth</string>
     <string name="remote_machine_oauth_type_android">Приложение Android</string>

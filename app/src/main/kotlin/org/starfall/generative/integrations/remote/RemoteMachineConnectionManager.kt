@@ -57,7 +57,17 @@ internal class RemoteMachineConnectionManager(
                 output = output,
                 ownsSession = false,
                 onClosed = {
-                    terminals[machine.id]?.remove(id)
+                    val remaining = terminals[machine.id]
+                    remaining?.remove(id)
+                    if (remaining.isNullOrEmpty()) {
+                        if (remaining != null) terminals.remove(machine.id, remaining)
+                        // The last terminal of this machine is gone, so the shared SSH
+                        // connection has nothing left to serve: close it as soon as this
+                        // terminal releases it instead of waiting for the idle timeout.
+                        // requestClose() must run before release() so the release starts
+                        // the immediate (zero-delay) shutdown rather than the idle one.
+                        shared.requestClose()
+                    }
                     shared.release()
                 }
             )

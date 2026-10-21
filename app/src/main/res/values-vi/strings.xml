@@ -31,6 +31,7 @@
     <string name="settings_speech_services_description">Provider chuyển văn bản thành giọng nói</string>
     <string name="speech_services_description">Dùng Android TTS hoặc model TTS từ Providers</string>
     <string name="settings_storage_description">Các file do công cụ tạo</string>
+    <string name="storage_open_in_files_failed">Không thể mở trình quản lý file của hệ thống.</string>
     <string name="settings_theme_description">Chọn giao diện của Generative</string>
     <string name="settings_amoled_description">Dùng bề mặt màu đen hoàn toàn ở chế độ tối</string>
     <string name="settings_dynamic_color_description">Dùng màu từ hình nền trên Android 12 trở lên</string>
@@ -159,5 +160,12 @@
     <string name="remote_machine_oauth_type_android">Ứng dụng Android</string>
     <string name="remote_machine_google_no_access_token">Google không trả về access token.</string>
     <string name="remote_machine_google_missing_resolution">Google yêu cầu tương tác để cấp quyền nhưng không trả về bước xử lý tiếp theo.</string>
+    <string name="remote_machine_identity_file_help">Đường dẫn tới private key, hoặc tên của một key đã tải lên trong Remote Settings. Bản thân key không bao giờ được lưu trong máy. Để trống nếu không cần key.</string>
+    <string name="remote_machine_terminal_connected">Đã kết nối</string>
+    <string name="remote_machine_terminal_disconnected">Đã ngắt kết nối</string>
+    <string name="remote_machine_terminal_no_sessions_hint">Máy này sẽ ngắt kết nối khi phiên terminal cuối cùng của nó bị đóng. Mở một phiên mới để kết nối lại.</string>
+    <string name="remote_machine_terminal_connection_lost">Mất kết nối</string>
+    <string name="remote_machine_terminal_connection_failed">Kết nối thất bại</string>
+    <string name="remote_machine_not_configured">Chưa cấu hình</string>
     <string name="drag_to_exit_folder_hint">Kéo lên thanh ứng dụng hoặc xuống thanh điều hướng để thoát khỏi thư mục</string>
 </resources>

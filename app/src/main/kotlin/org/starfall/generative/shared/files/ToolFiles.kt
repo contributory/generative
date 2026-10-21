@@ -13,7 +13,7 @@ import org.starfall.generative.shared.networking.text
 
 /** App-private files only; database rows never contain binary data. */
 class ToolFiles(val directory: File) {
-    constructor(context: Context): this(File(context.filesDir, "tool_media"))
+    constructor(context: Context): this(appStorageDirectory(context))
     init {
         directory.mkdirs()
         synchronized(initialized) {
@@ -25,6 +25,12 @@ class ToolFiles(val directory: File) {
     private data class CachedHash(val length: Long, val modified: Long, val digest: String)
     private class DirectoryIndex { val hashes = mutableMapOf<String, CachedHash>() }
     companion object {
+        /**
+         * The single directory holding every file the app generates (tool and media output).
+         * [AppDocumentsProvider] registers this same directory with Android's DocumentsUI,
+         * so files saved here are also browsable from the system Files app.
+         */
+        fun appStorageDirectory(context: Context): File = File(context.filesDir, "tool_media").apply { mkdirs() }
         val revision = kotlinx.coroutines.flow.MutableStateFlow(0L)
         private val initialized = mutableSetOf<String>()
         private val indexes = mutableMapOf<String, DirectoryIndex>()

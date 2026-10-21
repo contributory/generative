@@ -2,84 +2,51 @@
 
 package org.starfall.generative.features.machines.details.ui
 
-import android.app.Activity
-import android.content.ClipData
-import android.net.Uri
-import android.content.ClipboardManager
-import android.view.KeyEvent
-import android.view.MotionEvent
-import android.view.inputmethod.InputMethodManager
+import android.content.Context
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.IntentSenderRequest
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -89,482 +56,56 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.OffsetMapping
-import androidx.compose.ui.text.input.TransformedText
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
-import androidx.compose.material3.LocalTextStyle
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import com.termux.view.TerminalView
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.withContext
-import com.google.android.gms.auth.api.identity.AuthorizationRequest
-import com.google.android.gms.auth.api.identity.Identity
-import com.google.android.gms.common.api.Scope
-import com.termux.terminal.TerminalSession
-import com.termux.terminal.TerminalSessionClient
-import com.termux.view.TerminalView
-import com.termux.view.TerminalViewClient
-import java.io.ByteArrayOutputStream
+import kotlin.coroutines.coroutineContext
 import org.starfall.generative.R
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
+import org.starfall.generative.features.machines.shared.ui.RemoteMouseTouchListener
+import org.starfall.generative.features.machines.shared.ui.RemoteTerminalBridge
+import org.starfall.generative.features.machines.shared.ui.RemoteTextField
+import org.starfall.generative.features.machines.shared.ui.TerminalInputMode
 import org.starfall.generative.integrations.remote.REMOTE_TERMINAL_UI_PREFERENCES
 import org.starfall.generative.integrations.remote.RemoteSecretRequest
 import org.starfall.generative.integrations.remote.RemoteTerminal
-import org.starfall.generative.features.machines.shared.ui.RemoteTerminalBridge
-import org.starfall.generative.features.machines.shared.ui.RemoteMouseTouchListener
-import org.starfall.generative.features.machines.shared.ui.RemoteTextField
 import org.starfall.generative.integrations.remote.remoteTerminalImePreferenceKey
 import org.starfall.generative.integrations.remote.remoteTerminalInputModePreferenceKey
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.layout.SlideScreenContent
-import org.starfall.generative.features.machines.shared.ui.TerminalInputMode
 
-private val TERMINAL_BACKGROUND = Color(0xFF101214)
+/** Only the terminal viewport stays dark in every theme; all chrome follows the app theme. */
+private val TerminalBackground = Color(0xFF0B0D0F)
+private val TerminalChromeText = Color.White
 
-private class TerminalSlot(
+internal class TerminalSlot(
     val terminal: RemoteTerminal,
     val bridge: RemoteTerminalBridge
 ) {
     var readerJob: Job? = null
-}
-
-@Composable
-internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachinesViewModel, onBack: () -> Unit) {
-    var terminalSlots by remember(machine.id) { mutableStateOf<List<TerminalSlot>>(emptyList()) }
-    var activeTerminalId by remember(machine.id) { mutableStateOf<String?>(null) }
-    var connecting by remember(machine.id) { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var retryAttempt by remember(machine.id) { mutableStateOf(0) }
-    var secretRequest by remember(machine.id) { mutableStateOf<PendingSecretRequest?>(null) }
-    var passwordInput by remember(machine.id) { mutableStateOf("") }
-    var showPromptPassword by remember(machine.id) { mutableStateOf(false) }
-    var inputModeMenuExpanded by remember(machine.id) { mutableStateOf(false) }
-    val context = LocalContext.current
-    val density = LocalDensity.current.density
-    val terminalPrefs = remember {
-        context.getSharedPreferences(REMOTE_TERMINAL_UI_PREFERENCES, android.content.Context.MODE_PRIVATE)
-    }
-    var localImeEnabled by remember(machine.id) {
-        mutableStateOf(terminalPrefs.getBoolean(remoteTerminalImePreferenceKey(machine.id), true))
-    }
-    var fontDp by remember { mutableIntStateOf(terminalPrefs.getInt("font_dp", 14).coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP)) }
-    val textSizePx = (fontDp * density).toInt()
-    val initialInputMode = when (terminalPrefs.getString(remoteTerminalInputModePreferenceKey(machine.id), null)) {
-        TerminalInputMode.LOCAL.name -> TerminalInputMode.LOCAL
-        else -> TerminalInputMode.REMOTE
-    }
-    val idleBridge = remember(machine.id) {
-        RemoteTerminalBridge(context, initialInputMode).also {
-            it.forceMouse = terminalPrefs.getBoolean("force_mouse", false)
-        }
-    }
-    val activeSlot = terminalSlots.firstOrNull { it.terminal.id == activeTerminalId }
-    val terminal = activeSlot?.terminal
-    val bridge = activeSlot?.bridge ?: idleBridge
-    SideEffect {
-        bridge.onZoomStep = { increase ->
-            fontDp = (fontDp + if (increase) 1 else -1).coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP)
-            terminalPrefs.edit().putInt("font_dp", fontDp).apply()
-        }
-    }
-    val currentSlots by rememberUpdatedState(terminalSlots)
-    val currentSecretRequest by rememberUpdatedState(secretRequest)
-
-    fun closeTerminal() {
-        secretRequest?.answer?.complete(null)
-        activeSlot?.readerJob?.cancel()
-        activeSlot?.bridge?.close()
-        activeSlot?.terminal?.close()
-        terminalSlots = terminalSlots.filterNot { it === activeSlot }
-        activeTerminalId = terminalSlots.lastOrNull()?.terminal?.id
-    }
-    fun closeAllTerminals() {
-        secretRequest?.answer?.complete(null)
-        currentSlots.forEach { it.readerJob?.cancel(); it.bridge.close(); it.terminal.close() }
-        terminalSlots = emptyList()
-        activeTerminalId = null
-    }
-    // Phone back button: disconnect explicitly (same as the app bar back arrow).
-    BackHandler(enabled = LocalScreenTransitionActive.current) { closeAllTerminals(); onBack() }
-    DisposableEffect(machine.id) {
-        onDispose {
-            currentSecretRequest?.answer?.complete(null)
-            currentSlots.forEach { it.readerJob?.cancel(); it.bridge.close(); it.terminal.close() }
-        }
-    }
-    LaunchedEffect(machine.id, retryAttempt) {
-        connecting = true
-        error = null
-        try {
-            val opened = viewModel.openTerminal(machine) { request ->
-                // The SSH thread pauses here only after the server requests an unsaved secret.
-                val pending = PendingSecretRequest(request, CompletableDeferred())
-                withContext(Dispatchers.Main) {
-                    passwordInput = ""
-                    showPromptPassword = false
-                    secretRequest = pending
-                }
-                try {
-                    pending.answer.await()
-                } finally {
-                    withContext(NonCancellable + Dispatchers.Main) {
-                        if (secretRequest === pending) secretRequest = null
-                    }
-                }
-            }
-            val newBridge = RemoteTerminalBridge(context, initialInputMode).also {
-                it.forceMouse = terminalPrefs.getBoolean("force_mouse", false)
-                it.onZoomStep = { increase ->
-                    fontDp = (fontDp + if (increase) 1 else -1).coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP)
-                    terminalPrefs.edit().putInt("font_dp", fontDp).apply()
-                }
-                it.attachRemote(opened)
-            }
-            val slot = TerminalSlot(opened, newBridge)
-            terminalSlots = terminalSlots + slot
-            activeTerminalId = opened.id
-            connecting = false
-            slot.readerJob = launch(Dispatchers.IO) {
-                val buffer = ByteArray(4096)
-                try {
-                    while (true) {
-                        val count = opened.input.read(buffer)
-                        if (count < 0) break
-                        val chunk = buffer.copyOf(count)
-                        withContext(Dispatchers.Main) { newBridge.append(chunk) }
-                    }
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (_: java.io.IOException) {
-                    // Stream closed: handled below like an end of stream.
-                }
-                // The remote side ended the session (not a local back/disconnect, which cancels us).
-                if (coroutineContext.isActive) {
-                    val cleanExit = opened.exitStatus >= 0
-                    withContext(Dispatchers.Main) {
-                        terminalSlots = terminalSlots.filterNot { it === slot }
-                        activeTerminalId = terminalSlots.lastOrNull()?.terminal?.id
-                        newBridge.close()
-                        if (!cleanExit && terminalSlots.isEmpty()) error = "Connection lost"
-                    }
-                }
-            }
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (failure: Throwable) {
-            connecting = false
-            error = failure.message?.takeIf { it.isNotBlank() } ?: "Connection failed"
-            activeSlot?.terminal?.close()
-        }
-    }
-
-    Scaffold(
-        containerColor = TERMINAL_BACKGROUND,
-        topBar = {
-            TopAppBar(
-                title = { Text(machine.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = { IconButton(onClick = { closeAllTerminals(); onBack() }) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
-                actions = {
-                    IconButton(enabled = !connecting, onClick = { error = null; retryAttempt++ }) {
-                        FluentIcon(Icons.Default.Add, stringResource(R.string.remote_machine_terminal_add))
-                    }
-                    IconButton(enabled = terminal != null, onClick = { closeTerminal() }) {
-                        FluentIcon(Icons.Outlined.Delete, stringResource(R.string.remote_machine_terminal_close))
-                    }
-                    Box {
-                        IconButton(onClick = { inputModeMenuExpanded = true }) {
-                            FluentIcon(Icons.Outlined.Settings, stringResource(R.string.remote_machine_terminal_input_settings))
-                        }
-                        DropdownMenu(
-                            expanded = inputModeMenuExpanded,
-                            onDismissRequest = { inputModeMenuExpanded = false },
-                            containerColor = Color(0xFF1B1E21),
-                            tonalElevation = 0.dp,
-                            shadowElevation = 8.dp
-                        ) {
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        stringResource(R.string.remote_machine_terminal_local_input),
-                                        color = Color.White
-                                    )
-                                },
-                                trailingIcon = {
-                                    if (bridge.inputMode == TerminalInputMode.LOCAL) Text("✓", color = Color(0xFF9CCC65))
-                                },
-                                onClick = {
-                                    if (bridge.setInputMode(TerminalInputMode.LOCAL)) {
-                                        terminalPrefs.edit()
-                                            .putString(remoteTerminalInputModePreferenceKey(machine.id), TerminalInputMode.LOCAL.name)
-                                            .apply()
-                                    }
-                                    inputModeMenuExpanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                enabled = !bridge.hasLocalDraft,
-                                text = {
-                                    Text(
-                                        stringResource(R.string.remote_machine_terminal_remote_input),
-                                        color = if (bridge.hasLocalDraft) Color(0xFF777D82) else Color.White
-                                    )
-                                },
-                                trailingIcon = {
-                                    if (bridge.inputMode == TerminalInputMode.REMOTE) Text("✓", color = Color(0xFF9CCC65))
-                                },
-                                onClick = {
-                                    if (bridge.setInputMode(TerminalInputMode.REMOTE)) {
-                                        terminalPrefs.edit()
-                                            .putString(remoteTerminalInputModePreferenceKey(machine.id), TerminalInputMode.REMOTE.name)
-                                            .apply()
-                                    }
-                                    inputModeMenuExpanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        stringResource(R.string.remote_machine_terminal_force_mouse),
-                                        color = Color.White
-                                    )
-                                },
-                                trailingIcon = {
-                                    if (bridge.forceMouse) Text("✓", color = Color(0xFF9CCC65))
-                                },
-                                onClick = {
-                                    bridge.forceMouse = !bridge.forceMouse
-                                    terminalPrefs.edit().putBoolean("force_mouse", bridge.forceMouse).apply()
-                                    inputModeMenuExpanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        stringResource(R.string.remote_machine_terminal_ime_editor),
-                                        color = Color.White
-                                    )
-                                },
-                                trailingIcon = {
-                                    if (localImeEnabled) Text("✓", color = Color(0xFF9CCC65))
-                                },
-                                onClick = {
-                                    localImeEnabled = !localImeEnabled
-                                    terminalPrefs.edit()
-                                        .putBoolean(remoteTerminalImePreferenceKey(machine.id), localImeEnabled)
-                                        .apply()
-                                    inputModeMenuExpanded = false
-                                }
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = TERMINAL_BACKGROUND,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White,
-                    actionIconContentColor = Color.White
-                )
-            )
-        }
-    ) { padding ->
-        Column(
-            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().background(TERMINAL_BACKGROUND)
-        ) {
-            Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 6.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                terminalSlots.forEachIndexed { index, slot ->
-                    TextButton(onClick = { activeTerminalId = slot.terminal.id }) {
-                        Text(
-                            stringResource(R.string.remote_machine_terminal_tab, index + 1),
-                            color = if (slot.terminal.id == activeTerminalId) Color(0xFF9CCC65) else Color.White
-                        )
-                    }
-                }
-            }
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                terminal?.let {
-                    AndroidView(
-                        factory = { viewContext ->
-                            val view = TerminalView(viewContext, null)
-                            view.setOnTouchListener(RemoteMouseTouchListener(viewContext, view, bridge))
-                            view.isFocusable = true
-                            view.isFocusableInTouchMode = true
-                            view.setBackgroundColor(android.graphics.Color.rgb(16, 18, 20))
-                            view.setTextSize(textSizePx)
-                            view.tag = textSizePx
-                            view.setTerminalViewClient(bridge)
-                            bridge.view = view
-                            val session = bridge.createSession(context.filesDir)
-                            view.attachSession(session)
-                            view
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                        update = {
-                            bridge.view = it
-                            if (it.tag != textSizePx) {
-                                it.tag = textSizePx
-                                it.setTextSize(textSizePx)
-                            }
-                        }
-                    )
-                }
-                if (bridge.inputMode == TerminalInputMode.LOCAL && localImeEnabled) {
-                    LocalInputEditor(bridge)
-                } else bridge.localDraftForDisplay()?.let { draft ->
-                    Surface(
-                        Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(8.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xEE1B1E21)
-                    ) {
-                        val label = stringResource(R.string.remote_machine_terminal_local_input_label) + ": "
-                        val draftScroll = rememberScrollState()
-                        // Wrap long drafts; cap the height and keep the cursor line (the end) in view.
-                        LaunchedEffect(draft) { draftScroll.scrollTo(draftScroll.maxValue) }
-                        Text(
-                            buildAnnotatedString {
-                                withStyle(SpanStyle(color = Color(0xFF9CCC65))) { append(label) }
-                                withStyle(SpanStyle(color = Color.White)) { append(draft) }
-                            },
-                            fontFamily = FontFamily.Monospace,
-                            softWrap = true,
-                            modifier = Modifier
-                                .heightIn(max = 140.dp)
-                                .verticalScroll(draftScroll)
-                                .padding(horizontal = 10.dp, vertical = 8.dp)
-                        )
-                    }
-                }
-                if (connecting && secretRequest == null) {
-                    Surface(
-                        Modifier.align(Alignment.Center),
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ) {
-                        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                            Spacer(Modifier.width(10.dp))
-                            Text(stringResource(R.string.remote_machine_terminal_connecting))
-                        }
-                    }
-                }
-                if (!connecting && error != null) {
-                    Surface(
-                        Modifier.align(Alignment.Center).padding(16.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.errorContainer
-                    ) {
-                        Column(
-                            Modifier.padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text(
-                                stringResource(R.string.remote_machine_terminal_connection_error),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                            Text(
-                                error.orEmpty(),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                            Button(onClick = { retryAttempt++ }) {
-                                Text(stringResource(R.string.common_retry))
-                            }
-                        }
-                    }
-                }
-                secretRequest?.let { pending ->
-                    val request = pending.request
-                    Surface(
-                        Modifier.align(Alignment.Center).padding(16.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ) {
-                        Column(
-                            Modifier.fillMaxWidth().padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text(
-                                stringResource(
-                                    if (request.passphrase) R.string.remote_machine_terminal_passphrase_title
-                                    else R.string.remote_machine_terminal_password_title
-                                ),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                stringResource(R.string.remote_machine_terminal_password_help),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            RemoteTextField(
-                                value = passwordInput,
-                                onValueChange = { passwordInput = it },
-                                label = when {
-                                    request.passphrase -> stringResource(R.string.remote_machine_key_passphrase)
-                                    request.prompt.isBlank() -> stringResource(R.string.remote_machine_password)
-                                    else -> request.prompt.trim()
-                                },
-                                visual = if (showPromptPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                                trailingIcon = {
-                                    IconButton(onClick = { showPromptPassword = !showPromptPassword }) {
-                                        FluentIcon(
-                                            if (showPromptPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                                            contentDescription = stringResource(
-                                                if (showPromptPassword) R.string.remote_machine_hide_password else R.string.remote_machine_show_password
-                                            )
-                                        )
-                                    }
-                                },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                TextButton(onClick = {
-                                    pending.answer.complete(null)
-                                    closeTerminal()
-                                    onBack()
-                                }) {
-                                    Text(stringResource(R.string.common_cancel))
-                                }
-                                Button(
-                                    enabled = passwordInput.isNotEmpty(),
-                                    onClick = { pending.answer.complete(passwordInput) }
-                                ) {
-                                    Text(stringResource(R.string.remote_machine_terminal_connect))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            if (terminal != null) TerminalExtraKeys(bridge)
-        }
-    }
 }
 
 private class PendingSecretRequest(
@@ -572,109 +113,460 @@ private class PendingSecretRequest(
     val answer: CompletableDeferred<String?>
 )
 
-private const val MIN_TERMINAL_FONT_DP = 8
-private const val MAX_TERMINAL_FONT_DP = 32
-
 @Composable
-private fun BoxScope.LocalInputEditor(bridge: RemoteTerminalBridge) {
-    Surface(
-        Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(8.dp),
-        shape = RoundedCornerShape(10.dp),
-        color = Color(0xEE1B1E21)
-    ) {
-        Row(
-            Modifier.padding(8.dp),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedTextField(
-                value = bridge.localInput,
-                onValueChange = bridge::replaceLocalInput,
-                modifier = Modifier.weight(1f),
-                label = { Text(stringResource(R.string.remote_machine_terminal_local_input_label)) },
-                minLines = 1,
-                maxLines = 8,
-                singleLine = false,
-                keyboardOptions = KeyboardOptions.Default
-            )
-            Button(onClick = bridge::submitEditorInput) {
-                Text(stringResource(R.string.remote_machine_terminal_send_input))
-            }
+internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachinesViewModel, onBack: () -> Unit) {
+    val context = LocalContext.current
+    val density = LocalDensity.current.density
+    val scope = rememberCoroutineScope()
+    val terminalPrefs = remember {
+        context.getSharedPreferences(REMOTE_TERMINAL_UI_PREFERENCES, Context.MODE_PRIVATE)
+    }
+    var terminalSlots by remember(machine.id) { mutableStateOf<List<TerminalSlot>>(emptyList()) }
+    var activeTerminalId by remember(machine.id) { mutableStateOf<String?>(null) }
+    var connecting by remember(machine.id) { mutableStateOf(false) }
+    var error by remember(machine.id) { mutableStateOf<String?>(null) }
+    var secretRequest by remember(machine.id) { mutableStateOf<PendingSecretRequest?>(null) }
+    var passwordInput by remember(machine.id) { mutableStateOf("") }
+    var showPromptPassword by remember(machine.id) { mutableStateOf(false) }
+    // Null means "follow the layout": open on wide screens, collapsed on narrow ones.
+    var drawerExpanded by remember(machine.id) { mutableStateOf<Boolean?>(null) }
+    val sessionsDrawerOpen = drawerExpanded ?: (LocalConfiguration.current.screenWidthDp >= 720)
+    var localImeEnabled by remember(machine.id) {
+        mutableStateOf(terminalPrefs.getBoolean(remoteTerminalImePreferenceKey(machine.id), true))
+    }
+    var fontDp by remember {
+        mutableIntStateOf(terminalPrefs.getInt("font_dp", 14).coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP))
+    }
+    val textSizePx = (fontDp * density).toInt()
+    val activeSlot = terminalSlots.firstOrNull { it.terminal.id == activeTerminalId }
+    val activeBridge = activeSlot?.bridge
+    val currentSlots by rememberUpdatedState(terminalSlots)
+    val currentSecretRequest by rememberUpdatedState(secretRequest)
+
+    fun setFontDp(value: Int) {
+        fontDp = value.coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP)
+        terminalPrefs.edit().putInt("font_dp", fontDp).apply()
+    }
+
+    fun closeSlot(slot: TerminalSlot) {
+        slot.readerJob?.cancel()
+        slot.bridge.close()
+        // Closing the last registered terminal disconnects the machine (see the connection
+        // manager), so no separate disconnect call is needed here.
+        slot.terminal.close()
+        val index = terminalSlots.indexOf(slot)
+        terminalSlots = terminalSlots.filterNot { it === slot }
+        if (activeTerminalId == slot.terminal.id) {
+            activeTerminalId = terminalSlots.getOrNull(index.coerceAtLeast(0).coerceAtMost(terminalSlots.lastIndex))?.terminal?.id
+                ?: terminalSlots.lastOrNull()?.terminal?.id
         }
     }
-}
 
-@Composable
-private fun TerminalExtraKeys(bridge: RemoteTerminalBridge) {
-    Row(
-        Modifier.fillMaxWidth().background(Color(0xFF1B1E21)).padding(vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            Modifier.weight(1f).horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            TerminalKey("ESC") { bridge.sendSpecial("\u001b") }
-            TerminalKey("TAB") { bridge.sendSpecial("\t") }
-            TerminalKey("CTRL", active = bridge.ctrlActive) { bridge.ctrlActive = !bridge.ctrlActive }
-            TerminalKey("ALT", active = bridge.altActive) { bridge.altActive = !bridge.altActive }
-            TerminalKey("←", repeat = true) { bridge.sendSpecial("\u001b[D", forceRemote = true) }
-            TerminalKey("↑", repeat = true) { bridge.sendSpecial("\u001b[A", forceRemote = true) }
-            TerminalKey("↓", repeat = true) { bridge.sendSpecial("\u001b[B", forceRemote = true) }
-            TerminalKey("→", repeat = true) { bridge.sendSpecial("\u001b[C", forceRemote = true) }
-            TerminalKey("HOME") { bridge.sendSpecial("\u001b[H", forceRemote = true) }
-            TerminalKey("END") { bridge.sendSpecial("\u001b[F", forceRemote = true) }
-            TerminalKey("PGUP") { bridge.sendSpecial("\u001b[5~", forceRemote = true) }
-            TerminalKey("PGDN") { bridge.sendSpecial("\u001b[6~", forceRemote = true) }
-            listOf('|', '~', '-', '/', '\\', '_', '$', '&', '*', '<', '>', '`').forEach { char ->
-                TerminalKey(char.toString()) { bridge.sendChar(char) }
-            }
+    fun closeAllTerminals() {
+        currentSecretRequest?.answer?.complete(null)
+        currentSlots.forEach { slot ->
+            slot.readerJob?.cancel()
+            slot.bridge.close()
+            slot.terminal.close()
         }
-        IconButton(onClick = { bridge.toggleKeyboard() }) {
-            FluentIcon(Icons.Outlined.Keyboard, null, tint = Color.White)
-        }
+        terminalSlots = emptyList()
+        activeTerminalId = null
     }
-}
 
-@Composable
-private fun TerminalKey(
-    label: String,
-    active: Boolean = false,
-    repeat: Boolean = false,
-    onPress: () -> Unit
-) {
-    val current by rememberUpdatedState(onPress)
-    Box(
-        Modifier
-            .defaultMinSize(minWidth = 40.dp)
-            .height(38.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (active) MaterialTheme.colorScheme.primary else Color(0xFF2B2F33))
-            .pointerInput(repeat) {
-                detectTapGestures(onPress = {
-                    current()
-                    if (repeat) {
-                        coroutineScope {
-                            val job = launch {
-                                delay(350)
-                                while (true) { current(); delay(60) }
-                            }
-                            tryAwaitRelease()
-                            job.cancel()
-                        }
-                    } else {
-                        tryAwaitRelease()
+    fun openTerminal() {
+        scope.launch {
+            connecting = true
+            error = null
+            try {
+                val opened = viewModel.openTerminal(machine) { request ->
+                    // The SSH thread pauses here only after the server requests an unsaved secret.
+                    val pending = PendingSecretRequest(request, CompletableDeferred())
+                    withContext(Dispatchers.Main) {
+                        passwordInput = ""
+                        showPromptPassword = false
+                        secretRequest = pending
                     }
-                })
+                    try {
+                        pending.answer.await()
+                    } finally {
+                        withContext(NonCancellable + Dispatchers.Main) {
+                            if (secretRequest === pending) secretRequest = null
+                        }
+                    }
+                }
+                // Read the live preference so sessions opened after a toolbar toggle use it too.
+                val currentInputMode = when (terminalPrefs.getString(remoteTerminalInputModePreferenceKey(machine.id), null)) {
+                    TerminalInputMode.LOCAL.name -> TerminalInputMode.LOCAL
+                    else -> TerminalInputMode.REMOTE
+                }
+                val newBridge = RemoteTerminalBridge(context, currentInputMode).also { bridge ->
+                    bridge.forceMouse = terminalPrefs.getBoolean("force_mouse", false)
+                    bridge.onZoomStep = { increase -> setFontDp(fontDp + if (increase) 1 else -1) }
+                    bridge.attachRemote(opened)
+                }
+                val slot = TerminalSlot(opened, newBridge)
+                terminalSlots = terminalSlots + slot
+                activeTerminalId = opened.id
+                slot.readerJob = launch(Dispatchers.IO) {
+                    val buffer = ByteArray(4096)
+                    try {
+                        while (true) {
+                            val count = opened.input.read(buffer)
+                            if (count < 0) break
+                            val chunk = buffer.copyOf(count)
+                            withContext(Dispatchers.Main) { newBridge.append(chunk) }
+                        }
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: java.io.IOException) {
+                        // Stream closed: handled below like an end of stream.
+                    }
+                    // The remote side ended the session (not a local close, which cancels us).
+                    if (coroutineContext.isActive) {
+                        val cleanExit = opened.exitStatus >= 0
+                        withContext(Dispatchers.Main) {
+                            terminalSlots = terminalSlots.filterNot { it === slot }
+                            if (activeTerminalId == opened.id) {
+                                activeTerminalId = terminalSlots.lastOrNull()?.terminal?.id
+                            }
+                            newBridge.close()
+                            opened.close()
+                            if (!cleanExit && terminalSlots.isEmpty()) {
+                                error = context.getString(R.string.remote_machine_terminal_connection_lost)
+                            }
+                        }
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Throwable) {
+                error = failure.message?.takeIf { it.isNotBlank() }
+                    ?: context.getString(R.string.remote_machine_terminal_connection_failed)
+            } finally {
+                connecting = false
             }
-            .padding(horizontal = 10.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            label,
-            color = if (active) MaterialTheme.colorScheme.onPrimary else Color.White,
-            style = MaterialTheme.typography.labelLarge,
-            maxLines = 1
+        }
+    }
+
+    // Phone back button: disconnect explicitly (same as the app bar back arrow).
+    BackHandler(enabled = LocalScreenTransitionActive.current) { closeAllTerminals(); onBack() }
+    DisposableEffect(machine.id) {
+        onDispose { closeAllTerminals() }
+    }
+    LaunchedEffect(machine.id) { openTerminal() }
+    // Keep IME/keyboard focus on the session the user is looking at, not on a hidden one.
+    LaunchedEffect(activeTerminalId, terminalSlots) {
+        activeSlot?.bridge?.focusTerminalView()
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            machine.name.ifBlank { stringResource(R.string.remote_machine_unnamed) },
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            "${machine.username.ifBlank { "?" }}@${machine.displayHost}:${machine.port}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = { closeAllTerminals(); onBack() }) {
+                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { drawerExpanded = !sessionsDrawerOpen }) {
+                        FluentIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.remote_machine_terminal_toggle_sessions))
+                    }
+                    IconButton(enabled = !connecting, onClick = { openTerminal() }) {
+                        FluentIcon(Icons.Default.Add, stringResource(R.string.remote_machine_terminal_add))
+                    }
+                    IconButton(enabled = activeSlot != null, onClick = { activeSlot?.let { closeSlot(it) } }) {
+                        FluentIcon(Icons.Default.Close, stringResource(R.string.remote_machine_terminal_close))
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Row(
+            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()
+        ) {
+                AnimatedVisibility(
+                    visible = sessionsDrawerOpen,
+                    enter = expandHorizontally() + fadeIn(),
+                    exit = shrinkHorizontally() + fadeOut()
+                ) {
+                    TerminalSessionsDrawer(
+                        machine = machine,
+                        slots = terminalSlots,
+                        activeTerminalId = activeTerminalId,
+                        connecting = connecting,
+                        onSelect = { slot ->
+                            activeTerminalId = slot.terminal.id
+                            slot.bridge.focusTerminalView()
+                        },
+                        onClose = { slot -> closeSlot(slot) },
+                        onNew = { openTerminal() }
+                    )
+                }
+                if (sessionsDrawerOpen) VerticalDivider(Modifier.fillMaxHeight())
+                Column(Modifier.weight(1f).fillMaxHeight()) {
+                    if (activeBridge != null) {
+                        TerminalToolbar(
+                            bridge = activeBridge,
+                            sessionsDrawerOpen = sessionsDrawerOpen,
+                            onToggleSessions = { drawerExpanded = !sessionsDrawerOpen },
+                            onNewTerminal = { openTerminal() },
+                            localImeEnabled = localImeEnabled,
+                            onToggleLocalIme = {
+                                localImeEnabled = !localImeEnabled
+                                terminalPrefs.edit()
+                                    .putBoolean(remoteTerminalImePreferenceKey(machine.id), localImeEnabled)
+                                    .apply()
+                            },
+                            onInputModeChange = { mode ->
+                                // Input mode is a per-machine preference: apply it to every
+                                // session, not just the visible one.
+                                if (activeBridge.setInputMode(mode)) {
+                                    terminalSlots.forEach { slot ->
+                                        if (slot.bridge !== activeBridge) slot.bridge.setInputMode(mode)
+                                    }
+                                    terminalPrefs.edit()
+                                        .putString(remoteTerminalInputModePreferenceKey(machine.id), mode.name)
+                                        .apply()
+                                }
+                            },
+                            onToggleForceMouse = {
+                                val enabled = !activeBridge.forceMouse
+                                terminalSlots.forEach { slot -> slot.bridge.forceMouse = enabled }
+                                terminalPrefs.edit().putBoolean("force_mouse", enabled).apply()
+                            },
+                            fontDp = fontDp,
+                            onFontChange = { delta -> setFontDp(fontDp + delta) }
+                        )
+                    }
+                    Box(Modifier.weight(1f).fillMaxWidth().background(TerminalBackground)) {
+                        // Every session keeps its own TerminalView (and emulator) alive while it
+                        // exists; inactive views are laid out at zero size so their scrollback
+                        // and remote size survive switching. Previously a single shared view
+                        // stayed bound to the first session, so after adding or switching
+                        // sessions typed input went to a hidden terminal.
+                        terminalSlots.forEach { slot ->
+                            key(slot.terminal.id) {
+                                AndroidView(
+                                    factory = { viewContext ->
+                                        val view = TerminalView(viewContext, null)
+                                        val slotBridge = slot.bridge
+                                        view.setOnTouchListener(RemoteMouseTouchListener(viewContext, view, slotBridge))
+                                        view.isFocusable = true
+                                        view.isFocusableInTouchMode = true
+                                        view.setBackgroundColor(android.graphics.Color.rgb(11, 13, 15))
+                                        view.setTextSize(textSizePx)
+                                        view.tag = textSizePx
+                                        view.setTerminalViewClient(slotBridge)
+                                        slotBridge.view = view
+                                        view.attachSession(slotBridge.createSession(viewContext.filesDir))
+                                        view
+                                    },
+                                    modifier = if (slot.terminal.id == activeTerminalId) {
+                                        Modifier.fillMaxSize()
+                                    } else {
+                                        Modifier.size(0.dp)
+                                    },
+                                    update = { view ->
+                                        // Do not request focus here: update also runs while the
+                                        // local IME editor is focused, and stealing focus back
+                                        // would break typing there. Focus moves only when the
+                                        // active session changes (see the LaunchedEffect above)
+                                        // or when the user taps the terminal.
+                                        slot.bridge.view = view
+                                        if (view.tag != textSizePx) {
+                                            view.tag = textSizePx
+                                            view.setTextSize(textSizePx)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                        if (activeBridge != null && activeBridge.inputMode == TerminalInputMode.LOCAL && localImeEnabled) {
+                            LocalInputEditor(activeBridge)
+                        } else {
+                            activeBridge?.localDraftForDisplay()?.let { draft ->
+                                Surface(
+                                    Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(8.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                ) {
+                                    val label = stringResource(R.string.remote_machine_terminal_local_input_label) + ": "
+                                    val draftScroll = rememberScrollState()
+                                    // Wrap long drafts; cap the height and keep the cursor line (the end) in view.
+                                    LaunchedEffect(draft) { draftScroll.scrollTo(draftScroll.maxValue) }
+                                    Text(
+                                        buildAnnotatedString {
+                                            withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) { append(label) }
+                                            append(draft)
+                                        },
+                                        fontFamily = FontFamily.Monospace,
+                                        softWrap = true,
+                                        modifier = Modifier
+                                            .heightIn(max = 140.dp)
+                                            .verticalScroll(draftScroll)
+                                            .padding(horizontal = 10.dp, vertical = 8.dp)
+                                    )
+                                }
+                            }
+                        }
+                        if (connecting && secretRequest == null) {
+                            Surface(
+                                Modifier.align(Alignment.Center),
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh
+                            ) {
+                                Row(
+                                    Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(stringResource(R.string.remote_machine_terminal_connecting))
+                                }
+                            }
+                        }
+                        if (terminalSlots.isEmpty() && !connecting && error == null && secretRequest == null) {
+                            Column(
+                                Modifier.align(Alignment.Center).padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                FluentIcon(
+                                    Icons.Outlined.Terminal, null,
+                                    tint = TerminalChromeText.copy(alpha = 0.55f),
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Text(
+                                    stringResource(R.string.remote_machine_terminal_no_sessions),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = TerminalChromeText
+                                )
+                                Text(
+                                    stringResource(R.string.remote_machine_terminal_no_sessions_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TerminalChromeText.copy(alpha = 0.65f)
+                                )
+                                FilledTonalButton(onClick = { openTerminal() }) {
+                                    FluentIcon(Icons.Default.Add, null, Modifier.size(18.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(stringResource(R.string.remote_machine_terminal_add))
+                                }
+                            }
+                        }
+                        if (!connecting && error != null && secretRequest == null) {
+                            Surface(
+                                Modifier.align(Alignment.Center).padding(16.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.errorContainer
+                            ) {
+                                Column(
+                                    Modifier.padding(20.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Text(
+                                        stringResource(R.string.remote_machine_terminal_connection_error),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    Text(
+                                        error.orEmpty(),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    Button(onClick = { openTerminal() }) {
+                                        Text(stringResource(R.string.common_retry))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (activeBridge != null) TerminalExtraKeys(activeBridge)
+                }
+            }
+    }
+
+    secretRequest?.let { pending ->
+        val request = pending.request
+        AppAlertDialog(
+            onDismissRequest = {
+                pending.answer.complete(null)
+                closeAllTerminals()
+                onBack()
+            },
+            title = {
+                Text(
+                    stringResource(
+                        if (request.passphrase) R.string.remote_machine_terminal_passphrase_title
+                        else R.string.remote_machine_terminal_password_title
+                    )
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        stringResource(R.string.remote_machine_terminal_password_help),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    RemoteTextField(
+                        value = passwordInput,
+                        onValueChange = { passwordInput = it },
+                        label = when {
+                            request.passphrase -> stringResource(R.string.remote_machine_key_passphrase)
+                            request.prompt.isBlank() -> stringResource(R.string.remote_machine_password)
+                            else -> request.prompt.trim()
+                        },
+                        visual = if (showPromptPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { showPromptPassword = !showPromptPassword }) {
+                                FluentIcon(
+                                    if (showPromptPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                    contentDescription = stringResource(
+                                        if (showPromptPassword) R.string.remote_machine_hide_password else R.string.remote_machine_show_password
+                                    )
+                                )
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = passwordInput.isNotEmpty(),
+                    onClick = { pending.answer.complete(passwordInput) }
+                ) {
+                    Text(stringResource(R.string.remote_machine_terminal_connect))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    pending.answer.complete(null)
+                    closeAllTerminals()
+                    onBack()
+                }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
         )
     }
 }
+

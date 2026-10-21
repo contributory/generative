@@ -24,6 +24,7 @@
     <string name="settings_speech_services_description">文字转语音提供商和语音</string>
     <string name="speech_services_description">使用 Android TTS 或提供商的 TTS 模型</string>
     <string name="settings_storage_description">工具创建的文件</string>
+    <string name="storage_open_in_files_failed">无法打开系统文件管理器。</string>
     <string name="settings_theme_description">选择 Generative 的外观</string>
     <string name="settings_amoled_description">在深色模式下使用纯黑表面</string>
     <string name="settings_dynamic_color_description">在 Android 12 及更高版本中使用壁纸颜色</string>
@@ -140,6 +141,13 @@
     <string name="model_tools_hint">启用此模型支持的内置工具。这些工具会直接随模型 API 请求发送。</string>
     <string name="model_tools_unsupported_provider">此提供商的 API 暂不支持 Generative 中的内置模型工具。</string>
     <string name="remote_machine_google_missing_resolution">Google 授权需要用户交互，但未返回后续处理步骤。</string>
+    <string name="remote_machine_identity_file_help">私钥的路径，或在 Remote Settings 中上传的密钥名称。密钥本身永远不会存储在机器配置中。如果不需要密钥，请留空。</string>
+    <string name="remote_machine_terminal_connected">已连接</string>
+    <string name="remote_machine_terminal_disconnected">已断开</string>
+    <string name="remote_machine_terminal_no_sessions_hint">当此机器的最后一个终端会话关闭时，它将断开连接。打开新会话即可重新连接。</string>
+    <string name="remote_machine_terminal_connection_lost">连接丢失</string>
+    <string name="remote_machine_terminal_connection_failed">连接失败</string>
+    <string name="remote_machine_not_configured">未配置</string>
     <string name="remote_machine_google_no_access_token">Google 未返回访问令牌。</string>
     <string name="remote_machine_oauth_client_type">OAuth 客户端类型</string>
     <string name="remote_machine_oauth_type_android">Android 应用</string>

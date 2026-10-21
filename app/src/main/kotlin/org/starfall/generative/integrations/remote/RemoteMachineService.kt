@@ -339,7 +339,7 @@ class RemoteMachineService(
         val jsch = JSch()
         if (machine.identityFile.isNotBlank()) {
             val identity = assets.resolveIdentity(machine.identityFile)
-                ?: error("Identity file not found: ${machine.identityFile.substringAfterLast('/')}. Upload it in Remote Machines settings or fix IdentityFile.")
+                ?: error("Identity file not found: ${machine.identityFile.substringAfterLast('/')}. Upload it in Remote Settings or fix IdentityFile.")
             if (machine.identityPassphrase.isBlank()) jsch.addIdentity(identity.absolutePath)
             else jsch.addIdentity(identity.absolutePath, machine.identityPassphrase)
         }
