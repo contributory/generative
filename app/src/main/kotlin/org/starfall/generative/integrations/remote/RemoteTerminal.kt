@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 internal const val REMOTE_TERMINAL_UI_PREFERENCES = "remote_terminal_ui"
 internal fun remoteTerminalInputModePreferenceKey(machineId: String) = "input_mode:$machineId"
+internal fun remoteTerminalImePreferenceKey(machineId: String) = "local_ime:$machineId"
 
 /** Result returned by an SSH command execution. */
 data class RemoteCommandResult(

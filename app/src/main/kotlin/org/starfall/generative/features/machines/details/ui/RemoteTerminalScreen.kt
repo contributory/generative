@@ -36,6 +36,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -129,6 +130,7 @@ import org.starfall.generative.integrations.remote.RemoteTerminal
 import org.starfall.generative.features.machines.shared.ui.RemoteTerminalBridge
 import org.starfall.generative.features.machines.shared.ui.RemoteMouseTouchListener
 import org.starfall.generative.features.machines.shared.ui.RemoteTextField
+import org.starfall.generative.integrations.remote.remoteTerminalImePreferenceKey
 import org.starfall.generative.integrations.remote.remoteTerminalInputModePreferenceKey
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
@@ -163,6 +165,9 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
     val density = LocalDensity.current.density
     val terminalPrefs = remember {
         context.getSharedPreferences(REMOTE_TERMINAL_UI_PREFERENCES, android.content.Context.MODE_PRIVATE)
+    }
+    var localImeEnabled by remember(machine.id) {
+        mutableStateOf(terminalPrefs.getBoolean(remoteTerminalImePreferenceKey(machine.id), true))
     }
     var fontDp by remember { mutableIntStateOf(terminalPrefs.getInt("font_dp", 14).coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP)) }
     val textSizePx = (fontDp * density).toInt()
@@ -354,6 +359,24 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
                                     inputModeMenuExpanded = false
                                 }
                             )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        stringResource(R.string.remote_machine_terminal_ime_editor),
+                                        color = Color.White
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (localImeEnabled) Text("✓", color = Color(0xFF9CCC65))
+                                },
+                                onClick = {
+                                    localImeEnabled = !localImeEnabled
+                                    terminalPrefs.edit()
+                                        .putBoolean(remoteTerminalImePreferenceKey(machine.id), localImeEnabled)
+                                        .apply()
+                                    inputModeMenuExpanded = false
+                                }
+                            )
                         }
                     }
                 },
@@ -409,7 +432,9 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
                         }
                     )
                 }
-                bridge.localDraftForDisplay()?.let { draft ->
+                if (bridge.inputMode == TerminalInputMode.LOCAL && localImeEnabled) {
+                    LocalInputEditor(bridge)
+                } else bridge.localDraftForDisplay()?.let { draft ->
                     Surface(
                         Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(8.dp),
                         shape = RoundedCornerShape(8.dp),
@@ -551,6 +576,35 @@ private const val MIN_TERMINAL_FONT_DP = 8
 private const val MAX_TERMINAL_FONT_DP = 32
 
 @Composable
+private fun BoxScope.LocalInputEditor(bridge: RemoteTerminalBridge) {
+    Surface(
+        Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(8.dp),
+        shape = RoundedCornerShape(10.dp),
+        color = Color(0xEE1B1E21)
+    ) {
+        Row(
+            Modifier.padding(8.dp),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = bridge.localInput,
+                onValueChange = bridge::replaceLocalInput,
+                modifier = Modifier.weight(1f),
+                label = { Text(stringResource(R.string.remote_machine_terminal_local_input_label)) },
+                minLines = 1,
+                maxLines = 8,
+                singleLine = false,
+                keyboardOptions = KeyboardOptions.Default
+            )
+            Button(onClick = bridge::submitEditorInput) {
+                Text(stringResource(R.string.remote_machine_terminal_send_input))
+            }
+        }
+    }
+}
+
+@Composable
 private fun TerminalExtraKeys(bridge: RemoteTerminalBridge) {
     Row(
         Modifier.fillMaxWidth().background(Color(0xFF1B1E21)).padding(vertical = 3.dp),
@@ -564,14 +618,14 @@ private fun TerminalExtraKeys(bridge: RemoteTerminalBridge) {
             TerminalKey("TAB") { bridge.sendSpecial("\t") }
             TerminalKey("CTRL", active = bridge.ctrlActive) { bridge.ctrlActive = !bridge.ctrlActive }
             TerminalKey("ALT", active = bridge.altActive) { bridge.altActive = !bridge.altActive }
-            TerminalKey("←", repeat = true) { bridge.sendSpecial("\u001b[D") }
-            TerminalKey("↑", repeat = true) { bridge.sendSpecial("\u001b[A") }
-            TerminalKey("↓", repeat = true) { bridge.sendSpecial("\u001b[B") }
-            TerminalKey("→", repeat = true) { bridge.sendSpecial("\u001b[C") }
-            TerminalKey("HOME") { bridge.sendSpecial("\u001b[H") }
-            TerminalKey("END") { bridge.sendSpecial("\u001b[F") }
-            TerminalKey("PGUP") { bridge.sendSpecial("\u001b[5~") }
-            TerminalKey("PGDN") { bridge.sendSpecial("\u001b[6~") }
+            TerminalKey("←", repeat = true) { bridge.sendSpecial("\u001b[D", forceRemote = true) }
+            TerminalKey("↑", repeat = true) { bridge.sendSpecial("\u001b[A", forceRemote = true) }
+            TerminalKey("↓", repeat = true) { bridge.sendSpecial("\u001b[B", forceRemote = true) }
+            TerminalKey("→", repeat = true) { bridge.sendSpecial("\u001b[C", forceRemote = true) }
+            TerminalKey("HOME") { bridge.sendSpecial("\u001b[H", forceRemote = true) }
+            TerminalKey("END") { bridge.sendSpecial("\u001b[F", forceRemote = true) }
+            TerminalKey("PGUP") { bridge.sendSpecial("\u001b[5~", forceRemote = true) }
+            TerminalKey("PGDN") { bridge.sendSpecial("\u001b[6~", forceRemote = true) }
             listOf('|', '~', '-', '/', '\\', '_', '$', '&', '*', '<', '>', '`').forEach { char ->
                 TerminalKey(char.toString()) { bridge.sendChar(char) }
             }

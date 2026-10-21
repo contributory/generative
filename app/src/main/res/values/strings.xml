@@ -628,6 +628,8 @@
     <string name="remote_machine_terminal_remote_input" translatable="false">Remote input · send as you type</string>
     <string name="remote_machine_terminal_force_mouse" translatable="false">Mouse events · tap = click, drag = wheel</string>
     <string name="remote_machine_terminal_local_input_label" translatable="false">Local input</string>
+    <string name="remote_machine_terminal_ime_editor" translatable="false">Use text editor for local input</string>
+    <string name="remote_machine_terminal_send_input" translatable="false">Send</string>
     <string name="remote_machine_terminal_add" translatable="false">Open another terminal</string>
     <string name="remote_machine_terminal_close" translatable="false">Close terminal</string>
     <string name="remote_machine_terminal_tab" translatable="false">Terminal %1$d</string>

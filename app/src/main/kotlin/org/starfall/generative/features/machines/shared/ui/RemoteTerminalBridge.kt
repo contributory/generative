@@ -44,7 +44,6 @@ internal class RemoteTerminalBridge(
     private var closed = false
     private var emulatorReady = false
     private val pending = ByteArrayOutputStream()
-    private var replyFifo: java.io.File? = null
 
     /** Called when the user pinches: true = bigger text, false = smaller text. */
     var onZoomStep: (Boolean) -> Unit = {}
@@ -67,6 +66,17 @@ internal class RemoteTerminalBridge(
     private var historyDraft = ""
 
     val hasLocalDraft: Boolean get() = localInput.isNotEmpty()
+
+    /** Replaces the local command draft from the IME-backed editor. */
+    fun replaceLocalInput(value: String) {
+        localInput = value
+        localCursor = value.length
+        historyIndex = commandHistory.size
+        submittedLocalInput = null
+    }
+
+    /** Sends the current IME/editor draft as one command line. */
+    fun submitEditorInput() = submitLocalInput()
 
     fun setInputMode(mode: TerminalInputMode): Boolean {
         if (mode == TerminalInputMode.REMOTE && hasLocalDraft) return false
@@ -173,46 +183,18 @@ internal class RemoteTerminalBridge(
         }
     }
 
-    /**
-     * Creates the tiny local session TerminalView needs for its emulator. Everything the emulator
-     * itself writes (cursor reports, mouse events, scroll arrows in vim/tmux...) goes to this
-     * session's pty; a raw, non-echoing `cat` forwards it through a FIFO to the remote channel.
-     */
+    /** Creates the silent local session TerminalView needs for its emulator lifecycle. */
     fun createSession(filesDir: java.io.File): TerminalSession {
-        val script = runCatching {
-            val fifo = java.io.File(filesDir, "remote-machines/term-${System.nanoTime()}.in")
-            fifo.parentFile?.mkdirs()
-            fifo.delete()
-            android.system.Os.mkfifo(fifo.absolutePath, 384)
-            replyFifo = fifo
-            startReplyReader(fifo)
-            "stty raw -echo 2>/dev/null; exec cat > '${fifo.absolutePath}'"
-        }.getOrElse { "stty raw -echo 2>/dev/null; exec cat > /dev/null" }
-        // A null working directory triggers a JNI GetStringUTFChars abort on Android 11.
+        // The renderer receives remote bytes through append() and sends input through sendRemote().
+        // There is no local shell command to echo into the terminal and no FIFO to clean up.
         val created = TerminalSession(
             // TerminalSession passes these as arguments to shellPath, so -c must be the first arg.
-            // A leading "sh" makes the shell try to open a script file named "sh" and the FIFO
-            // forwarder never starts.
-            "/system/bin/sh", filesDir.absolutePath, arrayOf("-c", script), emptyArray(), 2_000, this
+            "/system/bin/sh", filesDir.absolutePath,
+            arrayOf("-c", "exec /system/bin/cat >/dev/null"),
+            emptyArray(), 2_000, this
         )
         session = created
         return created
-    }
-
-    private fun startReplyReader(fifo: java.io.File) {
-        Thread {
-            runCatching {
-                java.io.FileInputStream(fifo).use { input ->
-                    val buffer = ByteArray(1024)
-                    while (true) {
-                        val count = input.read(buffer)
-                        if (count < 0) break
-                        sendRemote(buffer.copyOf(count))
-                    }
-                }
-            }
-            fifo.delete()
-        }.apply { isDaemon = true; name = "remote-terminal-replies" }.start()
     }
 
     fun attachRemote(terminal: RemoteTerminal) {
@@ -273,8 +255,6 @@ internal class RemoteTerminalBridge(
         session?.finishIfRunning()
         session = null
         view = null
-        replyFifo?.delete()
-        replyFifo = null
         sender.shutdown()
     }
 
@@ -370,14 +350,19 @@ internal class RemoteTerminalBridge(
     }
 
     /** Sends an escape sequence, adding xterm modifier parameters / application cursor mode. */
-    fun sendSpecial(sequence: String, ctrl: Boolean = ctrlActive, alt: Boolean = altActive) {
+    fun sendSpecial(
+        sequence: String,
+        ctrl: Boolean = ctrlActive,
+        alt: Boolean = altActive,
+        forceRemote: Boolean = false
+    ) {
         snapToBottom()
-        if (inputMode == TerminalInputMode.LOCAL && sequence in setOf("\r", "\n")) {
+        if (!forceRemote && inputMode == TerminalInputMode.LOCAL && sequence in setOf("\r", "\n")) {
             submitLocalInput()
             clearModifiers()
             return
         }
-        if (inputMode == TerminalInputMode.LOCAL && !ctrl && !alt) {
+        if (!forceRemote && inputMode == TerminalInputMode.LOCAL && !ctrl && !alt) {
             when (sequence) {
                 "\r", "\n" -> submitLocalInput()
                 "\u0009" -> insertLocalText("\t")
