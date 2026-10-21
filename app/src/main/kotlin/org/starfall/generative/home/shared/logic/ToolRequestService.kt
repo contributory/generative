@@ -164,10 +164,16 @@ internal class ToolRequestService(
                                     "function" to JsonObject(f + ("arguments" to args))
                                 )
                             }
-                            JsonObject(clean + ("tool_calls" to JsonArray(calls)))
+                            // An assistant message without tool calls must not carry an empty `tool_calls` array.
+                            if (calls.isEmpty()) JsonObject(clean - "tool_calls")
+                            else JsonObject(clean + ("tool_calls" to JsonArray(calls)))
                         }
                         else -> clean
                     }
+                }.filterNot { message ->
+                    // Providers reject an assistant message with neither text nor tool calls.
+                    message.text("role") == "assistant" && message["tool_calls"] == null &&
+                        (message["content"] as? JsonPrimitive)?.content?.isBlank() == true
                 }
                 val request = buildJsonObject {
                     put("model", model); put("messages", JsonArray(wireHistory)); put("stream", false)

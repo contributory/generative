@@ -85,7 +85,7 @@ else
   create_flags=(--latest)
   [[ "$is_prerelease" != true ]] || create_flags=(--prerelease --latest=false)
   gh release create "$tag" --repo "$repo" \
-    --title "Generative $tag" --generate-notes "${create_flags[@]}"
+    --title "v$tag" --generate-notes "${create_flags[@]}"
 fi
 
 # Prefix GitHub's generated changelog with release metadata that makes the
