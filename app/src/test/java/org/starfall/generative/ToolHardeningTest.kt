@@ -18,7 +18,8 @@ import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.home.chat.logic.tool.ToolBudget
-import org.starfall.generative.home.shared.logic.summarizeToolResult
+import org.starfall.generative.home.chat.logic.tool.prepareGenericToolResult
+import org.starfall.generative.home.shared.logic.prepareToolResult
 
 class ToolHardeningTest {
     private fun json(text: String) = Json.parseToJsonElement(text).jsonObject
@@ -60,7 +61,7 @@ class ToolHardeningTest {
         val root=Files.createTempDirectory("summary").toFile()
         try {
             val files=ToolFiles(root); val original=obj("text" to str("quoted \" ".repeat(5000)))
-            val summary=summarizeToolResult(original,files)
+            val summary=prepareToolResult(original,files)
             assertFalse(summary.content.containsKey("truncated"))
             assertEquals(original, summary.content)
             assertEquals(summary.content,Json.parseToJsonElement(summary.content.toString()))
@@ -68,6 +69,13 @@ class ToolHardeningTest {
             assertTrue(files.list().isEmpty())
             assertEquals("Tool completed.", summary.preview)
         } finally { root.deleteRecursively() }
+    }
+    @Test fun genericToolResultSentToModelIsNeverReplacedByPreview() = runBlocking {
+        val original = obj("text" to str("x".repeat(12_000)))
+        val processed = prepareGenericToolResult(original)
+        assertEquals(original, processed.content)
+        assertFalse(processed.content.containsKey("truncated"))
+        assertFalse(processed.content.containsKey("preview"))
     }
     @Test fun dataUrlsSmallAndLargeBecomeFiles() = runBlocking {
         val root=Files.createTempDirectory("data-url").toFile()
@@ -81,14 +89,12 @@ class ToolHardeningTest {
             }
         } finally { root.deleteRecursively() }
     }
-    @Test fun longTextIsTruncatedAndNeverSavedAsFile() = runBlocking {
+    @Test fun longTextIsPreservedAndNeverSavedAsFile() = runBlocking {
         val root=Files.createTempDirectory("long-text").toFile()
         try {
             val files=ToolFiles(root); val text="x".repeat(100000)
             val result=json(files.sanitize(StringReader("{\"text\":\"$text\"}")))
-            val value=result.text("text")
-            assertTrue(value.startsWith("x".repeat(65536)))
-            assertTrue(value.endsWith("[truncated]"))
+            assertEquals(text, result.text("text"))
             assertTrue(files.list().isEmpty())
             assertTrue(root.listFiles()!!.isEmpty())
         } finally { root.deleteRecursively() }

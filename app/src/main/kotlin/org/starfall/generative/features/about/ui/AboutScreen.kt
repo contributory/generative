@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -39,7 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
 import org.starfall.generative.R
 import org.starfall.generative.features.about.logic.GitHubReleaseInfo
-import org.starfall.generative.features.about.logic.fetchLatestGitHubRelease
+import org.starfall.generative.features.about.logic.compareReleaseVersions
+import org.starfall.generative.features.about.logic.fetchLatestGitHubReleases
 
 @Composable
 fun AboutScreen(modifier: Modifier = Modifier) {
@@ -83,21 +85,19 @@ private fun UpdateSection() {
     val currentVersion = remember(context) { context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty() }
     var refreshKey by remember { mutableIntStateOf(0) }
     var isChecking by remember { mutableStateOf(false) }
-    var release by remember { mutableStateOf<GitHubReleaseInfo?>(null) }
+    var releases by remember { mutableStateOf<List<GitHubReleaseInfo>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(refreshKey) {
         if (refreshKey == 0) return@LaunchedEffect
         isChecking = true
         error = null
-        runCatching { fetchLatestGitHubRelease() }
-            .onSuccess { release = it }
+        runCatching { fetchLatestGitHubReleases() }
+            .onSuccess { releases = it }
             .onFailure { error = it.localizedMessage ?: context.getString(R.string.settings_update_error) }
         isChecking = false
     }
 
-    val latest = release
-    val updateAvailable = latest != null && compareVersions(currentVersion, latest.tagName) < 0
     AboutCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.settings_software_update), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
@@ -114,25 +114,9 @@ private fun UpdateSection() {
                 Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                 TextButton(onClick = { refreshKey++ }) { Text(stringResource(R.string.settings_try_again)) }
             }
-            latest != null -> {
-                Text(latest.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(stringResource(if (updateAvailable) R.string.settings_update_available else R.string.settings_up_to_date, latest.tagName), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (latest.body.isNotBlank()) Text(latest.body, style = MaterialTheme.typography.bodySmall, maxLines = 8, overflow = TextOverflow.Ellipsis)
-                if (updateAvailable && latest.apkAssets.isNotEmpty()) {
-                    latest.apkAssets.forEach { asset ->
-                        OutlinedButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(asset.downloadUrl))) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
-                            Text("↓")
-                            Spacer(Modifier.size(8.dp))
-                            Text(asset.name, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
-                } else {
-                    Button(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(latest.pageUrl))) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
-                        Text("↗")
-                        Spacer(Modifier.size(8.dp))
-                        Text(stringResource(R.string.settings_open_github_release))
-                    }
-                }
+            releases.isNotEmpty() -> releases.forEachIndexed { index, release ->
+                if (index > 0) HorizontalDivider()
+                ReleaseEntry(release, updateAvailable = compareReleaseVersions(currentVersion, release.tagName) < 0)
             }
             else -> {
                 Text(stringResource(R.string.settings_find_latest_release), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -142,14 +126,38 @@ private fun UpdateSection() {
     }
 }
 
-private fun compareVersions(current: String, latest: String): Int {
-    fun parts(value: String) = value.removePrefix("v").split('.').map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
-    val a = parts(current); val b = parts(latest)
-    for (index in 0 until maxOf(a.size, b.size)) {
-        val comparison = a.getOrElse(index) { 0 }.compareTo(b.getOrElse(index) { 0 })
-        if (comparison != 0) return comparison
+@Composable
+private fun ReleaseEntry(latest: GitHubReleaseInfo, updateAvailable: Boolean) {
+    val context = LocalContext.current
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(latest.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f, fill = false))
+            if (latest.isPrerelease) {
+                Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.errorContainer) {
+                    Text(stringResource(R.string.settings_unstable_release), modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                }
+            }
+        }
+        Text(stringResource(if (updateAvailable) R.string.settings_update_available else R.string.settings_up_to_date, latest.tagName), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (latest.body.isNotBlank()) Text(latest.body, style = MaterialTheme.typography.bodySmall, maxLines = 8, overflow = TextOverflow.Ellipsis)
+        if (!updateAvailable) return@Column
+        if (latest.apkAssets.isNotEmpty()) {
+            latest.apkAssets.forEach { asset ->
+                OutlinedButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(asset.downloadUrl))) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                    Text("↓")
+                    Spacer(Modifier.size(8.dp))
+                    Text(asset.name, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        } else {
+            Button(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(latest.pageUrl))) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                Text("↗")
+                Spacer(Modifier.size(8.dp))
+                Text(stringResource(R.string.settings_open_github_release))
+            }
+        }
     }
-    return 0
 }
 
 @Composable

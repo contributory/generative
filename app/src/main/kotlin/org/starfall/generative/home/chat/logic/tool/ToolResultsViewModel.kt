@@ -18,25 +18,17 @@ internal class ToolBudget {
         if (systemTool == "generate_video") videos++
     }
 }
-private const val TOOL_RESULT_FILE_LIMIT = 10_000
-private const val TOOL_RESULT_PREVIEW_LIMIT = 6_000
-/** Compact response handling for ordinary MCP tools, separate from media and Content-API. */
-internal suspend fun summarizeGenericToolResult(result: JsonObject): ToolSummary {
-    val completeResult = result
-    val full = completeResult.toString()
-    val media = Regex("tool-file:([a-zA-Z0-9._-]+)").findAll(full).map { it.groupValues[1] }.distinct().take(32).toList()
-    val truncated = full.length > TOOL_RESULT_FILE_LIMIT
-    val content = if (!truncated) completeResult else obj(
-        "truncated" to JsonPrimitive(true), "characters" to JsonPrimitive(full.length),
-        "preview" to str(full.take(TOOL_RESULT_PREVIEW_LIMIT)),
-        "files" to JsonArray(media.map { str("tool-file:$it") }),
-        "isError" to (completeResult["isError"] ?: JsonPrimitive(false)))
+/**
+ * Keep the complete result for the model. `preview` is app-only activity metadata and is never
+ * substituted for the result placed in the model conversation history.
+ */
+internal suspend fun prepareGenericToolResult(result: JsonObject): ToolSummary {
+    val media = Regex("tool-file:([a-zA-Z0-9._-]+)").findAll(result.toString())
+        .map { it.groupValues[1] }.distinct().take(32).toList()
     val preview = when {
-        (completeResult["isError"] as? JsonPrimitive)?.booleanOrNull == true && truncated ->
-            "Tool reported an error. Open details to view the result."
-        truncated -> "Tool completed. Open details to view the result."
+        (result["isError"] as? JsonPrimitive)?.booleanOrNull == true -> "Tool reported an error."
         media.isNotEmpty() -> "Tool completed with ${media.size} file(s). Open details to view."
         else -> "Tool completed."
     }
-    return ToolSummary(content = content, preview = preview, files = media)
+    return ToolSummary(content = result, preview = preview, files = media)
 }

@@ -167,8 +167,8 @@ class ToolFiles(val directory: File) {
     suspend fun decode(raw: File): String = raw.inputStream().use { source ->
         java.util.Base64.getMimeDecoder().wrap(source).use { save(it) }
     }
-    /** Streaming JSON scanner; media payloads are spooled, while generic long text can stay in memory. */
-    suspend fun sanitize(reader: Reader, retainLongTextInMemory: Boolean = false): String = withContext(Dispatchers.IO) {
+    /** Streaming JSON scanner; media payloads are spooled, while text content is preserved in full. */
+    suspend fun sanitize(reader: Reader): String = withContext(Dispatchers.IO) {
         val input = PushbackReader(BufferedReader(reader), 2)
         val output = StringBuilder()
         var lastKey = ""
@@ -186,7 +186,6 @@ class ToolFiles(val directory: File) {
                 var length = 0L
                 var media = false
                 var largeValueClassified = false
-                var truncatedText = false
                 try {
                     while (true) {
                         val n = input.read()
@@ -194,7 +193,6 @@ class ToolFiles(val directory: File) {
                         if (!escaped && n == '"'.code) break
                         length++
                         if (length % 32768L == 0L) coroutineContext.ensureActive()
-                        check(length <= limit * 2) { "Tool result exceeds file limit" }
                         if (raw == null && !largeValueClassified && value.length >= 16384) {
                             largeValueClassified = true
                             media = lastKey in setOf("b64_json", "bytesBase64Encoded", "video_base64", "base64", "blob") ||
@@ -209,8 +207,7 @@ class ToolFiles(val directory: File) {
                             }
                         }
                         if (spool != null) spool.write(n)
-                        else if (retainLongTextInMemory || value.length < 65536) value.append(n.toChar())
-                        else truncatedText = true
+                        else value.append(n.toChar())
                         escaped = if (escaped) false else n == '\\'.code
                     }
                     spool?.close()
@@ -256,29 +253,13 @@ class ToolFiles(val directory: File) {
                                 output.append('"').append("tool-file:").append(decode(rawSmall)).append('"')
                             } finally { rawSmall.delete() }
                         } else {
-                            // Long non-media text is never written to a file: it is cut here. A cut may land
-                            // inside an escape sequence, so back off a few characters until it parses.
-                            var decoded: String? = null
-                            var end = text.length
-                            val minEnd = if (truncatedText) maxOf(0, end - 8) else end
-                            while (decoded == null && end >= minEnd) {
-                                decoded = runCatching {
-                                    kotlinx.serialization.json.Json.parseToJsonElement("\"${text.substring(0, end)}\"")
-                                        .let { (it as kotlinx.serialization.json.JsonPrimitive).content }
-                                }.getOrNull()
-                                end--
-                            }
-                            output.append(
-                                if (decoded == null) "\"[Text truncated]\""
-                                else kotlinx.serialization.json.JsonPrimitive(
-                                    if (truncatedText) "$decoded\u2026[truncated]" else decoded
-                                ).toString()
-                            )
+                            val decoded = kotlinx.serialization.json.Json.parseToJsonElement("\"$text\"")
+                                .let { (it as kotlinx.serialization.json.JsonPrimitive).content }
+                            output.append(kotlinx.serialization.json.JsonPrimitive(decoded).toString())
                         }
                     }
                 } finally { spool?.close(); raw?.delete() }
             }
-            check(output.length <= 2 * 1024 * 1024) { "Tool metadata exceeds 2 MB limit" }
         }
         output.toString()
     }

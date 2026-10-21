@@ -74,6 +74,7 @@
     <string name="settings_export_data_description">Lưu cấu hình hoặc lịch sử hội thoại thành file JSON.</string>
     <string name="settings_clear_all_chats_message">Bạn có chắc muốn xóa tất cả chat không? Không thể hoàn tác thao tác này.</string>
     <string name="settings_factory_reset_message">Thao tác này sẽ xóa toàn bộ chat và provider.</string>
+    <string name="settings_unstable_release">Không ổn định (bản thử nghiệm)</string>
     <string name="settings_find_latest_release">Kiểm tra bản cập nhật ứng dụng mới nhất trên GitHub.</string>
     <string name="settings_universal_description">Nền tảng kết nối AI đa năng cho Android</string>
     <string name="message_text_size_hint">%1$d sp</string>

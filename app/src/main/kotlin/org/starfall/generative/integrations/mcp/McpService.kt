@@ -214,7 +214,7 @@ class McpSession(
         )
     }
 
-    suspend fun call(name: String, arguments: JsonObject, retainLongTextInMemory: Boolean = false): JsonObject {
+    suspend fun call(name: String, arguments: JsonObject): JsonObject {
         if (needsReconnect) {
             close()
             initialize()
@@ -231,7 +231,7 @@ class McpSession(
             throw error
         }
         val raw = Json.encodeToString(CallToolResult.serializer(), result)
-        val sanitized = http.files?.sanitize(StringReader(raw), retainLongTextInMemory) ?: raw
+        val sanitized = http.files?.sanitize(StringReader(raw)) ?: raw
         return Json.parseToJsonElement(sanitized).jsonObject
     }
 

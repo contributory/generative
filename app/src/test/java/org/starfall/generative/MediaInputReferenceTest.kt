@@ -17,7 +17,7 @@ import java.nio.file.Files
 import java.util.Base64
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.home.shared.logic.summarizeToolResult
+import org.starfall.generative.home.shared.logic.prepareToolResult
 
 internal val referencePng: ByteArray get() = Base64.getDecoder().decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=")
@@ -133,7 +133,7 @@ class MediaInputReferenceTest {
             val files = ToolFiles(root)
             val name = files.save(referencePng.inputStream())
             val uri = "tool-file:$name"
-            val summary = summarizeToolResult(obj("file" to str(uri), "detail" to str("x".repeat(20000))), files)
+            val summary = prepareToolResult(obj("file" to str(uri), "detail" to str("x".repeat(20000))), files)
             assertTrue(summary.content["files"]!!.jsonArray.contains(str(uri)))
             assertArrayEquals(referencePng, resolveInputImage(uri, files).file.readBytes())
         } finally { root.deleteRecursively() }
