@@ -11,8 +11,9 @@ internal data class GitHubReleaseInfo(val tagName: String, val title: String, va
     val pageUrl: String, val apkAssets: List<ApkAsset>, val isPrerelease: Boolean = false)
 
 /**
- * The newest stable release followed by the newest pre-release (flagged [GitHubReleaseInfo.isPrerelease]),
- * when each exists. `/releases/latest` is not used because GitHub never returns pre-releases from it.
+ * The newest stable release, plus the newest pre-release (flagged [GitHubReleaseInfo.isPrerelease]) when it
+ * is newer than that stable release or no stable release exists. `/releases/latest` is not used because
+ * GitHub never returns pre-releases from it.
  */
 internal suspend fun fetchLatestGitHubReleases(): List<GitHubReleaseInfo> = withContext(Dispatchers.IO) {
     val connection = (URL("https://api.github.com/repos/starfall-org/generative/releases?per_page=30").openConnection() as HttpURLConnection).apply {
@@ -31,7 +32,11 @@ internal suspend fun fetchLatestGitHubReleases(): List<GitHubReleaseInfo> = with
             .filter { it["draft"]?.jsonPrimitive?.booleanOrNull != true }
             .map(::parseRelease)
         // The API lists releases newest first.
-        listOfNotNull(releases.firstOrNull { !it.isPrerelease }, releases.firstOrNull { it.isPrerelease })
+        val stable = releases.firstOrNull { !it.isPrerelease }
+        val preRelease = releases.filter { it.isPrerelease }
+            .maxWithOrNull { a, b -> compareReleaseVersions(a.tagName, b.tagName) }
+            ?.takeIf { stable == null || compareReleaseVersions(it.tagName, stable.tagName) > 0 }
+        listOfNotNull(stable, preRelease)
     } finally { connection.disconnect() }
 }
 
@@ -46,4 +51,20 @@ private fun parseRelease(root: JsonObject): GitHubReleaseInfo {
             asset["size"]?.jsonPrimitive?.content?.toLongOrNull() ?: 0L,
             asset["browser_download_url"]?.jsonPrimitive?.content.orEmpty()) }
     return GitHubReleaseInfo(tag, title, body, page, assets, root["prerelease"]?.jsonPrimitive?.booleanOrNull == true)
+}
+
+// Versions look like "1.0.2-123" (main) or "1.0.2-123dev" (other branches): base version, then the
+// commit count. The branch suffix is ignored; the commit count orders builds of the same base version.
+internal fun compareReleaseVersions(current: String, latest: String): Int {
+    val pattern = Regex("""^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:-(\d+))?""")
+    fun parts(value: String): List<Long> {
+        val match = pattern.find(value.trim())
+        return (1..4).map { match?.groupValues?.getOrNull(it)?.toLongOrNull() ?: 0L }
+    }
+    val a = parts(current); val b = parts(latest)
+    for (index in a.indices) {
+        val comparison = a[index].compareTo(b[index])
+        if (comparison != 0) return comparison
+    }
+    return 0
 }

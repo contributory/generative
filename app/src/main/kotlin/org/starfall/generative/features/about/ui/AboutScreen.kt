@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
 import org.starfall.generative.R
 import org.starfall.generative.features.about.logic.GitHubReleaseInfo
+import org.starfall.generative.features.about.logic.compareReleaseVersions
 import org.starfall.generative.features.about.logic.fetchLatestGitHubReleases
 
 @Composable
@@ -115,7 +116,7 @@ private fun UpdateSection() {
             }
             releases.isNotEmpty() -> releases.forEachIndexed { index, release ->
                 if (index > 0) HorizontalDivider()
-                ReleaseEntry(release, updateAvailable = compareVersions(currentVersion, release.tagName) < 0)
+                ReleaseEntry(release, updateAvailable = compareReleaseVersions(currentVersion, release.tagName) < 0)
             }
             else -> {
                 Text(stringResource(R.string.settings_find_latest_release), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -156,22 +157,6 @@ private fun ReleaseEntry(latest: GitHubReleaseInfo, updateAvailable: Boolean) {
             }
         }
     }
-}
-
-// Versions look like "1.0.2-123" (main) or "1.0.2-123dev" (other branches): base version, then the
-// commit count. The branch suffix is ignored; the commit count orders builds of the same base version.
-private fun compareVersions(current: String, latest: String): Int {
-    val pattern = Regex("""^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:-(\d+))?""")
-    fun parts(value: String): List<Long> {
-        val match = pattern.find(value.trim())
-        return (1..4).map { match?.groupValues?.getOrNull(it)?.toLongOrNull() ?: 0L }
-    }
-    val a = parts(current); val b = parts(latest)
-    for (index in a.indices) {
-        val comparison = a[index].compareTo(b[index])
-        if (comparison != 0) return comparison
-    }
-    return 0
 }
 
 @Composable
