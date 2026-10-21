@@ -1,11 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Binary test argument dialog -->
-    <string name="remote_machine_binary_test_parameters_title">Test binary parameters · %1$s</string>
-    <string name="remote_machine_binary_test_arguments">Arguments (optional)</string>
-    <string name="remote_machine_binary_test_arguments_help">Separate arguments with spaces. Each space-delimited item is passed as a separate argument; quotes are not interpreted.</string>
-    <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
-
     <string name="app_name">Generative</string>
     <string name="features_logo_choose_image">Choose Image</string>
     <string name="features_logo_remove">Remove</string>
@@ -563,13 +557,31 @@
     <string name="remote_machine_ssh_key_used_by" translatable="false">Used by %1$d machine(s)</string>
     <string name="remote_machine_key_passphrase" translatable="false">Key passphrase</string>
     <string name="remote_machine_ssh_options" translatable="false">SSH options</string>
-    <string name="remote_machine_proxy_command" translatable="false">ProxyCommand</string>
-    <string name="remote_machine_proxy_command_help" translatable="false" formatted="false">Use %h and %p for host and port. Binaries added in Settings → Preferences can be referenced by name.</string>
-    <string name="remote_machine_local_command" translatable="false">LocalCommand</string>
+    <string name="remote_machine_ssh_options_help" translatable="false">Add JSch options only when needed. Unknown or reserved options are rejected when saving.</string>
+    <string name="remote_machine_advanced_ssh_options" translatable="false">Additional SSH options</string>
+    <string name="remote_machine_add_ssh_option" translatable="false">Add SSH option</string>
+    <string name="remote_machine_ssh_option_name" translatable="false">Option name</string>
+    <string name="remote_machine_ssh_option_value" translatable="false">Option value</string>
+    <string name="remote_machine_proxy_machine" translatable="false">Proxy machine</string>
+    <string name="remote_machine_websocket_proxy" translatable="false">Websocket Proxy</string>
+    <string name="remote_machine_websocket_url" translatable="false">WebSocket full URL</string>
+    <string name="remote_machine_websocket_headers" translatable="false">Headers (one Header: value per line)</string>
+    <string name="remote_machine_websocket_connect_timeout" translatable="false">Connect timeout (seconds)</string>
+    <string name="remote_machine_websocket_skip_certificates" translatable="false">Skip certificate verification</string>
+    <string name="remote_machine_websocket_show_advanced" translatable="false">Advanced WebSocket settings</string>
+    <string name="remote_machine_websocket_hide_advanced" translatable="false">Hide advanced WebSocket settings</string>
+    <string name="remote_machine_websocket_ca_certificate" translatable="false">CA certificate (PEM, optional)</string>
+    <string name="remote_machine_websocket_handshake_timeout" translatable="false">Handshake timeout (seconds)</string>
+    <string name="remote_machine_websocket_read_timeout" translatable="false">Read timeout (seconds, 0 = unlimited)</string>
+    <string name="remote_machine_websocket_write_timeout" translatable="false">Write timeout (seconds, 0 = unlimited)</string>
+    <string name="remote_machine_websocket_close_timeout" translatable="false">Close timeout (seconds)</string>
+    <string name="remote_machine_websocket_subprotocols" translatable="false">Sub-protocols (comma separated)</string>
     <string name="remote_machine_timeout" translatable="false">Connection timeout (seconds)</string>
     <string name="remote_machine_keep_alive" translatable="false">Server keep-alive (seconds)</string>
     <string name="remote_machine_strict_host_key" translatable="false">Strict host-key checking</string>
     <string name="remote_machine_compression" translatable="false">Enable compression</string>
+    <string name="remote_machine_websocket_url_help" translatable="false">Use ws:// or wss://. %h and %p are replaced with the SSH host and port.</string>
+    <string name="remote_machine_websocket_add_header" translatable="false">Add header</string>
     <string name="remote_machine_google_section" translatable="false">Google Cloud OAuth</string>
     <string name="remote_machine_oauth_client" translatable="false">OAuth client</string>
     <string name="remote_machine_select_oauth" translatable="false">Select an OAuth client</string>
@@ -583,16 +595,15 @@
     <string name="remote_machine_tool_execute" translatable="false">Execute commands</string>
     <string name="remote_machine_update_ip" translatable="false">Update IP</string>
     <string name="remote_machine_tool_disconnect" translatable="false">Disconnect</string>
+    <string name="remote_machine_tool_open_terminal" translatable="false">Open terminal</string>
+    <string name="remote_machine_tool_close_terminal" translatable="false">Close terminal</string>
+    <string name="remote_machine_tool_list_terminal" translatable="false">List terminals</string>
     <string name="remote_machine_disconnect" translatable="false">Disconnect</string>
     <string name="remote_machine_tool_update_ip_help" translatable="false">Use only when connecting to this machine reports an error.</string>
     <string name="remote_machine_update_ip_title" translatable="false">Cloud Shell IP · %1$s</string>
     <string name="remote_machine_tools_choose" translatable="false">Choose which tools the model may use on this machine.</string>
     <string name="remote_machine_ssh_tools_hint" translatable="false">SSH exposes the execute tool.</string>
     <string name="remote_machine_gcloud_tools_hint" translatable="false">GCloud Shell exposes update_ip and execute.</string>
-    <string name="remote_machine_ssh_config" translatable="false">SSH config file</string>
-    <string name="remote_machine_ssh_config_help" translatable="false">This app-private file is read and edited directly. SSH settings come from each Host entry; Cloud Shell gets its current host from Google and keeps its SSH settings here.</string>
-    <string name="remote_machine_ssh_config_path" translatable="false">SSH config file path</string>
-    <string name="remote_machine_import_hosts" translatable="false">Import Host entries as machines</string>
     <string name="remote_machine_oauth_clients" translatable="false">Google OAuth clients</string>
     <string name="remote_machine_add_oauth" translatable="false">Add OAuth client</string>
     <string name="remote_machine_import_oauth_json" translatable="false">Import JSON</string>
@@ -603,19 +614,6 @@
     <string name="remote_machine_oauth_type_android">Android app</string>
     <string name="remote_machine_google_no_access_token">Google did not return an access token.</string>
     <string name="remote_machine_google_missing_resolution">Google authorization requires interaction, but no resolution was returned.</string>
-    <string name="remote_machine_binaries" translatable="false">Executable binaries</string>
-    <string name="remote_machine_binaries_help" translatable="false">Imported files are copied into app storage, made executable, and can be used by name in ProxyCommand or LocalCommand.</string>
-    <string name="remote_machine_binary_upload_warning_title">Security warning</string>
-    <string name="remote_machine_binary_upload_warning_message">Executable binaries are not isolated from this app. When run, they can access data and files available to the app and may use its network access. Only upload binaries from sources you trust.</string>
-    <string name="remote_machine_binary_upload_confirm">Upload and trust</string>
-    <string name="remote_machine_binary_used_by" translatable="false">Referenced by %1$d machine(s)</string>
-    <string name="remote_machine_test_binary" translatable="false">Test binary</string>
-    <string name="remote_machine_binary_test_title" translatable="false">Binary test · %1$s</string>
-    <string name="remote_machine_binary_test_exit" translatable="false">Process exited with code %1$d</string>
-    <string name="remote_machine_binary_test_timeout" translatable="false">Timed out after 10 seconds</string>
-    <string name="remote_machine_binary_test_failed" translatable="false">Could not run binary</string>
-    <string name="remote_machine_binary_test_no_output" translatable="false">The binary produced no output.</string>
-    <string name="remote_machine_add_binary" translatable="false">Add executable binary</string>
     <string name="remote_machine_terminal_title" translatable="false">Terminal · %1$s</string>
     <string name="remote_machine_terminal_connecting" translatable="false">Connecting to remote shell…</string>
     <string name="remote_machine_terminal_connection_error" translatable="false">Could not connect to the remote shell</string>
@@ -630,6 +628,9 @@
     <string name="remote_machine_terminal_remote_input" translatable="false">Remote input · send as you type</string>
     <string name="remote_machine_terminal_force_mouse" translatable="false">Mouse events · tap = click, drag = wheel</string>
     <string name="remote_machine_terminal_local_input_label" translatable="false">Local input</string>
+    <string name="remote_machine_terminal_add" translatable="false">Open another terminal</string>
+    <string name="remote_machine_terminal_close" translatable="false">Close terminal</string>
+    <string name="remote_machine_terminal_tab" translatable="false">Terminal %1$d</string>
     <string name="remote_machine_command" translatable="false">Command</string>
     <string name="remote_machine_run_command" translatable="false">Run command</string>
     <string name="settings_version">Version %1$s (%2$d)</string>

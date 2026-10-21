@@ -6,14 +6,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import java.io.File
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import org.starfall.generative.integrations.mcp.McpOAuthService
 import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.features.providers.shared.logic.ConfigurationViewModel
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
-import org.starfall.generative.integrations.remote.ExecutableBinaryStore
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.features.settings.logic.SettingsViewModel
 import org.starfall.generative.integrations.modelapis.AiService
@@ -52,9 +50,7 @@ class AppContainer(context: Context) {
     private val speech = SpeechRepository(database)
     private val preferences = AppPreferencesRepository(appContext)
     private val toolSettings = ToolSettingsStore(appContext)
-    private val executableBinaries = ExecutableBinaryStore(appContext)
-    // Shared executable storage backs ProxyCommand lookup for Remote Machines.
-    val remoteMachineService = RemoteMachineService(appContext, executableBinaries = executableBinaries)
+    val remoteMachineService = RemoteMachineService(appContext)
     val defaultDataInitializer = DefaultDataInitializer(providers, mcp, speech, preferences, icons)
 
     init {
@@ -64,19 +60,6 @@ class AppContainer(context: Context) {
         }
         aiService.providerLoader = providers::resolveProvider
         mcpService.serverLoader = mcp::resolveServer
-        migrateLegacyRemoteBinaries()
-    }
-
-    /** Binaries used to be uploaded under Remote Machines; hand them to the shared store once. */
-    private fun migrateLegacyRemoteBinaries() {
-        val legacy = remoteMachineService.legacyBinaries()
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            if (legacy.isNotEmpty()) {
-                legacy.forEach { executableBinaries.adoptLegacy(it.name, File(it.path)) }
-                remoteMachineService.clearLegacyBinaries()
-            }
-            executableBinaries.repairPermissions()
-        }
     }
 
     val viewModelFactory = viewModelFactory {

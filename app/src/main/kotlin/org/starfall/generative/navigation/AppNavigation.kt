@@ -162,7 +162,6 @@ fun AppNavigation(
     val mcpToolErrors by configurationViewModel.mcpToolErrors.collectAsStateWithLifecycle()
     val mcpToolsLoading by configurationViewModel.mcpToolsLoading.collectAsStateWithLifecycle()
     val remoteMachineState by remoteMachinesViewModel.state.collectAsStateWithLifecycle()
-    val remoteMachineBinaries by remoteMachinesViewModel.binaries.collectAsStateWithLifecycle()
     var remoteMachinePage by remember { mutableStateOf<Any?>(null) }
 
     val toolSettings by viewModel.toolSettings.collectAsStateWithLifecycle()
@@ -777,7 +776,6 @@ fun AppNavigation(
 
                                 selected == RemoteMachineSettingsPage.SETTINGS -> RemoteMachineSettings(
                                     state = remoteMachineState,
-                                    binaries = remoteMachineBinaries,
                                     viewModel = remoteMachinesViewModel,
                                     onBack = { remoteMachinePage = null }
                                 )

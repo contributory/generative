@@ -3,17 +3,6 @@
     <string name="tool_call_strategy_description">Выберите, выполнять вызовы инструментов по очереди или параллельно.</string>
     <string name="tool_call_concurrent_limit_description">Максимальное количество вызовов инструментов, выполняемых одновременно.</string>
 
-    <!-- Binary test argument dialog -->
-    <string name="remote_machine_binary_test_parameters_title">Аргументы тестирования бинарного файла · %1$s</string>
-    <string name="remote_machine_binary_test_arguments">Аргументы (необязательно)</string>
-    <string name="remote_machine_binary_test_arguments_help">Разделяйте аргументы пробелами. Каждый элемент передаётся отдельно; кавычки не обрабатываются особым образом.</string>
-    <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
-
-    <!-- Executable binary upload security confirmation -->
-    <string name="remote_machine_binary_upload_warning_title">Предупреждение безопасности</string>
-    <string name="remote_machine_binary_upload_warning_message">Исполняемые файлы не изолированы от этого приложения. При запуске они могут получать доступ к данным и файлам, доступным приложению, а также использовать его сетевое подключение. Загружайте исполняемые файлы только из источников, которым доверяете.</string>
-    <string name="remote_machine_binary_upload_confirm">Загрузить и доверять</string>
-
     <string name="thinking">Обдумывание</string>
     <string name="thinking_streaming">Обдумывание...</string>
     <string name="thought_process">Ход рассуждений</string>

@@ -174,12 +174,8 @@ internal class RemoteMachineCloudShellService(
                     password = updated.password,
                     identityPassphrase = updated.identityPassphrase
                 )
-                val config = if (saved.username != savedUsername && savedUsername.isNotBlank()) {
-                    SshConfigParser.upsertMachine(current.sshConfig, savedMachine.copy(host = "", port = 6_000))
-                } else current.sshConfig
                 current.copy(
-                    machines = current.machines.map { if (it.id == savedMachine.id) savedMachine else it },
-                    sshConfig = config
+                    machines = current.machines.map { if (it.id == savedMachine.id) savedMachine else it }
                 )
             }
         }

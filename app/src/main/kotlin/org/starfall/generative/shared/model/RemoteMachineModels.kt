@@ -15,9 +15,43 @@ enum class RemoteAuthentication {
     PRIVATE_KEY
 }
 
-/** Runtime machine view. SSH options are hydrated from the app's OpenSSH config file; the encrypted
- * store keeps only its stable ID, name, address, user and secret. Cloud Shell keeps its own fields.
- */
+/** Settings for a WebSocket endpoint that tunnels the SSH byte stream. */
+@Serializable
+data class WebSocketProxyConfig(
+    val url: String = "",
+    val headers: Map<String, String> = emptyMap(),
+    val connectTimeoutSeconds: Int = 15,
+    val skipCertificateVerification: Boolean = false,
+    /** Optional PEM-encoded CA certificate used in addition to the platform trust store. */
+    val caCertificatePem: String = "",
+    val handshakeTimeoutSeconds: Int = 15,
+    val readTimeoutSeconds: Int = 0,
+    val writeTimeoutSeconds: Int = 0,
+    val closeTimeoutSeconds: Int = 5,
+    val subProtocols: List<String> = emptyList()
+) {
+    fun normalized(): WebSocketProxyConfig {
+        val cleanUrl = url.trim()
+        require(cleanUrl.isBlank() || cleanUrl.startsWith("ws://") || cleanUrl.startsWith("wss://")) {
+            "WebSocket proxy URL must start with ws:// or wss://."
+        }
+        return copy(
+            url = cleanUrl,
+            headers = headers.mapKeys { it.key.trim() }.filterKeys(String::isNotBlank)
+                .mapValues { it.value },
+            connectTimeoutSeconds = connectTimeoutSeconds.coerceIn(1, 300),
+            handshakeTimeoutSeconds = handshakeTimeoutSeconds.coerceIn(1, 300),
+            readTimeoutSeconds = readTimeoutSeconds.coerceIn(0, 3_600),
+            writeTimeoutSeconds = writeTimeoutSeconds.coerceIn(0, 3_600),
+            closeTimeoutSeconds = closeTimeoutSeconds.coerceIn(1, 300),
+            subProtocols = subProtocols.map(String::trim).filter(String::isNotBlank).distinct()
+        )
+    }
+
+    val isConfigured: Boolean get() = url.isNotBlank()
+}
+
+/** Runtime machine view. SSH settings are persisted directly in the encrypted Remote Machines store. */
 @Serializable
 data class RemoteMachine(
     val id: String,
@@ -37,8 +71,11 @@ data class RemoteMachine(
     /** Effective SSH config value. Empty means use the app's auth-mode default. */
     val preferredAuthentications: String = "",
     val strictHostKeyChecking: Boolean = false,
-    val proxyCommand: String = "",
-    val localCommand: String = "",
+    /** Additional JSch session options. Empty by default and only shown after the user adds one. */
+    val sshOptions: Map<String, String> = emptyMap(),
+    val websocketProxy: WebSocketProxyConfig? = null,
+    /** ID of another Remote Machine used as an SSH direct-tcpip jump host. */
+    val proxyMachineId: String = "",
     val connectTimeoutSeconds: Int = 15,
     val keepAliveSeconds: Int = 30,
     val compression: Boolean = false,
@@ -119,13 +156,29 @@ data class RemoteMachineState(
     val identities: List<RemoteIdentityKey> = emptyList()
 )
 
-/** Tools offered for a machine type. Disconnect and execute exist for every type; execute connects on demand. */
+/** Tools offered for a machine type. Terminal tools never create a connection implicitly. */
 fun remoteMachineToolNames(type: RemoteMachineType): List<String> = when (type) {
-    RemoteMachineType.SSH -> listOf(REMOTE_TOOL_DISCONNECT, REMOTE_TOOL_EXECUTE)
+    RemoteMachineType.SSH -> listOf(
+        REMOTE_TOOL_OPEN_TERMINAL,
+        REMOTE_TOOL_CLOSE_TERMINAL,
+        REMOTE_TOOL_LIST_TERMINAL,
+        REMOTE_TOOL_EXECUTE,
+        REMOTE_TOOL_DISCONNECT
+    )
     RemoteMachineType.GCLOUD_SHELL ->
-        listOf(REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_DISCONNECT, REMOTE_TOOL_EXECUTE)
+        listOf(
+            REMOTE_TOOL_UPDATE_IP,
+            REMOTE_TOOL_OPEN_TERMINAL,
+            REMOTE_TOOL_CLOSE_TERMINAL,
+            REMOTE_TOOL_LIST_TERMINAL,
+            REMOTE_TOOL_EXECUTE,
+            REMOTE_TOOL_DISCONNECT
+        )
 }
 
+const val REMOTE_TOOL_OPEN_TERMINAL = "open_terminal"
+const val REMOTE_TOOL_CLOSE_TERMINAL = "close_terminal"
+const val REMOTE_TOOL_LIST_TERMINAL = "list_terminal"
 const val REMOTE_TOOL_EXECUTE = "execute"
 const val REMOTE_TOOL_DISCONNECT = "disconnect"
 const val REMOTE_TOOL_START_MACHINE = "start_machine"

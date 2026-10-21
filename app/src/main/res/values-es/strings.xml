@@ -3,17 +3,6 @@
     <string name="tool_call_strategy_description">Elige si las llamadas a herramientas se ejecutan de forma secuencial o simultánea.</string>
     <string name="tool_call_concurrent_limit_description">Número máximo de llamadas a herramientas que pueden ejecutarse al mismo tiempo.</string>
 
-    <!-- Binary test argument dialog -->
-    <string name="remote_machine_binary_test_parameters_title">Parámetros de prueba del binario · %1$s</string>
-    <string name="remote_machine_binary_test_arguments">Argumentos (opcional)</string>
-    <string name="remote_machine_binary_test_arguments_help">Separa los argumentos con espacios. Cada elemento se pasa por separado; las comillas no se interpretan.</string>
-    <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
-
-    <!-- Executable binary upload security confirmation -->
-    <string name="remote_machine_binary_upload_warning_title">Advertencia de seguridad</string>
-    <string name="remote_machine_binary_upload_warning_message">Los archivos ejecutables no están aislados de esta aplicación. Al ejecutarse, pueden acceder a los datos y archivos disponibles para la aplicación y utilizar su conexión de red. Sube únicamente archivos ejecutables de fuentes de confianza.</string>
-    <string name="remote_machine_binary_upload_confirm">Subir y confiar</string>
-
     <string name="thinking">Pensando</string>
     <string name="thinking_streaming">Pensando...</string>
     <string name="thought_process">Proceso de razonamiento</string>

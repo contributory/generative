@@ -19,6 +19,11 @@ data class RemoteCommandResult(
     val isError: Boolean get() = exitCode != 0
 }
 
+data class RemoteTerminalInfo(
+    val id: String,
+    val isConnected: Boolean
+)
+
 /** A secret requested by the SSH server while connecting. */
 data class RemoteSecretRequest(val passphrase: Boolean, val prompt: String)
 
@@ -31,15 +36,18 @@ typealias RemoteSecretPrompt = suspend (RemoteSecretRequest) -> String?
  * private connection ([ownsSession]) closes the whole connection as well.
  */
 class RemoteTerminal internal constructor(
+    val id: String,
     private val session: Session,
     private val channel: ChannelShell,
     val input: InputStream,
     val output: OutputStream,
-    private val localCommand: Process?,
-    private val ownsSession: Boolean = true,
+    private val ownsSession: Boolean = false,
     private val onClosed: () -> Unit = {}
 ) : AutoCloseable {
     private val closed = AtomicBoolean(false)
+    internal val createdAtNanos: Long = System.nanoTime()
+
+    val isOpen: Boolean get() = !closed.get() && channel.isConnected
 
     /** Exit status of the remote shell, or -1 while it is running / if the connection was dropped. */
     val exitStatus: Int get() = channel.exitStatus
@@ -62,10 +70,8 @@ class RemoteTerminal internal constructor(
             runCatching { channel.disconnect() }
             if (ownsSession) {
                 runCatching { session.disconnect() }
-                runCatching { localCommand?.destroy() }
             }
             runCatching { onClosed() }
         }.apply { isDaemon = true; name = "remote-terminal-disconnect" }.start()
     }
 }
-

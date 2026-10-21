@@ -123,14 +123,9 @@ import com.termux.view.TerminalView
 import com.termux.view.TerminalViewClient
 import java.io.ByteArrayOutputStream
 import org.starfall.generative.R
-import org.starfall.generative.features.machines.shared.ui.BinaryTestNotice
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
-import org.starfall.generative.integrations.remote.ExecutableBinary
 import org.starfall.generative.features.machines.shared.ui.RemoteSection
 import org.starfall.generative.features.machines.shared.ui.RemoteTextField
-import org.starfall.generative.integrations.remote.SshConfigParser
-import org.starfall.generative.integrations.remote.binaryLauncher
-import org.starfall.generative.integrations.remote.remoteMachineSshConfigFile
 import org.starfall.generative.shared.model.GCloudOAuthClient
 import org.starfall.generative.shared.model.GoogleOAuthClientType
 import org.starfall.generative.shared.model.RemoteMachineState
@@ -144,25 +139,15 @@ import org.starfall.generative.shared.ui.layout.SlideScreenContent
 @Composable
 internal fun RemoteMachineSettings(
     state: RemoteMachineState,
-    binaries: List<ExecutableBinary>,
     viewModel: RemoteMachinesViewModel,
     onBack: () -> Unit
 ) {
     BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
-    var sshConfig by remember(state.sshConfig) { mutableStateOf(state.sshConfig) }
     var clientEditor by remember { mutableStateOf<GCloudOAuthClient?>(null) }
-    var binaryError by remember { mutableStateOf<String?>(null) }
-    var pendingBinaryUri by remember { mutableStateOf<Uri?>(null) }
-    var testingBinaryId by remember { mutableStateOf<String?>(null) }
-    var binaryToTest by remember { mutableStateOf<ExecutableBinary?>(null) }
-    var binaryTestArguments by remember { mutableStateOf("") }
-    var binaryTestNotice by remember { mutableStateOf<BinaryTestNotice?>(null) }
     var identityError by remember { mutableStateOf<String?>(null) }
     var oauthError by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val sshConfigPath = remember(context) { remoteMachineSshConfigFile(context).absolutePath }
-    val configEditorFocusRequester = remember { FocusRequester() }
     val identityLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri ?: return@rememberLauncherForActivityResult
         scope.launch {
@@ -182,9 +167,6 @@ internal fun RemoteMachineSettings(
                 .onFailure { identityError = it.message }
         }
     }
-    val binaryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        pendingBinaryUri = uri
-    }
     val oauthLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri ?: return@rememberLauncherForActivityResult
         scope.launch {
@@ -202,60 +184,11 @@ internal fun RemoteMachineSettings(
             TopAppBar(
                 title = { Text(stringResource(R.string.remote_machine_settings)) },
                 navigationIcon = { IconButton(onClick = onBack) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
-                actions = { TextButton(onClick = { viewModel.saveSshConfig(sshConfig); onBack() }) { Text(stringResource(R.string.common_save)) } }
+        actions = { TextButton(onClick = onBack) { Text(stringResource(R.string.common_close)) } }
             )
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            RemoteSection(stringResource(R.string.remote_machine_ssh_config)) {
-                Text(stringResource(R.string.remote_machine_ssh_config_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                RemoteTextField(
-                    value = sshConfigPath,
-                    onValueChange = {},
-                    label = stringResource(R.string.remote_machine_ssh_config_path),
-                    readOnly = true,
-                    singleLine = true,
-                    trailingIcon = {
-                        IconButton(onClick = {
-                            configEditorFocusRequester.requestFocus()
-                        }) {
-                            FluentIcon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.common_edit))
-                        }
-                    }
-                )
-                RemoteTextField(
-                    value = sshConfig,
-                    onValueChange = { sshConfig = it },
-                    label = stringResource(R.string.remote_machine_ssh_config),
-                    modifier = Modifier.focusRequester(configEditorFocusRequester),
-                    minLines = 10,
-                    maxLines = 20,
-                    font = FontFamily.Monospace,
-                    visual = SshConfigVisualTransformation(
-                        SshHighlightColors(
-                            comment = MaterialTheme.colorScheme.outline,
-                            keyword = MaterialTheme.colorScheme.primary,
-                            value = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
-                )
-                TextButton(onClick = {
-                    val aliases = SshConfigParser.parse(sshConfig)
-                        .flatMap { it.aliases }
-                        .filterNot { it.startsWith('!') || '*' in it || '?' in it }
-                        .distinct()
-                    if (aliases.isNotEmpty()) {
-                        // Import only if aliases are not already represented; the full config stays editable above.
-                        scope.launch {
-                            aliases.mapNotNull { alias ->
-                                SshConfigParser.find(sshConfig, alias)?.let { SshConfigParser.toMachine(it) }
-                            }.forEach { machine ->
-                                if (state.machines.none { it.name == machine.name }) viewModel.saveMachine(machine)
-                            }
-                        }
-                    }
-                }) { Text(stringResource(R.string.remote_machine_import_hosts)) }
-            }
             RemoteSection(stringResource(R.string.remote_machine_oauth_clients)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = { oauthLauncher.launch(arrayOf("application/json", "text/json", "*/*")) }) {
@@ -320,164 +253,7 @@ internal fun RemoteMachineSettings(
                 }
                 identityError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
-            RemoteSection(stringResource(R.string.remote_machine_binaries)) {
-                Text(stringResource(R.string.remote_machine_binaries_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                binaries.forEach { binary ->
-                    val users = state.machines.count { machine ->
-                        listOf(machine.proxyCommand, machine.localCommand).any { command ->
-                            Regex("(^|\\s)${Regex.escape(binary.name)}(?=\\s|$)").containsMatchIn(command)
-                        }
-                    }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        FluentIcon(Icons.Outlined.Code, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(binary.name, style = MaterialTheme.typography.titleSmall)
-                            Text(binary.path, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                            if (users > 0) Text(stringResource(R.string.remote_machine_binary_used_by, users), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        IconButton(
-                            enabled = testingBinaryId == null,
-                            onClick = {
-                                binaryToTest = binary
-                                binaryTestArguments = ""
-                            }
-                        ) {
-                            if (testingBinaryId == binary.id) {
-                                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                            } else {
-                                FluentIcon(Icons.Outlined.PlayArrow, stringResource(R.string.remote_machine_test_binary))
-                            }
-                        }
-                        IconButton(enabled = users == 0, onClick = { viewModel.deleteBinary(binary.id) }) {
-                            FluentIcon(Icons.Outlined.Lock, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                }
-                OutlinedButton(onClick = { binaryLauncher.launch(arrayOf("application/octet-stream", "application/x-executable", "*/*")) }, modifier = Modifier.fillMaxWidth()) {
-                    FluentIcon(Icons.Outlined.UploadFile, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.remote_machine_add_binary))
-                }
-                binaryError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-            }
         }
-    }
-
-    binaryToTest?.let { binary ->
-        AlertDialog(
-            onDismissRequest = { if (testingBinaryId == null) binaryToTest = null },
-            title = { Text(stringResource(R.string.remote_machine_binary_test_parameters_title, binary.name)) },
-            text = {
-                OutlinedTextField(
-                    value = binaryTestArguments,
-                    onValueChange = { binaryTestArguments = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.remote_machine_binary_test_arguments)) },
-                    placeholder = { Text(stringResource(R.string.remote_machine_binary_test_arguments_hint)) },
-                    supportingText = { Text(stringResource(R.string.remote_machine_binary_test_arguments_help)) },
-                    singleLine = false,
-                    minLines = 2,
-                    maxLines = 4,
-                    enabled = testingBinaryId == null
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = testingBinaryId == null,
-                    onClick = {
-                        val args = binaryTestArguments.trim().takeIf { it.isNotEmpty() }
-                            ?.split(Regex("\\s+")) ?: emptyList()
-                        testingBinaryId = binary.id
-                        binaryToTest = null
-                        scope.launch {
-                            viewModel.testBinary(binary.id, args).fold(
-                                onSuccess = { result ->
-                                    val status = if (result.timedOut) {
-                                        context.getString(R.string.remote_machine_binary_test_timeout)
-                                    } else {
-                                        context.getString(R.string.remote_machine_binary_test_exit, result.exitCode)
-                                    }
-                                    binaryTestNotice = BinaryTestNotice(
-                                        binaryName = binary.name,
-                                        status = status,
-                                        output = result.output.ifBlank {
-                                            context.getString(R.string.remote_machine_binary_test_no_output)
-                                        }
-                                    )
-                                },
-                                onFailure = { error ->
-                                    binaryTestNotice = BinaryTestNotice(
-                                        binaryName = binary.name,
-                                        status = context.getString(R.string.remote_machine_binary_test_failed),
-                                        output = error.message ?: error.toString()
-                                    )
-                                }
-                            )
-                            testingBinaryId = null
-                        }
-                    }
-                ) {
-                    Text(stringResource(R.string.remote_machine_test_binary))
-                }
-            },
-            dismissButton = {
-                TextButton(enabled = testingBinaryId == null, onClick = { binaryToTest = null }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
-        )
-    }
-
-    pendingBinaryUri?.let { uri ->
-        AlertDialog(
-            onDismissRequest = { pendingBinaryUri = null },
-            title = { Text(stringResource(R.string.remote_machine_binary_upload_warning_title)) },
-            text = { Text(stringResource(R.string.remote_machine_binary_upload_warning_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    pendingBinaryUri = null
-                    binaryError = null
-                    scope.launch {
-                        viewModel.importBinary(uri).onFailure { binaryError = it.message }
-                    }
-                }) {
-                    Text(stringResource(R.string.remote_machine_binary_upload_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingBinaryUri = null }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
-        )
-    }
-
-    binaryTestNotice?.let { notice ->
-        AlertDialog(
-            onDismissRequest = { binaryTestNotice = null },
-            title = { Text(stringResource(R.string.remote_machine_binary_test_title, notice.binaryName)) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(notice.status, style = MaterialTheme.typography.labelMedium)
-                    Surface(
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        Text(
-                            notice.output,
-                            modifier = Modifier.verticalScroll(rememberScrollState()).padding(10.dp),
-                            fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { binaryTestNotice = null }) {
-                    Text(stringResource(R.string.common_close))
-                }
-            }
-        )
     }
 
     clientEditor?.let { initial ->
@@ -536,57 +312,4 @@ internal fun OAuthClientDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
     )
-}
-
-private data class SshHighlightColors(
-    val comment: Color,
-    val keyword: Color,
-    val value: Color
-)
-
-private class SshConfigVisualTransformation(
-    private val colors: SshHighlightColors
-) : VisualTransformation {
-    override fun filter(text: AnnotatedString): TransformedText = TransformedText(
-        highlightSshConfig(text.text, colors),
-        OffsetMapping.Identity
-    )
-}
-
-private fun highlightSshConfig(
-    text: String,
-    colors: SshHighlightColors
-): AnnotatedString = buildAnnotatedString {
-    text.lineSequence().forEachIndexed { index, line ->
-        val content = line.trimStart()
-        when {
-            content.startsWith("#") -> withStyle(SpanStyle(color = colors.comment)) { append(line) }
-            content.substringBeforeAnyWhitespace().lowercase() in SSH_CONFIG_KEYWORDS -> {
-                val leading = line.take(line.length - content.length)
-                val split = content.indexOfFirst { it == ' ' || it == '\t' }
-                append(leading)
-                if (split < 0) {
-                    withStyle(SpanStyle(color = colors.keyword)) { append(content) }
-                } else {
-                    withStyle(SpanStyle(color = colors.keyword)) { append(content.substring(0, split)) }
-                    withStyle(SpanStyle(color = colors.value)) { append(content.substring(split)) }
-                }
-            }
-            else -> withStyle(SpanStyle(color = colors.value)) { append(line) }
-        }
-        if (index < text.lineSequence().count() - 1) append('\n')
-    }
-}
-
-private val SSH_CONFIG_KEYWORDS = setOf(
-    "host", "hostname", "user", "port", "proxycommand", "localcommand", "identityfile",
-    "stricthostkeychecking", "compression", "serveraliveinterval"
-)
-
-private fun String.substringBeforeAnyWhitespace(): String =
-    substringBeforeAny { it == ' ' || it == '\t' }
-
-private inline fun String.substringBeforeAny(predicate: (Char) -> Boolean): String {
-    val index = indexOfFirst(predicate)
-    return if (index < 0) this else substring(0, index)
 }

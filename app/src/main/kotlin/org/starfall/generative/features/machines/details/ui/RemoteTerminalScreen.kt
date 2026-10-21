@@ -123,7 +123,6 @@ import com.termux.view.TerminalViewClient
 import java.io.ByteArrayOutputStream
 import org.starfall.generative.R
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
-import org.starfall.generative.integrations.remote.ExecutableBinary
 import org.starfall.generative.integrations.remote.REMOTE_TERMINAL_UI_PREFERENCES
 import org.starfall.generative.integrations.remote.RemoteSecretRequest
 import org.starfall.generative.integrations.remote.RemoteTerminal
@@ -142,12 +141,19 @@ import org.starfall.generative.features.machines.shared.ui.TerminalInputMode
 
 private val TERMINAL_BACKGROUND = Color(0xFF101214)
 
+private class TerminalSlot(
+    val terminal: RemoteTerminal,
+    val bridge: RemoteTerminalBridge
+) {
+    var readerJob: Job? = null
+}
+
 @Composable
 internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachinesViewModel, onBack: () -> Unit) {
-    var terminal by remember(machine.id) { mutableStateOf<RemoteTerminal?>(null) }
+    var terminalSlots by remember(machine.id) { mutableStateOf<List<TerminalSlot>>(emptyList()) }
+    var activeTerminalId by remember(machine.id) { mutableStateOf<String?>(null) }
     var connecting by remember(machine.id) { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    var readerJob by remember { mutableStateOf<Job?>(null) }
     var retryAttempt by remember(machine.id) { mutableStateOf(0) }
     var secretRequest by remember(machine.id) { mutableStateOf<PendingSecretRequest?>(null) }
     var passwordInput by remember(machine.id) { mutableStateOf("") }
@@ -164,36 +170,43 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
         TerminalInputMode.LOCAL.name -> TerminalInputMode.LOCAL
         else -> TerminalInputMode.REMOTE
     }
-    val bridge = remember(machine.id) {
+    val idleBridge = remember(machine.id) {
         RemoteTerminalBridge(context, initialInputMode).also {
             it.forceMouse = terminalPrefs.getBoolean("force_mouse", false)
         }
     }
+    val activeSlot = terminalSlots.firstOrNull { it.terminal.id == activeTerminalId }
+    val terminal = activeSlot?.terminal
+    val bridge = activeSlot?.bridge ?: idleBridge
     SideEffect {
         bridge.onZoomStep = { increase ->
             fontDp = (fontDp + if (increase) 1 else -1).coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP)
             terminalPrefs.edit().putInt("font_dp", fontDp).apply()
         }
     }
-    val currentTerminal by rememberUpdatedState(terminal)
-    val currentReaderJob by rememberUpdatedState(readerJob)
+    val currentSlots by rememberUpdatedState(terminalSlots)
     val currentSecretRequest by rememberUpdatedState(secretRequest)
 
     fun closeTerminal() {
         secretRequest?.answer?.complete(null)
-        readerJob?.cancel()
-        bridge.close()
-        terminal?.close()
-        terminal = null
+        activeSlot?.readerJob?.cancel()
+        activeSlot?.bridge?.close()
+        activeSlot?.terminal?.close()
+        terminalSlots = terminalSlots.filterNot { it === activeSlot }
+        activeTerminalId = terminalSlots.lastOrNull()?.terminal?.id
+    }
+    fun closeAllTerminals() {
+        secretRequest?.answer?.complete(null)
+        currentSlots.forEach { it.readerJob?.cancel(); it.bridge.close(); it.terminal.close() }
+        terminalSlots = emptyList()
+        activeTerminalId = null
     }
     // Phone back button: disconnect explicitly (same as the app bar back arrow).
-    BackHandler(enabled = LocalScreenTransitionActive.current) { closeTerminal(); onBack() }
+    BackHandler(enabled = LocalScreenTransitionActive.current) { closeAllTerminals(); onBack() }
     DisposableEffect(machine.id) {
         onDispose {
             currentSecretRequest?.answer?.complete(null)
-            currentReaderJob?.cancel()
-            bridge.close()
-            currentTerminal?.close()
+            currentSlots.forEach { it.readerJob?.cancel(); it.bridge.close(); it.terminal.close() }
         }
     }
     LaunchedEffect(machine.id, retryAttempt) {
@@ -216,17 +229,26 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
                     }
                 }
             }
-            terminal = opened
-            bridge.attachRemote(opened)
+            val newBridge = RemoteTerminalBridge(context, initialInputMode).also {
+                it.forceMouse = terminalPrefs.getBoolean("force_mouse", false)
+                it.onZoomStep = { increase ->
+                    fontDp = (fontDp + if (increase) 1 else -1).coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP)
+                    terminalPrefs.edit().putInt("font_dp", fontDp).apply()
+                }
+                it.attachRemote(opened)
+            }
+            val slot = TerminalSlot(opened, newBridge)
+            terminalSlots = terminalSlots + slot
+            activeTerminalId = opened.id
             connecting = false
-            readerJob = launch(Dispatchers.IO) {
+            slot.readerJob = launch(Dispatchers.IO) {
                 val buffer = ByteArray(4096)
                 try {
                     while (true) {
                         val count = opened.input.read(buffer)
                         if (count < 0) break
                         val chunk = buffer.copyOf(count)
-                        withContext(Dispatchers.Main) { bridge.append(chunk) }
+                        withContext(Dispatchers.Main) { newBridge.append(chunk) }
                     }
                 } catch (cancelled: CancellationException) {
                     throw cancelled
@@ -237,8 +259,10 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
                 if (coroutineContext.isActive) {
                     val cleanExit = opened.exitStatus >= 0
                     withContext(Dispatchers.Main) {
-                        closeTerminal()
-                        if (cleanExit) onBack() else error = "Connection lost"
+                        terminalSlots = terminalSlots.filterNot { it === slot }
+                        activeTerminalId = terminalSlots.lastOrNull()?.terminal?.id
+                        newBridge.close()
+                        if (!cleanExit && terminalSlots.isEmpty()) error = "Connection lost"
                     }
                 }
             }
@@ -247,8 +271,7 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
         } catch (failure: Throwable) {
             connecting = false
             error = failure.message?.takeIf { it.isNotBlank() } ?: "Connection failed"
-            terminal?.close()
-            terminal = null
+            activeSlot?.terminal?.close()
         }
     }
 
@@ -257,8 +280,14 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
         topBar = {
             TopAppBar(
                 title = { Text(machine.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = { IconButton(onClick = { closeTerminal(); onBack() }) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
+                navigationIcon = { IconButton(onClick = { closeAllTerminals(); onBack() }) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                 actions = {
+                    IconButton(enabled = !connecting, onClick = { error = null; retryAttempt++ }) {
+                        FluentIcon(Icons.Default.Add, stringResource(R.string.remote_machine_terminal_add))
+                    }
+                    IconButton(enabled = terminal != null, onClick = { closeTerminal() }) {
+                        FluentIcon(Icons.Outlined.Delete, stringResource(R.string.remote_machine_terminal_close))
+                    }
                     Box {
                         IconButton(onClick = { inputModeMenuExpanded = true }) {
                             FluentIcon(Icons.Outlined.Settings, stringResource(R.string.remote_machine_terminal_input_settings))
@@ -340,6 +369,19 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
         Column(
             Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().background(TERMINAL_BACKGROUND)
         ) {
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 6.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                terminalSlots.forEachIndexed { index, slot ->
+                    TextButton(onClick = { activeTerminalId = slot.terminal.id }) {
+                        Text(
+                            stringResource(R.string.remote_machine_terminal_tab, index + 1),
+                            color = if (slot.terminal.id == activeTerminalId) Color(0xFF9CCC65) else Color.White
+                        )
+                    }
+                }
+            }
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 terminal?.let {
                     AndroidView(

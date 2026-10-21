@@ -13,7 +13,7 @@ data class SshConfigHost(
 object SshConfigParser {
     /** Options that are generated from (and synced back to) a saved Remote Machine. */
     private val managedKeys = setOf(
-        "hostname", "port", "user", "identityfile", "proxycommand", "localcommand",
+        "hostname", "port", "user", "identityfile",
         "stricthostkeychecking", "compression", "serveraliveinterval", "connecttimeout",
         "preferredauthentications"
     )
@@ -156,8 +156,6 @@ object SshConfigParser {
                 identityFile = identityFile,
                 identityPassphrase = if (authentication == RemoteAuthentication.PRIVATE_KEY) secret else "",
                 preferredAuthentications = o["preferredauthentications"].orEmpty(),
-                proxyCommand = o["proxycommand"].orEmpty(),
-                localCommand = o["localcommand"].orEmpty(),
                 strictHostKeyChecking = o["stricthostkeychecking"]?.equals("yes", true) == true,
                 compression = o["compression"]?.equals("yes", true) == true,
                 keepAliveSeconds = o["serveraliveinterval"]?.toIntOrNull()?.coerceIn(0, 3_600) ?: 0,
@@ -184,8 +182,6 @@ object SshConfigParser {
             keyboardInteractive = if ("preferredauthentications" in options) "keyboard-interactive" in preferred else true,
             identityFile = identityFile,
             preferredAuthentications = options["preferredauthentications"].orEmpty(),
-            proxyCommand = options["proxycommand"].orEmpty(),
-            localCommand = options["localcommand"].orEmpty(),
             strictHostKeyChecking = options["stricthostkeychecking"]?.equals("yes", true) == true,
             compression = options["compression"]?.equals("yes", true) == true,
             keepAliveSeconds = options["serveraliveinterval"]?.toIntOrNull()?.coerceAtLeast(0) ?: 30,
@@ -205,8 +201,6 @@ object SshConfigParser {
             if (machine.keyboardInteractive) "keyboard-interactive,password" else "password"
         } else "publickey"}")
         machine.identityFile.trim().takeIf(String::isNotBlank)?.let { appendLine("  IdentityFile $it") }
-        machine.proxyCommand.trim().takeIf(String::isNotBlank)?.let { appendLine("  ProxyCommand $it") }
-        machine.localCommand.trim().takeIf(String::isNotBlank)?.let { appendLine("  LocalCommand $it") }
         machine.strictHostKeyChecking.takeIf { it }?.let { appendLine("  StrictHostKeyChecking yes") }
         machine.compression.takeIf { it }?.let { appendLine("  Compression yes") }
         machine.keepAliveSeconds.takeIf { it > 0 }?.let { appendLine("  ServerAliveInterval $it") }

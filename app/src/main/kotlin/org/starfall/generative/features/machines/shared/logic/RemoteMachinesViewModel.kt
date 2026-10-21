@@ -1,7 +1,6 @@
 package org.starfall.generative.features.machines.shared.logic
 
 import android.net.Uri
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.SharingStarted
@@ -9,12 +8,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
-import org.starfall.generative.integrations.remote.ExecutableBinary
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.integrations.remote.RemoteSecretPrompt
 import org.starfall.generative.integrations.remote.RemoteTerminal
 import org.starfall.generative.shared.model.GCloudOAuthClient
-import org.starfall.generative.shared.model.RemoteBinaryTestResult
 import org.starfall.generative.shared.model.RemoteIdentityKey
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineState
@@ -25,7 +22,6 @@ class RemoteMachinesViewModel(
 ) : ViewModel() {
     val state: StateFlow<RemoteMachineState> = service.state
         .stateIn(viewModelScope, SharingStarted.Eagerly, RemoteMachineState())
-    val binaries: StateFlow<List<ExecutableBinary>> = service.binaries
 
     /** Machines holding a persistent SSH connection; there is deliberately no way to open one by hand. */
     val connectedMachineIds: StateFlow<Set<String>> = service.connectedMachineIds
@@ -46,25 +42,12 @@ class RemoteMachinesViewModel(
         viewModelScope.launch(LocalWriteErrors.handler) { service.reorderMachines(ids) }
     }
 
-    fun saveSshConfig(text: String) {
-        viewModelScope.launch(LocalWriteErrors.handler) { service.saveSshConfig(text) }
-    }
-
     fun saveOAuthClient(client: GCloudOAuthClient) {
         viewModelScope.launch(LocalWriteErrors.handler) { service.saveOAuthClient(client) }
     }
 
     fun deleteOAuthClient(id: String) {
         viewModelScope.launch(LocalWriteErrors.handler) { service.deleteOAuthClient(id) }
-    }
-
-    suspend fun importBinary(uri: Uri): Result<ExecutableBinary> = runCatching { service.importBinary(uri) }
-
-    suspend fun testBinary(id: String, arguments: List<String> = emptyList()): Result<RemoteBinaryTestResult> =
-        runCatching { service.testBinary(id, arguments) }
-
-    fun deleteBinary(id: String) {
-        viewModelScope.launch(LocalWriteErrors.handler) { service.deleteBinary(id) }
     }
 
     suspend fun importIdentityKey(uri: Uri): Result<RemoteIdentityKey> =

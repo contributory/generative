@@ -15,7 +15,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.starfall.generative.integrations.remote.PasswordKeyboardInteractiveUserInfo
 import org.starfall.generative.integrations.remote.SshConfigParser
+import org.starfall.generative.integrations.remote.normalizeSshOptions
 import org.starfall.generative.shared.model.ToolSettings
+import org.starfall.generative.shared.model.WebSocketProxyConfig
 import org.starfall.generative.shared.model.remoteMachineToolEnabled
 
 class RemoteMachineTest {
@@ -40,19 +42,17 @@ class RemoteMachineTest {
         assertEquals(2201, machine.port)
         assertEquals("deploy", machine.username)
         assertEquals("~/.ssh/staging", machine.identityFile)
-        assertEquals("helper %h %p", machine.proxyCommand)
-        assertEquals("notify-send connected", machine.localCommand)
         assertEquals(45, machine.keepAliveSeconds)
     }
 
     @Test
     fun everyMachineExposesDisconnectAndExecuteAndCloudShellAddsUpdateIp() {
         assertEquals(
-            listOf(REMOTE_TOOL_DISCONNECT, REMOTE_TOOL_EXECUTE),
+            listOf("open_terminal", "close_terminal", "list_terminal", REMOTE_TOOL_EXECUTE, REMOTE_TOOL_DISCONNECT),
             RemoteMachine("ssh", "SSH").supportedToolNames()
         )
         assertEquals(
-            listOf(REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_DISCONNECT, REMOTE_TOOL_EXECUTE),
+            listOf(REMOTE_TOOL_UPDATE_IP, "open_terminal", "close_terminal", "list_terminal", REMOTE_TOOL_EXECUTE, REMOTE_TOOL_DISCONNECT),
             RemoteMachine("cloud", "Cloud", type = RemoteMachineType.GCLOUD_SHELL).supportedToolNames()
         )
         assertTrue(RemoteMachine("cloud", "Cloud", type = RemoteMachineType.GCLOUD_SHELL).displayHost.isNotBlank())
@@ -233,19 +233,24 @@ class RemoteMachineTest {
     }
 
     @Test
-    fun importedBinariesAreStartedThroughTheLinkerOrInterpreterOnAndroid10Plus() {
-        fun elf(bits: Int, type: Int) = ByteArray(64).also {
-            it[0] = 0x7f; it[1] = 'E'.code.toByte(); it[2] = 'L'.code.toByte(); it[3] = 'F'.code.toByte()
-            it[4] = bits.toByte(); it[5] = 1; it[16] = type.toByte()
-        }
-        fun run(header: ByteArray, sdk: Int, target: Int = 36, exists: (String) -> Boolean = { true }): List<String> =
-            org.starfall.generative.integrations.remote.binaryLauncher(header, sdk, target, exists)
-        assertEquals(listOf("/system/bin/linker64"), run(elf(2, 3), 34))
-        assertEquals(listOf("/system/bin/linker"), run(elf(1, 3), 34))
-        assertEquals(emptyList<String>(), run(elf(2, 3), 28))
-        assertEquals(emptyList<String>(), run(elf(2, 3), 34, target = 28))
-        assertEquals(emptyList<String>(), run(elf(2, 3), 34) { false })
-        assertEquals(listOf("/system/bin/sh"), run("#!/usr/bin/env bash\necho".toByteArray(), 34) { false })
-        assertEquals(listOf("/bin/sh", "-e"), run("#!/bin/sh -e\n".toByteArray(), 34))
+    fun extraJschOptionsAreValidatedAndWebsocketProxySettingsAreNormalized() {
+        assertEquals(
+            mapOf("kex" to "diffie-hellman-group14-sha1"),
+            normalizeSshOptions(mapOf("kex" to "diffie-hellman-group14-sha1"))
+        )
+        assertTrue(runCatching { normalizeSshOptions(mapOf("NotARealJschOption" to "1")) }.isFailure)
+        assertTrue(runCatching { normalizeSshOptions(mapOf("StrictHostKeyChecking" to "yes")) }.isFailure)
+
+        val proxy = WebSocketProxyConfig(
+            url = " wss://proxy.example/%h/%p ",
+            headers = mapOf(" Authorization " to "Bearer token"),
+            connectTimeoutSeconds = 0,
+            subProtocols = listOf("ssh", "ssh")
+        ).normalized()
+        assertEquals("wss://proxy.example/%h/%p", proxy.url)
+        assertEquals(mapOf("Authorization" to "Bearer token"), proxy.headers)
+        assertEquals(1, proxy.connectTimeoutSeconds)
+        assertEquals(listOf("ssh"), proxy.subProtocols)
     }
+
 }

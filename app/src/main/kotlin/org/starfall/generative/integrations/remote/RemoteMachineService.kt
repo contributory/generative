@@ -21,14 +21,17 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.add
 import org.starfall.generative.shared.model.GCloudOAuthClient
+import org.starfall.generative.shared.model.REMOTE_TOOL_CLOSE_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_DISCONNECT
 import org.starfall.generative.shared.model.REMOTE_TOOL_EXECUTE
+import org.starfall.generative.shared.model.REMOTE_TOOL_LIST_TERMINAL
+import org.starfall.generative.shared.model.REMOTE_TOOL_OPEN_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_START_MACHINE
 import org.starfall.generative.shared.model.REMOTE_TOOL_UPDATE_IP
 import org.starfall.generative.shared.model.RemoteAuthentication
-import org.starfall.generative.shared.model.RemoteBinary
-import org.starfall.generative.shared.model.RemoteBinaryTestResult
 import org.starfall.generative.shared.model.RemoteIdentityKey
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
@@ -41,27 +44,16 @@ import org.starfall.generative.shared.model.RemoteMachineType
  */
 class RemoteMachineService(
     private val context: Context,
-    val store: RemoteMachineStore = RemoteMachineStore(context),
-    /** Shared executable storage used by Remote Machines settings and command expansion. */
-    private val executableBinaries: ExecutableBinaryStore = ExecutableBinaryStore(context)
+    val store: RemoteMachineStore = RemoteMachineStore(context)
 ) {
     private val appContext = context.applicationContext
-    private val assets = RemoteMachineAssetsService(context, store, executableBinaries)
+    private val assets = RemoteMachineAssetsService(context, store)
     private val connectionManager = RemoteMachineConnectionManager { machine, password, prompt ->
         openSession(machine, password, prompt)
     }
     private val cloudShell = RemoteMachineCloudShellService(context, store, assets)
 
     val state = store.state
-    val binaries: StateFlow<List<ExecutableBinary>> = executableBinaries.binaries
-
-    /** Binaries uploaded in the previous Remote Machines screen, before migration to Settings. */
-    fun legacyBinaries(): List<RemoteBinary> = state.value.binaries
-
-    suspend fun clearLegacyBinaries() {
-        store.update { it.copy(binaries = emptyList()) }
-    }
-
 
     /**
      * Machines that currently hold a persistent SSH connection (opened by the connect tool or by
@@ -87,22 +79,28 @@ class RemoteMachineService(
             passwordReference = passwordReference,
             connectTimeoutSeconds = machine.connectTimeoutSeconds.coerceIn(1, 300),
             keepAliveSeconds = machine.keepAliveSeconds.coerceIn(0, 3_600),
+            sshOptions = normalizeSshOptions(machine.sshOptions),
+            websocketProxy = machine.websocketProxy?.normalized()?.takeIf { it.isConfigured },
+            proxyMachineId = machine.proxyMachineId.trim(),
             preferredAuthentications = if (machine.authentication == RemoteAuthentication.PASSWORD) {
                 if (machine.keyboardInteractive) "keyboard-interactive,password" else "password"
             } else "publickey"
         )
         require(normalized.name.isNotBlank()) { "Machine name is required." }
+        require(normalized.proxyMachineId != normalized.id) { "A machine cannot proxy through itself." }
+        require(normalized.websocketProxy == null || normalized.proxyMachineId.isBlank()) {
+            "Choose either WebSocket Proxy or another proxy machine, not both."
+        }
+        validateProxyMachine(normalized)
         store.update { current ->
             val order = if (current.machines.any { it.id == normalized.id }) normalized.sortOrder
             else current.machines.maxOfOrNull { it.sortOrder }.orZero() + 1
             val saved = normalized.copy(sortOrder = order)
-            val previousName = current.machines.firstOrNull { it.id == normalized.id }?.name
             current.copy(
                 machines = current.machines
                     .filterNot { it.id == normalized.id }
                     .plus(saved)
-                    .sortedWith(compareBy<RemoteMachine> { it.sortOrder }.thenBy { it.name.lowercase() }),
-                sshConfig = SshConfigParser.upsertMachine(current.sshConfig, saved, previousName)
+                    .sortedWith(compareBy<RemoteMachine> { it.sortOrder }.thenBy { it.name.lowercase() })
             )
         }
         // The next connection must use the saved settings.
@@ -113,10 +111,8 @@ class RemoteMachineService(
         disconnectMachineNow(id)
         cloudShell.invalidateCache(id)
         store.update { current ->
-            val deleted = current.machines.firstOrNull { it.id == id }
             current.copy(
-                machines = current.machines.filterNot { it.id == id },
-                sshConfig = deleted?.let { SshConfigParser.removeMachine(current.sshConfig, it) } ?: current.sshConfig
+                machines = current.machines.filterNot { it.id == id }
             )
         }
         runCatching { File(appContext.filesDir, "remote-machines/keys/$id").delete() }
@@ -128,24 +124,27 @@ class RemoteMachineService(
         }
     }
 
+    private fun validateProxyMachine(machine: RemoteMachine) {
+        if (machine.proxyMachineId.isBlank()) return
+        val machines = state.value.machines.associateBy { it.id } + (machine.id to machine)
+        var next = machine.proxyMachineId
+        val seen = mutableSetOf(machine.id)
+        while (next.isNotBlank()) {
+            require(seen.add(next)) { "Remote Machine proxy settings cannot contain a cycle." }
+            val proxy = machines[next] ?: error("Selected proxy machine no longer exists.")
+            require(proxy.proxyMachineId.isBlank()) {
+                "A proxy machine cannot itself use another proxy machine."
+            }
+            next = proxy.proxyMachineId
+        }
+    }
+
     suspend fun reorderMachines(ids: List<String>) {
         store.update { current ->
             val positions = ids.withIndex().associate { it.value to it.index }
             current.copy(machines = current.machines
                 .map { machine -> machine.copy(sortOrder = positions[machine.id] ?: machine.sortOrder) }
                 .sortedWith(compareBy<RemoteMachine> { it.sortOrder }.thenBy { it.name.lowercase() }))
-        }
-    }
-
-    suspend fun saveSshConfig(text: String) {
-        store.update {
-            val synced = SshConfigParser.syncMachines(it.machines, text)
-            val config = synced.filter { machine -> machine.type == RemoteMachineType.GCLOUD_SHELL }
-                .fold(text) { currentConfig, machine -> SshConfigParser.upsertMachine(currentConfig, machine) }
-            it.copy(
-                sshConfig = config,
-                machines = SshConfigParser.syncMachines(synced, config)
-            )
         }
     }
 
@@ -171,14 +170,7 @@ class RemoteMachineService(
         }
     }
 
-    suspend fun importBinary(uri: Uri): ExecutableBinary = assets.importBinary(uri)
-
-    suspend fun testBinary(id: String, arguments: List<String> = emptyList()): RemoteBinaryTestResult =
-        assets.testBinary(id, arguments)
-
     suspend fun parseOAuthClientJson(uri: Uri): GCloudOAuthClient = assets.parseOAuthClientJson(uri)
-
-    suspend fun deleteBinary(id: String) = assets.deleteBinary(id)
 
     suspend fun importIdentityKey(uri: Uri): RemoteIdentityKey = assets.importIdentityKey(uri)
 
@@ -198,9 +190,14 @@ class RemoteMachineService(
 
     suspend fun startGCloudMachine(machine: RemoteMachine): Result<RemoteMachine> = cloudShell.startGCloudMachine(machine)
 
-    suspend fun execute(machine: RemoteMachine, command: String, timeoutSeconds: Int = 120): RemoteCommandResult {
+    suspend fun execute(
+        machine: RemoteMachine,
+        command: String,
+        timeoutSeconds: Int = 120,
+        terminalId: String? = null
+    ): RemoteCommandResult {
         require(command.isNotBlank()) { "The command is empty." }
-        return connectionManager.execute(machine, command, timeoutSeconds)
+        return connectionManager.execute(machine, command, timeoutSeconds, terminalId)
     }
 
     suspend fun executeTool(machine: RemoteMachine, toolName: String, arguments: JsonObject): JsonObject {
@@ -226,14 +223,37 @@ class RemoteMachineService(
                 },
                 onFailure = { throw it }
             )
+            REMOTE_TOOL_OPEN_TERMINAL -> {
+                val terminal = openTerminal(machine)
+                buildJsonObject {
+                    put("status", "opened")
+                    put("terminal_id", terminal.id)
+                }
+            }
+            REMOTE_TOOL_CLOSE_TERMINAL -> buildJsonObject {
+                val terminalId = arguments["terminal_id"]?.jsonPrimitive?.contentOrNull
+                put("status", if (connectionManager.closeTerminal(machine.id, terminalId)) "closed" else "not_open")
+                terminalId?.let { put("terminal_id", it) }
+            }
+            REMOTE_TOOL_LIST_TERMINAL -> buildJsonObject {
+                putJsonArray("terminals") {
+                    connectionManager.listTerminals(machine.id).forEach { terminal ->
+                        add(buildJsonObject {
+                            put("terminal_id", terminal.id)
+                            put("is_connected", terminal.isConnected)
+                        })
+                    }
+                }
+            }
             REMOTE_TOOL_DISCONNECT -> buildJsonObject {
-                put("status", JsonPrimitive(if (disconnectMachineNow(machine.id)) "disconnected" else "not_connected"))
+                put("status", if (disconnectMachineNow(machine.id)) "disconnected" else "not_connected")
             }
             REMOTE_TOOL_EXECUTE -> {
                 val command = arguments["command"]?.jsonPrimitive?.contentOrNull.orEmpty()
                 val timeout = arguments["timeout_seconds"]?.jsonPrimitive?.longOrNull
                     ?.toInt()?.coerceIn(1, 600) ?: 120
-                val result = execute(machine, command, timeout)
+                val terminalId = arguments["terminal_id"]?.jsonPrimitive?.contentOrNull
+                val result = execute(machine, command, timeout, terminalId)
                 buildJsonObject {
                     put("output", result.output)
                     put("stderr", result.error)
@@ -260,20 +280,24 @@ class RemoteMachineService(
         machine: RemoteMachine,
         passwordOverride: String? = null,
         askSecret: RemoteSecretPrompt? = null
-    ): Pair<Session, Process?> {
+    ): Session {
         var actual = if (machine.type == RemoteMachineType.GCLOUD_SHELL) {
             refreshGCloudIp(machine, forceRefresh = false).getOrThrow()
         } else machine
+        val proxyMachine = actual.proxyMachineId.takeIf(String::isNotBlank)?.let { id ->
+            state.value.machines.firstOrNull { it.id == id }
+                ?: error("Selected proxy machine no longer exists.")
+        }
+        val proxySession = proxyMachine?.let { connectCancellable(it, null, null) }
         val session = try {
-            connectCancellable(actual, passwordOverride, askSecret)
+            connectCancellable(actual, passwordOverride, askSecret, proxySession)
         } catch (error: Exception) {
+            runCatching { proxySession?.disconnect() }
             if (error is CancellationException || actual.type != RemoteMachineType.GCLOUD_SHELL) throw error
             actual = refreshGCloudIp(actual).getOrThrow()
-            connectCancellable(actual, passwordOverride, askSecret)
+            connectCancellable(actual, passwordOverride, askSecret, proxySession)
         }
-        val resolved = actual
-        val local = withContext(Dispatchers.IO) { startLocalCommand(resolved) }
-        return session to local
+        return session
     }
 
     /**
@@ -283,13 +307,14 @@ class RemoteMachineService(
     private suspend fun connectCancellable(
         machine: RemoteMachine,
         passwordOverride: String?,
-        askSecret: RemoteSecretPrompt? = null
+        askSecret: RemoteSecretPrompt? = null,
+        proxySession: Session? = null
     ): Session =
         withContext(Dispatchers.IO) {
             val pending = AtomicReference<Session?>()
             coroutineScope {
                 val opening = async(Dispatchers.IO) {
-                    connect(machine, passwordOverride, askSecret, onCreated = { pending.set(it) })
+                    connect(machine, passwordOverride, askSecret, proxySession, onCreated = { pending.set(it) })
                 }
                 try {
                     opening.await()
@@ -305,6 +330,7 @@ class RemoteMachineService(
         machine: RemoteMachine,
         passwordOverride: String? = null,
         askSecret: RemoteSecretPrompt? = null,
+        proxySession: Session? = null,
         onCreated: (Session) -> Unit = {}
     ): Session {
         require(machine.host.isNotBlank()) { "Remote host is missing." }
@@ -347,9 +373,11 @@ class RemoteMachineService(
         if (machine.compression) session.setConfig("compression.c2s", "zlib,none")
         if (machine.keepAliveSeconds > 0) session.setServerAliveInterval(machine.keepAliveSeconds * 1_000)
         session.timeout = machine.connectTimeoutSeconds * 1_000
-        machine.proxyCommand.trim().takeIf(String::isNotBlank)?.let { command ->
-            session.setProxy(CommandProxy(assets.resolveBinary(command)))
+        machine.websocketProxy?.takeIf { it.isConfigured }?.let { proxy ->
+            session.setProxy(WebSocketProxy(proxy))
         }
+        proxySession?.let { session.setProxy(SshJumpProxy { it }) }
+        machine.sshOptions.forEach { (key, value) -> session.setConfig(key, value) }
         onCreated(session)
         try {
             session.connect(machine.connectTimeoutSeconds * 1_000)
@@ -372,21 +400,9 @@ class RemoteMachineService(
         return "auth fail" in text || "auth cancel" in text || "userauth fail" in text
     }
 
-    private fun startLocalCommand(machine: RemoteMachine): Process? {
-        val command = machine.localCommand.trim().takeIf(String::isNotBlank) ?: return null
-        return runCatching {
-            ProcessBuilder("sh", "-c", assets.resolveBinary(command.replace("%h", machine.host).replace("%p", machine.port.toString())))
-                .redirectErrorStream(true)
-                .start()
-                .also { process -> discardProcessStream(process.inputStream, "remote-local-command-output") }
-        }.getOrNull()
-    }
-
     private fun Int?.orZero(): Int = this ?: 0
 
     companion object {
-        const val BINARY_TEST_TIMEOUT_SECONDS = 10L
-        const val MAX_BINARY_TEST_OUTPUT_BYTES = 65_536
         const val CLOUD_ENDPOINT_CACHE_TTL_MILLIS = 15 * 60 * 1_000L
         /** A persistent SSH connection with no command or terminal using it is closed after this. */
         const val IDLE_DISCONNECT_MILLIS = 5 * 60 * 1_000L
@@ -403,4 +419,3 @@ class RemoteMachineService(
         )
     }
 }
-

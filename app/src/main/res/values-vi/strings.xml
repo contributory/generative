@@ -3,16 +3,6 @@
     <string name="tool_call_strategy_description">Chọn gọi công cụ lần lượt hay thực hiện đồng thời.</string>
     <string name="tool_call_concurrent_limit_description">Số lượng lời gọi công cụ tối đa được phép chạy cùng lúc.</string>
 
-    <!-- Binary test argument dialog -->
-    <string name="remote_machine_binary_test_parameters_title">Tham số kiểm thử binary · %1$s</string>
-    <string name="remote_machine_binary_test_arguments">Tham số (không bắt buộc)</string>
-    <string name="remote_machine_binary_test_arguments_help">Phân tách tham số bằng dấu cách. Mỗi mục được truyền riêng; dấu nháy không được xử lý đặc biệt.</string>
-    <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
-
-    <!-- Executable binary upload security confirmation -->
-    <string name="remote_machine_binary_upload_warning_title">Cảnh báo bảo mật</string>
-    <string name="remote_machine_binary_upload_warning_message">Các tệp thực thi không được cách ly khỏi ứng dụng này. Khi chạy, chúng có thể truy cập dữ liệu và tệp mà ứng dụng được phép sử dụng, đồng thời có thể dùng kết nối mạng của ứng dụng. Chỉ tải lên các tệp thực thi từ nguồn mà bạn tin tưởng.</string>
-    <string name="remote_machine_binary_upload_confirm">Tải lên và tin tưởng</string>
     <string name="model_tools_hint">Bật các công cụ tích hợp mà model này hỗ trợ. Các công cụ được gửi trực tiếp trong yêu cầu API.</string>
     <string name="model_arguments">Arguments</string>
     <string name="model_tool_name">Tên tool</string>

@@ -3,17 +3,6 @@
     <string name="tool_call_strategy_description">도구 호출을 순차적으로 실행할지 동시에 실행할지 선택합니다.</string>
     <string name="tool_call_concurrent_limit_description">동시에 실행할 수 있는 도구 호출의 최대 개수입니다.</string>
 
-    <!-- Binary test argument dialog -->
-    <string name="remote_machine_binary_test_parameters_title">바이너리 테스트 인수 · %1$s</string>
-    <string name="remote_machine_binary_test_arguments">인수(선택 사항)</string>
-    <string name="remote_machine_binary_test_arguments_help">인수는 공백으로 구분하세요. 각 항목은 별도 인수로 전달되며 따옴표는 특별히 처리되지 않습니다.</string>
-    <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
-
-    <!-- Executable binary upload security confirmation -->
-    <string name="remote_machine_binary_upload_warning_title">보안 경고</string>
-    <string name="remote_machine_binary_upload_warning_message">실행 파일은 이 앱과 격리되어 있지 않습니다. 실행 시 앱이 접근할 수 있는 데이터와 파일에 접근하거나 앱의 네트워크 연결을 사용할 수 있습니다. 신뢰할 수 있는 출처의 실행 파일만 업로드하세요.</string>
-    <string name="remote_machine_binary_upload_confirm">업로드 및 신뢰</string>
-
     <string name="thinking">생각 중</string>
     <string name="thinking_streaming">생각 중...</string>
     <string name="thought_process">사고 과정</string>

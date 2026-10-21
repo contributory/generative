@@ -32,6 +32,7 @@ import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineState
 import org.starfall.generative.shared.model.RemoteMachineType
 import org.starfall.generative.shared.model.RemoteOAuthToken
+import org.starfall.generative.shared.model.WebSocketProxyConfig
 
 internal const val REMOTE_MACHINE_STORE_PREFERENCES = "remote_machines"
 
@@ -45,6 +46,19 @@ internal fun remotePasswordReference(username: String, host: String, port: Int):
 
 @Serializable
 private data class PersistedRemoteMachineState(
+    val schemaVersion: Int = 4,
+    /** Machine settings are now stored directly instead of being reconstructed from ssh_config. */
+    val machines: List<RemoteMachine> = emptyList(),
+    val passwords: Map<String, String> = emptyMap(),
+    val oauthClients: List<GCloudOAuthClient> = emptyList(),
+    val oauthTokens: Map<String, RemoteOAuthToken> = emptyMap(),
+    val binaries: List<RemoteBinary> = emptyList(),
+    val identities: List<RemoteIdentityKey> = emptyList()
+)
+
+/** Schema 3, read only. SSH settings in this version were hydrated from ssh_config. */
+@Serializable
+private data class PersistedRemoteMachineStateV3(
     val schemaVersion: Int = 3,
     val machines: List<PersistedMachine> = emptyList(),
     val passwords: Map<String, String> = emptyMap(),
@@ -125,8 +139,11 @@ class RemoteMachineStore(context: Context) {
     val state: StateFlow<RemoteMachineState> = _state.asStateFlow()
 
     init {
-        if (!sshConfigFile.exists()) writeSshConfigFile(_state.value.sshConfig)
-        if (needsMigration) writeState(_state.value)
+        if (needsMigration) {
+            writeState(_state.value)
+            // Remove the old editable file only after the encrypted replacement was committed.
+            runCatching { sshConfigFile.delete() }
+        }
     }
 
     suspend fun update(transform: (RemoteMachineState) -> RemoteMachineState) {
@@ -134,6 +151,7 @@ class RemoteMachineStore(context: Context) {
             lock.withLock {
                 val updated = transform(_state.value)
                 writeState(updated)
+                runCatching { sshConfigFile.delete() }
                 _state.value = updated
             }
         }
@@ -146,13 +164,28 @@ class RemoteMachineStore(context: Context) {
     private fun readState(): RemoteMachineState {
         val configFileText = readSshConfigFile()
         val stored = preferences.getString(KEY, null)
-            ?: return RemoteMachineState(sshConfig = configFileText.orEmpty())
+            ?: return migrateConfigOnly(configFileText.orEmpty())
         return runCatching {
             val payload = if (stored.startsWith(PREFIX)) decrypt(stored) else stored
             val root = json.parseToJsonElement(payload).jsonObject
             val schemaVersion = root["schemaVersion"]?.jsonPrimitive?.content?.toIntOrNull()
-            if (schemaVersion == 3) {
+            if (schemaVersion == 4) {
                 val persisted = json.decodeFromString<PersistedRemoteMachineState>(payload)
+                passwords = persisted.passwords
+                if (configFileText != null) needsMigration = true
+                RemoteMachineState(
+                    machines = persisted.machines.mapIndexed { index, machine ->
+                        hydrateMachine(machine, index)
+                    },
+                    oauthClients = persisted.oauthClients,
+                    oauthTokens = persisted.oauthTokens,
+                    // Executable binaries were removed from Remote Machines. Do not resurrect the
+                    // old index even if a user restores an older payload.
+                    binaries = emptyList(),
+                    identities = persisted.identities
+                )
+            } else if (schemaVersion == 3) {
+                val persisted = json.decodeFromString<PersistedRemoteMachineStateV3>(payload)
                 passwords = persisted.passwords
                 val baseMachines = persisted.machines.mapIndexedNotNull { index, item ->
                     item.cloud?.let { cloud ->
@@ -187,14 +220,13 @@ class RemoteMachineStore(context: Context) {
                     .fold(originalConfig) { text, machine ->
                         SshConfigParser.upsertMachine(text, machine.copy(host = "", port = 6_000))
                     }
-                if (config != originalConfig) needsMigration = true
+                needsMigration = true
                 val machines = SshConfigParser.syncMachines(syncedBase, config)
                 RemoteMachineState(
-                    machines = machines,
-                    sshConfig = config,
+                    machines = machines.mapIndexed { index, machine -> sanitizeMachine(machine, index) },
                     oauthClients = persisted.oauthClients,
                     oauthTokens = persisted.oauthTokens,
-                    binaries = persisted.binaries,
+                    binaries = emptyList(),
                     identities = persisted.identities
                 )
             } else if (schemaVersion == 2) {
@@ -225,11 +257,10 @@ class RemoteMachineStore(context: Context) {
                 val machines = SshConfigParser.syncMachines(oldMachines, config)
                 passwords = collectPasswords(machines)
                 RemoteMachineState(
-                    machines = machines,
-                    sshConfig = config,
+                    machines = machines.mapIndexed { index, machine -> sanitizeMachine(machine, index) },
                     oauthClients = persisted.oauthClients,
                     oauthTokens = persisted.oauthTokens,
-                    binaries = persisted.binaries,
+                    binaries = emptyList(),
                     identities = persisted.identities
                 )
             } else {
@@ -257,56 +288,67 @@ class RemoteMachineStore(context: Context) {
                 val config = canonicalizeConfig(machines, existingConfig)
                 val synced = SshConfigParser.syncMachines(machines, config)
                 passwords = collectPasswords(synced)
-                legacy.copy(
-                    machines = synced,
-                    sshConfig = config
+                RemoteMachineState(
+                    machines = synced.mapIndexed { index, machine -> sanitizeMachine(machine, index) },
+                    oauthClients = legacy.oauthClients,
+                    oauthTokens = legacy.oauthTokens,
+                    binaries = emptyList(),
+                    identities = legacy.identities
                 )
             }
-        }.getOrDefault(RemoteMachineState(sshConfig = configFileText.orEmpty()))
+        }.getOrDefault(migrateConfigOnly(configFileText.orEmpty()))
     }
 
     private fun writeState(state: RemoteMachineState) {
-        writeSshConfigFile(state.sshConfig)
         val passwordReferences = collectPasswords(state.machines)
         val persisted = PersistedRemoteMachineState(
             machines = state.machines.map { machine ->
-                if (machine.type == RemoteMachineType.SSH) {
-                    val passwordReference = remotePasswordReference(machine.username, machine.host, machine.port)
-                    PersistedMachine(
-                        ssh = PersistedSshMachine(
-                            id = machine.id,
-                            name = machine.name,
-                            host = machine.host,
-                            username = machine.username,
-                            passwordReference = passwordReference
-                        )
-                    )
-                } else {
-                    PersistedMachine(
-                        cloud = PersistedGCloudMachine(
-                            id = machine.id,
-                            name = machine.name,
-                            oauthClientId = machine.oauthClientId,
-                            environmentName = machine.environmentName,
-                            aiToolsEnabled = machine.aiToolsEnabled,
-                            aiTools = machine.aiTools,
-                            passwordReference = machine.passwordReference.ifBlank {
-                                machine.host.takeIf(String::isNotBlank)?.let {
-                                    remotePasswordReference(machine.username.ifBlank { machine.gcloudUsername }, it, 6_000)
-                                }.orEmpty()
-                            }
-                        )
-                    )
-                }
+                sanitizeMachine(machine, machine.sortOrder).copy(password = "", identityPassphrase = "")
             },
             passwords = passwordReferences,
             oauthClients = state.oauthClients,
             oauthTokens = state.oauthTokens,
-            binaries = state.binaries,
+            binaries = emptyList(),
             identities = state.identities
         )
         val payload = encrypt(json.encodeToString(persisted))
         preferences.edit(commit = true) { putString(KEY, payload) }
+    }
+
+    private fun hydrateMachine(machine: RemoteMachine, index: Int): RemoteMachine {
+        val secret = passwords[machine.passwordReference]
+            ?: if (machine.passwordReference.isBlank()) {
+                val reference = remotePasswordReference(machine.username, machine.host, machine.port)
+                passwords[reference]
+            } else null
+        return sanitizeMachine(
+            machine.copy(
+                password = if (machine.authentication == RemoteAuthentication.PASSWORD) secret.orEmpty() else "",
+                identityPassphrase = if (machine.authentication == RemoteAuthentication.PRIVATE_KEY) secret.orEmpty() else "",
+                sortOrder = if (machine.sortOrder == Int.MAX_VALUE) index else machine.sortOrder
+            ),
+            index
+        )
+    }
+
+    private fun sanitizeMachine(machine: RemoteMachine, index: Int): RemoteMachine = machine.copy(
+        websocketProxy = machine.websocketProxy?.normalized()?.takeIf { it.isConfigured },
+        sortOrder = if (machine.sortOrder == Int.MAX_VALUE) index else machine.sortOrder
+    )
+
+    private fun migrateConfigOnly(config: String): RemoteMachineState {
+        if (config.isBlank()) return RemoteMachineState()
+        needsMigration = true
+        val machines = SshConfigParser.parse(config)
+            .flatMap { host ->
+                host.aliases.filterNot { alias -> alias.startsWith('!') || '*' in alias || '?' in alias }
+                    .map { alias -> SshConfigParser.find(config, alias)?.let(SshConfigParser::toMachine) }
+            }
+            .filterNotNull()
+            .distinctBy { it.name.lowercase() }
+            .mapIndexed { index, machine -> sanitizeMachine(machine, index) }
+        passwords = collectPasswords(machines)
+        return RemoteMachineState(machines = machines)
     }
 
     private fun canonicalizeConfig(machines: List<RemoteMachine>, initialConfig: String): String =
@@ -342,11 +384,6 @@ class RemoteMachineStore(context: Context) {
 
     private fun readSshConfigFile(): String? =
         if (sshConfigFile.isFile) runCatching { sshConfigFile.readText(Charsets.UTF_8) }.getOrNull() else null
-
-    private fun writeSshConfigFile(contents: String) {
-        sshConfigFile.parentFile?.mkdirs()
-        sshConfigFile.writeText(contents, Charsets.UTF_8)
-    }
 
     private fun key(create: Boolean): SecretKey = synchronized(KEY_LOCK) {
         val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
