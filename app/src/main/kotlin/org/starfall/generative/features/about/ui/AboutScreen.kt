@@ -141,7 +141,8 @@ private fun ReleaseEntry(latest: GitHubReleaseInfo, updateAvailable: Boolean) {
         }
         Text(stringResource(if (updateAvailable) R.string.settings_update_available else R.string.settings_up_to_date, latest.tagName), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (latest.body.isNotBlank()) Text(latest.body, style = MaterialTheme.typography.bodySmall, maxLines = 8, overflow = TextOverflow.Ellipsis)
-        if (updateAvailable && latest.apkAssets.isNotEmpty()) {
+        if (!updateAvailable) return@Column
+        if (latest.apkAssets.isNotEmpty()) {
             latest.apkAssets.forEach { asset ->
                 OutlinedButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(asset.downloadUrl))) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
                     Text("↓")
