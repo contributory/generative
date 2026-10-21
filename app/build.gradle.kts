@@ -22,7 +22,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0.0_$gitCommitNumber"
+        versionName = "1.0.0-$gitCommitNumber"
 
         manifestPlaceholders["appAuthRedirectScheme"] = "generative-oauth"
 
