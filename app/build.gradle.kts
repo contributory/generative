@@ -3,17 +3,23 @@ val gitCommitNumber = providers.exec {
     commandLine("git", "rev-list", "--count", "HEAD")
 }.standardOutput.asText.get().trim()
 
-// CI checkouts are often detached, so prefer the branch name the CI exposes.
-val gitBranch = listOf("CM_BRANCH", "GITHUB_REF_NAME", "BRANCH_NAME").firstNotNullOfOrNull { System.getenv(it)?.takeIf(String::isNotBlank) }
-    ?: providers.exec {
-        commandLine("git", "rev-parse", "--abbrev-ref", "HEAD")
-        isIgnoreExitValue = true
-    }.standardOutput.asText.get().trim()
+fun git(vararg args: String): String = providers.exec {
+    commandLine("git", *args)
+    isIgnoreExitValue = true
+}.standardOutput.asText.get().trim()
+
+// Same logic as scripts/publish-github-release.sh: use git only. On a detached HEAD
+// (common in CI) fall back to the origin branches pointing at this commit, preferring main.
+val gitBranch = git("branch", "--show-current").ifBlank {
+    val remoteBranches = git("for-each-ref", "--points-at", "HEAD", "--format=%(refname:strip=3)", "refs/remotes/origin")
+        .lines().map(String::trim).filter { it.isNotEmpty() && it != "HEAD" }
+    if ("main" in remoteBranches) "main" else remoteBranches.firstOrNull().orEmpty()
+}
 
 // main keeps the plain version; any other branch puts its (sanitized) name in the middle.
 val versionSuffix = gitBranch
     .takeIf { it.isNotBlank() && it != "main" && it != "HEAD" }
-    ?.let { "-" + it.replace(Regex("[^A-Za-z0-9]+"), "-").trim('-').take(4).trim('-') }
+    ?.let { it.replace(Regex("[^A-Za-z0-9]+"), "").take(4) }
     .orEmpty()
 
 
@@ -34,7 +40,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = gitCommitNumber.toInt()
-        versionName = "1.0.1" + "$versionSuffix-$gitCommitNumber"
+        versionName = "1.0.1-$versionSuffix$gitCommitNumber"
 
         manifestPlaceholders["appAuthRedirectScheme"] = "generative-oauth"
 
