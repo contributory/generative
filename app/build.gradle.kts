@@ -16,7 +16,7 @@ val gitBranch = git("branch", "--show-current").ifBlank {
     if ("main" in remoteBranches) "main" else remoteBranches.firstOrNull().orEmpty()
 }
 
-// main keeps the plain version; any other branch puts its (sanitized) name in the middle.
+// main keeps the plain version; any other branch appends its (sanitized) name after the commit count.
 val versionSuffix = gitBranch
     .takeIf { it.isNotBlank() && it != "main" && it != "HEAD" }
     ?.let { it.replace(Regex("[^A-Za-z0-9]+"), "").take(4) }
@@ -40,7 +40,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = gitCommitNumber.toInt()
-        versionName = "1.0.1-$versionSuffix$gitCommitNumber"
+        versionName = "1.0.1-$gitCommitNumber$versionSuffix"
 
         manifestPlaceholders["appAuthRedirectScheme"] = "generative-oauth"
 

@@ -22,7 +22,7 @@ fi
 
 # Branch policy: `main` publishes a release; every other branch publishes a
 # pre-release. app/build.gradle.kts names versions "<base>-<commits>" on main
-# (e.g. 1.0.1-123) and "<base>-<branch><commits>" elsewhere (e.g. 1.0.1-dev123).
+# (e.g. 1.0.1-123) and "<base>-<commits><branch>" elsewhere (e.g. 1.0.1-123dev).
 branch="$(git branch --show-current 2>/dev/null || true)"
 if [[ -z "$branch" ]]; then
   # Detached HEAD (common in CI): fall back to the origin branches pointing at this commit.
@@ -44,7 +44,7 @@ if [[ "$branch" == main ]]; then
 else
   is_prerelease=true
   [[ ! "$tag" =~ $release_tag_regex ]] || {
-    echo "Branch $branch is not main and must publish a pre-release tag (e.g. 1.0.1-dev123), but got release tag $tag." >&2
+    echo "Branch $branch is not main and must publish a pre-release tag (e.g. 1.0.1-123dev), but got release tag $tag." >&2
     exit 1
   }
 fi
