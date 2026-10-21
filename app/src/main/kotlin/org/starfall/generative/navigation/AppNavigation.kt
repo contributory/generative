@@ -804,8 +804,8 @@ fun AppNavigation(
                                 else -> RemoteMachinesScreen(
                                     viewModel = remoteMachinesViewModel,
                                     onBack = { navController.popBackStack() },
-                                    onOpenEditor = { machine, _ ->
-                                        remoteMachinePage = MachineEditorPage(machine)
+                                    onOpenEditor = { machine, isNew ->
+                                        remoteMachinePage = MachineEditorPage(machine, isNew)
                                     },
                                     onOpenSettings = { remoteMachinePage = RemoteMachineSettingsPage.SETTINGS },
                                     onOpenTerminal = { machine ->
