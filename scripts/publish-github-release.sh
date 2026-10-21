@@ -20,6 +20,36 @@ if [[ -n "${CM_TAG:-}" && "$CM_TAG" != "$tag" ]]; then
   exit 1
 fi
 
+# Branch policy: `main` publishes a release; every other branch publishes a
+# pre-release. app/build.gradle.kts names versions "<base>-<commits>" on main
+# (e.g. 1.0.1-123) and "<base>-<commits><branch>" elsewhere (e.g. 1.0.1-123dev).
+branch="$(git branch --show-current 2>/dev/null || true)"
+if [[ -z "$branch" ]]; then
+  # Detached HEAD (common in CI): fall back to the origin branches pointing at this commit.
+  remote_branches="$(git for-each-ref --points-at HEAD --format='%(refname:strip=3)' refs/remotes/origin | grep -vx 'HEAD' || true)"
+  if grep -qx 'main' <<<"$remote_branches"; then
+    branch=main
+  else
+    branch="$(head -n 1 <<<"$remote_branches")"
+  fi
+fi
+[[ -n "$branch" ]] || { echo 'Cannot determine the current git branch.' >&2; exit 1; }
+release_tag_regex='^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$'
+if [[ "$branch" == main ]]; then
+  is_prerelease=false
+  [[ "$tag" =~ $release_tag_regex ]] || {
+    echo "Branch main must publish a release tag (e.g. 1.0.1-123), but got pre-release tag $tag." >&2
+    exit 1
+  }
+else
+  is_prerelease=true
+  [[ ! "$tag" =~ $release_tag_regex ]] || {
+    echo "Branch $branch is not main and must publish a pre-release tag (e.g. 1.0.1-123dev), but got release tag $tag." >&2
+    exit 1
+  }
+fi
+echo "Branch: $branch; publishing as $([[ "$is_prerelease" == true ]] && echo pre-release || echo release) ($tag)."
+
 commit="$(git rev-parse HEAD)"
 short_commit="$(git rev-parse --short=12 HEAD)"
 shopt -s nullglob
@@ -52,8 +82,10 @@ fi
 if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
   echo "Release $tag already exists; tag moved to $short_commit and matching artifacts will be replaced."
 else
+  create_flags=(--latest)
+  [[ "$is_prerelease" != true ]] || create_flags=(--prerelease --latest=false)
   gh release create "$tag" --repo "$repo" \
-    --title "Generative $tag" --generate-notes --latest
+    --title "Generative $tag" --generate-notes "${create_flags[@]}"
 fi
 
 # Prefix GitHub's generated changelog with release metadata that makes the
@@ -159,6 +191,7 @@ trap 'rm -f "$notes_file"' EXIT
   printf 'Android release build for **Generative %s**.\n\n' "$version"
   printf -- '- **Version:** `%s`\n' "$version"
   printf -- '- **Git tag:** `%s`\n' "$tag"
+  printf -- '- **Channel:** %s\n' "$([[ "$is_prerelease" == true ]] && echo "Pre-release (branch \`$branch\`)" || echo 'Stable release')"
   printf -- '- **Commit:** `%s`\n\n' "$short_commit"
 
   printf '### Downloads\n\n'
@@ -175,5 +208,9 @@ trap 'rm -f "$notes_file"' EXIT
 gh release edit "$tag" --repo "$repo" --title "Generative $tag" --notes-file "$notes_file"
 
 gh release upload "$tag" "${apks[@]}" "${checksums[@]}" --repo "$repo" --clobber
-gh release edit "$tag" --repo "$repo" --draft=false --latest
+if [[ "$is_prerelease" == true ]]; then
+  gh release edit "$tag" --repo "$repo" --draft=false --prerelease --latest=false
+else
+  gh release edit "$tag" --repo "$repo" --draft=false --prerelease=false --latest
+fi
 gh release view "$tag" --repo "$repo" --json url --jq .url

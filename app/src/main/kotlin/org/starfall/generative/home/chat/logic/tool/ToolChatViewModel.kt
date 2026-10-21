@@ -234,7 +234,9 @@ class ToolChatViewModel(
                     aiService.toolAttachments(message, http.requireFiles(), importedAttachments)
                 val tail = replay.trailingContent + toolAttachmentReferences(attachments)
                 val wireMessages = replay.messages.toMutableList()
-                if (replay.messages.isEmpty() || tail.isNotBlank()) {
+                // A stopped reply with no answer text and no tool calls would be an empty assistant message, which providers reject.
+                val emptyModelReply = message.role == ChatRole.MODEL && replay.messages.isEmpty() && tail.isBlank()
+                if ((replay.messages.isEmpty() && !emptyModelReply) || tail.isNotBlank()) {
                     val baseMessage = obj(
                         "role" to str(if (message.role == ChatRole.MODEL) "assistant" else "user"),
                         "content" to str(tail)

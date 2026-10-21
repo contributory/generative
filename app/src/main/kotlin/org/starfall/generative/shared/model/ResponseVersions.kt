@@ -76,6 +76,14 @@ internal fun StoredMessage.withAttempt(version: MessageVersion, replaceActive: B
     return base.copy(versions = base.versions + version, activeVersionIndex = base.versions.size)
 }
 
+/**
+ * A stopped reply may hold only reasoning or tool activity and no answer text. Providers reject an
+ * assistant message with no non-whitespace content, so such replies are left out of the context sent
+ * with the next request (the stored conversation is unchanged).
+ */
+internal fun List<StoredMessage>.withoutEmptyModelMessages(): List<StoredMessage> =
+    filterNot { it.role == ChatRole.MODEL && it.content.isBlank() && it.files.isEmpty() }
+
 /** Removes responses that hold nothing, so they are never saved. */
 internal fun Conversation.pruningEmptyResponses(): Conversation {
     var changed = false
