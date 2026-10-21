@@ -69,6 +69,16 @@ workflows:
           : "${CM_KEY_ALIAS:?Missing key alias}"
           : "${CM_KEY_PASSWORD:?Missing key password}"
           test -f "$CM_KEYSTORE_PATH"
+          if ! keytool -list -keystore "$CM_KEYSTORE_PATH" -storepass:env CM_KEYSTORE_PASSWORD -alias "$CM_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "Release keystore validation failed. Verify CM_KEYSTORE_PATH, CM_KEYSTORE_PASSWORD, and CM_KEY_ALIAS in the Codemagic signing identity."
+            exit 1
+          fi
+          SIGNING_CHECK_CSR="$CM_BUILD_DIR/release-signing-check.csr"
+          trap 'rm -f "$SIGNING_CHECK_CSR"' EXIT
+          if ! keytool -certreq -keystore "$CM_KEYSTORE_PATH" -storepass:env CM_KEYSTORE_PASSWORD -keypass:env CM_KEY_PASSWORD -alias "$CM_KEY_ALIAS" -file "$SIGNING_CHECK_CSR" >/dev/null 2>&1; then
+            echo "Release private key validation failed. Verify CM_KEY_PASSWORD for the selected alias in the Codemagic signing identity."
+            exit 1
+          fi
       - name: Prepare GitHub release publishing
         ignore_failure: false
         script: |
