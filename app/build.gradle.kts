@@ -1,11 +1,10 @@
-val gitCommitHash = providers.exec {
-    commandLine("git", "rev-parse", "--short=8", "HEAD")
+// Needs full git history: shallow CI checkouts must be unshallowed first (see codemagic.yaml).
+val gitCommitNumber = providers.exec {
+    commandLine("git", "rev-list", "--count", "HEAD")
 }.standardOutput.asText.get().trim()
 
-val gitCommitNumber = gitCommitHash.filter { it.isDigit() }
-
 // CI checkouts are often detached, so prefer the branch name the CI exposes.
-val gitBranch = (System.getenv("GITHUB_REF_NAME") ?: System.getenv("BRANCH_NAME"))?.takeIf { it.isNotBlank() }
+val gitBranch = listOf("CM_BRANCH", "GITHUB_REF_NAME", "BRANCH_NAME").firstNotNullOfOrNull { System.getenv(it)?.takeIf(String::isNotBlank) }
     ?: providers.exec {
         commandLine("git", "rev-parse", "--abbrev-ref", "HEAD")
         isIgnoreExitValue = true
