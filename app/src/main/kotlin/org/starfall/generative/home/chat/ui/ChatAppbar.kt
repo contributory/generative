@@ -47,7 +47,10 @@ fun ChatAppBar(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     featuresLogoImage: String? = null,
-    onOpenModelPicker: () -> Unit = {}
+    onOpenModelPicker: () -> Unit = {},
+    /** True while at least one remote machine holds a live connection. */
+    showTerminalButton: Boolean = false,
+    onOpenTerminal: () -> Unit = {}
 ) {
     val statusBarHeight = with(LocalDensity.current) {
         WindowInsets.statusBars.getTop(this).toDp()
@@ -132,6 +135,38 @@ fun ChatAppBar(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                if (showTerminalButton) {
+                    Surface(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                        shadowElevation = 4.dp,
+                        tonalElevation = 2.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            IconButton(onClick = onOpenTerminal, modifier = Modifier.fillMaxSize()) {
+                                FluentIcon(
+                                    imageVector = Icons.Outlined.Terminal,
+                                    contentDescription = stringResource(R.string.remote_machine_open_terminal),
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            // Live-connection dot, matching the machines list status indicator.
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(top = 10.dp, end = 10.dp)
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary)
+                            )
+                        }
+                    }
+                }
+
                 Surface(
                     modifier = Modifier
                         .size(48.dp)

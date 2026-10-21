@@ -3,136 +3,70 @@
 package org.starfall.generative.features.machines.details.ui
 
 import android.app.Activity
-import android.content.ClipData
-import android.net.Uri
-import android.content.ClipboardManager
-import android.view.KeyEvent
-import android.view.MotionEvent
-import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.IntentSenderRequest
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import androidx.compose.foundation.background
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.OffsetMapping
-import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.withStyle
-import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlin.coroutines.coroutineContext
-import kotlinx.coroutines.withContext
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.Scope
-import com.termux.terminal.TerminalSession
-import com.termux.terminal.TerminalSessionClient
-import com.termux.view.TerminalView
-import com.termux.view.TerminalViewClient
-import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import org.starfall.generative.features.machines.shared.ui.RemoteDropdownField
-import org.starfall.generative.integrations.remote.RemoteMachineService
+import org.starfall.generative.features.machines.shared.ui.RemoteErrorText
+import org.starfall.generative.features.machines.shared.ui.RemoteIconTile
+import org.starfall.generative.features.machines.shared.ui.RemoteListRow
+import org.starfall.generative.features.machines.shared.ui.RemoteMachinesTopBar
 import org.starfall.generative.features.machines.shared.ui.RemoteSection
 import org.starfall.generative.features.machines.shared.ui.RemoteTextField
 import org.starfall.generative.features.machines.shared.ui.RemoteToggle
-import org.starfall.generative.integrations.remote.endpoint
+import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.shared.model.GCloudOAuthClient
 import org.starfall.generative.shared.model.GoogleOAuthClientType
-import org.starfall.generative.shared.model.REMOTE_TOOL_DISCONNECT
 import org.starfall.generative.shared.model.REMOTE_TOOL_CLOSE_TERMINAL
+import org.starfall.generative.shared.model.REMOTE_TOOL_DISCONNECT
 import org.starfall.generative.shared.model.REMOTE_TOOL_LIST_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_OPEN_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_START_MACHINE
@@ -141,20 +75,15 @@ import org.starfall.generative.shared.model.RemoteAuthentication
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineState
 import org.starfall.generative.shared.model.RemoteMachineType
-import org.starfall.generative.shared.model.WebSocketProxyConfig
 import org.starfall.generative.shared.model.remoteMachineToolNames
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.layout.SlideScreenContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MachineDetailsScreen(
     initial: RemoteMachine,
-    isNew: Boolean,
     state: RemoteMachineState,
     onSave: (RemoteMachine) -> Unit,
     onBack: () -> Unit,
@@ -177,7 +106,7 @@ internal fun MachineDetailsScreen(
     var passphrase by remember(initial.id) { mutableStateOf(initial.identityPassphrase) }
     var websocketProxy by remember(initial.id) { mutableStateOf(initial.websocketProxy) }
     var proxyMachineId by remember(initial.id) { mutableStateOf(initial.proxyMachineId) }
-    var sshOptions by remember(initial.id) { mutableStateOf(initial.sshOptions.entries.map { it.key to it.value }) }
+    var sshOptions by remember(initial.id) { mutableStateOf(initial.sshOptions) }
     var strictHostKey by remember(initial.id) { mutableStateOf(initial.strictHostKeyChecking) }
     var compression by remember(initial.id) { mutableStateOf(initial.compression) }
     var keepAlive by remember(initial.id) { mutableStateOf(initial.keepAliveSeconds.toString()) }
@@ -211,8 +140,7 @@ internal fun MachineDetailsScreen(
                 if (accessToken.isNullOrBlank()) {
                     error = context.getString(R.string.remote_machine_google_no_access_token)
                     authorizing = false
-                }
-                else scope.launch {
+                } else scope.launch {
                     onStoreAndroidOAuthToken(client, accessToken).onFailure { error = it.message }
                     authorizing = false
                 }
@@ -236,50 +164,62 @@ internal fun MachineDetailsScreen(
         fetchingUsername = false
     }
 
+    fun save() {
+        val machine = initial.copy(
+            name = name,
+            type = type,
+            host = host,
+            port = port.toIntOrNull() ?: 22,
+            username = username,
+            authentication = auth,
+            password = password,
+            keyboardInteractive = keyboardInteractive,
+            identityFile = identityFile,
+            identityPassphrase = passphrase,
+            websocketProxy = websocketProxy,
+            proxyMachineId = proxyMachineId,
+            sshOptions = sshOptions.filterKeys { it.isNotBlank() }.filterValues { it.isNotBlank() },
+            strictHostKeyChecking = strictHostKey,
+            compression = compression,
+            keepAliveSeconds = keepAlive.toIntOrNull() ?: 30,
+            connectTimeoutSeconds = timeout.toIntOrNull() ?: 15,
+            oauthClientId = oauthClientId,
+            environmentName = environment,
+            gcloudUsername = if (type == RemoteMachineType.GCLOUD_SHELL) username else initial.gcloudUsername,
+            aiToolsEnabled = true,
+            aiTools = aiTools
+        )
+        runCatching {
+            require(name.isNotBlank()) { "Machine name is required." }
+            require(type != RemoteMachineType.SSH || host.isNotBlank()) { "Host is required for SSH machines." }
+            require(type != RemoteMachineType.SSH || auth != RemoteAuthentication.PRIVATE_KEY || identityFile.isNotBlank()) {
+                "IdentityFile is required for private-key authentication."
+            }
+        }.onSuccess { onSave(machine) }.onFailure { error = it.message }
+    }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(if (isNew) R.string.remote_machine_add_title else R.string.remote_machine_edit_title)) },
-                navigationIcon = { IconButton(onClick = onBack) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
-                actions = { TextButton(onClick = {
-                    val machine = initial.copy(
-                        name = name,
-                        type = type,
-                        host = host,
-                        port = port.toIntOrNull() ?: 22,
-                        username = username,
-                        authentication = auth,
-                        password = password,
-                        keyboardInteractive = keyboardInteractive,
-                        identityFile = identityFile,
-                        identityPassphrase = passphrase,
-                        websocketProxy = websocketProxy,
-                        proxyMachineId = proxyMachineId,
-                        sshOptions = sshOptions.filter { it.first.isNotBlank() && it.second.isNotBlank() }.toMap(),
-                        strictHostKeyChecking = strictHostKey,
-                        compression = compression,
-                        keepAliveSeconds = keepAlive.toIntOrNull() ?: 30,
-                        connectTimeoutSeconds = timeout.toIntOrNull() ?: 15,
-                        oauthClientId = oauthClientId,
-                        environmentName = environment,
-                        gcloudUsername = if (type == RemoteMachineType.GCLOUD_SHELL) username else initial.gcloudUsername,
-                        aiToolsEnabled = true,
-                        aiTools = aiTools
-                    )
-                    runCatching {
-                        require(name.isNotBlank()) { "Machine name is required." }
-                        require(type != RemoteMachineType.SSH || host.isNotBlank()) { "Host is required for SSH machines." }
-                        require(type != RemoteMachineType.SSH || auth != RemoteAuthentication.PRIVATE_KEY || identityFile.isNotBlank()) {
-                            "IdentityFile is required for private-key authentication."
-                        }
-                    }.onSuccess { onSave(machine) }.onFailure { error = it.message }
-                }) { Text(stringResource(R.string.common_save)) } }
+            RemoteMachinesTopBar(
+                title = stringResource(R.string.remote_machine_editor_title),
+                onBack = onBack,
+                actions = {
+                    Button(onClick = ::save, modifier = Modifier.padding(end = 8.dp)) {
+                        Text(stringResource(R.string.common_save))
+                    }
+                }
             )
         }
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .consumeWindowInsets(padding)
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             RemoteSection(stringResource(R.string.remote_machine_basic_section)) {
                 RemoteTextField(name, { name = it }, stringResource(R.string.common_name))
@@ -327,7 +267,8 @@ internal fun MachineDetailsScreen(
                         }) {
                             if (loadingIp) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                             else FluentIcon(Icons.Outlined.Refresh, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.remote_machine_get_ip))
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.remote_machine_get_ip))
                         }
                     }
                 }
@@ -372,13 +313,10 @@ internal fun MachineDetailsScreen(
                         }
                     )
                     RemoteToggle(
-                        stringResource(R.string.remote_machine_keyboard_interactive),
-                        keyboardInteractive
-                    ) { keyboardInteractive = it }
-                    Text(
-                        stringResource(R.string.remote_machine_keyboard_interactive_help),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        label = stringResource(R.string.remote_machine_keyboard_interactive),
+                        checked = keyboardInteractive,
+                        description = stringResource(R.string.remote_machine_keyboard_interactive_help),
+                        onCheckedChange = { keyboardInteractive = it }
                     )
                 } else {
                     RemoteTextField(
@@ -390,7 +328,9 @@ internal fun MachineDetailsScreen(
                     var keyMenu by remember { mutableStateOf(false) }
                     Box {
                         OutlinedButton(onClick = { keyMenu = true }) {
-                            FluentIcon(Icons.Outlined.Key, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.remote_machine_choose_key))
+                            FluentIcon(Icons.Outlined.Key, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.remote_machine_choose_key))
                         }
                         DropdownMenu(expanded = keyMenu, onDismissRequest = { keyMenu = false }) {
                             if (state.identities.isEmpty()) {
@@ -412,13 +352,22 @@ internal fun MachineDetailsScreen(
                 }
             }
             RemoteSection(stringResource(R.string.remote_machine_ssh_options)) {
-                OutlinedButton(onClick = { websocketDialog = true }) {
-                    Text(stringResource(R.string.remote_machine_websocket_proxy))
-                }
-                if (websocketProxy != null) {
-                    Text(websocketProxy?.url.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    TextButton(onClick = { websocketProxy = null }) { Text(stringResource(R.string.common_remove)) }
-                }
+                RemoteListRow(
+                    title = stringResource(R.string.remote_machine_websocket_proxy),
+                    subtitle = websocketProxy?.url?.takeIf { it.isNotBlank() }
+                        ?: stringResource(R.string.remote_machine_not_configured),
+                    leading = { RemoteIconTile(Icons.Outlined.Language) },
+                    trailing = {
+                        if (websocketProxy != null) {
+                            IconButton(onClick = { websocketProxy = null }) {
+                                FluentIcon(Icons.Default.Close, stringResource(R.string.common_remove))
+                            }
+                        }
+                        IconButton(onClick = { websocketDialog = true }) {
+                            FluentIcon(Icons.Outlined.Edit, stringResource(R.string.common_edit))
+                        }
+                    }
+                )
                 if (type == RemoteMachineType.SSH) {
                     RemoteDropdownField(
                         label = stringResource(R.string.remote_machine_proxy_machine),
@@ -429,43 +378,32 @@ internal fun MachineDetailsScreen(
                         onSelect = { proxyMachineId = it; if (it.isNotBlank()) websocketProxy = null }
                     )
                 }
-                RemoteTextField(timeout, { if (it.all(Char::isDigit)) timeout = it }, stringResource(R.string.remote_machine_timeout))
-                RemoteTextField(keepAlive, { if (it.all(Char::isDigit)) keepAlive = it }, stringResource(R.string.remote_machine_keep_alive))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    RemoteTextField(timeout, { if (it.all(Char::isDigit)) timeout = it }, stringResource(R.string.remote_machine_timeout), Modifier.weight(1f))
+                    RemoteTextField(keepAlive, { if (it.all(Char::isDigit)) keepAlive = it }, stringResource(R.string.remote_machine_keep_alive), Modifier.weight(1f))
+                }
                 RemoteToggle(stringResource(R.string.remote_machine_strict_host_key), strictHostKey) { strictHostKey = it }
                 RemoteToggle(stringResource(R.string.remote_machine_compression), compression) { compression = it }
-                Text(stringResource(R.string.remote_machine_advanced_ssh_options), style = MaterialTheme.typography.labelLarge)
-                sshOptions.forEachIndexed { index, (key, value) ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        RemoteTextField(key, { next -> sshOptions = sshOptions.toMutableList().also { it[index] = next to value } }, stringResource(R.string.common_key), Modifier.weight(1f))
-                        RemoteTextField(value, { next -> sshOptions = sshOptions.toMutableList().also { it[index] = key to next } }, stringResource(R.string.common_value), Modifier.weight(1f))
-                        IconButton(onClick = { sshOptions = sshOptions.toMutableList().also { it.removeAt(index) } }) {
-                            FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove))
-                        }
-                    }
-                }
-                TextButton(onClick = { sshOptions = sshOptions + ("" to "") }) {
-                    Text(stringResource(R.string.remote_machine_add_ssh_option))
-                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Text(
+                    stringResource(R.string.remote_machine_advanced_ssh_options),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                SshOptionsEditor(options = sshOptions, onChange = { sshOptions = it })
             }
             if (type == RemoteMachineType.GCLOUD_SHELL) {
                 RemoteSection(stringResource(R.string.remote_machine_google_section)) {
-                    var expanded by remember { mutableStateOf(false) }
-                    ExposedDropdownMenuBox(expanded, { expanded = !expanded }) {
-                        SelectableOutlinedTextField(
-                            value = state.oauthClients.firstOrNull { it.id == oauthClientId }?.name
-                                ?: stringResource(R.string.remote_machine_select_oauth),
-                            onValueChange = {}, readOnly = true,
-                            label = { Text(stringResource(R.string.remote_machine_oauth_client)) },
-                            trailingIcon = { TrailingIcon(expanded) },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
-                        )
-                        ExposedDropdownMenu(expanded, { expanded = false }) {
-                            state.oauthClients.forEach { client ->
-                                DropdownMenuItem(text = { Text(client.name) }, onClick = { oauthClientId = client.id; expanded = false })
-                            }
-                        }
+                    RemoteDropdownField(
+                        label = stringResource(R.string.remote_machine_oauth_client),
+                        options = listOf("" to stringResource(R.string.remote_machine_select_oauth)) +
+                            state.oauthClients.map { it.id to it.name },
+                        selected = oauthClientId,
+                        onSelect = { oauthClientId = it }
+                    )
+                    if (state.oauthClients.isEmpty()) {
+                        RemoteErrorText(stringResource(R.string.remote_machine_add_oauth_hint))
                     }
-                    if (state.oauthClients.isEmpty()) Text(stringResource(R.string.remote_machine_add_oauth_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                     val selectedOAuthClient = state.oauthClients.firstOrNull { it.id == oauthClientId }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedButton(
@@ -526,7 +464,7 @@ internal fun MachineDetailsScreen(
                                 Text(stringResource(R.string.remote_machine_oauth_cancel))
                             }
                         }
-                        if (state.oauthTokens.containsKey(oauthClientId)) {
+                        if (oauthAuthorized) {
                             Text(
                                 stringResource(R.string.remote_machine_oauth_authorized),
                                 color = MaterialTheme.colorScheme.primary,
@@ -536,11 +474,10 @@ internal fun MachineDetailsScreen(
                     }
                 }
             }
-            RemoteSection(stringResource(R.string.remote_machine_tools_section)) {
-                Text(
-                    stringResource(R.string.remote_machine_tools_choose),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            RemoteSection(
+                title = stringResource(R.string.remote_machine_tools_section),
+                description = stringResource(R.string.remote_machine_tools_choose)
+            ) {
                 remoteMachineToolNames(type).forEach { toolName ->
                     RemoteToggle(
                         label = stringResource(
@@ -554,20 +491,16 @@ internal fun MachineDetailsScreen(
                             }
                         ),
                         checked = aiTools[toolName]
-                            ?: if (toolName == REMOTE_TOOL_UPDATE_IP) aiTools[REMOTE_TOOL_START_MACHINE] != false else true
-                    ) { enabled ->
-                        aiTools = aiTools + (toolName to enabled)
-                    }
-                    if (toolName == REMOTE_TOOL_UPDATE_IP) {
-                        Text(
-                            stringResource(R.string.remote_machine_tool_update_ip_help),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                            ?: if (toolName == REMOTE_TOOL_UPDATE_IP) aiTools[REMOTE_TOOL_START_MACHINE] != false else true,
+                        description = if (toolName == REMOTE_TOOL_UPDATE_IP) {
+                            stringResource(R.string.remote_machine_tool_update_ip_help)
+                        } else null,
+                        onCheckedChange = { enabled -> aiTools = aiTools + (toolName to enabled) }
+                    )
                 }
             }
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            error?.let { RemoteErrorText(it) }
+            Spacer(Modifier.height(4.dp))
         }
     }
     if (websocketDialog) {

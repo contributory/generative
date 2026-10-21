@@ -1,7 +1,0 @@
-- [x] Loại bỏ tính năng Executable binaries khỏi Remote Machines.
-- [x] Loại bỏ tính năng ssh_config file khỏi Remote Machines.
-- [x] Mở rộng phạm vi hỗ trợ các tham số ssh mà JSch hỗ trợ ở trong màn hìnhg RemoteMachineEditor nhưng dùng cơ chế để người dùng tự thêm khi cần chứ không hiển thị sẵn ở đó.
-- [x] Loại bỏ ProxyCommand và thay thế bằng tính năng "Websocket Proxy" cho phép người dùng thêm websocket url và headers cho nó. Ở RemoteMachineEditor sẽ có một nút có tên "Websocket Proxy" khi ấn vào sẽ mở một dialog (không phải bottomsheet) để cấu hình: ws full url và header cần thiết, connect timeout, bỏ qua xác thực chứng chỉ và các tham số mở rộng (nằm trong một dropdown): "cài đặt chứng chỉ, , handshake timeout, read/write/close timeout, sub-protocols".
-- [x] Ở RemoteMachineEditor còn cho cấu hình để chọn machine khác làm proxy cho.
-- [x] Sửa lại các tool của Remote Machine để thêm tools: open_terminal, close_terminal, list_terminal, execute, disconnect. Execute sẽ yêu cầu phải có terminal đang mở và có tham số tùy chọn là truyền terminal id, nếu không truyền terminal id thì sẽ lấy terminal mới nhất. Khi disconnect thì mọi terminal đều sẽ bị đóng.
-- [x] Sửa lại màn hình Terminal để hỗ trợ nhiều terminal và có thể thêm hoặc đóng terminal.

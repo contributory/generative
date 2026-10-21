@@ -1,5 +1,3 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-
 package org.starfall.generative.features.machines.shared.ui
 
 import android.app.Activity
@@ -9,12 +7,9 @@ import android.content.ClipboardManager
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.inputmethod.InputMethodManager
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.draw.clip
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -478,6 +473,20 @@ internal class RemoteTerminalBridge(
                 WindowCompat.getInsetsController(window, terminalView).show(WindowInsetsCompat.Type.ime())
             }
             context.getSystemService(InputMethodManager::class.java)?.showSoftInput(terminalView, 0)
+        }
+    }
+
+    /**
+     * Moves input focus to the terminal view so key events and the IME reach this session.
+     * Switching sessions must re-focus: the previously active view kept the focus (and the IME
+     * connection), which is why typed text used to land in a hidden session.
+     */
+    fun focusTerminalView(showKeyboard: Boolean = false) {
+        val terminalView = view ?: return
+        terminalView.post {
+            if (closed) return@post
+            terminalView.requestFocus()
+            if (showKeyboard) focusAndShowKeyboard()
         }
     }
 

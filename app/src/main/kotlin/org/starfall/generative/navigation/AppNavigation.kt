@@ -162,7 +162,12 @@ fun AppNavigation(
     val mcpToolErrors by configurationViewModel.mcpToolErrors.collectAsStateWithLifecycle()
     val mcpToolsLoading by configurationViewModel.mcpToolsLoading.collectAsStateWithLifecycle()
     val remoteMachineState by remoteMachinesViewModel.state.collectAsStateWithLifecycle()
+    val connectedMachineIds by remoteMachinesViewModel.connectedMachineIds.collectAsStateWithLifecycle()
+    val connectedMachines = remoteMachineState.machines.filter { it.id in connectedMachineIds }
     var remoteMachinePage by remember { mutableStateOf<Any?>(null) }
+    // Set when the terminal is opened from the chat app bar, so backing out of it returns to the
+    // conversation instead of landing on the Remote Machines list.
+    var terminalOpenedFromChat by remember { mutableStateOf(false) }
 
     val toolSettings by viewModel.toolSettings.collectAsStateWithLifecycle()
     val queuedMessages by viewModel.queuedMessages.collectAsStateWithLifecycle()
@@ -479,6 +484,12 @@ fun AppNavigation(
                         },
                         onFetchOllamaModels = { url ->
                             configurationViewModel.fetchOllamaModels(url)
+                        },
+                        connectedMachines = connectedMachines,
+                        onOpenTerminal = { machine ->
+                            terminalOpenedFromChat = true
+                            remoteMachinePage = machine
+                            openConfiguration(AppDestination.REMOTE_MACHINES)
                         }
                     )
                 }
@@ -742,7 +753,12 @@ fun AppNavigation(
                     composable(AppDestination.STORAGE.route) { StorageScreen(toolFiles) { navController.popBackStack() } }
                     composable(AppDestination.REMOTE_MACHINES.route) {
                         // Sub-pages are transient: never restore an editor/settings/terminal page on re-entry.
-                        DisposableEffect(Unit) { onDispose { remoteMachinePage = null } }
+                        DisposableEffect(Unit) {
+                            onDispose {
+                                remoteMachinePage = null
+                                terminalOpenedFromChat = false
+                            }
+                        }
                         SlideScreenContent(
                             editor = remoteMachinePage,
                             label = stringResource(R.string.remote_machines_title)
@@ -751,12 +767,17 @@ fun AppNavigation(
                                 selected is RemoteMachine -> RemoteTerminalScreen(
                                     machine = selected,
                                     viewModel = remoteMachinesViewModel,
-                                    onBack = { remoteMachinePage = null }
+                                    onBack = {
+                                        remoteMachinePage = null
+                                        if (terminalOpenedFromChat) {
+                                            terminalOpenedFromChat = false
+                                            navController.popBackStack()
+                                        }
+                                    }
                                 )
 
                                 selected is MachineEditorPage -> MachineDetailsScreen(
                                     initial = selected.machine,
-                                    isNew = selected.isNew,
                                     state = remoteMachineState,
                                     onSave = {
                                         remoteMachinesViewModel.saveMachine(it)
@@ -783,11 +804,14 @@ fun AppNavigation(
                                 else -> RemoteMachinesScreen(
                                     viewModel = remoteMachinesViewModel,
                                     onBack = { navController.popBackStack() },
-                                    onOpenEditor = { machine, isNew ->
-                                        remoteMachinePage = MachineEditorPage(machine, isNew)
+                                    onOpenEditor = { machine, _ ->
+                                        remoteMachinePage = MachineEditorPage(machine)
                                     },
                                     onOpenSettings = { remoteMachinePage = RemoteMachineSettingsPage.SETTINGS },
-                                    onOpenTerminal = { machine -> remoteMachinePage = machine }
+                                    onOpenTerminal = { machine ->
+                                        terminalOpenedFromChat = false
+                                        remoteMachinePage = machine
+                                    }
                                 )
                             }
                         }
