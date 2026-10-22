@@ -6,6 +6,7 @@ import kotlinx.coroutines.CancellationException
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.concurrent.atomic.AtomicBoolean
+import org.starfall.generative.shared.model.remote.RemoteTerminalSession
 
 
 /** Result returned by an SSH command execution. */
@@ -28,24 +29,24 @@ data class RemoteTerminalInfo(
  * private connection ([ownsSession]) closes the whole connection as well.
  */
 class RemoteTerminal internal constructor(
-    val id: String,
+    override val id: String,
     private val session: Session,
     private val channel: ChannelShell,
-    val input: InputStream,
-    val output: OutputStream,
+    override val input: InputStream,
+    override val output: OutputStream,
     private val ownsSession: Boolean = false,
     private val onClosed: () -> Unit = {}
-) : AutoCloseable {
+) : RemoteTerminalSession {
     private val closed = AtomicBoolean(false)
     internal val createdAtNanos: Long = System.nanoTime()
 
-    val isOpen: Boolean get() = !closed.get() && channel.isConnected
+    override val isOpen: Boolean get() = !closed.get() && channel.isConnected
 
     /** Exit status of the remote shell, or -1 while it is running / if the connection was dropped. */
-    val exitStatus: Int get() = channel.exitStatus
+    override val exitStatus: Int get() = channel.exitStatus
 
     /** Tells the server the terminal size changed (blocking network I/O; call off the main thread). */
-    fun resize(columns: Int, rows: Int) {
+    override fun resize(columns: Int, rows: Int) {
         if (columns <= 0 || rows <= 0 || !channel.isConnected) return
         runCatching { channel.setPtySize(columns, rows, 0, 0) }
     }

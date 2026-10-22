@@ -62,7 +62,6 @@ import org.starfall.generative.features.machines.shared.ui.RemoteMachinesTopBar
 import org.starfall.generative.features.machines.shared.ui.RemoteSection
 import org.starfall.generative.features.machines.shared.ui.RemoteTextField
 import org.starfall.generative.features.machines.shared.ui.RemoteToggle
-import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.shared.model.GCloudOAuthClient
 import org.starfall.generative.shared.model.GoogleOAuthClientType
 import org.starfall.generative.shared.model.REMOTE_SFTP_HOME
@@ -76,6 +75,7 @@ import org.starfall.generative.shared.model.RemoteAuthentication
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineState
 import org.starfall.generative.shared.model.RemoteMachineType
+import org.starfall.generative.shared.model.remote.REMOTE_GOOGLE_CLOUD_SCOPE
 import org.starfall.generative.shared.model.remoteMachineToolNames
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -117,6 +117,7 @@ internal fun MachineDetailsScreen(
     var sftpDirectory by remember(initial.id) {
         mutableStateOf(initial.sftpDirectory.ifBlank { REMOTE_SFTP_HOME })
     }
+    var portForwarding by remember(initial.id) { mutableStateOf(initial.portForwarding) }
     var aiTools by remember(initial.id) {
         mutableStateOf(
             initial.aiTools.ifEmpty {
@@ -190,6 +191,7 @@ internal fun MachineDetailsScreen(
             oauthClientId = oauthClientId,
             environmentName = environment,
             sftpDirectory = sftpDirectory.trim().ifBlank { REMOTE_SFTP_HOME },
+            portForwarding = portForwarding,
             gcloudUsername = if (type == RemoteMachineType.GCLOUD_SHELL) username else initial.gcloudUsername,
             aiToolsEnabled = true,
             aiTools = aiTools
@@ -200,6 +202,7 @@ internal fun MachineDetailsScreen(
             require(type != RemoteMachineType.SSH || auth != RemoteAuthentication.PRIVATE_KEY || identityFile.isNotBlank()) {
                 "IdentityFile is required for private-key authentication."
             }
+            portForwarding.validated()
         }.onSuccess { onSave(machine) }.onFailure { error = it.message }
     }
 
@@ -367,6 +370,10 @@ internal fun MachineDetailsScreen(
                     supporting = stringResource(R.string.remote_machine_sftp_directory_help)
                 )
             }
+            PortForwardingSection(
+                initial = portForwarding,
+                onChange = { portForwarding = it }
+            )
             RemoteSection(stringResource(R.string.remote_machine_ssh_options)) {
                 RemoteListRow(
                     title = stringResource(R.string.remote_machine_websocket_proxy),
@@ -429,7 +436,7 @@ internal fun MachineDetailsScreen(
                                 authorizing = true
                                 if (client.type == GoogleOAuthClientType.ANDROID) {
                                     val request = AuthorizationRequest.builder()
-                                        .setRequestedScopes(listOf(Scope(RemoteMachineService.GOOGLE_SCOPE)))
+                                        .setRequestedScopes(listOf(Scope(REMOTE_GOOGLE_CLOUD_SCOPE)))
                                         .build()
                                     Identity.getAuthorizationClient(context).authorize(request)
                                         .addOnSuccessListener { result ->

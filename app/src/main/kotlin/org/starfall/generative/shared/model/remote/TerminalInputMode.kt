@@ -1,4 +1,4 @@
-package org.starfall.generative.features.machines.shared.model
+package org.starfall.generative.shared.model.remote
 
 internal enum class TerminalInputMode {
     REMOTE,

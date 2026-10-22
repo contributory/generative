@@ -29,6 +29,7 @@
 │   │   ├── 📁 details/
 │   │   │   └── 📁 ui/
 │   │   │       ├── 📄 MachineDetailsScreen.kt
+│   │   │       ├── 📄 PortForwardingSection.kt
 │   │   │       ├── 📄 RemoteMachineAdvancedDialogs.kt
 │   │   │       └── 📄 RemoteMachineSettings.kt
 │   │   ├── 📁 list/
@@ -38,22 +39,11 @@
 │   │   │       └── 📄 RemoteMachinesScreen.kt
 │   │   └── 📁 shared/
 │   │       ├── 📁 logic/
-│   │       │   ├── 📄 RemoteMachinesViewModel.kt
-│   │       │   └── 📁 terminal/
-│   │       │       ├── 📄 PendingRemoteSecretRequest.kt
-│   │       │       ├── 📄 RemoteMouseTouchListener.kt
-│   │       │       ├── 📄 RemoteTerminalBridge.kt
-│   │       │       ├── 📄 RemoteTerminalInput.kt
-│   │       │       └── 📄 RemoteTerminalSessions.kt
+│   │       │   └── 📄 RemoteMachinesViewModel.kt
 │   │       ├── 📁 model/
-│   │       │   ├── 📄 BinaryTestNotice.kt
-│   │       │   └── 📄 TerminalInputMode.kt
+│   │       │   └── 📄 BinaryTestNotice.kt
 │   │       └── 📁 ui/
-│   │           ├── 📄 RemoteMachineComponents.kt
-│   │           └── 📁 terminal/
-│   │               ├── 📄 RemoteTerminalBottomSheet.kt
-│   │               ├── 📄 RemoteTerminalDialogs.kt
-│   │               └── 📄 RemoteTerminalPanels.kt
+│   │           └── 📄 RemoteMachineComponents.kt
 │   ├── 📁 main/
 │   │   └── 📁 ui/
 │   │       └── 📄 FeaturesScreen.kt
@@ -281,6 +271,7 @@
 │       ├── 📄 RemoteSftpDocumentFormatting.kt
 │       ├── 📄 RemoteSftpDocumentsProvider.kt
 │       ├── 📄 RemoteSftpSessionPool.kt
+│       ├── 📄 RemoteSocksForwarder.kt
 │       ├── 📄 RemoteTerminal.kt
 │       ├── 📄 SshConfigParser.kt
 │       ├── 📄 SshConnectionSupport.kt
@@ -391,7 +382,10 @@
 │   │   ├── 📄 ProviderLink.kt
 │   │   ├── 📄 RemoteMachineModels.kt
 │   │   ├── 📁 remote/
-│   │   │   └── 📄 RemoteSecretPrompt.kt
+│   │   │   ├── 📄 RemoteCloudShellAuth.kt
+│   │   │   ├── 📄 RemoteSecretPrompt.kt
+│   │   │   ├── 📄 RemoteTerminalSession.kt
+│   │   │   └── 📄 TerminalInputMode.kt
 │   │   ├── 📄 ResponseVersions.kt
 │   │   ├── 📄 SidebarOrganization.kt
 │   │   ├── 📄 SpeechService.kt
@@ -440,6 +434,12 @@
 │   │   ├── 📄 RepositoryJson.kt
 │   │   ├── 📄 SpeechRepository.kt
 │   │   └── 📄 StructuredJsonStorage.kt
+│   ├── 📁 terminal/
+│   │   ├── 📄 PendingRemoteSecretRequest.kt
+│   │   ├── 📄 RemoteMouseTouchListener.kt
+│   │   ├── 📄 RemoteTerminalBridge.kt
+│   │   ├── 📄 RemoteTerminalInput.kt
+│   │   └── 📄 RemoteTerminalSessions.kt
 │   ├── 📁 theme/
 │   │   └── 📄 Theme.kt
 │   └── 📁 ui/
@@ -507,7 +507,11 @@
 │       │   └── 📄 WordWrappedFadeText.kt
 │       ├── 📄 ProfileMcpPermissions.kt
 │       ├── 📄 ToolControls.kt
-│       └── 📄 ToolSwitch.kt
+│       ├── 📄 ToolSwitch.kt
+│       └── 📁 terminal/
+│           ├── 📄 RemoteTerminalBottomSheet.kt
+│           ├── 📄 RemoteTerminalDialogs.kt
+│           └── 📄 RemoteTerminalPanels.kt
 ├── 📄 MainActivity.kt
 └── 📄 GenerativeApplication.kt
 ```
@@ -529,6 +533,7 @@
 - `integrations/` holds code that calls an external API or service: HTTP clients, streaming/SSE readers, polling loops, OAuth flows, remote connections. A folder also keeps, next to its call files, the request builders, response parsers and small data types that only those files use.
 - Place code by who uses it, as close to its users as possible. Code used by one layer stays in that layer (a builder used only by `integrations/media/` lives in `integrations/media/`; code used only by the chat tool flow lives in `home/chat/logic/tool/`). Only code needed by at least two of `features/`, `home/` and `integrations/` moves down to `shared/`.
 - `shared/helpers/<topic>/` holds those multi-layer helpers: option validation and field descriptors, provider detection, tool schemas and argument parsers, input-file resolution. Their main job is preparing inputs or interpreting outputs, not I/O. Small, incidental I/O that is not worth its own integration (for example fetching a URL that a response returned, through the injected `ToolHttp` from `shared/networking`, or reading a file via `shared/files`) is tolerated in a helper as a stopgap. Once that I/O grows its own endpoint, authentication, streaming or polling protocol, or becomes the main purpose of the file, move that part into `integrations/`. Helpers never import `integrations/`.
+- Cross-feature terminal presentation and its Android/Termux adapter live in `shared/terminal/` and `shared/ui/terminal/`; they depend on the shared `RemoteTerminalSession` contract, not on a feature ViewModel or integration implementation.
 - Plain data types (data classes, enums) follow the same rule: they sit in `shared/model/<topic>/` only when at least two layers use them (for example `ImageOptionField`, `VideoApi`); otherwise they stay in the single layer's own `model/` or next to the code that uses them. Helpers import models; models never import helpers or integrations.
 - Rule of thumb: count the layers that import a file. One layer means it stays there; two or more means `shared/`. Inside `integrations/`, only the files that perform the call are clients; the builders and parsers beside them belong to that integration and are not helpers. A little incidental I/O does not turn a helper into an integration; I/O that is the file's purpose does.
 - Moving between screens goes through callbacks wired in `navigation/AppNavigation.kt`, never through a direct import of another screen.
@@ -553,6 +558,7 @@
 
 - A feature has either flat `ui/`, `logic/`, `model/` folders, or sub-features (for example `list/`, `editor/`, `details/`), each with its own `ui/`, `logic/`, `model/`, plus a `shared/` folder.
 - Sub-features never import each other. Code used by more than one sub-feature goes in that feature's `shared/`.
+- A feature's `shared/` may also contain `model/` when a value is shared by multiple sub-features but does not belong in global `shared/model/`.
 - Do not repeat the feature name as a nested folder (no `storage/storage/`).
 
 ### home/

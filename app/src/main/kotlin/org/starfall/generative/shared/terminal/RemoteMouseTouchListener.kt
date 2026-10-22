@@ -1,4 +1,4 @@
-package org.starfall.generative.features.machines.shared.logic.terminal
+package org.starfall.generative.shared.terminal
 
 import android.view.MotionEvent
 import com.termux.view.TerminalView
@@ -13,6 +13,7 @@ internal class RemoteMouseTouchListener(
     private val bridge: RemoteTerminalBridge
 ) : android.view.View.OnTouchListener {
     private var scrollRemainder = 0f
+    private var tapDetected = false
 
     private val detector = android.view.GestureDetector(
         context,
@@ -20,6 +21,7 @@ internal class RemoteMouseTouchListener(
             override fun onDown(e: MotionEvent) = true
 
             override fun onSingleTapUp(e: MotionEvent): Boolean {
+                tapDetected = true
                 val (column, row) = cellAt(e)
                 bridge.sendMouseReport(MOUSE_LEFT, column, row, pressed = true)
                 bridge.sendMouseReport(MOUSE_LEFT, column, row, pressed = false)
@@ -63,6 +65,10 @@ internal class RemoteMouseTouchListener(
         if (!takeOver) return false
         if (event.actionMasked == MotionEvent.ACTION_DOWN) scrollRemainder = 0f
         detector.onTouchEvent(event)
+        if (event.actionMasked == MotionEvent.ACTION_UP && tapDetected) {
+            tapDetected = false
+            v.performClick()
+        }
         return true
     }
 

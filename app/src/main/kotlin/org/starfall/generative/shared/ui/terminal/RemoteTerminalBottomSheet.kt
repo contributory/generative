@@ -1,6 +1,6 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
-package org.starfall.generative.features.machines.shared.ui.terminal
+package org.starfall.generative.shared.ui.terminal
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
@@ -72,19 +72,20 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
-import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
-import org.starfall.generative.features.machines.shared.logic.terminal.PendingRemoteSecretRequest
-import org.starfall.generative.features.machines.shared.logic.terminal.RemoteMouseTouchListener
-import org.starfall.generative.features.machines.shared.logic.terminal.RemoteTerminalBridge
-import org.starfall.generative.features.machines.shared.logic.terminal.RemoteTerminalSessions
-import org.starfall.generative.features.machines.shared.logic.terminal.TerminalSlot
-import org.starfall.generative.features.machines.shared.model.TerminalInputMode
 import org.starfall.generative.shared.model.RemoteMachine
+import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
+import org.starfall.generative.shared.model.remote.RemoteTerminalSession
 import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_FONT_SIZE_KEY
 import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_FORCE_MOUSE_KEY
 import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_UI_PREFERENCES
 import org.starfall.generative.shared.storage.preferences.remoteTerminalImePreferenceKey
 import org.starfall.generative.shared.storage.preferences.remoteTerminalInputModePreferenceKey
+import org.starfall.generative.shared.terminal.PendingRemoteSecretRequest
+import org.starfall.generative.shared.terminal.RemoteMouseTouchListener
+import org.starfall.generative.shared.terminal.RemoteTerminalBridge
+import org.starfall.generative.shared.terminal.RemoteTerminalSessions
+import org.starfall.generative.shared.terminal.TerminalSlot
+import org.starfall.generative.shared.model.remote.TerminalInputMode
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
@@ -93,7 +94,8 @@ import org.starfall.generative.shared.ui.sheets.AppBottomSheet
 @Composable
 internal fun RemoteTerminalBottomSheet(
     machine: RemoteMachine,
-    viewModel: RemoteMachinesViewModel,
+    openTerminal: suspend (RemoteMachine, RemoteSecretPrompt?) -> RemoteTerminalSession,
+    disconnect: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     AppBottomSheet(
@@ -101,14 +103,20 @@ internal fun RemoteTerminalBottomSheet(
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         fixedHeightFraction = 0.9f
     ) {
-        RemoteTerminalContent(machine = machine, viewModel = viewModel, onDismiss = onDismiss)
+        RemoteTerminalContent(
+            machine = machine,
+            openTerminal = openTerminal,
+            disconnect = disconnect,
+            onDismiss = onDismiss
+        )
     }
 }
 
 @Composable
 private fun RemoteTerminalContent(
     machine: RemoteMachine,
-    viewModel: RemoteMachinesViewModel,
+    openTerminal: suspend (RemoteMachine, RemoteSecretPrompt?) -> RemoteTerminalSession,
+    disconnect: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -164,7 +172,7 @@ private fun RemoteTerminalContent(
             openError = null
             RemoteTerminalSessions.clearConnectionLost(machine.id)
             try {
-                val opened = viewModel.openTerminal(machine) { request ->
+                val opened = openTerminal(machine) { request ->
                     // The SSH thread pauses here only after the server requests an unsaved secret.
                     val pending = PendingRemoteSecretRequest(request, CompletableDeferred())
                     withContext(Dispatchers.Main) {
@@ -257,7 +265,7 @@ private fun RemoteTerminalContent(
             onToggleSessions = { drawerExpanded = !sessionsDrawerOpen },
             onDisconnect = {
                 RemoteTerminalSessions.closeAll(machine.id)
-                viewModel.disconnect(machine.id)
+                disconnect(machine.id)
             },
             onInputModeChange = { mode ->
                 // Input mode is a per-machine preference: apply it to every

@@ -119,6 +119,8 @@ internal class RemoteMachineConnectionManager(
     private inner class SharedConnection(
         val machineId: String,
         val session: Session,
+        /** Active port forwards live only as long as the session, so such a connection is never closed for being idle. */
+        private val keepOpenWhileIdle: Boolean = false,
     ) {
         private var users = 0
         private var closeOnRelease = false
@@ -148,6 +150,7 @@ internal class RemoteMachineConnectionManager(
         fun release() {
             if (users > 0) users--
             if (users == 0) {
+                if (keepOpenWhileIdle && !closeOnRelease) return
                 val wait = if (closeOnRelease) 0L else RemoteMachineService.IDLE_DISCONNECT_MILLIS
                 idleJob?.cancel()
                 idleJob = ioScope.launch {
@@ -225,7 +228,7 @@ internal class RemoteMachineConnectionManager(
                 if (connection == null) {
                     if (create == null) return@withLock null
                     val session = openSession(create, passwordOverride, askSecret)
-                    connection = SharedConnection(machineId, session)
+                    connection = SharedConnection(machineId, session, create.portForwarding.hasActiveForwards)
                     connections[machineId] = connection
                     connection.startMonitor()
                     publishConnected()

@@ -51,6 +51,68 @@ data class WebSocketProxyConfig(
     val isConfigured: Boolean get() = url.isNotBlank()
 }
 
+/** One -L / -R style rule: [listenPort] accepts connections that are forwarded to [targetHost]:[targetPort]. */
+data class PortForwardRule(val listenPort: Int, val targetHost: String, val targetPort: Int)
+
+/**
+ * Port forwarding switches and rules for a machine. A type that is disabled keeps its rules but applies nothing.
+ * Local and remote rules are `listenPort[:targetPort]` (or `listenPort:targetHost:targetPort`); dynamic (SOCKS5) entries are plain local ports.
+ */
+@Serializable
+data class PortForwardingConfig(
+    val localEnabled: Boolean = false,
+    val localRules: List<String> = emptyList(),
+    val remoteEnabled: Boolean = false,
+    val remoteRules: List<String> = emptyList(),
+    val dynamicEnabled: Boolean = false,
+    val dynamicPorts: List<Int> = emptyList()
+) {
+    val activeLocalRules: List<PortForwardRule>
+        get() = if (localEnabled) localRules.mapNotNull(::parsePortForwardRule) else emptyList()
+    val activeRemoteRules: List<PortForwardRule>
+        get() = if (remoteEnabled) remoteRules.mapNotNull(::parsePortForwardRule) else emptyList()
+    val activeDynamicPorts: List<Int>
+        get() = if (dynamicEnabled) dynamicPorts else emptyList()
+    val hasActiveForwards: Boolean
+        get() = activeLocalRules.isNotEmpty() || activeRemoteRules.isNotEmpty() || activeDynamicPorts.isNotEmpty()
+
+    /** Trims entries, drops blanks and duplicates. Throws [IllegalArgumentException] with a user-facing message. */
+    fun validated(): PortForwardingConfig {
+        val local = localRules.map(String::trim).filter(String::isNotBlank).distinct()
+        val remote = remoteRules.map(String::trim).filter(String::isNotBlank).distinct()
+        local.forEach { requireNotNull(parsePortForwardRule(it)) { "Invalid local forward \"$it\". Use e.g. 8080 or 8080:10808." } }
+        remote.forEach { requireNotNull(parsePortForwardRule(it)) { "Invalid remote forward \"$it\". Use e.g. 8080 or 8080:10808." } }
+        val dynamic = dynamicPorts.distinct()
+        dynamic.forEach { require(it in 1..65535) { "Invalid SOCKS port $it. Use 1-65535." } }
+        val localListen = local.mapNotNull(::parsePortForwardRule).map { it.listenPort } + dynamic
+        val duplicate = localListen.groupingBy { it }.eachCount().entries.firstOrNull { it.value > 1 }
+        require(duplicate == null) { "Local port ${duplicate?.key} is used by more than one forward." }
+        val remoteDuplicate = remote.mapNotNull(::parsePortForwardRule).groupingBy { it.listenPort }.eachCount()
+            .entries.firstOrNull { it.value > 1 }
+        require(remoteDuplicate == null) { "Remote port ${remoteDuplicate?.key} is used by more than one forward." }
+        return copy(localRules = local, remoteRules = remote, dynamicPorts = dynamic)
+    }
+}
+
+/**
+ * Parses a forward rule: `8080` (same port on both sides), `8080:10808` (listen on 8080, target port 10808) or the
+ * explicit `8080:host:10808`. `->`, `>` and `→` work as separators too. The host defaults to localhost.
+ * Returns null when malformed or a port is outside 1-65535.
+ */
+fun parsePortForwardRule(text: String): PortForwardRule? {
+    val parts = text.trim().replace("->", ":").replace("→", ":").replace(">", ":").split(':').map(String::trim)
+    val (listenText, host, portText) = when (parts.size) {
+        1 -> Triple(parts[0], "localhost", parts[0])
+        2 -> Triple(parts[0], "localhost", parts[1])
+        3 -> Triple(parts[0], parts[1], parts[2])
+        else -> return null
+    }
+    val listen = listenText.toIntOrNull() ?: return null
+    val port = portText.toIntOrNull() ?: return null
+    if (host.isBlank() || listen !in 1..65535 || port !in 1..65535) return null
+    return PortForwardRule(listen, host, port)
+}
+
 /** Runtime machine view. SSH settings are persisted directly in the encrypted Remote Machines store. */
 @Serializable
 data class RemoteMachine(
@@ -84,6 +146,7 @@ data class RemoteMachine(
     val gcloudUsername: String = "",
     /** Root folder exposed by the machine's Files provider. Blank or [REMOTE_SFTP_HOME] means $HOME. */
     val sftpDirectory: String = REMOTE_SFTP_HOME,
+    val portForwarding: PortForwardingConfig = PortForwardingConfig(),
     val aiToolsEnabled: Boolean = true,
     /** Per-tool switches configured on the machine. Missing entries are enabled for compatibility. */
     val aiTools: Map<String, Boolean> = emptyMap(),

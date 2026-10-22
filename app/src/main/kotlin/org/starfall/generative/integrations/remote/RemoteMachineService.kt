@@ -2,6 +2,7 @@ package org.starfall.generative.integrations.remote
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import com.google.android.gms.auth.api.identity.Identity
 import com.jcraft.jsch.JSch
 import com.jcraft.jsch.JSchException
@@ -36,9 +37,11 @@ import org.starfall.generative.shared.model.RemoteAuthentication
 import org.starfall.generative.shared.model.RemoteIdentityKey
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
+import org.starfall.generative.shared.model.remote.REMOTE_GOOGLE_CLOUD_SCOPE
 import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_UI_PREFERENCES
 import org.starfall.generative.shared.storage.preferences.remoteTerminalInputModePreferenceKey
 import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
+import org.starfall.generative.shared.model.remote.RemoteTerminalSession
 
 
 
@@ -88,6 +91,7 @@ class RemoteMachineService(
             websocketProxy = machine.websocketProxy?.normalized()?.takeIf { it.isConfigured },
             proxyMachineId = machine.proxyMachineId.trim(),
             sftpDirectory = machine.sftpDirectory.trim().ifBlank { REMOTE_SFTP_HOME },
+            portForwarding = machine.portForwarding.validated(),
             preferredAuthentications = if (machine.authentication == RemoteAuthentication.PASSWORD) {
                 if (machine.keyboardInteractive) "keyboard-interactive,password" else "password"
             } else "publickey"
@@ -277,7 +281,7 @@ class RemoteMachineService(
         machine: RemoteMachine,
         passwordOverride: String? = null,
         askSecret: RemoteSecretPrompt? = null
-    ): RemoteTerminal = connectionManager.openTerminal(machine, passwordOverride, askSecret)
+    ): RemoteTerminalSession = connectionManager.openTerminal(machine, passwordOverride, askSecret)
 
     /** Opens an SFTP channel on demand for the Files provider. */
     internal suspend fun acquireSftpLease(machine: RemoteMachine): RemoteSftpLease =
@@ -406,7 +410,25 @@ class RemoteMachineService(
             }
             throw failure
         }
+        applyPortForwarding(session, machine)
         return session
+    }
+
+    /** Forwards die with the session. One failing rule (port in use, forwarding forbidden) must not fail the connection. */
+    private fun applyPortForwarding(session: Session, machine: RemoteMachine) {
+        val forwarding = machine.portForwarding
+        forwarding.activeLocalRules.forEach { rule ->
+            runCatching { session.setPortForwardingL(LOCAL_FORWARD_BIND, rule.listenPort, rule.targetHost, rule.targetPort) }
+                .onFailure { Log.w(TAG, "Local forward ${rule.listenPort} failed: ${it.message}") }
+        }
+        forwarding.activeRemoteRules.forEach { rule ->
+            runCatching { session.setPortForwardingR(rule.listenPort, rule.targetHost, rule.targetPort) }
+                .onFailure { Log.w(TAG, "Remote forward ${rule.listenPort} failed: ${it.message}") }
+        }
+        forwarding.activeDynamicPorts.forEach { port ->
+            runCatching { RemoteSocksForwarder(session, port, machine.connectTimeoutSeconds * 1_000).start() }
+                .onFailure { Log.w(TAG, "Dynamic forward $port failed: ${it.message}") }
+        }
     }
 
     private fun JSchException.isAuthenticationFailure(): Boolean {
@@ -417,13 +439,15 @@ class RemoteMachineService(
     private fun Int?.orZero(): Int = this ?: 0
 
     companion object {
+        private const val TAG = "RemoteMachineService"
+        private const val LOCAL_FORWARD_BIND = "127.0.0.1"
         const val CLOUD_ENDPOINT_CACHE_TTL_MILLIS = 15 * 60 * 1_000L
         /** A persistent SSH connection with no command or terminal using it is closed after this. */
         const val IDLE_DISCONNECT_MILLIS = 5 * 60 * 1_000L
         const val CONNECTION_POLL_MILLIS = 5_000L
         const val GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
         const val GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
-        const val GOOGLE_SCOPE = "https://www.googleapis.com/auth/cloud-platform"
+        const val GOOGLE_SCOPE = REMOTE_GOOGLE_CLOUD_SCOPE
         const val ANDROID_ACCESS_TOKEN_LIFETIME_MS = 3_300_000L
         val CLOUD_SHELL_SUPPORTED_KEY_ALGORITHMS = setOf(
             "ssh-rsa",

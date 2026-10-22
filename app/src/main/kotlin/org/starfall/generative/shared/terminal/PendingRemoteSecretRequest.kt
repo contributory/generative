@@ -1,4 +1,4 @@
-package org.starfall.generative.features.machines.shared.logic.terminal
+package org.starfall.generative.shared.terminal
 
 import kotlinx.coroutines.CompletableDeferred
 import org.starfall.generative.shared.model.remote.RemoteSecretRequest

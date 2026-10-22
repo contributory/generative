@@ -1,10 +1,10 @@
-package org.starfall.generative.features.machines.shared.logic.terminal
+package org.starfall.generative.shared.terminal
 
 import android.view.KeyEvent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import org.starfall.generative.features.machines.shared.model.TerminalInputMode
+import org.starfall.generative.shared.model.remote.TerminalInputMode
 
 /** Handles terminal key encoding and the optional local command-line editor. */
 internal class RemoteTerminalInput(

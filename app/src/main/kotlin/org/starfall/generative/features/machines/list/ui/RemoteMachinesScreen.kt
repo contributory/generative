@@ -51,14 +51,11 @@ import org.starfall.generative.features.machines.shared.logic.RemoteMachinesView
 import org.starfall.generative.features.machines.shared.ui.RemoteIconTile
 import org.starfall.generative.features.machines.shared.ui.RemoteMachinesTopBar
 import org.starfall.generative.features.machines.shared.ui.RemoteStatusDot
-import org.starfall.generative.integrations.remote.RemoteSftpDocumentsProvider
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
-
-private data class MachineIpUpdateNotice(val machineName: String, val message: String)
 
 @Composable
 fun RemoteMachinesScreen(
@@ -127,7 +124,7 @@ fun RemoteMachinesScreen(
                             onDisconnect = { viewModel.disconnect(machine.id) },
                             onTerminal = { onOpenTerminal(machine) },
                             onFiles = {
-                                if (!RemoteSftpDocumentsProvider.open(context, machine.id)) {
+                                if (!viewModel.openFiles(context, machine.id)) {
                                     Toast.makeText(context, R.string.remote_machine_files_failed, Toast.LENGTH_SHORT).show()
                                 }
                             },

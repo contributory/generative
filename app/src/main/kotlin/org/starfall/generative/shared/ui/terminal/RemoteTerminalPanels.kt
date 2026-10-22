@@ -1,4 +1,4 @@
-package org.starfall.generative.features.machines.shared.ui.terminal
+package org.starfall.generative.shared.ui.terminal
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -52,11 +52,10 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
-import org.starfall.generative.features.machines.shared.logic.terminal.RemoteTerminalBridge
-import org.starfall.generative.features.machines.shared.logic.terminal.TerminalSlot
-import org.starfall.generative.features.machines.shared.model.TerminalInputMode
-import org.starfall.generative.features.machines.shared.ui.RemoteStatusDot
 import org.starfall.generative.shared.model.RemoteMachine
+import org.starfall.generative.shared.model.remote.TerminalInputMode
+import org.starfall.generative.shared.terminal.RemoteTerminalBridge
+import org.starfall.generative.shared.terminal.TerminalSlot
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 
@@ -120,7 +119,7 @@ internal fun TerminalSessionsDrawer(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            RemoteStatusDot(slot.terminal.isOpen)
+                            TerminalStatusDot(slot.terminal.isOpen)
                             Column(Modifier.weight(1f)) {
                                 Text(
                                     stringResource(R.string.remote_machine_terminal_tab, index + 1),
@@ -425,4 +424,17 @@ private fun TerminalKey(
             maxLines = 1
         )
     }
+}
+
+@Composable
+private fun TerminalStatusDot(connected: Boolean) {
+    Box(
+        Modifier
+            .size(10.dp)
+            .clip(RoundedCornerShape(50))
+            .background(
+                if (connected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.outlineVariant
+            )
+    )
 }

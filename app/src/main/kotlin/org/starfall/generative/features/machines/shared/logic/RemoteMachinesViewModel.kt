@@ -1,5 +1,6 @@
 package org.starfall.generative.features.machines.shared.logic
 
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,12 +10,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
 import org.starfall.generative.integrations.remote.RemoteMachineService
-import org.starfall.generative.integrations.remote.RemoteTerminal
+import org.starfall.generative.integrations.remote.RemoteSftpDocumentsProvider
 import org.starfall.generative.shared.model.GCloudOAuthClient
 import org.starfall.generative.shared.model.RemoteIdentityKey
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineState
 import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
+import org.starfall.generative.shared.model.remote.RemoteTerminalSession
 import org.starfall.generative.shared.storage.LocalWriteErrors
 
 class RemoteMachinesViewModel(
@@ -29,6 +31,9 @@ class RemoteMachinesViewModel(
     fun isConnected(machineId: String): Boolean = service.isConnected(machineId)
 
     fun disconnect(machineId: String) = service.disconnectMachine(machineId)
+
+    fun openFiles(context: Context, machineId: String): Boolean =
+        RemoteSftpDocumentsProvider.open(context, machineId)
 
     fun saveMachine(machine: RemoteMachine) {
         viewModelScope.launch(LocalWriteErrors.handler) { service.saveMachine(machine) }
@@ -78,7 +83,7 @@ class RemoteMachinesViewModel(
         machine: RemoteMachine,
         passwordOverride: String? = null,
         askSecret: RemoteSecretPrompt? = null
-    ): RemoteTerminal = service.openTerminal(machine, passwordOverride, askSecret)
+    ): RemoteTerminalSession = service.openTerminal(machine, passwordOverride, askSecret)
 
     fun newMachine(): RemoteMachine = RemoteMachine(
         id = UUID.randomUUID().toString(),

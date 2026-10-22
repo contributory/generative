@@ -1,4 +1,4 @@
-package org.starfall.generative.features.machines.shared.logic.terminal
+package org.starfall.generative.shared.terminal
 
 import androidx.compose.runtime.mutableStateMapOf
 import kotlinx.coroutines.CancellationException
@@ -9,10 +9,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.starfall.generative.integrations.remote.RemoteTerminal
+import org.starfall.generative.shared.model.remote.RemoteTerminalSession
 
 internal class TerminalSlot(
-    val terminal: RemoteTerminal,
+    val terminal: RemoteTerminalSession,
     val bridge: RemoteTerminalBridge
 ) {
     var readerJob: Job? = null
@@ -36,7 +36,7 @@ internal object RemoteTerminalSessions {
     fun clearConnectionLost(machineId: String) { lost.remove(machineId) }
 
     /** Registers an opened terminal, makes it the active one and starts reading its output. */
-    fun register(machineId: String, terminal: RemoteTerminal, bridge: RemoteTerminalBridge): TerminalSlot {
+    fun register(machineId: String, terminal: RemoteTerminalSession, bridge: RemoteTerminalBridge): TerminalSlot {
         val slot = TerminalSlot(terminal, bridge)
         slots[machineId] = slotsFor(machineId) + slot
         active[machineId] = terminal.id

@@ -565,6 +565,20 @@
     <string name="remote_machine_public_key_missing" translatable="false">No public key (needed for Cloud Shell)</string>
     <string name="remote_machine_ssh_key_used_by" translatable="false">Used by %1$d machine(s)</string>
     <string name="remote_machine_key_passphrase" translatable="false">Key passphrase</string>
+    <string name="remote_machine_port_forwarding_section" translatable="false">Port forwarding</string>
+    <string name="remote_machine_port_forwarding_help" translatable="false">Forwards are applied when the SSH session connects and stop when it disconnects. A machine with an active forward is not disconnected for being idle.</string>
+    <string name="remote_machine_forward_local" translatable="false">Local forward</string>
+    <string name="remote_machine_forward_local_help" translatable="false">Opens a port on this device that leads to a port on the machine.</string>
+    <string name="remote_machine_forward_local_rules" translatable="false">Local forwards</string>
+    <string name="remote_machine_forward_local_hint" translatable="false">One per line: 8080 (same port) or 8080:10808 (this device 8080 → machine 10808)</string>
+    <string name="remote_machine_forward_remote" translatable="false">Remote forward</string>
+    <string name="remote_machine_forward_remote_help" translatable="false">Opens a port on the machine that leads to a port on this device.</string>
+    <string name="remote_machine_forward_remote_rules" translatable="false">Remote forwards</string>
+    <string name="remote_machine_forward_remote_hint" translatable="false">One per line: 8080 (same port) or 8080:10808 (machine 8080 → this device 10808)</string>
+    <string name="remote_machine_forward_dynamic" translatable="false">Dynamic forward (SOCKS5)</string>
+    <string name="remote_machine_forward_dynamic_help" translatable="false">Runs a SOCKS5 proxy on this device that connects through the machine.</string>
+    <string name="remote_machine_forward_dynamic_ports" translatable="false">SOCKS ports</string>
+    <string name="remote_machine_forward_dynamic_hint" translatable="false">Comma separated local ports, e.g. 1080</string>
     <string name="remote_machine_ssh_options" translatable="false">SSH options</string>
     <string name="remote_machine_ssh_options_help" translatable="false">Add JSch options only when needed. Unknown or reserved options are rejected when saving.</string>
     <string name="remote_machine_advanced_ssh_options" translatable="false">Additional SSH options</string>

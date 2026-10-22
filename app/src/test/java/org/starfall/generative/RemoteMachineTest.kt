@@ -4,6 +4,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.starfall.generative.shared.model.PortForwardRule
+import org.starfall.generative.shared.model.PortForwardingConfig
 import org.starfall.generative.shared.model.REMOTE_TOOL_DISCONNECT
 import org.starfall.generative.shared.model.REMOTE_TOOL_EXECUTE
 import org.starfall.generative.shared.model.REMOTE_TOOL_START_MACHINE
@@ -18,6 +20,7 @@ import org.starfall.generative.integrations.remote.normalizeSshOptions
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.WebSocketProxyConfig
 import org.starfall.generative.shared.model.remote.RemoteSecretRequest
+import org.starfall.generative.shared.model.parsePortForwardRule
 import org.starfall.generative.shared.model.remoteMachineToolEnabled
 
 class RemoteMachineTest {
@@ -253,4 +256,48 @@ class RemoteMachineTest {
         assertEquals(listOf("ssh"), proxy.subProtocols)
     }
 
+    @Test
+    fun portForwardRulesParseAndRejectMalformedInput() {
+        assertEquals(PortForwardRule(8080, "db.internal", 3306), parsePortForwardRule(" 8080:db.internal:3306 "))
+        assertEquals(PortForwardRule(8080, "localhost", 8080), parsePortForwardRule("8080"))
+        assertEquals(PortForwardRule(8080, "localhost", 10808), parsePortForwardRule("8080:10808"))
+        assertEquals(PortForwardRule(8080, "localhost", 10808), parsePortForwardRule("8080 -> 10808"))
+        assertNull(parsePortForwardRule("8080:a:b:22"))
+        assertNull(parsePortForwardRule("abc"))
+        assertNull(parsePortForwardRule("0:host:22"))
+        assertNull(parsePortForwardRule("8080:host:70000"))
+        assertNull(parsePortForwardRule("8080::22"))
+    }
+
+    @Test
+    fun portForwardingAppliesOnlyEnabledTypesAndValidatesPorts() {
+        val config = PortForwardingConfig(
+            localEnabled = true,
+            localRules = listOf("8080:db:3306", " 8080:db:3306 ", ""),
+            remoteEnabled = false,
+            remoteRules = listOf("9090:localhost:3000"),
+            dynamicEnabled = true,
+            dynamicPorts = listOf(1080, 1080)
+        ).validated()
+        assertEquals(listOf("8080:db:3306"), config.localRules)
+        assertEquals(listOf(1080), config.dynamicPorts)
+        assertEquals(listOf(PortForwardRule(8080, "db", 3306)), config.activeLocalRules)
+        assertTrue(config.activeRemoteRules.isEmpty())
+        assertEquals(listOf(1080), config.activeDynamicPorts)
+        assertTrue(config.hasActiveForwards)
+        assertFalse(PortForwardingConfig(localRules = listOf("8080:db:3306")).hasActiveForwards)
+    }
+
+    @Test
+    fun portForwardingRejectsInvalidAndConflictingPorts() {
+        org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            PortForwardingConfig(localRules = listOf("oops")).validated()
+        }
+        org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            PortForwardingConfig(dynamicPorts = listOf(0)).validated()
+        }
+        org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            PortForwardingConfig(localRules = listOf("1080:a:80"), dynamicPorts = listOf(1080)).validated()
+        }
+    }
 }

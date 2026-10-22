@@ -1,4 +1,4 @@
-package org.starfall.generative.features.machines.shared.logic.terminal
+package org.starfall.generative.shared.terminal
 
 import android.app.Activity
 import android.content.ClipData
@@ -19,8 +19,8 @@ import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
 import com.termux.view.TerminalView
 import com.termux.view.TerminalViewClient
-import org.starfall.generative.features.machines.shared.model.TerminalInputMode
-import org.starfall.generative.integrations.remote.RemoteTerminal
+import org.starfall.generative.shared.model.remote.RemoteTerminalSession
+import org.starfall.generative.shared.model.remote.TerminalInputMode
 
 /**
  * Adapter between a remote byte stream and Termux's maintained ANSI terminal renderer. A tiny
@@ -41,7 +41,7 @@ internal class RemoteTerminalBridge(
         snapToBottom = ::snapToBottom,
         isCursorKeysApplicationMode = { view?.mEmulator?.isCursorKeysApplicationMode == true }
     )
-    private var remote: RemoteTerminal? = null
+    private var remote: RemoteTerminalSession? = null
     private var closed = false
     private var emulatorReady = false
     // Everything the remote side printed (most recent part), replayed into a fresh emulator when the
@@ -135,7 +135,7 @@ internal class RemoteTerminalBridge(
         emulatorReady = false
     }
 
-    fun attachRemote(terminal: RemoteTerminal) {
+    fun attachRemote(terminal: RemoteTerminalSession) {
         remote = terminal
         closed = false
         lostReported.set(false)
