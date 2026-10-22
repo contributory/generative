@@ -32,6 +32,7 @@ import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.SavedPrompt
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +46,7 @@ internal fun PromptEditor(
     var content by rememberSaveable(promptId) { mutableStateOf(prompt?.content.orEmpty()) }
     var role by rememberSaveable(promptId) { mutableStateOf(prompt?.role ?: ChatRole.SYSTEM) }
 
-    BackHandler(onBack = onBack)
+    BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
     Scaffold(
         topBar = {
             TopAppBar(

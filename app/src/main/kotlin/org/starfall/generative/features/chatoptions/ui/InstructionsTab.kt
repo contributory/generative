@@ -33,7 +33,6 @@ import org.starfall.generative.shared.model.PromptLibrary
 import org.starfall.generative.shared.model.SavedPrompt
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.SettingsCard
 
 @Composable
 internal fun InstructionsTab(
@@ -49,19 +48,6 @@ internal fun InstructionsTab(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            SettingsCard {
-                Text(
-                    stringResource(R.string.prompt_instructions_title),
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    stringResource(R.string.prompt_instructions_description),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
         item {
             Button(onClick = onAddPrompt, modifier = Modifier.fillMaxWidth()) {
                 FluentIcon(Icons.Outlined.Add, contentDescription = null)

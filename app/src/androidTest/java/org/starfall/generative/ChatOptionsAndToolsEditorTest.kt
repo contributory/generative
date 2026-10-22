@@ -40,10 +40,15 @@ class ChatOptionsAndToolsEditorTest {
         compose.onNodeWithText("Image Generation").assertDoesNotExist()
         compose.onNodeWithText("Send File").assertDoesNotExist()
 
-        compose.onNodeWithText("Instructions").performClick()
-        compose.onNodeWithText("System Prompt & Instructions").assertIsDisplayed()
+        compose.onNodeWithText("Conversation helpers").performTouchInput { swipeLeft() }
         compose.onNodeWithText("Add prompt").assertIsDisplayed()
-        compose.onNodeWithText("Conversation helpers").assertDoesNotExist()
+        compose.onNodeWithText("System Prompt & Instructions").assertDoesNotExist()
+        compose.onNodeWithText("Conversation helpers").assertIsNotDisplayed()
+
+        compose.onNodeWithText("Helpers").performClick()
+        compose.onNodeWithText("Conversation helpers").assertIsDisplayed()
+        compose.onNodeWithText("Instructions").performClick()
+        compose.onNodeWithText("Add prompt").assertIsDisplayed()
     }
 
     @Test

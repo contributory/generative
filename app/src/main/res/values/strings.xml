@@ -393,8 +393,6 @@
     <string name="settings_chat_options_description">Configure conversation helpers, system prompts, and default chat models</string>
     <string name="chat_options_tab_helpers">Helpers</string>
     <string name="chat_options_tab_instructions">Instructions</string>
-    <string name="prompt_instructions_title">System Prompt &amp; Instructions</string>
-    <string name="prompt_instructions_description">Choose reusable instructions to include in conversations. System prompts are sent as system instructions; user and assistant prompts are added as context.</string>
     <string name="prompt_library_title">Prompts</string>
     <string name="prompt_toggle_description">Turn prompts on or off here. Edit, add, and delete them in Chat Options &gt; Instructions.</string>
     <string name="prompt_open_instructions">Open Chat Options &gt; Instructions</string>
