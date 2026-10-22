@@ -30,9 +30,7 @@
 │   │   │   └── 📁 ui/
 │   │   │       ├── 📄 MachineDetailsScreen.kt
 │   │   │       ├── 📄 RemoteMachineAdvancedDialogs.kt
-│   │   │       ├── 📄 RemoteMachineSettings.kt
-│   │   │       ├── 📄 RemoteTerminalPanels.kt
-│   │   │       └── 📄 RemoteTerminalScreen.kt
+│   │   │       └── 📄 RemoteMachineSettings.kt
 │   │   ├── 📁 list/
 │   │   │   └── 📁 ui/
 │   │   │       └── 📄 RemoteMachinesScreen.kt
@@ -42,7 +40,10 @@
 │   │       └── 📁 ui/
 │   │           ├── 📄 BinaryTestNotice.kt
 │   │           ├── 📄 RemoteMachineComponents.kt
-│   │           └── 📄 RemoteTerminalBridge.kt
+│   │           ├── 📄 RemoteTerminalBottomSheet.kt
+│   │           ├── 📄 RemoteTerminalBridge.kt
+│   │           ├── 📄 RemoteTerminalPanels.kt
+│   │           └── 📄 RemoteTerminalSessions.kt
 │   ├── 📁 main/
 │   │   └── 📁 ui/
 │   │       └── 📄 FeaturesScreen.kt

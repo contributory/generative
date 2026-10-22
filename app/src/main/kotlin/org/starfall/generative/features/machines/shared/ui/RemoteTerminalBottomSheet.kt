@@ -1,6 +1,6 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
-package org.starfall.generative.features.machines.details.ui
+package org.starfall.generative.features.machines.shared.ui
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,11 +34,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -62,7 +59,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -80,15 +76,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
-import org.starfall.generative.features.machines.shared.ui.RemoteMouseTouchListener
-import org.starfall.generative.features.machines.shared.ui.RemoteTerminalBridge
-import org.starfall.generative.features.machines.shared.ui.RemoteTerminalSessions
-import org.starfall.generative.features.machines.shared.ui.TerminalSlot
-import org.starfall.generative.features.machines.shared.ui.RemoteTextField
-import org.starfall.generative.features.machines.shared.ui.TerminalInputMode
 import org.starfall.generative.integrations.remote.REMOTE_TERMINAL_UI_PREFERENCES
 import org.starfall.generative.integrations.remote.RemoteSecretRequest
-import org.starfall.generative.integrations.remote.RemoteTerminal
 import org.starfall.generative.integrations.remote.remoteTerminalImePreferenceKey
 import org.starfall.generative.integrations.remote.remoteTerminalInputModePreferenceKey
 import org.starfall.generative.shared.model.RemoteMachine
@@ -96,6 +85,7 @@ import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.sheets.AppBottomSheet
 
 /** Only the terminal viewport stays dark in every theme; all chrome follows the app theme. */
 private val TerminalBackground = Color(0xFF0B0D0F)
@@ -107,7 +97,26 @@ private class PendingSecretRequest(
 )
 
 @Composable
-internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachinesViewModel, onBack: () -> Unit) {
+internal fun RemoteTerminalBottomSheet(
+    machine: RemoteMachine,
+    viewModel: RemoteMachinesViewModel,
+    onDismiss: () -> Unit
+) {
+    AppBottomSheet(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        fixedHeightFraction = 0.9f
+    ) {
+        RemoteTerminalContent(machine = machine, viewModel = viewModel, onDismiss = onDismiss)
+    }
+}
+
+@Composable
+private fun RemoteTerminalContent(
+    machine: RemoteMachine,
+    viewModel: RemoteMachinesViewModel,
+    onDismiss: () -> Unit
+) {
     val context = LocalContext.current
     val density = LocalDensity.current.density
     val scope = rememberCoroutineScope()
@@ -200,7 +209,7 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
     }
 
     // Phone back button: disconnect explicitly (same as the app bar back arrow).
-    BackHandler(enabled = LocalScreenTransitionActive.current) { leaveScreen(); onBack() }
+    BackHandler(enabled = LocalScreenTransitionActive.current) { leaveScreen(); onDismiss() }
     DisposableEffect(machine.id) {
         onDispose { leaveScreen() }
     }
@@ -219,47 +228,48 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
         activeSlot?.bridge?.focusTerminalView()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            machine.name.ifBlank { stringResource(R.string.remote_machine_unnamed) },
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            "${machine.username.ifBlank { "?" }}@${machine.displayHost}:${machine.port}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+    Column(Modifier.fillMaxWidth().fillMaxHeight()) {
+        TerminalAppBar(
+            machine = machine,
+            bridge = activeBridge,
+            sessionsDrawerOpen = sessionsDrawerOpen,
+            connecting = connecting,
+            activeTerminal = activeSlot != null,
+            onBack = { leaveScreen(); onDismiss() },
+            onToggleSessions = { drawerExpanded = !sessionsDrawerOpen },
+            onNewTerminal = { openTerminal() },
+            onCloseTerminal = { activeSlot?.let(::closeSlot) },
+            localImeEnabled = localImeEnabled,
+            onToggleLocalIme = {
+                localImeEnabled = !localImeEnabled
+                terminalPrefs.edit()
+                    .putBoolean(remoteTerminalImePreferenceKey(machine.id), localImeEnabled)
+                    .apply()
+            },
+            onInputModeChange = { mode ->
+                // Input mode is a per-machine preference: apply it to every
+                // session, not just the visible one.
+                if (activeBridge?.setInputMode(mode) == true) {
+                    terminalSlots.forEach { slot ->
+                        if (slot.bridge !== activeBridge) slot.bridge.setInputMode(mode)
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { leaveScreen(); onBack() }) {
-                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { drawerExpanded = !sessionsDrawerOpen }) {
-                        FluentIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.remote_machine_terminal_toggle_sessions))
-                    }
-                    IconButton(enabled = !connecting, onClick = { openTerminal() }) {
-                        FluentIcon(Icons.Default.Add, stringResource(R.string.remote_machine_terminal_add))
-                    }
-                    IconButton(enabled = activeSlot != null, onClick = { activeSlot?.let { closeSlot(it) } }) {
-                        FluentIcon(Icons.Default.Close, stringResource(R.string.remote_machine_terminal_close))
-                    }
+                    terminalPrefs.edit()
+                        .putString(remoteTerminalInputModePreferenceKey(machine.id), mode.name)
+                        .apply()
                 }
-            )
-        }
-    ) { padding ->
+            },
+            onToggleForceMouse = {
+                activeBridge?.let { bridge ->
+                    val enabled = !bridge.forceMouse
+                    terminalSlots.forEach { slot -> slot.bridge.forceMouse = enabled }
+                    terminalPrefs.edit().putBoolean("force_mouse", enabled).apply()
+                }
+            },
+            fontDp = fontDp,
+            onFontChange = { delta -> setFontDp(fontDp + delta) }
+        )
         Row(
-            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()
+            Modifier.weight(1f).fillMaxWidth().imePadding()
         ) {
                 AnimatedVisibility(
                     visible = sessionsDrawerOpen,
@@ -281,40 +291,6 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
                 }
                 if (sessionsDrawerOpen) VerticalDivider(Modifier.fillMaxHeight())
                 Column(Modifier.weight(1f).fillMaxHeight()) {
-                    if (activeBridge != null) {
-                        TerminalToolbar(
-                            bridge = activeBridge,
-                            sessionsDrawerOpen = sessionsDrawerOpen,
-                            onToggleSessions = { drawerExpanded = !sessionsDrawerOpen },
-                            onNewTerminal = { openTerminal() },
-                            localImeEnabled = localImeEnabled,
-                            onToggleLocalIme = {
-                                localImeEnabled = !localImeEnabled
-                                terminalPrefs.edit()
-                                    .putBoolean(remoteTerminalImePreferenceKey(machine.id), localImeEnabled)
-                                    .apply()
-                            },
-                            onInputModeChange = { mode ->
-                                // Input mode is a per-machine preference: apply it to every
-                                // session, not just the visible one.
-                                if (activeBridge.setInputMode(mode)) {
-                                    terminalSlots.forEach { slot ->
-                                        if (slot.bridge !== activeBridge) slot.bridge.setInputMode(mode)
-                                    }
-                                    terminalPrefs.edit()
-                                        .putString(remoteTerminalInputModePreferenceKey(machine.id), mode.name)
-                                        .apply()
-                                }
-                            },
-                            onToggleForceMouse = {
-                                val enabled = !activeBridge.forceMouse
-                                terminalSlots.forEach { slot -> slot.bridge.forceMouse = enabled }
-                                terminalPrefs.edit().putBoolean("force_mouse", enabled).apply()
-                            },
-                            fontDp = fontDp,
-                            onFontChange = { delta -> setFontDp(fontDp + delta) }
-                        )
-                    }
                     Box(Modifier.weight(1f).fillMaxWidth().background(TerminalBackground)) {
                         // Every session keeps its own TerminalView (and emulator) alive while it
                         // exists; inactive views are laid out at zero size so their scrollback
@@ -469,7 +445,7 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
         AppAlertDialog(
             onDismissRequest = {
                 pending.answer.complete(null)
-                onBack()
+                onDismiss()
             },
             title = {
                 Text(
@@ -520,7 +496,7 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
             dismissButton = {
                 TextButton(onClick = {
                     pending.answer.complete(null)
-                    onBack()
+                    onDismiss()
                 }) {
                     Text(stringResource(R.string.common_cancel))
                 }
@@ -528,4 +504,3 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
         )
     }
 }
-

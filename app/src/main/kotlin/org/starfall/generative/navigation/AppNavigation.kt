@@ -41,9 +41,9 @@ import org.starfall.generative.features.chatoptions.ui.ChatOptionsScreen
 import org.starfall.generative.features.icons.ui.IconsScreen
 import org.starfall.generative.features.machines.details.ui.MachineDetailsScreen
 import org.starfall.generative.features.machines.details.ui.RemoteMachineSettings
-import org.starfall.generative.features.machines.details.ui.RemoteTerminalScreen
 import org.starfall.generative.features.machines.list.ui.RemoteMachinesScreen
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
+import org.starfall.generative.features.machines.shared.ui.RemoteTerminalBottomSheet
 import org.starfall.generative.features.main.ui.FeaturesScreen
 import org.starfall.generative.features.mcp.editor.ui.ServerEditorScreen
 import org.starfall.generative.features.mcp.list.ui.ServerListScreen
@@ -165,9 +165,7 @@ fun AppNavigation(
     val connectedMachineIds by remoteMachinesViewModel.connectedMachineIds.collectAsStateWithLifecycle()
     val connectedMachines = remoteMachineState.machines.filter { it.id in connectedMachineIds }
     var remoteMachinePage by remember { mutableStateOf<Any?>(null) }
-    // Set when the terminal is opened from the chat app bar, so backing out of it returns to the
-    // conversation instead of landing on the Remote Machines list.
-    var terminalOpenedFromChat by remember { mutableStateOf(false) }
+    var terminalMachine by remember { mutableStateOf<RemoteMachine?>(null) }
 
     val toolSettings by viewModel.toolSettings.collectAsStateWithLifecycle()
     val queuedMessages by viewModel.queuedMessages.collectAsStateWithLifecycle()
@@ -487,9 +485,7 @@ fun AppNavigation(
                         },
                         connectedMachines = connectedMachines,
                         onOpenTerminal = { machine ->
-                            terminalOpenedFromChat = true
-                            remoteMachinePage = machine
-                            openConfiguration(AppDestination.REMOTE_MACHINES)
+                            terminalMachine = machine
                         }
                     )
                 }
@@ -756,7 +752,6 @@ fun AppNavigation(
                         DisposableEffect(Unit) {
                             onDispose {
                                 remoteMachinePage = null
-                                terminalOpenedFromChat = false
                             }
                         }
                         SlideScreenContent(
@@ -764,18 +759,6 @@ fun AppNavigation(
                             label = stringResource(R.string.remote_machines_title)
                         ) { selected ->
                             when {
-                                selected is RemoteMachine -> RemoteTerminalScreen(
-                                    machine = selected,
-                                    viewModel = remoteMachinesViewModel,
-                                    onBack = {
-                                        remoteMachinePage = null
-                                        if (terminalOpenedFromChat) {
-                                            terminalOpenedFromChat = false
-                                            navController.popBackStack()
-                                        }
-                                    }
-                                )
-
                                 selected is MachineEditorPage -> MachineDetailsScreen(
                                     initial = selected.machine,
                                     state = remoteMachineState,
@@ -809,8 +792,7 @@ fun AppNavigation(
                                     },
                                     onOpenSettings = { remoteMachinePage = RemoteMachineSettingsPage.SETTINGS },
                                     onOpenTerminal = { machine ->
-                                        terminalOpenedFromChat = false
-                                        remoteMachinePage = machine
+                                        terminalMachine = machine
                                     }
                                 )
                             }
@@ -973,6 +955,13 @@ fun AppNavigation(
                             }
                         }
                     }
+                }
+                terminalMachine?.let { machine ->
+                    RemoteTerminalBottomSheet(
+                        machine = machine,
+                        viewModel = remoteMachinesViewModel,
+                        onDismiss = { terminalMachine = null }
+                    )
                 }
             }
         }
