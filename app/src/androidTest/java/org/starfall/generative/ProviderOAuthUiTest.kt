@@ -48,7 +48,7 @@ class ProviderOAuthUiTest {
     @Test fun accountProviderEditorsHideBaseUrlAndAllowMultipleAccounts() {
         var type by mutableStateOf(accountTypes.first())
         compose.setContent { MaterialTheme { key(type) {
-            ProviderEditorScreen(ModelProvider("p", "Provider", type, baseUrl = type.defaultBaseUrl,
+            ProviderEditor(ModelProvider("p", "Provider", type, baseUrl = type.defaultBaseUrl,
                 auth = type.defaultAuthorization()), isNew = false, onSaveModels = { _, _ -> },
                 onReorderModels = { _, _ -> }, onDismiss = {}, onSave = {})
         } } }

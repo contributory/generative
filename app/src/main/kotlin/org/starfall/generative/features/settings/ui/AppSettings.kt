@@ -400,7 +400,7 @@ fun PreferencesSettingsView(
 }
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun AppSettingsScreen(
+fun AppSettings(
     appPreferences: AppPreferences,
     onThemeChange: (String) -> Unit,
     onAmoledChange: (Boolean) -> Unit,

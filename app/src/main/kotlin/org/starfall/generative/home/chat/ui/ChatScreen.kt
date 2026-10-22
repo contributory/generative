@@ -67,14 +67,14 @@ import org.starfall.generative.shared.ui.media.ChatAttachmentSelection
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
-import org.starfall.generative.shared.ui.sheets.AppBottomSheet
+import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.text.PlatformTextSelection
 import org.starfall.generative.home.chat.logic.input.ChatInputEditDraft
 import org.starfall.generative.home.chat.logic.input.DirectMediaRequest
 import org.starfall.generative.home.chat.logic.unansweredUserMessageIds
 import org.starfall.generative.home.chat.ui.input.UserInputArea
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.home.shared.ui.ConversationSummaryBottomSheet
+import org.starfall.generative.home.shared.ui.ConversationSummarySheet
 import org.starfall.generative.home.chat.model.ContextWindowStatus
 
 // Jump-to-latest: ease time constant (smaller is faster), frames the bottom must hold, and a hard cap.
@@ -837,11 +837,11 @@ fun ChatScreen(
     }
 
     if (showContextSummarySheet) {
-        ConversationSummaryBottomSheet(onStart = onStartConversationSummary, onDismiss = { showContextSummarySheet = false })
+        ConversationSummarySheet(onStart = onStartConversationSummary, onDismiss = { showContextSummarySheet = false })
     }
 
     if (showTerminalMachinePicker) {
-        AppBottomSheet(
+        AppSheet(
             onDismissRequest = { showTerminalMachinePicker = false }
         ) {
             Column(

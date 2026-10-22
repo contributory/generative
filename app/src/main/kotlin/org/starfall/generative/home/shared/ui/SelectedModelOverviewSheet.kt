@@ -28,14 +28,14 @@ import org.starfall.generative.shared.model.language.ThinkingPassback
 import org.starfall.generative.shared.model.language.passbackMode
 import org.starfall.generative.shared.model.language.supportedReasoningEfforts
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.ui.sheets.AppBottomSheet
+import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.model.ModelPickerCard
 import org.starfall.generative.shared.ui.model.drawMaximumEffortStreaks
 
 @Composable
-internal fun SelectedModelOverviewBottomSheet(
+internal fun SelectedModelOverviewSheet(
     provider: ModelProvider?,
     folderName: String?,
     modelId: String,
@@ -78,7 +78,7 @@ internal fun SelectedModelOverviewBottomSheet(
     } else {
         MaterialTheme.colorScheme.surface
     }
-    AppBottomSheet(onDismissRequest = {
+    AppSheet(onDismissRequest = {
         screenBurst?.hide()
         onDismiss()
     }, containerColor = sheetColor, containerBrush = sheetBrush,

@@ -23,7 +23,7 @@ import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MediaRequestChainSettingsScreen(
+fun MediaRequestChainSettings(
     provider: ModelProvider,
     config: SystemToolConfig,
     onSave: (Map<String, MediaRequestProfile>, String) -> Unit,
@@ -61,7 +61,7 @@ fun MediaRequestChainSettingsScreen(
         if (profile == null) {
             editingProfileId = null
         } else {
-            MediaRequestProfileEditorScreen(
+            MediaRequestProfileEditor(
                 provider = provider,
                 profile = profile,
                 video = video,

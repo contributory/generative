@@ -30,7 +30,7 @@ import org.starfall.generative.shared.ui.dialogs.AppDialog as Dialog
 import org.starfall.generative.shared.ui.media.ChatFilePreview
 import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 import org.starfall.generative.shared.ui.media.MediaContent
-import org.starfall.generative.shared.ui.media.MediaViewerToolbar
+import org.starfall.generative.shared.ui.media.MediaViewerToolBar
 import org.starfall.generative.shared.ui.media.isPreviewableMedia
 import org.starfall.generative.shared.ui.media.mediaMimeType
 import org.starfall.generative.shared.ui.media.mediaThumbnail
@@ -155,7 +155,7 @@ internal fun MediaViewer(store:ToolFiles,file:File,onDismiss:()->Unit) {
                         }
                     }
                 }
-                MediaViewerToolbar(
+                MediaViewerToolBar(
                     onSave = { save.launch(file.name) },
                     onShare = {
                         runCatching {

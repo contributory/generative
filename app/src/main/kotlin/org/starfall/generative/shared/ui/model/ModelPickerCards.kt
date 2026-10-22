@@ -67,7 +67,7 @@ import org.starfall.generative.shared.model.language.passbackMode
 import org.starfall.generative.shared.model.language.supportedReasoningEfforts
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.shared.ui.sheets.AppBottomSheet
+import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons

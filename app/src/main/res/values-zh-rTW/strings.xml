@@ -84,8 +84,8 @@
     <string name="tool_send_file_title">傳送檔案</string>
     <string name="tool_send_file_description">允許 AI 在聊天中顯示工具結果中的檔案。</string>
     <string name="tool_select_compatible_model_hint">選擇相容模型以啟用此工具。</string>
-    <string name="mcp_add_servers_hint">請先在 MCP Manage 中新增伺服器。</string>
-    <string name="mcp_tool_list_not_cached_description">工具清單尚未快取。請先在 MCP Manage 中儲存或重新整理此伺服器。</string>
+    <string name="mcp_add_servers_hint">請先在 MCP Connectors 中新增伺服器。</string>
+    <string name="mcp_tool_list_not_cached_description">工具清單尚未快取。請先在 MCP Connectors 中儲存或重新整理此伺服器。</string>
     <string name="mcp_no_globally_enabled_tools_description">沒有全域啟用的工具。</string>
     <string name="image_tool_model_options_description">只設定此模型支援的選項。留白欄位會使用提供者預設值。設定會依模型個別儲存。</string>
     <string name="image_tool_request_body_help">支援巢狀物件與提供者擴充功能。模型與提示詞來自聊天。</string>
@@ -130,7 +130,7 @@
     <string name="icon_cache_save_failed">無法儲存圖示規則。</string>
     <string name="icon_cache_search">搜尋圖示或比對規則</string>
     <string name="icon_import_failed">無法載入這張圖片，請選擇其他圖片。</string>
-    <string name="icon_settings_title">圖示與快取</string>
+    <string name="icon_settings_title">圖示與商標</string>
     <string name="icon_variant_dark">深色（選用）</string>
     <string name="icon_variant_normal">淺色</string>
     <string name="model_arguments">引數</string>

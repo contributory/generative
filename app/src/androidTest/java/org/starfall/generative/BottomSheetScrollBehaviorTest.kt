@@ -12,7 +12,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
-import org.starfall.generative.shared.ui.sheets.AppBottomSheet
+import org.starfall.generative.shared.ui.sheets.AppSheet
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
@@ -44,7 +44,7 @@ class BottomSheetScrollBehaviorTest {
         lateinit var listState: LazyListState
         compose.setContent { MaterialTheme {
             listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
-            AppBottomSheet(onDismissRequest = {}) {
+            AppSheet(onDismissRequest = {}) {
                 LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().height(320.dp).testTag("edge-list")) {
                     items(60) { Text("Row $it", Modifier.fillMaxWidth().height(48.dp)) }
                 }
@@ -78,7 +78,7 @@ class BottomSheetScrollBehaviorTest {
         lateinit var listState: LazyListState
         compose.setContent { MaterialTheme {
             listState = rememberLazyListState(initialFirstVisibleItemIndex = 59)
-            AppBottomSheet(onDismissRequest = {}) {
+            AppSheet(onDismissRequest = {}) {
                 LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().height(320.dp).testTag("edge-list")) {
                     items(60) { Text("Row $it", Modifier.fillMaxWidth().height(48.dp)) }
                 }

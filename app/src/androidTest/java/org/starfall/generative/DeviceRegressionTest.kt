@@ -24,16 +24,16 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.home.shared.ui.QuickActionsBottomSheet
-import org.starfall.generative.shared.ui.model.ModelPickerBottomSheet
+import org.starfall.generative.home.shared.ui.QuickActionsSheet
+import org.starfall.generative.shared.ui.model.ModelPickerSheet
 
 class DeviceRegressionTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun addSheetStartsHalfHeightExpandsAndShowsToolsBeforeSummary() {
+    @Test fun addSheetStartsHalfHeightExpandsAndShowsToolControlsBeforeSummary() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         compose.setContent { MaterialTheme {
-            QuickActionsBottomSheet({}, {}, {}, {}, {}, {}, {}, {})
+            QuickActionsSheet({}, {}, {}, {}, {}, {}, {}, {}, {})
         } }
         compose.waitForIdle()
         val photos = compose.onNodeWithText("Photos")
@@ -45,9 +45,11 @@ class DeviceRegressionTest {
         compose.waitForIdle()
         assertTrue("Sheet did not expand", photos.fetchSemanticsNode().boundsInRoot.top < initialTop - 100)
         compose.onNodeWithText("Summary").performScrollTo()
-        val tools = compose.onNodeWithText("Tools Manage").fetchSemanticsNode().boundsInRoot
+        val featureTools = compose.onNodeWithText("Feature Tools").fetchSemanticsNode().boundsInRoot
+        val mcpConnectors = compose.onNodeWithText("MCP Connectors").fetchSemanticsNode().boundsInRoot
         val summary = compose.onNodeWithText("Summary").fetchSemanticsNode().boundsInRoot
-        assertTrue("Tools Manage must precede Summary", tools.top < summary.top)
+        assertTrue("Feature Tools must precede Summary", featureTools.top < summary.top)
+        assertTrue("MCP Connectors must precede Summary", mcpConnectors.top < summary.top)
     }
 
     @Test fun modelPickerDoesNotDismissWhenFlingReachesTop() {
@@ -57,7 +59,7 @@ class DeviceRegressionTest {
             baseUrl = "https://example.com/v1",
             config = ProviderConfiguration(modelConfigs = configs))
         compose.setContent { MaterialTheme {
-            ModelPickerBottomSheet(listOf(provider), selectedProviderId = "test", selectedModelId = "test-model-40",
+            ModelPickerSheet(listOf(provider), selectedProviderId = "test", selectedModelId = "test-model-40",
                 conversationReasoningEffort = null, onSelectModel = { _, _ -> },
                 onSetReasoningEffort = {}, onDismiss = { dismissed = true })
         } }

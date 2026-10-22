@@ -44,7 +44,7 @@ import org.starfall.generative.shared.ui.model.modelInitial
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModelEditorScreen(
+fun ModelEditor(
     provider: ModelProvider,
     initialModelId: String,
     existingModelIds: Set<String>,

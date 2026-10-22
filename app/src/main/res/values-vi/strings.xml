@@ -72,7 +72,7 @@
     <string name="crash_report_description">Phiên trước đã kết thúc bất ngờ. Lỗi được ghi lại bên dưới. Bạn có thể tạo issue trên GitHub kèm thông tin này để giúp khắc phục sự cố.</string>
     <string name="oauth_browser_hint">Đăng nhập tài khoản qua trình duyệt.</string>
     <string name="icon_settings_description">Quản lý biểu tượng chung và quy tắc khớp</string>
-    <string name="icon_settings_title">Biểu tượng và bộ nhớ đệm</string>
+    <string name="icon_settings_title">Biểu tượng &amp; thương hiệu</string>
     <string name="icon_cache_search">Tìm biểu tượng hoặc quy tắc khớp</string>
     <string name="icon_cache_no_results">Không tìm thấy kết quả phù hợp.</string>
     <string name="icon_cache_no_matches">Chưa có quy tắc khớp tùy chỉnh</string>
@@ -124,8 +124,8 @@
     <string name="tool_send_file_title">Gửi tệp</string>
     <string name="tool_send_file_description">Cho phép AI hiển thị tệp từ kết quả công cụ trong cuộc trò chuyện.</string>
     <string name="tool_select_compatible_model_hint">Chọn model tương thích để bật công cụ này.</string>
-    <string name="mcp_add_servers_hint">Trước tiên hãy thêm server trong MCP Manage.</string>
-    <string name="mcp_tool_list_not_cached_description">Danh sách công cụ chưa được lưu trong bộ nhớ đệm. Trước tiên hãy lưu hoặc làm mới server này trong MCP Manage.</string>
+    <string name="mcp_add_servers_hint">Trước tiên hãy thêm server trong MCP Connectors.</string>
+    <string name="mcp_tool_list_not_cached_description">Danh sách công cụ chưa được lưu trong bộ nhớ đệm. Trước tiên hãy lưu hoặc làm mới server này trong MCP Connectors.</string>
     <string name="mcp_no_globally_enabled_tools_description">Không có công cụ nào được bật ở cấp hệ thống.</string>
     <string name="image_tool_model_options_description">Chỉ thiết lập các tùy chọn được model này hỗ trợ. Để trống sẽ dùng mặc định của provider. Cài đặt được lưu riêng cho từng model.</string>
     <string name="image_tool_request_body_help">Hỗ trợ object lồng nhau và phần mở rộng của provider. Model và prompt được lấy từ chat.</string>

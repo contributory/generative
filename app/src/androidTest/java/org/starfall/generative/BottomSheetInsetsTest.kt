@@ -30,7 +30,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.generative.shared.ui.sheets.AppBottomSheet
+import org.starfall.generative.shared.ui.sheets.AppSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 class BottomSheetInsetsTest {
@@ -55,7 +55,7 @@ class BottomSheetInsetsTest {
         }
         compose.setContent {
             MaterialTheme {
-                AppBottomSheet(
+                AppSheet(
                     onDismissRequest = {},
                     containerColor = Color(0xFF285A78)
                 ) {

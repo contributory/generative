@@ -28,7 +28,7 @@ import org.starfall.generative.shared.model.McpAccess
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.ToolDefinition
 import org.starfall.generative.shared.model.ToolSettings
-import org.starfall.generative.shared.ui.sheets.AppBottomSheet
+import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons

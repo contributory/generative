@@ -84,8 +84,8 @@
     <string name="tool_send_file_title">ファイルを送信</string>
     <string name="tool_send_file_description">ツールの結果に含まれるファイルをチャット内で AI が表示できるようにします。</string>
     <string name="tool_select_compatible_model_hint">このツールを有効にするには対応モデルを選択してください。</string>
-    <string name="mcp_add_servers_hint">先に MCP Manage でサーバーを追加してください。</string>
-    <string name="mcp_tool_list_not_cached_description">ツール一覧がキャッシュされていません。先に MCP Manage でこのサーバーを保存または更新してください。</string>
+    <string name="mcp_add_servers_hint">先に MCP Connectors でサーバーを追加してください。</string>
+    <string name="mcp_tool_list_not_cached_description">ツール一覧がキャッシュされていません。先に MCP Connectors でこのサーバーを保存または更新してください。</string>
     <string name="mcp_no_globally_enabled_tools_description">全体で有効になっているツールはありません。</string>
     <string name="image_tool_model_options_description">このモデルが対応するオプションのみ設定してください。空欄にはプロバイダーのデフォルトを使用します。設定はモデルごとに保存されます。</string>
     <string name="image_tool_request_body_help">ネストしたオブジェクトとプロバイダー拡張に対応しています。モデルとプロンプトはチャットから取得します。</string>
@@ -130,7 +130,7 @@
     <string name="icon_cache_save_failed">アイコンルールを保存できませんでした。</string>
     <string name="icon_cache_search">アイコンまたは一致ルールを検索</string>
     <string name="icon_import_failed">この画像を読み込めませんでした。別の画像を選択してください。</string>
-    <string name="icon_settings_title">アイコンとキャッシュ</string>
+    <string name="icon_settings_title">アイコンと商標</string>
     <string name="icon_variant_dark">ダーク（任意）</string>
     <string name="icon_variant_normal">ライト</string>
     <string name="model_arguments">引数</string>

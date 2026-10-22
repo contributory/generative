@@ -15,7 +15,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 
 @Composable
-fun ItemOverflowMenu(
+fun ItemContextMenu(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     deleteColor: Color,
