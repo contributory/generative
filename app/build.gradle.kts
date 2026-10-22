@@ -51,10 +51,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = System.getenv("CM_KEYSTORE_PATH")?.let { file(it) }
-            storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
-            keyAlias = System.getenv("CM_KEY_ALIAS")
-            keyPassword = System.getenv("CM_KEY_PASSWORD")
+            storeFile = System.getenv("KEYSTORE_PATH")?.let { file(it) }
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEY_PASSWORD")
         }
     }
 
@@ -66,9 +66,9 @@ android {
             }
         }
         release {
-            // Codemagic provides CM_KEYSTORE_PATH and signs in Gradle. On Appcircle it is absent, so the
-            // APK stays unsigned here and the "Android Sign" workflow step signs it with the selected keystore.
-            if (System.getenv("CM_KEYSTORE_PATH") != null) signingConfig = signingConfigs.getByName("release")
+            // Codemagic maps CM_* signing variables to KEYSTORE_PATH/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD.
+            // On Appcircle KEYSTORE_PATH is absent, so the "Android Sign" workflow step signs the unsigned APK.
+            if (System.getenv("KEYSTORE_PATH") != null) signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
