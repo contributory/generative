@@ -48,7 +48,10 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -127,6 +130,10 @@ fun UserInputArea(
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue()) }
     var inputFocused by remember { mutableStateOf(false) }
+    // The field may only take focus after the user touches it. Returning from another page (for example the
+    // terminal, whose Android view held the window focus) hands the focus back to Compose, which would otherwise
+    // move it into the only focusable item here and pop the keyboard up.
+    var inputFocusAllowed by remember { mutableStateOf(false) }
     var contextWindowMenuVisible by remember { mutableStateOf(false) }
     val textState = textFieldValue.text
     val context = LocalContext.current
@@ -565,7 +572,19 @@ fun UserInputArea(
                         modifier = Modifier
                             .weight(1f)
                             .padding(horizontal = if (buttonsBelow) 14.dp else 8.dp, vertical = 10.dp)
-                            .onFocusChanged { inputFocused = it.isFocused }
+                            .pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                                        if (event.changes.any { it.pressed }) inputFocusAllowed = true
+                                    }
+                                }
+                            }
+                            .focusProperties { canFocus = inputFocusAllowed }
+                            .onFocusChanged {
+                                inputFocused = it.isFocused
+                                if (!it.isFocused) inputFocusAllowed = false
+                            }
                             .selectAllOnTripleClick {
                                 textFieldValue = textFieldValue.copy(
                                     selection = TextRange(0, textFieldValue.text.length)
