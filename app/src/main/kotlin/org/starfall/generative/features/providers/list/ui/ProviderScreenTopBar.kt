@@ -164,7 +164,7 @@ internal fun ProviderScreenTopBar(
                             )
                         )
                     }
-                    ProviderGroupOverflowMenu(
+                    ProviderGroupContextMenu(
                         onEdit = { onEditGroup(appBarGroup) },
                         onDelete = { onDeleteGroup(appBarGroup) },
                         compact = false

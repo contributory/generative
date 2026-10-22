@@ -3,17 +3,6 @@
     <string name="tool_call_strategy_description">Выберите, выполнять вызовы инструментов по очереди или параллельно.</string>
     <string name="tool_call_concurrent_limit_description">Максимальное количество вызовов инструментов, выполняемых одновременно.</string>
 
-    <!-- Binary test argument dialog -->
-    <string name="remote_machine_binary_test_parameters_title">Аргументы тестирования бинарного файла · %1$s</string>
-    <string name="remote_machine_binary_test_arguments">Аргументы (необязательно)</string>
-    <string name="remote_machine_binary_test_arguments_help">Разделяйте аргументы пробелами. Каждый элемент передаётся отдельно; кавычки не обрабатываются особым образом.</string>
-    <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
-
-    <!-- Executable binary upload security confirmation -->
-    <string name="remote_machine_binary_upload_warning_title">Предупреждение безопасности</string>
-    <string name="remote_machine_binary_upload_warning_message">Исполняемые файлы не изолированы от этого приложения. При запуске они могут получать доступ к данным и файлам, доступным приложению, а также использовать его сетевое подключение. Загружайте исполняемые файлы только из источников, которым доверяете.</string>
-    <string name="remote_machine_binary_upload_confirm">Загрузить и доверять</string>
-
     <string name="thinking">Обдумывание</string>
     <string name="thinking_streaming">Обдумывание...</string>
     <string name="thought_process">Ход рассуждений</string>
@@ -35,6 +24,7 @@
     <string name="settings_speech_services_description">Поставщики синтеза речи и голоса</string>
     <string name="speech_services_description">Использовать Android TTS или модели TTS от поставщиков</string>
     <string name="settings_storage_description">Файлы, созданные инструментами</string>
+    <string name="storage_open_in_files_failed">Не удалось открыть системный файловый менеджер.</string>
     <string name="settings_theme_description">Выберите внешний вид Generative</string>
     <string name="settings_amoled_description">Использовать полностью чёрные поверхности в тёмном режиме</string>
     <string name="settings_dynamic_color_description">Использовать цвета обоев на Android 12 и новее</string>
@@ -94,8 +84,8 @@
     <string name="tool_send_file_title">Отправить файл</string>
     <string name="tool_send_file_description">Разрешить ИИ показывать в чате файлы из результатов инструментов.</string>
     <string name="tool_select_compatible_model_hint">Выберите совместимую модель, чтобы включить этот инструмент.</string>
-    <string name="mcp_add_servers_hint">Сначала добавьте серверы в MCP Manage.</string>
-    <string name="mcp_tool_list_not_cached_description">Список инструментов не кэширован. Сначала сохраните или обновите этот сервер в MCP Manage.</string>
+    <string name="mcp_add_servers_hint">Сначала добавьте серверы в MCP Connectors.</string>
+    <string name="mcp_tool_list_not_cached_description">Список инструментов не кэширован. Сначала сохраните или обновите этот сервер в MCP Connectors.</string>
     <string name="mcp_no_globally_enabled_tools_description">Нет глобально включённых инструментов.</string>
     <string name="image_tool_model_options_description">Указывайте только параметры, поддерживаемые этой моделью. Пустые поля используют значения поставщика по умолчанию. Настройки сохраняются отдельно для каждой модели.</string>
     <string name="image_tool_request_body_help">Поддерживаются вложенные объекты и расширения поставщика. Модель и промпт берутся из чата.</string>
@@ -140,7 +130,7 @@
     <string name="icon_cache_save_failed">Не удалось сохранить правила иконок.</string>
     <string name="icon_cache_search">Поиск иконок или правил совпадения</string>
     <string name="icon_import_failed">Не удалось загрузить это изображение. Выберите другое.</string>
-    <string name="icon_settings_title">Иконки и кэш</string>
+    <string name="icon_settings_title">Иконки и товарные знаки</string>
     <string name="icon_variant_dark">Тёмная (необязательно)</string>
     <string name="icon_variant_normal">Светлая</string>
     <string name="model_arguments">Аргументы</string>
@@ -151,6 +141,13 @@
     <string name="model_tools_hint">Включите встроенные инструменты, поддерживаемые этой моделью. Они передаются напрямую в запрос к API модели.</string>
     <string name="model_tools_unsupported_provider">API этого провайдера пока не поддерживает встроенные инструменты модели в Generative.</string>
     <string name="remote_machine_google_missing_resolution">Для авторизации Google требуется взаимодействие, но следующий шаг не был возвращён.</string>
+    <string name="remote_machine_identity_file_help">Путь к закрытому ключу или имя ключа, загруженного в Remote Settings. Сам ключ никогда не сохраняется в параметрах машины. Оставьте поле пустым, если ключ не нужен.</string>
+    <string name="remote_machine_terminal_connected">Подключено</string>
+    <string name="remote_machine_terminal_disconnected">Отключено</string>
+    <string name="remote_machine_terminal_no_sessions_hint">Соединение с этой машиной будет разорвано, когда закроется её последний терминальный сеанс. Откройте новый сеанс, чтобы подключиться снова.</string>
+    <string name="remote_machine_terminal_connection_lost">Соединение потеряно</string>
+    <string name="remote_machine_terminal_connection_failed">Не удалось подключиться</string>
+    <string name="remote_machine_not_configured">Не настроено</string>
     <string name="remote_machine_google_no_access_token">Google не вернул токен доступа.</string>
     <string name="remote_machine_oauth_client_type">Тип клиента OAuth</string>
     <string name="remote_machine_oauth_type_android">Приложение Android</string>

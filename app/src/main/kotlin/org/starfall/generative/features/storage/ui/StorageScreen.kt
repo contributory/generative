@@ -35,6 +35,7 @@ import kotlinx.coroutines.withContext
 import androidx.compose.ui.layout.ContentScale
 import java.io.File
 import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.files.openAppStorageInDocumentsUi
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.dialogs.AppDialog as Dialog
 import org.starfall.generative.shared.ui.media.ChatFilePreview
@@ -42,7 +43,7 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 import org.starfall.generative.shared.ui.media.MediaContent
-import org.starfall.generative.shared.ui.media.MediaViewerToolbar
+import org.starfall.generative.shared.ui.media.MediaViewerToolBar
 import org.starfall.generative.shared.ui.media.MediaViewer
 import org.starfall.generative.shared.ui.media.isPreviewableMedia
 import org.starfall.generative.shared.ui.media.mediaMimeType
@@ -106,10 +107,22 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Storage", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)) },
+                title = { Text(stringResource(R.string.settings_storage), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        if (!openAppStorageInDocumentsUi(context)) {
+                            Toast.makeText(context, R.string.storage_open_in_files_failed, Toast.LENGTH_SHORT).show()
+                        }
+                    }) {
+                        FluentIcon(
+                            Icons.Outlined.OpenInBrowser,
+                            contentDescription = stringResource(R.string.storage_open_in_files)
+                        )
                     }
                 }
             )

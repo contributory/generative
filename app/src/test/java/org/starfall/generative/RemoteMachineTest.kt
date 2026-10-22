@@ -4,18 +4,23 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.starfall.generative.shared.model.PortForwardRule
+import org.starfall.generative.shared.model.PortForwardingConfig
 import org.starfall.generative.shared.model.REMOTE_TOOL_DISCONNECT
 import org.starfall.generative.shared.model.REMOTE_TOOL_EXECUTE
 import org.starfall.generative.shared.model.REMOTE_TOOL_START_MACHINE
 import org.starfall.generative.shared.model.REMOTE_TOOL_UPDATE_IP
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
-import org.starfall.generative.integrations.remote.RemoteSecretRequest
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.starfall.generative.integrations.remote.PasswordKeyboardInteractiveUserInfo
 import org.starfall.generative.integrations.remote.SshConfigParser
+import org.starfall.generative.integrations.remote.normalizeSshOptions
 import org.starfall.generative.shared.model.ToolSettings
+import org.starfall.generative.shared.model.WebSocketProxyConfig
+import org.starfall.generative.shared.model.remote.RemoteSecretRequest
+import org.starfall.generative.shared.model.parsePortForwardRule
 import org.starfall.generative.shared.model.remoteMachineToolEnabled
 
 class RemoteMachineTest {
@@ -40,19 +45,17 @@ class RemoteMachineTest {
         assertEquals(2201, machine.port)
         assertEquals("deploy", machine.username)
         assertEquals("~/.ssh/staging", machine.identityFile)
-        assertEquals("helper %h %p", machine.proxyCommand)
-        assertEquals("notify-send connected", machine.localCommand)
         assertEquals(45, machine.keepAliveSeconds)
     }
 
     @Test
     fun everyMachineExposesDisconnectAndExecuteAndCloudShellAddsUpdateIp() {
         assertEquals(
-            listOf(REMOTE_TOOL_DISCONNECT, REMOTE_TOOL_EXECUTE),
+            listOf("open_terminal", "close_terminal", "list_terminal", REMOTE_TOOL_EXECUTE, REMOTE_TOOL_DISCONNECT),
             RemoteMachine("ssh", "SSH").supportedToolNames()
         )
         assertEquals(
-            listOf(REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_DISCONNECT, REMOTE_TOOL_EXECUTE),
+            listOf(REMOTE_TOOL_UPDATE_IP, "open_terminal", "close_terminal", "list_terminal", REMOTE_TOOL_EXECUTE, REMOTE_TOOL_DISCONNECT),
             RemoteMachine("cloud", "Cloud", type = RemoteMachineType.GCLOUD_SHELL).supportedToolNames()
         )
         assertTrue(RemoteMachine("cloud", "Cloud", type = RemoteMachineType.GCLOUD_SHELL).displayHost.isNotBlank())
@@ -233,19 +236,68 @@ class RemoteMachineTest {
     }
 
     @Test
-    fun importedBinariesAreStartedThroughTheLinkerOrInterpreterOnAndroid10Plus() {
-        fun elf(bits: Int, type: Int) = ByteArray(64).also {
-            it[0] = 0x7f; it[1] = 'E'.code.toByte(); it[2] = 'L'.code.toByte(); it[3] = 'F'.code.toByte()
-            it[4] = bits.toByte(); it[5] = 1; it[16] = type.toByte()
+    fun extraJschOptionsAreValidatedAndWebsocketProxySettingsAreNormalized() {
+        assertEquals(
+            mapOf("kex" to "diffie-hellman-group14-sha1"),
+            normalizeSshOptions(mapOf("kex" to "diffie-hellman-group14-sha1"))
+        )
+        assertTrue(runCatching { normalizeSshOptions(mapOf("NotARealJschOption" to "1")) }.isFailure)
+        assertTrue(runCatching { normalizeSshOptions(mapOf("StrictHostKeyChecking" to "yes")) }.isFailure)
+
+        val proxy = WebSocketProxyConfig(
+            url = " wss://proxy.example/%h/%p ",
+            headers = mapOf(" Authorization " to "Bearer token"),
+            connectTimeoutSeconds = 0,
+            subProtocols = listOf("ssh", "ssh")
+        ).normalized()
+        assertEquals("wss://proxy.example/%h/%p", proxy.url)
+        assertEquals(mapOf("Authorization" to "Bearer token"), proxy.headers)
+        assertEquals(1, proxy.connectTimeoutSeconds)
+        assertEquals(listOf("ssh"), proxy.subProtocols)
+    }
+
+    @Test
+    fun portForwardRulesParseAndRejectMalformedInput() {
+        assertEquals(PortForwardRule(8080, "db.internal", 3306), parsePortForwardRule(" 8080:db.internal:3306 "))
+        assertEquals(PortForwardRule(8080, "localhost", 8080), parsePortForwardRule("8080"))
+        assertEquals(PortForwardRule(8080, "localhost", 10808), parsePortForwardRule("8080:10808"))
+        assertEquals(PortForwardRule(8080, "localhost", 10808), parsePortForwardRule("8080 -> 10808"))
+        assertNull(parsePortForwardRule("8080:a:b:22"))
+        assertNull(parsePortForwardRule("abc"))
+        assertNull(parsePortForwardRule("0:host:22"))
+        assertNull(parsePortForwardRule("8080:host:70000"))
+        assertNull(parsePortForwardRule("8080::22"))
+    }
+
+    @Test
+    fun portForwardingAppliesOnlyEnabledTypesAndValidatesPorts() {
+        val config = PortForwardingConfig(
+            localEnabled = true,
+            localRules = listOf("8080:db:3306", " 8080:db:3306 ", ""),
+            remoteEnabled = false,
+            remoteRules = listOf("9090:localhost:3000"),
+            dynamicEnabled = true,
+            dynamicPorts = listOf(1080, 1080)
+        ).validated()
+        assertEquals(listOf("8080:db:3306"), config.localRules)
+        assertEquals(listOf(1080), config.dynamicPorts)
+        assertEquals(listOf(PortForwardRule(8080, "db", 3306)), config.activeLocalRules)
+        assertTrue(config.activeRemoteRules.isEmpty())
+        assertEquals(listOf(1080), config.activeDynamicPorts)
+        assertTrue(config.hasActiveForwards)
+        assertFalse(PortForwardingConfig(localRules = listOf("8080:db:3306")).hasActiveForwards)
+    }
+
+    @Test
+    fun portForwardingRejectsInvalidAndConflictingPorts() {
+        org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            PortForwardingConfig(localRules = listOf("oops")).validated()
         }
-        fun run(header: ByteArray, sdk: Int, target: Int = 36, exists: (String) -> Boolean = { true }): List<String> =
-            org.starfall.generative.integrations.remote.binaryLauncher(header, sdk, target, exists)
-        assertEquals(listOf("/system/bin/linker64"), run(elf(2, 3), 34))
-        assertEquals(listOf("/system/bin/linker"), run(elf(1, 3), 34))
-        assertEquals(emptyList<String>(), run(elf(2, 3), 28))
-        assertEquals(emptyList<String>(), run(elf(2, 3), 34, target = 28))
-        assertEquals(emptyList<String>(), run(elf(2, 3), 34) { false })
-        assertEquals(listOf("/system/bin/sh"), run("#!/usr/bin/env bash\necho".toByteArray(), 34) { false })
-        assertEquals(listOf("/bin/sh", "-e"), run("#!/bin/sh -e\n".toByteArray(), 34))
+        org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            PortForwardingConfig(dynamicPorts = listOf(0)).validated()
+        }
+        org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            PortForwardingConfig(localRules = listOf("1080:a:80"), dynamicPorts = listOf(1080)).validated()
+        }
     }
 }

@@ -49,14 +49,11 @@ class AppAuthTransactionsTest {
         try {
             server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(
                 """{"access_token":"access","token_type":"Bearer","refresh_token":"rotated","expires_in":3600,"account_id":"account"}"""))
-            val configuration = net.openid.appauth.AppAuthConfiguration.Builder().setConnectionBuilder {
-                server.url("/token").toUrl().openConnection() as java.net.HttpURLConnection
-            }.build()
-            val request = AppAuthTransactions.token("https://authorization.example/token", "client", mapOf(
+            val request = AppAuthTransactions.token(server.url("/token").toString(), "client", mapOf(
                 "grant_type" to "refresh_token", "refresh_token" to "old", "resource" to "https://resource.example/mcp"))
             val result = async(kotlinx.coroutines.Dispatchers.Unconfined) {
-                AppAuthTransactions.executeToken(androidx.test.core.app.ApplicationProvider.getApplicationContext(), request,
-                    AppAuthTransactions.authentication("client_secret_basic", "secret"), configuration)
+                AppAuthTransactions.exchange(androidx.test.core.app.ApplicationProvider.getApplicationContext(), ToolHttp(), request,
+                    AppAuthTransactions.authentication("client_secret_basic", "secret"))
             }
             val deadline = System.currentTimeMillis() + 10_000
             while (!result.isCompleted && System.currentTimeMillis() < deadline) {

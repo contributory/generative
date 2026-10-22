@@ -3,17 +3,6 @@
     <string name="tool_call_strategy_description">ツール呼び出しを順番に実行するか、並行して実行するかを選択します。</string>
     <string name="tool_call_concurrent_limit_description">同時に実行できるツール呼び出しの最大数です。</string>
 
-    <!-- Binary test argument dialog -->
-    <string name="remote_machine_binary_test_parameters_title">バイナリのテスト引数 · %1$s</string>
-    <string name="remote_machine_binary_test_arguments">引数（省略可）</string>
-    <string name="remote_machine_binary_test_arguments_help">引数は空白で区切ってください。各項目は個別の引数として渡され、引用符は特別に解釈されません。</string>
-    <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
-
-    <!-- Executable binary upload security confirmation -->
-    <string name="remote_machine_binary_upload_warning_title">セキュリティ警告</string>
-    <string name="remote_machine_binary_upload_warning_message">実行ファイルはこのアプリから隔離されていません。実行すると、アプリがアクセスできるデータやファイルにアクセスしたり、アプリのネットワーク接続を利用したりする可能性があります。信頼できる入手元の実行ファイルのみアップロードしてください。</string>
-    <string name="remote_machine_binary_upload_confirm">アップロードして信頼する</string>
-
     <string name="thinking">思考中</string>
     <string name="thinking_streaming">思考中...</string>
     <string name="thought_process">思考プロセス</string>
@@ -35,6 +24,7 @@
     <string name="settings_speech_services_description">音声合成プロバイダーと音声</string>
     <string name="speech_services_description">Android の TTS またはプロバイダーの TTS モデルを使用</string>
     <string name="settings_storage_description">ツールが作成したファイル</string>
+    <string name="storage_open_in_files_failed">システムのファイルマネージャーを開けませんでした。</string>
     <string name="settings_theme_description">Generative の外観を選択</string>
     <string name="settings_amoled_description">ダークモードで完全な黒の背景を使用</string>
     <string name="settings_dynamic_color_description">Android 12 以降で壁紙の色を使用</string>
@@ -94,8 +84,8 @@
     <string name="tool_send_file_title">ファイルを送信</string>
     <string name="tool_send_file_description">ツールの結果に含まれるファイルをチャット内で AI が表示できるようにします。</string>
     <string name="tool_select_compatible_model_hint">このツールを有効にするには対応モデルを選択してください。</string>
-    <string name="mcp_add_servers_hint">先に MCP Manage でサーバーを追加してください。</string>
-    <string name="mcp_tool_list_not_cached_description">ツール一覧がキャッシュされていません。先に MCP Manage でこのサーバーを保存または更新してください。</string>
+    <string name="mcp_add_servers_hint">先に MCP Connectors でサーバーを追加してください。</string>
+    <string name="mcp_tool_list_not_cached_description">ツール一覧がキャッシュされていません。先に MCP Connectors でこのサーバーを保存または更新してください。</string>
     <string name="mcp_no_globally_enabled_tools_description">全体で有効になっているツールはありません。</string>
     <string name="image_tool_model_options_description">このモデルが対応するオプションのみ設定してください。空欄にはプロバイダーのデフォルトを使用します。設定はモデルごとに保存されます。</string>
     <string name="image_tool_request_body_help">ネストしたオブジェクトとプロバイダー拡張に対応しています。モデルとプロンプトはチャットから取得します。</string>
@@ -140,7 +130,7 @@
     <string name="icon_cache_save_failed">アイコンルールを保存できませんでした。</string>
     <string name="icon_cache_search">アイコンまたは一致ルールを検索</string>
     <string name="icon_import_failed">この画像を読み込めませんでした。別の画像を選択してください。</string>
-    <string name="icon_settings_title">アイコンとキャッシュ</string>
+    <string name="icon_settings_title">アイコンと商標</string>
     <string name="icon_variant_dark">ダーク（任意）</string>
     <string name="icon_variant_normal">ライト</string>
     <string name="model_arguments">引数</string>
@@ -151,6 +141,13 @@
     <string name="model_tools_hint">このモデルが対応する組み込みツールを有効にします。ツールはモデル API リクエストに直接送信されます。</string>
     <string name="model_tools_unsupported_provider">このプロバイダー API は、Generative の組み込みモデルツールにまだ対応していません。</string>
     <string name="remote_machine_google_missing_resolution">Google の認証には操作が必要ですが、次の処理情報が返されませんでした。</string>
+    <string name="remote_machine_identity_file_help">秘密鍵へのパス、または Remote Settings にアップロードしたキーの名前。キー自体がマシンに保存されることはありません。キーが不要な場合は空欄のままにしてください。</string>
+    <string name="remote_machine_terminal_connected">接続済み</string>
+    <string name="remote_machine_terminal_disconnected">未接続</string>
+    <string name="remote_machine_terminal_no_sessions_hint">このマシンは、最後のターミナルセッションが閉じられると切断されます。再接続するには新しいセッションを開いてください。</string>
+    <string name="remote_machine_terminal_connection_lost">接続が切断されました</string>
+    <string name="remote_machine_terminal_connection_failed">接続に失敗しました</string>
+    <string name="remote_machine_not_configured">未設定</string>
     <string name="remote_machine_google_no_access_token">Google からアクセストークンが返されませんでした。</string>
     <string name="remote_machine_oauth_client_type">OAuth クライアントの種類</string>
     <string name="remote_machine_oauth_type_android">Android アプリ</string>

@@ -40,8 +40,8 @@ class HelixLiveTest {
             back()
         }
         compose.onNode(gear).performClick()
-        if (compose.onAllNodesWithText("Providers").fetchSemanticsNodes().isEmpty()) back()
-        compose.onNodeWithText("Providers").performClick()
+        if (compose.onAllNodesWithText("Model Providers").fetchSemanticsNodes().isEmpty()) back()
+        compose.onNodeWithText("Model Providers").performClick()
         val existing = chat.providers.value.find { it.baseUrl.trimEnd('/') == "https://helixmind.online/v1" }
         if (existing == null) {
             val automation = InstrumentationRegistry.getInstrumentation().uiAutomation

@@ -25,7 +25,7 @@ import org.starfall.generative.shared.ui.layout.AdaptiveCardLayout
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.ItemOverflowMenu
+import org.starfall.generative.shared.ui.menus.ItemContextMenu
 import org.starfall.generative.shared.ui.icons.providerInitials
 
 @Composable
@@ -40,7 +40,7 @@ fun McpUnifiedCard(server: McpInfo, isGrid: Boolean, modifier: Modifier = Modifi
             icon = { EntityIcon(server.icon, Modifier.size(42.dp), text = providerInitials(server.name),
                 fallback = Icons.Outlined.Extension, matchName = server.name) },
             actions = {
-                ItemOverflowMenu(
+                ItemContextMenu(
                     onEdit = onEdit,
                     onDelete = onDelete,
                     deleteColor = MaterialTheme.colorScheme.error,

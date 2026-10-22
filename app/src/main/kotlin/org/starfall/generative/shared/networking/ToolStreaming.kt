@@ -50,7 +50,7 @@ internal suspend fun ToolHttp.modelResponse(
                 val value = unwrapResponse(raw)
                 received = true
                 if (value["error"] != null || value.text("type") == "error") {
-                    error("Provider stream error: " + safeError(value["error"], requestSecrets(response.request)))
+                    error("Provider stream error: " + safeError(value["error"] ?: value, requestSecrets(response.request)))
                 }
                 // Usage chunks are cumulative snapshots. Only Anthropic splits one snapshot
                 // between message_start (input/cache counts) and message_delta (output count).

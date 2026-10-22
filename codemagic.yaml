@@ -68,15 +68,20 @@ workflows:
           : "${CM_KEYSTORE_PASSWORD:?Missing keystore password}"
           : "${CM_KEY_ALIAS:?Missing key alias}"
           : "${CM_KEY_PASSWORD:?Missing key password}"
-          test -f "$CM_KEYSTORE_PATH"
-          if ! keytool -list -keystore "$CM_KEYSTORE_PATH" -storepass:env CM_KEYSTORE_PASSWORD -alias "$CM_KEY_ALIAS" >/dev/null 2>&1; then
-            echo "Release keystore validation failed. Verify CM_KEYSTORE_PATH, CM_KEYSTORE_PASSWORD, and CM_KEY_ALIAS in the Codemagic signing identity."
+          # Map Codemagic-managed CM_* variables to names consumed by Gradle and scripts.
+          export KEYSTORE_PATH="$CM_KEYSTORE_PATH"
+          export KEYSTORE_PASSWORD="$CM_KEYSTORE_PASSWORD"
+          export KEY_ALIAS="$CM_KEY_ALIAS"
+          export KEY_PASSWORD="$CM_KEY_PASSWORD"
+          test -f "$KEYSTORE_PATH"
+          if ! keytool -list -keystore "$KEYSTORE_PATH" -storepass:env KEYSTORE_PASSWORD -alias "$KEY_ALIAS" >/dev/null 2>&1; then
+            echo "Release keystore validation failed. Verify CM_KEYSTORE_PATH, KEYSTORE_PASSWORD, and KEY_ALIAS in the Codemagic signing identity."
             exit 1
           fi
           SIGNING_CHECK_CSR="$CM_BUILD_DIR/release-signing-check.csr"
           trap 'rm -f "$SIGNING_CHECK_CSR"' EXIT
-          if ! keytool -certreq -keystore "$CM_KEYSTORE_PATH" -storepass:env CM_KEYSTORE_PASSWORD -keypass:env CM_KEY_PASSWORD -alias "$CM_KEY_ALIAS" -file "$SIGNING_CHECK_CSR" >/dev/null 2>&1; then
-            echo "Release private key validation failed. Verify CM_KEY_PASSWORD for the selected alias in the Codemagic signing identity."
+          if ! keytool -certreq -keystore "$KEYSTORE_PATH" -storepass:env KEYSTORE_PASSWORD -keypass:env KEY_PASSWORD -alias "$KEY_ALIAS" -file "$SIGNING_CHECK_CSR" >/dev/null 2>&1; then
+            echo "Release private key validation failed. Verify KEY_PASSWORD for the selected alias in the Codemagic signing identity."
             exit 1
           fi
       - name: Prepare GitHub release publishing
@@ -93,6 +98,15 @@ workflows:
         ignore_failure: false
         script: |
           set -euo pipefail
+          : "${CM_KEYSTORE_PATH:?Missing keystore path}"
+          : "${CM_KEYSTORE_PASSWORD:?Missing keystore password}"
+          : "${CM_KEY_ALIAS:?Missing key alias}"
+          : "${CM_KEY_PASSWORD:?Missing key password}"
+          # Each Codemagic script step has its own shell, so map the signing variables again here.
+          export KEYSTORE_PATH="$CM_KEYSTORE_PATH"
+          export KEYSTORE_PASSWORD="$CM_KEYSTORE_PASSWORD"
+          export KEY_ALIAS="$CM_KEY_ALIAS"
+          export KEY_PASSWORD="$CM_KEY_PASSWORD"
           chmod +x gradlew
           ./gradlew :app:assembleRelease --no-daemon --stacktrace
           python3 scripts/name-apks.py app/build/outputs/apk/release Generative.apk

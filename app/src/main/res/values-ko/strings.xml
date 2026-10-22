@@ -3,17 +3,6 @@
     <string name="tool_call_strategy_description">도구 호출을 순차적으로 실행할지 동시에 실행할지 선택합니다.</string>
     <string name="tool_call_concurrent_limit_description">동시에 실행할 수 있는 도구 호출의 최대 개수입니다.</string>
 
-    <!-- Binary test argument dialog -->
-    <string name="remote_machine_binary_test_parameters_title">바이너리 테스트 인수 · %1$s</string>
-    <string name="remote_machine_binary_test_arguments">인수(선택 사항)</string>
-    <string name="remote_machine_binary_test_arguments_help">인수는 공백으로 구분하세요. 각 항목은 별도 인수로 전달되며 따옴표는 특별히 처리되지 않습니다.</string>
-    <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
-
-    <!-- Executable binary upload security confirmation -->
-    <string name="remote_machine_binary_upload_warning_title">보안 경고</string>
-    <string name="remote_machine_binary_upload_warning_message">실행 파일은 이 앱과 격리되어 있지 않습니다. 실행 시 앱이 접근할 수 있는 데이터와 파일에 접근하거나 앱의 네트워크 연결을 사용할 수 있습니다. 신뢰할 수 있는 출처의 실행 파일만 업로드하세요.</string>
-    <string name="remote_machine_binary_upload_confirm">업로드 및 신뢰</string>
-
     <string name="thinking">생각 중</string>
     <string name="thinking_streaming">생각 중...</string>
     <string name="thought_process">사고 과정</string>
@@ -35,6 +24,7 @@
     <string name="settings_speech_services_description">텍스트 음성 변환 제공업체 및 음성</string>
     <string name="speech_services_description">Android TTS 또는 제공업체의 TTS 모델 사용</string>
     <string name="settings_storage_description">도구가 만든 파일</string>
+    <string name="storage_open_in_files_failed">시스템 파일 관리자를 열 수 없습니다.</string>
     <string name="settings_theme_description">Generative의 모양 선택</string>
     <string name="settings_amoled_description">어두운 모드에서 완전한 검은색 표면 사용</string>
     <string name="settings_dynamic_color_description">Android 12 이상에서 배경화면 색상 사용</string>
@@ -94,8 +84,8 @@
     <string name="tool_send_file_title">파일 보내기</string>
     <string name="tool_send_file_description">AI가 도구 결과의 파일을 채팅에 표시하도록 허용합니다.</string>
     <string name="tool_select_compatible_model_hint">이 도구를 사용하려면 호환되는 모델을 선택하세요.</string>
-    <string name="mcp_add_servers_hint">먼저 MCP Manage에서 서버를 추가하세요.</string>
-    <string name="mcp_tool_list_not_cached_description">도구 목록이 캐시되지 않았습니다. 먼저 MCP Manage에서 이 서버를 저장하거나 새로 고치세요.</string>
+    <string name="mcp_add_servers_hint">먼저 MCP Connectors에서 서버를 추가하세요.</string>
+    <string name="mcp_tool_list_not_cached_description">도구 목록이 캐시되지 않았습니다. 먼저 MCP Connectors에서 이 서버를 저장하거나 새로 고치세요.</string>
     <string name="mcp_no_globally_enabled_tools_description">전체적으로 사용 설정된 도구가 없습니다.</string>
     <string name="image_tool_model_options_description">이 모델에서 지원하는 옵션만 설정하세요. 빈 필드는 제공업체 기본값을 사용합니다. 설정은 모델별로 저장됩니다.</string>
     <string name="image_tool_request_body_help">중첩 객체와 제공업체 확장을 지원합니다. 모델과 프롬프트는 채팅에서 가져옵니다.</string>
@@ -140,7 +130,7 @@
     <string name="icon_cache_save_failed">아이콘 규칙을 저장할 수 없습니다.</string>
     <string name="icon_cache_search">아이콘 또는 일치 규칙 검색</string>
     <string name="icon_import_failed">이 이미지를 불러올 수 없습니다. 다른 이미지를 선택하세요.</string>
-    <string name="icon_settings_title">아이콘 및 캐시</string>
+    <string name="icon_settings_title">아이콘 및 상표</string>
     <string name="icon_variant_dark">어두운 버전(선택 사항)</string>
     <string name="icon_variant_normal">밝은 버전</string>
     <string name="model_arguments">인수</string>
@@ -151,6 +141,13 @@
     <string name="model_tools_hint">이 모델이 지원하는 기본 제공 도구를 활성화합니다. 도구는 모델 API 요청에 직접 포함됩니다.</string>
     <string name="model_tools_unsupported_provider">이 제공업체 API는 아직 Generative의 기본 제공 모델 도구를 지원하지 않습니다.</string>
     <string name="remote_machine_google_missing_resolution">Google에서 인증을 위해 사용자 상호작용이 필요하지만 다음 단계 정보를 반환하지 않았습니다.</string>
+    <string name="remote_machine_identity_file_help">개인 키의 경로 또는 Remote Settings에 업로드한 키의 이름입니다. 키 자체가 머신에 저장되는 일은 없습니다. 키가 필요하지 않으면 비워 두세요.</string>
+    <string name="remote_machine_terminal_connected">연결됨</string>
+    <string name="remote_machine_terminal_disconnected">연결 끊김</string>
+    <string name="remote_machine_terminal_no_sessions_hint">이 머신은 마지막 터미널 세션이 닫히면 연결이 끊어집니다. 다시 연결하려면 새 세션을 여세요.</string>
+    <string name="remote_machine_terminal_connection_lost">연결이 끊어졌습니다</string>
+    <string name="remote_machine_terminal_connection_failed">연결에 실패했습니다</string>
+    <string name="remote_machine_not_configured">구성되지 않음</string>
     <string name="remote_machine_google_no_access_token">Google에서 액세스 토큰을 반환하지 않았습니다.</string>
     <string name="remote_machine_oauth_client_type">OAuth 클라이언트 유형</string>
     <string name="remote_machine_oauth_type_android">Android 앱</string>

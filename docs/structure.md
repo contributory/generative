@@ -21,7 +21,9 @@
 │   │       └── 📄 AppDataScreen.kt
 │   ├── 📁 chatoptions/
 │   │   └── 📁 ui/
-│   │       └── 📄 ChatOptionsScreen.kt
+│   │       ├── 📄 ChatOptionsScreen.kt
+│   │       ├── 📄 InstructionsTab.kt
+│   │       └── 📄 PromptEditor.kt
 │   ├── 📁 icons/
 │   │   └── 📁 ui/
 │   │       └── 📄 IconsScreen.kt
@@ -29,25 +31,28 @@
 │   │   ├── 📁 details/
 │   │   │   └── 📁 ui/
 │   │   │       ├── 📄 MachineDetailsScreen.kt
-│   │   │       ├── 📄 RemoteMachineSettings.kt
-│   │   │       └── 📄 RemoteTerminalScreen.kt
+│   │   │       ├── 📄 PortForwardingSection.kt
+│   │   │       ├── 📄 RemoteMachineAdvancedDialogs.kt
+│   │   │       └── 📄 RemoteMachineSettings.kt
 │   │   ├── 📁 list/
+│   │   │   ├── 📁 model/
+│   │   │   │   └── 📄 MachineIpUpdateNotice.kt
 │   │   │   └── 📁 ui/
 │   │   │       └── 📄 RemoteMachinesScreen.kt
 │   │   └── 📁 shared/
 │   │       ├── 📁 logic/
 │   │       │   └── 📄 RemoteMachinesViewModel.kt
+│   │       ├── 📁 model/
+│   │       │   └── 📄 BinaryTestNotice.kt
 │   │       └── 📁 ui/
-│   │           ├── 📄 BinaryTestNotice.kt
-│   │           ├── 📄 RemoteMachineComponents.kt
-│   │           └── 📄 RemoteTerminalBridge.kt
+│   │           └── 📄 RemoteMachineComponents.kt
 │   ├── 📁 main/
 │   │   └── 📁 ui/
 │   │       └── 📄 FeaturesScreen.kt
 │   ├── 📁 mcp/
 │   │   ├── 📁 editor/
 │   │   │   └── 📁 ui/
-│   │   │       └── 📄 ServerEditorScreen.kt
+│   │   │       └── 📄 ServerEditor.kt
 │   │   ├── 📁 list/
 │   │   │   └── 📁 ui/
 │   │   │       └── 📄 ServerListScreen.kt
@@ -60,8 +65,8 @@
 │   ├── 📁 providers/
 │   │   ├── 📁 editor/
 │   │   │   └── 📁 ui/
-│   │   │       ├── 📄 ModelEditorScreen.kt
-│   │   │       ├── 📄 ProviderEditorScreen.kt
+│   │   │       ├── 📄 ModelEditor.kt
+│   │   │       ├── 📄 ProviderEditor.kt
 │   │   │       └── 📄 ProviderModelCatalogSheet.kt
 │   │   ├── 📁 list/
 │   │   │   ├── 📁 logic/
@@ -102,7 +107,7 @@
 │   │   ├── 📁 logic/
 │   │   │   └── 📄 SettingsViewModel.kt
 │   │   └── 📁 ui/
-│   │       ├── 📄 AppSettingsScreen.kt
+│   │       ├── 📄 AppSettings.kt
 │   │       ├── 📄 CodeRenderingPreferences.kt
 │   │       ├── 📄 DeveloperSettingsSection.kt
 │   │       ├── 📄 MainAppbar.kt
@@ -115,12 +120,12 @@
 │   │       └── 📄 StorageScreen.kt
 │   └── 📁 tools/
 │       └── 📁 ui/
-│           ├── 📄 ImageToolSettingsScreen.kt
-│           ├── 📄 MediaRequestChainSettingsScreen.kt
+│           ├── 📄 ImageToolSettings.kt
+│           ├── 📄 MediaRequestChainSettings.kt
 │           ├── 📄 MediaRequestChainStepEditor.kt
-│           ├── 📄 MediaRequestProfileEditorScreen.kt
+│           ├── 📄 MediaRequestProfileEditor.kt
 │           ├── 📄 MediaTemplateAutocompleteField.kt
-│           └── 📄 ToolsEditorScreen.kt
+│           └── 📄 ToolsEditor.kt
 ├── 📁 home/
 │   ├── 📁 chat/
 │   │   ├── 📁 logic/
@@ -187,7 +192,7 @@
 │   │   └── 📁 ui/
 │   │       ├── 📄 ConversationItem.kt
 │   │       ├── 📄 DrawerBackdrop.kt
-│   │       ├── 📄 LeftSideDrawer.kt
+│   │       ├── 📄 ConversationSideDrawer.kt
 │   │       └── 📄 PromptLibraryDialog.kt
 │   ├── 📁 shared/
 │   │   ├── 📁 logic/
@@ -198,14 +203,15 @@
 │   │   │   ├── 📄 ToolRequestService.kt
 │   │   │   └── 📄 ToolResultSummaries.kt
 │   │   └── 📁 ui/
-│   │       ├── 📄 ConversationSummaryBottomSheet.kt
-│   │       ├── 📄 QuickActionsBottomSheet.kt
-│   │       ├── 📄 ReasoningEffortBottomSheet.kt
-│   │       ├── 📄 RemoteMachinesBottomSheet.kt
-│   │       ├── 📄 SelectedModelOverviewBottomSheet.kt
-│   │       ├── 📄 ToolDetailsBottomSheet.kt
-│   │       ├── 📄 ToolSheetState.kt
-│   │       └── 📄 ToolsManageBottomSheet.kt
+│   │       ├── 📄 ConversationSummarySheet.kt
+│   │       ├── 📄 FeatureToolsSheet.kt
+│   │       ├── 📄 McpConnectorsSheet.kt
+│   │       ├── 📄 QuickActionsSheet.kt
+│   │       ├── 📄 ReasoningEffortSheet.kt
+│   │       ├── 📄 RemoteMachinesSheet.kt
+│   │       ├── 📄 SelectedModelOverviewSheet.kt
+│   │       ├── 📄 ToolDetailsSheet.kt
+│   │       └── 📄 ToolSheetState.kt
 │   └── 📄 BottomSheetsLink.kt
 ├── 📁 integrations/
 │   ├── 📁 mcp/
@@ -258,16 +264,22 @@
 │   └── 📁 remote/
 │       ├── 📄 AndroidEdDSA.kt
 │       ├── 📄 CloudShellApi.kt
-│       ├── 📄 ExecutableBinaryStore.kt
-│       ├── 📄 RemoteBinarySupport.kt
 │       ├── 📄 RemoteMachineAssetsService.kt
 │       ├── 📄 RemoteMachineCloudShellService.kt
 │       ├── 📄 RemoteMachineConnectionManager.kt
 │       ├── 📄 RemoteMachineService.kt
+│       ├── 📄 RemoteMachineServiceOwner.kt
 │       ├── 📄 RemoteMachineStore.kt
+│       ├── 📄 RemoteSftpDocumentCallbacks.kt
+│       ├── 📄 RemoteSftpDocumentFormatting.kt
+│       ├── 📄 RemoteSftpDocumentsProvider.kt
+│       ├── 📄 RemoteSftpSessionPool.kt
+│       ├── 📄 RemoteSocksForwarder.kt
 │       ├── 📄 RemoteTerminal.kt
 │       ├── 📄 SshConfigParser.kt
-│       └── 📄 SshConnectionSupport.kt
+│       ├── 📄 SshConnectionSupport.kt
+│       ├── 📄 SshKeySupport.kt
+│       └── 📄 SshOptions.kt
 ├── 📁 navigation/
 │   ├── 📄 AppNavigation.kt
 │   └── 📄 TargetedEditorContent.kt
@@ -283,6 +295,7 @@
 │   ├── 📁 code/
 │   │   └── 📄 CodeSyntaxHighlighting.kt
 │   ├── 📁 files/
+│   │   ├── 📄 AppDocumentsProvider.kt
 │   │   ├── 📄 AttachmentResolver.kt
 │   │   ├── 📄 ConversationUploads.kt
 │   │   ├── 📄 CrashReports.kt
@@ -371,6 +384,11 @@
 │   │   ├── 📄 PromptLibrary.kt
 │   │   ├── 📄 ProviderLink.kt
 │   │   ├── 📄 RemoteMachineModels.kt
+│   │   ├── 📁 remote/
+│   │   │   ├── 📄 RemoteCloudShellAuth.kt
+│   │   │   ├── 📄 RemoteSecretPrompt.kt
+│   │   │   ├── 📄 RemoteTerminalSession.kt
+│   │   │   └── 📄 TerminalInputMode.kt
 │   │   ├── 📄 ResponseVersions.kt
 │   │   ├── 📄 SidebarOrganization.kt
 │   │   ├── 📄 SpeechService.kt
@@ -406,6 +424,7 @@
 │   │   │   ├── 📄 AppLanguage.kt
 │   │   │   ├── 📄 AppPreferencesRepository.kt
 │   │   │   ├── 📄 ModelConfigurationMemory.kt
+│   │   │   ├── 📄 RemoteTerminalPreferences.kt
 │   │   │   └── 📄 ToolSettingsStore.kt
 │   │   ├── 📄 AuthPayloads.kt
 │   │   ├── 📄 ConversationRepository.kt
@@ -418,6 +437,12 @@
 │   │   ├── 📄 RepositoryJson.kt
 │   │   ├── 📄 SpeechRepository.kt
 │   │   └── 📄 StructuredJsonStorage.kt
+│   ├── 📁 terminal/
+│   │   ├── 📄 PendingRemoteSecretRequest.kt
+│   │   ├── 📄 RemoteMouseTouchListener.kt
+│   │   ├── 📄 RemoteTerminalBridge.kt
+│   │   ├── 📄 RemoteTerminalInput.kt
+│   │   └── 📄 RemoteTerminalSessions.kt
 │   ├── 📁 theme/
 │   │   └── 📄 Theme.kt
 │   └── 📁 ui/
@@ -463,18 +488,18 @@
 │       │   ├── 📄 MediaFileCard.kt
 │       │   ├── 📄 MediaPlaybackState.kt
 │       │   ├── 📄 MediaPreview.kt
-│       │   └── 📄 MediaViewerToolbar.kt
+│       │   └── 📄 MediaViewerToolBar.kt
 │       ├── 📁 menus/
-│       │   ├── 📄 ItemOverflowMenu.kt
+│       │   ├── 📄 ItemContextMenu.kt
 │       │   └── 📄 RoundedDropdownMenuItem.kt
 │       ├── 📁 model/
 │       │   ├── 📄 ModelInitial.kt
-│       │   ├── 📄 ModelPickerBottomSheet.kt
+│       │   ├── 📄 ModelPickerSheet.kt
 │       │   ├── 📄 ModelPickerCards.kt
 │       │   ├── 📄 ReasoningEffortControl.kt
 │       │   └── 📄 ThinkingColorBurst.kt
 │       ├── 📁 sheets/
-│       │   ├── 📄 AppBottomSheet.kt
+│       │   ├── 📄 AppSheet.kt
 │       │   └── 📄 BottomSheetHeight.kt
 │       ├── 📁 text/
 │       │   ├── 📄 ApiKeyMask.kt
@@ -485,7 +510,11 @@
 │       │   └── 📄 WordWrappedFadeText.kt
 │       ├── 📄 ProfileMcpPermissions.kt
 │       ├── 📄 ToolControls.kt
-│       └── 📄 ToolSwitch.kt
+│       ├── 📄 ToolSwitch.kt
+│       └── 📁 terminal/
+│           ├── 📄 RemoteTerminalSheet.kt
+│           ├── 📄 RemoteTerminalDialogs.kt
+│           └── 📄 RemoteTerminalPanels.kt
 ├── 📄 MainActivity.kt
 └── 📄 GenerativeApplication.kt
 ```
@@ -507,30 +536,54 @@
 - `integrations/` holds code that calls an external API or service: HTTP clients, streaming/SSE readers, polling loops, OAuth flows, remote connections. A folder also keeps, next to its call files, the request builders, response parsers and small data types that only those files use.
 - Place code by who uses it, as close to its users as possible. Code used by one layer stays in that layer (a builder used only by `integrations/media/` lives in `integrations/media/`; code used only by the chat tool flow lives in `home/chat/logic/tool/`). Only code needed by at least two of `features/`, `home/` and `integrations/` moves down to `shared/`.
 - `shared/helpers/<topic>/` holds those multi-layer helpers: option validation and field descriptors, provider detection, tool schemas and argument parsers, input-file resolution. Their main job is preparing inputs or interpreting outputs, not I/O. Small, incidental I/O that is not worth its own integration (for example fetching a URL that a response returned, through the injected `ToolHttp` from `shared/networking`, or reading a file via `shared/files`) is tolerated in a helper as a stopgap. Once that I/O grows its own endpoint, authentication, streaming or polling protocol, or becomes the main purpose of the file, move that part into `integrations/`. Helpers never import `integrations/`.
+- Cross-feature terminal presentation and its Android/Termux adapter live in `shared/terminal/` and `shared/ui/terminal/`; they depend on the shared `RemoteTerminalSession` contract, not on a feature ViewModel or integration implementation.
 - Plain data types (data classes, enums) follow the same rule: they sit in `shared/model/<topic>/` only when at least two layers use them (for example `ImageOptionField`, `VideoApi`); otherwise they stay in the single layer's own `model/` or next to the code that uses them. Helpers import models; models never import helpers or integrations.
 - Rule of thumb: count the layers that import a file. One layer means it stays there; two or more means `shared/`. Inside `integrations/`, only the files that perform the call are clients; the builders and parsers beside them belong to that integration and are not helpers. A little incidental I/O does not turn a helper into an integration; I/O that is the file's purpose does.
 - Moving between screens goes through callbacks wired in `navigation/AppNavigation.kt`, never through a direct import of another screen.
+
+### UI component and file naming
+
+Use PascalCase for Compose UI components and Kotlin source files. A UI file should normally match its primary public composable/type; retain a useful feature or entity prefix, and keep closely related private helpers in the same file when that improves cohesion. Choose names by a component's responsibility and interaction, not just its appearance.
+
+| Name pattern | Use |
+| --- | --- |
+| `AwesomeScreen` | The primary screen for a specific feature or capability. |
+| `AwesomeEditor` | A screen for editing an entity or configuration, commonly opened from an AppBar add action or an item's Edit action. |
+| `AwesomeSettings` | A screen for configuring settings for a feature or entity, commonly opened from an AppBar settings action. |
+| `AwesomeSheet` | Every bottom-sheet component. Use `Sheet`, not the verbose legacy `BottomSheet` suffix. |
+| `AwesomeSideDrawer` | A non-screen surface that slides in from a screen edge and covers more than half or all of the screen. |
+| `AwesomeDialog` | A dialog only. |
+| `ContextMenu` | A compact menu of actions/options belonging to an item in a list or similar collection. |
+| `SideBar` | A vertical strip of details or controls alongside content, at the left or right edge, no wider than 33% of the screen. |
+| `ToolBar` | A bar of interaction buttons belonging to a dialog, sheet, or other UI component. |
+| `FeatureButton` | An in-screen, non-icon-only button that normally includes an icon and title; commonly opens configuration for an extension of its category. |
+| `Dropdown` | A button/highlighted section that reveals additional content when pressed; use when the content is too modest for a `FeatureButton` but not important enough to stay permanently visible. |
+| `IconButton` | A space-saving icon-only action used in an AppBar, `SideBar`, `ToolBar`, or elsewhere. |
+| `DropdownOptions` | A control for choosing from a predefined set of options for an item or configuration. |
+
+Replace `Awesome` with the relevant feature/entity name (for example, `ChatScreen`, `ProviderEditor`, or `ModelConfigDialog`). Do not treat these roles as interchangeable: an `AwesomeSideDrawer` overlays content, a `SideBar` remains alongside it, and an `AwesomeScreen` is a screen rather than an overlay. Keep AppBars and platform/framework API names distinct from component `ToolBar` names. Apply renames consistently to declarations, filenames, imports, navigation, previews, tests, and this structure map; preserve behavior and persisted data.
 
 ### features/
 
 - Every folder directly under `features/` except `main/` matches exactly one entry in `FeaturesScreen`; `main/` is that screen itself. Folder names are short, lowercase, a single word, with no underscores.
 
-| FeaturesScreen entry | Folder |
-| --- | --- |
-| Chat Options | `chatoptions/` |
-| Tools Editor | `tools/` |
-| Providers | `providers/` |
-| MCP | `mcp/` |
-| Speech services | `speech/` |
-| Remote machines | `machines/` |
-| Storage | `storage/` |
-| App settings | `settings/` |
-| Icons | `icons/` |
-| App data | `appdata/` |
-| About | `about/` |
+| Group | FeaturesScreen entry | Folder |
+| --- | --- | --- |
+| Configuration | Chat Options | `chatoptions/` |
+| Configuration | Feature Tools | `tools/` |
+| External Services | Model Providers | `providers/` |
+| External Services | MCP Connectors | `mcp/` |
+| External Services | Speech Services | `speech/` |
+| External Services | Remote Machines | `machines/` |
+| Data & Caching | Media Storage | `storage/` |
+| Data & Caching | Icons & Trademarks | `icons/` |
+| System | General Settings | `settings/` |
+| System | Data Controls | `appdata/` |
+| System | About | `about/` |
 
 - A feature has either flat `ui/`, `logic/`, `model/` folders, or sub-features (for example `list/`, `editor/`, `details/`), each with its own `ui/`, `logic/`, `model/`, plus a `shared/` folder.
 - Sub-features never import each other. Code used by more than one sub-feature goes in that feature's `shared/`.
+- A feature's `shared/` may also contain `model/` when a value is shared by multiple sub-features but does not belong in global `shared/model/`.
 - Do not repeat the feature name as a nested folder (no `storage/storage/`).
 
 ### home/

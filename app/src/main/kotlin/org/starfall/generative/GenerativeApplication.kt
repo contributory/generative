@@ -9,16 +9,21 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.starfall.generative.shared.storage.preferences.AppLocale
 import org.starfall.generative.appwiring.AppContainer
+import org.starfall.generative.integrations.remote.RemoteMachineService
+import org.starfall.generative.integrations.remote.RemoteMachineServiceOwner
 import org.starfall.generative.shared.files.CrashReportStore
 import org.starfall.generative.shared.files.CrashRecordingHandler
 import java.io.File
 import org.starfall.generative.home.chat.ui.ChatRenderCaches
 
-class GenerativeApplication : Application(), coil3.SingletonImageLoader.Factory {
+class GenerativeApplication : Application(), RemoteMachineServiceOwner, coil3.SingletonImageLoader.Factory {
     override fun newImageLoader(context: android.content.Context): coil3.ImageLoader =
         org.starfall.generative.shared.icons.AppImages.createLoader(context)
 
     val container by lazy { AppContainer(this) }
+
+    /** Shared with the SFTP DocumentsProvider, which Android may create before the UI. */
+    override val remoteMachineService: RemoteMachineService get() = container.remoteMachineService
     internal val crashReports by lazy { CrashReportStore(File(filesDir, "last_crash.json")) }
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 

@@ -41,26 +41,26 @@ import org.starfall.generative.features.chatoptions.ui.ChatOptionsScreen
 import org.starfall.generative.features.icons.ui.IconsScreen
 import org.starfall.generative.features.machines.details.ui.MachineDetailsScreen
 import org.starfall.generative.features.machines.details.ui.RemoteMachineSettings
-import org.starfall.generative.features.machines.details.ui.RemoteTerminalScreen
 import org.starfall.generative.features.machines.list.ui.RemoteMachinesScreen
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
+import org.starfall.generative.shared.ui.terminal.RemoteTerminalSheet
 import org.starfall.generative.features.main.ui.FeaturesScreen
-import org.starfall.generative.features.mcp.editor.ui.ServerEditorScreen
+import org.starfall.generative.features.mcp.editor.ui.ServerEditor
 import org.starfall.generative.features.mcp.list.ui.ServerListScreen
-import org.starfall.generative.features.providers.editor.ui.ProviderEditorScreen
+import org.starfall.generative.features.providers.editor.ui.ProviderEditor
 import org.starfall.generative.features.providers.list.ui.ProvidersScreen
 import org.starfall.generative.features.providers.shared.logic.ConfigurationViewModel
 import org.starfall.generative.features.settings.logic.SettingsViewModel
-import org.starfall.generative.features.settings.ui.AppSettingsScreen
+import org.starfall.generative.features.settings.ui.AppSettings
 import org.starfall.generative.features.settings.ui.MainAppbar
 import org.starfall.generative.features.speech.ui.SpeechServicesScreen
 import org.starfall.generative.features.storage.ui.StorageScreen
-import org.starfall.generative.features.tools.ui.ToolsEditorScreen
+import org.starfall.generative.features.tools.ui.ToolsEditor
 import org.starfall.generative.home.chat.logic.ChatViewModel
 import org.starfall.generative.home.chat.logic.contextWindowStatus
 import org.starfall.generative.home.chat.ui.ChatScreen
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.home.drawer.ui.LeftSideDrawer
+import org.starfall.generative.home.drawer.ui.ConversationSideDrawer
 import org.starfall.generative.home.drawer.ui.recordDrawerBackdrop
 import org.starfall.generative.home.drawer.ui.rememberDrawerBackdrop
 import org.starfall.generative.shared.files.ToolFiles
@@ -139,6 +139,16 @@ fun AppNavigation(
         navController.navigate(destination.route) { launchSingleTop = true }
     }
 
+    fun openPromptInstructions(promptId: String? = null) {
+        coroutineScope.launch { drawerState.close() }
+        val route = buildString {
+            append(AppDestination.CHAT_OPTIONS.route)
+            append("?tab=instructions")
+            promptId?.let { append("&promptId=${Uri.encode(it)}") }
+        }
+        navController.navigate(route) { launchSingleTop = true }
+    }
+
     val conversations: List<ConversationListItem> by viewModel.conversations.collectAsStateWithLifecycle()
     val currentConv: Conversation? by viewModel.currentConversation.collectAsStateWithLifecycle()
     val chatAttachments = remember { ChatAttachmentSelection() }
@@ -162,8 +172,10 @@ fun AppNavigation(
     val mcpToolErrors by configurationViewModel.mcpToolErrors.collectAsStateWithLifecycle()
     val mcpToolsLoading by configurationViewModel.mcpToolsLoading.collectAsStateWithLifecycle()
     val remoteMachineState by remoteMachinesViewModel.state.collectAsStateWithLifecycle()
-    val remoteMachineBinaries by remoteMachinesViewModel.binaries.collectAsStateWithLifecycle()
+    val connectedMachineIds by remoteMachinesViewModel.connectedMachineIds.collectAsStateWithLifecycle()
+    val connectedMachines = remoteMachineState.machines.filter { it.id in connectedMachineIds }
     var remoteMachinePage by remember { mutableStateOf<Any?>(null) }
+    var terminalMachine by remember { mutableStateOf<RemoteMachine?>(null) }
 
     val toolSettings by viewModel.toolSettings.collectAsStateWithLifecycle()
     val queuedMessages by viewModel.queuedMessages.collectAsStateWithLifecycle()
@@ -323,7 +335,7 @@ fun AppNavigation(
             gesturesEnabled = chatOnTop,
             scrimColor = drawerScrim,
             drawerContent = {
-                LeftSideDrawer(
+                ConversationSideDrawer(
                     backdrop = drawerBackdrop,
                     conversations = conversations,
                     providers = providers,
@@ -351,12 +363,11 @@ fun AppNavigation(
                     onDeleteConversation = {
                         viewModel.deleteConversations(setOf(it), chatAttachments.attachments.value)
                     },
-                    onUpdateDefaultSystemPrompt = { prompt ->
-                        viewModel.setDefaultSystemPrompt(prompt)
-                    },
                     onNavigateToSettings = {
                         navigate(AppDestination.FEATURES)
                     },
+                    onNavigateToInstructions = { openPromptInstructions() },
+                    onEditPrompt = { promptId -> openPromptInstructions(promptId) },
                     featuresLogoImage = appPrefs.featuresLogoImage,
                     onCloseDrawer = {
                         coroutineScope.launch { drawerState.close() }
@@ -480,6 +491,10 @@ fun AppNavigation(
                         },
                         onFetchOllamaModels = { url ->
                             configurationViewModel.fetchOllamaModels(url)
+                        },
+                        connectedMachines = connectedMachines,
+                        onOpenTerminal = { machine ->
+                            terminalMachine = machine
                         }
                     )
                 }
@@ -517,7 +532,7 @@ fun AppNavigation(
                             // branch above, whose popBackStack() ran a second time and also popped Providers.
                             DisposableEffect(Unit) { onDispose { pendingNewProvider = null } }
                             key(page.provider.id) {
-                                ProviderEditorScreen(
+                                ProviderEditor(
                                     initialProvider = page.provider,
                                     isNew = page.isNew,
                                     onSave = { saved ->
@@ -566,7 +581,7 @@ fun AppNavigation(
                             load = { configurationViewModel.loadProviderForEditor(providerId) }
                         ) { provider ->
                             key(provider.id) {
-                                ProviderEditorScreen(
+                                ProviderEditor(
                                     initialProvider = provider,
                                     isNew = false,
                                     initialEditingModelId = modelId,
@@ -643,7 +658,7 @@ fun AppNavigation(
                                     draft = page.first.takeIf { page.second }
                                 ) { server ->
                                     key(server.id) {
-                                        ServerEditorScreen(
+                                        ServerEditor(
                                             initialServer = server,
                                             isNew = page.second,
                                             onRefreshTools = { configurationViewModel.refreshMcpTools(it) },
@@ -698,8 +713,19 @@ fun AppNavigation(
                         )
                     }
 
-                    composable(AppDestination.CHAT_OPTIONS.route) {
+                    composable(
+                        route = "${AppDestination.CHAT_OPTIONS.route}?tab={tab}&promptId={promptId}",
+                        arguments = listOf(
+                            navArgument("tab") { type = NavType.StringType; defaultValue = "helpers" },
+                            navArgument("promptId") { type = NavType.StringType; defaultValue = "" }
+                        )
+                    ) { chatOptionsEntry ->
                         ChatOptionsScreen(
+                            initialTab = chatOptionsEntry.arguments?.getString("tab") ?: "helpers",
+                            initialPromptId = chatOptionsEntry.arguments?.getString("promptId").orEmpty(),
+                            promptLibrary = appPrefs.promptLibrary,
+                            defaultSystemPrompt = appPrefs.defaultSystemPrompt,
+                            onPromptLibraryChange = viewModel::setPromptLibrary,
                             providers = providers,
                             settings = toolSettings,
                             providerGroups = providerGroups,
@@ -719,7 +745,7 @@ fun AppNavigation(
                         )
                     }
                     composable(AppDestination.TOOLS_EDITOR.route) {
-                        ToolsEditorScreen(
+                        ToolsEditor(
                             providers = providers,
                             settings = toolSettings,
                             onSave = viewModel::setSystemTool,
@@ -743,21 +769,18 @@ fun AppNavigation(
                     composable(AppDestination.STORAGE.route) { StorageScreen(toolFiles) { navController.popBackStack() } }
                     composable(AppDestination.REMOTE_MACHINES.route) {
                         // Sub-pages are transient: never restore an editor/settings/terminal page on re-entry.
-                        DisposableEffect(Unit) { onDispose { remoteMachinePage = null } }
+                        DisposableEffect(Unit) {
+                            onDispose {
+                                remoteMachinePage = null
+                            }
+                        }
                         SlideScreenContent(
                             editor = remoteMachinePage,
                             label = stringResource(R.string.remote_machines_title)
                         ) { selected ->
                             when {
-                                selected is RemoteMachine -> RemoteTerminalScreen(
-                                    machine = selected,
-                                    viewModel = remoteMachinesViewModel,
-                                    onBack = { remoteMachinePage = null }
-                                )
-
                                 selected is MachineEditorPage -> MachineDetailsScreen(
                                     initial = selected.machine,
-                                    isNew = selected.isNew,
                                     state = remoteMachineState,
                                     onSave = {
                                         remoteMachinesViewModel.saveMachine(it)
@@ -777,7 +800,6 @@ fun AppNavigation(
 
                                 selected == RemoteMachineSettingsPage.SETTINGS -> RemoteMachineSettings(
                                     state = remoteMachineState,
-                                    binaries = remoteMachineBinaries,
                                     viewModel = remoteMachinesViewModel,
                                     onBack = { remoteMachinePage = null }
                                 )
@@ -789,7 +811,9 @@ fun AppNavigation(
                                         remoteMachinePage = MachineEditorPage(machine, isNew)
                                     },
                                     onOpenSettings = { remoteMachinePage = RemoteMachineSettingsPage.SETTINGS },
-                                    onOpenTerminal = { machine -> remoteMachinePage = machine }
+                                    onOpenTerminal = { machine ->
+                                        terminalMachine = machine
+                                    }
                                 )
                             }
                         }
@@ -831,7 +855,7 @@ fun AppNavigation(
                                     .padding(padding)
                                     .padding(horizontal = 16.dp, vertical = 8.dp)
                             ) {
-                                AppSettingsScreen(
+                                AppSettings(
                                     appPreferences = appPrefs,
                                     onThemeChange = { mode ->
                                         settingsViewModel.setThemeMode(mode)
@@ -951,6 +975,16 @@ fun AppNavigation(
                             }
                         }
                     }
+                }
+                terminalMachine?.let { machine ->
+                    RemoteTerminalSheet(
+                        machine = machine,
+                        openTerminal = { selectedMachine, askSecret ->
+                            remoteMachinesViewModel.openTerminal(selectedMachine, askSecret = askSecret)
+                        },
+                        disconnect = remoteMachinesViewModel::disconnect,
+                        onDismiss = { terminalMachine = null }
+                    )
                 }
             }
         }

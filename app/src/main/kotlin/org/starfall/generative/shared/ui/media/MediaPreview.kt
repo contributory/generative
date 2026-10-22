@@ -81,7 +81,7 @@ fun MediaPreviewDialog(reference: String, name: String, mime: String, onDismiss:
                     Box(Modifier.weight(1f, fill = false).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         MediaContent(reference, mime, onImageZoomChanged = { zoomedImage = it })
                     }
-                    MediaViewerToolbar(onClose = onDismiss)
+                    MediaViewerToolBar(onClose = onDismiss)
                 }
             }
         }

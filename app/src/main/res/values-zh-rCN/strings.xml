@@ -3,17 +3,6 @@
     <string name="tool_call_strategy_description">选择按顺序执行工具调用，还是并行执行。</string>
     <string name="tool_call_concurrent_limit_description">允许同时执行的工具调用最大数量。</string>
 
-    <!-- Binary test argument dialog -->
-    <string name="remote_machine_binary_test_parameters_title">测试可执行文件参数 · %1$s</string>
-    <string name="remote_machine_binary_test_arguments">参数（可选）</string>
-    <string name="remote_machine_binary_test_arguments_help">使用空格分隔参数。每个项目都会作为独立参数传递；引号不会被特殊解析。</string>
-    <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
-
-    <!-- Executable binary upload security confirmation -->
-    <string name="remote_machine_binary_upload_warning_title">安全警告</string>
-    <string name="remote_machine_binary_upload_warning_message">可执行文件不会与此应用隔离。运行时，它们可能访问应用可访问的数据和文件，也可能使用应用的网络连接。请仅上传来自可信来源的可执行文件。</string>
-    <string name="remote_machine_binary_upload_confirm">上传并信任</string>
-
     <string name="thinking">思考中</string>
     <string name="thinking_streaming">思考中...</string>
     <string name="thought_process">思考过程</string>
@@ -35,6 +24,7 @@
     <string name="settings_speech_services_description">文字转语音提供商和语音</string>
     <string name="speech_services_description">使用 Android TTS 或提供商的 TTS 模型</string>
     <string name="settings_storage_description">工具创建的文件</string>
+    <string name="storage_open_in_files_failed">无法打开系统文件管理器。</string>
     <string name="settings_theme_description">选择 Generative 的外观</string>
     <string name="settings_amoled_description">在深色模式下使用纯黑表面</string>
     <string name="settings_dynamic_color_description">在 Android 12 及更高版本中使用壁纸颜色</string>
@@ -94,8 +84,8 @@
     <string name="tool_send_file_title">发送文件</string>
     <string name="tool_send_file_description">允许 AI 在聊天中显示工具结果中的文件。</string>
     <string name="tool_select_compatible_model_hint">选择兼容的模型以启用此工具。</string>
-    <string name="mcp_add_servers_hint">请先在 MCP Manage 中添加服务器。</string>
-    <string name="mcp_tool_list_not_cached_description">工具列表尚未缓存。请先在 MCP Manage 中保存或刷新此服务器。</string>
+    <string name="mcp_add_servers_hint">请先在 MCP Connectors 中添加服务器。</string>
+    <string name="mcp_tool_list_not_cached_description">工具列表尚未缓存。请先在 MCP Connectors 中保存或刷新此服务器。</string>
     <string name="mcp_no_globally_enabled_tools_description">没有全局启用的工具。</string>
     <string name="image_tool_model_options_description">仅设置此模型支持的选项。留空字段将使用提供商默认值。设置会按模型分别保存。</string>
     <string name="image_tool_request_body_help">支持嵌套对象和提供商扩展。模型和提示词来自聊天。</string>
@@ -140,7 +130,7 @@
     <string name="icon_cache_save_failed">无法保存图标规则。</string>
     <string name="icon_cache_search">搜索图标或匹配规则</string>
     <string name="icon_import_failed">无法加载此图片，请选择其他图片。</string>
-    <string name="icon_settings_title">图标与缓存</string>
+    <string name="icon_settings_title">图标与商标</string>
     <string name="icon_variant_dark">深色（可选）</string>
     <string name="icon_variant_normal">浅色</string>
     <string name="model_arguments">参数</string>
@@ -151,6 +141,13 @@
     <string name="model_tools_hint">启用此模型支持的内置工具。这些工具会直接随模型 API 请求发送。</string>
     <string name="model_tools_unsupported_provider">此提供商的 API 暂不支持 Generative 中的内置模型工具。</string>
     <string name="remote_machine_google_missing_resolution">Google 授权需要用户交互，但未返回后续处理步骤。</string>
+    <string name="remote_machine_identity_file_help">私钥的路径，或在 Remote Settings 中上传的密钥名称。密钥本身永远不会存储在机器配置中。如果不需要密钥，请留空。</string>
+    <string name="remote_machine_terminal_connected">已连接</string>
+    <string name="remote_machine_terminal_disconnected">已断开</string>
+    <string name="remote_machine_terminal_no_sessions_hint">当此机器的最后一个终端会话关闭时，它将断开连接。打开新会话即可重新连接。</string>
+    <string name="remote_machine_terminal_connection_lost">连接丢失</string>
+    <string name="remote_machine_terminal_connection_failed">连接失败</string>
+    <string name="remote_machine_not_configured">未配置</string>
     <string name="remote_machine_google_no_access_token">Google 未返回访问令牌。</string>
     <string name="remote_machine_oauth_client_type">OAuth 客户端类型</string>
     <string name="remote_machine_oauth_type_android">Android 应用</string>

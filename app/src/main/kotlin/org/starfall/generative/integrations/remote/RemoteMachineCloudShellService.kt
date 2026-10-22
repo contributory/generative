@@ -25,6 +25,7 @@ import org.starfall.generative.shared.model.GoogleOAuthClientType
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
 import org.starfall.generative.shared.model.RemoteOAuthToken
+import org.starfall.generative.shared.model.remote.REMOTE_GOOGLE_CLOUD_SCOPE
 import org.starfall.generative.shared.networking.ToolHttp
 
 
@@ -63,7 +64,7 @@ internal class RemoteMachineCloudShellService(
             tokenEndpoint = RemoteMachineService.GOOGLE_TOKEN_ENDPOINT,
             clientId = client.clientId,
             redirectUri = redirectUri,
-            scope = RemoteMachineService.GOOGLE_SCOPE,
+            scope = REMOTE_GOOGLE_CLOUD_SCOPE,
             additional = mapOf("access_type" to "offline", "prompt" to "consent")
         )
         val code = OAuthCallbackService.keepAlive(appContext) {
@@ -174,12 +175,8 @@ internal class RemoteMachineCloudShellService(
                     password = updated.password,
                     identityPassphrase = updated.identityPassphrase
                 )
-                val config = if (saved.username != savedUsername && savedUsername.isNotBlank()) {
-                    SshConfigParser.upsertMachine(current.sshConfig, savedMachine.copy(host = "", port = 6_000))
-                } else current.sshConfig
                 current.copy(
-                    machines = current.machines.map { if (it.id == savedMachine.id) savedMachine else it },
-                    sshConfig = config
+                    machines = current.machines.map { if (it.id == savedMachine.id) savedMachine else it }
                 )
             }
         }
@@ -233,7 +230,7 @@ internal class RemoteMachineCloudShellService(
         // while the user has already granted this scope. Only a result with a resolution needs UI.
         if (client.type == GoogleOAuthClientType.ANDROID) {
             val request = AuthorizationRequest.builder()
-                .setRequestedScopes(listOf(Scope(RemoteMachineService.GOOGLE_SCOPE)))
+                .setRequestedScopes(listOf(Scope(REMOTE_GOOGLE_CLOUD_SCOPE)))
                 .build()
             val result = suspendCancellableCoroutine { continuation ->
                 Identity.getAuthorizationClient(appContext).authorize(request)

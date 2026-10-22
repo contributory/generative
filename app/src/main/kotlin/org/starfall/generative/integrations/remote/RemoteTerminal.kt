@@ -6,9 +6,8 @@ import kotlinx.coroutines.CancellationException
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.concurrent.atomic.AtomicBoolean
+import org.starfall.generative.shared.model.remote.RemoteTerminalSession
 
-internal const val REMOTE_TERMINAL_UI_PREFERENCES = "remote_terminal_ui"
-internal fun remoteTerminalInputModePreferenceKey(machineId: String) = "input_mode:$machineId"
 
 /** Result returned by an SSH command execution. */
 data class RemoteCommandResult(
@@ -19,11 +18,10 @@ data class RemoteCommandResult(
     val isError: Boolean get() = exitCode != 0
 }
 
-/** A secret requested by the SSH server while connecting. */
-data class RemoteSecretRequest(val passphrase: Boolean, val prompt: String)
-
-/** Called only when SSH requests a password or key passphrase that is not already saved. */
-typealias RemoteSecretPrompt = suspend (RemoteSecretRequest) -> String?
+data class RemoteTerminalInfo(
+    val id: String,
+    val isConnected: Boolean
+)
 
 /**
  * A connected interactive shell. The owner must close it when the terminal screen is disposed.
@@ -31,21 +29,24 @@ typealias RemoteSecretPrompt = suspend (RemoteSecretRequest) -> String?
  * private connection ([ownsSession]) closes the whole connection as well.
  */
 class RemoteTerminal internal constructor(
+    override val id: String,
     private val session: Session,
     private val channel: ChannelShell,
-    val input: InputStream,
-    val output: OutputStream,
-    private val localCommand: Process?,
-    private val ownsSession: Boolean = true,
+    override val input: InputStream,
+    override val output: OutputStream,
+    private val ownsSession: Boolean = false,
     private val onClosed: () -> Unit = {}
-) : AutoCloseable {
+) : RemoteTerminalSession {
     private val closed = AtomicBoolean(false)
+    internal val createdAtNanos: Long = System.nanoTime()
+
+    override val isOpen: Boolean get() = !closed.get() && channel.isConnected
 
     /** Exit status of the remote shell, or -1 while it is running / if the connection was dropped. */
-    val exitStatus: Int get() = channel.exitStatus
+    override val exitStatus: Int get() = channel.exitStatus
 
     /** Tells the server the terminal size changed (blocking network I/O; call off the main thread). */
-    fun resize(columns: Int, rows: Int) {
+    override fun resize(columns: Int, rows: Int) {
         if (columns <= 0 || rows <= 0 || !channel.isConnected) return
         runCatching { channel.setPtySize(columns, rows, 0, 0) }
     }
@@ -62,10 +63,8 @@ class RemoteTerminal internal constructor(
             runCatching { channel.disconnect() }
             if (ownsSession) {
                 runCatching { session.disconnect() }
-                runCatching { localCommand?.destroy() }
             }
             runCatching { onClosed() }
         }.apply { isDaemon = true; name = "remote-terminal-disconnect" }.start()
     }
 }
-

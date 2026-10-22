@@ -2,100 +2,33 @@ package org.starfall.generative.integrations.remote
 
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import android.system.Os
 import com.jcraft.jsch.JSch
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.Base64
 import java.util.UUID
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import org.starfall.generative.shared.model.GCloudOAuthClient
 import org.starfall.generative.shared.model.GoogleOAuthClientType
-import org.starfall.generative.shared.model.RemoteBinaryTestResult
 import org.starfall.generative.shared.model.RemoteIdentityKey
 import org.starfall.generative.shared.model.RemoteMachine
 
 
 
-/** Handles imported executables, SSH identity files and OAuth client-file parsing for remote machines. */
+/** Handles SSH identity files and OAuth client-file parsing for remote machines. */
 internal class RemoteMachineAssetsService(
     context: Context,
-    private val store: RemoteMachineStore,
-    private val executableBinaries: ExecutableBinaryStore
+    private val store: RemoteMachineStore
 ) {
     private val appContext = context.applicationContext
     private val json = Json { ignoreUnknownKeys = true }
     private val state = store.state
 
     companion object {
-        private const val BINARY_TEST_TIMEOUT_SECONDS = 10L
-        private const val MAX_BINARY_TEST_OUTPUT_BYTES = 65_536
         private val CLOUD_SHELL_SUPPORTED_KEY_ALGORITHMS = setOf(
             "ssh-rsa", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521"
-        )
-    }
-
-    suspend fun importBinary(uri: Uri): ExecutableBinary = executableBinaries.import(uri)
-
-    suspend fun testBinary(id: String, arguments: List<String> = emptyList()): RemoteBinaryTestResult = withContext(Dispatchers.IO) {
-        val binary = executableBinaries.binaries.value.firstOrNull { it.id == id } ?: error("Binary not found.")
-        val file = File(binary.path)
-        require(file.isFile) { "The imported binary file no longer exists." }
-        require(file.canExecute()) { "The imported file does not have execute permission." }
-        val header = readHeader(file)
-        val invocation = binaryInvocation(file) + arguments
-        require(invocation.size == 1 || !isStaticNonPieElf(header)) {
-            "This is a statically linked, non-PIE executable. Android 10+ blocks running files from app " +
-                "storage directly, and the system linker cannot load such a file. Use a PIE build made " +
-                "for Android (for example from Termux)."
-        }
-        val process = ProcessBuilder(invocation)
-            .directory(file.parentFile)
-            .redirectErrorStream(true)
-            .start()
-        val captured = ByteArrayOutputStream()
-        val truncated = AtomicBoolean(false)
-        val reader = Thread({
-            runCatching {
-                process.inputStream.use { input ->
-                    val buffer = ByteArray(8_192)
-                    while (true) {
-                        val count = input.read(buffer)
-                        if (count < 0) break
-                        val remaining = MAX_BINARY_TEST_OUTPUT_BYTES - captured.size()
-                        if (remaining > 0) captured.write(buffer, 0, minOf(count, remaining))
-                        if (count > remaining) truncated.set(true)
-                    }
-                }
-            }
-        }, "remote-binary-test-output").apply {
-            isDaemon = true
-            start()
-        }
-        runCatching { process.outputStream.close() }
-        val completed = try {
-            process.waitFor(BINARY_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        } catch (error: Throwable) {
-            process.destroyForcibly()
-            throw error
-        }
-        if (!completed) {
-            process.destroyForcibly()
-            process.waitFor()
-        }
-        reader.join(2_000)
-        val output = captured.toString(Charsets.UTF_8.name()) +
-            if (truncated.get()) "\n[output truncated]" else ""
-        RemoteBinaryTestResult(
-            output = output,
-            exitCode = process.exitValue(),
-            timedOut = !completed,
-            outputTruncated = truncated.get()
         )
     }
 
@@ -119,18 +52,6 @@ internal class RemoteMachineAssetsService(
             clientSecret = installed["client_secret"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty(),
             type = GoogleOAuthClientType.DESKTOP
         )
-    }
-
-    suspend fun deleteBinary(id: String) {
-        val binary = executableBinaries.binaries.value.firstOrNull { it.id == id }
-        if (binary != null) {
-            require(state.value.machines.none { machine ->
-                listOf(machine.proxyCommand, machine.localCommand).any { command ->
-                    hasBinaryReference(command, binary.name)
-                }
-            }) { "Remove this binary from ProxyCommand or LocalCommand before deleting it." }
-        }
-        executableBinaries.delete(id)
     }
 
     /** Uploads an SSH private key once; machines reference it through IdentityFile. */
@@ -224,7 +145,7 @@ internal class RemoteMachineAssetsService(
     internal fun cloudShellPublicKey(machine: RemoteMachine): String? {
         val identityFile = machine.identityFile.trim().takeIf(String::isNotBlank) ?: return null
         val file = resolveIdentity(identityFile)
-            ?: error("Identity file not found: ${identityFile.substringAfterLast('/')}. Upload it in Remote Machines settings or fix IdentityFile.")
+            ?: error("Identity file not found: ${identityFile.substringAfterLast('/')}. Upload it in Remote Settings or fix IdentityFile.")
         uploadedPublicKey(file)?.let { return it }
         val jsch = JSch()
         if (machine.identityPassphrase.isBlank()) jsch.addIdentity(file.absolutePath)
@@ -239,37 +160,5 @@ internal class RemoteMachineAssetsService(
             ?: error("Could not read the public key for IdentityFile.")
         return "$algorithm ${Base64.getEncoder().encodeToString(publicKeyBlob)}"
     }
-
-    private fun hasBinaryReference(command: String, name: String): Boolean =
-        Regex("(^|\\s)${Regex.escape(name)}(?=\\s|$)").containsMatchIn(command)
-
-    internal fun resolveBinary(command: String): String {
-        var resolved = executableBinaries.resolveCommand(command)
-        state.value.binaries.forEach { binary ->
-            val pattern = Regex("(^|\\s)${Regex.escape(binary.name)}(?=\\s|$)")
-            val invocation = binaryInvocation(File(binary.path)).joinToString(" ")
-            resolved = pattern.replace(resolved) { match -> "${match.value.substringBefore(binary.name)}$invocation" }
-        }
-        return resolved
-    }
-
-    /**
-     * Command line that runs an imported binary. Since Android 10, apps targeting API 29+ may not
-     * execve() files in their own storage (SELinux denies it with "Permission denied" even though the
-     * file mode allows execution), so ELF files are started through the system dynamic linker and
-     * scripts through their interpreter. The result is a path-only argv safe to join with spaces.
-     */
-    private fun binaryInvocation(file: File): List<String> {
-        val header = readHeader(file)
-        return binaryLauncher(header, Build.VERSION.SDK_INT, appContext.applicationInfo.targetSdkVersion) +
-            file.absolutePath
-    }
-
-    private fun readHeader(file: File): ByteArray = runCatching {
-        file.inputStream().use { input ->
-            val buffer = ByteArray(256)
-            buffer.copyOf(input.read(buffer).coerceAtLeast(0))
-        }
-    }.getOrDefault(ByteArray(0))
 
 }

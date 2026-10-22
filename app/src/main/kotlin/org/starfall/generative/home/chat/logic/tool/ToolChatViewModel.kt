@@ -24,8 +24,12 @@ import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.REMOTE_TOOL_DISCONNECT
+import org.starfall.generative.shared.model.REMOTE_TOOL_CLOSE_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_START_MACHINE
 import org.starfall.generative.shared.model.REMOTE_TOOL_UPDATE_IP
+import org.starfall.generative.shared.model.REMOTE_TOOL_LIST_TERMINAL
+import org.starfall.generative.shared.model.REMOTE_TOOL_OPEN_TERMINAL
+import org.starfall.generative.shared.model.REMOTE_TOOL_EXECUTE
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
 import org.starfall.generative.shared.model.StoredMessage
@@ -160,14 +164,18 @@ class ToolChatViewModel(
                                 REMOTE_TOOL_START_MACHINE ->
                                     "Start the Google Cloud Shell environment of the remote machine '${machine.name}' before using it."
                                 REMOTE_TOOL_DISCONNECT ->
-                                    "Close the SSH connection to the remote machine '${machine.name}'. " +
-                                        "The connection opens automatically on the next execute call and closes after 5 minutes without activity, so calling this is optional."
+                                    "Close every terminal and the SSH connection to the remote machine '${machine.name}'."
+                                REMOTE_TOOL_OPEN_TERMINAL ->
+                                    "Open a new interactive terminal on '${machine.name}' and return its terminal_id."
+                                REMOTE_TOOL_CLOSE_TERMINAL ->
+                                    "Close one terminal on '${machine.name}'. If terminal_id is omitted, close the newest terminal."
+                                REMOTE_TOOL_LIST_TERMINAL ->
+                                    "List interactive terminals currently open on '${machine.name}'."
                                 REMOTE_TOOL_UPDATE_IP ->
                                     "Refresh the SSH endpoint of the Google Cloud Shell remote machine '${machine.name}'. Use only after connecting to this machine reports an error."
                                 else ->
-                                    "Execute a shell command on the remote machine named '${machine.name}' (${machine.type.label()}). " +
-                                        "The user knows this machine by that exact name. Connects automatically and keeps the connection open for 5 minutes of inactivity. " +
-                                        "Return concise commands and inspect the result."
+                                    "Execute a command on an already open terminal on '${machine.name}' (${machine.type.label()}). " +
+                                        "If terminal_id is omitted, use the newest terminal. Return concise commands and inspect the result."
                             },
                             schema = remoteToolSchema(toolName),
                             originalName = toolName,
@@ -391,7 +399,7 @@ class ToolChatViewModel(
                              check(
                                 mediaProvider.config.modelConfigs[cfg.modelId]?.modelType == kind &&
                                     mediaProvider.config.modelIds?.contains(cfg.modelId) != false
-                             ) { "Select an available media model in System tools" }
+                             ) { "Select an available media model in Feature Tools" }
                              val mediaModel = mediaProvider.config.modelConfigs[cfg.modelId]
                              val generationMode = mediaModel?.mediaApiType
                                  ?: if (name == "generate_image") cfg.imageGenerationMode else cfg.videoGenerationMode
@@ -544,11 +552,20 @@ class ToolChatViewModel(
     }
 
     private fun remoteToolSchema(tool: String): JsonObject = when (tool) {
-        REMOTE_TOOL_START_MACHINE, REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_DISCONNECT -> buildJsonObject {
+        REMOTE_TOOL_START_MACHINE, REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_OPEN_TERMINAL, REMOTE_TOOL_LIST_TERMINAL, REMOTE_TOOL_DISCONNECT -> buildJsonObject {
             put("type", "object")
             put("properties", buildJsonObject { })
         }
-        else -> buildJsonObject {
+        REMOTE_TOOL_CLOSE_TERMINAL -> buildJsonObject {
+            put("type", "object")
+            put("properties", buildJsonObject {
+                put("terminal_id", buildJsonObject {
+                    put("type", "string")
+                    put("description", "Optional terminal ID. Without it, close the newest terminal.")
+                })
+            })
+        }
+        REMOTE_TOOL_EXECUTE -> buildJsonObject {
             put("type", "object")
             put("properties", buildJsonObject {
                 put("command", buildJsonObject {
@@ -559,9 +576,14 @@ class ToolChatViewModel(
                     put("type", "integer")
                     put("description", "Optional timeout in seconds, from 1 to 600")
                 })
+                put("terminal_id", buildJsonObject {
+                    put("type", "string")
+                    put("description", "Optional open terminal ID. Without it, use the newest terminal.")
+                })
             })
             put("required", JsonArray(listOf(JsonPrimitive("command"))))
         }
+        else -> error("Unknown Remote Machine tool: $tool")
     }
 
 

@@ -3,16 +3,6 @@
     <string name="tool_call_strategy_description">Chọn gọi công cụ lần lượt hay thực hiện đồng thời.</string>
     <string name="tool_call_concurrent_limit_description">Số lượng lời gọi công cụ tối đa được phép chạy cùng lúc.</string>
 
-    <!-- Binary test argument dialog -->
-    <string name="remote_machine_binary_test_parameters_title">Tham số kiểm thử binary · %1$s</string>
-    <string name="remote_machine_binary_test_arguments">Tham số (không bắt buộc)</string>
-    <string name="remote_machine_binary_test_arguments_help">Phân tách tham số bằng dấu cách. Mỗi mục được truyền riêng; dấu nháy không được xử lý đặc biệt.</string>
-    <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
-
-    <!-- Executable binary upload security confirmation -->
-    <string name="remote_machine_binary_upload_warning_title">Cảnh báo bảo mật</string>
-    <string name="remote_machine_binary_upload_warning_message">Các tệp thực thi không được cách ly khỏi ứng dụng này. Khi chạy, chúng có thể truy cập dữ liệu và tệp mà ứng dụng được phép sử dụng, đồng thời có thể dùng kết nối mạng của ứng dụng. Chỉ tải lên các tệp thực thi từ nguồn mà bạn tin tưởng.</string>
-    <string name="remote_machine_binary_upload_confirm">Tải lên và tin tưởng</string>
     <string name="model_tools_hint">Bật các công cụ tích hợp mà model này hỗ trợ. Các công cụ được gửi trực tiếp trong yêu cầu API.</string>
     <string name="model_arguments">Arguments</string>
     <string name="model_tool_name">Tên tool</string>
@@ -41,6 +31,7 @@
     <string name="settings_speech_services_description">Provider chuyển văn bản thành giọng nói</string>
     <string name="speech_services_description">Dùng Android TTS hoặc model TTS từ Providers</string>
     <string name="settings_storage_description">Các file do công cụ tạo</string>
+    <string name="storage_open_in_files_failed">Không thể mở trình quản lý file của hệ thống.</string>
     <string name="settings_theme_description">Chọn giao diện của Generative</string>
     <string name="settings_amoled_description">Dùng bề mặt màu đen hoàn toàn ở chế độ tối</string>
     <string name="settings_dynamic_color_description">Dùng màu từ hình nền trên Android 12 trở lên</string>
@@ -81,7 +72,7 @@
     <string name="crash_report_description">Phiên trước đã kết thúc bất ngờ. Lỗi được ghi lại bên dưới. Bạn có thể tạo issue trên GitHub kèm thông tin này để giúp khắc phục sự cố.</string>
     <string name="oauth_browser_hint">Đăng nhập tài khoản qua trình duyệt.</string>
     <string name="icon_settings_description">Quản lý biểu tượng chung và quy tắc khớp</string>
-    <string name="icon_settings_title">Biểu tượng và bộ nhớ đệm</string>
+    <string name="icon_settings_title">Biểu tượng &amp; thương hiệu</string>
     <string name="icon_cache_search">Tìm biểu tượng hoặc quy tắc khớp</string>
     <string name="icon_cache_no_results">Không tìm thấy kết quả phù hợp.</string>
     <string name="icon_cache_no_matches">Chưa có quy tắc khớp tùy chỉnh</string>
@@ -133,8 +124,8 @@
     <string name="tool_send_file_title">Gửi tệp</string>
     <string name="tool_send_file_description">Cho phép AI hiển thị tệp từ kết quả công cụ trong cuộc trò chuyện.</string>
     <string name="tool_select_compatible_model_hint">Chọn model tương thích để bật công cụ này.</string>
-    <string name="mcp_add_servers_hint">Trước tiên hãy thêm server trong MCP Manage.</string>
-    <string name="mcp_tool_list_not_cached_description">Danh sách công cụ chưa được lưu trong bộ nhớ đệm. Trước tiên hãy lưu hoặc làm mới server này trong MCP Manage.</string>
+    <string name="mcp_add_servers_hint">Trước tiên hãy thêm server trong MCP Connectors.</string>
+    <string name="mcp_tool_list_not_cached_description">Danh sách công cụ chưa được lưu trong bộ nhớ đệm. Trước tiên hãy lưu hoặc làm mới server này trong MCP Connectors.</string>
     <string name="mcp_no_globally_enabled_tools_description">Không có công cụ nào được bật ở cấp hệ thống.</string>
     <string name="image_tool_model_options_description">Chỉ thiết lập các tùy chọn được model này hỗ trợ. Để trống sẽ dùng mặc định của provider. Cài đặt được lưu riêng cho từng model.</string>
     <string name="image_tool_request_body_help">Hỗ trợ object lồng nhau và phần mở rộng của provider. Model và prompt được lấy từ chat.</string>
@@ -169,5 +160,12 @@
     <string name="remote_machine_oauth_type_android">Ứng dụng Android</string>
     <string name="remote_machine_google_no_access_token">Google không trả về access token.</string>
     <string name="remote_machine_google_missing_resolution">Google yêu cầu tương tác để cấp quyền nhưng không trả về bước xử lý tiếp theo.</string>
+    <string name="remote_machine_identity_file_help">Đường dẫn tới private key, hoặc tên của một key đã tải lên trong Remote Settings. Bản thân key không bao giờ được lưu trong máy. Để trống nếu không cần key.</string>
+    <string name="remote_machine_terminal_connected">Đã kết nối</string>
+    <string name="remote_machine_terminal_disconnected">Đã ngắt kết nối</string>
+    <string name="remote_machine_terminal_no_sessions_hint">Máy này sẽ ngắt kết nối khi phiên terminal cuối cùng của nó bị đóng. Mở một phiên mới để kết nối lại.</string>
+    <string name="remote_machine_terminal_connection_lost">Mất kết nối</string>
+    <string name="remote_machine_terminal_connection_failed">Kết nối thất bại</string>
+    <string name="remote_machine_not_configured">Chưa cấu hình</string>
     <string name="drag_to_exit_folder_hint">Kéo lên thanh ứng dụng hoặc xuống thanh điều hướng để thoát khỏi thư mục</string>
 </resources>

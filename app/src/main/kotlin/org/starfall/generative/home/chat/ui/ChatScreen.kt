@@ -8,6 +8,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -28,9 +30,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.luminance
@@ -50,6 +56,7 @@ import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationSummaryProgress
 import org.starfall.generative.shared.model.ConversationSummaryRequest
+import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.SummaryRole
 import org.starfall.generative.shared.model.language.ThinkingPassback
@@ -60,13 +67,14 @@ import org.starfall.generative.shared.ui.media.ChatAttachmentSelection
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
+import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.text.PlatformTextSelection
 import org.starfall.generative.home.chat.logic.input.ChatInputEditDraft
 import org.starfall.generative.home.chat.logic.input.DirectMediaRequest
 import org.starfall.generative.home.chat.logic.unansweredUserMessageIds
 import org.starfall.generative.home.chat.ui.input.UserInputArea
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.home.shared.ui.ConversationSummaryBottomSheet
+import org.starfall.generative.home.shared.ui.ConversationSummarySheet
 import org.starfall.generative.home.chat.model.ContextWindowStatus
 
 // Jump-to-latest: ease time constant (smaller is faster), frames the bottom must hold, and a hard cap.
@@ -130,6 +138,9 @@ fun ChatScreen(
     contextWindowStatus: ContextWindowStatus? = null,
     speakingMessageId: String? = null,
     onResendUserMessage: (String) -> Boolean = { false },
+    /** Remote machines with a live connection; non-empty shows the terminal button in the app bar. */
+    connectedMachines: List<RemoteMachine> = emptyList(),
+    onOpenTerminal: (RemoteMachine) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val conversationKey = conversation?.id ?: "__empty_conversation__"
@@ -195,6 +206,7 @@ fun ChatScreen(
 
     var regeneratingMessageId by remember(conversation?.id) { mutableStateOf<String?>(null) }
     var showContextSummarySheet by remember(conversation?.id) { mutableStateOf(false) }
+    var showTerminalMachinePicker by remember { mutableStateOf(false) }
     var showSummaryDialog by remember(conversation?.id) { mutableStateOf(false) }
     var inlineChatError by remember(conversation?.id) { mutableStateOf<String?>(null) }
     var modelPickerOpenRequest by remember(conversation?.id) { mutableIntStateOf(0) }
@@ -727,7 +739,7 @@ fun ChatScreen(
                 !summarySuggestionDismissed &&
                 org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences.current.summarySuggestionEnabled) {
                 Surface(color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
                     Row(Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically) {
@@ -811,6 +823,12 @@ fun ChatScreen(
             onOpenSettings = onOpenSettings,
             featuresLogoImage = featuresLogoImage,
             onOpenModelPicker = { modelPickerOpenRequest++ },
+            showTerminalButton = connectedMachines.isNotEmpty(),
+            onOpenTerminal = {
+                // One running machine opens its terminal directly; several need a choice first.
+                if (connectedMachines.size == 1) onOpenTerminal(connectedMachines.single())
+                else showTerminalMachinePicker = true
+            },
             modifier = Modifier.align(Alignment.TopCenter)
                 .onSizeChanged { appBarHeightPx = it.height }
         )
@@ -819,7 +837,67 @@ fun ChatScreen(
     }
 
     if (showContextSummarySheet) {
-        ConversationSummaryBottomSheet(onStart = onStartConversationSummary, onDismiss = { showContextSummarySheet = false })
+        ConversationSummarySheet(onStart = onStartConversationSummary, onDismiss = { showContextSummarySheet = false })
+    }
+
+    if (showTerminalMachinePicker) {
+        AppSheet(
+            onDismissRequest = { showTerminalMachinePicker = false }
+        ) {
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    stringResource(org.starfall.generative.R.string.remote_machine_terminal_choose_machine),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                connectedMachines.forEach { machine ->
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable {
+                                showTerminalMachinePicker = false
+                                onOpenTerminal(machine)
+                            }
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            FluentIcon(
+                                Icons.Outlined.Terminal, null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    machine.name.ifBlank { stringResource(org.starfall.generative.R.string.remote_machine_unnamed) },
+                                    style = MaterialTheme.typography.titleSmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    "${machine.username.ifBlank { "?" }}@${machine.displayHost}:${machine.port}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            FluentIcon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+        }
     }
 
     if (showSummaryDialog) {

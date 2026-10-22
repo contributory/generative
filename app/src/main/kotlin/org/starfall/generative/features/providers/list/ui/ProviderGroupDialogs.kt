@@ -34,7 +34,7 @@ import org.starfall.generative.shared.ui.layout.windowHeightIn
 private const val UNGROUPED_SECTION = "__ungrouped__"
 
 @Composable
-internal fun ProviderGroupOverflowMenu(onEdit: () -> Unit, onDelete: () -> Unit, compact: Boolean = true) {
+internal fun ProviderGroupContextMenu(onEdit: () -> Unit, onDelete: () -> Unit, compact: Boolean = true) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(

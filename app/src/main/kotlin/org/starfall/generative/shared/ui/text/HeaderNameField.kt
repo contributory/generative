@@ -38,7 +38,8 @@ fun HeaderNameField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     var fieldValue by remember { mutableStateOf(TextFieldValue(value)) }
     // Same IME-safe sync as SelectableOutlinedTextField: only apply genuinely external changes.
@@ -49,6 +50,7 @@ fun HeaderNameField(
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val focusManager = LocalFocusManager.current
+    LaunchedEffect(enabled) { if (!enabled) focusManager.clearFocus() }
     val style = MaterialTheme.typography.titleMedium.copy(
         fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface
     )
@@ -62,6 +64,7 @@ fun HeaderNameField(
         modifier = modifier
             .fillMaxWidth()
             .selectAllOnTripleClick { fieldValue = fieldValue.copy(selection = TextRange(0, fieldValue.text.length)) },
+        enabled = enabled,
         textStyle = style,
         singleLine = true,
         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),

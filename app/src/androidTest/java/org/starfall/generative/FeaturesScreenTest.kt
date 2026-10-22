@@ -21,7 +21,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.features.about.ui.AboutScreen
 import org.starfall.generative.features.main.ui.FeaturesScreen
-import org.starfall.generative.features.settings.ui.AppSettingsScreen
+import org.starfall.generative.features.settings.ui.AppSettings
 import org.starfall.generative.features.settings.ui.MainAppbar
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.navigation.AppNavigation
@@ -30,8 +30,13 @@ import org.starfall.generative.home.chat.ui.ChatAppBar
 class FeaturesScreenTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
-    /** Mirrors the AppNavigation settings destinations: Features landing plus App Settings / About pages. */
-    private fun showFeatures(destinations: MutableList<String> = mutableListOf(), autoScroll: (Boolean) -> Unit = {}) {
+    /** Mirrors the AppNavigation settings destinations while allowing tests to capture navigation. */
+    private fun showFeatures(
+        destinations: MutableList<String> = mutableListOf(),
+        autoScroll: (Boolean) -> Unit = {},
+        showSettingsPage: Boolean = false,
+        showAboutPage: Boolean = false
+    ) {
         compose.setContent {
             MaterialTheme {
                 var page by remember { mutableStateOf("features") }
@@ -50,7 +55,7 @@ class FeaturesScreenTest {
                                 .padding(padding)
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            AppSettingsScreen(
+                            AppSettings(
                                 appPreferences = AppPreferences(),
                                 onThemeChange = {}, onAmoledChange = {}, onDynamicColorChange = {}, onColorSchemeChange = {},
                                 onHideStatusBarChange = {}, onWordWrapModeChange = {}, onWordWrapColumnChange = {},
@@ -80,13 +85,20 @@ class FeaturesScreenTest {
                     }
                     else -> FeaturesScreen(
                         onNavigateToChatOptions = { destinations.add("Chat Options") },
-                        onNavigateToToolsEditor = { destinations.add("Tools Editor") },
-                        onNavigateToProviders = { destinations.add("Providers") },
-                        onNavigateToMcp = { destinations.add("MCP Manage") },
+                        onNavigateToToolsEditor = { destinations.add("Feature Tools") },
+                        onNavigateToProviders = { destinations.add("Model Providers") },
+                        onNavigateToMcp = { destinations.add("MCP Connectors") },
                         onNavigateToSpeech = { destinations.add("Speech Services") },
-                        onNavigateToStorage = { destinations.add("Storage") },
-                        onNavigateToAppSettings = { page = "AppSettings" },
-                        onNavigateToAbout = { page = "About" }
+                        onNavigateToRemoteMachines = { destinations.add("Remote Machines") },
+                        onNavigateToStorage = { destinations.add("Media Storage") },
+                        onNavigateToAppSettings = {
+                            if (showSettingsPage) page = "AppSettings" else destinations.add("General Settings")
+                        },
+                        onNavigateToIcons = { destinations.add("Icons & Trademarks") },
+                        onNavigateToAppData = { destinations.add("Data Controls") },
+                        onNavigateToAbout = {
+                            if (showAboutPage) page = "About" else destinations.add("About")
+                        }
                     )
                 }
             }
@@ -97,21 +109,23 @@ class FeaturesScreenTest {
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
     }
 
-    @Test fun featuresLandingRoutesEveryConfigurationItem() {
+    @Test fun featuresLandingGroupsAndRoutesEveryFeatureItem() {
         val destinations = mutableListOf<String>()
         showFeatures(destinations)
-        compose.onNodeWithText("Configuration").assertIsDisplayed()
+        val headings = listOf("Configuration", "External Services", "Data & Caching", "System")
+        headings.forEach { compose.onNodeWithText(it).performScrollTo().assertIsDisplayed() }
         compose.onNodeWithText("Default & Tools").assertDoesNotExist()
-        val items = listOf("Chat Options", "Tools Editor", "Providers", "MCP Manage", "Speech Services", "Storage")
+        val items = listOf(
+            "Chat Options", "Feature Tools", "Model Providers", "MCP Connectors", "Speech Services",
+            "Remote Machines", "Media Storage", "Icons & Trademarks", "General Settings", "Data Controls", "About"
+        )
         items.forEach { scrollListTo(it); compose.onNodeWithText(it).performClick() }
-        compose.onNodeWithText("System Settings").performScrollTo().assertIsDisplayed()
-        val expected = listOf("Chat Options", "Tools Editor", "Providers", "MCP Manage", "Speech Services", "Storage")
-        compose.runOnIdle { assertEquals(expected, destinations) }
+        compose.runOnIdle { assertEquals(items, destinations) }
     }
 
     @Test fun aboutContainsUpdatesAndBackReturnsToFeatures() {
         val destinations = mutableListOf<String>()
-        showFeatures(destinations)
+        showFeatures(destinations, showAboutPage = true)
         compose.onNodeWithText("Software Update").assertDoesNotExist()
         scrollListTo("About")
         compose.onNodeWithText("About").performClick()
@@ -125,9 +139,9 @@ class FeaturesScreenTest {
 
     @Test fun preferenceRowTogglesOnce() {
         val updates = mutableListOf<Boolean>()
-        showFeatures(autoScroll = { updates.add(it) })
-        scrollListTo("App Settings")
-        compose.onNodeWithText("App Settings").performClick()
+        showFeatures(autoScroll = { updates.add(it) }, showSettingsPage = true)
+        scrollListTo("General Settings")
+        compose.onNodeWithText("General Settings").performClick()
         compose.onNodeWithText("Preferences").performClick()
         compose.onNodeWithText("Auto scroll").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(listOf(true), updates) }

@@ -30,11 +30,12 @@ import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import org.starfall.generative.home.shared.ui.QuickActionsBottomSheet
-import org.starfall.generative.home.shared.ui.RemoteMachinesBottomSheet
-import org.starfall.generative.home.shared.ui.SelectedModelOverviewBottomSheet
-import org.starfall.generative.home.shared.ui.ToolsManageBottomSheet
-import org.starfall.generative.shared.ui.model.ModelPickerBottomSheet
+import org.starfall.generative.home.shared.ui.QuickActionsSheet
+import org.starfall.generative.home.shared.ui.RemoteMachinesSheet
+import org.starfall.generative.home.shared.ui.SelectedModelOverviewSheet
+import org.starfall.generative.home.shared.ui.FeatureToolsSheet
+import org.starfall.generative.home.shared.ui.McpConnectorsSheet
+import org.starfall.generative.shared.ui.model.ModelPickerSheet
 import org.starfall.generative.shared.ui.model.chatModelPickerFilter
 
 internal class BottomSheetsLinkState {
@@ -42,7 +43,9 @@ internal class BottomSheetsLinkState {
         private set
     var showSelectedModelOverview by mutableStateOf(false)
         private set
-    var showQuickActions by mutableStateOf(false)
+    var showFeatureTools by mutableStateOf(false)
+        private set
+    var showMcpConnectors by mutableStateOf(false)
         private set
     var showRemoteMachines by mutableStateOf(false)
         private set
@@ -54,13 +57,15 @@ internal class BottomSheetsLinkState {
     fun openAddMenu() { showAddMenu = true }
     fun openModelPicker() { showModelPicker = true }
     fun openSelectedModelOverview() { showSelectedModelOverview = true }
-    fun openToolsManage() { showQuickActions = true }
+    fun openFeatureTools() { showFeatureTools = true }
+    fun openMcpConnectors() { showMcpConnectors = true }
     fun openRemoteMachines() { showRemoteMachines = true }
     fun openFilesUnavailableDialog() { showFilesSheet = true }
     fun dismissAddMenu() { showAddMenu = false }
     fun dismissModelPicker() { showModelPicker = false }
     fun dismissSelectedModelOverview() { showSelectedModelOverview = false }
-    fun dismissToolsManage() { showQuickActions = false }
+    fun dismissFeatureTools() { showFeatureTools = false }
+    fun dismissMcpConnectors() { showMcpConnectors = false }
     fun dismissRemoteMachines() { showRemoteMachines = false }
     fun dismissFilesUnavailableDialog() { showFilesSheet = false }
 }
@@ -131,7 +136,7 @@ internal fun BottomSheetsLink(
         if (!sheets.showSelectedModelOverview) selectedModelScreenBurst.hide()
     }
     if (sheets.showAddMenu) {
-        QuickActionsBottomSheet(
+        QuickActionsSheet(
             onPickImage = {
                 photoPicker.launch(PickVisualMediaRequest(
                     if (mediaKind == null || mediaKind == ModelType.VIDEO_GENERATION) ActivityResultContracts.PickVisualMedia.ImageAndVideo
@@ -150,7 +155,8 @@ internal fun BottomSheetsLink(
             onTakePhoto = { sheets.openFilesUnavailableDialog() },
             onCreateImage = { onCancelEdit(); onMediaKindChange(ModelType.IMAGE_GENERATION) },
             onCreateVideo = { onCancelEdit(); onMediaKindChange(ModelType.VIDEO_GENERATION) },
-            onOpenTools = { sheets.openToolsManage() },
+            onOpenFeatureTools = { sheets.openFeatureTools() },
+            onOpenMcpConnectors = { sheets.openMcpConnectors() },
             onOpenRemoteMachines = { sheets.openRemoteMachines() },
             onDismiss = { sheets.dismissAddMenu() }
         )
@@ -177,7 +183,7 @@ internal fun BottomSheetsLink(
         }
         CompositionLocalProvider(LocalThinkingScreenBurst provides selectedModelScreenBurst) {
             ThinkingScreenBurstLayer(selectedModelScreenBurst)
-            SelectedModelOverviewBottomSheet(
+            SelectedModelOverviewSheet(
                 provider = selectedProvider,
                 folderName = selectedFolderName,
                 modelId = selectedModelName.ifBlank { selectedConfig.displayName },
@@ -222,7 +228,7 @@ internal fun BottomSheetsLink(
     }
 
     if (sheets.showModelPicker) {
-        ModelPickerBottomSheet(
+        ModelPickerSheet(
             providers = if (mediaKind != null) mediaProviders else providers,
             providerGroups = providerGroups,
             collapsedGroupIdsState = modelPickerCollapsedGroups,
@@ -247,12 +253,16 @@ internal fun BottomSheetsLink(
         )
     }
 
-    if (sheets.showQuickActions) {
-        ToolsManageBottomSheet(onDismiss = { sheets.dismissToolsManage() })
+    if (sheets.showFeatureTools) {
+        FeatureToolsSheet(onDismiss = { sheets.dismissFeatureTools() })
+    }
+
+    if (sheets.showMcpConnectors) {
+        McpConnectorsSheet(onDismiss = { sheets.dismissMcpConnectors() })
     }
 
     if (sheets.showRemoteMachines) {
-        RemoteMachinesBottomSheet(onDismiss = { sheets.dismissRemoteMachines() })
+        RemoteMachinesSheet(onDismiss = { sheets.dismissRemoteMachines() })
     }
 
     if (sheets.showFilesSheet) {

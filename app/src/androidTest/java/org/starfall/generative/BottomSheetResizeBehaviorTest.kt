@@ -18,7 +18,7 @@ import androidx.core.view.WindowCompat
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.generative.shared.ui.sheets.AppBottomSheet
+import org.starfall.generative.shared.ui.sheets.AppSheet
 
 class BottomSheetResizeBehaviorTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
@@ -30,7 +30,7 @@ class BottomSheetResizeBehaviorTest {
         compose.setContent {
             fullHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
             MaterialTheme {
-            AppBottomSheet(onDismissRequest = {}) {
+            AppSheet(onDismissRequest = {}) {
                 Text("Last item", Modifier.fillMaxWidth().padding(16.dp))
             }
         } }
@@ -43,7 +43,7 @@ class BottomSheetResizeBehaviorTest {
         compose.setContent {
             fullHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
             MaterialTheme {
-            AppBottomSheet(onDismissRequest = {}) {
+            AppSheet(onDismissRequest = {}) {
                 Column {
                     Text("List header", Modifier.padding(16.dp))
                     LazyColumn(Modifier.weight(1f, fill = false)) {
@@ -63,7 +63,7 @@ class BottomSheetResizeBehaviorTest {
         compose.setContent {
             fullHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
             MaterialTheme {
-            AppBottomSheet(onDismissRequest = { dismissed = true }) {
+            AppSheet(onDismissRequest = { dismissed = true }) {
                 Box(Modifier.fillMaxWidth().fillMaxHeight())
             }
         } }

@@ -3,17 +3,6 @@
     <string name="tool_call_strategy_description">Elige si las llamadas a herramientas se ejecutan de forma secuencial o simultánea.</string>
     <string name="tool_call_concurrent_limit_description">Número máximo de llamadas a herramientas que pueden ejecutarse al mismo tiempo.</string>
 
-    <!-- Binary test argument dialog -->
-    <string name="remote_machine_binary_test_parameters_title">Parámetros de prueba del binario · %1$s</string>
-    <string name="remote_machine_binary_test_arguments">Argumentos (opcional)</string>
-    <string name="remote_machine_binary_test_arguments_help">Separa los argumentos con espacios. Cada elemento se pasa por separado; las comillas no se interpretan.</string>
-    <string name="remote_machine_binary_test_arguments_hint">--version --help</string>
-
-    <!-- Executable binary upload security confirmation -->
-    <string name="remote_machine_binary_upload_warning_title">Advertencia de seguridad</string>
-    <string name="remote_machine_binary_upload_warning_message">Los archivos ejecutables no están aislados de esta aplicación. Al ejecutarse, pueden acceder a los datos y archivos disponibles para la aplicación y utilizar su conexión de red. Sube únicamente archivos ejecutables de fuentes de confianza.</string>
-    <string name="remote_machine_binary_upload_confirm">Subir y confiar</string>
-
     <string name="thinking">Pensando</string>
     <string name="thinking_streaming">Pensando...</string>
     <string name="thought_process">Proceso de razonamiento</string>
@@ -35,6 +24,7 @@
     <string name="settings_speech_services_description">Proveedores de texto a voz y voces</string>
     <string name="speech_services_description">Usar la síntesis de voz de Android o modelos TTS de Proveedores</string>
     <string name="settings_storage_description">Archivos creados por tus herramientas</string>
+    <string name="storage_open_in_files_failed">No se pudo abrir el administrador de archivos del sistema.</string>
     <string name="settings_theme_description">Elige el aspecto de Generative</string>
     <string name="settings_amoled_description">Usar superficies totalmente negras en el modo oscuro</string>
     <string name="settings_dynamic_color_description">Usar los colores del fondo de pantalla en Android 12 y posteriores</string>
@@ -94,8 +84,8 @@
     <string name="tool_send_file_title">Enviar archivo</string>
     <string name="tool_send_file_description">Permite que la IA muestre en el chat archivos de los resultados de las herramientas.</string>
     <string name="tool_select_compatible_model_hint">Selecciona un modelo compatible para activar esta herramienta.</string>
-    <string name="mcp_add_servers_hint">Añade primero servidores en MCP Manage.</string>
-    <string name="mcp_tool_list_not_cached_description">La lista de herramientas no está en caché. Guarda o actualiza primero este servidor en MCP Manage.</string>
+    <string name="mcp_add_servers_hint">Añade primero servidores en MCP Connectors.</string>
+    <string name="mcp_tool_list_not_cached_description">La lista de herramientas no está en caché. Guarda o actualiza primero este servidor en MCP Connectors.</string>
     <string name="mcp_no_globally_enabled_tools_description">No hay herramientas activadas globalmente.</string>
     <string name="image_tool_model_options_description">Configura solo las opciones compatibles con este modelo. Los campos vacíos usan los valores predeterminados del proveedor. La configuración se guarda por separado para cada modelo.</string>
     <string name="image_tool_request_body_help">Se admiten objetos anidados y extensiones del proveedor. El modelo y el prompt proceden del chat.</string>
@@ -140,7 +130,7 @@
     <string name="icon_cache_save_failed">No se pudieron guardar las reglas de iconos.</string>
     <string name="icon_cache_search">Buscar iconos o reglas de coincidencia</string>
     <string name="icon_import_failed">No se pudo cargar esta imagen. Elige otra.</string>
-    <string name="icon_settings_title">Iconos y caché</string>
+    <string name="icon_settings_title">Iconos y marcas</string>
     <string name="icon_variant_dark">Oscuro (opcional)</string>
     <string name="icon_variant_normal">Claro</string>
     <string name="model_arguments">Argumentos</string>
@@ -151,6 +141,13 @@
     <string name="model_tools_hint">Activa las herramientas integradas compatibles con este modelo. Se envían directamente en la solicitud a la API del modelo.</string>
     <string name="model_tools_unsupported_provider">La API de este proveedor aún no admite herramientas integradas del modelo en Generative.</string>
     <string name="remote_machine_google_missing_resolution">Google requiere interacción para autorizar, pero no devolvió el siguiente paso.</string>
+    <string name="remote_machine_identity_file_help">Ruta a la clave privada, o el nombre de una clave subida en Remote Settings. La clave en sí nunca se guarda en la máquina. Déjalo vacío si no se necesita ninguna clave.</string>
+    <string name="remote_machine_terminal_connected">Conectado</string>
+    <string name="remote_machine_terminal_disconnected">Desconectado</string>
+    <string name="remote_machine_terminal_no_sessions_hint">Esta máquina se desconecta cuando se cierra su última sesión de terminal. Abre una nueva sesión para volver a conectarte.</string>
+    <string name="remote_machine_terminal_connection_lost">Conexión perdida</string>
+    <string name="remote_machine_terminal_connection_failed">Error de conexión</string>
+    <string name="remote_machine_not_configured">Sin configurar</string>
     <string name="remote_machine_google_no_access_token">Google no devolvió un token de acceso.</string>
     <string name="remote_machine_oauth_client_type">Tipo de cliente OAuth</string>
     <string name="remote_machine_oauth_type_android">Aplicación Android</string>

@@ -6,6 +6,7 @@ import com.jcraft.jsch.Session
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,50 +17,88 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.starfall.generative.shared.model.RemoteMachine
+import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
 
 
 
 /** Owns persistent SSH sessions and interactive/exec channels for remote-machine operations. */
 internal class RemoteMachineConnectionManager(
-    private val openSessionCallback: suspend (RemoteMachine, String?, RemoteSecretPrompt?) -> Pair<Session, Process?>
+    private val openSessionCallback: suspend (RemoteMachine, String?, RemoteSecretPrompt?) -> Session
 ) {
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val connections = ConcurrentHashMap<String, SharedConnection>()
+    private val terminals = ConcurrentHashMap<String, ConcurrentHashMap<String, RemoteTerminal>>()
     private val machineLocks = ConcurrentHashMap<String, Mutex>()
     private val _connectedMachineIds = MutableStateFlow<Set<String>>(emptySet())
     val connectedMachineIds: StateFlow<Set<String>> = _connectedMachineIds.asStateFlow()
 
     private suspend fun openSession(machine: RemoteMachine, passwordOverride: String? = null,
-        askSecret: RemoteSecretPrompt? = null): Pair<Session, Process?> =
+        askSecret: RemoteSecretPrompt? = null): Session =
         openSessionCallback(machine, passwordOverride, askSecret)
 
-    suspend fun execute(machine: RemoteMachine, command: String, timeoutSeconds: Int): RemoteCommandResult =
-        runSshCommand(machine, command, timeoutSeconds)
+    suspend fun execute(
+        machine: RemoteMachine,
+        command: String,
+        timeoutSeconds: Int,
+        terminalId: String?
+    ): RemoteCommandResult = runSshCommand(machine, command, timeoutSeconds, terminalId)
 
     suspend fun openTerminal(machine: RemoteMachine, passwordOverride: String? = null,
         askSecret: RemoteSecretPrompt? = null): RemoteTerminal {
-        val shared = acquireShared(machine.id, create = null)
-        if (shared != null) {
-            try {
-                val (channel, input, output) = openShellChannel(shared.session, machine)
-                return RemoteTerminal(shared.session, channel, input, output, null,
-                    ownsSession = false, onClosed = shared::release)
-            } catch (error: Throwable) {
-                shared.release()
-                if (error is CancellationException) throw error
-                dropConnection(shared)
-            }
-        }
-        val (session, local) = openSession(machine, passwordOverride, askSecret)
+        val shared = acquireShared(machine.id, create = machine, passwordOverride = passwordOverride, askSecret = askSecret)
+            ?: error("Could not open an SSH connection.")
         return try {
-            val (channel, input, output) = openShellChannel(session, machine)
-            RemoteTerminal(session, channel, input, output, local, ownsSession = true)
+            val (channel, input, output) = openShellChannel(shared.session, machine)
+            val id = UUID.randomUUID().toString()
+            val terminal = RemoteTerminal(
+                id = id,
+                session = shared.session,
+                channel = channel,
+                input = input,
+                output = output,
+                ownsSession = false,
+                onClosed = {
+                    val remaining = terminals[machine.id]
+                    remaining?.remove(id)
+                    if (remaining.isNullOrEmpty()) {
+                        if (remaining != null) terminals.remove(machine.id, remaining)
+                        // The last terminal of this machine is gone, so the shared SSH
+                        // connection has nothing left to serve: close it as soon as this
+                        // terminal releases it instead of waiting for the idle timeout.
+                        // requestClose() must run before release() so the release starts
+                        // the immediate (zero-delay) shutdown rather than the idle one.
+                        shared.requestClose()
+                    }
+                    shared.release()
+                }
+            )
+            terminals.computeIfAbsent(machine.id) { ConcurrentHashMap() }[id] = terminal
+            terminal
         } catch (error: Throwable) {
             withContext(NonCancellable + Dispatchers.IO) {
-                runCatching { session.disconnect() }; runCatching { local?.destroy() }
+                runCatching { shared.release() }
+                if (error is CancellationException) throw error
+                runCatching { dropConnection(shared) }
             }
             throw error
         }
+    }
+
+    fun listTerminals(machineId: String): List<RemoteTerminalInfo> =
+            terminals[machineId].orEmpty().values
+            .filter { it.isOpen }
+            .map { RemoteTerminalInfo(it.id, it.isOpen) }
+            .sortedBy { info -> terminals[machineId]?.get(info.id)?.createdAtNanos ?: Long.MIN_VALUE }
+
+    fun closeTerminal(machineId: String, terminalId: String?): Boolean {
+        val selected = terminalId?.let { terminals[machineId]?.get(it) }
+            ?: terminals[machineId]?.values?.filter { it.isOpen }?.maxByOrNull { it.createdAtNanos }
+        selected?.close()
+        return selected != null
+    }
+
+    fun closeAllTerminals(machineId: String) {
+        terminals.remove(machineId)?.values?.forEach(RemoteTerminal::close)
     }
 
     fun isConnected(machineId: String): Boolean = connections[machineId]?.session?.isConnected == true
@@ -68,7 +107,11 @@ internal class RemoteMachineConnectionManager(
         connections.values.toList().forEach { connection -> if (connection.requestClose()) closeConnection(connection) }
     } }
     suspend fun disconnectMachineNow(machineId: String): Boolean = withContext(NonCancellable + Dispatchers.IO) {
-        val connection = connections[machineId] ?: return@withContext false
+        val connection = connections[machineId] ?: run {
+            closeAllTerminals(machineId)
+            return@withContext false
+        }
+        closeAllTerminals(machineId)
         closeConnection(connection); true
     }
 
@@ -76,7 +119,8 @@ internal class RemoteMachineConnectionManager(
     private inner class SharedConnection(
         val machineId: String,
         val session: Session,
-        private val localCommand: Process?
+        /** Active port forwards live only as long as the session, so such a connection is never closed for being idle. */
+        private val keepOpenWhileIdle: Boolean = false,
     ) {
         private var users = 0
         private var closeOnRelease = false
@@ -106,6 +150,7 @@ internal class RemoteMachineConnectionManager(
         fun release() {
             if (users > 0) users--
             if (users == 0) {
+                if (keepOpenWhileIdle && !closeOnRelease) return
                 val wait = if (closeOnRelease) 0L else RemoteMachineService.IDLE_DISCONNECT_MILLIS
                 idleJob?.cancel()
                 idleJob = ioScope.launch {
@@ -136,7 +181,6 @@ internal class RemoteMachineConnectionManager(
                 idleJob = null
             }
             runCatching { session.disconnect() }
-            runCatching { localCommand?.destroy() }
         }
     }
 
@@ -149,6 +193,7 @@ internal class RemoteMachineConnectionManager(
 
     private fun closeConnection(connection: SharedConnection) {
         connections.remove(connection.machineId, connection)
+        closeAllTerminals(connection.machineId)
         publishConnected()
         connection.shutdown()
     }
@@ -167,7 +212,12 @@ internal class RemoteMachineConnectionManager(
      * Returns the machine's live connection with one use acquired, opening it when [create] is
      * given. Without [create] it returns null if the machine is not connected.
      */
-    private suspend fun acquireShared(machineId: String, create: RemoteMachine?): SharedConnection? =
+    private suspend fun acquireShared(
+        machineId: String,
+        create: RemoteMachine?,
+        passwordOverride: String? = null,
+        askSecret: RemoteSecretPrompt? = null
+    ): SharedConnection? =
         withContext(Dispatchers.IO) {
             machineLocks.getOrPut(machineId) { Mutex() }.withLock {
                 var connection = connections[machineId]
@@ -177,8 +227,8 @@ internal class RemoteMachineConnectionManager(
                 }
                 if (connection == null) {
                     if (create == null) return@withLock null
-                    val (session, local) = openSession(create, null, null)
-                    connection = SharedConnection(machineId, session, local)
+                    val session = openSession(create, passwordOverride, askSecret)
+                    connection = SharedConnection(machineId, session, create.portForwarding.hasActiveForwards)
                     connections[machineId] = connection
                     connection.startMonitor()
                     publishConnected()
@@ -242,8 +292,14 @@ internal class RemoteMachineConnectionManager(
     private suspend fun runSshCommand(
         machine: RemoteMachine,
         command: String,
-        timeoutSeconds: Int
+        timeoutSeconds: Int,
+        terminalId: String?
     ): RemoteCommandResult {
+        val terminal = terminalId?.let { terminals[machine.id]?.get(it) }
+            ?: terminals[machine.id]?.values?.filter { it.isOpen }?.maxByOrNull { it.createdAtNanos }
+        require(terminal != null && terminal.isOpen) {
+            "Open a terminal before executing a command on this remote machine."
+        }
         var retried = false
         while (true) {
             val connection = acquireConnection(machine)

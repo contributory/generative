@@ -22,7 +22,7 @@ import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.ItemOverflowMenu
+import org.starfall.generative.shared.ui.menus.ItemContextMenu
 import org.starfall.generative.shared.ui.model.ModelCapabilityBadges
 import org.starfall.generative.shared.ui.model.modelInitial
 
@@ -56,7 +56,7 @@ internal fun ProviderModelsPane(models: List<String>, configurations: Map<String
                             if (model.displayName.isNotBlank()) Text(id, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             ModelCapabilityBadges(model)
                         }
-                        ItemOverflowMenu(onEdit = { onEdit(id) }, onDelete = { onDelete(id) }, deleteColor = MaterialTheme.colorScheme.error)
+                        ItemContextMenu(onEdit = { onEdit(id) }, onDelete = { onDelete(id) }, deleteColor = MaterialTheme.colorScheme.error)
                     }
                 }
             }

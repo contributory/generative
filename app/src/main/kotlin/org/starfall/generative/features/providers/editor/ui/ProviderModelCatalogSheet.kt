@@ -24,7 +24,7 @@ import org.starfall.generative.features.providers.shared.logic.isEmpty
 import org.starfall.generative.features.providers.shared.logic.formatCatalogMetadata
 import org.starfall.generative.shared.model.language.DiscoveredModel
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.ui.sheets.AppBottomSheet
+import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -65,7 +65,7 @@ internal fun ProviderModelCatalogSheet(
         it.contains(query, ignoreCase = true) || modelsById[it]?.displayName?.contains(query, ignoreCase = true) == true
     }
     val allVisibleSelected = visibleModels.isNotEmpty() && visibleModels.all { it in selectedModels }
-    AppBottomSheet(onDismissRequest = onDismiss) {
+    AppSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
