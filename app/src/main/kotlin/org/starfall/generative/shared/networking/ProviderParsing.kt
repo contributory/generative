@@ -153,17 +153,32 @@ internal fun providerTurn(type: ModelApiType, response: JsonObject): JsonObject 
         else -> error("Unsupported provider response protocol: ${type.displayName}")
     }
 }
-/** Only display bounded error details; redact common secret formats and echoed request credentials. */
-internal fun safeError(value: JsonElement?, secrets: Collection<String> = emptyList()): String {
-    var text = when (value) {
-        is JsonObject -> value.text("message").ifBlank { value.text("detail").ifBlank { value.text("code") } }
+private val ERROR_TEXT_KEYS = listOf("message", "detail", "error_description", "msg", "reason", "error", "errors", "status", "code", "type")
+
+private fun errorText(value: JsonElement?, depth: Int = 0): String {
+    if (depth > 4) return ""
+    return when (value) {
         is JsonPrimitive -> value.contentOrNull.orEmpty()
+        is JsonArray -> value.asSequence().map { errorText(it, depth + 1) }.firstOrNull { it.isNotBlank() }.orEmpty()
+        is JsonObject -> ERROR_TEXT_KEYS.asSequence().map { errorText(value[it], depth + 1) }.firstOrNull { it.isNotBlank() }
+            ?: value.takeIf { it.isNotEmpty() }?.toString().orEmpty()
         else -> ""
+    }
+}
+
+/**
+ * Only display bounded error details; redact common secret formats and echoed request credentials.
+ * [raw] is the unparsed response body, used when the body is not JSON (HTML/plain-text from gateways and proxies).
+ */
+internal fun safeError(value: JsonElement?, secrets: Collection<String> = emptyList(), raw: String? = null): String {
+    var text = errorText(value).ifBlank {
+        raw.orEmpty().replace(Regex("(?is)<(script|style)[^>]*>.*?</\\1>"), " ").replace(Regex("<[^>]*>"), " ")
+            .replace(Regex("\\s+"), " ").trim()
     }.take(2000)
     secrets.filter { it.isNotBlank() }.sortedByDescending { it.length }.forEach { text = text.replace(it, "[redacted]") }
     text = text.replace(Regex("(?i)(bearer\\s+|sk-)[A-Za-z0-9._~+/-]+"), "[redacted]")
         .replace(Regex("(?i)(api[_-]?key|token|authorization|password)([\\s\"':=]+)[^\\s,}]+"), "$1=[redacted]")
-    return text.filter { it >= ' ' }.take(500).ifBlank { "No safe error details provided" }
+    return text.filter { it >= ' ' }.take(500).ifBlank { "No error details in response" }
 }
 
 private val GEMINI_SCHEMA_KEYS = setOf(

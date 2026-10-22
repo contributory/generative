@@ -7,9 +7,6 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.util.concurrent.atomic.AtomicBoolean
 
-internal const val REMOTE_TERMINAL_UI_PREFERENCES = "remote_terminal_ui"
-internal fun remoteTerminalInputModePreferenceKey(machineId: String) = "input_mode:$machineId"
-internal fun remoteTerminalImePreferenceKey(machineId: String) = "local_ime:$machineId"
 
 /** Result returned by an SSH command execution. */
 data class RemoteCommandResult(
@@ -24,12 +21,6 @@ data class RemoteTerminalInfo(
     val id: String,
     val isConnected: Boolean
 )
-
-/** A secret requested by the SSH server while connecting. */
-data class RemoteSecretRequest(val passphrase: Boolean, val prompt: String)
-
-/** Called only when SSH requests a password or key passphrase that is not already saved. */
-typealias RemoteSecretPrompt = suspend (RemoteSecretRequest) -> String?
 
 /**
  * A connected interactive shell. The owner must close it when the terminal screen is disposed.

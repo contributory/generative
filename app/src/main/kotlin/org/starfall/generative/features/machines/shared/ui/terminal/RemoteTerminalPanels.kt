@@ -1,4 +1,4 @@
-package org.starfall.generative.features.machines.shared.ui
+package org.starfall.generative.features.machines.shared.ui.terminal
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,8 +26,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledIconToggleButton
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -54,6 +52,10 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
+import org.starfall.generative.features.machines.shared.logic.terminal.RemoteTerminalBridge
+import org.starfall.generative.features.machines.shared.logic.terminal.TerminalSlot
+import org.starfall.generative.features.machines.shared.model.TerminalInputMode
+import org.starfall.generative.features.machines.shared.ui.RemoteStatusDot
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -160,17 +162,6 @@ internal fun TerminalSessionsDrawer(
                     }
                 }
             }
-            Column(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                FilledTonalButton(onClick = onNew, enabled = !connecting, modifier = Modifier.fillMaxWidth()) {
-                    FluentIcon(Icons.Default.Add, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.remote_machine_terminal_add))
-                }
-            }
         }
     }
 }
@@ -236,7 +227,6 @@ internal fun TerminalAppBar(
                     )
                     VerticalDivider(Modifier.height(36.dp).padding(horizontal = 4.dp))
                     TerminalToolbarButton(
-                        label = stringResource(R.string.remote_machine_terminal_font_smaller),
                         description = stringResource(R.string.remote_machine_terminal_font_smaller),
                         enabled = fontDp > MIN_TERMINAL_FONT_DP,
                         onClick = { onFontChange(-1) }
@@ -244,7 +234,6 @@ internal fun TerminalAppBar(
                         Text("A−", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                     }
                     TerminalToolbarButton(
-                        label = stringResource(R.string.remote_machine_terminal_font_larger),
                         description = stringResource(R.string.remote_machine_terminal_font_larger),
                         enabled = fontDp < MAX_TERMINAL_FONT_DP,
                         onClick = { onFontChange(1) }
@@ -312,25 +301,18 @@ private fun TerminalToolbarToggle(
 
 @Composable
 private fun TerminalToolbarButton(
-    label: String,
     description: String,
     enabled: Boolean = true,
     onClick: () -> Unit,
     icon: @Composable () -> Unit
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 2.dp)) {
-        IconButton(
-            onClick = onClick,
-            enabled = enabled,
-            modifier = Modifier.semantics { contentDescription = description }
-        ) { icon() }
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1
-        )
-    }
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier
+            .padding(horizontal = 2.dp)
+            .semantics { contentDescription = description }
+    ) { icon() }
 }
 
 @Composable

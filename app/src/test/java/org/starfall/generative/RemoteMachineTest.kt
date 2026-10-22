@@ -10,7 +10,6 @@ import org.starfall.generative.shared.model.REMOTE_TOOL_START_MACHINE
 import org.starfall.generative.shared.model.REMOTE_TOOL_UPDATE_IP
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
-import org.starfall.generative.integrations.remote.RemoteSecretRequest
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.starfall.generative.integrations.remote.PasswordKeyboardInteractiveUserInfo
@@ -18,6 +17,7 @@ import org.starfall.generative.integrations.remote.SshConfigParser
 import org.starfall.generative.integrations.remote.normalizeSshOptions
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.WebSocketProxyConfig
+import org.starfall.generative.shared.model.remote.RemoteSecretRequest
 import org.starfall.generative.shared.model.remoteMachineToolEnabled
 
 class RemoteMachineTest {

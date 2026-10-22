@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
+import org.starfall.generative.features.machines.list.model.MachineIpUpdateNotice
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
 import org.starfall.generative.features.machines.shared.ui.RemoteIconTile
 import org.starfall.generative.features.machines.shared.ui.RemoteMachinesTopBar

@@ -9,12 +9,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
 import org.starfall.generative.integrations.remote.RemoteMachineService
-import org.starfall.generative.integrations.remote.RemoteSecretPrompt
 import org.starfall.generative.integrations.remote.RemoteTerminal
 import org.starfall.generative.shared.model.GCloudOAuthClient
 import org.starfall.generative.shared.model.RemoteIdentityKey
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineState
+import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
 import org.starfall.generative.shared.storage.LocalWriteErrors
 
 class RemoteMachinesViewModel(

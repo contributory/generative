@@ -216,7 +216,7 @@ fun ProviderEditorScreen(
                 onBack = { editingModel = null })
         } else {
             Scaffold(modifier = Modifier.fillMaxSize(), topBar = {
-                TopAppBar(title = { HeaderNameField(name, { name = it }, placeholder = type.defaultName) },
+                TopAppBar(title = { HeaderNameField(name, { name = it }, placeholder = type.defaultName, enabled = pager.currentPage == 0) },
                     navigationIcon = { IconButton(onClick = onDismiss) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                     actions = {
                         if (pager.currentPage == 0) Button(enabled = valid && !oauthAuthorizing && !iconImporting,

@@ -1,4 +1,4 @@
-package org.starfall.generative.features.machines.shared.ui
+package org.starfall.generative.features.machines.shared.logic.terminal
 
 import androidx.compose.runtime.mutableStateMapOf
 import kotlinx.coroutines.CancellationException
@@ -41,6 +41,7 @@ internal object RemoteTerminalSessions {
         slots[machineId] = slotsFor(machineId) + slot
         active[machineId] = terminal.id
         lost.remove(machineId)
+        bridge.onRemoteLost = { discardDead(machineId, slot, markLost = true) }
         slot.readerJob = scope.launch(Dispatchers.IO) {
             val buffer = ByteArray(4096)
             try {
@@ -48,25 +49,44 @@ internal object RemoteTerminalSessions {
                     val count = terminal.input.read(buffer)
                     if (count < 0) break
                     val chunk = buffer.copyOf(count)
-                    withContext(Dispatchers.Main) { bridge.append(chunk) }
+                    // A renderer failure on one chunk must not end the loop: a dead reader leaves a
+                    // frozen screen on a session that is still alive.
+                    withContext(Dispatchers.Main) { runCatching { bridge.append(chunk) } }
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: java.io.IOException) {
                 // Stream closed: handled below like an end of stream.
+            } catch (_: RuntimeException) {
+                // JSch can throw unchecked errors from a half-closed channel: same handling.
             }
             // The remote side ended the session (a local close cancels this job instead).
             if (isActive) {
                 val cleanExit = terminal.exitStatus >= 0
-                withContext(Dispatchers.Main) {
-                    remove(machineId, slot)
-                    bridge.close()
-                    terminal.close()
-                    if (!cleanExit && slotsFor(machineId).isEmpty()) lost[machineId] = true
-                }
+                withContext(Dispatchers.Main) { discardDead(machineId, slot, markLost = !cleanExit) }
             }
         }
         return slot
+    }
+
+    /** Removes a session that is gone on the remote side and releases everything it held. */
+    private fun discardDead(machineId: String, slot: TerminalSlot, markLost: Boolean) {
+        if (slot !in slotsFor(machineId)) return
+        slot.readerJob?.cancel()
+        remove(machineId, slot)
+        slot.bridge.close()
+        slot.terminal.close()
+        if (markLost && slotsFor(machineId).isEmpty()) lost[machineId] = true
+    }
+
+    /**
+     * Drops sessions whose channel is no longer open but that nothing noticed yet (a reader stuck on a
+     * dead socket, or output that stopped arriving), so the screen never shows a terminal that is gone.
+     */
+    fun pruneDead(machineId: String) {
+        slotsFor(machineId).toList().forEach { slot ->
+            if (!slot.terminal.isOpen) discardDead(machineId, slot, markLost = slot.terminal.exitStatus < 0)
+        }
     }
 
     /**

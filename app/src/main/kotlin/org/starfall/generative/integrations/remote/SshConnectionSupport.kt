@@ -14,6 +14,8 @@ import okhttp3.WebSocketListener
 import okio.ByteString
 import kotlinx.coroutines.runBlocking
 import org.starfall.generative.shared.model.WebSocketProxyConfig
+import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
+import org.starfall.generative.shared.model.remote.RemoteSecretRequest
 import java.io.ByteArrayInputStream
 import java.io.PipedInputStream
 import java.io.PipedOutputStream

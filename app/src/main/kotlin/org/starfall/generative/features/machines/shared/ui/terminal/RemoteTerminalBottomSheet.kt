@@ -1,6 +1,6 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
-package org.starfall.generative.features.machines.shared.ui
+package org.starfall.generative.features.machines.shared.ui.terminal
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
@@ -26,17 +26,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -59,38 +56,39 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.viewinterop.AndroidView
 import com.termux.view.TerminalView
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
-import org.starfall.generative.integrations.remote.REMOTE_TERMINAL_UI_PREFERENCES
-import org.starfall.generative.integrations.remote.RemoteSecretRequest
-import org.starfall.generative.integrations.remote.remoteTerminalImePreferenceKey
-import org.starfall.generative.integrations.remote.remoteTerminalInputModePreferenceKey
+import org.starfall.generative.features.machines.shared.logic.terminal.PendingRemoteSecretRequest
+import org.starfall.generative.features.machines.shared.logic.terminal.RemoteMouseTouchListener
+import org.starfall.generative.features.machines.shared.logic.terminal.RemoteTerminalBridge
+import org.starfall.generative.features.machines.shared.logic.terminal.RemoteTerminalSessions
+import org.starfall.generative.features.machines.shared.logic.terminal.TerminalSlot
+import org.starfall.generative.features.machines.shared.model.TerminalInputMode
 import org.starfall.generative.shared.model.RemoteMachine
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
+import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_FONT_SIZE_KEY
+import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_FORCE_MOUSE_KEY
+import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_UI_PREFERENCES
+import org.starfall.generative.shared.storage.preferences.remoteTerminalImePreferenceKey
+import org.starfall.generative.shared.storage.preferences.remoteTerminalInputModePreferenceKey
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.sheets.AppBottomSheet
-
-private class PendingSecretRequest(
-    val request: RemoteSecretRequest,
-    val answer: CompletableDeferred<String?>
-)
 
 @Composable
 internal fun RemoteTerminalBottomSheet(
@@ -127,14 +125,17 @@ private fun RemoteTerminalContent(
     val error = openError ?: if (RemoteTerminalSessions.connectionLost(machine.id)) {
         stringResource(R.string.remote_machine_terminal_connection_lost)
     } else null
-    var secretRequest by remember(machine.id) { mutableStateOf<PendingSecretRequest?>(null) }
+    var secretRequest by remember(machine.id) { mutableStateOf<PendingRemoteSecretRequest?>(null) }
     var passwordInput by remember(machine.id) { mutableStateOf("") }
     var showPromptPassword by remember(machine.id) { mutableStateOf(false) }
     // Null means "follow the layout": open on wide screens, collapsed on narrow ones.
     var drawerExpanded by remember(machine.id) { mutableStateOf<Boolean?>(null) }
     val sessionsDrawerOpen = drawerExpanded ?: (LocalConfiguration.current.screenWidthDp >= 720)
     var fontDp by remember {
-        mutableIntStateOf(terminalPrefs.getInt("font_dp", 14).coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP))
+        mutableIntStateOf(
+            terminalPrefs.getInt(REMOTE_TERMINAL_FONT_SIZE_KEY, 14)
+                .coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP)
+        )
     }
     val textSizePx = (fontDp * density).toInt()
     val activeSlot = terminalSlots.firstOrNull { it.terminal.id == activeTerminalId }
@@ -147,7 +148,7 @@ private fun RemoteTerminalContent(
 
     fun setFontDp(value: Int) {
         fontDp = value.coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP)
-        terminalPrefs.edit().putInt("font_dp", fontDp).apply()
+        terminalPrefs.edit().putInt(REMOTE_TERMINAL_FONT_SIZE_KEY, fontDp).apply()
     }
 
     fun closeSlot(slot: TerminalSlot) = RemoteTerminalSessions.close(machine.id, slot)
@@ -165,7 +166,7 @@ private fun RemoteTerminalContent(
             try {
                 val opened = viewModel.openTerminal(machine) { request ->
                     // The SSH thread pauses here only after the server requests an unsaved secret.
-                    val pending = PendingSecretRequest(request, CompletableDeferred())
+                    val pending = PendingRemoteSecretRequest(request, CompletableDeferred())
                     withContext(Dispatchers.Main) {
                         passwordInput = ""
                         showPromptPassword = false
@@ -193,7 +194,7 @@ private fun RemoteTerminalContent(
                     throw CancellationException()
                 }
                 val newBridge = RemoteTerminalBridge(context.applicationContext, currentInputMode).also { bridge ->
-                    bridge.forceMouse = terminalPrefs.getBoolean("force_mouse", false)
+                    bridge.forceMouse = terminalPrefs.getBoolean(REMOTE_TERMINAL_FORCE_MOUSE_KEY, false)
                     bridge.attachRemote(opened)
                 }
                 RemoteTerminalSessions.register(machine.id, opened, newBridge)
@@ -222,6 +223,27 @@ private fun RemoteTerminalContent(
     }
     LaunchedEffect(machine.id) {
         if (RemoteTerminalSessions.slotsFor(machine.id).isEmpty()) openTerminal()
+    }
+    // Sessions can die without a clean end of stream (network drop, killed channel); keep checking while
+    // the sheet is open so a dead terminal is replaced by the reconnect panel instead of staying on screen.
+    LaunchedEffect(machine.id) {
+        while (true) {
+            RemoteTerminalSessions.pruneDead(machine.id)
+            delay(3_000)
+        }
+    }
+    // Coming back to the app is when a dropped connection is most likely: re-check and re-focus.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        RemoteTerminalSessions.pruneDead(machine.id)
+        RemoteTerminalSessions.slotsFor(machine.id)
+            .firstOrNull { it.terminal.id == RemoteTerminalSessions.activeIdFor(machine.id) }
+            ?.bridge?.focusTerminalView()
+    }
+    // The active id must always point at a live session, otherwise every view is laid out at zero size.
+    LaunchedEffect(activeTerminalId, terminalSlots) {
+        if (activeSlot == null && terminalSlots.isNotEmpty()) {
+            RemoteTerminalSessions.setActive(machine.id, terminalSlots.last().terminal.id)
+        }
     }
     // Keep IME/keyboard focus on the session the user is looking at, not on a hidden one.
     LaunchedEffect(activeTerminalId, terminalSlots) {
@@ -253,7 +275,7 @@ private fun RemoteTerminalContent(
                 activeBridge?.let { bridge ->
                     val enabled = !bridge.forceMouse
                     terminalSlots.forEach { slot -> slot.bridge.forceMouse = enabled }
-                    terminalPrefs.edit().putBoolean("force_mouse", enabled).apply()
+                     terminalPrefs.edit().putBoolean(REMOTE_TERMINAL_FORCE_MOUSE_KEY, enabled).apply()
                 }
             },
             fontDp = fontDp,
@@ -435,65 +457,15 @@ private fun RemoteTerminalContent(
     }
 
     secretRequest?.let { pending ->
-        val request = pending.request
-        AppAlertDialog(
-            onDismissRequest = {
+        RemoteTerminalSecretDialog(
+            pending = pending,
+            passwordInput = passwordInput,
+            onPasswordInputChange = { passwordInput = it },
+            showPromptPassword = showPromptPassword,
+            onTogglePromptPassword = { showPromptPassword = !showPromptPassword },
+            onDismiss = {
                 pending.answer.complete(null)
                 onDismiss()
-            },
-            title = {
-                Text(
-                    stringResource(
-                        if (request.passphrase) R.string.remote_machine_terminal_passphrase_title
-                        else R.string.remote_machine_terminal_password_title
-                    )
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        stringResource(R.string.remote_machine_terminal_password_help),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    RemoteTextField(
-                        value = passwordInput,
-                        onValueChange = { passwordInput = it },
-                        label = when {
-                            request.passphrase -> stringResource(R.string.remote_machine_key_passphrase)
-                            request.prompt.isBlank() -> stringResource(R.string.remote_machine_password)
-                            else -> request.prompt.trim()
-                        },
-                        visual = if (showPromptPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { showPromptPassword = !showPromptPassword }) {
-                                FluentIcon(
-                                    if (showPromptPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                                    contentDescription = stringResource(
-                                        if (showPromptPassword) R.string.remote_machine_hide_password else R.string.remote_machine_show_password
-                                    )
-                                )
-                            }
-                        },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    enabled = passwordInput.isNotEmpty(),
-                    onClick = { pending.answer.complete(passwordInput) }
-                ) {
-                    Text(stringResource(R.string.remote_machine_terminal_connect))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    pending.answer.complete(null)
-                    onDismiss()
-                }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
             }
         )
     }

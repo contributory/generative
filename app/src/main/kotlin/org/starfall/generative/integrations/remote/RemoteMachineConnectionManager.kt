@@ -17,6 +17,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.starfall.generative.shared.model.RemoteMachine
+import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
 
 
 

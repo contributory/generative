@@ -32,18 +32,28 @@
 │   │   │       ├── 📄 RemoteMachineAdvancedDialogs.kt
 │   │   │       └── 📄 RemoteMachineSettings.kt
 │   │   ├── 📁 list/
+│   │   │   ├── 📁 model/
+│   │   │   │   └── 📄 MachineIpUpdateNotice.kt
 │   │   │   └── 📁 ui/
 │   │   │       └── 📄 RemoteMachinesScreen.kt
 │   │   └── 📁 shared/
 │   │       ├── 📁 logic/
-│   │       │   └── 📄 RemoteMachinesViewModel.kt
+│   │       │   ├── 📄 RemoteMachinesViewModel.kt
+│   │       │   └── 📁 terminal/
+│   │       │       ├── 📄 PendingRemoteSecretRequest.kt
+│   │       │       ├── 📄 RemoteMouseTouchListener.kt
+│   │       │       ├── 📄 RemoteTerminalBridge.kt
+│   │       │       ├── 📄 RemoteTerminalInput.kt
+│   │       │       └── 📄 RemoteTerminalSessions.kt
+│   │       ├── 📁 model/
+│   │       │   ├── 📄 BinaryTestNotice.kt
+│   │       │   └── 📄 TerminalInputMode.kt
 │   │       └── 📁 ui/
-│   │           ├── 📄 BinaryTestNotice.kt
 │   │           ├── 📄 RemoteMachineComponents.kt
-│   │           ├── 📄 RemoteTerminalBottomSheet.kt
-│   │           ├── 📄 RemoteTerminalBridge.kt
-│   │           ├── 📄 RemoteTerminalPanels.kt
-│   │           └── 📄 RemoteTerminalSessions.kt
+│   │           └── 📁 terminal/
+│   │               ├── 📄 RemoteTerminalBottomSheet.kt
+│   │               ├── 📄 RemoteTerminalDialogs.kt
+│   │               └── 📄 RemoteTerminalPanels.kt
 │   ├── 📁 main/
 │   │   └── 📁 ui/
 │   │       └── 📄 FeaturesScreen.kt
@@ -261,8 +271,6 @@
 │   └── 📁 remote/
 │       ├── 📄 AndroidEdDSA.kt
 │       ├── 📄 CloudShellApi.kt
-│       ├── 📄 ExecutableBinaryStore.kt
-│       ├── 📄 RemoteBinarySupport.kt
 │       ├── 📄 RemoteMachineAssetsService.kt
 │       ├── 📄 RemoteMachineCloudShellService.kt
 │       ├── 📄 RemoteMachineConnectionManager.kt
@@ -275,7 +283,9 @@
 │       ├── 📄 RemoteSftpSessionPool.kt
 │       ├── 📄 RemoteTerminal.kt
 │       ├── 📄 SshConfigParser.kt
-│       └── 📄 SshConnectionSupport.kt
+│       ├── 📄 SshConnectionSupport.kt
+│       ├── 📄 SshKeySupport.kt
+│       └── 📄 SshOptions.kt
 ├── 📁 navigation/
 │   ├── 📄 AppNavigation.kt
 │   └── 📄 TargetedEditorContent.kt
@@ -380,6 +390,8 @@
 │   │   ├── 📄 PromptLibrary.kt
 │   │   ├── 📄 ProviderLink.kt
 │   │   ├── 📄 RemoteMachineModels.kt
+│   │   ├── 📁 remote/
+│   │   │   └── 📄 RemoteSecretPrompt.kt
 │   │   ├── 📄 ResponseVersions.kt
 │   │   ├── 📄 SidebarOrganization.kt
 │   │   ├── 📄 SpeechService.kt
@@ -415,6 +427,7 @@
 │   │   │   ├── 📄 AppLanguage.kt
 │   │   │   ├── 📄 AppPreferencesRepository.kt
 │   │   │   ├── 📄 ModelConfigurationMemory.kt
+│   │   │   ├── 📄 RemoteTerminalPreferences.kt
 │   │   │   └── 📄 ToolSettingsStore.kt
 │   │   ├── 📄 AuthPayloads.kt
 │   │   ├── 📄 ConversationRepository.kt

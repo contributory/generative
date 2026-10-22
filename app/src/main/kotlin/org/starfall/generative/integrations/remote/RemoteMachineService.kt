@@ -36,6 +36,9 @@ import org.starfall.generative.shared.model.RemoteAuthentication
 import org.starfall.generative.shared.model.RemoteIdentityKey
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
+import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_UI_PREFERENCES
+import org.starfall.generative.shared.storage.preferences.remoteTerminalInputModePreferenceKey
+import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
 
 
 

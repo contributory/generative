@@ -43,7 +43,7 @@ import org.starfall.generative.features.machines.details.ui.MachineDetailsScreen
 import org.starfall.generative.features.machines.details.ui.RemoteMachineSettings
 import org.starfall.generative.features.machines.list.ui.RemoteMachinesScreen
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
-import org.starfall.generative.features.machines.shared.ui.RemoteTerminalBottomSheet
+import org.starfall.generative.features.machines.shared.ui.terminal.RemoteTerminalBottomSheet
 import org.starfall.generative.features.main.ui.FeaturesScreen
 import org.starfall.generative.features.mcp.editor.ui.ServerEditorScreen
 import org.starfall.generative.features.mcp.list.ui.ServerListScreen

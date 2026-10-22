@@ -83,7 +83,7 @@ fun ServerEditorScreen(
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Scaffold(topBar = {
             TopAppBar(
-                title = { HeaderNameField(name, { name = it }, placeholder = stringResource(R.string.common_name)) },
+                title = { HeaderNameField(name, { name = it }, placeholder = stringResource(R.string.common_name), enabled = selectedTab == 0) },
                 navigationIcon = { IconButton(onClick = onDismiss) {
                     FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                 } },

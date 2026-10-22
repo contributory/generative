@@ -108,7 +108,7 @@ class ToolHttp(
         val value = runCatching { Json.parseToJsonElement(body) }.getOrNull()
         // Gemini streaming endpoints wrap error bodies in a one-element array.
         val body0 = (value as? JsonArray)?.firstOrNull() ?: value
-        val detail = safeError((body0 as? JsonObject)?.get("error") ?: body0, requestSecrets(response.request))
+        val detail = safeError((body0 as? JsonObject)?.get("error") ?: body0, requestSecrets(response.request), body)
         error("HTTP ${response.code}: $detail")
     }
     internal suspend fun readJson(response: Response): String {
