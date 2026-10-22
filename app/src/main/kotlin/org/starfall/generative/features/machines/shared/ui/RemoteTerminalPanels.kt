@@ -177,103 +177,61 @@ internal fun TerminalSessionsDrawer(
 
 @Composable
 internal fun TerminalAppBar(
-    machine: RemoteMachine,
     bridge: RemoteTerminalBridge?,
-    sessionsDrawerOpen: Boolean,
-    connecting: Boolean,
     activeTerminal: Boolean,
-    onBack: () -> Unit,
     onToggleSessions: () -> Unit,
-    onNewTerminal: () -> Unit,
-    onCloseTerminal: () -> Unit,
-    localImeEnabled: Boolean,
-    onToggleLocalIme: () -> Unit,
+    onDisconnect: () -> Unit,
     onInputModeChange: (TerminalInputMode) -> Unit,
     onToggleForceMouse: () -> Unit,
     fontDp: Int,
     onFontChange: (Int) -> Unit
 ) {
     Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
-        Column(Modifier.fillMaxWidth()) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                }
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        machine.name.ifBlank { stringResource(R.string.remote_machine_unnamed) },
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        "${machine.username.ifBlank { "?" }}@${machine.displayHost}:${machine.port}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                IconButton(onClick = onToggleSessions) {
-                    FluentIcon(
-                        Icons.Outlined.FormatListBulleted,
-                        stringResource(R.string.remote_machine_terminal_toggle_sessions)
-                    )
-                }
-                IconButton(enabled = !connecting, onClick = onNewTerminal) {
-                    FluentIcon(Icons.Default.Add, stringResource(R.string.remote_machine_terminal_add))
-                }
-                IconButton(enabled = activeTerminal, onClick = onCloseTerminal) {
-                    FluentIcon(Icons.Default.Close, stringResource(R.string.remote_machine_terminal_close))
-                }
+        Row(
+            Modifier.fillMaxWidth().height(72.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onToggleSessions) {
+                FluentIcon(
+                    Icons.Outlined.FormatListBulleted,
+                    stringResource(R.string.remote_machine_terminal_toggle_sessions)
+                )
             }
-            bridge?.let { terminalBridge ->
+            Box(Modifier.weight(1f)) {
+                val inputMode = bridge?.inputMode ?: TerminalInputMode.REMOTE
+                val nextInputMode = when (inputMode) {
+                    TerminalInputMode.REMOTE -> TerminalInputMode.LOCAL
+                    TerminalInputMode.LOCAL -> TerminalInputMode.IME
+                    TerminalInputMode.IME -> TerminalInputMode.REMOTE
+                }
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     TerminalToolbarToggle(
-                        icon = Icons.Outlined.Keyboard,
+                        icon = if (inputMode == TerminalInputMode.IME) Icons.Outlined.Edit else Icons.Outlined.Keyboard,
                         label = stringResource(
-                            if (terminalBridge.inputMode == TerminalInputMode.LOCAL) {
-                                R.string.remote_machine_terminal_input_local_short
-                            } else {
-                                R.string.remote_machine_terminal_input_remote_short
+                            when (inputMode) {
+                                TerminalInputMode.REMOTE -> R.string.remote_machine_terminal_input_remote_short
+                                TerminalInputMode.LOCAL -> R.string.remote_machine_terminal_input_local_short
+                                TerminalInputMode.IME -> R.string.remote_machine_terminal_input_ime_short
                             }
                         ),
                         description = stringResource(R.string.remote_machine_terminal_input_settings),
-                        checked = terminalBridge.inputMode == TerminalInputMode.LOCAL,
-                        enabled = terminalBridge.inputMode == TerminalInputMode.LOCAL || !terminalBridge.hasLocalDraft,
-                        onClick = {
-                            onInputModeChange(
-                                if (terminalBridge.inputMode == TerminalInputMode.LOCAL) {
-                                    TerminalInputMode.REMOTE
-                                } else {
-                                    TerminalInputMode.LOCAL
-                                }
-                            )
-                        }
-                    )
-                    TerminalToolbarToggle(
-                        icon = Icons.Outlined.Edit,
-                        label = stringResource(R.string.remote_machine_terminal_editor_short),
-                        description = stringResource(R.string.remote_machine_terminal_ime_editor),
-                        checked = localImeEnabled,
-                        enabled = terminalBridge.inputMode == TerminalInputMode.LOCAL,
-                        onClick = onToggleLocalIme
+                        checked = bridge != null,
+                        enabled = bridge != null && (nextInputMode.usesLocalInput || !bridge.hasLocalDraft),
+                        onClick = { onInputModeChange(nextInputMode) }
                     )
                     TerminalToolbarToggle(
                         iconRes = R.drawable.ic_mouse_24,
                         label = stringResource(R.string.remote_machine_terminal_mouse_short),
                         description = stringResource(R.string.remote_machine_terminal_force_mouse),
-                        checked = terminalBridge.forceMouse,
+                        checked = bridge?.forceMouse == true,
+                        enabled = bridge != null,
                         onClick = onToggleForceMouse
                     )
                     VerticalDivider(Modifier.height(36.dp).padding(horizontal = 4.dp))
@@ -294,6 +252,15 @@ internal fun TerminalAppBar(
                         Text("A+", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                     }
                 }
+            }
+            IconButton(
+                enabled = activeTerminal,
+                onClick = onDisconnect
+            ) {
+                FluentIcon(
+                    Icons.Outlined.LinkOff,
+                    stringResource(R.string.remote_machine_disconnect)
+                )
             }
         }
     }

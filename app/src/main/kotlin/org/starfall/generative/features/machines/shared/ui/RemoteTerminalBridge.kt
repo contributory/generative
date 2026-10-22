@@ -24,7 +24,13 @@ import org.starfall.generative.integrations.remote.RemoteTerminal
  * sleeping local session is used only to give TerminalView its emulator lifecycle; remote output
  * is rendered here, while input is either buffered locally or routed to the JSch channel by mode.
  */
-enum class TerminalInputMode { LOCAL, REMOTE }
+enum class TerminalInputMode {
+    REMOTE,
+    LOCAL,
+    IME;
+
+    val usesLocalInput: Boolean get() = this != REMOTE
+}
 
 internal class RemoteTerminalBridge(
     private val context: android.content.Context,
@@ -76,11 +82,22 @@ internal class RemoteTerminalBridge(
     fun submitEditorInput() = submitLocalInput()
 
     fun setInputMode(mode: TerminalInputMode): Boolean {
-        if (mode == TerminalInputMode.REMOTE && hasLocalDraft) return false
+        if (!mode.usesLocalInput && hasLocalDraft) return false
         inputMode = mode
-        if (mode == TerminalInputMode.REMOTE) submittedLocalInput = null
+        if (!mode.usesLocalInput) submittedLocalInput = null
         clearModifiers()
         return true
+    }
+
+    /** Applies the app theme to the renderer's default terminal colors. */
+    fun setThemeColors(background: Int, foreground: Int) {
+        session?.emulator?.mColors?.mCurrentColors?.let { colors ->
+            colors[DEFAULT_FOREGROUND_COLOR] = foreground
+            colors[DEFAULT_BACKGROUND_COLOR] = background
+            colors[DEFAULT_CURSOR_COLOR] = foreground
+        }
+        view?.setBackgroundColor(background)
+        view?.invalidate()
     }
 
     fun localDraftForDisplay(): String? {
@@ -306,13 +323,13 @@ internal class RemoteTerminalBridge(
 
     private fun sendText(value: String) {
         snapToBottom()
-        if (inputMode == TerminalInputMode.LOCAL) insertLocalText(value)
+        if (inputMode.usesLocalInput) insertLocalText(value)
         else sendRemote(value.toByteArray(Charsets.UTF_8))
     }
 
     private fun sendCodePoint(codePoint: Int, ctrl: Boolean, alt: Boolean) {
         snapToBottom()
-        if (inputMode == TerminalInputMode.LOCAL) {
+        if (inputMode.usesLocalInput) {
             if (ctrl) {
                 handleLocalControl(codePoint, alt)
                 clearModifiers()
@@ -368,12 +385,12 @@ internal class RemoteTerminalBridge(
         forceRemote: Boolean = false
     ) {
         snapToBottom()
-        if (!forceRemote && inputMode == TerminalInputMode.LOCAL && sequence in setOf("\r", "\n")) {
+        if (!forceRemote && inputMode.usesLocalInput && sequence in setOf("\r", "\n")) {
             submitLocalInput()
             clearModifiers()
             return
         }
-        if (!forceRemote && inputMode == TerminalInputMode.LOCAL && !ctrl && !alt) {
+        if (!forceRemote && inputMode.usesLocalInput && !ctrl && !alt) {
             when (sequence) {
                 "\r", "\n" -> submitLocalInput()
                 "\u0009" -> insertLocalText("\t")
@@ -439,6 +456,9 @@ internal class RemoteTerminalBridge(
     }
 
     private companion object {
+        const val DEFAULT_FOREGROUND_COLOR = 256
+        const val DEFAULT_BACKGROUND_COLOR = 257
+        const val DEFAULT_CURSOR_COLOR = 258
         const val MAX_HISTORY_BYTES = 512 * 1024
     }
 

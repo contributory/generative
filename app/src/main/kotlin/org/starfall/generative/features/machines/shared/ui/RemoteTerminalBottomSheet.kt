@@ -51,7 +51,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -86,10 +86,6 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.sheets.AppBottomSheet
-
-/** Only the terminal viewport stays dark in every theme; all chrome follows the app theme. */
-private val TerminalBackground = Color(0xFF0B0D0F)
-private val TerminalChromeText = Color.White
 
 private class PendingSecretRequest(
     val request: RemoteSecretRequest,
@@ -137,9 +133,6 @@ private fun RemoteTerminalContent(
     // Null means "follow the layout": open on wide screens, collapsed on narrow ones.
     var drawerExpanded by remember(machine.id) { mutableStateOf<Boolean?>(null) }
     val sessionsDrawerOpen = drawerExpanded ?: (LocalConfiguration.current.screenWidthDp >= 720)
-    var localImeEnabled by remember(machine.id) {
-        mutableStateOf(terminalPrefs.getBoolean(remoteTerminalImePreferenceKey(machine.id), true))
-    }
     var fontDp by remember {
         mutableIntStateOf(terminalPrefs.getInt("font_dp", 14).coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP))
     }
@@ -147,6 +140,10 @@ private fun RemoteTerminalContent(
     val activeSlot = terminalSlots.firstOrNull { it.terminal.id == activeTerminalId }
     val activeBridge = activeSlot?.bridge
     val currentSecretRequest by rememberUpdatedState(secretRequest)
+    val terminalBackground = MaterialTheme.colorScheme.background
+    val terminalForeground = MaterialTheme.colorScheme.onBackground
+    val terminalBackgroundArgb = terminalBackground.toArgb()
+    val terminalForegroundArgb = terminalForeground.toArgb()
 
     fun setFontDp(value: Int) {
         fontDp = value.coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP)
@@ -184,7 +181,10 @@ private fun RemoteTerminalContent(
                 }
                 // Read the live preference so sessions opened after a toolbar toggle use it too.
                 val currentInputMode = when (terminalPrefs.getString(remoteTerminalInputModePreferenceKey(machine.id), null)) {
-                    TerminalInputMode.LOCAL.name -> TerminalInputMode.LOCAL
+                    TerminalInputMode.IME.name -> TerminalInputMode.IME
+                    TerminalInputMode.LOCAL.name -> if (
+                        terminalPrefs.getBoolean(remoteTerminalImePreferenceKey(machine.id), true)
+                    ) TerminalInputMode.IME else TerminalInputMode.LOCAL
                     else -> TerminalInputMode.REMOTE
                 }
                 if (!isActive) {
@@ -208,7 +208,7 @@ private fun RemoteTerminalContent(
         }
     }
 
-    // Phone back button: disconnect explicitly (same as the app bar back arrow).
+    // Phone back dismisses the sheet while keeping the process-wide terminal sessions alive.
     BackHandler(enabled = LocalScreenTransitionActive.current) { leaveScreen(); onDismiss() }
     DisposableEffect(machine.id) {
         onDispose { leaveScreen() }
@@ -230,21 +230,12 @@ private fun RemoteTerminalContent(
 
     Column(Modifier.fillMaxWidth().fillMaxHeight()) {
         TerminalAppBar(
-            machine = machine,
             bridge = activeBridge,
-            sessionsDrawerOpen = sessionsDrawerOpen,
-            connecting = connecting,
             activeTerminal = activeSlot != null,
-            onBack = { leaveScreen(); onDismiss() },
             onToggleSessions = { drawerExpanded = !sessionsDrawerOpen },
-            onNewTerminal = { openTerminal() },
-            onCloseTerminal = { activeSlot?.let(::closeSlot) },
-            localImeEnabled = localImeEnabled,
-            onToggleLocalIme = {
-                localImeEnabled = !localImeEnabled
-                terminalPrefs.edit()
-                    .putBoolean(remoteTerminalImePreferenceKey(machine.id), localImeEnabled)
-                    .apply()
+            onDisconnect = {
+                RemoteTerminalSessions.closeAll(machine.id)
+                viewModel.disconnect(machine.id)
             },
             onInputModeChange = { mode ->
                 // Input mode is a per-machine preference: apply it to every
@@ -291,7 +282,7 @@ private fun RemoteTerminalContent(
                 }
                 if (sessionsDrawerOpen) VerticalDivider(Modifier.fillMaxHeight())
                 Column(Modifier.weight(1f).fillMaxHeight()) {
-                    Box(Modifier.weight(1f).fillMaxWidth().background(TerminalBackground)) {
+                    Box(Modifier.weight(1f).fillMaxWidth().background(terminalBackground)) {
                         // Every session keeps its own TerminalView (and emulator) alive while it
                         // exists; inactive views are laid out at zero size so their scrollback
                         // and remote size survive switching. Previously a single shared view
@@ -306,12 +297,13 @@ private fun RemoteTerminalContent(
                                         view.setOnTouchListener(RemoteMouseTouchListener(viewContext, view, slotBridge))
                                         view.isFocusable = true
                                         view.isFocusableInTouchMode = true
-                                        view.setBackgroundColor(android.graphics.Color.rgb(11, 13, 15))
+                                        view.setBackgroundColor(terminalBackgroundArgb)
                                         view.setTextSize(textSizePx)
                                         view.tag = textSizePx
                                         view.setTerminalViewClient(slotBridge)
                                         slotBridge.view = view
                                         view.attachSession(slotBridge.createSession(viewContext.filesDir))
+                                        slotBridge.setThemeColors(terminalBackgroundArgb, terminalForegroundArgb)
                                         view
                                     },
                                     modifier = if (slot.terminal.id == activeTerminalId) {
@@ -331,11 +323,13 @@ private fun RemoteTerminalContent(
                                             view.tag = textSizePx
                                             view.setTextSize(textSizePx)
                                         }
+                                        view.setBackgroundColor(terminalBackgroundArgb)
+                                        slot.bridge.setThemeColors(terminalBackgroundArgb, terminalForegroundArgb)
                                     }
                                 )
                             }
                         }
-                        if (activeBridge != null && activeBridge.inputMode == TerminalInputMode.LOCAL && localImeEnabled) {
+                        if (activeBridge != null && activeBridge.inputMode == TerminalInputMode.IME) {
                             LocalInputEditor(activeBridge)
                         } else {
                             activeBridge?.localDraftForDisplay()?.let { draft ->
@@ -387,18 +381,18 @@ private fun RemoteTerminalContent(
                             ) {
                                 FluentIcon(
                                     Icons.Outlined.Terminal, null,
-                                    tint = TerminalChromeText.copy(alpha = 0.55f),
+                                    tint = terminalForeground.copy(alpha = 0.55f),
                                     modifier = Modifier.size(48.dp)
                                 )
                                 Text(
                                     stringResource(R.string.remote_machine_terminal_no_sessions),
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = TerminalChromeText
+                                    color = terminalForeground
                                 )
                                 Text(
                                     stringResource(R.string.remote_machine_terminal_no_sessions_hint),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = TerminalChromeText.copy(alpha = 0.65f)
+                                    color = terminalForeground.copy(alpha = 0.65f)
                                 )
                                 FilledTonalButton(onClick = { openTerminal() }) {
                                     FluentIcon(Icons.Default.Add, null, Modifier.size(18.dp))

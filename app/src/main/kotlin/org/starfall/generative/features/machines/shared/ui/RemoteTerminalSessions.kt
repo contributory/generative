@@ -80,6 +80,10 @@ internal object RemoteTerminalSessions {
         remove(machineId, slot)
     }
 
+    fun closeAll(machineId: String) {
+        slotsFor(machineId).toList().forEach { slot -> close(machineId, slot) }
+    }
+
     private fun remove(machineId: String, slot: TerminalSlot) {
         val before = slotsFor(machineId)
         val index = before.indexOf(slot)

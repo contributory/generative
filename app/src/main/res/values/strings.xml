@@ -639,10 +639,8 @@
     <string name="remote_machine_terminal_remote_input" translatable="false">Remote input · send as you type</string>
     <string name="remote_machine_terminal_force_mouse" translatable="false">Mouse events · tap = click, drag = wheel</string>
     <string name="remote_machine_terminal_local_input_label" translatable="false">Local input</string>
-    <string name="remote_machine_terminal_ime_editor" translatable="false">Use text editor for local input</string>
     <string name="remote_machine_terminal_send_input" translatable="false">Send</string>
     <string name="remote_machine_terminal_add" translatable="false">Open another terminal</string>
-    <string name="remote_machine_terminal_close" translatable="false">Close terminal</string>
     <string name="remote_machine_terminal_tab" translatable="false">Terminal %1$d</string>
     <string name="remote_machine_terminal_sessions" translatable="false">Sessions</string>
     <string name="remote_machine_terminal_toggle_sessions" translatable="false">Show or hide terminal sessions</string>
@@ -652,9 +650,9 @@
     <string name="remote_machine_terminal_no_sessions_hint">This machine disconnects when its last terminal session is closed. Open a new session to connect again.</string>
     <string name="remote_machine_terminal_close_session" translatable="false">Close this session</string>
     <string name="remote_machine_terminal_input_local_short" translatable="false">Local</string>
-    <string name="remote_machine_terminal_input_remote_short" translatable="false">Direct</string>
+    <string name="remote_machine_terminal_input_remote_short" translatable="false">Remote</string>
     <string name="remote_machine_terminal_mouse_short" translatable="false">Mouse</string>
-    <string name="remote_machine_terminal_editor_short" translatable="false">Editor</string>
+    <string name="remote_machine_terminal_input_ime_short" translatable="false">IME</string>
     <string name="remote_machine_terminal_font_smaller" translatable="false">Decrease font size</string>
     <string name="remote_machine_terminal_font_larger" translatable="false">Increase font size</string>
     <string name="remote_machine_terminal_new_short" translatable="false">New</string>
