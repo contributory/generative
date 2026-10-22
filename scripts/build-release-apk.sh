@@ -4,15 +4,53 @@ set -Eeuo pipefail
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-# Credentials are supplied through environment variables; never prompt interactively.
+# Use environment variables first; prompt only for values that are missing.
 KEYSTORE_PATH="${KEYSTORE_PATH:-$ROOT_DIR/generative-release.jks}"
 if [[ "$KEYSTORE_PATH" != /* ]]; then
   KEYSTORE_PATH="$ROOT_DIR/$KEYSTORE_PATH"
 fi
 
-: "${KEYSTORE_PASSWORD:?Set KEYSTORE_PASSWORD in the environment}"
-: "${KEY_ALIAS:?Set KEY_ALIAS in the environment}"
-: "${KEY_PASSWORD:?Set KEY_PASSWORD in the environment}"
+TTY_FD=""
+open_tty() {
+  [[ -n "$TTY_FD" ]] && return 0
+  if ! { exec {TTY_FD}<>/dev/tty; } 2>/dev/null; then
+    echo "ERROR: A required signing variable is unset and no interactive terminal is available. Set the missing variables in the environment." >&2
+    return 1
+  fi
+}
+
+prompt_if_missing() {
+  local variable="$1"
+  local prompt="$2"
+  local secret="${3:-false}"
+
+  [[ -n "${!variable:-}" ]] && return 0
+  open_tty || return 1
+
+  printf '%s' "$prompt" >&2
+  if [[ "$secret" == "true" ]]; then
+    if ! IFS= read -r -s -u "$TTY_FD" "$variable"; then
+      printf '\n' >&2
+      echo "ERROR: Could not read $variable from the terminal." >&2
+      return 1
+    fi
+    printf '\n' >&2
+  else
+    if ! IFS= read -r -u "$TTY_FD" "$variable"; then
+      echo "ERROR: Could not read $variable from the terminal." >&2
+      return 1
+    fi
+  fi
+}
+
+prompt_if_missing KEYSTORE_PASSWORD "Keystore password: " true || exit 1
+prompt_if_missing KEY_ALIAS "Key alias: " || exit 1
+prompt_if_missing KEY_PASSWORD "Key password: " true || exit 1
+
+if [[ -z "$KEYSTORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" ]]; then
+  echo "ERROR: Keystore password, key alias, and key password must not be empty." >&2
+  exit 1
+fi
 
 if [[ ! -f "$KEYSTORE_PATH" ]]; then
   echo "ERROR: Release keystore not found: $KEYSTORE_PATH" >&2
