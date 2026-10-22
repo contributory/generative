@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,9 +33,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
@@ -101,6 +104,7 @@ internal fun RemoteMachineSettings(
         topBar = {
             RemoteMachinesTopBar(
                 title = stringResource(R.string.remote_machine_settings),
+                subtitle = stringResource(R.string.remote_machine_settings_description),
                 onBack = onBack
             )
         }
@@ -109,86 +113,116 @@ internal fun RemoteMachineSettings(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            RemoteSection(stringResource(R.string.remote_machine_oauth_clients)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { oauthLauncher.launch(arrayOf("application/json", "text/json", "*/*")) }) {
-                        FluentIcon(Icons.Outlined.UploadFile, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.remote_machine_import_oauth_json))
-                    }
-                    OutlinedButton(onClick = { clientEditor = viewModel.newOAuthClient() }) {
-                        FluentIcon(Icons.Default.Add, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.remote_machine_add_oauth))
-                    }
-                }
-                state.oauthClients.forEach { client ->
-                    RemoteListRow(
-                        title = client.name,
-                        subtitle = client.clientId,
-                        leading = { RemoteIconTile(Icons.Outlined.Key) },
-                        trailing = {
-                            IconButton(onClick = { clientEditor = client }) {
-                                FluentIcon(Icons.Outlined.Edit, stringResource(R.string.common_edit))
-                            }
-                            IconButton(onClick = { viewModel.deleteOAuthClient(client.id) }) {
-                                FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error)
-                            }
-                        }
+            RemoteSection(
+                title = stringResource(R.string.remote_machine_oauth_clients),
+                description = stringResource(R.string.remote_machine_oauth_clients_help)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SettingsActionButton(
+                        icon = Icons.Outlined.UploadFile,
+                        label = stringResource(R.string.remote_machine_import_oauth_json),
+                        onClick = { oauthLauncher.launch(arrayOf("application/json", "text/json", "*/*")) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    SettingsActionButton(
+                        icon = Icons.Default.Add,
+                        label = stringResource(R.string.remote_machine_add_oauth),
+                        onClick = { clientEditor = viewModel.newOAuthClient() },
+                        modifier = Modifier.weight(1f)
                     )
                 }
                 oauthError?.let { RemoteErrorText(it) }
+                if (state.oauthClients.isEmpty()) {
+                    Text(
+                        stringResource(R.string.remote_machine_no_oauth_clients),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    state.oauthClients.forEach { client ->
+                        val type = stringResource(
+                            if (client.type == GoogleOAuthClientType.ANDROID) R.string.remote_machine_oauth_type_android
+                            else R.string.remote_machine_oauth_type_desktop
+                        )
+                        RemoteListRow(
+                            title = client.name,
+                            subtitle = "$type · ${client.clientId}",
+                            leading = { RemoteIconTile(Icons.Outlined.Key) },
+                            trailing = {
+                                IconButton(onClick = { clientEditor = client }) {
+                                    FluentIcon(Icons.Outlined.Edit, stringResource(R.string.common_edit))
+                                }
+                                IconButton(onClick = { viewModel.deleteOAuthClient(client.id) }) {
+                                    FluentIcon(
+                                        Icons.Outlined.Delete,
+                                        stringResource(R.string.common_delete),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        )
+                    }
+                }
             }
             RemoteSection(
                 title = stringResource(R.string.remote_machine_ssh_keys),
                 description = stringResource(R.string.remote_machine_ssh_keys_help)
             ) {
-                state.identities.forEach { key ->
-                    val users = state.machines.count { it.identityFile == key.path || it.identityFile.substringAfterLast('/') == key.name }
-                    RemoteListRow(
-                        title = key.name,
-                        subtitle = buildString {
-                            append(key.path)
-                            append("\n")
-                            append(
-                                context.getString(
-                                    if (key.publicKeyPath.isNotBlank()) R.string.remote_machine_public_key_uploaded
-                                    else R.string.remote_machine_public_key_missing
-                                )
-                            )
-                            if (users > 0) {
-                                append("\n")
-                                append(context.getString(R.string.remote_machine_ssh_key_used_by, users))
-                            }
-                        },
-                        subtitleMaxLines = 3,
-                        leading = { RemoteIconTile(Icons.Outlined.Key) },
-                        trailing = {
-                            IconButton(onClick = {
-                                publicKeyTarget = key.id
-                                publicKeyLauncher.launch(arrayOf("text/plain", "application/octet-stream", "*/*"))
-                            }) {
-                                FluentIcon(Icons.Outlined.UploadFile, stringResource(R.string.remote_machine_upload_public_key))
-                            }
-                            IconButton(enabled = users == 0, onClick = { viewModel.deleteIdentityKey(key.id) }) {
-                                FluentIcon(
-                                    Icons.Outlined.Delete,
-                                    stringResource(R.string.common_delete),
-                                    tint = if (users == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    )
-                }
-                OutlinedButton(
+                SettingsActionButton(
+                    icon = Icons.Outlined.UploadFile,
+                    label = stringResource(R.string.remote_machine_upload_ssh_key),
                     onClick = { identityLauncher.launch(arrayOf("application/octet-stream", "text/plain", "*/*")) },
                     modifier = Modifier.fillMaxWidth()
-                ) {
-                    FluentIcon(Icons.Outlined.UploadFile, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.remote_machine_upload_ssh_key))
-                }
+                )
                 identityError?.let { RemoteErrorText(it) }
+                if (state.identities.isEmpty()) {
+                    Text(
+                        stringResource(R.string.remote_machine_no_uploaded_keys),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    state.identities.forEach { key ->
+                        val users = state.machines.count { it.identityFile == key.path || it.identityFile.substringAfterLast('/') == key.name }
+                        RemoteListRow(
+                            title = key.name,
+                            subtitle = buildString {
+                                append(key.path)
+                                append("\n")
+                                append(
+                                    context.getString(
+                                        if (key.publicKeyPath.isNotBlank()) R.string.remote_machine_public_key_uploaded
+                                        else R.string.remote_machine_public_key_missing
+                                    )
+                                )
+                                if (users > 0) {
+                                    append("\n")
+                                    append(context.getString(R.string.remote_machine_ssh_key_used_by, users))
+                                }
+                            },
+                            subtitleMaxLines = 3,
+                            leading = { RemoteIconTile(Icons.Outlined.Key) },
+                            trailing = {
+                                IconButton(onClick = {
+                                    publicKeyTarget = key.id
+                                    publicKeyLauncher.launch(arrayOf("text/plain", "application/octet-stream", "*/*"))
+                                }) {
+                                    FluentIcon(Icons.Outlined.UploadFile, stringResource(R.string.remote_machine_upload_public_key))
+                                }
+                                IconButton(enabled = users == 0, onClick = { viewModel.deleteIdentityKey(key.id) }) {
+                                    FluentIcon(
+                                        Icons.Outlined.Delete,
+                                        stringResource(R.string.common_delete),
+                                        tint = if (users == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        )
+                    }
+                }
             }
             Spacer(Modifier.height(4.dp))
         }
@@ -203,6 +237,24 @@ internal fun RemoteMachineSettings(
                 clientEditor = null
             }
         )
+    }
+}
+
+@Composable
+private fun SettingsActionButton(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
+    ) {
+        FluentIcon(icon, null, Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

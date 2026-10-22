@@ -518,6 +518,7 @@
     <string name="remote_machine_reorder" translatable="false">Reorder machines</string>
     <string name="remote_machine_done_reordering" translatable="false">Done reordering</string>
     <string name="remote_machine_settings" translatable="false">Remote Settings</string>
+    <string name="remote_machine_settings_description" translatable="false">OAuth clients and SSH keys used by your machines</string>
     <string name="remote_machine_empty" translatable="false">No remote machines</string>
     <string name="remote_machine_empty_hint" translatable="false">Add an SSH or Google Cloud Shell connection to open a terminal.</string>
     <string name="remote_machine_unnamed" translatable="false">Unnamed machine</string>
@@ -529,6 +530,13 @@
     <string name="remote_machine_editor_title" translatable="false">Machine Editor</string>
     <string name="remote_machine_basic_section" translatable="false">Basic information</string>
     <string name="remote_machine_connection_section" translatable="false">Connection</string>
+    <string name="remote_machine_sftp_section" translatable="false">SFTP files</string>
+    <string name="remote_machine_sftp_section_help" translatable="false">The Files action in this machine’s menu browses this folder over SFTP. The session starts only when a file operation needs it.</string>
+    <string name="remote_machine_sftp_directory" translatable="false">SFTP Directory</string>
+    <string name="remote_machine_sftp_directory_help" translatable="false">Root folder for Files. Defaults to $HOME; ~ and absolute paths are also supported.</string>
+    <string name="remote_machine_sftp_root_summary" translatable="false">%1$s@%2$s · %3$s</string>
+    <string name="remote_machine_files" translatable="false">Files</string>
+    <string name="remote_machine_files_failed" translatable="false">Could not open the system file manager.</string>
     <string name="remote_machine_type_label" translatable="false">Machine type</string>
     <string name="remote_machine_host" translatable="false">Host</string>
     <string name="remote_machine_port" translatable="false">Port</string>
@@ -606,7 +614,9 @@
     <string name="remote_machine_ssh_tools_hint" translatable="false">SSH exposes the execute tool.</string>
     <string name="remote_machine_gcloud_tools_hint" translatable="false">GCloud Shell exposes update_ip and execute.</string>
     <string name="remote_machine_oauth_clients" translatable="false">Google OAuth clients</string>
-    <string name="remote_machine_add_oauth" translatable="false">Add OAuth client</string>
+    <string name="remote_machine_oauth_clients_help" translatable="false">Import the JSON downloaded from Google Cloud, or add a client manually. Desktop clients also need a client secret.</string>
+    <string name="remote_machine_no_oauth_clients" translatable="false">No OAuth clients added yet.</string>
+    <string name="remote_machine_add_oauth" translatable="false">Add client</string>
     <string name="remote_machine_import_oauth_json" translatable="false">Import JSON</string>
     <string name="remote_machine_client_id" translatable="false">Client ID</string>
     <string name="remote_machine_client_secret" translatable="false">Client secret</string>

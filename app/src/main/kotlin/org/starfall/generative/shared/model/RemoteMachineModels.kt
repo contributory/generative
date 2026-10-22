@@ -82,6 +82,8 @@ data class RemoteMachine(
     val oauthClientId: String = "",
     val environmentName: String = "default",
     val gcloudUsername: String = "",
+    /** Root folder exposed by the machine's Files provider. Blank or [REMOTE_SFTP_HOME] means $HOME. */
+    val sftpDirectory: String = REMOTE_SFTP_HOME,
     val aiToolsEnabled: Boolean = true,
     /** Per-tool switches configured on the machine. Missing entries are enabled for compatibility. */
     val aiTools: Map<String, Boolean> = emptyMap(),
@@ -175,6 +177,9 @@ fun remoteMachineToolNames(type: RemoteMachineType): List<String> = when (type) 
             REMOTE_TOOL_DISCONNECT
         )
 }
+
+/** SFTP directory token that expands to the signed-in user's home directory. */
+const val REMOTE_SFTP_HOME = "\$HOME"
 
 const val REMOTE_TOOL_OPEN_TERMINAL = "open_terminal"
 const val REMOTE_TOOL_CLOSE_TERMINAL = "close_terminal"

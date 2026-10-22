@@ -31,6 +31,7 @@ import org.starfall.generative.shared.model.REMOTE_TOOL_LIST_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_OPEN_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_START_MACHINE
 import org.starfall.generative.shared.model.REMOTE_TOOL_UPDATE_IP
+import org.starfall.generative.shared.model.REMOTE_SFTP_HOME
 import org.starfall.generative.shared.model.RemoteAuthentication
 import org.starfall.generative.shared.model.RemoteIdentityKey
 import org.starfall.generative.shared.model.RemoteMachine
@@ -52,6 +53,7 @@ class RemoteMachineService(
         openSession(machine, password, prompt)
     }
     private val cloudShell = RemoteMachineCloudShellService(context, store, assets)
+    private val sftpSessions = RemoteSftpSessionPool { machine -> openSession(machine) }
 
     val state = store.state
 
@@ -82,6 +84,7 @@ class RemoteMachineService(
             sshOptions = normalizeSshOptions(machine.sshOptions),
             websocketProxy = machine.websocketProxy?.normalized()?.takeIf { it.isConfigured },
             proxyMachineId = machine.proxyMachineId.trim(),
+            sftpDirectory = machine.sftpDirectory.trim().ifBlank { REMOTE_SFTP_HOME },
             preferredAuthentications = if (machine.authentication == RemoteAuthentication.PASSWORD) {
                 if (machine.keyboardInteractive) "keyboard-interactive,password" else "password"
             } else "publickey"
@@ -105,10 +108,12 @@ class RemoteMachineService(
         }
         // The next connection must use the saved settings.
         disconnectMachineNow(normalized.id)
+        sftpSessions.invalidate(normalized.id)
     }
 
     suspend fun deleteMachine(id: String) {
         disconnectMachineNow(id)
+        sftpSessions.invalidate(id)
         cloudShell.invalidateCache(id)
         store.update { current ->
             current.copy(
@@ -270,6 +275,12 @@ class RemoteMachineService(
         passwordOverride: String? = null,
         askSecret: RemoteSecretPrompt? = null
     ): RemoteTerminal = connectionManager.openTerminal(machine, passwordOverride, askSecret)
+
+    /** Opens an SFTP channel on demand for the Files provider. */
+    internal suspend fun acquireSftpLease(machine: RemoteMachine): RemoteSftpLease =
+        sftpSessions.acquire(machine)
+
+    internal fun invalidateSftp(machineId: String) = sftpSessions.invalidate(machineId)
 
     fun isConnected(machineId: String): Boolean = connectionManager.isConnected(machineId)
     fun disconnectMachine(machineId: String) = connectionManager.disconnectMachine(machineId)

@@ -65,6 +65,7 @@ import org.starfall.generative.features.machines.shared.ui.RemoteToggle
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.shared.model.GCloudOAuthClient
 import org.starfall.generative.shared.model.GoogleOAuthClientType
+import org.starfall.generative.shared.model.REMOTE_SFTP_HOME
 import org.starfall.generative.shared.model.REMOTE_TOOL_CLOSE_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_DISCONNECT
 import org.starfall.generative.shared.model.REMOTE_TOOL_LIST_TERMINAL
@@ -113,6 +114,9 @@ internal fun MachineDetailsScreen(
     var timeout by remember(initial.id) { mutableStateOf(initial.connectTimeoutSeconds.toString()) }
     var oauthClientId by remember(initial.id) { mutableStateOf(initial.oauthClientId) }
     var environment by remember(initial.id) { mutableStateOf(initial.environmentName) }
+    var sftpDirectory by remember(initial.id) {
+        mutableStateOf(initial.sftpDirectory.ifBlank { REMOTE_SFTP_HOME })
+    }
     var aiTools by remember(initial.id) {
         mutableStateOf(
             initial.aiTools.ifEmpty {
@@ -185,6 +189,7 @@ internal fun MachineDetailsScreen(
             connectTimeoutSeconds = timeout.toIntOrNull() ?: 15,
             oauthClientId = oauthClientId,
             environmentName = environment,
+            sftpDirectory = sftpDirectory.trim().ifBlank { REMOTE_SFTP_HOME },
             gcloudUsername = if (type == RemoteMachineType.GCLOUD_SHELL) username else initial.gcloudUsername,
             aiToolsEnabled = true,
             aiTools = aiTools
@@ -350,6 +355,17 @@ internal fun MachineDetailsScreen(
                     }
                     RemoteTextField(passphrase, { passphrase = it }, stringResource(R.string.remote_machine_key_passphrase), visual = PasswordVisualTransformation())
                 }
+            }
+            RemoteSection(
+                title = stringResource(R.string.remote_machine_sftp_section),
+                description = stringResource(R.string.remote_machine_sftp_section_help)
+            ) {
+                RemoteTextField(
+                    value = sftpDirectory,
+                    onValueChange = { sftpDirectory = it },
+                    label = stringResource(R.string.remote_machine_sftp_directory),
+                    supporting = stringResource(R.string.remote_machine_sftp_directory_help)
+                )
             }
             RemoteSection(stringResource(R.string.remote_machine_ssh_options)) {
                 RemoteListRow(

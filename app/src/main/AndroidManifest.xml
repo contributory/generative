@@ -58,6 +58,17 @@
                 <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
             </intent-filter>
         </provider>
+        <!-- Exposes each Remote Machine's SFTP directory as an on-demand DocumentsUI root. -->
+        <provider
+            android:name=".integrations.remote.RemoteSftpDocumentsProvider"
+            android:authorities="${applicationId}.sftp"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
         <activity android:name=".shared.ui.auth.AppAuthResultActivity" android:exported="false" />
         <activity android:name=".shared.ui.auth.OAuthBrowserActivity"
             android:exported="false" android:theme="@style/Theme.Generative" />

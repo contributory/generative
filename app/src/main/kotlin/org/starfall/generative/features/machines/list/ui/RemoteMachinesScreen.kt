@@ -2,6 +2,7 @@
 
 package org.starfall.generative.features.machines.list.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +38,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,6 +50,7 @@ import org.starfall.generative.features.machines.shared.logic.RemoteMachinesView
 import org.starfall.generative.features.machines.shared.ui.RemoteIconTile
 import org.starfall.generative.features.machines.shared.ui.RemoteMachinesTopBar
 import org.starfall.generative.features.machines.shared.ui.RemoteStatusDot
+import org.starfall.generative.integrations.remote.RemoteSftpDocumentsProvider
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
@@ -69,6 +72,7 @@ fun RemoteMachinesScreen(
     var deleting by remember { mutableStateOf<RemoteMachine?>(null) }
     var ipUpdateNotice by remember { mutableStateOf<MachineIpUpdateNotice?>(null) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -121,6 +125,11 @@ fun RemoteMachinesScreen(
                             connected = machine.id in connectedIds,
                             onDisconnect = { viewModel.disconnect(machine.id) },
                             onTerminal = { onOpenTerminal(machine) },
+                            onFiles = {
+                                if (!RemoteSftpDocumentsProvider.open(context, machine.id)) {
+                                    Toast.makeText(context, R.string.remote_machine_files_failed, Toast.LENGTH_SHORT).show()
+                                }
+                            },
                             onEdit = { onOpenEditor(machine, false) },
                             onDelete = { deleting = machine },
                             onUpdateIp = {
@@ -179,6 +188,7 @@ private fun RemoteMachineCard(
     connected: Boolean,
     onDisconnect: () -> Unit,
     onTerminal: () -> Unit,
+    onFiles: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onUpdateIp: () -> Unit
@@ -249,6 +259,11 @@ private fun RemoteMachineCard(
                             onClick = { menu = false; onUpdateIp() }
                         )
                     }
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.remote_machine_files)) },
+                        leadingIcon = { FluentIcon(Icons.Outlined.Folder, null) },
+                        onClick = { menu = false; onFiles() }
+                    )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.common_edit)) },
                         leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) },
