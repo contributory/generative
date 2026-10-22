@@ -99,15 +99,24 @@ internal fun RemoteSection(
     title: String,
     modifier: Modifier = Modifier,
     description: String? = null,
+    actions: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     SettingsCard(modifier = modifier) {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary
-        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                title,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            if (actions != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    actions()
+                }
+            }
+        }
         if (description != null) {
             Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

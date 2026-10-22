@@ -616,8 +616,8 @@
     <string name="remote_machine_oauth_clients" translatable="false">Google OAuth clients</string>
     <string name="remote_machine_oauth_clients_help" translatable="false">Import the JSON downloaded from Google Cloud, or add a client manually. Desktop clients also need a client secret.</string>
     <string name="remote_machine_no_oauth_clients" translatable="false">No OAuth clients added yet.</string>
-    <string name="remote_machine_add_oauth" translatable="false">Add client</string>
-    <string name="remote_machine_import_oauth_json" translatable="false">Import JSON</string>
+    <string name="remote_machine_add_oauth" translatable="false">Add OAuth client</string>
+    <string name="remote_machine_import_oauth_json" translatable="false">Import OAuth client JSON</string>
     <string name="remote_machine_client_id" translatable="false">Client ID</string>
     <string name="remote_machine_client_secret" translatable="false">Client secret</string>
     <string name="remote_machine_oauth_client_type">OAuth client type</string>
