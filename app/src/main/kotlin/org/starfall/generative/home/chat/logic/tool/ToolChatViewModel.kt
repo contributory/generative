@@ -130,6 +130,7 @@ class ToolChatViewModel(
         val selectedProvider = aiService.resolveProvider(provider)
         val sessions = mutableMapOf<String, McpSession>()
         val tools = mutableListOf<ToolDefinition>()
+        val mcpEntries = mutableListOf<McpPagination.Entry>()
         // Keep one catalog for a generation. The service still validates the selected machine at
         // execution time, so deleting a machine cannot redirect a call to another machine.
         val configuredMachines = toolExecution.configuredMachines()
@@ -142,9 +143,11 @@ class ToolChatViewModel(
                     try {
                         val session = toolExecution.connect(server)
                         sessions[server.id] = session
-                        tools += toolExecution.discoverTools(session).filter {
+                        val discovered = toolExecution.discoverTools(session).filter {
                             globalMcpToolEnabled(settings(), server.id, it.originalName)
                         }
+                        tools += discovered
+                        if (discovered.isNotEmpty()) mcpEntries += McpPagination.Entry(server.id, server.name, discovered)
                         send(GenerationEvent.Tool(activity.copy(status = "success", summary = "Tools ready")))
                     } catch (e: CancellationException) {
                         send(GenerationEvent.Tool(activity.copy(status = "cancelled")))
@@ -217,6 +220,9 @@ class ToolChatViewModel(
             val uniquelyNamedTools = tools.withUniqueWireNames()
             tools.clear()
             tools += uniquelyNamedTools
+            // With many MCP servers, only one page is attached per request; the internal tools switch pages.
+            val pagination = McpPagination(mcpEntries)
+            if (pagination.active) tools += pagination.definitions()
 
             http.requireFiles()
             val history = mutableListOf<JsonObject>()
@@ -234,7 +240,9 @@ class ToolChatViewModel(
                     // With Send File off, earlier send_file calls are dropped too so the model never sees the tool.
                     message.activeVersion.toolActivity.filterNot {
                         it.name.endsWith(": connect") ||
-                            (!settings().sendFileEnabled && it.wireName == SEND_FILE_TOOL_NAME)
+                            (!settings().sendFileEnabled && it.wireName == SEND_FILE_TOOL_NAME) ||
+                            // Page state is per generation, so earlier switches must not be replayed.
+                            it.wireName in mcpPaginationToolNames
                     }
                 } else emptyList()
                 val replay = replayToolActivities(message.content, activities, http.requireFiles())
@@ -292,10 +300,12 @@ class ToolChatViewModel(
                         } == true
                     } else if (tool.serverId == null) {
                         if (tool.name == SEND_FILE_TOOL_NAME) fileDeliveryAvailable && settings().sendFileEnabled
+                        else if (tool.name in mcpPaginationToolNames) pagination.active
                         else settings().system[tool.name]?.enabled == true
                     } else {
                         settings().quickMcp[tool.serverId] != false &&
-                            globalMcpToolEnabled(settings(), tool.serverId, tool.originalName)
+                            globalMcpToolEnabled(settings(), tool.serverId, tool.originalName) &&
+                            pagination.includes(tool.serverId)
                     }
                 }
 
@@ -305,7 +315,7 @@ class ToolChatViewModel(
                     selectedProvider,
                     model,
                     history,
-                    allowed.map { configuredMcpTool(it, settings()) },
+                    allowed.map { pagination.present(configuredMcpTool(it, settings())) },
                     prompt,
                     sendThinking = sendThinkingContent,
                     onText = { send(GenerationEvent.Text(it)) },
@@ -360,12 +370,15 @@ class ToolChatViewModel(
                     } == true
                     val mediaTool = tool != null && tool.serverId == null && tool.remoteMachineId == null &&
                         name in setOf("generate_image", "generate_video")
+                    val paginationTool = tool != null && tool.serverId == null && tool.remoteMachineId == null &&
+                        name in mcpPaginationToolNames
                     send(GenerationEvent.Tool(activity))
 
                     var result: JsonObject
                     try {
                         require(tool != null) { "Tool is not enabled" }
-                        budget.consume(if (tool.serverId == null) name else null)
+                        // Page switching is bookkeeping and does not count against the per-message tool limit.
+                        if (!paginationTool) budget.consume(if (tool.serverId == null) name else null)
                         val args = toolArguments(function["arguments"])
                         result = if (tool.remoteMachineId != null) {
                             val machine = configuredMachines.firstOrNull { it.id == tool.remoteMachineId }
@@ -383,6 +396,8 @@ class ToolChatViewModel(
                                 sessions[tool.serverId] ?: error("MCP session unavailable"),
                                 tool.originalName, configuredMcpArguments(tool, args, settings())
                             )
+                        } else if (paginationTool) {
+                            pagination.execute(name, args)
                         } else if (name == SEND_FILE_TOOL_NAME) {
                             check(settings().sendFileEnabled) { "Send File tool disabled" }
                             fileSender.execute(args)
@@ -458,6 +473,7 @@ class ToolChatViewModel(
                                 activity.copy(
                                     status = if (isError) "error" else "success",
                                     summary = when {
+                                        paginationTool -> pagination.lastPreview
                                         name == SEND_FILE_TOOL_NAME && tool.serverId == null -> "File sent to chat."
                                         contentApiMedia?.files?.isNotEmpty() == true -> "Displayed ${contentApiMedia.files.size} media item(s) in chat."
                                         else -> summary.preview
