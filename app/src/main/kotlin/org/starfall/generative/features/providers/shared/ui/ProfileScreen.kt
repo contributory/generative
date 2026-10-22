@@ -45,7 +45,7 @@ import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.ItemOverflowMenu
+import org.starfall.generative.shared.ui.menus.ItemContextMenu
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.generative.shared.ui.lists.moved
 
@@ -251,7 +251,7 @@ fun ProfileUnifiedCard(
                 }
             },
             actions = {
-                ItemOverflowMenu(
+                ItemContextMenu(
                     onEdit = onEdit,
                     onDelete = onDelete,
                     deleteColor = MaterialTheme.colorScheme.error

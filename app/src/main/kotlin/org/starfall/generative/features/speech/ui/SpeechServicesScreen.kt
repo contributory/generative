@@ -49,7 +49,7 @@ import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.ItemOverflowMenu
+import org.starfall.generative.shared.ui.menus.ItemContextMenu
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.generative.shared.ui.lists.moved
@@ -298,7 +298,7 @@ private fun SpeechServiceUnifiedCard(
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                    ItemOverflowMenu(
+                    ItemContextMenu(
                         onEdit = onEdit,
                         onDelete = onDelete,
                         deleteColor = MaterialTheme.colorScheme.error

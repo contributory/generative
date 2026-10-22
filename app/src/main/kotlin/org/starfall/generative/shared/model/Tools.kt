@@ -67,7 +67,7 @@ data class ToolSettings(
     val mcpToolParameters: Map<String, Map<String, Map<String, McpToolParameterConfig>>> = emptyMap(),
     /** Master switch for Remote Machine tools in the chat tool picker. */
     val machinesEnabled: Boolean = false,
-    /** Machine-level switches shown in Tools Manage. Entries override the legacy master switch. */
+    /** Per-machine switches shown in Remote Machines. Entries override the legacy master switch. */
     val enabledMachines: Map<String, Boolean> = emptyMap(),
     /** Legacy per-machine tool switches retained for decoding older settings. */
     val machineTools: Map<String, Map<String, Boolean>> = emptyMap(),

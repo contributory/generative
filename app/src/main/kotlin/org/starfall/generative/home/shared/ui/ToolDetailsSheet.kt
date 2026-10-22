@@ -35,7 +35,7 @@ import kotlinx.coroutines.withContext
 import org.starfall.generative.shared.ui.media.MediaViewer
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.model.ToolActivity
-import org.starfall.generative.shared.ui.sheets.AppBottomSheet
+import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.code.CodeBlockSurface
@@ -47,12 +47,12 @@ private val toolJson = Json { prettyPrint = true }
 @Composable
 internal fun ToolDetailsSheetHost(state: ToolSheetState, activities: List<ToolActivity>) {
     val activity = state.selectedId?.let { id -> activities.find { it.id == id } } ?: return
-    ToolDetailsBottomSheet(activity = activity, onDismiss = { state.selectedId = null })
+    ToolDetailsSheet(activity = activity, onDismiss = { state.selectedId = null })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun ToolDetailsBottomSheet(
+internal fun ToolDetailsSheet(
     activity: ToolActivity,
     onDismiss: () -> Unit
 ) {
@@ -81,7 +81,7 @@ internal fun ToolDetailsBottomSheet(
     }
     val canDownload = responseText.isNotBlank()
 
-    AppBottomSheet(
+    AppSheet(
         onDismissRequest = onDismiss
     ) {
         Column(

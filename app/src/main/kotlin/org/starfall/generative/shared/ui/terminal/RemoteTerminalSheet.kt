@@ -89,16 +89,16 @@ import org.starfall.generative.shared.model.remote.TerminalInputMode
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.sheets.AppBottomSheet
+import org.starfall.generative.shared.ui.sheets.AppSheet
 
 @Composable
-internal fun RemoteTerminalBottomSheet(
+internal fun RemoteTerminalSheet(
     machine: RemoteMachine,
     openTerminal: suspend (RemoteMachine, RemoteSecretPrompt?) -> RemoteTerminalSession,
     disconnect: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AppBottomSheet(
+    AppSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         fixedHeightFraction = 0.9f
@@ -298,7 +298,7 @@ private fun RemoteTerminalContent(
                     enter = expandHorizontally() + fadeIn(),
                     exit = shrinkHorizontally() + fadeOut()
                 ) {
-                    TerminalSessionsDrawer(
+                    TerminalSessionsSideBar(
                         machine = machine,
                         slots = terminalSlots,
                         activeTerminalId = activeTerminalId,

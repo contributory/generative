@@ -195,7 +195,7 @@ fun FeaturesScreen(
             SectionHeading(stringResource(R.string.settings_group_configuration))
         }
         item(key = "chat-options") {
-            FeatureItem(
+            FeatureButton(
                 stringResource(R.string.settings_chat_options),
                 stringResource(R.string.settings_chat_options_description),
                 FluentUi.Regular.Chat,
@@ -203,43 +203,51 @@ fun FeaturesScreen(
             )
         }
         item(key = "tools-editor") {
-            FeatureItem(
+            FeatureButton(
                 stringResource(R.string.settings_tools_editor),
                 stringResource(R.string.settings_tools_editor_description),
                 FluentUi.Regular.WrenchScrewdriver,
                 onNavigateToToolsEditor
             )
         }
+        item(key = "external-services-heading") {
+            Spacer(Modifier.height(8.dp))
+            SectionHeading(stringResource(R.string.settings_group_external_services))
+        }
         item(key = "providers") {
-            FeatureItem(stringResource(R.string.settings_providers), stringResource(R.string.settings_providers_description), FluentUi.Regular.Cloud, onNavigateToProviders)
+            FeatureButton(stringResource(R.string.settings_providers), stringResource(R.string.settings_providers_description), FluentUi.Regular.Cloud, onNavigateToProviders)
         }
         item(key = "mcp") {
-            FeatureItem(stringResource(R.string.settings_mcp_manage), stringResource(R.string.settings_mcp_manage_description), FluentUi.Regular.PuzzlePiece, onNavigateToMcp)
+            FeatureButton(stringResource(R.string.settings_mcp_manage), stringResource(R.string.settings_mcp_manage_description), FluentUi.Regular.PuzzlePiece, onNavigateToMcp)
         }
         item(key = "speech") {
-            FeatureItem(stringResource(R.string.settings_speech_services), stringResource(R.string.settings_speech_services_description), FluentUi.Regular.PersonVoice, onNavigateToSpeech)
+            FeatureButton(stringResource(R.string.settings_speech_services), stringResource(R.string.settings_speech_services_description), FluentUi.Regular.PersonVoice, onNavigateToSpeech)
         }
         item(key = "remote-machines") {
-            FeatureItem(stringResource(R.string.settings_remote_machines), stringResource(R.string.settings_remote_machines_description), FluentUi.Regular.Desktop, onNavigateToRemoteMachines)
+            FeatureButton(stringResource(R.string.settings_remote_machines), stringResource(R.string.settings_remote_machines_description), FluentUi.Regular.Desktop, onNavigateToRemoteMachines)
+        }
+        item(key = "data-caching-heading") {
+            Spacer(Modifier.height(8.dp))
+            SectionHeading(stringResource(R.string.settings_group_data_caching))
         }
         item(key = "storage") {
-            FeatureItem(stringResource(R.string.settings_storage), stringResource(R.string.settings_storage_description), FluentUi.Regular.FolderOpen, onNavigateToStorage)
+            FeatureButton(stringResource(R.string.settings_storage), stringResource(R.string.settings_storage_description), FluentUi.Regular.FolderOpen, onNavigateToStorage)
+        }
+        item(key = "icons") {
+            FeatureButton(stringResource(R.string.icon_settings_title), stringResource(R.string.icon_settings_description), FluentUi.Regular.Image, onNavigateToIcons)
         }
         item(key = "system-heading") {
             Spacer(Modifier.height(8.dp))
             SectionHeading(stringResource(R.string.settings_group_system))
         }
         item(key = "app-settings") {
-            FeatureItem(stringResource(R.string.settings_category_app_settings), stringResource(R.string.settings_category_app_settings_description), FluentUi.Regular.Settings, onNavigateToAppSettings)
-        }
-        item(key = "icons") {
-            FeatureItem(stringResource(R.string.icon_settings_title), stringResource(R.string.icon_settings_description), FluentUi.Regular.Image, onNavigateToIcons)
+            FeatureButton(stringResource(R.string.settings_category_app_settings), stringResource(R.string.settings_category_app_settings_description), FluentUi.Regular.Settings, onNavigateToAppSettings)
         }
         item(key = "app-data") {
-            FeatureItem(stringResource(R.string.settings_category_app_data), stringResource(R.string.settings_category_app_data_description), FluentUi.Regular.History, onNavigateToAppData)
+            FeatureButton(stringResource(R.string.settings_category_app_data), stringResource(R.string.settings_category_app_data_description), FluentUi.Regular.History, onNavigateToAppData)
         }
         item(key = "about") {
-            FeatureItem(stringResource(R.string.settings_category_about), stringResource(R.string.settings_category_about_description), FluentUi.Regular.Info, onNavigateToAbout)
+            FeatureButton(stringResource(R.string.settings_category_about), stringResource(R.string.settings_category_about_description), FluentUi.Regular.Info, onNavigateToAbout)
         }
     }
 }
@@ -256,7 +264,7 @@ private fun SectionHeading(title: String) {
 }
 
 @Composable
-private fun FeatureItem(
+private fun FeatureButton(
     title: String,
     subtitle: String,
     icon: ImageVector,

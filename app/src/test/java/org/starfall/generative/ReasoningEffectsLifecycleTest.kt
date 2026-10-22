@@ -19,7 +19,7 @@ import org.starfall.generative.shared.ui.model.*
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.home.shared.ui.SelectedModelOverviewBottomSheet
+import org.starfall.generative.home.shared.ui.SelectedModelOverviewSheet
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi")
@@ -42,7 +42,7 @@ class ReasoningEffectsLifecycleTest {
                     Button(onClick = { clicks++ }) { Text("Underlying action") }
                     if (sheetVisible) {
                         ThinkingScreenBurstLayer(screenBurst)
-                        SelectedModelOverviewBottomSheet(
+                        SelectedModelOverviewSheet(
                             provider = provider,
                             folderName = null,
                             modelId = "Effect model",
@@ -89,7 +89,7 @@ class ReasoningEffectsLifecycleTest {
                 var effort by remember { mutableStateOf<String?>(null) }
                 CompositionLocalProvider(LocalThinkingScreenBurst provides screenBurst) {
                     ThinkingScreenBurstLayer(screenBurst)
-                    SelectedModelOverviewBottomSheet(
+                    SelectedModelOverviewSheet(
                         provider = provider,
                         folderName = null,
                         modelId = "Effect model",

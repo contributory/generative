@@ -69,7 +69,7 @@ import org.starfall.generative.shared.ui.auth.rememberOAuthStart
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun ProviderEditorScreen(
+fun ProviderEditor(
     initialProvider: ModelProvider, isNew: Boolean,
     initialEditingModelId: String? = null,
     onAuthorizeProvider: (suspend (ModelProvider) -> Result<ModelProvider>)? = null,
@@ -209,7 +209,7 @@ fun ProviderEditorScreen(
     BackHandler(enabled = LocalScreenTransitionActive.current && editingModel == null, onBack = onDismiss)
     SlideScreenContent(editor = editingModel, label = "Model editor") { modelId ->
         if (modelId != null) key(modelId) {
-            ModelEditorScreen(initialProvider.copy(type = type, config = requestConfig()), modelId, models.keys,
+            ModelEditor(initialProvider.copy(type = type, config = requestConfig()), modelId, models.keys,
                 customImageMediaProfiles = customImageMediaProfiles,
                 customVideoMediaProfiles = customVideoMediaProfiles,
                 onSave = { id, config -> memory.remember(id, config); updateModels((models - modelId) + (id to config)); editingModel = null },

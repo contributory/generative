@@ -43,7 +43,7 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 import org.starfall.generative.shared.ui.media.MediaContent
-import org.starfall.generative.shared.ui.media.MediaViewerToolbar
+import org.starfall.generative.shared.ui.media.MediaViewerToolBar
 import org.starfall.generative.shared.ui.media.MediaViewer
 import org.starfall.generative.shared.ui.media.isPreviewableMedia
 import org.starfall.generative.shared.ui.media.mediaMimeType
@@ -107,7 +107,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Storage", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)) },
+                title = { Text(stringResource(R.string.settings_storage), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

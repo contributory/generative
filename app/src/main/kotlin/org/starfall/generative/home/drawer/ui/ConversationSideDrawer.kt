@@ -58,7 +58,7 @@ import org.starfall.generative.home.drawer.logic.lastModelIcon
 @Composable
 private fun SidebarLabel(text: String) { Text(text, Modifier.padding(start = 8.dp, top = 10.dp, bottom = 6.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 @Composable
-fun LeftSideDrawer(
+fun ConversationSideDrawer(
     conversations: List<ConversationListItem>,
     currentConversationId: String?,
     isOpen: Boolean,
@@ -71,8 +71,9 @@ fun LeftSideDrawer(
     onNewChat: () -> Unit,
     onRenameConversation: (String, String) -> Unit,
     onDeleteConversation: (String) -> Unit,
-    onUpdateDefaultSystemPrompt: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToInstructions: () -> Unit,
+    onEditPrompt: (String) -> Unit,
     featuresLogoImage: String? = null,
     onCloseDrawer: () -> Unit,
     promptLibrary: PromptLibrary? = null,
@@ -279,7 +280,9 @@ fun LeftSideDrawer(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Spacer(Modifier.width(4.dp))
-                        IconButton(onClick = { promptDialog = true }, modifier = Modifier.size(40.dp)) { FluentIcon(Icons.Outlined.DocumentSparkle, "Prompts") }
+                        IconButton(onClick = { promptDialog = true }, modifier = Modifier.size(40.dp)) {
+                            FluentIcon(Icons.Outlined.DocumentSparkle, stringResource(R.string.prompt_library_title))
+                        }
                         IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) {
                             FeaturesLogoImage(featuresLogoImage, Modifier.size(36.dp).clip(CircleShape))
                         }
@@ -370,7 +373,12 @@ fun LeftSideDrawer(
     if (deletingFolder != null) AlertDialog(onDismissRequest = { deletingFolder = null }, title = { Text("Remove folder?") }, text = { Text("Its chats will return to History.") },
         confirmButton = { TextButton(onClick = { val id = deletingFolder!!.id; onUpdateOrganization { it.removeFolder(id) }; deletingFolder = null }) { Text("Remove") } }, dismissButton = { TextButton(onClick = { deletingFolder = null }) { Text("Cancel") } })
     if (promptDialog) {
-        PromptLibraryDialog(promptLibrary ?: PromptLibrary.fromLegacy(defaultSystemPrompt),
-            onChange = onPromptLibraryChange, onDismiss = { promptDialog = false })
+        PromptLibraryDialog(
+            initialLibrary = promptLibrary ?: PromptLibrary.fromLegacy(defaultSystemPrompt),
+            onChange = onPromptLibraryChange,
+            onOpenInstructions = { promptDialog = false; onNavigateToInstructions() },
+            onEditPrompt = { promptId -> promptDialog = false; onEditPrompt(promptId) },
+            onDismiss = { promptDialog = false }
+        )
     }
 }

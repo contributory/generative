@@ -28,7 +28,7 @@ import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ServerEditorScreen(
+fun ServerEditor(
     initialServer: McpInfo, isNew: Boolean,
     onRefreshTools: suspend (McpInfo) -> Result<List<ToolDefinition>>,
     onAuthorizeOAuth: suspend (McpInfo) -> Result<McpInfo>, onClearOAuth: suspend (McpInfo) -> McpInfo,

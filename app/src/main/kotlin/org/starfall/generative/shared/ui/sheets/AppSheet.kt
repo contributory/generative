@@ -56,7 +56,7 @@ internal fun bottomSheetListScrollBoundary(): NestedScrollConnection = object : 
 /** Material owns the dialog, scrim, accessibility, insets and show/hide lifecycle. */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun AppBottomSheet(
+fun AppSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     shape: Shape = BottomSheetDefaults.ExpandedShape,

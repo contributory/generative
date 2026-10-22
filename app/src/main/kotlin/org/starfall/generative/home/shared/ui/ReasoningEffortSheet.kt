@@ -11,7 +11,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.DEFAULT_REASONING_EFFORTS
-import org.starfall.generative.shared.ui.sheets.AppBottomSheet
+import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.generative.shared.ui.model.ReasoningEffortControl
 import org.starfall.generative.shared.ui.model.reasoningEffortOptions
@@ -19,7 +19,7 @@ import org.starfall.generative.shared.ui.model.reasoningEffortIndex
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReasoningEffortBottomSheet(
+fun ReasoningEffortSheet(
     currentEffort: String?,
     onApply: (String?) -> Unit,
     onDismiss: () -> Unit,
@@ -33,7 +33,7 @@ fun ReasoningEffortBottomSheet(
         reasoningEffortOptions(supportedEfforts)
     }
 
-    AppBottomSheet(
+    AppSheet(
         onDismissRequest = onDismiss
     ) {
         Column(

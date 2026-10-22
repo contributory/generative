@@ -84,8 +84,8 @@
     <string name="tool_send_file_title">Datei senden</string>
     <string name="tool_send_file_description">Der KI erlauben, Dateien aus Tool-Ergebnissen im Chat anzuzeigen.</string>
     <string name="tool_select_compatible_model_hint">Wähle ein kompatibles Modell, um dieses Tool zu aktivieren.</string>
-    <string name="mcp_add_servers_hint">Füge zuerst Server in MCP Manage hinzu.</string>
-    <string name="mcp_tool_list_not_cached_description">Die Tool-Liste ist nicht zwischengespeichert. Speichere oder aktualisiere diesen Server zuerst in MCP Manage.</string>
+    <string name="mcp_add_servers_hint">Füge zuerst Server in MCP Connectors hinzu.</string>
+    <string name="mcp_tool_list_not_cached_description">Die Tool-Liste ist nicht zwischengespeichert. Speichere oder aktualisiere diesen Server zuerst in MCP Connectors.</string>
     <string name="mcp_no_globally_enabled_tools_description">Keine global aktivierten Tools verfügbar.</string>
     <string name="image_tool_model_options_description">Lege nur von diesem Modell unterstützte Optionen fest. Leere Felder verwenden die Anbieterstandards. Einstellungen werden für jedes Modell separat gespeichert.</string>
     <string name="image_tool_request_body_help">Verschachtelte Objekte und Anbietererweiterungen werden unterstützt. Modell und Prompt stammen aus dem Chat.</string>
@@ -130,7 +130,7 @@
     <string name="icon_cache_save_failed">Symbolregeln konnten nicht gespeichert werden.</string>
     <string name="icon_cache_search">Symbole oder Übereinstimmungsregeln suchen</string>
     <string name="icon_import_failed">Dieses Bild konnte nicht geladen werden. Wähle ein anderes Bild.</string>
-    <string name="icon_settings_title">Symbole und Cache</string>
+    <string name="icon_settings_title">Symbole &amp; Marken</string>
     <string name="icon_variant_dark">Dunkel (optional)</string>
     <string name="icon_variant_normal">Hell</string>
     <string name="model_arguments">Argumente</string>

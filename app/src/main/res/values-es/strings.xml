@@ -84,8 +84,8 @@
     <string name="tool_send_file_title">Enviar archivo</string>
     <string name="tool_send_file_description">Permite que la IA muestre en el chat archivos de los resultados de las herramientas.</string>
     <string name="tool_select_compatible_model_hint">Selecciona un modelo compatible para activar esta herramienta.</string>
-    <string name="mcp_add_servers_hint">Añade primero servidores en MCP Manage.</string>
-    <string name="mcp_tool_list_not_cached_description">La lista de herramientas no está en caché. Guarda o actualiza primero este servidor en MCP Manage.</string>
+    <string name="mcp_add_servers_hint">Añade primero servidores en MCP Connectors.</string>
+    <string name="mcp_tool_list_not_cached_description">La lista de herramientas no está en caché. Guarda o actualiza primero este servidor en MCP Connectors.</string>
     <string name="mcp_no_globally_enabled_tools_description">No hay herramientas activadas globalmente.</string>
     <string name="image_tool_model_options_description">Configura solo las opciones compatibles con este modelo. Los campos vacíos usan los valores predeterminados del proveedor. La configuración se guarda por separado para cada modelo.</string>
     <string name="image_tool_request_body_help">Se admiten objetos anidados y extensiones del proveedor. El modelo y el prompt proceden del chat.</string>
@@ -130,7 +130,7 @@
     <string name="icon_cache_save_failed">No se pudieron guardar las reglas de iconos.</string>
     <string name="icon_cache_search">Buscar iconos o reglas de coincidencia</string>
     <string name="icon_import_failed">No se pudo cargar esta imagen. Elige otra.</string>
-    <string name="icon_settings_title">Iconos y caché</string>
+    <string name="icon_settings_title">Iconos y marcas</string>
     <string name="icon_variant_dark">Oscuro (opcional)</string>
     <string name="icon_variant_normal">Claro</string>
     <string name="model_arguments">Argumentos</string>

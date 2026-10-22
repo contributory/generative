@@ -13,12 +13,12 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.ConversationSummaryRequest
-import org.starfall.generative.shared.ui.sheets.AppBottomSheet
+import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConversationSummaryBottomSheet(
+fun ConversationSummarySheet(
     onStart: (ConversationSummaryRequest) -> Boolean,
     onDismiss: () -> Unit
 ) {
@@ -41,7 +41,7 @@ fun ConversationSummaryBottomSheet(
         else -> null
     }
 
-    AppBottomSheet(
+    AppSheet(
         onDismissRequest = onDismiss
     ) {
         Column(

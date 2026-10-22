@@ -49,7 +49,7 @@ internal fun RenderCodeBlock(language: String, code: String, isStreaming: Boolea
             }
         }
         if (drawerVisible) {
-            CodeBlockDrawer(
+            CodeBlockDialog(
                 language = language,
                 code = code,
                 isStreaming = isStreaming,
@@ -76,7 +76,7 @@ internal fun RenderCodeBlock(language: String, code: String, isStreaming: Boolea
 }
 
 @Composable
-private fun CodeBlockDrawer(
+private fun CodeBlockDialog(
     language: String,
     code: String,
     isStreaming: Boolean,

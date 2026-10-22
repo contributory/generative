@@ -42,12 +42,12 @@ import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.layout.SlideScreenContent
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import org.starfall.generative.shared.ui.model.DefaultModelSelector
-import org.starfall.generative.shared.ui.model.ModelPickerBottomSheet
+import org.starfall.generative.shared.ui.model.ModelPickerSheet
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ToolsEditorScreen(
+fun ToolsEditor(
     providers: List<ModelProvider>,
     settings: ToolSettings,
     onSave: (String, SystemToolConfig) -> Unit,
@@ -80,7 +80,7 @@ fun ToolsEditorScreen(
     ) { page ->
         if (page != null) {
             if (editingMediaCustom) {
-                MediaRequestChainSettingsScreen(
+                MediaRequestChainSettings(
                     page.second,
                     page.third,
                     onSave = { profiles, activeId ->
@@ -124,7 +124,7 @@ fun ToolsEditorScreen(
                     video = page.first == "generate_video"
                 )
             } else {
-                ImageToolSettingsScreen(
+                ImageToolSettings(
                     page.second,
                     page.third,
                     onSave = { options, disabledParams ->
@@ -395,7 +395,7 @@ fun ToolsEditorScreen(
             else -> ModelType.TEXT_GENERATION
         }
         val current = settings.system[name] ?: SystemToolConfig()
-        ModelPickerBottomSheet(
+        ModelPickerSheet(
             providers = providers,
             providerGroups = providerGroups,
             collapsedGroupIdsState = collapsedGroupIds,

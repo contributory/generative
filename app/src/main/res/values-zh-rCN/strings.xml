@@ -84,8 +84,8 @@
     <string name="tool_send_file_title">发送文件</string>
     <string name="tool_send_file_description">允许 AI 在聊天中显示工具结果中的文件。</string>
     <string name="tool_select_compatible_model_hint">选择兼容的模型以启用此工具。</string>
-    <string name="mcp_add_servers_hint">请先在 MCP Manage 中添加服务器。</string>
-    <string name="mcp_tool_list_not_cached_description">工具列表尚未缓存。请先在 MCP Manage 中保存或刷新此服务器。</string>
+    <string name="mcp_add_servers_hint">请先在 MCP Connectors 中添加服务器。</string>
+    <string name="mcp_tool_list_not_cached_description">工具列表尚未缓存。请先在 MCP Connectors 中保存或刷新此服务器。</string>
     <string name="mcp_no_globally_enabled_tools_description">没有全局启用的工具。</string>
     <string name="image_tool_model_options_description">仅设置此模型支持的选项。留空字段将使用提供商默认值。设置会按模型分别保存。</string>
     <string name="image_tool_request_body_help">支持嵌套对象和提供商扩展。模型和提示词来自聊天。</string>
@@ -130,7 +130,7 @@
     <string name="icon_cache_save_failed">无法保存图标规则。</string>
     <string name="icon_cache_search">搜索图标或匹配规则</string>
     <string name="icon_import_failed">无法加载此图片，请选择其他图片。</string>
-    <string name="icon_settings_title">图标与缓存</string>
+    <string name="icon_settings_title">图标与商标</string>
     <string name="icon_variant_dark">深色（可选）</string>
     <string name="icon_variant_normal">浅色</string>
     <string name="model_arguments">参数</string>

@@ -8,7 +8,7 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 
 @Composable
-fun MediaViewerToolbar(
+fun MediaViewerToolBar(
     onClose: () -> Unit,
     onSave: (() -> Unit)? = null,
     onShare: (() -> Unit)? = null,

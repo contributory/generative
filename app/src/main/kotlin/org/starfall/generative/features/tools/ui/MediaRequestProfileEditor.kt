@@ -23,12 +23,12 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.sheets.AppBottomSheet
+import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun MediaRequestProfileEditorScreen(
+internal fun MediaRequestProfileEditor(
     provider: ModelProvider,
     profile: MediaRequestProfile,
     video: Boolean,
@@ -173,7 +173,7 @@ internal fun MediaRequestProfileEditorScreen(
 
     editingStep?.let { selectedIndex ->
         val index = selectedIndex.coerceIn(0, draft.chain.steps.lastIndex)
-        AppBottomSheet(onDismissRequest = ::closeStepEditor, fixedHeightFraction = 0.92f) {
+        AppSheet(onDismissRequest = ::closeStepEditor, fixedHeightFraction = 0.92f) {
             Column(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -212,7 +212,7 @@ internal fun MediaRequestProfileEditorScreen(
     }
 
     if (editingFinalResponse) {
-        AppBottomSheet(onDismissRequest = { editingFinalResponse = false }, fixedHeightFraction = 0.72f) {
+        AppSheet(onDismissRequest = { editingFinalResponse = false }, fixedHeightFraction = 0.72f) {
             Column(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)

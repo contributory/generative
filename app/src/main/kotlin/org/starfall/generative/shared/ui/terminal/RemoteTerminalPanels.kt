@@ -63,7 +63,7 @@ internal const val MIN_TERMINAL_FONT_DP = 8
 internal const val MAX_TERMINAL_FONT_DP = 32
 
 @Composable
-internal fun TerminalSessionsDrawer(
+internal fun TerminalSessionsSideBar(
     machine: RemoteMachine,
     slots: List<TerminalSlot>,
     activeTerminalId: String?,

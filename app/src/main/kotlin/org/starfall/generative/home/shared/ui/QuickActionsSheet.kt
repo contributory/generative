@@ -12,23 +12,26 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import org.starfall.generative.shared.ui.sheets.AppBottomSheet
+import androidx.compose.ui.res.stringResource
+import org.starfall.generative.R
+import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun QuickActionsBottomSheet(
+fun QuickActionsSheet(
     onPickImage: () -> Unit,
     onPickDocument: () -> Unit,
     onTakePhoto: () -> Unit,
     onCreateImage: () -> Unit,
     onCreateVideo: () -> Unit,
-    onOpenTools: () -> Unit,
+    onOpenFeatureTools: () -> Unit,
+    onOpenMcpConnectors: () -> Unit,
     onOpenRemoteMachines: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AppBottomSheet(
+    AppSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
@@ -87,11 +90,20 @@ fun QuickActionsBottomSheet(
                 onClick = { onCreateVideo(); onDismiss() }
             )
             AddActionRow(
-                icon = Icons.Outlined.Extension,
-                title = "Tools Manage",
-                subtitle = "Choose tools available to the model",
+                icon = Icons.Outlined.Build,
+                title = stringResource(R.string.quick_action_feature_tools),
+                subtitle = stringResource(R.string.quick_action_feature_tools_description),
                 onClick = {
-                    onOpenTools()
+                    onOpenFeatureTools()
+                    onDismiss()
+                }
+            )
+            AddActionRow(
+                icon = Icons.Outlined.Extension,
+                title = stringResource(R.string.quick_action_mcp_connectors),
+                subtitle = stringResource(R.string.quick_action_mcp_connectors_description),
+                onClick = {
+                    onOpenMcpConnectors()
                     onDismiss()
                 }
             )

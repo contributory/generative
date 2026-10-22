@@ -399,7 +399,7 @@ class ToolChatViewModel(
                              check(
                                 mediaProvider.config.modelConfigs[cfg.modelId]?.modelType == kind &&
                                     mediaProvider.config.modelIds?.contains(cfg.modelId) != false
-                             ) { "Select an available media model in System tools" }
+                             ) { "Select an available media model in Feature Tools" }
                              val mediaModel = mediaProvider.config.modelConfigs[cfg.modelId]
                              val generationMode = mediaModel?.mediaApiType
                                  ?: if (name == "generate_image") cfg.imageGenerationMode else cfg.videoGenerationMode

@@ -13,16 +13,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.ui.LocalToolControls
 import org.starfall.generative.shared.model.remoteMachineEnabled
-import org.starfall.generative.shared.ui.sheets.AppBottomSheet
+import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 
 /** Bottom sheet that turns each Remote Machine on or off for the model. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RemoteMachinesBottomSheet(onDismiss: () -> Unit) {
+fun RemoteMachinesSheet(onDismiss: () -> Unit) {
     val controls = LocalToolControls.current
-    AppBottomSheet(
+    AppSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {

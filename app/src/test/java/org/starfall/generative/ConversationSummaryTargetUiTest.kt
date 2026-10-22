@@ -11,7 +11,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.home.shared.ui.ConversationSummaryBottomSheet
+import org.starfall.generative.home.shared.ui.ConversationSummarySheet
 import org.starfall.generative.shared.model.ConversationSummaryRequest
 
 @RunWith(RobolectricTestRunner::class)
@@ -25,7 +25,7 @@ class ConversationSummaryTargetUiTest {
     private fun show(accept: Boolean = false) {
         compose.setContent {
             MaterialTheme {
-                ConversationSummaryBottomSheet(
+                ConversationSummarySheet(
                     onStart = { requests += it; accept },
                     onDismiss = { dismissals++ })
             }

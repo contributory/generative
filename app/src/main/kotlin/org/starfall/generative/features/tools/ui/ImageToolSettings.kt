@@ -33,7 +33,7 @@ import org.starfall.generative.shared.helpers.media.validateVideoOptions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ImageToolSettingsScreen(provider: ModelProvider, config: SystemToolConfig, onSave: (JsonObject, Set<String>) -> Unit, onBack: () -> Unit, video: Boolean = false) {
+fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave: (JsonObject, Set<String>) -> Unit, onBack: () -> Unit, video: Boolean = false) {
     val format = remember { Json { prettyPrint = true } }
     val savedOptions = if (video) config.videoOptions else config.imageOptions
     var draft by rememberSaveable(provider.id, config.modelId, video) { mutableStateOf(format.encodeToString(JsonObject.serializer(), savedOptions)) }

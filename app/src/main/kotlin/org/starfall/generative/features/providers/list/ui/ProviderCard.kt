@@ -213,7 +213,7 @@ fun ProviderUnifiedCard(
                 EntityIcon(provider.icon, Modifier.size(42.dp), text = providerInitials(provider.name), matchName = provider.name)
             },
             actions = {
-                ProviderOverflowMenu(onEdit, onMoveToGroup, onDelete)
+                ProviderContextMenu(onEdit, onMoveToGroup, onDelete)
             },
             content = {
                 Column(
@@ -247,7 +247,7 @@ fun ProviderUnifiedCard(
 }
 
 @Composable
-private fun ProviderOverflowMenu(
+private fun ProviderContextMenu(
     onEdit: () -> Unit,
     onMoveToGroup: () -> Unit,
     onDelete: () -> Unit
