@@ -218,7 +218,7 @@ trap 'rm -f "$notes_file"' EXIT
   printf '\n### What changed\n\n%s\n' "$ai_notes"
 } > "$notes_file"
 
-gh release edit "$tag" --repo "$repo" --title "Generative $tag" --notes-file "$notes_file"
+gh release edit "$tag" --repo "$repo" --title "v$tag" --notes-file "$notes_file"
 
 gh release upload "$tag" "${apks[@]}" "${checksums[@]}" --repo "$repo" --clobber
 if [[ "$is_prerelease" == true ]]; then
