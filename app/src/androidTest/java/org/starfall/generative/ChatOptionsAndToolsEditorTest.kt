@@ -3,6 +3,7 @@ package org.starfall.generative
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import org.junit.Assert.assertEquals
@@ -11,11 +12,13 @@ import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.features.chatoptions.ui.ChatOptionsScreen
 import org.starfall.generative.features.tools.ui.ToolsEditor
-import org.starfall.generative.home.drawer.ui.PromptLibraryDialog
+import org.starfall.generative.home.shared.ui.PromptInstructionsSheetContent
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.PromptLibrary
 import org.starfall.generative.shared.model.SavedPrompt
 import org.starfall.generative.shared.model.ToolSettings
+import org.starfall.generative.shared.ui.LocalPromptControls
+import org.starfall.generative.shared.ui.PromptControls
 
 class ChatOptionsAndToolsEditorTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
@@ -86,28 +89,36 @@ class ChatOptionsAndToolsEditorTest {
     }
 
     @Test
-    fun drawerPromptDialogOnlyTogglesPromptsAndRoutesManagementAndEditing() {
+    fun promptSheetOnlyTogglesPromptsAndRoutesManagementAndEditing() {
         val prompt = SavedPrompt("prompt-id", "System prompt", "Answer clearly", ChatRole.SYSTEM)
-        var changedLibrary = PromptLibrary(listOf(prompt), setOf(prompt.id))
+        var library = PromptLibrary(listOf(prompt), setOf(prompt.id))
         var openedInstructions = false
         var editedPromptId: String? = null
         compose.setContent {
             TestTheme {
-                PromptLibraryDialog(
-                    initialLibrary = changedLibrary,
-                    onChange = { changedLibrary = it },
-                    onOpenInstructions = { openedInstructions = true },
-                    onEditPrompt = { editedPromptId = it },
-                    onDismiss = {}
-                )
+                CompositionLocalProvider(
+                    LocalPromptControls provides PromptControls(
+                        library = library,
+                        setPromptEnabled = { id, enabled ->
+                            library = library.copy(
+                                selectedIds = if (enabled) library.selectedIds + id else library.selectedIds - id
+                            )
+                        },
+                        openInstructions = { openedInstructions = true },
+                        editPrompt = { editedPromptId = it }
+                    )
+                ) {
+                    PromptInstructionsSheetContent()
+                }
             }
         }
 
         compose.onNodeWithText("Add prompt").assertDoesNotExist()
-        compose.onNodeWithContentDescription("Delete System prompt").assertDoesNotExist()
-        compose.onNodeWithText("System prompt").performTouchInput { click() }
-        compose.runOnIdle { assertTrue(changedLibrary.selectedIds.isEmpty()) }
-        compose.onNodeWithContentDescription("Edit System prompt").performClick()
+        compose.onNodeWithText("Answer clearly").assertDoesNotExist()
+        compose.onNodeWithText("System").assertIsDisplayed()
+        compose.onNodeWithText("System prompt").performClick()
+        compose.runOnIdle { assertTrue(library.selectedIds.isEmpty()) }
+        compose.onNodeWithText("System prompt").performTouchInput { longClick() }
         compose.onNodeWithContentDescription("Open Chat Options > Instructions").performClick()
         compose.runOnIdle {
             assertEquals("prompt-id", editedPromptId)

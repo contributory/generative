@@ -37,6 +37,7 @@ class ToolsManagementSheetsTest {
                     onTakePhoto = {},
                     onCreateImage = {},
                     onCreateVideo = {},
+                    onOpenPromptInstructions = {},
                     onOpenFeatureTools = { featureToolsOpened = true },
                     onOpenMcpConnectors = { mcpConnectorsOpened = true },
                     onOpenRemoteMachines = {},

@@ -74,7 +74,9 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.theme.modalScrimColor
+import org.starfall.generative.shared.ui.LocalPromptControls
 import org.starfall.generative.shared.ui.LocalToolControls
+import org.starfall.generative.shared.ui.PromptControls
 import org.starfall.generative.shared.ui.ToolControls
 import org.starfall.generative.shared.ui.layout.SlideScreenContent
 import org.starfall.generative.shared.ui.media.ChatAttachmentSelection
@@ -313,6 +315,12 @@ fun AppNavigation(
     CompositionLocalProvider(
         org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences provides appPrefs,
         LocalChatAttachmentSelection provides chatAttachments,
+        LocalPromptControls provides PromptControls(
+            library = appPrefs.promptLibraryFor(currentConv),
+            setPromptEnabled = viewModel::setPromptEnabled,
+            openInstructions = { openPromptInstructions() },
+            editPrompt = { promptId -> openPromptInstructions(promptId) }
+        ),
         LocalToolControls provides ToolControls(
             servers = mcpServers,
             machines = remoteMachineState.machines,
@@ -347,9 +355,6 @@ fun AppNavigation(
                     onDeleteConversations = { ids ->
                         viewModel.deleteConversations(ids, chatAttachments.attachments.value)
                     },
-                    defaultSystemPrompt = appPrefs.defaultSystemPrompt,
-                    promptLibrary = appPrefs.promptLibrary,
-                    onPromptLibraryChange = viewModel::setPromptLibrary,
                     onSelectConversation = {
                         viewModel.selectConversation(it.id)
                         navigate(AppDestination.CHAT)
@@ -366,8 +371,6 @@ fun AppNavigation(
                     onNavigateToSettings = {
                         navigate(AppDestination.FEATURES)
                     },
-                    onNavigateToInstructions = { openPromptInstructions() },
-                    onEditPrompt = { promptId -> openPromptInstructions(promptId) },
                     featuresLogoImage = appPrefs.featuresLogoImage,
                     onCloseDrawer = {
                         coroutineScope.launch { drawerState.close() }

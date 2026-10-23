@@ -38,7 +38,6 @@ import org.starfall.generative.R
 import java.util.UUID
 import org.starfall.generative.shared.model.ChatFolder
 import org.starfall.generative.shared.model.ConversationListItem
-import org.starfall.generative.shared.model.PromptLibrary
 import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.theme.LocalAmoledMode
@@ -66,18 +65,13 @@ fun ConversationSideDrawer(
     organization: SidebarOrganization,
     onUpdateOrganization: ((SidebarOrganization) -> SidebarOrganization) -> Unit,
     onDeleteConversations: (Set<String>) -> Unit,
-    defaultSystemPrompt: String,
     onSelectConversation: (ConversationListItem) -> Unit,
     onNewChat: () -> Unit,
     onRenameConversation: (String, String) -> Unit,
     onDeleteConversation: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToInstructions: () -> Unit,
-    onEditPrompt: (String) -> Unit,
     featuresLogoImage: String? = null,
     onCloseDrawer: () -> Unit,
-    promptLibrary: PromptLibrary? = null,
-    onPromptLibraryChange: (PromptLibrary) -> Unit = {},
     modifier: Modifier = Modifier,
     providers: List<ModelProvider> = emptyList(),
     backdrop: DrawerBackdrop? = null
@@ -97,7 +91,6 @@ fun ConversationSideDrawer(
     var folderName by remember { mutableStateOf("") }
     var editingFolder by remember { mutableStateOf<ChatFolder?>(null) }
     var deletingFolder by remember { mutableStateOf<ChatFolder?>(null) }
-    var promptDialog by remember { mutableStateOf(false) }
     val folderIds = organization.folders.map { it.id }.toSet()
     val matches = remember(conversations, search, organization.folders, organization.chatFolders) {
         val matchingFolders = organization.folders.filter { search.isNotBlank() && it.name.contains(search, true) }.map { it.id }.toSet()
@@ -280,9 +273,6 @@ fun ConversationSideDrawer(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Spacer(Modifier.width(4.dp))
-                        IconButton(onClick = { promptDialog = true }, modifier = Modifier.size(40.dp)) {
-                            FluentIcon(Icons.Outlined.DocumentSparkle, stringResource(R.string.prompt_library_title))
-                        }
                         IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) {
                             FeaturesLogoImage(featuresLogoImage, Modifier.size(36.dp).clip(CircleShape))
                         }
@@ -372,13 +362,4 @@ fun ConversationSideDrawer(
         confirmButton = { TextButton(enabled = folderName.isNotBlank(), onClick = { val id = editingFolder!!.id; val name = folderName.trim(); onUpdateOrganization { state -> state.copy(folders = state.folders.map { if (it.id == id) it.copy(name = name) else it }) }; editingFolder = null }) { Text("Save") } }, dismissButton = { TextButton(onClick = { editingFolder = null }) { Text("Cancel") } })
     if (deletingFolder != null) AlertDialog(onDismissRequest = { deletingFolder = null }, title = { Text("Remove folder?") }, text = { Text("Its chats will return to History.") },
         confirmButton = { TextButton(onClick = { val id = deletingFolder!!.id; onUpdateOrganization { it.removeFolder(id) }; deletingFolder = null }) { Text("Remove") } }, dismissButton = { TextButton(onClick = { deletingFolder = null }) { Text("Cancel") } })
-    if (promptDialog) {
-        PromptLibraryDialog(
-            initialLibrary = promptLibrary ?: PromptLibrary.fromLegacy(defaultSystemPrompt),
-            onChange = onPromptLibraryChange,
-            onOpenInstructions = { promptDialog = false; onNavigateToInstructions() },
-            onEditPrompt = { promptId -> promptDialog = false; onEditPrompt(promptId) },
-            onDismiss = { promptDialog = false }
-        )
-    }
 }
