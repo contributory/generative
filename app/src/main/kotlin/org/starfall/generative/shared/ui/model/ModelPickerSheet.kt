@@ -279,6 +279,60 @@ fun ModelPickerSheet(
     onEditProvider: (providerId: String) -> Unit = {},
     onDismiss: () -> Unit
 ) {
+    AppSheet(
+        onDismissRequest = onDismiss,
+        fixedHeightFraction = 0.9f
+    ) {
+        ModelPickerSheetContent(
+            providers = providers,
+            providerGroups = providerGroups,
+            collapsedGroupIdsState = collapsedGroupIdsState,
+            collapsedProviderIdsState = collapsedProviderIdsState,
+            onCollapsedGroupIdsChange = onCollapsedGroupIdsChange,
+            onCollapsedProviderIdsChange = onCollapsedProviderIdsChange,
+            selectedTabKeyState = selectedTabKeyState,
+            onSelectedTabKeyChange = onSelectedTabKeyChange,
+            selectedProviderId = selectedProviderId,
+            selectedModelId = selectedModelId,
+            conversationReasoningEffort = conversationReasoningEffort,
+            onSelectModel = onSelectModel,
+            onSetReasoningEffort = onSetReasoningEffort,
+            dynamicModelsMap = dynamicModelsMap,
+            modelFilter = modelFilter,
+            showReasoningEffort = showReasoningEffort,
+            onEditProvider = onEditProvider,
+            onDismiss = onDismiss
+        )
+    }
+}
+
+/**
+ * The picker body without its own sheet, so it can live as a page inside a shared sheet.
+ * [onOpenSelectedModel] adds a button next to the search field that switches to the selected-model page.
+ */
+@Composable
+internal fun ModelPickerSheetContent(
+    providers: List<ModelProvider>,
+    providerGroups: List<ProviderGroup> = emptyList(),
+    collapsedGroupIdsState: Set<String> = emptySet(),
+    collapsedProviderIdsState: Set<String> = emptySet(),
+    onCollapsedGroupIdsChange: (Set<String>) -> Unit = {},
+    onCollapsedProviderIdsChange: (Set<String>) -> Unit = {},
+    selectedTabKeyState: String = "default",
+    onSelectedTabKeyChange: (String) -> Unit = {},
+    selectedProviderId: String,
+    selectedModelId: String,
+    conversationReasoningEffort: String?,
+    onSelectModel: (providerId: String, modelId: String) -> Unit,
+    onSetReasoningEffort: (String?) -> Unit,
+    dynamicModelsMap: Map<String, List<String>> = emptyMap(),
+    modelFilter: (ModelProvider, String, ModelConfiguration) -> Boolean = { _, _, _ -> true },
+    showReasoningEffort: Boolean = true,
+    onEditProvider: (providerId: String) -> Unit = {},
+    onOpenSelectedModel: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    onDismiss: () -> Unit
+) {
     var query by remember { mutableStateOf("") }
     var expandSearchResults by remember(query) { mutableStateOf(true) }
     val forceExpanded = query.isNotBlank() && expandSearchResults
@@ -422,14 +476,7 @@ fun ModelPickerSheet(
     }
     val allCollapsed = !forceExpanded && providers.all { it.id in collapsedProviderIds }
 
-    AppSheet(
-        onDismissRequest = onDismiss,
-        fixedHeightFraction = 0.9f
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
+    Column(modifier = modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -464,6 +511,17 @@ fun ModelPickerSheet(
                     shape = RoundedCornerShape(28.dp),
                     modifier = Modifier.weight(1f)
                 )
+                if (onOpenSelectedModel != null) {
+                    FilledTonalIconButton(
+                        onClick = onOpenSelectedModel,
+                        modifier = Modifier.size(48.dp).testTag("open-selected-model-button")
+                    ) {
+                        FluentIcon(
+                            Icons.Outlined.Tune,
+                            contentDescription = stringResource(R.string.open_selected_model)
+                        )
+                    }
+                }
             }
 
             if (folderTabs.size > 1) {
@@ -591,7 +649,6 @@ fun ModelPickerSheet(
                     }
                 }
             }
-        }
     }
 }
 

@@ -18,7 +18,9 @@ data class ConversationEntity(
     val providerId: String,
     val modelId: String,
     val profileId: String?,
-    val reasoningEffort: String?
+    val reasoningEffort: String?,
+    /** JSON array of the prompt ids switched on for this chat; null while it follows the library default. */
+    val selectedPromptIds: String? = null
 )
 
 @Entity(tableName = "chat_profiles")

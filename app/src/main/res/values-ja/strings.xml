@@ -110,7 +110,9 @@
     <string name="search_history">履歴を検索...</string>
     <string name="no_conversations_yet">会話はまだありません</string>
     <string name="connect_providers_description">複数のAIプロバイダーやエージェントにシームレスに接続できます。</string>
-    <string name="choose_another_model_hint">モデル名をタップして別のモデルを選択</string>
+    <string name="current_model">現在のモデル</string>
+    <string name="change_model">モデルを変更</string>
+    <string name="open_selected_model">選択中のモデルとオプション</string>
     <string name="screen_wakelock_description">応答の生成中は画面をオンのままにします。</string>
     <string name="context_window_compact_hint">円をタップしてコンテキストウィンドウを圧縮</string>
     <string name="mcp_enable">有効にする</string>

@@ -47,6 +47,9 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 
 internal val LocalBottomSheetMinContentHeight = compositionLocalOf { 0.dp }
 
+/** Tallest content the sheet can show (window cap minus drag handle and navigation inset). */
+internal val LocalBottomSheetMaxContentHeight = compositionLocalOf { 0.dp }
+
 /** Let downward motion at the list start reach Material; contain overscroll at the list end. */
 internal fun bottomSheetListScrollBoundary(): NestedScrollConnection = object : NestedScrollConnection {
     override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset =
@@ -125,6 +128,9 @@ fun AppSheet(
             } ?: requestedHeight?.let { bounds.heightFor(0, it) } ?: bounds.minimum
             val minContentHeight = with(density) {
                 (effectiveMinSheetHeight - dragHandlePx - bottomInsetPx).coerceAtLeast(0).toDp()
+            }
+            val maxContentHeight = with(density) {
+                (bounds.maximum - dragHandlePx - bottomInsetPx).coerceAtLeast(0).toDp()
             }
             var resizeDrag by remember { mutableStateOf<ResizeDrag?>(null) }
             Layout(content = {
@@ -212,7 +218,8 @@ fun AppSheet(
                     // Give the list and sheet a single, continuous scroll handoff.
                     CompositionLocalProvider(
                         LocalOverscrollFactory provides null,
-                        LocalBottomSheetMinContentHeight provides minContentHeight
+                        LocalBottomSheetMinContentHeight provides minContentHeight,
+                        LocalBottomSheetMaxContentHeight provides maxContentHeight
                     ) {
                         Column(Modifier.fillMaxWidth().nestedScroll(scrollBoundary), content = content)
                     }

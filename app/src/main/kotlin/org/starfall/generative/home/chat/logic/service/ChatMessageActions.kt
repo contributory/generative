@@ -144,7 +144,8 @@ internal class ChatMessageActions(
             updatedAt = now,
             providerId = baseProvider?.id.orEmpty(),
             modelId = modelId,
-            profileId = null
+            profileId = null,
+            selectedPromptIds = existing?.selectedPromptIds ?: prefs.promptLibraryFor(null).selectedIds
         )
         _currentConversation.value = conv
         viewModelScope.launch(LocalWriteErrors.handler) {
@@ -160,15 +161,15 @@ internal class ChatMessageActions(
         val context = effectiveContext(
             conv,
             conv.messages.dropLast(1),
-            prefs.effectiveSystemPrompt
-        ).let { it.copy(messages = prefs.promptRoleMessages() + it.messages) }
+            prefs.systemPromptFor(conv)
+        ).let { it.copy(messages = prefs.promptRoleMessagesFor(conv) + it.messages) }
         val started = generationFor(conv.id).startEvents(
             conv,
             assistant.id,
             toolEvents(provider, modelId, context.messages, context.systemPrompt, conv.id),
-            usageContextKey = contextUsageKey(conv, prefs.effectiveSystemPrompt,
+            usageContextKey = contextUsageKey(conv, prefs.systemPromptFor(conv),
                 baseProvider.config.modelConfigs[modelId] ?: ModelConfiguration(displayName = modelId),
-                prefs.promptRoleMessages(), toolSettings.value)
+                prefs.promptRoleMessagesFor(conv), toolSettings.value)
         )
         if (started && !conv.startedWithDirectMedia() && shouldGenerateConversationTitle(
                 userText,
@@ -389,8 +390,8 @@ internal class ChatMessageActions(
         val context = effectiveContext(
             conversation,
             contextMessages.dropLast(1),
-            preferences.effectiveSystemPrompt
-        ).let { it.copy(messages = preferences.promptRoleMessages() + it.messages + contextMessages.last()) }
+            preferences.systemPromptFor(conversation)
+        ).let { it.copy(messages = preferences.promptRoleMessagesFor(conversation) + it.messages + contextMessages.last()) }
         val configuredProvider = providerWithReasoning(provider, modelId, conversation)
         return generationFor(conversation.id).startEvents(
             conversation,
@@ -398,9 +399,9 @@ internal class ChatMessageActions(
             toolEvents(configuredProvider, modelId, context.messages, context.systemPrompt, conversation.id),
             rollbackConversation = rollbackConversation,
             resume = resume,
-            usageContextKey = contextUsageKey(conversation, preferences.effectiveSystemPrompt,
+            usageContextKey = contextUsageKey(conversation, preferences.systemPromptFor(conversation),
                 provider.config.modelConfigs[modelId] ?: ModelConfiguration(displayName = modelId),
-                preferences.promptRoleMessages(), toolSettings.value)
+                preferences.promptRoleMessagesFor(conversation), toolSettings.value)
         )
     }
 

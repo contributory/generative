@@ -110,7 +110,9 @@
     <string name="search_history">Buscar en el historial...</string>
     <string name="no_conversations_yet">Aún no hay conversaciones</string>
     <string name="connect_providers_description">Conéctate sin complicaciones a varios proveedores de IA y agentes.</string>
-    <string name="choose_another_model_hint">Toca el nombre del modelo para elegir otro modelo</string>
+    <string name="current_model">Modelo actual</string>
+    <string name="change_model">Cambiar modelo</string>
+    <string name="open_selected_model">Modelo seleccionado y opciones</string>
     <string name="screen_wakelock_description">Mantener la pantalla encendida mientras se genera una respuesta.</string>
     <string name="context_window_compact_hint">Toca el círculo para compactar la ventana de contexto</string>
     <string name="mcp_enable">Habilitar</string>

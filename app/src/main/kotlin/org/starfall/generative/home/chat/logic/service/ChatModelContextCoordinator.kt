@@ -74,9 +74,9 @@ internal class ChatModelContextCoordinator(
             } else {
                 calculateContextWindowStatus(
                     conversation,
-                    preferences.effectiveSystemPrompt,
+                    preferences.systemPromptFor(conversation),
                     config,
-                    preferences.promptRoleMessages(),
+                    preferences.promptRoleMessagesFor(conversation),
                     provider?.id.orEmpty(),
                     modelId,
                     currentToolSettings
@@ -104,9 +104,9 @@ internal class ChatModelContextCoordinator(
         }?.status ?: if (incoming != null) {
             calculateContextWindowStatus(
                 conversation,
-                preferences.effectiveSystemPrompt,
+                preferences.systemPromptFor(conversation),
                 model,
-                preferences.promptRoleMessages(),
+                preferences.promptRoleMessagesFor(conversation),
                 preferences.selectedProviderId,
                 preferences.selectedModelId,
                 toolSettings.value

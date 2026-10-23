@@ -26,6 +26,7 @@ fun QuickActionsSheet(
     onTakePhoto: () -> Unit,
     onCreateImage: () -> Unit,
     onCreateVideo: () -> Unit,
+    onOpenPromptInstructions: () -> Unit,
     onOpenFeatureTools: () -> Unit,
     onOpenMcpConnectors: () -> Unit,
     onOpenRemoteMachines: () -> Unit,
@@ -41,6 +42,7 @@ fun QuickActionsSheet(
             onTakePhoto = onTakePhoto,
             onCreateImage = onCreateImage,
             onCreateVideo = onCreateVideo,
+            onOpenPromptInstructions = onOpenPromptInstructions,
             onOpenFeatureTools = onOpenFeatureTools,
             onOpenMcpConnectors = onOpenMcpConnectors,
             onOpenRemoteMachines = onOpenRemoteMachines,
@@ -56,6 +58,7 @@ internal fun QuickActionsSheetContent(
     onTakePhoto: () -> Unit,
     onCreateImage: () -> Unit,
     onCreateVideo: () -> Unit,
+    onOpenPromptInstructions: () -> Unit,
     onOpenFeatureTools: () -> Unit,
     onOpenMcpConnectors: () -> Unit,
     onOpenRemoteMachines: () -> Unit,
@@ -116,6 +119,12 @@ internal fun QuickActionsSheetContent(
             onClick = { onCreateVideo(); onDismiss() }
         )
         AddActionRow(
+            icon = Icons.Outlined.DocumentSparkle,
+            title = stringResource(R.string.quick_action_prompt_instructions),
+            subtitle = stringResource(R.string.quick_action_prompt_instructions_description),
+            onClick = onOpenPromptInstructions
+        )
+        AddActionRow(
             icon = Icons.Outlined.Build,
             title = stringResource(R.string.quick_action_feature_tools),
             subtitle = stringResource(R.string.quick_action_feature_tools_description),
@@ -139,14 +148,15 @@ internal fun QuickActionsSheetContent(
 @Composable
 internal fun QuickActionsSubpageHeader(
     title: String,
-    onBack: (() -> Unit)?
+    onBack: (() -> Unit)?,
+    actions: @Composable RowScope.() -> Unit = {}
 ) {
-    if (onBack != null) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        if (onBack != null) {
             IconButton(
                 onClick = onBack,
                 modifier = Modifier.size(40.dp)
@@ -156,17 +166,13 @@ internal fun QuickActionsSubpageHeader(
                     contentDescription = stringResource(R.string.common_back)
                 )
             }
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.weight(1f)
-            )
         }
-    } else {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.weight(1f)
         )
+        actions()
     }
 }
 

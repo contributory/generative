@@ -93,5 +93,7 @@ data class Conversation(
     @SerialName("model_id") val modelId: String = "",
     @SerialName("profile_id") val profileId: String? = null,
     val summary: ConversationSummary? = null,
-    @SerialName("reasoning_effort") val reasoningEffort: String? = null
+    @SerialName("reasoning_effort") val reasoningEffort: String? = null,
+    /** Prompts switched on for this chat; null until chosen, then the library default applies. */
+    @SerialName("selected_prompt_ids") val selectedPromptIds: Set<String>? = null
 )

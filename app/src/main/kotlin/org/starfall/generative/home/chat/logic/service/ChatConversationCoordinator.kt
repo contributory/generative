@@ -215,6 +215,31 @@ internal class ChatConversationCoordinator(
         scope.launch(LocalWriteErrors.handler) { prefsRepo.setLastActiveConversationId(null) }
     }
 
+    /**
+     * Switches one prompt on or off for the open chat. Like the selected model, the choice stays with
+     * the chat and also becomes the default that new chats start from.
+     */
+    fun setPromptEnabled(promptId: String, enabled: Boolean) {
+        val current = currentConversation.value
+        val library = appPreferences.value.promptLibraryFor(current)
+        if (library.prompts.none { it.id == promptId }) return
+        val selected = if (enabled) library.selectedIds + promptId else library.selectedIds - promptId
+        val updated = current?.copy(selectedPromptIds = selected, updatedAt = System.currentTimeMillis())
+        // A chat that is generating keeps its live snapshot; edit that instead of the stale copy.
+        val generation = current?.let { chat -> existingGeneration(chat.id)?.takeIf { it.snapshot?.id == chat.id } }
+        if (updated != null) {
+            if (generation != null) {
+                generation.updateConversation { it.copy(selectedPromptIds = selected, updatedAt = updated.updatedAt) }
+            } else {
+                currentConversation.value = updated
+            }
+        }
+        scope.launch(LocalWriteErrors.handler) { prefsRepo.setPromptLibrary(library.copy(selectedIds = selected)) }
+        if (updated != null && generation == null && updated.messages.isNotEmpty()) {
+            writeConversation { conversationRepo.saveConversation(updated) }
+        }
+    }
+
     fun deleteConversation(id: String) = deleteConversations(setOf(id))
 
     /** Deletes history and only the uploaded files no remaining conversation or input still uses. */

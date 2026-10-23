@@ -393,8 +393,7 @@
     <string name="settings_chat_options_description">Configure conversation helpers, system prompts, and default chat models</string>
     <string name="chat_options_tab_helpers">Helpers</string>
     <string name="chat_options_tab_instructions">Instructions</string>
-    <string name="prompt_library_title">Prompts</string>
-    <string name="prompt_toggle_description">Turn prompts on or off here. Edit, add, and delete them in Chat Options &gt; Instructions.</string>
+    <string name="prompt_toggle_description">Tap to turn a prompt on or off for this chat. Hold to edit.</string>
     <string name="prompt_open_instructions">Open Chat Options &gt; Instructions</string>
     <string name="prompt_library_empty">No prompts yet. Add one from Instructions.</string>
     <string name="prompt_add">Add prompt</string>
@@ -700,6 +699,8 @@
     <string name="remote_machine_run_command" translatable="false">Run command</string>
     <string name="settings_version">Version %1$s (%2$d)</string>
     <string name="settings_universal_description">Universal AI Gateway for Android</string>
+    <string name="quick_action_prompt_instructions">Prompt &amp; Instructions</string>
+    <string name="quick_action_prompt_instructions_description">Choose which prompts apply to this chat</string>
     <string name="quick_action_feature_tools">Feature Tools</string>
     <string name="quick_action_feature_tools_description">Choose which built-in tools the model can use</string>
     <string name="quick_action_mcp_connectors">MCP Connectors</string>
@@ -845,7 +846,9 @@
     <string name="search_history">Search history...</string>
     <string name="no_conversations_yet">No conversations yet</string>
     <string name="connect_providers_description">Connect to multiple AI providers and agents seamlessly.</string>
-    <string name="choose_another_model_hint">Tap the model name to choose another model</string>
+    <string name="current_model">Current model</string>
+    <string name="change_model">Change model</string>
+    <string name="open_selected_model">Selected model and options</string>
     <string name="settings_source_code">Source code</string>
     <string name="settings_license">License</string>
     <string name="settings_license_name">Starfall Org Contributor Commercial Copyleft License v1.0</string>
