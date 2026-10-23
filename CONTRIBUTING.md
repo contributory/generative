@@ -24,7 +24,7 @@ Keep changes focused on the issue being addressed. Explain visible behavior chan
 - Do not modify `legacyApp/` merely to implement a feature in the current app. The active implementation is in `app/`; touch `legacyApp/` only when the task explicitly concerns that legacy variant or a change demonstrably needs to keep it compatible.
 - Do not reorganize unrelated code or rewrite whole files when a small, targeted change is sufficient.
 
-All contributions must comply with the repository [LICENSE](LICENSE). By submitting code for inclusion, you represent that you have the right to submit it and agree that an accepted, merged code contribution is licensed under the repository license. The contributor-only commercial-use permission described in the license applies only to qualifying code contributions; documentation-only, issue, review, sponsorship, and other non-code contributions do not qualify.
+All contributions must comply with the repository [LICENSE](LICENSE). By submitting code for inclusion, you represent that you have the right to submit it and agree that an accepted, merged code contribution is licensed under the repository license. Under license v1.1, commercial-use permission is limited to an **Active Contributor**: at least one qualifying code contribution must have been accepted and merged in the previous 12 months. The 12-month period resets with each new qualifying code contribution; documentation-only, issue, review, sponsorship, discussion, and other non-code activity does not renew it. When the period expires, commercial use must stop unless a separate written commercial license permits it. See [LICENSE](LICENSE) for the complete terms.
 
 ## Development environment
 

@@ -17,7 +17,7 @@
 <p align="center">
   <img alt="Android" src="https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=white">
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=white">
-  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-Starfall%20Org%20Copyleft%20v1.0-blue"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-Starfall%20Org%20Copyleft%20v1.1-blue"></a>
 </p>
 
 <p align="center">
@@ -90,4 +90,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development and testing guidance.
 
 ## License
 
-Generative uses the [Starfall Org Contributor Commercial Copyleft License v1.0](LICENSE). The app must remain non-commercial except where the license explicitly allows otherwise. Publishing or distributing it through an app store requires prior written permission from Starfall Org. Read the license for the complete terms.
+Generative uses the [Starfall Org Contributor Commercial Copyleft License v1.1](LICENSE). The app must remain non-commercial except where the license explicitly allows otherwise. Publishing or distributing it through an app store requires prior written permission from Starfall Org. Read the license for the complete terms.
+
+## AI Tools and Models
+
+This project was developed with the assistance of various AI tools and models.

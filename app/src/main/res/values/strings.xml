@@ -867,7 +867,7 @@
     <string name="open_selected_model">Selected model and options</string>
     <string name="settings_source_code">Source code</string>
     <string name="settings_license">License</string>
-    <string name="settings_license_name">Starfall Org Contributor Commercial Copyleft License v1.0</string>
+    <string name="settings_license_name">Starfall Org Contributor Commercial Copyleft License v1.1</string>
     <string name="settings_file_size_mb">%.1f MB</string>
     <string name="settings_update_error">Unable to check GitHub releases</string>
     <string name="screen_wakelock_title">Wakelock screen during generation</string>

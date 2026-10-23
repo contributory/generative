@@ -1,4 +1,4 @@
-Starfall Org Contributor Commercial Copyleft License v1.0
+Starfall Org Contributor Commercial Copyleft License v1.1
 
 Copyright (c) 2026 Starfall Org. All rights reserved.
 
@@ -8,6 +8,10 @@ This is a source-available, copyleft-style license with a contributor-only
 commercial-use permission. It is NOT the GNU General Public License (GPL), is
 NOT approved by the Open Source Initiative, and is NOT a Free Software license.
 The commercial-use restriction is intentionally different from GNU GPLv3.
+This v1.1 version applies only to copies distributed under v1.1 to the extent
+the relevant rights holder is authorized to license them under these terms.
+It does not retroactively withdraw permissions already granted for copies
+received under v1.0 or another earlier license version.
 
 1. Definitions
 
@@ -43,7 +47,21 @@ Qualifying Code Contribution is attributable to that person or entity.
 
 An individual's contribution does not automatically make that individual's
 employer, client, or affiliated organization a Contributor unless paragraph
-(b) applies. Contributor status is not transferable or sublicensable.
+(b) applies. Contributor status is not transferable or sublicensable. Being a
+Contributor records that a qualifying contribution was made; it does not, by
+itself, grant permanent commercial-use permission.
+
+"Active Contributor" means a Contributor whose most recent Qualifying Code
+Contribution was accepted and merged into the Official Repository within the
+12 months immediately preceding the Commercial Use in question. This status is
+assessed continuously for each person or entity. Each new Qualifying Code
+Contribution starts a new 12-month period. Documentation, translations, issue
+reports, discussions, reviews, sponsorship, and other non-code activity do not
+renew this period. No notice is required for Active Contributor status to
+expire when the 12-month period ends. A former or inactive Contributor may
+become an Active Contributor again by making a new Qualifying Code Contribution
+that is accepted and merged, but commercial permission resumes only from that
+point forward.
 
 "Commercial Use" means use of the Software primarily intended for or directed
 toward commercial advantage, business operations, or monetary compensation,
@@ -65,38 +83,53 @@ Subject to this License, any person or entity may, for Non-Commercial purposes:
 (c) redistribute the Software or modified versions of it, in source or object
     form, provided all requirements in Sections 4 through 7 are satisfied.
 
-No Commercial Use is permitted under this Section. Anyone who is not a
-Contributor and wants Commercial Use must first obtain a commercial license
-under Section 3A.
+No Commercial Use is permitted under this Section. Anyone who is not an
+Active Contributor and wants Commercial Use must first obtain a commercial
+license under Section 3A.
 
-3. Contributor Commercial Permission
+3. Active Contributor Commercial Permission
 
-A Contributor may use, run, modify, reproduce, and redistribute the Software
-for Commercial Use, subject to all other terms of this License.
+Only an Active Contributor may use, run, modify, reproduce, or redistribute
+the Software for Commercial Use, subject to all other terms of this License.
+Making a single Qualifying Code Contribution does not grant perpetual
+commercial-use permission.
 
-The Contributor commercial permission:
+The commercial permission:
 
-(a) begins when the Qualifying Code Contribution is merged into the Official
-    Repository;
-(b) applies to the Contributor identified in Section 1, not automatically to
-    employers, clients, parents, subsidiaries, affiliates, customers, or other
-    third parties;
+(a) is available only while the person or entity qualifies as an Active
+    Contributor under Section 1;
+(b) applies only to that Active Contributor, not automatically to employers,
+    clients, parents, subsidiaries, affiliates, customers, or other third
+    parties;
 (c) does not transfer to a recipient merely because the recipient obtains the
-    Software from a Contributor; and
-(d) does not remove the copyleft, source-availability, notice, or attribution
+    Software from an Active Contributor;
+(d) expires automatically when the Active Contributor's 12-month period ends.
+    From that point, the former Active Contributor must stop all Commercial Use
+    of the Software, including internal business use and commercial network
+    services, unless a separate written commercial license permits that use;
+(e) may resume prospectively when that person or entity again becomes an Active
+    Contributor through a new Qualifying Code Contribution; and
+(f) does not remove the copyleft, source-availability, notice, or attribution
     obligations in this License.
+
+The time limit in this Section applies to ongoing and future Commercial Use,
+including use of copies obtained while the person or entity was an Active
+Contributor. Expiration of Active Contributor status does not, by itself,
+revoke permissions previously granted to independent recipients as provided
+in Section 13; it does not give those recipients commercial rights they were
+not otherwise granted under this License.
 
 Starfall Org, as licensor, may use the Software commercially and may grant
 separate permissions to the extent it owns or controls the relevant rights.
 
-3A. Commercial Use by Non-Contributors
+3A. Commercial Use by Non-Active Contributors
 
-A person or entity that is not a Contributor may not engage in Commercial Use
-of the Software unless they first contact Starfall Org (the author and
-licensor) to request or purchase commercial-use rights, and Starfall Org grants
-those rights in a written commercial license or agreement. Starfall Org may
-grant or refuse that permission at its discretion and may set a fee and other
-terms.
+A person or entity that is not an Active Contributor may not engage in
+Commercial Use of the Software unless they first contact Starfall Org (the
+author and licensor) to request or purchase commercial-use rights and Starfall
+Org grants those rights in a written commercial license or agreement. Starfall
+Org may grant or refuse that permission at its discretion and may set a fee
+and other terms.
 
 To request or purchase commercial-use rights, contact the maintainers through
 the Official Repository (for example, by opening an issue or using the contact
@@ -147,14 +180,15 @@ The Corresponding Source must be provided under this same License.
 
 7. No Removal of Recipient Conditions
 
-Redistribution does not grant a recipient Contributor status. A recipient who
-is not independently a Contributor may exercise only the non-commercial rights
-in Section 2, even when the Software was distributed by a Contributor in a
-commercial transaction.
+Redistribution does not grant a recipient Contributor or Active Contributor
+status. A recipient who is not independently an Active Contributor may exercise
+only the non-commercial rights in Section 2, even when the Software was
+distributed by an Active Contributor in a commercial transaction.
 
-You may charge for copies, hosting, support, or services only if you are a
-Contributor or hold a commercial license granted under Section 3A (or other
-separate written commercial permission from the relevant copyright holders).
+You may charge for copies, hosting, support, or services only if you are an
+Active Contributor or hold a commercial license granted under Section 3A (or
+other separate written commercial permission from the relevant copyright
+holders).
 Charging a recipient does not itself grant that recipient Commercial Use
 rights.
 
@@ -164,8 +198,8 @@ Running a modified or unmodified copy of the Software to provide a network
 service, without distributing a copy of the Software, does not by itself
 trigger the source-distribution requirements in Sections 4 through 6.
 
-However, operating such a service for Commercial Use still requires Contributor
-status or a commercial license granted under Section 3A.
+However, operating such a service for Commercial Use still requires Active
+Contributor status or a commercial license granted under Section 3A.
 
 9. Contributions
 
