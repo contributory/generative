@@ -7,8 +7,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.InterceptPlatformTextInput
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import kotlinx.coroutines.awaitCancellation
 import org.junit.Assert.assertNotEquals
@@ -17,9 +20,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.starfall.generative.features.chatoptions.ui.ChatOptionsScreen
 import org.starfall.generative.features.chatoptions.ui.HelperSettingsSheet
 import org.starfall.generative.features.chatoptions.ui.PromptEditor
 import org.starfall.generative.shared.model.SystemToolConfig
+import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.theme.GenerativeTheme
 
@@ -97,5 +102,36 @@ class ChatOptionsCapitalizationTest {
             0,
             lastInputType and InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
         )
+    }
+
+    @Test
+    fun instructionsTab_placesAddPromptIconButtonInTopAppBar() {
+        var activeTab by mutableStateOf("helpers")
+
+        compose.setContent {
+            GenerativeTheme(darkTheme = false, amoledMode = false) {
+                ChatOptionsScreen(
+                    providers = emptyList(),
+                    settings = ToolSettings(),
+                    initialTab = activeTab,
+                    onSave = { _, _ -> },
+                    onBack = {}
+                )
+            }
+        }
+
+        // Helpers tab does not show the Add prompt action in the TopAppBar.
+        compose.onNodeWithContentDescription("Add prompt").assertDoesNotExist()
+
+        // Instructions tab exposes Add prompt as a TopAppBar IconButton (not a body text Button)
+        // and opens PromptEditor when clicked.
+        activeTab = "instructions"
+        compose.waitForIdle()
+        compose.onNodeWithText("Add prompt").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Add prompt")
+            .assertIsDisplayed()
+            .performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("prompt_name_input").assertIsDisplayed()
     }
 }

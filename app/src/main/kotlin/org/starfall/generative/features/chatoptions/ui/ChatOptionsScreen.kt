@@ -177,6 +177,13 @@ fun ChatOptionsScreen(
                             IconButton(onClick = onBack) {
                                 FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                             }
+                        },
+                        actions = {
+                            if (pager.currentPage == 1) {
+                                IconButton(onClick = { creatingPrompt = true }) {
+                                    FluentIcon(Icons.Default.Add, stringResource(R.string.prompt_add))
+                                }
+                            }
                         }
                     )
                 }
@@ -256,11 +263,10 @@ fun ChatOptionsScreen(
                                 }
                             }
                             else -> InstructionsTab(
-                                 library = library,
-                                 onAddPrompt = { creatingPrompt = true },
-                                 onEditPrompt = { editingPromptId = it.id },
-                                 onPreviewPrompt = { previewingPromptId = it.id },
-                                 onDeletePrompt = { prompt ->
+                                library = library,
+                                onEditPrompt = { editingPromptId = it.id },
+                                onPreviewPrompt = { previewingPromptId = it.id },
+                                onDeletePrompt = { prompt ->
                                     updateLibrary(
                                         library.copy(
                                             prompts = library.prompts.filterNot { it.id == prompt.id },

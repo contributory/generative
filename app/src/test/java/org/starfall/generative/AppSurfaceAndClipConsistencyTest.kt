@@ -184,7 +184,6 @@ class AppSurfaceAndClipConsistencyTest {
                     }
                     1 -> InstructionsTab(
                         library = PromptLibrary(prompts = prompts),
-                        onAddPrompt = {},
                         onEditPrompt = {},
                         onPreviewPrompt = { previewedPromptId = it.id },
                         onDeletePrompt = {}

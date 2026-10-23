@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -26,8 +25,6 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.PromptLibrary
 import org.starfall.generative.shared.model.SavedPrompt
-import org.starfall.generative.shared.ui.icons.FluentIcon
-import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.groupedItemShape
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -36,7 +33,6 @@ import org.starfall.generative.shared.ui.menus.ItemContextMenu
 @Composable
 internal fun InstructionsTab(
     library: PromptLibrary,
-    onAddPrompt: () -> Unit,
     onEditPrompt: (SavedPrompt) -> Unit,
     onPreviewPrompt: (SavedPrompt) -> Unit,
     onDeletePrompt: (SavedPrompt) -> Unit
@@ -48,12 +44,6 @@ internal fun InstructionsTab(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            Button(onClick = onAddPrompt, modifier = Modifier.fillMaxWidth()) {
-                FluentIcon(Icons.Outlined.Add, contentDescription = null)
-                Text(stringResource(R.string.prompt_add), modifier = Modifier.padding(start = 8.dp))
-            }
-        }
         if (library.prompts.isEmpty()) {
             item {
                 Text(
