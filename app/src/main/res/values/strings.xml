@@ -414,7 +414,6 @@
     <string name="prompt_preview_empty">This prompt is empty.</string>
     <string name="prompt_role_accessibility">Choose prompt role. Current role: %1$s</string>
     <string name="prompt_edit_accessibility">Edit %1$s</string>
-    <string name="prompt_delete_accessibility">Delete %1$s</string>
     <string name="prompt_delete_title">Delete Prompt?</string>
     <string name="prompt_delete_confirmation">Delete “%1$s”? This cannot be undone.</string>
     <string name="settings_tools_editor">Feature Tools</string>

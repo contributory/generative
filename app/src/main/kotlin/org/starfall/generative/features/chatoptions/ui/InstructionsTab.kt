@@ -9,12 +9,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,6 +32,7 @@ import org.starfall.generative.shared.model.PromptLibrary
 import org.starfall.generative.shared.model.SavedPrompt
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.menus.ItemContextMenu
 
 @Composable
 internal fun InstructionsTab(
@@ -102,19 +101,11 @@ internal fun InstructionsTab(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
-                                    IconButton(onClick = { onEditPrompt(prompt) }, modifier = Modifier.size(40.dp)) {
-                                        FluentIcon(
-                                            Icons.Outlined.Edit,
-                                            stringResource(R.string.prompt_edit_accessibility, prompt.name)
-                                        )
-                                    }
-                                    IconButton(onClick = { promptPendingDelete = prompt }, modifier = Modifier.size(40.dp)) {
-                                        FluentIcon(
-                                            Icons.Outlined.Delete,
-                                            stringResource(R.string.prompt_delete_accessibility, prompt.name),
-                                            tint = MaterialTheme.colorScheme.error
-                                        )
-                                    }
+                                    ItemContextMenu(
+                                        onEdit = { onEditPrompt(prompt) },
+                                        onDelete = { promptPendingDelete = prompt },
+                                        deleteColor = MaterialTheme.colorScheme.error
+                                    )
                                 }
                             }
                         }
