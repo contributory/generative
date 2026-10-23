@@ -84,7 +84,7 @@ if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
   echo "Release $tag already exists; tag moved to $short_commit and matching artifacts will be replaced."
 else
   gh release create "$tag" --repo "$repo" \
-    --title "$tag" --generate-notes --prerelease --latest=false
+    --title "v$tag" --generate-notes --prerelease --latest=false
 fi
 
 # Prefix GitHub's generated changelog with release metadata that makes the
@@ -204,7 +204,7 @@ trap 'rm -f "$notes_file"' EXIT
   printf '\n### What changed\n\n%s\n' "$ai_notes"
 } > "$notes_file"
 
-gh release edit "$tag" --repo "$repo" --title "$tag" --notes-file "$notes_file"
+gh release edit "$tag" --repo "$repo" --title "v$tag" --notes-file "$notes_file"
 
 gh release upload "$tag" "${apks[@]}" "${checksums[@]}" --repo "$repo" --clobber
 gh release edit "$tag" --repo "$repo" --draft=false --prerelease --latest=false
