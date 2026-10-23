@@ -8,20 +8,43 @@ repo="${GITHUB_RELEASE_REPO:-starfall-org/generative}"
 cd "${CM_BUILD_DIR:-${AC_REPOSITORY_DIR:-$(git rev-parse --show-toplevel)}}"
 command -v gh >/dev/null || { echo 'GitHub CLI (gh) is required.' >&2; exit 1; }
 
-# Build exactly one signed APK for the unstable channel; non-main branches keep their branch-based version.
+# Build one signed APK; main uses the unstable suffix, while other branches keep their full branch suffix.
 "$PWD/scripts/build-unstable-apk.sh"
 
-# Keep the GitHub prerelease tag in sync with the version embedded in the APK.
+# Keep the GitHub prerelease tag in sync with both the APK version and branch.
 metadata_json="${RELEASE_METADATA_JSON:-app/build/outputs/apk/release/output-metadata.json}"
 version="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["elements"][0]["versionName"])' "$metadata_json")"
-[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-/].+)?$ ]] || { echo "Invalid pre-release app version: $version (expected <major>.<minor>.<patch>[-<branch-name>])." >&2; exit 1; }
-if [[ "$version" == *-unstable ]]; then
-  expected_tag="v$version"
-else
-  expected_tag="$version"
+
+# Match Gradle's branch detection, including detached CI checkouts, and prefer main
+# when several remote branches point at the same commit.
+branch="$(git branch --show-current 2>/dev/null || true)"
+if [[ -z "$branch" ]]; then
+  remote_branches="$(git for-each-ref --points-at HEAD --format='%(refname:strip=3)' refs/remotes/origin | grep -vx 'HEAD' || true)"
+  if grep -qx 'main' <<<"$remote_branches"; then
+    branch=main
+  else
+    branch="$(head -n 1 <<<"$remote_branches")"
+  fi
 fi
+
+if [[ ! "$version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(.*)$ ]]; then
+  echo "Invalid pre-release app version: $version (expected <major>.<minor>.<patch>[-<branch-name>])." >&2
+  exit 1
+fi
+base_version="${BASH_REMATCH[1]}"
+if [[ -z "$branch" || "$branch" == main || "$branch" == HEAD ]]; then
+  expected_version="$base_version-unstable"
+else
+  expected_version="$base_version-$branch"
+fi
+# Current Generative tags use the versionName verbatim, without a leading "v".
+expected_tag="$expected_version"
+[[ "$version" == "$expected_version" ]] || {
+  echo "App version $version does not match branch ${branch:-<unknown>} (expected $expected_version)." >&2
+  exit 1
+}
 tag="${GITHUB_RELEASE_TAG:-$expected_tag}"
-[[ "$tag" == "$expected_tag" ]] || { echo "Configured GitHub prerelease tag $tag does not match app version $expected_tag." >&2; exit 1; }
+[[ "$tag" == "$expected_tag" ]] || { echo "Configured GitHub prerelease tag $tag does not match expected tag $expected_tag." >&2; exit 1; }
 if [[ -n "${CM_TAG:-}" && "$CM_TAG" != "$tag" ]]; then
   echo "Build tag $CM_TAG does not match configured prerelease tag $tag." >&2
   exit 1
