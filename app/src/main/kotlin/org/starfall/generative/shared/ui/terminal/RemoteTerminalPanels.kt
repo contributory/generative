@@ -24,11 +24,18 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -316,29 +323,37 @@ private fun TerminalToolbarButton(
 
 @Composable
 internal fun BoxScope.LocalInputEditor(bridge: RemoteTerminalBridge) {
+    // Same box as the LOCAL draft overlay; the only difference is that the text is typeable.
     Surface(
         Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(8.dp),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
+        val draftScroll = rememberScrollState()
+        val textStyle = LocalTextStyle.current.copy(
+            fontFamily = FontFamily.Monospace,
+            color = MaterialTheme.colorScheme.onSurface
+        )
         Row(
-            Modifier.padding(8.dp),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Modifier
+                .heightIn(max = 140.dp)
+                .verticalScroll(draftScroll)
+                .padding(horizontal = 10.dp, vertical = 8.dp)
         ) {
-            OutlinedTextField(
+            Text(
+                stringResource(R.string.remote_machine_terminal_local_input_label) + ": ",
+                style = textStyle,
+                color = MaterialTheme.colorScheme.primary
+            )
+            BasicTextField(
                 value = bridge.localInput,
                 onValueChange = bridge::replaceLocalInput,
                 modifier = Modifier.weight(1f),
-                label = { Text(stringResource(R.string.remote_machine_terminal_local_input_label)) },
-                minLines = 1,
-                maxLines = 8,
-                singleLine = false,
-                keyboardOptions = KeyboardOptions.Default
+                textStyle = textStyle,
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(onSend = { bridge.submitEditorInput() })
             )
-            Button(onClick = bridge::submitEditorInput) {
-                Text(stringResource(R.string.remote_machine_terminal_send_input))
-            }
         }
     }
 }
