@@ -11,9 +11,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -52,6 +50,10 @@ import org.starfall.generative.shared.ui.layout.windowHeight
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 import org.starfall.generative.shared.code.codeLanguage
 import org.starfall.generative.shared.ui.media.MediaViewer
+import org.starfall.generative.shared.ui.layout.nestedContainerBorder
+import org.starfall.generative.shared.ui.layout.nestedContainerColor
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 private fun File.mime() = mediaMimeType(name)
 
@@ -136,7 +138,8 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
             item(key = "storage-summary") {
                 Surface(
                     shape = MaterialTheme.shapes.large,
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    color = prominentContainerColor(),
+                    border = prominentContainerBorder(),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(Modifier.padding(16.dp)) {
@@ -219,16 +222,18 @@ private fun StorageFileRow(store: ToolFiles, file: File, selected: Boolean, onSe
         thumbnail = mediaThumbnail(context, file.path, mime, 112)
     }
     Surface(
-        modifier = Modifier.fillMaxWidth().height(88.dp).clickable { viewing = true },
+        onClick = { viewing = true },
+        modifier = Modifier.fillMaxWidth().height(88.dp),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        color = prominentContainerColor(),
+        border = prominentContainerBorder()
     ) {
         Row(Modifier.fillMaxSize().padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(
                 modifier = Modifier.size(56.dp),
                 shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHighest
+                color = nestedContainerColor(),
+                border = nestedContainerBorder()
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     thumbnail?.let {

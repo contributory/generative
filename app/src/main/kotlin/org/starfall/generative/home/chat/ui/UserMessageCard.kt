@@ -9,7 +9,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -25,11 +24,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.model.StoredMessage
-import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import org.starfall.generative.home.chat.ui.markdown.MarkdownRenderer
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -59,10 +59,8 @@ fun UserMessageCard(
         ) {
             Surface(
                 shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                border = if (LocalAmoledMode.current) {
-                    BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f))
-                } else null,
+                color = prominentContainerColor(),
+                border = prominentContainerBorder(),
                 modifier = Modifier
                     .clip(RoundedCornerShape(24.dp))
                     .combinedClickable(

@@ -22,6 +22,8 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.layout.nestedContainerBorder
+import org.starfall.generative.shared.ui.layout.nestedContainerColor
 
 @Composable
 fun DefaultModelSelector(
@@ -35,7 +37,8 @@ fun DefaultModelSelector(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow
+        color = nestedContainerColor(),
+        border = nestedContainerBorder()
     ) {
         Row(
             Modifier.padding(14.dp),

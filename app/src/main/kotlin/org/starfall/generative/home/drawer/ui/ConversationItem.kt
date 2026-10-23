@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
@@ -66,16 +67,31 @@ internal fun ConversationItem(
     val itemShape = RoundedCornerShape(12.dp)
     Surface(shape = itemShape,
         color = if (!outlineActive && (checked || active)) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent,
-        border = if (outlineActive) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)) else null,
-        modifier = modifier.fillMaxWidth()
+        border = if (outlineActive) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)) else null,
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(itemShape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)) {
         Row(Modifier.padding(start = 10.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (selecting) Checkbox(checked, onCheckedChange = { onClick() }, modifier = Modifier.size(36.dp))
             else if (modelIcon != null) EntityIcon(
                 modelIcon.image, Modifier.size(36.dp).clip(CircleShape).combinedClickable(onClick = onLongClick, onLongClick = onLongClick),
                 text = modelInitial(modelIcon.name), matchName = modelIcon.name, fallbackMatchName = modelIcon.id, model = true,
-                backgroundColor = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
-            ) else Box(Modifier.size(36.dp).clip(CircleShape).background(if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest).combinedClickable(onClick = onLongClick, onLongClick = onLongClick), contentAlignment = Alignment.Center) {
+                backgroundColor = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                shape = CircleShape
+            ) else Box(
+                Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .then(
+                        if (!active && LocalAmoledMode.current) {
+                            Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                        } else Modifier
+                    )
+                    .combinedClickable(onClick = onLongClick, onLongClick = onLongClick),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(chat.title.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "#", color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
             }
             Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {

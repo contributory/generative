@@ -1,7 +1,5 @@
 package org.starfall.generative.features.settings.ui
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -13,6 +11,8 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.SettingsCard
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @Composable
 fun SettingsSection(
@@ -34,10 +34,11 @@ fun SettingsSection(
 @Composable
 internal fun SettingsNavigationItem(title: String, subtitle: String, icon: Int, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        color = prominentContainerColor(),
+        border = prominentContainerBorder()
     ) {
         Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)) {

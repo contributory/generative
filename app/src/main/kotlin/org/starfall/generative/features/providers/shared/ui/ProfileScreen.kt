@@ -3,7 +3,6 @@ package org.starfall.generative.features.providers.shared.ui
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -48,6 +47,8 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.ItemContextMenu
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.generative.shared.ui.lists.moved
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 private data class ProfileEditor(val profile: ChatProfile?)
 
@@ -218,17 +219,19 @@ fun ProfileUnifiedCard(
     }
 
     Surface(
+        onClick = onSelect,
         shape = RoundedCornerShape(shapeCorner),
-        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-        else MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(
-            if (isSelected) 2.dp else 1.5.dp,
-            if (isSelected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.outlineVariant
-        ),
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onSelect)
+        color = if (isSelected) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        } else {
+            prominentContainerColor()
+        },
+        border = if (isSelected) {
+            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        } else {
+            prominentContainerBorder(1.5.dp)
+        },
+        modifier = modifier.fillMaxWidth()
     ) {
         AdaptiveCardLayout(
             isGrid = isGrid,

@@ -31,6 +31,8 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.home.chat.ui.tool.ToolActivityCards
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.shared.ui.text.toComposeFontFamily
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @Composable
 fun ReasoningDropdown(
@@ -43,7 +45,8 @@ fun ReasoningDropdown(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp)),
-        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+        color = prominentContainerColor(),
+        border = prominentContainerBorder(),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -146,8 +149,9 @@ internal fun ProcessingDropdown(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
                 .clickable(role = Role.Button) { expanded = !expanded }
-                .padding(vertical = 8.dp),
+                .padding(horizontal = 4.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -279,6 +283,7 @@ private fun CollapsibleThinkingText(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize()
+            .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onToggle)
     )
 }

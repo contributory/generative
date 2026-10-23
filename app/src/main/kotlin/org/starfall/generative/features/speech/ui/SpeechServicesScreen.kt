@@ -6,7 +6,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -40,6 +39,8 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.ItemContextMenu
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.ui.icons.providerInitials
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 private data class SpeechEditor(val service: SpeechService, val isNew: Boolean)
 
@@ -225,20 +226,19 @@ private fun SpeechServiceUnifiedCard(
     )
 
     Surface(
+        onClick = onSelect,
         shape = RoundedCornerShape(shapeCorner),
         color = if (selected) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
         } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
+            prominentContainerColor()
         },
-        border = BorderStroke(
-            if (selected) 2.dp else 1.5.dp,
-            if (selected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.outlineVariant
-        ),
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onSelect)
+        border = if (selected) {
+            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        } else {
+            prominentContainerBorder(1.5.dp)
+        },
+        modifier = modifier.fillMaxWidth()
     ) {
         AdaptiveCardLayout(
             isGrid = isGrid,

@@ -1,6 +1,5 @@
 package org.starfall.generative.home.shared.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -9,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -18,7 +18,8 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.theme.LocalAmoledMode
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -198,19 +199,12 @@ private fun AddActionTile(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val amoledMode = LocalAmoledMode.current
     Surface(
-        modifier = modifier
-            .aspectRatio(1f)
-            .clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = modifier.aspectRatio(1f),
         shape = RoundedCornerShape(24.dp),
-        color = if (amoledMode) MaterialTheme.colorScheme.surfaceContainerLow
-            else MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = if (amoledMode) {
-            BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant)
-        } else {
-            null
-        }
+        color = prominentContainerColor(),
+        border = prominentContainerBorder(1.5.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -243,6 +237,7 @@ private fun AddActionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically

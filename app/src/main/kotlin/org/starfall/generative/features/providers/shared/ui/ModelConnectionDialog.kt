@@ -25,6 +25,8 @@ import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.windowHeightIn
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @Composable
 internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnectionTests, available: Boolean,
@@ -70,7 +72,12 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
                     val removed = id in removals.pending
                     val result = tests.results[id]
                     val config = provider.config.modelConfigs[id] ?: ModelConfiguration()
-                    Surface(shape = RoundedCornerShape(12.dp), tonalElevation = 1.dp, modifier = Modifier.fillMaxWidth()) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = prominentContainerColor(),
+                        border = prominentContainerBorder(),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Column(Modifier.padding(14.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {

@@ -90,6 +90,8 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.sheets.AppSheet
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @Composable
 internal fun RemoteTerminalSheet(
@@ -367,7 +369,8 @@ private fun RemoteTerminalContent(
                                 Surface(
                                     Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(8.dp),
                                     shape = RoundedCornerShape(12.dp),
-                                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                    color = prominentContainerColor(),
+                                    border = prominentContainerBorder()
                                 ) {
                                     val label = stringResource(R.string.remote_machine_terminal_local_input_label) + ": "
                                     val draftScroll = rememberScrollState()
@@ -392,7 +395,8 @@ private fun RemoteTerminalContent(
                             Surface(
                                 Modifier.align(Alignment.Center),
                                 shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                color = prominentContainerColor(),
+                                border = prominentContainerBorder()
                             ) {
                                 Row(
                                     Modifier.padding(horizontal = 16.dp, vertical = 12.dp),

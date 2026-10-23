@@ -5,7 +5,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -37,6 +36,10 @@ import org.starfall.generative.shared.icons.model.StoredIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.layout.SettingsCard
+import org.starfall.generative.shared.ui.layout.nestedContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.menus.ItemContextMenu
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -206,8 +209,8 @@ fun IconsScreen(onBack: () -> Unit) {
                 items(visible, key = { it.image }) { entry ->
                     Surface(
                         shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow
+                        color = prominentContainerColor(),
+                        border = prominentContainerBorder()
                     ) {
                         Row(
                             Modifier.fillMaxWidth().padding(18.dp),
@@ -330,12 +333,17 @@ private fun StoredIconPreview(
     image: String?,
     modifier: Modifier = Modifier,
     useDarkVariant: Boolean? = null,
-    backgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest
+    backgroundColor: Color? = null
 ) {
     val context = LocalContext.current
     val dark = useDarkVariant ?: (MaterialTheme.colorScheme.background.luminance() < 0.5f)
     val data = remember(image, dark, context) { IconStore(context).imageData(image, dark) }
-    Surface(modifier, shape = RoundedCornerShape(12.dp), color = backgroundColor) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = backgroundColor ?: MaterialTheme.colorScheme.surfaceContainerHighest,
+        border = if (backgroundColor == null) nestedContainerBorder() else null
+    ) {
         if (data != null && (data !is File || data.exists())) {
             AsyncImage(model = data, contentDescription = null, modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Fit)
@@ -345,17 +353,5 @@ private fun StoredIconPreview(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-    }
-}
-
-@Composable
-private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-    ) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
 }

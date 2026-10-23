@@ -4,6 +4,7 @@ import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -71,6 +72,9 @@ import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
+import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.generative.shared.ui.icons.providerInitials
 import org.starfall.generative.shared.ui.model.revealThinkingColor
@@ -107,17 +111,22 @@ internal fun ModelPickerCard(
         tween(if (tier == 6) 1800 else 2600, easing = FastOutSlowInEasing),
         label = "thinkingCardTint"
     )
+    val cardShape = RoundedCornerShape(16.dp)
+    val embeddedShape = RoundedCornerShape(12.dp)
+    val amoled = LocalAmoledMode.current
     val cardBase = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
-        else MaterialTheme.colorScheme.surfaceContainerLow
+        else prominentContainerColor()
     val settledCardColor = cardBase
     val cardBrush = if (tier == 6) maximumEffortCardBrush()
-        else maximumThinkingCardBrush(MaterialTheme.colorScheme.surfaceContainerLow)
+        else maximumThinkingCardBrush(cardBase)
     val cardBurst = rememberThinkingColorBurst()
     val screenBurst = LocalThinkingScreenBurst.current
     var cardOrigin by remember { mutableStateOf(Offset.Zero) }
     val cardContentColor = if (!embedded && enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
     val cardGesture = Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
-    val cardModifier = Modifier.fillMaxWidth().then(if (embedded) Modifier else cardGesture)
+    val cardModifier = Modifier.fillMaxWidth().then(
+        if (embedded) Modifier else Modifier.clip(cardShape).then(cardGesture)
+    )
     val cardContentModifier = Modifier
         .fillMaxWidth()
         .onGloballyPositioned { cardOrigin = it.localToScreen(Offset.Zero) }
@@ -134,8 +143,13 @@ internal fun ModelPickerCard(
             Row(
                 modifier = Modifier.fillMaxWidth().then(if (embedded) {
                     Modifier
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(embeddedShape)
                         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
+                        .then(
+                            if (amoled && !(enhancedThinking && tier >= 5)) {
+                                Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, embeddedShape)
+                            } else Modifier
+                        )
                         .then(cardGesture)
                         .padding(10.dp)
                 } else Modifier),
@@ -306,12 +320,14 @@ internal fun ModelPickerCard(
         } else {
             Surface(
                 modifier = cardModifier,
-                shape = RoundedCornerShape(16.dp),
+                shape = cardShape,
                 color = cardBase,
                 contentColor = cardContentColor,
                 border = if (isSelected) {
                     BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f))
-                } else null
+                } else {
+                    prominentContainerBorder()
+                }
             ) {
                 Column(modifier = cardContentModifier, content = cardContent)
             }

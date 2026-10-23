@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,6 +38,8 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.FeaturesLogoImage
 import org.starfall.generative.home.chat.model.ContextWindowStatus
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @Composable
 fun ChatAppBar(
@@ -75,16 +78,17 @@ fun ChatAppBar(
             .padding(top = statusBarHeight)
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
+        val buttonColor = prominentContainerColor().copy(alpha = 0.94f)
+        val buttonBorder = prominentContainerBorder()
         Surface(
+            onClick = onOpenDrawer,
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .size(48.dp)
-                .clip(CircleShape)
-                .clickable(onClick = onOpenDrawer),
+                .size(48.dp),
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-            shadowElevation = 4.dp,
-            tonalElevation = 2.dp
+            color = buttonColor,
+            border = buttonBorder,
+            shadowElevation = if (buttonBorder == null) 4.dp else 0.dp
         ) {
             Box(contentAlignment = Alignment.Center) {
                 FluentIcon(
@@ -106,8 +110,10 @@ fun ChatAppBar(
             Column(
                 modifier = Modifier
                     .weight(1f)
+                    .padding(end = 8.dp)
+                    .clip(RoundedCornerShape(12.dp))
                     .clickable(onClick = onOpenModelPicker)
-                    .padding(end = 8.dp),
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
@@ -137,23 +143,20 @@ fun ChatAppBar(
             ) {
                 if (showTerminalButton) {
                     Surface(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape),
+                        onClick = onOpenTerminal,
+                        modifier = Modifier.size(48.dp),
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-                        shadowElevation = 4.dp,
-                        tonalElevation = 2.dp
+                        color = buttonColor,
+                        border = buttonBorder,
+                        shadowElevation = if (buttonBorder == null) 4.dp else 0.dp
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            IconButton(onClick = onOpenTerminal, modifier = Modifier.fillMaxSize()) {
-                                FluentIcon(
-                                    imageVector = Icons.Outlined.Terminal,
-                                    contentDescription = stringResource(R.string.remote_machine_open_terminal),
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
+                            FluentIcon(
+                                imageVector = Icons.Outlined.Terminal,
+                                contentDescription = stringResource(R.string.remote_machine_open_terminal),
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
+                            )
                             // Live-connection dot, matching the machines list status indicator.
                             Box(
                                 modifier = Modifier
@@ -168,15 +171,14 @@ fun ChatAppBar(
                 }
 
                 Surface(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape),
+                    onClick = onNewChat,
+                    modifier = Modifier.size(48.dp),
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-                    shadowElevation = 4.dp,
-                    tonalElevation = 2.dp
+                    color = buttonColor,
+                    border = buttonBorder,
+                    shadowElevation = if (buttonBorder == null) 4.dp else 0.dp
                 ) {
-                    IconButton(onClick = onNewChat, modifier = Modifier.fillMaxSize()) {
+                    Box(contentAlignment = Alignment.Center) {
                         FluentIcon(
                             imageVector = Icons.Outlined.Compose,
                             contentDescription = "New chat",
@@ -187,14 +189,12 @@ fun ChatAppBar(
                 }
 
                 Surface(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .clickable(onClick = onOpenSettings),
+                    onClick = onOpenSettings,
+                    modifier = Modifier.size(48.dp),
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-                    shadowElevation = 4.dp,
-                    tonalElevation = 2.dp
+                    color = buttonColor,
+                    border = buttonBorder,
+                    shadowElevation = if (buttonBorder == null) 4.dp else 0.dp
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         FeaturesLogoImage(featuresLogoImage, Modifier.size(40.dp).clip(CircleShape))
@@ -307,12 +307,11 @@ internal fun ContextWindowIndicator(
     onClick: () -> Unit
 ) {
     Surface(
-        modifier = Modifier
-            .size(42.dp)
-            .clip(CircleShape)
-            .clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = Modifier.size(42.dp),
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f)
+        color = prominentContainerColor(),
+        border = prominentContainerBorder()
     ) {
         Box(contentAlignment = Alignment.Center) {
             ContextWindowRing(status, 32.dp)

@@ -3,7 +3,6 @@ package org.starfall.generative.shared.ui.dialogs
 import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,7 +11,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -30,6 +28,9 @@ import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import androidx.compose.foundation.BorderStroke
+import org.starfall.generative.shared.ui.layout.nestedContainerBorder
+import org.starfall.generative.shared.ui.layout.nestedContainerColor
 
 /**
  * Holds the logo fetch outside the dialog so closing the dialog does not stop it. The fetch is
@@ -178,15 +179,20 @@ internal fun FaviconDialog(
                             val isSelected = item == state.selected
                             val shape = RoundedCornerShape(14.dp)
                             Surface(
-                                modifier = Modifier.size(72.dp)
-                                    .clip(shape)
-                                    .border(
-                                        if (isSelected) 2.dp else 1.dp,
-                                        if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                                        shape
-                                    )
-                                    .clickable(enabled = !busy) { state.selected = item },
-                                color = MaterialTheme.colorScheme.surfaceContainerHighest
+                                onClick = { state.selected = item },
+                                enabled = !busy,
+                                modifier = Modifier.size(72.dp),
+                                shape = shape,
+                                color = if (isSelected) {
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                } else {
+                                    nestedContainerColor()
+                                },
+                                border = if (isSelected) {
+                                    BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                                } else {
+                                    nestedContainerBorder()
+                                }
                             ) {
                                 Image(
                                     bitmap = item.bitmap.asImageBitmap(),

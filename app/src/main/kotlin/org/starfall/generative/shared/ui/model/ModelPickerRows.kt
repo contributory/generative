@@ -3,6 +3,7 @@ package org.starfall.generative.shared.ui.model
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -11,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -23,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.provider.ModelProvider
+import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 
@@ -69,18 +72,25 @@ internal fun ModelPickerProviderRow(
     onEdit: () -> Unit,
     onToggle: () -> Unit
 ) {
+    val rowShape = RoundedCornerShape(12.dp)
+    val amoledSelected = LocalAmoledMode.current && hasSelectedModel
     Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = if (hasSelectedModel) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
-            else Color.Transparent,
+        shape = rowShape,
+        color = if (hasSelectedModel && !amoledSelected) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
+        } else {
+            Color.Transparent
+        },
         contentColor = if (hasSelectedModel) MaterialTheme.colorScheme.onPrimaryContainer
             else MaterialTheme.colorScheme.onSurfaceVariant,
+        border = if (amoledSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)) else null,
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(
                 animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
             )
             .testTag("model-picker-provider_${provider.id}")
+            .clip(rowShape)
             .combinedClickable(onClick = onToggle, onLongClick = onEdit)
     ) {
         Row(

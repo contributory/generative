@@ -4,7 +4,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -22,8 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.DropdownMenu
@@ -38,6 +38,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -53,8 +55,28 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.icons.IconStore
+import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.FeaturesLogoImage
 import org.starfall.generative.shared.ui.icons.FluentUi
+
+internal val GroupOuterCorner = 24.dp
+internal val GroupInnerCorner = 6.dp
+
+internal val GroupTopShape = RoundedCornerShape(
+    topStart = GroupOuterCorner,
+    topEnd = GroupOuterCorner,
+    bottomStart = GroupInnerCorner,
+    bottomEnd = GroupInnerCorner
+)
+
+internal val GroupMiddleShape = RoundedCornerShape(GroupInnerCorner)
+
+internal val GroupBottomShape = RoundedCornerShape(
+    topStart = GroupInnerCorner,
+    topEnd = GroupInnerCorner,
+    bottomStart = GroupOuterCorner,
+    bottomEnd = GroupOuterCorner
+)
 
 /** Main feature directory. Deliberately has no page title; the themed app logo is its header. */
 @OptIn(ExperimentalFoundationApi::class)
@@ -152,6 +174,7 @@ fun FeaturesScreen(
                     Box(
                         modifier = Modifier
                             .size(84.dp)
+                            .clip(CircleShape)
                             .combinedClickable(
                                 onClick = {},
                                 onLongClick = { if (!logoBusy) logoMenuExpanded = true }
@@ -204,14 +227,14 @@ fun FeaturesScreen(
                     stringResource(R.string.settings_chat_options_description),
                     FluentUi.Regular.Chat,
                     onNavigateToChatOptions,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                    shape = GroupTopShape
                 )
                 FeatureButton(
                     stringResource(R.string.settings_tools_editor),
                     stringResource(R.string.settings_tools_editor_description),
                     FluentUi.Regular.WrenchScrewdriver,
                     onNavigateToToolsEditor,
-                    shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
+                    shape = GroupBottomShape
                 )
             }
         }
@@ -226,28 +249,28 @@ fun FeaturesScreen(
                     stringResource(R.string.settings_providers_description),
                     FluentUi.Regular.Cloud,
                     onNavigateToProviders,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                    shape = GroupTopShape
                 )
                 FeatureButton(
                     stringResource(R.string.settings_mcp_manage),
                     stringResource(R.string.settings_mcp_manage_description),
                     FluentUi.Regular.PuzzlePiece,
                     onNavigateToMcp,
-                    shape = RectangleShape
+                    shape = GroupMiddleShape
                 )
                 FeatureButton(
                     stringResource(R.string.settings_speech_services),
                     stringResource(R.string.settings_speech_services_description),
                     FluentUi.Regular.PersonVoice,
                     onNavigateToSpeech,
-                    shape = RectangleShape
+                    shape = GroupMiddleShape
                 )
                 FeatureButton(
                     stringResource(R.string.settings_remote_machines),
                     stringResource(R.string.settings_remote_machines_description),
                     FluentUi.Regular.Desktop,
                     onNavigateToRemoteMachines,
-                    shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
+                    shape = GroupBottomShape
                 )
             }
         }
@@ -262,14 +285,14 @@ fun FeaturesScreen(
                     stringResource(R.string.settings_storage_description),
                     FluentUi.Regular.FolderOpen,
                     onNavigateToStorage,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                    shape = GroupTopShape
                 )
                 FeatureButton(
                     stringResource(R.string.icon_settings_title),
                     stringResource(R.string.icon_settings_description),
                     FluentUi.Regular.Image,
                     onNavigateToIcons,
-                    shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
+                    shape = GroupBottomShape
                 )
             }
         }
@@ -284,21 +307,21 @@ fun FeaturesScreen(
                     stringResource(R.string.settings_category_app_settings_description),
                     FluentUi.Regular.Settings,
                     onNavigateToAppSettings,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                    shape = GroupTopShape
                 )
                 FeatureButton(
                     stringResource(R.string.settings_category_app_data),
                     stringResource(R.string.settings_category_app_data_description),
                     FluentUi.Regular.History,
                     onNavigateToAppData,
-                    shape = RectangleShape
+                    shape = GroupMiddleShape
                 )
                 FeatureButton(
                     stringResource(R.string.settings_category_about),
                     stringResource(R.string.settings_category_about_description),
                     FluentUi.Regular.Info,
                     onNavigateToAbout,
-                    shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
+                    shape = GroupBottomShape
                 )
             }
         }
@@ -326,6 +349,26 @@ private fun FeatureGroup(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
+internal fun featureButtonContainerColor(
+    colorScheme: ColorScheme = MaterialTheme.colorScheme,
+    amoledMode: Boolean = LocalAmoledMode.current
+): Color = if (amoledMode) {
+    colorScheme.surfaceContainerLow
+} else {
+    colorScheme.surfaceContainerHigh
+}
+
+@Composable
+internal fun featureButtonBorder(
+    colorScheme: ColorScheme = MaterialTheme.colorScheme,
+    amoledMode: Boolean = LocalAmoledMode.current
+): BorderStroke? = if (amoledMode) {
+    BorderStroke(1.5.dp, colorScheme.outlineVariant)
+} else {
+    null
+}
+
+@Composable
 private fun FeatureButton(
     title: String,
     subtitle: String,
@@ -334,10 +377,11 @@ private fun FeatureButton(
     shape: Shape
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
         shape = shape,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        color = featureButtonContainerColor(),
+        border = featureButtonBorder()
     ) {
         Row(
             modifier = Modifier.padding(18.dp),

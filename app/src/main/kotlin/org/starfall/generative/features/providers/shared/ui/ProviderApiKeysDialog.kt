@@ -5,17 +5,20 @@ import org.starfall.generative.features.providers.shared.model.maskedProviderApi
 import org.starfall.generative.features.providers.shared.model.ProviderApiKeysState
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -31,6 +34,8 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,14 +86,39 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                     val ordered = state.entries.sortedBy { it.id != selectedId }
                     if (ordered.isEmpty()) Text(stringResource(R.string.provider_no_api_keys), Modifier.padding(24.dp),
                         style = MaterialTheme.typography.bodyMedium)
-                    else LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false), contentPadding = PaddingValues(bottom = 12.dp)) {
+                    else LazyColumn(
+                        Modifier.fillMaxWidth().weight(1f, fill = false),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         items(ordered, key = { it.id }) { entry ->
                             val selected = entry.id == selectedId
                             var menu by remember(entry.id) { mutableStateOf(false) }
-                            Surface(color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface) {
-                                Row(Modifier.fillMaxWidth().selectable(selected = selected, role = Role.RadioButton, onClick = {
-                                    state.currentKey = entry.value; onDismiss()
-                                }).padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            val itemShape = RoundedCornerShape(16.dp)
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = itemShape,
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                } else {
+                                    prominentContainerColor()
+                                },
+                                border = if (selected) {
+                                    BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+                                } else {
+                                    prominentContainerBorder()
+                                }
+                            ) {
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clip(itemShape)
+                                        .selectable(selected = selected, role = Role.RadioButton, onClick = {
+                                            state.currentKey = entry.value; onDismiss()
+                                        })
+                                        .padding(start = 16.dp, end = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Column(Modifier.weight(1f).padding(vertical = 12.dp)) {
                                         Text(entry.label.ifBlank { maskedProviderApiKey(entry.value) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         if (selected) Text(stringResource(R.string.provider_selected_api_key), style = MaterialTheme.typography.labelMedium,
