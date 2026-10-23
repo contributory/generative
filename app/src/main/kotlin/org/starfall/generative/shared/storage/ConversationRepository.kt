@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.builtins.SetSerializer
+import kotlinx.serialization.builtins.serializer
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationListItem
@@ -168,7 +170,8 @@ class ConversationRepository(private val db: AppDatabase) {
             modelId = entity.modelId,
             profileId = entity.profileId,
             summary = dao.getSummary(entity.id)?.toModel(),
-            reasoningEffort = entity.reasoningEffort
+            reasoningEffort = entity.reasoningEffort,
+            selectedPromptIds = entity.selectedPromptIds?.let(::decodePromptIds)
         )
     }
 
@@ -287,8 +290,16 @@ class ConversationRepository(private val db: AppDatabase) {
         providerId = conversation.providerId,
         modelId = conversation.modelId,
         profileId = conversation.profileId,
-        reasoningEffort = conversation.reasoningEffort
+        reasoningEffort = conversation.reasoningEffort,
+        selectedPromptIds = conversation.selectedPromptIds?.let(::encodePromptIds)
     )
+
+    private fun encodePromptIds(ids: Set<String>): String =
+        json.encodeToString(SetSerializer(String.serializer()), ids)
+
+    // A damaged value falls back to the library default instead of making the chat unreadable.
+    private fun decodePromptIds(raw: String): Set<String>? =
+        runCatching { json.decodeFromString(SetSerializer(String.serializer()), raw) }.getOrNull()
 
     private fun MessageVersionEntity.toContextUsage(): ContextUsageSnapshot? {
         val inputTokens = usageInputTokens ?: return null

@@ -355,6 +355,8 @@ class ChatViewModel(
             prefsRepo.setDefaultSystemPrompt(prompt)
         }
     }
+    fun setPromptEnabled(promptId: String, enabled: Boolean) =
+        conversationCoordinator.setPromptEnabled(promptId, enabled)
     fun setPromptLibrary(library: PromptLibrary) { viewModelScope.launch(LocalWriteErrors.handler) { prefsRepo.setPromptLibrary(library) } }
 
     fun selectModel(providerId: String, modelId: String) {

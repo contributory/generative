@@ -45,6 +45,11 @@ import org.starfall.generative.shared.ui.layout.amoledSheetBorder
 import org.starfall.generative.shared.ui.layout.windowHeight
 import androidx.compose.ui.graphics.drawscope.DrawScope
 
+internal val LocalBottomSheetMinContentHeight = compositionLocalOf { 0.dp }
+
+/** Tallest content the sheet can show (window cap minus drag handle and navigation inset). */
+internal val LocalBottomSheetMaxContentHeight = compositionLocalOf { 0.dp }
+
 /** Let downward motion at the list start reach Material; contain overscroll at the list end. */
 internal fun bottomSheetListScrollBoundary(): NestedScrollConnection = object : NestedScrollConnection {
     override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset =
@@ -72,12 +77,19 @@ fun AppSheet(
     dragHandleWidth: Dp = 32.dp,
     /** When set, the sheet is this fraction of the available height regardless of content; null wraps content. */
     fixedHeightFraction: Float? = null,
+    /** Changing this key releases any manual drag height so the sheet adapts to the new page's content. */
+    contentKey: Any? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scrollBoundary = remember { bottomSheetListScrollBoundary() }
     val windowHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.roundToPx() }
     var requestedHeight by remember { mutableStateOf<Float?>(null) }
+    var previousContentKey by remember { mutableStateOf(contentKey) }
+    if (contentKey != previousContentKey) {
+        previousContentKey = contentKey
+        if (fixedHeightFraction == null) requestedHeight = null
+    }
     var measuredHeight by remember { mutableIntStateOf(0) }
     var containerOriginOnScreen by remember { mutableStateOf(Offset.Zero) }
     val handleCoordinates = remember { HandleCoordinates() }
@@ -106,7 +118,20 @@ fun AppSheet(
         // FlexibleBottomSheet snaps to segmented sizes. Retain the app's free-form
         // content sizing in this small wrapper, without owning a dialog/window.
         BoxWithConstraints(Modifier.fillMaxWidth().testTag("bottom-sheet-window")) {
+            val density = LocalDensity.current
             val bounds = bottomSheetHeightBounds(windowHeight, constraints.maxHeight)
+            val bottomInsetPx = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).getBottom(density)
+            val dragHandlePx = with(density) { dragHandleHeight.roundToPx() }
+            val effectiveMinSheetHeight = fixedHeightFraction?.let { fraction ->
+                val initialHeight = (bounds.maximum * fraction.coerceIn(0f, 1f)).roundToInt()
+                bounds.heightFor(initialHeight, requestedHeight)
+            } ?: requestedHeight?.let { bounds.heightFor(0, it) } ?: bounds.minimum
+            val minContentHeight = with(density) {
+                (effectiveMinSheetHeight - dragHandlePx - bottomInsetPx).coerceAtLeast(0).toDp()
+            }
+            val maxContentHeight = with(density) {
+                (bounds.maximum - dragHandlePx - bottomInsetPx).coerceAtLeast(0).toDp()
+            }
             var resizeDrag by remember { mutableStateOf<ResizeDrag?>(null) }
             Layout(content = {
                 Column(
@@ -191,7 +216,11 @@ fun AppSheet(
                     // Android stretch overscroll can consume edge deltas before the
                     // sheet receives them and retain a stretch between gestures.
                     // Give the list and sheet a single, continuous scroll handoff.
-                    CompositionLocalProvider(LocalOverscrollFactory provides null) {
+                    CompositionLocalProvider(
+                        LocalOverscrollFactory provides null,
+                        LocalBottomSheetMinContentHeight provides minContentHeight,
+                        LocalBottomSheetMaxContentHeight provides maxContentHeight
+                    ) {
                         Column(Modifier.fillMaxWidth().nestedScroll(scrollBoundary), content = content)
                     }
                 }

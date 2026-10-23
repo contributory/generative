@@ -64,7 +64,7 @@ class ReasoningEffectsLifecycleTest {
         }
         compose.mainClock.advanceTimeBy(800)
         compose.runOnIdle { assertTrue(burst.progress.value < 1f) }
-        compose.onNodeWithText("Effect model").performClick()
+        compose.onNodeWithTag("open-model-picker-button").performClick()
         compose.mainClock.advanceTimeBy(800)
         compose.onNodeWithTag("reasoning-slider").assertDoesNotExist()
          compose.runOnIdle {

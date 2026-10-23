@@ -389,8 +389,15 @@ class RemoteMachineService(
         )
         if (machine.compression) session.setConfig("compression.s2c", "zlib,none")
         if (machine.compression) session.setConfig("compression.c2s", "zlib,none")
-        if (machine.keepAliveSeconds > 0) session.setServerAliveInterval(machine.keepAliveSeconds * 1_000)
+        // setServerAliveInterval also writes the socket read timeout, so it must come after the connect
+        // timeout: the other order silently replaced the keepalive interval with the connect timeout.
         session.timeout = machine.connectTimeoutSeconds * 1_000
+        if (machine.keepAliveSeconds > 0) {
+            session.setServerAliveInterval(machine.keepAliveSeconds * 1_000)
+            // JSch's default of 1 drops the session after a single unanswered keepalive, which a phone
+            // network easily causes right after the radio wakes up.
+            session.setServerAliveCountMax(KEEPALIVE_MAX_MISSES)
+        }
         machine.websocketProxy?.takeIf { it.isConfigured }?.let { proxy ->
             session.setProxy(WebSocketProxy(proxy))
         }
@@ -410,6 +417,8 @@ class RemoteMachineService(
             }
             throw failure
         }
+        // Keepalive off means no read timeout once connected (the connect timeout must not end idle sessions).
+        if (machine.keepAliveSeconds == 0) runCatching { session.timeout = 0 }
         applyPortForwarding(session, machine)
         return session
     }
@@ -441,6 +450,7 @@ class RemoteMachineService(
     companion object {
         private const val TAG = "RemoteMachineService"
         private const val LOCAL_FORWARD_BIND = "127.0.0.1"
+        private const val KEEPALIVE_MAX_MISSES = 3
         const val CLOUD_ENDPOINT_CACHE_TTL_MILLIS = 15 * 60 * 1_000L
         /** A persistent SSH connection with no command or terminal using it is closed after this. */
         const val IDLE_DISCONNECT_MILLIS = 5 * 60 * 1_000L

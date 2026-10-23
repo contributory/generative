@@ -28,48 +28,125 @@ import org.starfall.generative.shared.model.language.ThinkingPassback
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import org.starfall.generative.home.shared.ui.QuickActionsSheet
-import org.starfall.generative.home.shared.ui.RemoteMachinesSheet
-import org.starfall.generative.home.shared.ui.SelectedModelOverviewSheet
-import org.starfall.generative.home.shared.ui.FeatureToolsSheet
-import org.starfall.generative.home.shared.ui.McpConnectorsSheet
-import org.starfall.generative.shared.ui.model.ModelPickerSheet
+import androidx.compose.ui.unit.dp
+import org.starfall.generative.home.shared.ui.FeatureToolsSheetContent
+import org.starfall.generative.home.shared.ui.McpConnectorsSheetContent
+import org.starfall.generative.home.shared.ui.PromptInstructionsSheetContent
+import org.starfall.generative.home.shared.ui.QuickActionsSheetContent
+import org.starfall.generative.home.shared.ui.RemoteMachinesSheetContent
+import org.starfall.generative.home.shared.ui.SelectedModelOverviewContent
+import org.starfall.generative.home.shared.ui.rememberPreviewTier
+import org.starfall.generative.home.shared.ui.selectedModelSheetStyle
+import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.model.ModelPickerSheetContent
 import org.starfall.generative.shared.ui.model.chatModelPickerFilter
+import org.starfall.generative.shared.ui.sheets.AppSheet
+import org.starfall.generative.shared.ui.sheets.LocalBottomSheetMaxContentHeight
+import org.starfall.generative.shared.ui.sheets.SlideSheetContent
+
+internal enum class QuickActionsPage {
+    PROMPT_INSTRUCTIONS,
+    FEATURE_TOOLS,
+    MCP_CONNECTORS,
+    REMOTE_MACHINES,
+}
+
+internal enum class ModelSheetPage {
+    SELECTED_MODEL,
+    MODEL_PICKER,
+}
 
 internal class BottomSheetsLinkState {
-    var showModelPicker by mutableStateOf(false)
+    /** The selected-model overview and the model picker are two pages of one sheet. */
+    var modelSheetPage by mutableStateOf<ModelSheetPage?>(null)
         private set
-    var showSelectedModelOverview by mutableStateOf(false)
-        private set
-    var showFeatureTools by mutableStateOf(false)
-        private set
-    var showMcpConnectors by mutableStateOf(false)
-        private set
-    var showRemoteMachines by mutableStateOf(false)
-        private set
+    /** True when the picker was reached from the overview, so Back returns there instead of closing. */
+    private var pickerOpenedFromOverview by mutableStateOf(false)
+    val showModelPicker: Boolean get() = modelSheetPage == ModelSheetPage.MODEL_PICKER
+    val showSelectedModelOverview: Boolean get() = modelSheetPage == ModelSheetPage.SELECTED_MODEL
     var showAddMenu by mutableStateOf(false)
+        private set
+    var quickActionsPage by mutableStateOf<QuickActionsPage?>(null)
         private set
     var showFilesSheet by mutableStateOf(false)
         private set
 
-    fun openAddMenu() { showAddMenu = true }
-    fun openModelPicker() { showModelPicker = true }
-    fun openSelectedModelOverview() { showSelectedModelOverview = true }
-    fun openFeatureTools() { showFeatureTools = true }
-    fun openMcpConnectors() { showMcpConnectors = true }
-    fun openRemoteMachines() { showRemoteMachines = true }
+    val showPromptInstructions: Boolean
+        get() = showAddMenu && quickActionsPage == QuickActionsPage.PROMPT_INSTRUCTIONS
+    val showFeatureTools: Boolean
+        get() = showAddMenu && quickActionsPage == QuickActionsPage.FEATURE_TOOLS
+    val showMcpConnectors: Boolean
+        get() = showAddMenu && quickActionsPage == QuickActionsPage.MCP_CONNECTORS
+    val showRemoteMachines: Boolean
+        get() = showAddMenu && quickActionsPage == QuickActionsPage.REMOTE_MACHINES
+
+    fun openAddMenu() {
+        quickActionsPage = null
+        showAddMenu = true
+    }
+    fun openModelPicker() {
+        pickerOpenedFromOverview = false
+        modelSheetPage = ModelSheetPage.MODEL_PICKER
+    }
+    fun openSelectedModelOverview() { modelSheetPage = ModelSheetPage.SELECTED_MODEL }
+    /** Moves the open sheet from the overview to the picker in place. */
+    fun switchToModelPicker() {
+        pickerOpenedFromOverview = true
+        modelSheetPage = ModelSheetPage.MODEL_PICKER
+    }
+    fun backFromModelPicker() {
+        if (pickerOpenedFromOverview) openSelectedModelOverview() else dismissModelSheet()
+    }
+    fun openPromptInstructions() {
+        quickActionsPage = QuickActionsPage.PROMPT_INSTRUCTIONS
+        showAddMenu = true
+    }
+    fun openFeatureTools() {
+        quickActionsPage = QuickActionsPage.FEATURE_TOOLS
+        showAddMenu = true
+    }
+    fun openMcpConnectors() {
+        quickActionsPage = QuickActionsPage.MCP_CONNECTORS
+        showAddMenu = true
+    }
+    fun openRemoteMachines() {
+        quickActionsPage = QuickActionsPage.REMOTE_MACHINES
+        showAddMenu = true
+    }
+    fun backToQuickActions() {
+        quickActionsPage = null
+    }
     fun openFilesUnavailableDialog() { showFilesSheet = true }
-    fun dismissAddMenu() { showAddMenu = false }
-    fun dismissModelPicker() { showModelPicker = false }
-    fun dismissSelectedModelOverview() { showSelectedModelOverview = false }
-    fun dismissFeatureTools() { showFeatureTools = false }
-    fun dismissMcpConnectors() { showMcpConnectors = false }
-    fun dismissRemoteMachines() { showRemoteMachines = false }
+    fun dismissAddMenu() {
+        showAddMenu = false
+        quickActionsPage = null
+    }
+    fun dismissModelSheet() { modelSheetPage = null }
+    fun dismissModelPicker() { if (showModelPicker) modelSheetPage = null }
+    fun dismissSelectedModelOverview() { if (showSelectedModelOverview) modelSheetPage = null }
+    fun dismissPromptInstructions() {
+        if (quickActionsPage == QuickActionsPage.PROMPT_INSTRUCTIONS) quickActionsPage = null
+    }
+    fun dismissFeatureTools() {
+        if (quickActionsPage == QuickActionsPage.FEATURE_TOOLS) quickActionsPage = null
+    }
+    fun dismissMcpConnectors() {
+        if (quickActionsPage == QuickActionsPage.MCP_CONNECTORS) quickActionsPage = null
+    }
+    fun dismissRemoteMachines() {
+        if (quickActionsPage == QuickActionsPage.REMOTE_MACHINES) quickActionsPage = null
+    }
     fun dismissFilesUnavailableDialog() { showFilesSheet = false }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun BottomSheetsLink(
     sheets: BottomSheetsLinkState,
@@ -136,33 +213,87 @@ internal fun BottomSheetsLink(
         if (!sheets.showSelectedModelOverview) selectedModelScreenBurst.hide()
     }
     if (sheets.showAddMenu) {
-        QuickActionsSheet(
-            onPickImage = {
-                photoPicker.launch(PickVisualMediaRequest(
-                    if (mediaKind == null || mediaKind == ModelType.VIDEO_GENERATION) ActivityResultContracts.PickVisualMedia.ImageAndVideo
-                    else ActivityResultContracts.PickVisualMedia.ImageOnly
-                ))
-            },
-            onPickDocument = {
-                documentPicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                    type = if (mediaKind == null || mediaKind == ModelType.VIDEO_GENERATION) "*/*" else "image/*"
-                    if (mediaKind == ModelType.VIDEO_GENERATION) putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*", "video/*"))
-                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-                })
-            },
-            onTakePhoto = { sheets.openFilesUnavailableDialog() },
-            onCreateImage = { onCancelEdit(); onMediaKindChange(ModelType.IMAGE_GENERATION) },
-            onCreateVideo = { onCancelEdit(); onMediaKindChange(ModelType.VIDEO_GENERATION) },
-            onOpenFeatureTools = { sheets.openFeatureTools() },
-            onOpenMcpConnectors = { sheets.openMcpConnectors() },
-            onOpenRemoteMachines = { sheets.openRemoteMachines() },
-            onDismiss = { sheets.dismissAddMenu() }
-        )
+        AppSheet(
+            onDismissRequest = { sheets.dismissAddMenu() },
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            contentKey = sheets.quickActionsPage
+        ) {
+            SlideSheetContent(
+                page = sheets.quickActionsPage,
+                onBack = { sheets.backToQuickActions() },
+                label = "Quick actions sheet"
+            ) { page ->
+                val pageActive = LocalScreenTransitionActive.current
+                when (page) {
+                    null -> QuickActionsSheetContent(
+                        onPickImage = {
+                            if (!pageActive) return@QuickActionsSheetContent
+                            photoPicker.launch(PickVisualMediaRequest(
+                                if (mediaKind == null || mediaKind == ModelType.VIDEO_GENERATION) ActivityResultContracts.PickVisualMedia.ImageAndVideo
+                                else ActivityResultContracts.PickVisualMedia.ImageOnly
+                            ))
+                        },
+                        onPickDocument = {
+                            if (!pageActive) return@QuickActionsSheetContent
+                            documentPicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                                type = if (mediaKind == null || mediaKind == ModelType.VIDEO_GENERATION) "*/*" else "image/*"
+                                if (mediaKind == ModelType.VIDEO_GENERATION) putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*", "video/*"))
+                                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                            })
+                        },
+                        onTakePhoto = {
+                            if (pageActive) sheets.openFilesUnavailableDialog()
+                        },
+                        onCreateImage = {
+                            if (pageActive) {
+                                onCancelEdit()
+                                onMediaKindChange(ModelType.IMAGE_GENERATION)
+                            }
+                        },
+                        onCreateVideo = {
+                            if (pageActive) {
+                                onCancelEdit()
+                                onMediaKindChange(ModelType.VIDEO_GENERATION)
+                            }
+                        },
+                        onOpenPromptInstructions = {
+                            if (pageActive) sheets.openPromptInstructions()
+                        },
+                        onOpenFeatureTools = {
+                            if (pageActive) sheets.openFeatureTools()
+                        },
+                        onOpenMcpConnectors = {
+                            if (pageActive) sheets.openMcpConnectors()
+                        },
+                        onOpenRemoteMachines = {
+                            if (pageActive) sheets.openRemoteMachines()
+                        },
+                        onDismiss = {
+                            if (pageActive) sheets.dismissAddMenu()
+                        }
+                    )
+                    QuickActionsPage.PROMPT_INSTRUCTIONS -> PromptInstructionsSheetContent(
+                        onBack = { if (pageActive) sheets.backToQuickActions() },
+                        onLeave = { if (pageActive) sheets.dismissAddMenu() }
+                    )
+                    QuickActionsPage.FEATURE_TOOLS -> FeatureToolsSheetContent(
+                        onBack = { if (pageActive) sheets.backToQuickActions() }
+                    )
+                    QuickActionsPage.MCP_CONNECTORS -> McpConnectorsSheetContent(
+                        onBack = { if (pageActive) sheets.backToQuickActions() }
+                    )
+                    QuickActionsPage.REMOTE_MACHINES -> RemoteMachinesSheetContent(
+                        onBack = { if (pageActive) sheets.backToQuickActions() }
+                    )
+                }
+            }
+        }
     }
 
-    if (sheets.showSelectedModelOverview && mediaKind == null) {
+    val modelSheetPage = sheets.modelSheetPage
+    if (modelSheetPage != null && (modelSheetPage == ModelSheetPage.MODEL_PICKER || mediaKind == null)) {
         val selectedProvider = providers.firstOrNull { it.id == selectedProviderId }
         val selectedConfigEntry = selectedProvider?.config?.modelConfigs?.entries?.firstOrNull { it.key == selectedModelName }
             ?: selectedProvider?.config?.modelConfigs?.entries?.firstOrNull {
@@ -181,88 +312,111 @@ internal fun BottomSheetsLink(
         val selectedFolderName = selectedProvider?.groupId?.let { groupId ->
             providerGroups.firstOrNull { it.id == groupId }?.name
         }
+        // A conversation override wins; otherwise show the level saved for this model.
+        val effectiveReasoningEffort = conversationReasoningEffort ?: selectedConfig.reasoningEffort
+        val previewTier = rememberPreviewTier(selectedConfig, effectiveReasoningEffort)
+        val onPicker = modelSheetPage == ModelSheetPage.MODEL_PICKER
+        val style = selectedModelSheetStyle(!onPicker && previewTier.intValue == 6 && selectedConfig.supportsThinking)
+        val maxContentHeight = LocalBottomSheetMaxContentHeight
         CompositionLocalProvider(LocalThinkingScreenBurst provides selectedModelScreenBurst) {
             ThinkingScreenBurstLayer(selectedModelScreenBurst)
-            SelectedModelOverviewSheet(
-                provider = selectedProvider,
-                folderName = selectedFolderName,
-                modelId = selectedModelName.ifBlank { selectedConfig.displayName },
-                config = selectedConfig,
-                // A conversation override wins; otherwise show the level saved for this model.
-                conversationReasoningEffort = conversationReasoningEffort ?: selectedConfig.reasoningEffort,
-                onSetReasoningEffort = { effort ->
-                    onSetReasoningEffort(effort)
-                    if (selectedProvider != null && selectedConfigEntry != null) {
-                        onSetModelReasoningEffort(selectedProvider.id, selectedConfigEntry.key, effort)
+            // One sheet for both pages: switching slides the content and animates the height in place.
+            AppSheet(
+                onDismissRequest = {
+                    selectedModelScreenBurst.hide()
+                    sheets.dismissModelSheet()
+                },
+                containerColor = style.color,
+                containerBrush = style.brush,
+                navigationBarColor = style.navigationBarColor,
+                // Read in the draw phase: the reveal animates every frame and must not recompose the sheet.
+                containerBrushRevealOrigin = { selectedModelScreenBurst.origin.takeIf { it != Offset.Zero } },
+                containerBrushRevealProgress = { selectedModelScreenBurst.progress.value },
+                containerOverlay = style.overlay,
+                contentKey = modelSheetPage
+            ) {
+                // The sheet is its own window, so the screen-owned star overlay must also be attached to it.
+                ThinkingScreenBurstLayer(selectedModelScreenBurst)
+                SlideSheetContent(
+                    page = if (onPicker) ModelSheetPage.MODEL_PICKER else null,
+                    onBack = { sheets.backFromModelPicker() },
+                    label = "Model sheet"
+                ) { target ->
+                    val pageActive = LocalScreenTransitionActive.current
+                    if (target == ModelSheetPage.MODEL_PICKER) {
+                        ModelPickerSheetContent(
+                            providers = if (mediaKind != null) mediaProviders else providers,
+                            providerGroups = providerGroups,
+                            collapsedGroupIdsState = modelPickerCollapsedGroups,
+                            collapsedProviderIdsState = modelPickerCollapsedProviders,
+                            onCollapsedGroupIdsChange = onModelPickerCollapsedGroupsChange,
+                            onCollapsedProviderIdsChange = onModelPickerCollapsedProvidersChange,
+                            selectedTabKeyState = modelPickerSelectedTab,
+                            onSelectedTabKeyChange = onModelPickerSelectedTabChange,
+                            selectedProviderId = if (mediaKind != null) mediaProviderId else selectedProviderId,
+                            selectedModelId = if (mediaKind != null) mediaModelId else selectedModelName,
+                            conversationReasoningEffort = null,
+                            onSelectModel = { provider, model ->
+                                if (mediaKind != null) { onMediaModelChange(provider, model) }
+                                else onSelectModel(provider, model)
+                            },
+                            onSetReasoningEffort = {},
+                            showReasoningEffort = false,
+                            dynamicModelsMap = if (mediaKind != null) emptyMap() else dynamicModelsMap.toMap(),
+                            modelFilter = if (mediaKind == null) chatModelPickerFilter else { _, _, config -> config.modelType == mediaKind },
+                            onEditProvider = onEditProvider,
+                            onOpenSelectedModel = if (mediaKind == null) {
+                                { if (pageActive) sheets.openSelectedModelOverview() }
+                            } else null,
+                            // The picker keeps the tall size it had as its own sheet; the height animates
+                            // from the overview's size because this page's size is what the sheet adopts.
+                            modifier = Modifier.height(maxContentHeight.current * 0.9f),
+                            onDismiss = { sheets.dismissModelSheet() }
+                        )
+                    } else {
+                        SelectedModelOverviewContent(
+                            provider = selectedProvider,
+                            folderName = selectedFolderName,
+                            modelId = selectedModelName.ifBlank { selectedConfig.displayName },
+                            config = selectedConfig,
+                            conversationReasoningEffort = effectiveReasoningEffort,
+                            previewTier = previewTier.intValue,
+                            onPreviewTierChange = { previewTier.intValue = it },
+                            onSetReasoningEffort = { effort ->
+                                onSetReasoningEffort(effort)
+                                if (selectedProvider != null && selectedConfigEntry != null) {
+                                    onSetModelReasoningEffort(selectedProvider.id, selectedConfigEntry.key, effort)
+                                }
+                            },
+                            // Available as soon as the sheet opens; a model without a saved configuration gets one
+                            // created when the choice is stored.
+                            onSetModelTools = (selectedConfigEntry?.key ?: selectedModelName).takeIf {
+                                selectedProvider != null && it.isNotBlank() && selectedConfig.supportedModelTools.isNotEmpty()
+                            }?.let { configKey ->
+                                val providerId = selectedProvider!!.id
+                                val setTools: (List<String>) -> Unit = { tools -> onSetModelTools(providerId, configKey, tools) }
+                                setTools
+                            },
+                            onSetThinkingPassback = (selectedConfigEntry?.key ?: selectedModelName).takeIf {
+                                selectedProvider != null && it.isNotBlank()
+                            }?.let { configKey ->
+                                val providerId = selectedProvider!!.id
+                                val setPassback: (ThinkingPassback) -> Unit = { mode -> onSetThinkingPassback(providerId, configKey, mode) }
+                                setPassback
+                            },
+                            onEditModel = selectedProvider?.let { provider ->
+                                val modelId = selectedConfigEntry?.key ?: selectedModelName
+                                {
+                                    sheets.dismissModelSheet()
+                                    onEditModel(provider.id, modelId)
+                                }
+                            },
+                            onOpenModelPicker = { if (pageActive) sheets.switchToModelPicker() }
+                        )
                     }
-                },
-                // Available as soon as the sheet opens; a model without a saved configuration gets one
-                // created when the choice is stored.
-                onSetModelTools = (selectedConfigEntry?.key ?: selectedModelName).takeIf {
-                    selectedProvider != null && it.isNotBlank() && selectedConfig.supportedModelTools.isNotEmpty()
-                }?.let { configKey ->
-                    val providerId = selectedProvider!!.id
-                    val setTools: (List<String>) -> Unit = { tools -> onSetModelTools(providerId, configKey, tools) }
-                    setTools
-                },
-                onSetThinkingPassback = (selectedConfigEntry?.key ?: selectedModelName).takeIf {
-                    selectedProvider != null && it.isNotBlank()
-                }?.let { configKey ->
-                    val providerId = selectedProvider!!.id
-                    val setPassback: (ThinkingPassback) -> Unit = { mode -> onSetThinkingPassback(providerId, configKey, mode) }
-                    setPassback
-                },
-                onEditModel = selectedProvider?.let { provider ->
-                    val modelId = selectedConfigEntry?.key ?: selectedModelName
-                    {
-                        sheets.dismissSelectedModelOverview()
-                        onEditModel(provider.id, modelId)
-                    }
-                },
-                onOpenModelPicker = {
-                    sheets.openModelPicker()
-                },
-                onDismiss = { sheets.dismissSelectedModelOverview() }
-            )
+                }
+            }
         }
-    }
-
-    if (sheets.showModelPicker) {
-        ModelPickerSheet(
-            providers = if (mediaKind != null) mediaProviders else providers,
-            providerGroups = providerGroups,
-            collapsedGroupIdsState = modelPickerCollapsedGroups,
-            collapsedProviderIdsState = modelPickerCollapsedProviders,
-            onCollapsedGroupIdsChange = onModelPickerCollapsedGroupsChange,
-            onCollapsedProviderIdsChange = onModelPickerCollapsedProvidersChange,
-            selectedTabKeyState = modelPickerSelectedTab,
-            onSelectedTabKeyChange = onModelPickerSelectedTabChange,
-            selectedProviderId = if (mediaKind != null) mediaProviderId else selectedProviderId,
-            selectedModelId = if (mediaKind != null) mediaModelId else selectedModelName,
-            conversationReasoningEffort = null,
-            onSelectModel = { provider, model ->
-                if (mediaKind != null) { onMediaModelChange(provider, model) }
-                else onSelectModel(provider, model)
-            },
-            onSetReasoningEffort = {},
-            showReasoningEffort = false,
-            dynamicModelsMap = if (mediaKind != null) emptyMap() else dynamicModelsMap.toMap(),
-            modelFilter = if (mediaKind == null) chatModelPickerFilter else { _, _, config -> config.modelType == mediaKind },
-            onEditProvider = onEditProvider,
-            onDismiss = { sheets.dismissModelPicker() }
-        )
-    }
-
-    if (sheets.showFeatureTools) {
-        FeatureToolsSheet(onDismiss = { sheets.dismissFeatureTools() })
-    }
-
-    if (sheets.showMcpConnectors) {
-        McpConnectorsSheet(onDismiss = { sheets.dismissMcpConnectors() })
-    }
-
-    if (sheets.showRemoteMachines) {
-        RemoteMachinesSheet(onDismiss = { sheets.dismissRemoteMachines() })
     }
 
     if (sheets.showFilesSheet) {

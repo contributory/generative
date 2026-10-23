@@ -11,22 +11,11 @@ command -v gh >/dev/null || { echo 'GitHub CLI (gh) is required.' >&2; exit 1; }
 # Keep the GitHub tag in sync with the version embedded in the APK.
 metadata_json="${RELEASE_METADATA_JSON:-app/build/outputs/apk/release/output-metadata.json}"
 version="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["elements"][0]["versionName"])' "$metadata_json")"
-[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+[A-Za-z0-9]*$ ]] || { echo "Invalid app version: $version (expected <major>.<minor>.<commit-count>[branch-suffix])." >&2; exit 1; }
-expected_tag="$version"
-tag="${GITHUB_RELEASE_TAG:-$expected_tag}"
-[[ "$tag" == "$expected_tag" ]] || { echo "Configured GitHub release tag $tag does not match app version $expected_tag." >&2; exit 1; }
-if [[ -n "${CM_TAG:-}" && "$CM_TAG" != "$tag" ]]; then
-  echo "Build tag $CM_TAG does not match configured release tag $tag." >&2
-  exit 1
-fi
 
-# Version format mirrors app/build.gradle.kts: <major>.<minor>.<commit-count>
-# on main (e.g. 1.0.543), and <major>.<minor>.<commit-count><branch-suffix>
-# on other branches (e.g. 1.0.543dev).
-# The suffix is the first four alphanumeric characters of the branch name.
+# Find the branch even for detached CI checkouts. The full branch name (including
+# slashes) is part of the version on every branch except main.
 branch="$(git branch --show-current 2>/dev/null || true)"
 if [[ -z "$branch" ]]; then
-  # Detached HEAD (common in CI): fall back to the origin branches pointing at this commit.
   remote_branches="$(git for-each-ref --points-at HEAD --format='%(refname:strip=3)' refs/remotes/origin | grep -vx 'HEAD' || true)"
   if grep -qx 'main' <<<"$remote_branches"; then
     branch=main
@@ -36,31 +25,32 @@ if [[ -z "$branch" ]]; then
 fi
 [[ -n "$branch" ]] || { echo 'Cannot determine the current git branch.' >&2; exit 1; }
 
+if [[ ! "$version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(.*)$ ]]; then
+  echo "Invalid app version: $version (expected <major>.<minor>.<commit-count>[-<branch-name>])." >&2
+  exit 1
+fi
+base_version="${BASH_REMATCH[1]}"
 if [[ "$branch" == main ]]; then
   is_prerelease=false
   expected_suffix=''
 else
   is_prerelease=true
-  expected_suffix="$(printf '%s' "$branch" | sed 's/[^A-Za-z0-9]//g' | cut -c1-4)"
-  [[ -n "$expected_suffix" ]] || {
-    echo "Cannot derive a version suffix from branch name: $branch." >&2
-    exit 1
-  }
+  expected_suffix="-$branch"
 fi
-version_regex='^([0-9]+\.[0-9]+\.[0-9]+)([A-Za-z0-9]*)$'
-if [[ ! "$tag" =~ $version_regex ]]; then
-  echo "Tag $tag does not match the version format <major>.<minor>.<commit-count>[branch-suffix] (e.g. 1.0.543)." >&2
-  exit 1
-fi
-actual_suffix="${BASH_REMATCH[2]}"
-[[ "$actual_suffix" == "$expected_suffix" ]] || {
-  if [[ "$branch" == main ]]; then
-    echo "Branch main requires a version tag without a branch suffix (e.g. 1.0.543), but got $tag." >&2
-  else
-    echo "Branch $branch requires the version suffix '$expected_suffix' (e.g. 1.0.543$expected_suffix), but got $tag." >&2
-  fi
+expected_version="$base_version$expected_suffix"
+[[ "$version" == "$expected_version" ]] || {
+  echo "App version $version does not match branch $branch (expected $expected_version)." >&2
   exit 1
 }
+
+expected_tag="$version"
+tag="${GITHUB_RELEASE_TAG:-$expected_tag}"
+[[ "$tag" == "$expected_tag" ]] || { echo "Configured GitHub release tag $tag does not match app version $expected_tag." >&2; exit 1; }
+if [[ -n "${CM_TAG:-}" && "$CM_TAG" != "$tag" ]]; then
+  echo "Build tag $CM_TAG does not match configured release tag $tag." >&2
+  exit 1
+fi
+
 echo "Branch: $branch; publishing as $([[ "$is_prerelease" == true ]] && echo pre-release || echo release) ($tag)."
 
 commit="$(git rev-parse HEAD)"

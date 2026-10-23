@@ -29,60 +29,65 @@ import org.starfall.generative.shared.ui.sheets.AppSheet
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun McpConnectorsSheet(onDismiss: () -> Unit) {
-    val controls = LocalToolControls.current
     AppSheet(onDismissRequest = onDismiss) {
-        Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        McpConnectorsSheetContent()
+    }
+}
+
+@Composable
+internal fun McpConnectorsSheetContent(onBack: (() -> Unit)? = null) {
+    val controls = LocalToolControls.current
+    Column(
+        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        QuickActionsSubpageHeader(
+            title = stringResource(R.string.quick_action_mcp_connectors),
+            onBack = onBack
+        )
+        if (controls.servers.isEmpty()) {
             Text(
-                stringResource(R.string.quick_action_mcp_connectors),
-                style = MaterialTheme.typography.titleLarge
+                stringResource(R.string.no_mcp_servers),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (controls.servers.isEmpty()) {
-                Text(
-                    stringResource(R.string.no_mcp_servers),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            controls.servers.forEach { server ->
-                val serverAddress = server.resolvedUrl().orEmpty()
-                SettingsCard {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        EntityIcon(
-                            image = server.icon,
-                            modifier = Modifier.size(44.dp),
-                            text = server.name.take(2).uppercase(),
-                            fallback = org.starfall.generative.shared.ui.icons.Icons.Outlined.Extension,
-                            matchName = server.name
+        }
+        controls.servers.forEach { server ->
+            val serverAddress = server.resolvedUrl().orEmpty()
+            SettingsCard {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    EntityIcon(
+                        image = server.icon,
+                        modifier = Modifier.size(44.dp),
+                        text = server.name.take(2).uppercase(),
+                        fallback = org.starfall.generative.shared.ui.icons.Icons.Outlined.Extension,
+                        matchName = server.name
+                    )
+                    Spacer(Modifier.size(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            server.name,
+                            style = MaterialTheme.typography.titleSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(Modifier.size(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                server.name,
-                                style = MaterialTheme.typography.titleSmall,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                if (serverAddress.isBlank()) stringResource(R.string.mcp_servers_title) else serverAddress,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                stringResource(R.string.cached_tools_count, server.cachedTools?.size ?: 0),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                        }
-                        Switch(
-                            checked = controls.settings.quickMcp[server.id] != false,
-                            onCheckedChange = { controls.setMcp(server.id, it) }
+                        Text(
+                            if (serverAddress.isBlank()) stringResource(R.string.mcp_servers_title) else serverAddress,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            stringResource(R.string.cached_tools_count, server.cachedTools?.size ?: 0),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline
                         )
                     }
+                    Switch(
+                        checked = controls.settings.quickMcp[server.id] != false,
+                        onCheckedChange = { controls.setMcp(server.id, it) }
+                    )
                 }
             }
         }

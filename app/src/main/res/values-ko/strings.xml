@@ -110,7 +110,9 @@
     <string name="search_history">기록 검색...</string>
     <string name="no_conversations_yet">아직 대화가 없습니다</string>
     <string name="connect_providers_description">여러 AI 제공업체와 에이전트에 원활하게 연결할 수 있습니다.</string>
-    <string name="choose_another_model_hint">모델 이름을 탭하여 다른 모델 선택</string>
+    <string name="current_model">현재 모델</string>
+    <string name="change_model">모델 변경</string>
+    <string name="open_selected_model">선택한 모델 및 옵션</string>
     <string name="screen_wakelock_description">응답을 생성하는 동안 화면을 켜 둡니다.</string>
     <string name="context_window_compact_hint">원을 탭하여 컨텍스트 창 압축</string>
     <string name="mcp_enable">사용 설정</string>

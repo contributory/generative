@@ -192,8 +192,7 @@
 │   │   └── 📁 ui/
 │   │       ├── 📄 ConversationItem.kt
 │   │       ├── 📄 DrawerBackdrop.kt
-│   │       ├── 📄 ConversationSideDrawer.kt
-│   │       └── 📄 PromptLibraryDialog.kt
+│   │       └── 📄 ConversationSideDrawer.kt
 │   ├── 📁 shared/
 │   │   ├── 📁 logic/
 │   │   │   ├── 📄 ChatBackgroundService.kt
@@ -206,6 +205,7 @@
 │   │       ├── 📄 ConversationSummarySheet.kt
 │   │       ├── 📄 FeatureToolsSheet.kt
 │   │       ├── 📄 McpConnectorsSheet.kt
+│   │       ├── 📄 PromptInstructionsSheet.kt
 │   │       ├── 📄 QuickActionsSheet.kt
 │   │       ├── 📄 ReasoningEffortSheet.kt
 │   │       ├── 📄 RemoteMachinesSheet.kt
@@ -500,7 +500,8 @@
 │       │   └── 📄 ThinkingColorBurst.kt
 │       ├── 📁 sheets/
 │       │   ├── 📄 AppSheet.kt
-│       │   └── 📄 BottomSheetHeight.kt
+│       │   ├── 📄 BottomSheetHeight.kt
+│       │   └── 📄 SlideSheetContent.kt
 │       ├── 📁 text/
 │       │   ├── 📄 ApiKeyMask.kt
 │       │   ├── 📄 GlyphSelectionGate.kt
@@ -509,6 +510,7 @@
 │       │   ├── 📄 StreamingTextFade.kt
 │       │   └── 📄 WordWrappedFadeText.kt
 │       ├── 📄 ProfileMcpPermissions.kt
+│       ├── 📄 PromptControls.kt
 │       ├── 📄 ToolControls.kt
 │       ├── 📄 ToolSwitch.kt
 │       └── 📁 terminal/

@@ -8,6 +8,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import org.starfall.generative.shared.model.Conversation
+import org.starfall.generative.shared.model.PromptLibrary
 import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.storage.ImmediateState
@@ -130,8 +132,11 @@ data class AppPreferences(
     val effectiveMessageFontSize: Int get() = if (messageFontSizeCustom) messageFontSize else DEFAULT_MESSAGE_FONT_SIZE
     /** Null means tool rounds are unlimited. */
     val effectiveToolRoundLimit: Int? get() = toolRoundLimit.takeIf { toolRoundLimitEnabled }
-    val effectiveSystemPrompt: String get() = promptLibrary?.systemPrompt() ?: defaultSystemPrompt
-    fun promptRoleMessages() = promptLibrary?.roleMessages().orEmpty()
+    /** The prompt library as [conversation] sees it; without its own prompt selection it uses the default. */
+    fun promptLibraryFor(conversation: Conversation?): PromptLibrary =
+        (promptLibrary ?: PromptLibrary.fromLegacy(defaultSystemPrompt)).forChat(conversation?.selectedPromptIds)
+    fun systemPromptFor(conversation: Conversation?): String = promptLibraryFor(conversation).systemPrompt()
+    fun promptRoleMessagesFor(conversation: Conversation?) = promptLibraryFor(conversation).roleMessages()
 }
 
 class AppPreferencesRepository(private val context: Context) {

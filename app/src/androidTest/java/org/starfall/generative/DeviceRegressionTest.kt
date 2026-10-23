@@ -33,7 +33,7 @@ class DeviceRegressionTest {
     @Test fun addSheetStartsHalfHeightExpandsAndShowsToolControlsBeforeSummary() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         compose.setContent { MaterialTheme {
-            QuickActionsSheet({}, {}, {}, {}, {}, {}, {}, {}, {})
+            QuickActionsSheet({}, {}, {}, {}, {}, {}, {}, {}, {}, {})
         } }
         compose.waitForIdle()
         val photos = compose.onNodeWithText("Photos")

@@ -110,7 +110,9 @@
     <string name="search_history">搜索历史...</string>
     <string name="no_conversations_yet">暂无对话</string>
     <string name="connect_providers_description">无缝连接多个 AI 提供商和智能体。</string>
-    <string name="choose_another_model_hint">点击模型名称以选择其他模型</string>
+    <string name="current_model">当前模型</string>
+    <string name="change_model">更换模型</string>
+    <string name="open_selected_model">已选模型和选项</string>
     <string name="screen_wakelock_description">生成回复时保持屏幕亮起。</string>
     <string name="context_window_compact_hint">点击圆环以压缩上下文窗口</string>
     <string name="mcp_enable">启用</string>

@@ -44,10 +44,10 @@ class ConversationContextUsageMigrationTest {
                 versionRowIds(source)
             }
             val migrated = Room.databaseBuilder(context, AppDatabase::class.java, name)
-                .addMigrations(AppDatabase.MIGRATION_11_12).build()
+                .addMigrations(AppDatabase.MIGRATION_11_12, AppDatabase.MIGRATION_12_13).build()
             room = migrated
             val sql = migrated.openHelper.writableDatabase
-            assertEquals(12, sql.version)
+            assertEquals(13, sql.version)
             assertEquals(originalRowIds, versionRowIds(sql))
             assertUsageColumns(sql)
 
