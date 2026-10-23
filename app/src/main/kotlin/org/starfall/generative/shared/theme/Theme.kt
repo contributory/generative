@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 
 private val DefaultLight = lightColorScheme(
@@ -207,6 +208,17 @@ private fun completeScheme(source: ColorScheme, dark: Boolean): ColorScheme = so
     surfaceContainerHighest = source.surfaceVariant
 )
 
+/** Share of the accent that is mixed toward the neutral surface: 0 = full accent, 1 = no accent. */
+private const val PRIMARY_TINT_RATIO = 0.6f
+
+/**
+ * The accent only tints components. Solid primary fills, strokes, icons and indicators (including Material defaults)
+ * are pulled toward the neutral surface, and text placed on them uses the neutral text colour.
+ */
+private fun ColorScheme.withLightlyTintedPrimary(): ColorScheme = copy(
+    primary = lerp(primary, surface, PRIMARY_TINT_RATIO),
+    onPrimary = onSurface
+)
 private fun ColorScheme.withAmoledSurfaces(): ColorScheme = copy(
     background = Color.Black, surface = Color.Black,
     surfaceDim = Color.Black, surfaceContainerLowest = Color.Black,
@@ -257,7 +269,7 @@ fun GenerativeTheme(
         colorSchemeName == "MONOCHROME" -> if (isDark) MonochromeDark else MonochromeLight
         else -> if (isDark) DefaultDark else DefaultLight
     }
-    val colorScheme = completeScheme(selectedScheme, isDark).let {
+    val colorScheme = completeScheme(selectedScheme, isDark).withLightlyTintedPrimary().let {
         if (isAmoled) it.withAmoledSurfaces() else it
     }
 

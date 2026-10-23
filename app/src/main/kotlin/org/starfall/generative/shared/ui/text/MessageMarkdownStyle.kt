@@ -24,17 +24,19 @@ internal fun MessageFontFamily.toComposeFontFamily(): FontFamily = when (this) {
 @Composable
 internal fun messageMarkdownTypography(): MarkdownTypography {
     val type = MaterialTheme.typography
+    // Headings and links use the neutral text colour; the theme primary never tints markdown text.
+    val textColor = MaterialTheme.colorScheme.onSurface
     val preferences = LocalCodeRenderingPreferences.current
     val bodySize = preferences.effectiveMessageFontSize.sp
     val messageFont = preferences.messageFontFamily.toComposeFontFamily()
     return markdownTypography(
-        h1 = type.headlineSmall.copy(fontFamily = messageFont, fontWeight = FontWeight.Bold, fontSize = bodySize * 1.375f, color = MaterialTheme.colorScheme.primary),
+        h1 = type.headlineSmall.copy(fontFamily = messageFont, fontWeight = FontWeight.Bold, fontSize = bodySize * 1.375f, color = textColor),
         h2 = type.titleLarge.copy(fontFamily = messageFont, fontWeight = FontWeight.Bold, fontSize = bodySize * 1.125f),
         h3 = type.titleMedium.copy(fontFamily = messageFont, fontWeight = FontWeight.SemiBold, fontSize = bodySize),
         h4 = type.titleSmall.copy(fontFamily = messageFont, fontWeight = FontWeight.SemiBold, fontSize = bodySize * .90625f),
         h5 = type.bodyLarge.copy(fontFamily = messageFont, fontWeight = FontWeight.Bold, fontSize = bodySize),
         h6 = type.bodyLarge.copy(fontFamily = messageFont, fontWeight = FontWeight.Bold, fontSize = bodySize),
         paragraph = type.bodyLarge.copy(fontFamily = messageFont, fontSize = bodySize, lineHeight = bodySize * 1.375f),
-        textLink = TextLinkStyles(SpanStyle(color = MaterialTheme.colorScheme.primary))
+        textLink = TextLinkStyles(SpanStyle(color = textColor))
     )
 }

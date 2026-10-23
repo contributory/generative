@@ -68,7 +68,7 @@ internal fun OAuthAccountCard(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(status, style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold, color = accent)
+                        fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     Text(
                         text = when {
                             signingOut -> stringResource(R.string.oauth_removing_account)

@@ -490,7 +490,7 @@ internal fun MachineDetailsScreen(
                         if (oauthAuthorized) {
                             Text(
                                 stringResource(R.string.remote_machine_oauth_authorized),
-                                color = MaterialTheme.colorScheme.primary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }

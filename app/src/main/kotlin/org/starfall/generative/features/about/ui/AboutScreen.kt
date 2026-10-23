@@ -72,7 +72,7 @@ fun AboutScreen(modifier: Modifier = Modifier) {
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/starfall-org/generative")))
         }
         AboutCard {
-            Text(stringResource(R.string.settings_license), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.settings_license), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             Text(stringResource(R.string.settings_license_name), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -103,7 +103,7 @@ private fun UpdateSection() {
 
     AboutCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.settings_software_update), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.settings_software_update), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             androidx.compose.material3.IconButton(onClick = { refreshKey++ }, enabled = !isChecking) {
                 Text("⟳", style = MaterialTheme.typography.titleLarge)
             }
@@ -169,7 +169,7 @@ private fun AboutCard(content: @Composable androidx.compose.foundation.layout.Co
 private fun AboutNavigationItem(title: String, subtitle: String, icon: String, onClick: () -> Unit) {
     Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surfaceContainerLow, onClick = onClick) {
         Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(icon, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+            Text(icon, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

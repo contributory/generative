@@ -148,7 +148,7 @@ private fun McpToolParameter(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.width(6.dp))
-                    Text(type, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    Text(type, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface)
                     if (required) {
                         Spacer(Modifier.width(6.dp))
                         Text("required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)

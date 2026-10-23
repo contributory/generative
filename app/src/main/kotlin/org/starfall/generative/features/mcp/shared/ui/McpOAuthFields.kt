@@ -32,7 +32,7 @@ internal fun McpOAuthFields(url: String, clientId: String, onClientIdChange: (St
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         FluentIcon(if (advanced) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.primary)
         Text(stringResource(R.string.advanced_client_credentials), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-            color = MaterialTheme.colorScheme.primary)
+            color = MaterialTheme.colorScheme.onSurface)
     }
     if (advanced) {
         Text(stringResource(R.string.client_id), style = MaterialTheme.typography.titleSmall)
@@ -53,7 +53,7 @@ internal fun McpOAuthFields(url: String, clientId: String, onClientIdChange: (St
     var authorizeJob by remember { mutableStateOf<Job?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     Text(stringResource(if (authorized) R.string.mcp_oauth_authorized else R.string.mcp_oauth_not_authorized),
-        style = MaterialTheme.typography.bodySmall, color = if (authorized) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+        style = MaterialTheme.typography.bodySmall, color = if (authorized) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
     Button(onClick = rememberOAuthStart {
         authorizeJob = scope.launch {
             busy = true; error = null

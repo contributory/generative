@@ -107,7 +107,7 @@ private fun ToolActivityLabel(
     } else {
         0f
     }
-    val color = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+    val color = MaterialTheme.colorScheme.onSurface
     val displayName = when (activity.name) {
         "generate_image" -> stringResource(if (running) R.string.tool_generating_image else R.string.tool_generate_image)
         "generate_video" -> stringResource(if (running) R.string.tool_generating_video else R.string.tool_generate_video)

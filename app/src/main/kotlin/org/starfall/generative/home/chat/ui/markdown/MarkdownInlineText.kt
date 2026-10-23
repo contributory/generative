@@ -39,7 +39,7 @@ internal fun MarkdownClickableText(
 
 @Composable
 fun rememberMarkdownAnnotatedString(text: String): AnnotatedString {
-    val primaryColor = MaterialTheme.colorScheme.primary
+    val primaryColor = MaterialTheme.colorScheme.onSurface
     val codeBg = MaterialTheme.colorScheme.surfaceContainerHighest
     val textColor = MaterialTheme.colorScheme.onSurface
     return remember(text, primaryColor, codeBg, textColor) {

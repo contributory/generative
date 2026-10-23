@@ -109,7 +109,7 @@ internal fun RemoteSection(
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSurface
             )
             if (actions != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

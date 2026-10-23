@@ -168,7 +168,7 @@ fun MediaRequestChainSettings(
                         Text(
                             stringResource(R.string.media_chain_active_profile),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(start = 52.dp)
                         )
                     }

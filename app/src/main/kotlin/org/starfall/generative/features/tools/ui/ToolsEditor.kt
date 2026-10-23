@@ -179,7 +179,7 @@ fun ToolsEditor(
                         Text(
                             stringResource(R.string.tool_settings_media_tools_title),
                             style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -358,7 +358,7 @@ fun ToolsEditor(
                         Text(
                             stringResource(R.string.tool_settings_other_tools_title),
                             style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
                         )
                     }

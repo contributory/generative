@@ -305,7 +305,7 @@ private fun SpeechServiceUnifiedCard(
                     Text(
                         providerName,
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -321,7 +321,7 @@ private fun SpeechServiceUnifiedCard(
                         Text(
                             stringResource(R.string.speech_playing),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }

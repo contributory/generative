@@ -243,7 +243,7 @@ internal fun ReasoningEffortControl(
                         color = when {
                             index != sliderValue.roundToInt() -> labelColor.copy(alpha = 0.65f)
                             band < 5 -> labelColor
-                            else -> lerp(labelColor, accent, 0.45f)
+                            else -> labelColor
                         })
                 }
             }

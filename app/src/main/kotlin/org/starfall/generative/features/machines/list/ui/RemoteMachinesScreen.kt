@@ -220,7 +220,7 @@ private fun RemoteMachineCard(
                 Text(
                     stringResource(if (gcloud) R.string.remote_machine_type_gcloud else R.string.remote_machine_type_ssh),
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     "${machine.username.ifBlank { "?" }}@${machine.displayHost}:${machine.port}",
@@ -233,7 +233,7 @@ private fun RemoteMachineCard(
                     Text(
                         stringResource(R.string.remote_machine_terminal_connected),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
