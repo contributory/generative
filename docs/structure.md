@@ -500,7 +500,8 @@
 │       │   └── 📄 ThinkingColorBurst.kt
 │       ├── 📁 sheets/
 │       │   ├── 📄 AppSheet.kt
-│       │   └── 📄 BottomSheetHeight.kt
+│       │   ├── 📄 BottomSheetHeight.kt
+│       │   └── 📄 SlideSheetContent.kt
 │       ├── 📁 text/
 │       │   ├── 📄 ApiKeyMask.kt
 │       │   ├── 📄 GlyphSelectionGate.kt

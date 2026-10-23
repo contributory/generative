@@ -35,88 +35,138 @@ fun QuickActionsSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 28.dp)
+        QuickActionsSheetContent(
+            onPickImage = onPickImage,
+            onPickDocument = onPickDocument,
+            onTakePhoto = onTakePhoto,
+            onCreateImage = onCreateImage,
+            onCreateVideo = onCreateVideo,
+            onOpenFeatureTools = onOpenFeatureTools,
+            onOpenMcpConnectors = onOpenMcpConnectors,
+            onOpenRemoteMachines = onOpenRemoteMachines,
+            onDismiss = onDismiss
+        )
+    }
+}
+
+@Composable
+internal fun QuickActionsSheetContent(
+    onPickImage: () -> Unit,
+    onPickDocument: () -> Unit,
+    onTakePhoto: () -> Unit,
+    onCreateImage: () -> Unit,
+    onCreateVideo: () -> Unit,
+    onOpenFeatureTools: () -> Unit,
+    onOpenMcpConnectors: () -> Unit,
+    onOpenRemoteMachines: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 28.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                AddActionTile(
-                    icon = Icons.Outlined.Image,
-                    label = "Photos",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        onPickImage()
-                        onDismiss()
-                    }
-                )
-                AddActionTile(
-                    icon = Icons.Outlined.CameraAlt,
-                    label = "Camera",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        onTakePhoto()
-                        onDismiss()
-                    }
-                )
-                AddActionTile(
-                    icon = Icons.Outlined.Description,
-                    label = "Files",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        onPickDocument()
-                        onDismiss()
-                    }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            AddActionRow(
+            AddActionTile(
                 icon = Icons.Outlined.Image,
-                title = "Image",
-                subtitle = "Send directly to an image generation model",
-                onClick = { onCreateImage(); onDismiss() }
-            )
-            AddActionRow(
-                icon = Icons.Outlined.Videocam,
-                title = "Video",
-                subtitle = "Send directly to a video generation model",
-                onClick = { onCreateVideo(); onDismiss() }
-            )
-            AddActionRow(
-                icon = Icons.Outlined.Build,
-                title = stringResource(R.string.quick_action_feature_tools),
-                subtitle = stringResource(R.string.quick_action_feature_tools_description),
+                label = "Photos",
+                modifier = Modifier.weight(1f),
                 onClick = {
-                    onOpenFeatureTools()
+                    onPickImage()
                     onDismiss()
                 }
             )
-            AddActionRow(
-                icon = Icons.Outlined.Extension,
-                title = stringResource(R.string.quick_action_mcp_connectors),
-                subtitle = stringResource(R.string.quick_action_mcp_connectors_description),
+            AddActionTile(
+                icon = Icons.Outlined.CameraAlt,
+                label = "Camera",
+                modifier = Modifier.weight(1f),
                 onClick = {
-                    onOpenMcpConnectors()
+                    onTakePhoto()
                     onDismiss()
                 }
             )
-            AddActionRow(
-                icon = Icons.Outlined.Computer,
-                title = "Remote Machines",
-                subtitle = "Choose which machines the model may use",
+            AddActionTile(
+                icon = Icons.Outlined.Description,
+                label = "Files",
+                modifier = Modifier.weight(1f),
                 onClick = {
-                    onOpenRemoteMachines()
+                    onPickDocument()
                     onDismiss()
                 }
             )
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        AddActionRow(
+            icon = Icons.Outlined.Image,
+            title = "Image",
+            subtitle = "Send directly to an image generation model",
+            onClick = { onCreateImage(); onDismiss() }
+        )
+        AddActionRow(
+            icon = Icons.Outlined.Videocam,
+            title = "Video",
+            subtitle = "Send directly to a video generation model",
+            onClick = { onCreateVideo(); onDismiss() }
+        )
+        AddActionRow(
+            icon = Icons.Outlined.Build,
+            title = stringResource(R.string.quick_action_feature_tools),
+            subtitle = stringResource(R.string.quick_action_feature_tools_description),
+            onClick = onOpenFeatureTools
+        )
+        AddActionRow(
+            icon = Icons.Outlined.Extension,
+            title = stringResource(R.string.quick_action_mcp_connectors),
+            subtitle = stringResource(R.string.quick_action_mcp_connectors_description),
+            onClick = onOpenMcpConnectors
+        )
+        AddActionRow(
+            icon = Icons.Outlined.Computer,
+            title = "Remote Machines",
+            subtitle = "Choose which machines the model may use",
+            onClick = onOpenRemoteMachines
+        )
+    }
+}
+
+@Composable
+internal fun QuickActionsSubpageHeader(
+    title: String,
+    onBack: (() -> Unit)?
+) {
+    if (onBack != null) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(40.dp)
+            ) {
+                FluentIcon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.common_back)
+                )
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    } else {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge
+        )
     }
 }
 

@@ -21,57 +21,65 @@ import org.starfall.generative.shared.ui.icons.Icons
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RemoteMachinesSheet(onDismiss: () -> Unit) {
-    val controls = LocalToolControls.current
     AppSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("Remote Machines", style = MaterialTheme.typography.titleLarge)
-            if (controls.machines.isEmpty()) {
-                Text(
-                    "No remote machines configured",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            controls.machines.forEach { machine ->
-                val icon = if (machine.type.name == "GCLOUD_SHELL") Icons.Outlined.Cloud else Icons.Outlined.Computer
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        RemoteMachinesSheetContent()
+    }
+}
+
+@Composable
+internal fun RemoteMachinesSheetContent(onBack: (() -> Unit)? = null) {
+    val controls = LocalToolControls.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        QuickActionsSubpageHeader(
+            title = "Remote Machines",
+            onBack = onBack
+        )
+        if (controls.machines.isEmpty()) {
+            Text(
+                "No remote machines configured",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        controls.machines.forEach { machine ->
+            val icon = if (machine.type.name == "GCLOUD_SHELL") Icons.Outlined.Cloud else Icons.Outlined.Computer
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        FluentIcon(
-                            icon, null,
-                            Modifier.size(44.dp).padding(10.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            machine.name,
-                            Modifier.weight(1f),
-                            style = MaterialTheme.typography.titleSmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Switch(
-                            checked = remoteMachineEnabled(controls.settings, machine),
-                            onCheckedChange = { controls.setMachine(machine.id, it) }
-                        )
-                    }
+                    FluentIcon(
+                        icon, null,
+                        Modifier.size(44.dp).padding(10.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        machine.name,
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Switch(
+                        checked = remoteMachineEnabled(controls.settings, machine),
+                        onCheckedChange = { controls.setMachine(machine.id, it) }
+                    )
                 }
             }
         }

@@ -31,16 +31,22 @@ import org.starfall.generative.shared.ui.sheets.AppSheet
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeatureToolsSheet(onDismiss: () -> Unit) {
-    val controls = LocalToolControls.current
     AppSheet(onDismissRequest = onDismiss) {
-        Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                stringResource(R.string.quick_action_feature_tools),
-                style = MaterialTheme.typography.titleLarge
-            )
+        FeatureToolsSheetContent()
+    }
+}
+
+@Composable
+internal fun FeatureToolsSheetContent(onBack: (() -> Unit)? = null) {
+    val controls = LocalToolControls.current
+    Column(
+        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        QuickActionsSubpageHeader(
+            title = stringResource(R.string.quick_action_feature_tools),
+            onBack = onBack
+        )
             listOf("generate_image", "generate_video").forEach { name ->
                 val config = controls.settings.system[name] ?: SystemToolConfig()
                 val provider = controls.providers.firstOrNull { it.id == config.providerId }
@@ -118,6 +124,5 @@ fun FeatureToolsSheet(onDismiss: () -> Unit) {
                     )
                 }
             }
-        }
     }
 }
