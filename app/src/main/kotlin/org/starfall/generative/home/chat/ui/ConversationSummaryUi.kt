@@ -52,7 +52,7 @@ fun ConversationSummaryDivider(
                 Text(
                     text = progress?.label ?: "Summary Conversation",
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(Modifier.width(10.dp))
                 HorizontalDivider(modifier = Modifier.weight(1f))

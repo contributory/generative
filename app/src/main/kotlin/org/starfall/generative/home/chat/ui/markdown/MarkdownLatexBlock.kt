@@ -20,15 +20,16 @@ import org.starfall.generative.shared.ui.icons.Icons
 @Composable
 internal fun RenderLatexBlock(source: String, formula: String) {
     val context = LocalContext.current
+    val labelColor = MaterialTheme.colorScheme.onSurface
     Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Column(Modifier.padding(12.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                  Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("∑", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary))
+                    Text("∑", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = labelColor))
                     Spacer(Modifier.width(6.dp))
-                    Text("LaTeX Equation", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Text("LaTeX Equation", style = MaterialTheme.typography.labelMedium, color = labelColor)
                 }
                  IconButton(onClick = {
                      val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

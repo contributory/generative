@@ -209,7 +209,7 @@ fun ChatOptionsScreen(
                                     Text(
                                         stringResource(R.string.tool_settings_conversation_helpers_title),
                                         style = MaterialTheme.typography.titleSmall,
-                                        color = MaterialTheme.colorScheme.primary,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }

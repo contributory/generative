@@ -486,6 +486,8 @@ private fun CompletedAssistantContent(
                 var nextItemNumber = 1
                 blocks.forEach { block ->
                     val offset = block.offset.coerceIn(cursor, content.length)
+                    // Answer text after this block means its actions are finished, so they all collapse.
+                    val answerStarted = content.substring(offset).isNotBlank()
                     if (offset > cursor) {
                         val textBefore = content.substring(cursor, offset).trimEnd()
                         if (textBefore.isNotBlank()) {
@@ -514,7 +516,7 @@ private fun CompletedAssistantContent(
                             durationMillis = processingDurationMillis.takeIf { blocks.size == 1 },
                             startNumber = nextItemNumber,
                             modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
-                            previewCount = if (animateStreamingContent && block === blocks.last()) 2 else 0
+                            previewCount = if (animateStreamingContent && block === blocks.last() && !answerStarted) 2 else 0
                         )
                     }
                     val files = block.items.filterIsInstance<ProcessingDropdownItem.Tool>()

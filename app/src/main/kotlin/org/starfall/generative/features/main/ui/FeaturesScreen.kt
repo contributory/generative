@@ -311,7 +311,7 @@ private fun SectionHeading(title: String) {
         text = title,
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.primary,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 2.dp)
     )
 }

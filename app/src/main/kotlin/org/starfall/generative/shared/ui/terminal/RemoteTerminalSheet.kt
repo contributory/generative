@@ -375,7 +375,7 @@ private fun RemoteTerminalContent(
                                     LaunchedEffect(draft) { draftScroll.scrollTo(draftScroll.maxValue) }
                                     Text(
                                         buildAnnotatedString {
-                                            withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) { append(label) }
+                                            withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurface)) { append(label) }
                                             append(draft)
                                         },
                                         fontFamily = FontFamily.Monospace,

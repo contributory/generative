@@ -64,7 +64,13 @@ fun MarkdownRenderer(
      * after the last. Inside a padded container (the user bubble) that makes the top gap larger than the
      * bottom one; this removes the leading spacer so both gaps match.
      */
-    trimLeadingBlockSpace: Boolean = false
+    trimLeadingBlockSpace: Boolean = false,
+    /**
+     * Parse to show on the first frame instead of [State.Loading]. Used by [ChunkedStreamingMarkdown] for
+     * a streaming tail: it may be slightly older than [content], which is the same staleness a
+     * streaming renderer already shows while it re-parses.
+     */
+    initialParse: State? = null
 ) {
     if (content.isBlank()) return
     if (content.length > MAX_MARKDOWN_RENDER_CHARS) {
@@ -81,7 +87,7 @@ fun MarkdownRenderer(
     val streamingNow by rememberUpdatedState(isStreaming)
     // A tree parsed earlier in this process is shown on the very first frame, so a reopened chat has its
     // final height immediately instead of growing once the background parse finishes.
-    var parsed by remember { mutableStateOf<State>(MarkdownParseCache.get(content) ?: State.Loading()) }
+    var parsed by remember { mutableStateOf<State>(initialParse ?: MarkdownParseCache.get(content) ?: State.Loading()) }
     val settledParse = parsed
     TrackPendingWork(settledParse is State.Loading)
     TrackReadyAssets(if (settledParse is State.Success) listOf(AssetKey.Markdown(settledParse.content)) else emptyList())
@@ -150,8 +156,12 @@ fun StreamingMarkdownRenderer(
     val latestContent by rememberUpdatedState(content)
     var displayContent by remember { mutableStateOf(content) }
     var finishingFade by remember { mutableStateOf(isStreaming) }
+    // While streaming, finished top-level blocks are frozen by ChunkedStreamingMarkdown. Once the answer is
+    // final and parsed, the single renderer takes over. A message that is already finished starts settled.
+    var settled by remember { mutableStateOf(!isStreaming) }
     LaunchedEffect(isStreaming, if (isStreaming) null else content) {
         if (isStreaming) {
+            settled = false
             finishingFade = true
             snapshotFlow { latestContent }.conflate().collect {
                 // Render a complete received chunk, rather than reparsing every animated character.
@@ -165,14 +175,30 @@ fun StreamingMarkdownRenderer(
                 delay(STREAM_FADE_DURATION_MS + 32)
                 finishingFade = false
             }
+            if (!settled) {
+                // Parse the final text first: without it the single renderer starts as Loading and the
+                // whole answer would blink blank. Texts above the render limit are never parsed.
+                val finalText = latestContent
+                if (finalText.length <= MAX_MARKDOWN_RENDER_CHARS && MarkdownParseCache.get(finalText) == null) {
+                    MarkdownParseCache.put(finalText, withContext(Dispatchers.Default) { parseLibraryMarkdown(finalText) })
+                }
+                displayContent = finalText
+                settled = true
+            }
         }
     }
     CompositionLocalProvider(LocalStreamingTextFade provides (isStreaming || finishingFade)) {
-        MarkdownRenderer(
-            content = displayContent,
-            modifier = modifier,
-            isStreaming = isStreaming
-        )
+        // Above the render limit the single renderer shows its truncated preview, as before.
+        // `!isStreaming` keeps a regenerated answer on the chunked path on its first frame, before the effect resets `settled`.
+        if ((settled && !isStreaming) || displayContent.length > MAX_MARKDOWN_RENDER_CHARS) {
+            MarkdownRenderer(
+                content = displayContent,
+                modifier = modifier,
+                isStreaming = isStreaming
+            )
+        } else {
+            ChunkedStreamingMarkdown(content = displayContent, modifier = modifier)
+        }
     }
 }
 

@@ -78,7 +78,7 @@ internal fun DebugLogPanel(modifier: Modifier = Modifier) {
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 IconButton(
                     onClick = { copyLog(context, DebugLog.exportAll(entries)) },
@@ -120,7 +120,7 @@ private fun DebugLogEntryBlock(entry: DebugLogEntry, onCopy: () -> Unit) {
     val accent = when (entry.level) {
         DebugLogLevel.ERROR -> MaterialTheme.colorScheme.error
         DebugLogLevel.WARN -> MaterialTheme.colorScheme.tertiary
-        DebugLogLevel.INFO -> MaterialTheme.colorScheme.primary
+        DebugLogLevel.INFO -> MaterialTheme.colorScheme.onSurface
     }
     Surface(
         modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },

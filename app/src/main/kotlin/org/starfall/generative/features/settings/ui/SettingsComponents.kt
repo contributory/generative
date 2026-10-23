@@ -22,7 +22,7 @@ fun SettingsSection(
 ) {
     SettingsCard {
         Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary)
+            color = MaterialTheme.colorScheme.onSurface)
         if (description != null) {
             Text(description, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -394,7 +394,7 @@ fun UserInputArea(
                         Text(
                             "Editing message",
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f)
                         )
                         TextButton(

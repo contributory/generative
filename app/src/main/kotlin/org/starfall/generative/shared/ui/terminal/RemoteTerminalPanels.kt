@@ -93,7 +93,7 @@ internal fun TerminalSessionsSideBar(
                         stringResource(R.string.remote_machine_terminal_sessions),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         stringResource(
@@ -343,7 +343,7 @@ internal fun BoxScope.LocalInputEditor(bridge: RemoteTerminalBridge) {
             Text(
                 stringResource(R.string.remote_machine_terminal_local_input_label) + ": ",
                 style = textStyle,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSurface
             )
             BasicTextField(
                 value = bridge.localInput,

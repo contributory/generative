@@ -2,8 +2,6 @@ package org.starfall.generative.features.chatoptions.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -66,33 +64,23 @@ internal fun PromptEditor(
         topBar = {
             TopAppBar(
                 title = {
-                    Column(
+                    BasicTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(1.dp)
-                    ) {
-                        Text(
-                            stringResource(R.string.prompt_name),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        BasicTextField(
-                            value = name,
-                            onValueChange = { name = it },
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            modifier = Modifier.fillMaxWidth(),
-                            decorationBox = { innerTextField ->
-                                if (name.isBlank()) {
-                                    Text(
-                                        stringResource(R.string.prompt_name_hint),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                innerTextField()
+                        decorationBox = { innerTextField ->
+                            if (name.isBlank()) {
+                                Text(
+                                    stringResource(R.string.prompt_name_hint),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                        )
-                    }
+                            innerTextField()
+                        }
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = { onBack(draft()) }) {

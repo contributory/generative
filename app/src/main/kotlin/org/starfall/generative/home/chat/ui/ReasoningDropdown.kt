@@ -64,7 +64,7 @@ fun ReasoningDropdown(
                 Text(
                     text = if (isStreaming) stringResource(R.string.thinking_streaming) else stringResource(R.string.thought_process),
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
                 if (isStreaming) {

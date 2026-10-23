@@ -35,6 +35,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   ├── 📁 details/
 │   │   │   └── 📁 ui/
 │   │   │       ├── 📄 MachineDetailsScreen.kt
+│   │   │       ├── 📄 OAuthClientDialog.kt
 │   │   │       ├── 📄 PortForwardingSection.kt
 │   │   │       ├── 📄 RemoteMachineAdvancedDialogs.kt
 │   │   │       └── 📄 RemoteMachineSettings.kt
@@ -81,6 +82,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   │   └── 📄 ProviderScreenModels.kt
 │   │   │   └── 📁 ui/
 │   │   │       ├── 📄 ProviderCard.kt
+│   │   │       ├── 📄 ProviderDialogHost.kt
 │   │   │       ├── 📄 ProviderDragDrop.kt
 │   │   │       ├── 📄 ProviderFolder.kt
 │   │   │       ├── 📄 ProviderGroupDialogs.kt
@@ -118,6 +120,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       └── 📄 SettingsComponents.kt
 │   ├── 📁 speech/
 │   │   └── 📁 ui/
+│   │       ├── 📄 SpeechServiceDialogs.kt
 │   │       └── 📄 SpeechServicesScreen.kt
 │   ├── 📁 storage/
 │   │   └── 📁 ui/
@@ -138,7 +141,8 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   ├── 📁 markdown/
 │   │   │   │   ├── 📄 LatexDetector.kt
 │   │   │   │   ├── 📄 MarkdownLibrary.kt
-│   │   │   │   └── 📄 MathSplitter.kt
+│   │   │   │   ├── 📄 MathSplitter.kt
+│   │   │   │   └── 📄 StableMarkdownPrefix.kt
 │   │   │   ├── 📁 service/
 │   │   │   │   ├── 📄 AutomaticConversationSummaryCoordinator.kt
 │   │   │   │   ├── 📄 ChatConversationCoordinator.kt
@@ -168,6 +172,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       ├── 📁 input/
 │   │       │   └── 📄 ChatInputAreaUi.kt
 │   │       ├── 📁 markdown/
+│   │       │   ├── 📄 ChunkedStreamingMarkdown.kt
 │   │       │   ├── 📄 LatexFormulaRenderer.kt
 │   │       │   ├── 📄 MarkdownCodeBlock.kt
 │   │       │   ├── 📄 MarkdownInlineText.kt
@@ -180,6 +185,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       ├── 📄 AssistantMessageCard.kt
 │   │       ├── 📄 AttachmentPreview.kt
 │   │       ├── 📄 ChatAppbar.kt
+│   │       ├── 📄 ChatMessageDialogs.kt
 │   │       ├── 📄 ChatOpeningVeil.kt
 │   │       ├── 📄 ChatRenderCaches.kt
 │   │       ├── 📄 ChatScreen.kt
@@ -498,8 +504,12 @@ This document is the detailed package map and architecture reference. The mandat
 │       │   └── 📄 RoundedDropdownMenuItem.kt
 │       ├── 📁 model/
 │       │   ├── 📄 ModelInitial.kt
-│       │   ├── 📄 ModelPickerSheet.kt
 │       │   ├── 📄 ModelPickerCards.kt
+│       │   ├── 📄 ModelPickerItems.kt
+│       │   ├── 📄 ModelPickerRows.kt
+│       │   ├── 📄 ModelPickerSheet.kt
+│       │   ├── 📄 ModelPickerTabRow.kt
+│       │   ├── 📄 ModelPickerToolbar.kt
 │       │   ├── 📄 ReasoningEffortControl.kt
 │       │   └── 📄 ThinkingColorBurst.kt
 │       ├── 📁 sheets/

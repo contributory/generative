@@ -399,8 +399,7 @@
     <string name="prompt_add">Add prompt</string>
     <string name="prompt_editor_new_title">New Prompt</string>
     <string name="prompt_editor_edit_title">Edit Prompt</string>
-    <string name="prompt_name">Name</string>
-    <string name="prompt_name_hint">Enter prompt name</string>
+    <string name="prompt_name_hint">Name</string>
     <string name="prompt_role">Role</string>
     <string name="prompt_role_system">System</string>
     <string name="prompt_role_user">User</string>
@@ -415,7 +414,6 @@
     <string name="prompt_preview_empty">This prompt is empty.</string>
     <string name="prompt_role_accessibility">Choose prompt role. Current role: %1$s</string>
     <string name="prompt_edit_accessibility">Edit %1$s</string>
-    <string name="prompt_delete_accessibility">Delete %1$s</string>
     <string name="prompt_delete_title">Delete Prompt?</string>
     <string name="prompt_delete_confirmation">Delete “%1$s”? This cannot be undone.</string>
     <string name="settings_tools_editor">Feature Tools</string>

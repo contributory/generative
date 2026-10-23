@@ -170,7 +170,7 @@ private fun DataStatItem(label: String, count: String) {
         Text(
             text = count,
             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
     }

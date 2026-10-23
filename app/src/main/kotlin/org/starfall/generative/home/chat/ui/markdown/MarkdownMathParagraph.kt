@@ -97,7 +97,8 @@ private fun InlineMathFlow(pieces: List<MathPiece>, style: TextStyle, fillMaxWid
     TrackPendingWork(keys.any { it !in built && LatexDrawables.peek(it) == null })
     TrackReadyAssets(keys.filterIndexed { index, _ -> drawables[index] != null }.map { AssetKey.Latex(it) })
 
-    val primary = colors.primary
+    // Inline code and links in formula paragraphs use the neutral text colour, not the theme primary.
+    val primary = colors.onSurface
     val codeBackground = colors.surfaceContainerHighest
     val fontFamily = style.fontFamily ?: FontFamily.Default
     val markdown = remember(pieces) { placeholderMarkdown(pieces) }
