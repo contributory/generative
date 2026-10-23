@@ -5,6 +5,7 @@ package org.starfall.generative.home.chat.ui.input
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -47,6 +48,13 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
@@ -125,6 +133,9 @@ fun UserInputArea(
     onFetchOllamaModels: (suspend (String) -> List<String>)? = null,
     attachments: List<String> = emptyList(),
     onAttachmentsChange: (List<String>) -> Unit = {},
+    onOpenFeatureToolsSettings: () -> Unit = {},
+    onOpenMcpConnectorsSettings: () -> Unit = {},
+    onOpenRemoteMachinesSettings: () -> Unit = {},
     chatModeRequest: Int = 0,
     modifier: Modifier = Modifier
 ) {
@@ -135,6 +146,7 @@ fun UserInputArea(
     // move it into the only focusable item here and pop the keyboard up.
     var inputFocusAllowed by remember { mutableStateOf(false) }
     var contextWindowMenuVisible by remember { mutableStateOf(false) }
+    BackHandler(enabled = contextWindowMenuVisible) { contextWindowMenuVisible = false }
     val textState = textFieldValue.text
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -300,13 +312,10 @@ fun UserInputArea(
                         status = contextWindowStatus,
                         onClick = { contextWindowMenuVisible = true }
                     )
-                    DropdownMenu(
-                        expanded = contextWindowMenuVisible,
-                        onDismissRequest = { contextWindowMenuVisible = false },
-                        modifier = Modifier.width(228.dp)
-                    ) {
-                        ContextWindowDetails(
+                    if (contextWindowMenuVisible) {
+                        ContextWindowDetailsPopup(
                             status = contextWindowStatus,
+                            onDismissRequest = { contextWindowMenuVisible = false },
                             onCompact = {
                                 contextWindowMenuVisible = false
                                 onOpenSummary()
@@ -435,13 +444,10 @@ fun UserInputArea(
                                     status = contextWindowStatus,
                                     onClick = { contextWindowMenuVisible = true }
                                 )
-                                DropdownMenu(
-                                    expanded = contextWindowMenuVisible,
-                                    onDismissRequest = { contextWindowMenuVisible = false },
-                                    modifier = Modifier.width(228.dp)
-                                ) {
-                                    ContextWindowDetails(
+                                if (contextWindowMenuVisible) {
+                                    ContextWindowDetailsPopup(
                                         status = contextWindowStatus,
+                                        onDismissRequest = { contextWindowMenuVisible = false },
                                         onCompact = {
                                             contextWindowMenuVisible = false
                                             onOpenSummary()
@@ -664,7 +670,50 @@ fun UserInputArea(
         mediaModelId = mediaModelId,
         onMediaModelChange = { provider, model -> mediaProviderId = provider; mediaModelId = model },
         attachments = attachments,
-        onAttachmentsChange = onAttachmentsChange
+        onAttachmentsChange = onAttachmentsChange,
+        onOpenFeatureToolsSettings = onOpenFeatureToolsSettings,
+        onOpenMcpConnectorsSettings = onOpenMcpConnectorsSettings,
+        onOpenRemoteMachinesSettings = onOpenRemoteMachinesSettings
 
     )
+}
+
+@Composable
+private fun ContextWindowDetailsPopup(
+    status: ContextWindowStatus,
+    onDismissRequest: () -> Unit,
+    onCompact: () -> Unit
+) {
+    Popup(
+        popupPositionProvider = ContextWindowPopupPositionProvider,
+        onDismissRequest = onDismissRequest,
+        properties = PopupProperties(
+            focusable = false,
+            dismissOnBackPress = false,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Surface(
+            modifier = Modifier.width(228.dp),
+            shape = MaterialTheme.shapes.extraSmall,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            tonalElevation = 3.dp,
+            shadowElevation = 8.dp
+        ) {
+            ContextWindowDetails(status = status, onCompact = onCompact)
+        }
+    }
+}
+
+private object ContextWindowPopupPositionProvider : PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize
+    ): IntOffset {
+        val x = ((windowSize.width - popupContentSize.width) / 2).coerceAtLeast(0)
+        val y = (anchorBounds.top - popupContentSize.height).coerceAtLeast(0)
+        return IntOffset(x, y)
+    }
 }

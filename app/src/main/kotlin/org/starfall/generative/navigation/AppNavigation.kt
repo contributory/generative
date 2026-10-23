@@ -496,10 +496,13 @@ fun AppNavigation(
                             configurationViewModel.fetchOllamaModels(url)
                         },
                         connectedMachines = connectedMachines,
-                        onOpenTerminal = { machine ->
-                            terminalMachine = machine
-                        }
-                    )
+                         onOpenTerminal = { machine ->
+                             terminalMachine = machine
+                         },
+                         onOpenFeatureToolsSettings = { openConfiguration(AppDestination.TOOLS_EDITOR) },
+                         onOpenMcpConnectorsSettings = { openConfiguration(AppDestination.MCP) },
+                         onOpenRemoteMachinesSettings = { openConfiguration(AppDestination.REMOTE_MACHINES) }
+                     )
                 }
                 NavHost(
                     navController = navController,
@@ -918,23 +921,7 @@ fun AppNavigation(
                     }
 
                     composable(AppDestination.ICONS.route) {
-                        Scaffold(
-                            topBar = {
-                                MainAppbar(
-                                    title = stringResource(R.string.icon_settings_title),
-                                    onBack = { navController.popBackStack() }
-                                )
-                            }
-                        ) { padding ->
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(padding)
-                                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                            ) {
-                                IconsScreen()
-                            }
-                        }
+                        IconsScreen(onBack = { navController.popBackStack() })
                     }
 
                     composable(AppDestination.APP_DATA.route) {

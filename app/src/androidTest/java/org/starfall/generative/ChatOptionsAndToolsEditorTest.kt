@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -84,7 +85,7 @@ class ChatOptionsAndToolsEditorTest {
             val saved = savedLibrary.prompts.single()
             assertEquals("Concise", saved.name)
             assertEquals("Keep answers concise", saved.content)
-            assertTrue(saved.id in savedLibrary.selectedIds)
+            assertFalse(saved.id in savedLibrary.selectedIds)
         }
     }
 
@@ -115,7 +116,6 @@ class ChatOptionsAndToolsEditorTest {
 
         compose.onNodeWithText("Add prompt").assertDoesNotExist()
         compose.onNodeWithText("Answer clearly").assertDoesNotExist()
-        compose.onNodeWithText("System").assertIsDisplayed()
         compose.onNodeWithText("System prompt").performClick()
         compose.runOnIdle { assertTrue(library.selectedIds.isEmpty()) }
         compose.onNodeWithText("System prompt").performTouchInput { longClick() }

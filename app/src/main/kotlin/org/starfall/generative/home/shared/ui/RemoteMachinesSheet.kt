@@ -30,7 +30,10 @@ fun RemoteMachinesSheet(onDismiss: () -> Unit) {
 }
 
 @Composable
-internal fun RemoteMachinesSheetContent(onBack: (() -> Unit)? = null) {
+internal fun RemoteMachinesSheetContent(
+    onBack: (() -> Unit)? = null,
+    onOpenSettings: () -> Unit = {}
+) {
     val controls = LocalToolControls.current
     Column(
         modifier = Modifier
@@ -42,7 +45,13 @@ internal fun RemoteMachinesSheetContent(onBack: (() -> Unit)? = null) {
     ) {
         QuickActionsSubpageHeader(
             title = "Remote Machines",
-            onBack = onBack
+            onBack = onBack,
+            actions = {
+                QuickActionsSettingsButton(
+                    title = "Remote Machines",
+                    onClick = onOpenSettings
+                )
+            }
         )
         if (controls.machines.isEmpty()) {
             Text(

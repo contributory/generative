@@ -21,12 +21,13 @@ fun ItemContextMenu(
     deleteColor: Color,
     firstActionText: String? = null,
     firstActionIcon: Int? = null,
-    onFirstAction: (() -> Unit)? = null
+    onFirstAction: (() -> Unit)? = null,
+    enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     Box {
-        IconButton(onClick = { expanded = true }) {
+        IconButton(enabled = enabled, onClick = { expanded = true }) {
             FluentIcon(Icons.Default.MoreVert, contentDescription = "More options")
         }
 

@@ -11,10 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RectangleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -28,7 +28,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.PromptLibrary
@@ -42,7 +41,6 @@ internal fun InstructionsTab(
     onAddPrompt: () -> Unit,
     onEditPrompt: (SavedPrompt) -> Unit,
     onPreviewPrompt: (SavedPrompt) -> Unit,
-    onTogglePrompt: (SavedPrompt, Boolean) -> Unit,
     onDeletePrompt: (SavedPrompt) -> Unit
 ) {
     var promptPendingDelete by remember { mutableStateOf<SavedPrompt?>(null) }
@@ -67,52 +65,57 @@ internal fun InstructionsTab(
                 )
             }
         }
-        items(library.prompts, key = { it.id }) { prompt ->
-            val active = prompt.id in library.selectedIds
+        item {
             Surface(
-                shape = MaterialTheme.shapes.large,
+                shape = RoundedCornerShape(24.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
-                color = if (active) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.22f)
-                else MaterialTheme.colorScheme.surfaceContainerLow,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = { onPreviewPrompt(prompt) })
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
-                    Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Checkbox(
-                        checked = active,
-                        onCheckedChange = { onTogglePrompt(prompt, it) }
-                    )
-                    Column(Modifier.weight(1f).padding(start = 4.dp)) {
-                        Text(prompt.name, style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            promptRoleLabel(prompt.role),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            prompt.content,
-                            maxLines = 4,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    IconButton(onClick = { onEditPrompt(prompt) }, modifier = Modifier.size(40.dp)) {
-                        FluentIcon(
-                            Icons.Outlined.Edit,
-                            stringResource(R.string.prompt_edit_accessibility, prompt.name)
-                        )
-                    }
-                    IconButton(onClick = { promptPendingDelete = prompt }, modifier = Modifier.size(40.dp)) {
-                        FluentIcon(
-                            Icons.Outlined.Delete,
-                            stringResource(R.string.prompt_delete_accessibility, prompt.name),
-                            tint = MaterialTheme.colorScheme.error
-                        )
+                    library.prompts.forEach { prompt ->
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = { onPreviewPrompt(prompt) }),
+                            shape = RectangleShape,
+                            color = MaterialTheme.colorScheme.surface
+                        ) {
+                            Row(
+                                Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(prompt.name, style = MaterialTheme.typography.titleMedium)
+                                    Text(
+                                        stringResource(
+                                            R.string.prompt_metadata,
+                                            promptRoleLabel(prompt.role),
+                                            prompt.content.length,
+                                            estimatePromptTokens(prompt.content)
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                IconButton(onClick = { onEditPrompt(prompt) }, modifier = Modifier.size(40.dp)) {
+                                    FluentIcon(
+                                        Icons.Outlined.Edit,
+                                        stringResource(R.string.prompt_edit_accessibility, prompt.name)
+                                    )
+                                }
+                                IconButton(onClick = { promptPendingDelete = prompt }, modifier = Modifier.size(40.dp)) {
+                                    FluentIcon(
+                                        Icons.Outlined.Delete,
+                                        stringResource(R.string.prompt_delete_accessibility, prompt.name),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -138,3 +141,6 @@ internal fun InstructionsTab(
         )
     }
 }
+
+private fun estimatePromptTokens(content: String): Int =
+    if (content.isBlank()) 0 else ((content.length + 3) / 4).coerceAtLeast(1)

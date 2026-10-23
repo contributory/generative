@@ -37,7 +37,10 @@ fun FeatureToolsSheet(onDismiss: () -> Unit) {
 }
 
 @Composable
-internal fun FeatureToolsSheetContent(onBack: (() -> Unit)? = null) {
+internal fun FeatureToolsSheetContent(
+    onBack: (() -> Unit)? = null,
+    onOpenSettings: () -> Unit = {}
+) {
     val controls = LocalToolControls.current
     Column(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -45,7 +48,13 @@ internal fun FeatureToolsSheetContent(onBack: (() -> Unit)? = null) {
     ) {
         QuickActionsSubpageHeader(
             title = stringResource(R.string.quick_action_feature_tools),
-            onBack = onBack
+            onBack = onBack,
+            actions = {
+                QuickActionsSettingsButton(
+                    title = stringResource(R.string.quick_action_feature_tools),
+                    onClick = onOpenSettings
+                )
+            }
         )
             listOf("generate_image", "generate_video").forEach { name ->
                 val config = controls.settings.system[name] ?: SystemToolConfig()

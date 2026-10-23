@@ -141,6 +141,9 @@ fun ChatScreen(
     /** Remote machines with a live connection; non-empty shows the terminal button in the app bar. */
     connectedMachines: List<RemoteMachine> = emptyList(),
     onOpenTerminal: (RemoteMachine) -> Unit = {},
+    onOpenFeatureToolsSettings: () -> Unit = {},
+    onOpenMcpConnectorsSettings: () -> Unit = {},
+    onOpenRemoteMachinesSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val conversationKey = conversation?.id ?: "__empty_conversation__"
@@ -806,12 +809,15 @@ fun ChatScreen(
                 conversationReasoningEffort = conversation?.reasoningEffort,
                 onSetReasoningEffort = onSetReasoningEffort,
                 onSetThinkingPassback = onSetThinkingPassback,
-                onSetModelReasoningEffort = onSetModelReasoningEffort,
-                onSetModelTools = onSetModelTools,
-                onEditModel = onEditModel,
-                onEditProvider = onEditProvider,
-                onFetchOllamaModels = onFetchOllamaModels
-            )
+                 onSetModelReasoningEffort = onSetModelReasoningEffort,
+                 onSetModelTools = onSetModelTools,
+                 onEditModel = onEditModel,
+                 onEditProvider = onEditProvider,
+                 onFetchOllamaModels = onFetchOllamaModels,
+                 onOpenFeatureToolsSettings = onOpenFeatureToolsSettings,
+                 onOpenMcpConnectorsSettings = onOpenMcpConnectorsSettings,
+                 onOpenRemoteMachinesSettings = onOpenRemoteMachinesSettings
+             )
         }
 
         }

@@ -177,6 +177,19 @@ internal fun QuickActionsSubpageHeader(
 }
 
 @Composable
+internal fun QuickActionsSettingsButton(
+    title: String,
+    onClick: () -> Unit
+) {
+    IconButton(onClick = onClick, modifier = Modifier.size(40.dp)) {
+        FluentIcon(
+            Icons.Outlined.Settings,
+            stringResource(R.string.tool_settings_accessibility, title)
+        )
+    }
+}
+
+@Composable
 private fun AddActionTile(
     icon: ImageVector,
     label: String,

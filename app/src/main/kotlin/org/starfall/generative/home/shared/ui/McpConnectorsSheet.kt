@@ -35,7 +35,10 @@ fun McpConnectorsSheet(onDismiss: () -> Unit) {
 }
 
 @Composable
-internal fun McpConnectorsSheetContent(onBack: (() -> Unit)? = null) {
+internal fun McpConnectorsSheetContent(
+    onBack: (() -> Unit)? = null,
+    onOpenSettings: () -> Unit = {}
+) {
     val controls = LocalToolControls.current
     Column(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -43,7 +46,13 @@ internal fun McpConnectorsSheetContent(onBack: (() -> Unit)? = null) {
     ) {
         QuickActionsSubpageHeader(
             title = stringResource(R.string.quick_action_mcp_connectors),
-            onBack = onBack
+            onBack = onBack,
+            actions = {
+                QuickActionsSettingsButton(
+                    title = stringResource(R.string.quick_action_mcp_connectors),
+                    onClick = onOpenSettings
+                )
+            }
         )
         if (controls.servers.isEmpty()) {
             Text(

@@ -1,6 +1,7 @@
 package org.starfall.generative.features.icons.ui
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,9 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -29,10 +34,14 @@ import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.icons.model.StoredIcon
+import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.FluentUi
+import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.menus.ItemContextMenu
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun IconsScreen() {
+fun IconsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val store = remember(context) { IconStore(context) }
     val scope = rememberCoroutineScope()
@@ -41,6 +50,9 @@ fun IconsScreen() {
         value = withContext(Dispatchers.IO) { store.entries() }
     }
     var query by remember { mutableStateOf("") }
+    var searchExpanded by remember { mutableStateOf(false) }
+    var searchHasFocus by remember { mutableStateOf(false) }
+    val searchFocus = remember { FocusRequester() }
     var busy by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<StoredIcon?>(null) }
     var patterns by remember { mutableStateOf(emptyList<String>()) }
@@ -103,6 +115,10 @@ fun IconsScreen() {
             }
         }
     }
+    LaunchedEffect(searchExpanded) {
+        if (searchExpanded) searchFocus.requestFocus()
+    }
+
     val trimmedQuery = query.trim()
     val visible = entries.filter { entry ->
         entry.filename.contains(trimmedQuery, ignoreCase = true) ||
@@ -110,76 +126,109 @@ fun IconsScreen() {
             entry.patterns.any { it.contains(trimmedQuery, ignoreCase = true) }
     }
 
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SettingsCard {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                label = { Text(stringResource(R.string.icon_cache_search)) },
-                leadingIcon = { Icon(FluentUi.Regular.Search, null) }
-            )
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(stringResource(R.string.icon_settings_title), modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleSmall)
-                IconButton(enabled = !busy, onClick = {
-                    picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }) {
-                    Icon(FluentUi.Regular.ImageAdd, stringResource(R.string.icon_cache_add))
-                }
-            }
-            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-        }
-        LazyColumn(
-            Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 16.dp)
-        ) {
-            if (visible.isEmpty()) item {
-                SettingsCard {
-                    Text(
-                        stringResource(if (query.isBlank()) R.string.icon_cache_empty else R.string.icon_cache_no_results),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            items(visible, key = { it.image }) { entry ->
-                var menu by remember { mutableStateOf(false) }
-                Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(18.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        StoredIconPreview(entry.image, Modifier.size(48.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(entry.filename, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.titleSmall)
-                            Text(entry.patterns.joinToString(" · ").ifEmpty {
-                                stringResource(R.string.icon_cache_no_matches)
-                            }, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.bodySmall)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    AnimatedContent(targetState = searchExpanded, label = "icons_app_bar_search") { searching ->
+                        if (searching) {
+                            TextField(
+                                value = query,
+                                onValueChange = { query = it },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusRequester(searchFocus)
+                                    .onFocusChanged { focusState ->
+                                        if (focusState.isFocused) {
+                                            searchHasFocus = true
+                                        } else if (searchHasFocus) {
+                                            searchHasFocus = false
+                                            searchExpanded = false
+                                            query = ""
+                                        }
+                                    },
+                                singleLine = true,
+                                placeholder = { Text(stringResource(R.string.icon_cache_search)) },
+                                leadingIcon = { Icon(FluentUi.Regular.Search, contentDescription = null) },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                )
+                            )
+                        } else {
+                            Text(
+                                text = stringResource(R.string.icon_settings_title),
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)
+                            )
                         }
-                        Box {
-                            IconButton(enabled = !busy, onClick = { menu = true }) {
-                                Icon(FluentUi.Regular.MoreVertical,
-                                    stringResource(R.string.icon_cache_actions))
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                    }
+                },
+                actions = {
+                    if (!searchExpanded) {
+                        IconButton(onClick = { searchExpanded = true }) {
+                            Icon(FluentUi.Regular.Search, contentDescription = stringResource(R.string.icon_cache_search))
+                        }
+                    }
+                    IconButton(enabled = !busy, onClick = {
+                        picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }) {
+                        Icon(FluentUi.Regular.ImageAdd, contentDescription = stringResource(R.string.icon_cache_add))
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+            LazyColumn(
+                Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                if (visible.isEmpty()) item {
+                    SettingsCard {
+                        Text(
+                            stringResource(if (query.isBlank()) R.string.icon_cache_empty else R.string.icon_cache_no_results),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                items(visible, key = { it.image }) { entry ->
+                    Surface(
+                        shape = RoundedCornerShape(24.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(18.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            StoredIconPreview(entry.image, Modifier.size(48.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(entry.filename, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.titleSmall)
+                                Text(entry.patterns.joinToString(" · ").ifEmpty {
+                                    stringResource(R.string.icon_cache_no_matches)
+                                }, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.bodySmall)
                             }
-                            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                                DropdownMenuItem(text = { Text(stringResource(R.string.icon_cache_edit)) },
-                                    onClick = { menu = false; edit(entry) })
-                                DropdownMenuItem(text = { Text(stringResource(R.string.common_delete)) },
-                                    onClick = { menu = false; mutate { store.delete(entry.image) } })
-                            }
+                            ItemContextMenu(
+                                onEdit = { edit(entry) },
+                                onDelete = { mutate { store.delete(entry.image) } },
+                                deleteColor = MaterialTheme.colorScheme.error,
+                                enabled = !busy
+                            )
                         }
                     }
                 }

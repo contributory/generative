@@ -22,9 +22,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -208,8 +208,7 @@ fun FeaturesScreen(
                     stringResource(R.string.settings_tools_editor),
                     stringResource(R.string.settings_tools_editor_description),
                     FluentUi.Regular.WrenchScrewdriver,
-                    onNavigateToToolsEditor,
-                    showDivider = false
+                    onNavigateToToolsEditor
                 )
             }
         }
@@ -241,8 +240,7 @@ fun FeaturesScreen(
                     stringResource(R.string.settings_remote_machines),
                     stringResource(R.string.settings_remote_machines_description),
                     FluentUi.Regular.Desktop,
-                    onNavigateToRemoteMachines,
-                    showDivider = false
+                    onNavigateToRemoteMachines
                 )
             }
         }
@@ -262,8 +260,7 @@ fun FeaturesScreen(
                     stringResource(R.string.icon_settings_title),
                     stringResource(R.string.icon_settings_description),
                     FluentUi.Regular.Image,
-                    onNavigateToIcons,
-                    showDivider = false
+                    onNavigateToIcons
                 )
             }
         }
@@ -289,8 +286,7 @@ fun FeaturesScreen(
                     stringResource(R.string.settings_category_about),
                     stringResource(R.string.settings_category_about_description),
                     FluentUi.Regular.Info,
-                    onNavigateToAbout,
-                    showDivider = false
+                    onNavigateToAbout
                 )
             }
         }
@@ -316,7 +312,10 @@ private fun FeatureGroup(content: @Composable ColumnScope.() -> Unit) {
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
-        Column(content = content)
+        Column(
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            content = content
+        )
     }
 }
 
@@ -325,13 +324,12 @@ private fun FeatureButton(
     title: String,
     subtitle: String,
     icon: ImageVector,
-    onClick: () -> Unit,
-    showDivider: Boolean = true
+    onClick: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RectangleShape,
+        color = MaterialTheme.colorScheme.surface
     ) {
         Row(
             modifier = Modifier.padding(18.dp),
@@ -353,12 +351,6 @@ private fun FeatureButton(
             }
             Icon(imageVector = FluentUi.Regular.ArrowForward, contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
-        }
-        if (showDivider) {
-            HorizontalDivider(
-                modifier = Modifier.padding(start = 80.dp, end = 16.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-            )
         }
     }
 }

@@ -61,26 +61,33 @@ internal fun PromptEditor(
         topBar = {
             TopAppBar(
                 title = {
-                    BasicTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        modifier = Modifier.fillMaxWidth(),
-                        decorationBox = { innerTextField ->
-                            if (name.isBlank()) {
-                                Text(
-                                    stringResource(
-                                        if (prompt == null) R.string.prompt_editor_new_title
-                                        else R.string.prompt_name
-                                    ),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
+                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(1.dp)
+                    ) {
+                        Text(
+                            stringResource(R.string.prompt_name),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        BasicTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            modifier = Modifier.fillMaxWidth(),
+                            decorationBox = { innerTextField ->
+                                if (name.isBlank()) {
+                                    Text(
+                                        stringResource(R.string.prompt_name_hint),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                innerTextField()
                             }
-                            innerTextField()
-                        }
-                    )
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = { onBack(draft()) }) {

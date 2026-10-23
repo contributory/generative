@@ -400,12 +400,14 @@
     <string name="prompt_editor_new_title">New Prompt</string>
     <string name="prompt_editor_edit_title">Edit Prompt</string>
     <string name="prompt_name">Name</string>
+    <string name="prompt_name_hint">Enter prompt name</string>
     <string name="prompt_role">Role</string>
     <string name="prompt_role_system">System</string>
     <string name="prompt_role_user">User</string>
     <string name="prompt_role_assistant">Assistant</string>
     <string name="prompt_content">Prompt text</string>
     <string name="prompt_content_hint">Write the prompt instructions here</string>
+    <string name="prompt_metadata">%1$s · %2$d characters · ~%3$d tokens</string>
     <string name="prompt_preview_title">Prompt Preview</string>
     <string name="prompt_preview_description">Preview this instruction as a chat message. The role controls which side of the conversation it belongs to.</string>
     <string name="prompt_preview_edit">Edit prompt</string>

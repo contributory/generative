@@ -178,7 +178,10 @@ internal fun BottomSheetsLink(
     mediaModelId: String,
     onMediaModelChange: (providerId: String, modelId: String) -> Unit,
     attachments: List<String>,
-    onAttachmentsChange: (List<String>) -> Unit
+    onAttachmentsChange: (List<String>) -> Unit,
+    onOpenFeatureToolsSettings: () -> Unit = {},
+    onOpenMcpConnectorsSettings: () -> Unit = {},
+    onOpenRemoteMachinesSettings: () -> Unit = {}
 ) {
     val context = LocalContext.current
     fun retainReadPermission(uri: Uri) {
@@ -279,13 +282,31 @@ internal fun BottomSheetsLink(
                         onLeave = { if (pageActive) sheets.dismissAddMenu() }
                     )
                     QuickActionsPage.FEATURE_TOOLS -> FeatureToolsSheetContent(
-                        onBack = { if (pageActive) sheets.backToQuickActions() }
+                        onBack = { if (pageActive) sheets.backToQuickActions() },
+                        onOpenSettings = {
+                            if (pageActive) {
+                                sheets.dismissAddMenu()
+                                onOpenFeatureToolsSettings()
+                            }
+                        }
                     )
                     QuickActionsPage.MCP_CONNECTORS -> McpConnectorsSheetContent(
-                        onBack = { if (pageActive) sheets.backToQuickActions() }
+                        onBack = { if (pageActive) sheets.backToQuickActions() },
+                        onOpenSettings = {
+                            if (pageActive) {
+                                sheets.dismissAddMenu()
+                                onOpenMcpConnectorsSettings()
+                            }
+                        }
                     )
                     QuickActionsPage.REMOTE_MACHINES -> RemoteMachinesSheetContent(
-                        onBack = { if (pageActive) sheets.backToQuickActions() }
+                        onBack = { if (pageActive) sheets.backToQuickActions() },
+                        onOpenSettings = {
+                            if (pageActive) {
+                                sheets.dismissAddMenu()
+                                onOpenRemoteMachinesSettings()
+                            }
+                        }
                     )
                 }
             }

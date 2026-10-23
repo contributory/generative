@@ -13,7 +13,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -30,7 +29,6 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.SavedPrompt
 import org.starfall.generative.shared.ui.LocalPromptControls
 import org.starfall.generative.shared.ui.icons.FluentIcon
@@ -82,30 +80,21 @@ internal fun PromptInstructionsSheetContent(
                 }
             }
         )
-        Text(
-            stringResource(
-                if (library.prompts.isEmpty()) R.string.prompt_library_empty
-                else R.string.prompt_toggle_description
-            ),
-            modifier = Modifier.padding(start = if (onBack != null) 44.dp else 0.dp, top = 2.dp, bottom = 16.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        if (library.prompts.isNotEmpty()) {
-            // One grouped surface with hairline dividers reads calmer than a card per prompt.
+        if (library.prompts.isEmpty()) {
+            Text(
+                stringResource(R.string.prompt_library_empty),
+                modifier = Modifier.padding(top = 16.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerLow
             ) {
-                Column {
-                    library.prompts.forEachIndexed { index, prompt ->
-                        if (index > 0) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                            )
-                        }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    library.prompts.forEach { prompt ->
                         PromptToggleRow(
                             prompt = prompt,
                             active = prompt.id in library.selectedIds,
@@ -153,21 +142,7 @@ private fun PromptToggleRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                promptRoleLabel(prompt),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
         Switch(checked = active, onCheckedChange = null)
     }
 }
-
-@Composable
-private fun promptRoleLabel(prompt: SavedPrompt): String = stringResource(
-    when (prompt.role) {
-        ChatRole.SYSTEM -> R.string.prompt_role_system
-        ChatRole.USER -> R.string.prompt_role_user
-        ChatRole.MODEL -> R.string.prompt_role_assistant
-    }
-)

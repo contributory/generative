@@ -113,7 +113,7 @@ fun ChatOptionsScreen(
             library.copy(
                 prompts = if (exists) library.prompts.map { if (it.id == prompt.id) prompt else it }
                 else library.prompts + prompt,
-                selectedIds = if (exists) library.selectedIds else library.selectedIds + prompt.id
+                selectedIds = library.selectedIds
             )
         )
         return prompt
@@ -263,15 +263,7 @@ fun ChatOptionsScreen(
                                  onAddPrompt = { creatingPrompt = true },
                                  onEditPrompt = { editingPromptId = it.id },
                                  onPreviewPrompt = { previewingPromptId = it.id },
-                                 onTogglePrompt = { prompt, enabled ->
-                                    updateLibrary(
-                                        library.copy(
-                                            selectedIds = if (enabled) library.selectedIds + prompt.id
-                                            else library.selectedIds - prompt.id
-                                        )
-                                    )
-                                },
-                                onDeletePrompt = { prompt ->
+                                 onDeletePrompt = { prompt ->
                                     updateLibrary(
                                         library.copy(
                                             prompts = library.prompts.filterNot { it.id == prompt.id },
