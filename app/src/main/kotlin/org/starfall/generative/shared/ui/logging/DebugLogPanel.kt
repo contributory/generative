@@ -5,8 +5,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.os.Build
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +44,10 @@ import org.starfall.generative.shared.logging.DebugLogEntry
 import org.starfall.generative.shared.model.logging.DebugLogLevel
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.layout.nestedContainerBorder
+import org.starfall.generative.shared.ui.layout.nestedContainerColor
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 private const val COLLAPSED_LINES = 6
 
@@ -64,8 +66,8 @@ internal fun DebugLogPanel(modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.97f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        color = prominentContainerColor().copy(alpha = 0.97f),
+        border = prominentContainerBorder(),
         shadowElevation = 8.dp
     ) {
         Column(Modifier.fillMaxSize()) {
@@ -123,9 +125,11 @@ private fun DebugLogEntryBlock(entry: DebugLogEntry, onCopy: () -> Unit) {
         DebugLogLevel.INFO -> MaterialTheme.colorScheme.onSurface
     }
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
+        onClick = { expanded = !expanded },
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh
+        color = nestedContainerColor(),
+        border = nestedContainerBorder()
     ) {
         Column(Modifier.padding(start = 12.dp, top = 2.dp, end = 4.dp, bottom = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

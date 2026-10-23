@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,6 +39,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.preview.CodePreviewActivity
 import org.starfall.generative.shared.preview.canPreviewCode
 import org.starfall.generative.shared.storage.preferences.WordWrapMode
+import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 
@@ -54,6 +57,7 @@ internal fun CodeBlockHeader(
     val preferences = LocalCodeRenderingPreferences.current
     var copied by remember(language, originalCode) { mutableStateOf(false) }
     LaunchedEffect(copied) { if (copied) { delay(2000); copied = false } }
+    Column(Modifier.fillMaxWidth()) {
     Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh)
         .padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically) {
@@ -100,5 +104,9 @@ internal fun CodeBlockHeader(
                     tint = if (copied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
             }
         }
+    }
+    if (LocalAmoledMode.current) {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    }
     }
 }

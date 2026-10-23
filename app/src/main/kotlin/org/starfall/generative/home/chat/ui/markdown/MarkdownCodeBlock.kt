@@ -1,6 +1,5 @@
 package org.starfall.generative.home.chat.ui.markdown
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +19,8 @@ import org.starfall.generative.shared.ui.code.CodeBlockSurface
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.layout.nestedContainerBorder
+import org.starfall.generative.shared.ui.layout.nestedContainerColor
 
 /** Chat-only code block logic: long-block display modes (extendable / drawer) on top of the shared [CodeBlockSurface]. */
 @Composable
@@ -34,18 +35,22 @@ internal fun RenderCodeBlock(language: String, code: String, isStreaming: Boolea
 
     if (displayMode == CodeBlockDisplayMode.SHOW_IN_DRAWER && isLong) {
         Surface(
+            onClick = { drawerVisible = true },
             shape = RoundedCornerShape(10.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-            tonalElevation = 2.dp,
+            color = nestedContainerColor(),
+            border = nestedContainerBorder(),
             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
         ) {
-            TextButton(
-                onClick = { drawerVisible = true },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Text("${language.ifBlank { "code" }} | $lineCount lines", fontFamily = FontFamily.Monospace)
+                Text(
+                    "${language.ifBlank { "code" }} | $lineCount lines",
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelLarge
+                )
             }
         }
         if (drawerVisible) {

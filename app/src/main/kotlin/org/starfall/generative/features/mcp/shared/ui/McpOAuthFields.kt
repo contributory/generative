@@ -2,11 +2,13 @@ package org.starfall.generative.features.mcp.shared.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -28,8 +30,15 @@ internal fun McpOAuthFields(url: String, clientId: String, onClientIdChange: (St
     redirectUri: String, onRedirectUriChange: (String) -> Unit,
     authorize: suspend () -> Result<Unit>, clear: suspend () -> Unit, advanced: Boolean, onToggleAdvanced: () -> Unit) {
     Text(stringResource(R.string.mcp_oauth_discovery_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Row(Modifier.fillMaxWidth().clickable(onClick = onToggleAdvanced).padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onToggleAdvanced)
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
         FluentIcon(if (advanced) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.primary)
         Text(stringResource(R.string.advanced_client_credentials), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
             color = MaterialTheme.colorScheme.onSurface)

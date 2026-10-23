@@ -8,7 +8,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
@@ -28,6 +30,8 @@ import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.ui.dialogs.FaviconDialog
 import org.starfall.generative.shared.ui.dialogs.FaviconFetchState
 import org.starfall.generative.shared.ui.dialogs.rememberFaviconFetchState
+import org.starfall.generative.shared.ui.layout.nestedContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 
 internal fun providerInitials(name: String): String = name.trim()
     .split(Regex("\\s+"))
@@ -49,6 +53,7 @@ fun EntityIcon(
     model: Boolean = false,
     useDarkVariant: Boolean? = null,
     backgroundColor: Color? = null,
+    shape: Shape = RoundedCornerShape(12.dp),
     /** Drawn instead of [fallback]/[text] once the lookup finished without finding an image. */
     fallbackContent: (@Composable BoxScope.() -> Unit)? = null
 ) {
@@ -69,8 +74,12 @@ fun EntityIcon(
         }
         resolved = true
     }
-    Surface(modifier = modifier, shape = RoundedCornerShape(12.dp),
-        color = backgroundColor ?: MaterialTheme.colorScheme.surfaceContainerHighest) {
+    Surface(
+        modifier = modifier,
+        shape = shape,
+        color = backgroundColor ?: MaterialTheme.colorScheme.surfaceContainerHighest,
+        border = if (backgroundColor == null) nestedContainerBorder() else null
+    ) {
         Box(contentAlignment = Alignment.Center) {
             if (data == null) {
                 if (fallbackContent != null) {
@@ -153,7 +162,7 @@ fun IconPickerRow(
     val fileName = remember(image, revision) { store.fileName(image) }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         // Tapping the logo uploads an image from the device.
-        Box(Modifier.size(56.dp).clickable(enabled = !busy) {
+        Box(Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).clickable(enabled = !busy) {
             imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         }) {
             EntityIcon(
@@ -169,7 +178,8 @@ fun IconPickerRow(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(2.dp),
                 shape = RoundedCornerShape(50),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                contentColor = MaterialTheme.colorScheme.onSurface
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                border = prominentContainerBorder()
             ) {
                 FluentIcon(
                     Icons.Outlined.AddPhotoAlternate,

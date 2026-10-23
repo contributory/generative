@@ -98,6 +98,8 @@ import org.starfall.generative.home.chat.ui.AttachmentStrip
 import org.starfall.generative.home.BottomSheetsLink
 import org.starfall.generative.home.BottomSheetsLinkState
 import org.starfall.generative.shared.ui.model.modelInitial
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @Composable
 fun UserInputArea(
@@ -221,8 +223,8 @@ fun UserInputArea(
     val maximumThinking = thinkingConfig?.supportsThinking == true &&
         reasoningEffortTier(reasoningEffortIndex(currentEffort, thinkingOptions), thinkingOptions) == 6
     val inputColor by animateColorAsState(
-        if (maximumThinking) lerp(MaterialTheme.colorScheme.surfaceContainer, Color(0xFFF97316), 0.12f)
-        else MaterialTheme.colorScheme.surfaceContainer,
+        if (maximumThinking) lerp(MaterialTheme.colorScheme.surfaceContainerHigh, Color(0xFFF97316), 0.12f)
+        else MaterialTheme.colorScheme.surfaceContainerHigh,
         tween(1400), label = "thinking-input-color"
     )
     var mediaKind by rememberSaveable { mutableStateOf<ModelType?>(null) }
@@ -331,9 +333,12 @@ fun UserInputArea(
                 .fillMaxWidth()
                 .testTag("chat-input"),
             shape = RoundedCornerShape(36.dp),
-            color = (if (amoledMode) MaterialTheme.colorScheme.surface else inputColor).copy(alpha = 0.86f),
-            border = BorderStroke(1.dp, if (mediaKind != null) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+            color = (if (amoledMode) MaterialTheme.colorScheme.surface else inputColor).copy(alpha = 0.92f),
+            border = when {
+                mediaKind != null -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                amoledMode -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                else -> null
+            },
             tonalElevation = if (amoledMode) 0.dp else 2.dp,
             // No shadowElevation: the surface is translucent, so its shadow would show through inside.
             shadowElevation = 0.dp
@@ -462,7 +467,7 @@ fun UserInputArea(
                             .size(44.dp)
                             .clip(CircleShape)
                             .background(if (mediaKind != null) MaterialTheme.colorScheme.primaryContainer
-                                else MaterialTheme.colorScheme.surfaceContainerHigh)
+                                else MaterialTheme.colorScheme.surfaceContainerHighest)
                             .semantics { contentDescription = if (mediaKind != null) "Select $mediaLabel model" else "Select model" }
                             .clickable {
                                 if (mediaKind != null) bottomSheets.openModelPicker()
@@ -477,7 +482,8 @@ fun UserInputArea(
                                 fallback = if (mediaModel == null) {
                                     if (mediaKind == ModelType.IMAGE_GENERATION) Icons.Outlined.Image else Icons.Outlined.Videocam
                                 } else null,
-                                matchName = mediaModel?.displayName?.ifBlank { mediaModelId }, fallbackMatchName = mediaModelId, model = true
+                                matchName = mediaModel?.displayName?.ifBlank { mediaModelId }, fallbackMatchName = mediaModelId, model = true,
+                                shape = CircleShape
                             )
                         } else {
                         val selectedProvider = providers.firstOrNull { it.id == selectedProviderId }
@@ -487,7 +493,8 @@ fun UserInputArea(
                             }
                         EntityIcon(selectedConfig?.icon, Modifier.fillMaxSize(),
                             text = modelInitial(selectedModelName),
-                             matchName = selectedConfig?.displayName?.ifBlank { selectedModelName } ?: selectedModelName, fallbackMatchName = selectedModelName, model = true)
+                             matchName = selectedConfig?.displayName?.ifBlank { selectedModelName } ?: selectedModelName, fallbackMatchName = selectedModelName, model = true,
+                             shape = CircleShape)
                         }
                     }
 
@@ -696,9 +703,10 @@ private fun ContextWindowDetailsPopup(
         Surface(
             modifier = Modifier.width(228.dp),
             shape = MaterialTheme.shapes.extraSmall,
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            tonalElevation = 3.dp,
-            shadowElevation = 8.dp
+            color = prominentContainerColor(),
+            border = prominentContainerBorder(),
+            tonalElevation = if (LocalAmoledMode.current) 0.dp else 3.dp,
+            shadowElevation = if (LocalAmoledMode.current) 0.dp else 8.dp
         ) {
             ContextWindowDetails(status = status, onCompact = onCompact)
         }

@@ -5,11 +5,13 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -82,6 +84,7 @@ internal fun LiveThinkingBlock(reasoning: String, active: Boolean, showHeader: B
         if (showHeader) Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
                 .clickable { expanded = !expanded },
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -140,6 +143,7 @@ internal fun LiveThinkingBlock(reasoning: String, active: Boolean, showHeader: B
                 .then(if (animateSize) Modifier.animateContentSize() else Modifier)
                 .then(previewModifier)
                 .testTag("live-thinking-preview")
+                .clip(RoundedCornerShape(8.dp))
                 .then(fadingEdges)
                 .then(scrollModifier)
                 .clickable { expanded = !expanded }

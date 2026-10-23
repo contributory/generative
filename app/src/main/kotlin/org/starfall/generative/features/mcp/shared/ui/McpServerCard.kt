@@ -3,7 +3,6 @@ package org.starfall.generative.features.mcp.shared.ui
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,6 +21,8 @@ import androidx.compose.ui.unit.sp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.ui.layout.AdaptiveCardLayout
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -34,8 +35,13 @@ fun McpUnifiedCard(server: McpInfo, isGrid: Boolean, modifier: Modifier = Modifi
     onToolErrorClick: (String) -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
     val corner by animateDpAsState(if (isGrid) 20.dp else 16.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow), label = "mcpShapeCorner")
-    Surface(shape = RoundedCornerShape(corner), color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant), modifier = modifier.fillMaxWidth().clickable(onClick = onEdit)) {
+    Surface(
+        onClick = onEdit,
+        shape = RoundedCornerShape(corner),
+        color = prominentContainerColor(),
+        border = prominentContainerBorder(1.5.dp),
+        modifier = modifier.fillMaxWidth()
+    ) {
         AdaptiveCardLayout(isGrid = isGrid, modifier = Modifier.fillMaxWidth().padding(14.dp),
             icon = { EntityIcon(server.icon, Modifier.size(42.dp), text = providerInitials(server.name),
                 fallback = Icons.Outlined.Extension, matchName = server.name) },

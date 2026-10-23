@@ -1,7 +1,5 @@
 package org.starfall.generative.features.chatoptions.ui
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,9 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,20 +20,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.PromptLibrary
 import org.starfall.generative.shared.model.SavedPrompt
-import org.starfall.generative.shared.ui.icons.FluentIcon
-import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.layout.groupedItemShape
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.menus.ItemContextMenu
 
 @Composable
 internal fun InstructionsTab(
     library: PromptLibrary,
-    onAddPrompt: () -> Unit,
     onEditPrompt: (SavedPrompt) -> Unit,
     onPreviewPrompt: (SavedPrompt) -> Unit,
     onDeletePrompt: (SavedPrompt) -> Unit
@@ -49,12 +44,6 @@ internal fun InstructionsTab(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            Button(onClick = onAddPrompt, modifier = Modifier.fillMaxWidth()) {
-                FluentIcon(Icons.Outlined.Add, contentDescription = null)
-                Text(stringResource(R.string.prompt_add), modifier = Modifier.padding(start = 8.dp))
-            }
-        }
         if (library.prompts.isEmpty()) {
             item {
                 Text(
@@ -66,47 +55,40 @@ internal fun InstructionsTab(
         }
         if (library.prompts.isNotEmpty()) {
             item {
-                Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    modifier = Modifier.fillMaxWidth()
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        library.prompts.forEach { prompt ->
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable(onClick = { onPreviewPrompt(prompt) }),
-                                shape = RectangleShape,
-                                color = MaterialTheme.colorScheme.surface
+                    library.prompts.forEachIndexed { index, prompt ->
+                        Surface(
+                            onClick = { onPreviewPrompt(prompt) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = groupedItemShape(index, library.prompts.size),
+                            color = prominentContainerColor(),
+                            border = prominentContainerBorder()
+                        ) {
+                            Row(
+                                Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Text(prompt.name, style = MaterialTheme.typography.titleMedium)
-                                        Text(
-                                            stringResource(
-                                                R.string.prompt_metadata,
-                                                promptRoleLabel(prompt.role),
-                                                prompt.content.length,
-                                                estimatePromptTokens(prompt.content)
-                                            ),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    ItemContextMenu(
-                                        onEdit = { onEditPrompt(prompt) },
-                                        onDelete = { promptPendingDelete = prompt },
-                                        deleteColor = MaterialTheme.colorScheme.error
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(prompt.name, style = MaterialTheme.typography.titleMedium)
+                                    Text(
+                                        stringResource(
+                                            R.string.prompt_metadata,
+                                            promptRoleLabel(prompt.role),
+                                            prompt.content.length,
+                                            estimatePromptTokens(prompt.content)
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
+                                ItemContextMenu(
+                                    onEdit = { onEditPrompt(prompt) },
+                                    onDelete = { promptPendingDelete = prompt },
+                                    deleteColor = MaterialTheme.colorScheme.error
+                                )
                             }
                         }
                     }

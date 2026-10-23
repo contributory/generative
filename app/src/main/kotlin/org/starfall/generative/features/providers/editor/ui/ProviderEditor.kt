@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -16,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
@@ -272,10 +274,16 @@ fun ProviderEditor(
                                 onMethodChange = { authMethod = it; authName = if (it == AuthMethod.QUERY_PARAM) "key" else "Authorization"; oauthAuthError = null },
                                 onValueChange = { apiKey = it }, onFocusLost = { if (authMethod == AuthMethod.BEARER_TOKEN) apiKey = bearerHeaderValue(authName.trim().ifBlank { "Authorization" }, apiKey) })
                             if (authMethod !in listOf(AuthMethod.OAUTH, AuthMethod.NONE, AuthMethod.OTHER)) {
-                                Row(Modifier.fillMaxWidth().toggleable(value = apiKeys.enabled, role = Role.Checkbox, onValueChange = {
-                                    apiKeys.enabled = it
-                                    if (it) apiKeys.ensureCurrent(::keyIdentity)
-                                }), verticalAlignment = Alignment.CenterVertically) {
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .toggleable(value = apiKeys.enabled, role = Role.Checkbox, onValueChange = {
+                                            apiKeys.enabled = it
+                                            if (it) apiKeys.ensureCurrent(::keyIdentity)
+                                        }),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Checkbox(checked = apiKeys.enabled, onCheckedChange = null)
                                     Text(stringResource(R.string.provider_multiple_api_keys), Modifier.padding(start = 8.dp))
                                 }
@@ -292,9 +300,14 @@ fun ProviderEditor(
                                     activeOAuthRequest?.let { onCancelProviderAuthorization?.invoke(it) }
                                 }, onSignOut = { scope.launch { removeOAuthAccount(oauthAccountId ?: initialProvider.id) } })
                             if (authMethod == AuthMethod.OAUTH) {
-                                Row(Modifier.fillMaxWidth().toggleable(value = apiKeys.enabled, role = Role.Checkbox,
-                                    enabled = !oauthAuthorizing, onValueChange = { apiKeys.enabled = it }),
-                                    verticalAlignment = Alignment.CenterVertically) {
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .toggleable(value = apiKeys.enabled, role = Role.Checkbox,
+                                            enabled = !oauthAuthorizing, onValueChange = { apiKeys.enabled = it }),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Checkbox(checked = apiKeys.enabled, onCheckedChange = null, enabled = !oauthAuthorizing)
                                     Text(stringResource(R.string.provider_multiple_accounts), Modifier.padding(start = 8.dp))
                                 }

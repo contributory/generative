@@ -1,6 +1,5 @@
 package org.starfall.generative.shared.ui.code
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -38,6 +37,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.starfall.generative.shared.code.highlightedCode
 import org.starfall.generative.shared.storage.preferences.WordWrapMode
+import org.starfall.generative.shared.ui.layout.nestedContainerBorder
+import org.starfall.generative.shared.ui.layout.nestedContainerColor
 
 /**
  * Code surface for texts that may be huge: only the chunks on screen are composed (and highlighted).
@@ -70,10 +71,9 @@ internal fun LazyCodeBlock(
 
     Surface(
         shape = RoundedCornerShape(10.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        tonalElevation = 2.dp,
+        color = nestedContainerColor(),
+        border = nestedContainerBorder(),
         modifier = modifier.fillMaxWidth()
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
     ) {
         Column(Modifier.fillMaxWidth()) {
             CodeBlockHeader(

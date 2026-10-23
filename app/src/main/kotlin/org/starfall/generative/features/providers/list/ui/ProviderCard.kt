@@ -9,7 +9,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -27,6 +26,8 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.layout.AdaptiveCardLayout
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -89,18 +90,18 @@ private fun ProviderGroupCollapsedCard(
     val height = if (isGrid) ProviderGridCardHeight else ProviderListCardHeight
 
     Surface(
+        onClick = onOpen,
         shape = RoundedCornerShape(corner),
         color = if (isDropTarget) MaterialTheme.colorScheme.primaryContainer
-            else MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(
-            width = if (isDropTarget) 2.dp else 1.5.dp,
-            color = if (isDropTarget) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.outlineVariant
-        ),
+            else prominentContainerColor(),
+        border = if (isDropTarget) {
+            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        } else {
+            prominentContainerBorder(1.5.dp)
+        },
         modifier = modifier
             .fillMaxWidth()
             .height(height)
-            .clickable(onClick = onOpen)
     ) {
         val titleColor = if (isDropTarget) MaterialTheme.colorScheme.onPrimaryContainer else LocalContentColor.current
         if (isGrid) {
@@ -198,13 +199,13 @@ fun ProviderUnifiedCard(
     )
 
     Surface(
+        onClick = onEdit,
         shape = RoundedCornerShape(shapeCorner),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant),
+        color = prominentContainerColor(),
+        border = prominentContainerBorder(1.5.dp),
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = if (isGrid) ProviderGridCardHeight else ProviderListCardHeight)
-            .clickable { onEdit() }
     ) {
         AdaptiveCardLayout(
             isGrid = isGrid,

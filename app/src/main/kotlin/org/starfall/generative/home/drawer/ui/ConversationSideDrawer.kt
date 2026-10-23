@@ -53,6 +53,8 @@ import org.starfall.generative.shared.ui.layout.amoledEdgeBorder
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 import org.starfall.generative.shared.ui.layout.windowWidth
 import org.starfall.generative.home.drawer.logic.lastModelIcon
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @Composable
 private fun SidebarLabel(text: String) { Text(text, Modifier.padding(start = 8.dp, top = 10.dp, bottom = 6.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -192,7 +194,11 @@ fun ConversationSideDrawer(
                     if (search.isBlank() || chats.isNotEmpty() || folder.name.contains(search, true)) {
                         item(key = "folder:${folder.id}") {
                             var menu by remember { mutableStateOf(false) }
-                            Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = prominentContainerColor(),
+                                border = prominentContainerBorder()
+                            ) {
                                 Row(Modifier.fillMaxWidth().combinedClickable(onClick = {
                                     onUpdateOrganization { state -> state.copy(folders = state.folders.map { if (it.id == folder.id) it.copy(expanded = !it.expanded) else it }) }
                                 }).padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically) {

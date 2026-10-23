@@ -1,7 +1,6 @@
 package org.starfall.generative.features.tools.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -25,6 +24,8 @@ import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.layout.nestedContainerBorder
+import org.starfall.generative.shared.ui.layout.nestedContainerColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,9 +129,11 @@ internal fun MediaRequestProfileEditor(
                     }
                     draft.chain.steps.forEachIndexed { index, step ->
                         Surface(
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).clickable { editingStep = index },
+                            onClick = { editingStep = index },
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                             shape = MaterialTheme.shapes.medium,
-                            color = MaterialTheme.colorScheme.surfaceContainerHighest
+                            color = nestedContainerColor(),
+                            border = nestedContainerBorder()
                         ) {
                             Row(
                                 Modifier.padding(horizontal = 12.dp, vertical = 10.dp),

@@ -41,6 +41,9 @@ import org.starfall.generative.R
 import org.starfall.generative.features.about.logic.GitHubReleaseInfo
 import org.starfall.generative.features.about.logic.compareReleaseVersions
 import org.starfall.generative.features.about.logic.fetchLatestGitHubRelease
+import org.starfall.generative.shared.ui.layout.SettingsCard
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @Composable
 fun AboutScreen(modifier: Modifier = Modifier) {
@@ -156,18 +159,18 @@ private fun ReleaseEntry(latest: GitHubReleaseInfo) {
 
 @Composable
 private fun AboutCard(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 0.dp
-    ) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
-    }
+    SettingsCard(content = content)
 }
 
 @Composable
 private fun AboutNavigationItem(title: String, subtitle: String, icon: String, onClick: () -> Unit) {
-    Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surfaceContainerLow, onClick = onClick) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = prominentContainerColor(),
+        border = prominentContainerBorder()
+    ) {
         Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(icon, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {

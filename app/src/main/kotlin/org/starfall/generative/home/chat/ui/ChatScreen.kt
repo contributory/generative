@@ -8,7 +8,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.geometry.Offset
@@ -30,7 +29,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -75,6 +73,8 @@ import org.starfall.generative.home.chat.ui.input.UserInputArea
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.home.shared.ui.ConversationSummarySheet
 import org.starfall.generative.home.chat.model.ContextWindowStatus
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 // Jump-to-latest: ease time constant (smaller is faster), frames the bottom must hold, and a hard cap.
 private const val JUMP_EASE_MS = 90f
@@ -861,15 +861,14 @@ fun ChatScreen(
                 )
                 connectedMachines.forEach { machine ->
                     Surface(
+                        onClick = {
+                            showTerminalMachinePicker = false
+                            onOpenTerminal(machine)
+                        },
                         shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .clickable {
-                                showTerminalMachinePicker = false
-                                onOpenTerminal(machine)
-                            }
+                        color = prominentContainerColor(),
+                        border = prominentContainerBorder(),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
                             Modifier.fillMaxWidth().padding(14.dp),

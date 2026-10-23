@@ -13,6 +13,9 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.theme.LocalAmoledMode
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @Composable
 fun ItemContextMenu(
@@ -37,13 +40,10 @@ fun ItemContextMenu(
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                tonalElevation = 6.dp,
-                shadowElevation = 8.dp,
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                )
+                containerColor = prominentContainerColor(),
+                tonalElevation = if (LocalAmoledMode.current) 0.dp else 6.dp,
+                shadowElevation = if (LocalAmoledMode.current) 0.dp else 8.dp,
+                border = prominentContainerBorder()
             ) {
                 if (firstActionText != null && firstActionIcon != null && onFirstAction != null) {
                     DropdownMenuItem(

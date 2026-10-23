@@ -1,8 +1,8 @@
 package org.starfall.generative.home.chat.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,6 +18,8 @@ import org.starfall.generative.shared.model.SummaryRole
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 
 @Composable
@@ -29,12 +31,9 @@ fun ConversationSummaryDivider(
     modifier: Modifier = Modifier
 ) {
     val running = progress != null
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(if (!running && summary != null) Modifier.clickable(onClick = onOpenSummary) else Modifier),
-        color = MaterialTheme.colorScheme.surfaceContainerLow
-    ) {
+    val canOpen = !running && summary != null
+    val shape = RoundedCornerShape(16.dp)
+    val content: @Composable () -> Unit = {
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -80,6 +79,24 @@ fun ConversationSummaryDivider(
                 }
             }
         }
+    }
+    if (canOpen) {
+        Surface(
+            onClick = onOpenSummary,
+            modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+            shape = shape,
+            color = prominentContainerColor(),
+            border = prominentContainerBorder(),
+            content = content
+        )
+    } else {
+        Surface(
+            modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+            shape = shape,
+            color = prominentContainerColor(),
+            border = prominentContainerBorder(),
+            content = content
+        )
     }
 }
 

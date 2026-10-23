@@ -35,6 +35,8 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.model.ModelPickerCard
 import org.starfall.generative.shared.ui.model.drawMaximumEffortStreaks
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 /** Sheet background that follows the reasoning tier: the maximum effort tier gets a red brush. */
 internal class SelectedModelSheetStyle(
@@ -204,11 +206,18 @@ internal fun SelectedModelOverviewContent(
         )
         // Show the dropdown only when this model has at least one configurable option.
         // Keep optional model controls tucked away until the user opens Model Options.
-        if (visibleModelTools.isNotEmpty() || config.supportsThinking) Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.1f),
-            modifier = Modifier.fillMaxWidth().testTag("model-options-dropdown")
-        ) {
+        if (visibleModelTools.isNotEmpty() || config.supportsThinking) {
+            val burstActive = previewTier >= 5 && config.supportsThinking
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = if (burstActive) {
+                    MaterialTheme.colorScheme.surface.copy(alpha = 0.2f)
+                } else {
+                    prominentContainerColor()
+                },
+                border = if (burstActive) null else prominentContainerBorder(),
+                modifier = Modifier.fillMaxWidth().testTag("model-options-dropdown")
+            ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -321,6 +330,7 @@ internal fun SelectedModelOverviewContent(
                     }
                 }
             }
+        }
         }
     }
 

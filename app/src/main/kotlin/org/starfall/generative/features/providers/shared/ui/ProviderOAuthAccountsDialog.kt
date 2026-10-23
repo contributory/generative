@@ -1,14 +1,17 @@
 package org.starfall.generative.features.providers.shared.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -25,6 +28,8 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.generative.shared.ui.auth.rememberOAuthStart
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,14 +91,38 @@ internal fun ProviderOAuthAccountsDialog(
                     }
                     if (busy) TextButton(onClick = onCancelAuthorization) { Text(stringResource(R.string.common_cancel)) }
                 } else if (accounts.isEmpty()) Text(stringResource(R.string.provider_no_accounts), Modifier.padding(24.dp))
-                else LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false), contentPadding = PaddingValues(bottom = 12.dp)) {
+                else LazyColumn(
+                    Modifier.fillMaxWidth().weight(1f, fill = false),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     items(accounts.sortedBy { it.id != selectedId }, key = { it.id }) { account ->
                         val selected = account.id == selectedId
                         var menu by remember(account.id) { mutableStateOf(false) }
-                        Surface(color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface) {
-                            Row(Modifier.fillMaxWidth().selectable(selected, enabled = !busy, role = Role.RadioButton,
-                                onClick = { onSelect(account) }).padding(start = 16.dp, end = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically) {
+                        val itemShape = RoundedCornerShape(16.dp)
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = itemShape,
+                            color = if (selected) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                prominentContainerColor()
+                            },
+                            border = if (selected) {
+                                BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+                            } else {
+                                prominentContainerBorder()
+                            }
+                        ) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clip(itemShape)
+                                    .selectable(selected, enabled = !busy, role = Role.RadioButton,
+                                        onClick = { onSelect(account) })
+                                    .padding(start = 16.dp, end = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Column(Modifier.weight(1f).padding(vertical = 12.dp)) {
                                     Text(account.label.ifBlank { account.identity ?: "Account ${accounts.indexOf(account) + 1}" })
                                     if (account.label.isNotBlank() && !account.identity.isNullOrBlank()) Text(account.identity,

@@ -21,6 +21,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
@@ -33,6 +35,9 @@ import org.starfall.generative.shared.model.SavedPrompt
 import org.starfall.generative.shared.ui.LocalPromptControls
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.layout.groupedItemShape
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.sheets.AppSheet
 
 /** Bottom sheet that turns each saved prompt on or off for the open chat. */
@@ -88,23 +93,18 @@ internal fun PromptInstructionsSheetContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLow
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    library.prompts.forEach { prompt ->
-                        PromptToggleRow(
-                            prompt = prompt,
-                            active = prompt.id in library.selectedIds,
-                            onToggle = { controls.setPromptEnabled(prompt.id, it) },
-                            onEdit = {
-                                onLeave()
-                                controls.editPrompt(prompt.id)
-                            }
-                        )
-                    }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                library.prompts.forEachIndexed { index, prompt ->
+                    PromptToggleRow(
+                        prompt = prompt,
+                        active = prompt.id in library.selectedIds,
+                        shape = groupedItemShape(index, library.prompts.size, outerCorner = 20.dp, innerCorner = 6.dp),
+                        onToggle = { controls.setPromptEnabled(prompt.id, it) },
+                        onEdit = {
+                            onLeave()
+                            controls.editPrompt(prompt.id)
+                        }
+                    )
                 }
             }
         }
@@ -116,33 +116,43 @@ internal fun PromptInstructionsSheetContent(
 private fun PromptToggleRow(
     prompt: SavedPrompt,
     active: Boolean,
+    shape: Shape,
     onToggle: (Boolean) -> Unit,
     onEdit: () -> Unit
 ) {
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 64.dp)
+            .clip(shape)
             .semantics(mergeDescendants = true) { toggleableState = ToggleableState(active) }
             .combinedClickable(
                 role = Role.Switch,
                 onLongClickLabel = stringResource(R.string.prompt_edit_accessibility, prompt.name),
                 onLongClick = onEdit,
                 onClick = { onToggle(!active) }
-            )
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ),
+        shape = shape,
+        color = prominentContainerColor(),
+        border = prominentContainerBorder()
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                prompt.name,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 64.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    prompt.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Switch(checked = active, onCheckedChange = null)
         }
-        Switch(checked = active, onCheckedChange = null)
     }
 }

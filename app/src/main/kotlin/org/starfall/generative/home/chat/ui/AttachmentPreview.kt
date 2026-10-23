@@ -9,6 +9,7 @@ import android.provider.OpenableColumns
 import android.util.Size
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -36,6 +37,9 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.media.MediaPreviewDialog
 import org.starfall.generative.shared.ui.media.mediaThumbnail
+import org.starfall.generative.shared.theme.LocalAmoledMode
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 internal data class AttachmentPreviewData(
     val name: String,
@@ -121,6 +125,11 @@ private fun AttachmentTile(
             .testTag("attachment-tile_$reference")
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .then(
+                if (LocalAmoledMode.current) {
+                    Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+                } else Modifier
+            )
             .clickable(enabled = data != null) { showPreview = true }
     ) {
         val preview = data
@@ -176,14 +185,14 @@ private fun AttachmentTile(
 
         if (removable) {
             Surface(
+                onClick = onRemove,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(6.dp)
-                    .size(30.dp)
-                    .clip(CircleShape)
-                    .clickable(onClick = onRemove),
+                    .size(30.dp),
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+                color = prominentContainerColor().copy(alpha = 0.92f),
+                border = prominentContainerBorder()
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text("×", style = MaterialTheme.typography.titleLarge)

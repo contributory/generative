@@ -8,7 +8,6 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,6 +40,8 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.code.CodeBlockSurface
 import org.starfall.generative.shared.ui.code.LazyCodeBlock
 import org.starfall.generative.home.shared.ui.ToolSheetState
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 private val toolJson = Json { prettyPrint = true }
 
@@ -236,9 +237,12 @@ private fun unescapeToolResponse(raw: String): String {
 private fun ToolFileRow(name: String, file: File?, onOpen: () -> Unit) {
     val context = LocalContext.current
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable(enabled = file != null, onClick = onOpen),
+        onClick = onOpen,
+        enabled = file != null,
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer
+        color = prominentContainerColor(),
+        border = prominentContainerBorder()
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),

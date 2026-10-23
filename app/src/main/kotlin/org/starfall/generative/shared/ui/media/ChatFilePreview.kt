@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -34,18 +35,36 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 
 @Composable
 internal fun BoundedMediaFrame(ratio: Float, modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
+    val frameShape = RoundedCornerShape(16.dp)
     BoxWithConstraints(modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.5f), contentAlignment = Alignment.Center) {
         val safeRatio = ratio.takeIf { it.isFinite() && it > 0f } ?: (16f / 9f)
         val frameHeight = minOf(maxWidth / safeRatio, maxHeight)
-        Box(Modifier.fillMaxWidth().height(frameHeight).clip(RoundedCornerShape(16.dp)).background(Color.Black),
-            contentAlignment = Alignment.Center, content = content)
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(frameHeight)
+                .clip(frameShape)
+                .background(Color.Black)
+                .then(
+                    if (LocalAmoledMode.current) {
+                        Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, frameShape)
+                    } else {
+                        Modifier
+                    }
+                ),
+            contentAlignment = Alignment.Center,
+            content = content
+        )
     }
 }
 
@@ -101,12 +120,24 @@ fun ChatFilePreview(
             }
             actions()
         }
-        else -> Surface(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
+        else -> Surface(
+            modifier = modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = prominentContainerColor(),
+            border = prominentContainerBorder()
+        ) {
             Box {
                 Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 48.dp, bottom = 10.dp)) {
                     if (mime.startsWith("audio/")) InlineAudioPreview(reference)
-                    else Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    else Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable(onClick = onOpen)
+                            .padding(horizontal = 4.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
                         FluentIcon(Icons.Outlined.InsertDriveFile, null)
                         Text(name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                     }

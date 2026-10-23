@@ -1,7 +1,5 @@
 package org.starfall.generative.features.mcp.shared.ui
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +20,8 @@ import org.starfall.generative.shared.model.McpToolParameterConfig
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @Composable
 internal fun McpToolsTab(
@@ -88,8 +88,13 @@ private fun McpToolItem(
     var expanded by remember(tool.name) { mutableStateOf(false) }
     val properties = tool.schema["properties"] as? JsonObject ?: JsonObject(emptyMap())
     val required = (tool.schema["required"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }?.toSet().orEmpty()
-    Surface(shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
+    Surface(
+        onClick = { expanded = !expanded },
+        shape = RoundedCornerShape(16.dp),
+        border = prominentContainerBorder(),
+        color = prominentContainerColor(),
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Column {
             ListItem(colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 headlineContent = { Text(tool.originalName, fontWeight = FontWeight.Medium) },

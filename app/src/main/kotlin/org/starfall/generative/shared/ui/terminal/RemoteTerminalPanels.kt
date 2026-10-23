@@ -1,7 +1,8 @@
 package org.starfall.generative.shared.ui.terminal
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -65,6 +66,9 @@ import org.starfall.generative.shared.terminal.RemoteTerminalBridge
 import org.starfall.generative.shared.terminal.TerminalSlot
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.theme.LocalAmoledMode
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 internal const val MIN_TERMINAL_FONT_DP = 8
 internal const val MAX_TERMINAL_FONT_DP = 32
@@ -116,10 +120,13 @@ internal fun TerminalSessionsSideBar(
             ) {
                 itemsIndexed(slots, key = { _, slot -> slot.terminal.id }) { index, slot ->
                     val selected = slot.terminal.id == activeTerminalId
+                    val amoledSelected = selected && LocalAmoledMode.current
                     Surface(
+                        onClick = { onSelect(slot) },
                         shape = RoundedCornerShape(12.dp),
-                        color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                        modifier = Modifier.fillMaxWidth().clickable { onSelect(slot) }
+                        color = if (selected && !amoledSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                        border = if (amoledSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
                             Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp),
@@ -327,7 +334,8 @@ internal fun BoxScope.LocalInputEditor(bridge: RemoteTerminalBridge) {
     Surface(
         Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(8.dp),
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh
+        color = prominentContainerColor(),
+        border = prominentContainerBorder()
     ) {
         val draftScroll = rememberScrollState()
         val textStyle = LocalTextStyle.current.copy(
@@ -400,14 +408,22 @@ private fun TerminalKey(
     onPress: () -> Unit
 ) {
     val current by rememberUpdatedState(onPress)
+    val keyShape = RoundedCornerShape(8.dp)
     Box(
         Modifier
             .defaultMinSize(minWidth = 40.dp)
             .height(38.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(keyShape)
             .background(
                 if (active) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.surfaceContainerHigh
+            )
+            .then(
+                if (!active && LocalAmoledMode.current) {
+                    Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, keyShape)
+                } else {
+                    Modifier
+                }
             )
             .pointerInput(repeat) {
                 detectTapGestures(onPress = {

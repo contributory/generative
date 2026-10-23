@@ -62,11 +62,20 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.generative.shared.ui.layout.SlideScreenContent
 import org.starfall.generative.shared.ui.layout.windowHeightIn
+import androidx.compose.foundation.BorderStroke
+import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 
 @Composable
 fun PreferenceToggle(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().toggleable(checked, role = Role.Switch, onValueChange = onCheckedChange).padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .toggleable(checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -127,10 +136,19 @@ fun AppearanceSettingsView(
                             val name = preset.name
                             val color = preset.preview
                             val selected = appPreferences.colorSchemeName == name
-                            Surface(shape = RoundedCornerShape(16.dp), color = color.copy(alpha = 0.15f),
-                                border = androidx.compose.foundation.BorderStroke(if (selected) 2.dp else 1.dp,
-                                    if (selected) color else color.copy(alpha = 0.3f)),
-                                modifier = Modifier.width(58.dp).height(56.dp)
+                            val swatchShape = RoundedCornerShape(16.dp)
+                            Surface(
+                                shape = swatchShape,
+                                color = color.copy(alpha = 0.18f),
+                                border = if (selected) {
+                                    BorderStroke(2.dp, color)
+                                } else {
+                                    nestedContainerBorder()
+                                },
+                                modifier = Modifier
+                                    .width(58.dp)
+                                    .height(56.dp)
+                                    .clip(swatchShape)
                                     .toggleable(selected, role = Role.RadioButton, onValueChange = { onColorSchemeChange(name) })
                                     .then(Modifier.semantics { contentDescription = name.lowercase().replaceFirstChar { it.uppercase() } })
                             ) {
