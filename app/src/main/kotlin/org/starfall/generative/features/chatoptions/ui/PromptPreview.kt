@@ -12,9 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -92,11 +90,6 @@ internal fun PromptPreview(
 @Composable
 private fun PromptPreviewMessage(role: ChatRole, content: String) {
     val isUser = role == ChatRole.USER
-    val bubbleColor = when (role) {
-        ChatRole.SYSTEM -> MaterialTheme.colorScheme.tertiaryContainer
-        ChatRole.USER -> MaterialTheme.colorScheme.primaryContainer
-        ChatRole.MODEL -> MaterialTheme.colorScheme.surfaceContainerHigh
-    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -107,21 +100,20 @@ private fun PromptPreviewMessage(role: ChatRole, content: String) {
             horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
             verticalAlignment = Alignment.Top
         ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(if (role == ChatRole.SYSTEM) 1f else 0.92f),
-                shape = MaterialTheme.shapes.large,
-                color = bubbleColor
+            // Plain text on the screen background: no bubble behind the message text.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth(if (role == ChatRole.SYSTEM) 1f else 0.92f)
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
-                Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                    if (content.isBlank()) {
-                        Text(
-                            stringResource(R.string.prompt_preview_empty),
-                            style = messageMarkdownTypography().paragraph
-                        )
-                    } else {
-                        SelectionContainer {
-                            PromptMarkdown(content)
-                        }
+                if (content.isBlank()) {
+                    Text(
+                        stringResource(R.string.prompt_preview_empty),
+                        style = messageMarkdownTypography().paragraph
+                    )
+                } else {
+                    SelectionContainer {
+                        PromptMarkdown(content)
                     }
                 }
             }
