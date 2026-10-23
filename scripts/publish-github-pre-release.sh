@@ -14,7 +14,7 @@ command -v gh >/dev/null || { echo 'GitHub CLI (gh) is required.' >&2; exit 1; }
 # Keep the GitHub prerelease tag in sync with the version embedded in the APK.
 metadata_json="${RELEASE_METADATA_JSON:-app/build/outputs/apk/release/output-metadata.json}"
 version="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["elements"][0]["versionName"])' "$metadata_json")"
-[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-.+$ ]] || { echo "Invalid pre-release app version: $version (expected <major>.<minor>.<patch>-<channel-or-branch>)." >&2; exit 1; }
+[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-/].+)?$ ]] || { echo "Invalid pre-release app version: $version (expected <major>.<minor>.<patch>[-<branch-name>])." >&2; exit 1; }
 if [[ "$version" == *-unstable ]]; then
   expected_tag="v$version"
 else
@@ -26,7 +26,7 @@ if [[ -n "${CM_TAG:-}" && "$CM_TAG" != "$tag" ]]; then
   echo "Build tag $CM_TAG does not match configured prerelease tag $tag." >&2
   exit 1
 fi
-echo "Publishing unstable pre-release ($tag)."
+echo "Publishing pre-release ($tag)."
 
 commit="$(git rev-parse HEAD)"
 short_commit="$(git rev-parse --short=12 HEAD)"
@@ -167,7 +167,7 @@ trap 'rm -f "$notes_file"' EXIT
   printf 'Android release build for **Generative %s**.\n\n' "$version"
   printf -- '- **Version:** `%s`\n' "$version"
   printf -- '- **Git tag:** `%s`\n' "$tag"
-  printf -- '- **Channel:** Unstable pre-release\n'
+  printf -- '- **Channel:** Pre-release\n'
   printf -- '- **Commit:** `%s`\n\n' "$short_commit"
 
   printf '### Downloads\n\n'
