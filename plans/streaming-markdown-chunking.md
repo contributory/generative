@@ -242,9 +242,18 @@ No automatic check can see jank, so do both:
 
 ## Checklist
 
-- [ ] Step 1: `StableMarkdownPrefix.kt` (+ list of helper functions)
-- [ ] Step 2: `StableMarkdownPrefixTest.kt` (table cases + property-style test)
-- [ ] Step 3: `ChunkedStreamingMarkdown.kt`
-- [ ] Step 4: wire into `StreamingMarkdownRenderer` (settled flag, pre-parse, render switch)
-- [ ] Update `docs/structure.md` with the two new files
+- [x] Step 1: `StableMarkdownPrefix.kt` (+ list of helper functions)
+- [x] Step 2: `StableMarkdownPrefixTest.kt` (table cases + property-style test)
+- [x] Step 3: `ChunkedStreamingMarkdown.kt`
+- [x] Step 4: wire into `StreamingMarkdownRenderer` (settled flag, pre-parse, render switch)
+- [x] Update `docs/structure.md` with the two new files
 - [ ] Step 5: run lint + tests once; manual verification list
+
+## Implementation notes (deviations from the plan above)
+
+- **`initialParse` parameter.** `MarkdownRenderer` takes `initialParse: State? = null`, used before `MarkdownParseCache`. Frozen chunks pass the parse they were created with, so they do not depend on the soft-reference cache (which could drop an entry and show `State.Loading` on a chunk). The tail uses the same parameter with a `tailSeed` that is parsed together with each freeze.
+- **`FrozenChunk` / `FrozenMarkdown`.** `FrozenChunk(text, parsed)` holds the state; `FrozenMarkdown(prefix, chunks, tailSeed)` is written in one state update. The tail renderer is keyed by the frozen state so a frozen block never also appears in the tail.
+- **Failed parse stays in the tail.** A chunk whose parse is not `State.Success` is not frozen; the final render handles it.
+- **Digits-only last line.** A last line made only of digits with no trailing newline (`1`, `12`) is not a cut point, because the next keystroke can turn it into `1. item`.
+- **Render condition.** The single renderer is used when `(settled && !isStreaming)`, or when the text is above `MAX_MARKDOWN_RENDER_CHARS` (truncated preview, as before). The `!isStreaming` guard avoids showing the previous answer for one frame when a regeneration starts.
+- **Verification so far.** `stableMarkdownPrefixLength` was checked with the 17 table/property cases in `StableMarkdownPrefixTest.kt` and mutation-tested (2 cases fail when the digits-only rule is disabled). Those checks used `kotlinc` 2.4.21 with a JUnit stub because Gradle/Maven could not be reached from the sandbox. **Gradle build, lint, unit tests, and the manual/gfxinfo checks in Step 5 have not been run.**

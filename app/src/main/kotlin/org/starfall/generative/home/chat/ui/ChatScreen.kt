@@ -62,7 +62,6 @@ import org.starfall.generative.shared.model.SummaryRole
 import org.starfall.generative.shared.model.language.ThinkingPassback
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.media.ChatAttachmentSelection
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -918,73 +917,29 @@ fun ChatScreen(
     }
 
     if (regeneratingMessageId != null) {
-        AlertDialog(
-            onDismissRequest = { regeneratingMessageId = null },
-            title = { Text("Regenerate this response?") },
-            text = { Text("Later messages will be removed. The current response will remain available as an earlier version.") },
-            confirmButton = { TextButton(onClick = {
+        RegenerateResponseDialog(
+            onConfirm = {
                 regeneratingMessageId?.let(onRegenerate)
                 regeneratingMessageId = null
-            }) { Text("Regenerate") } },
-            dismissButton = { TextButton(onClick = { regeneratingMessageId = null }) { Text("Cancel") } }
+            },
+            onDismiss = { regeneratingMessageId = null }
         )
     }
 
     // Delete message/version confirmation dialog
     val deletingMessage = deletingMessageId?.let { id -> messages.firstOrNull { it.id == id } }
     if (deletingMessage != null) {
-        val hasMultipleVersions = deletingMessage.versions.size > 1
-        AlertDialog(
-            onDismissRequest = { deletingMessageId = null },
-            title = { Text(if (hasMultipleVersions) "Delete Message Version" else "Delete Message") },
-            text = {
-                Text(
-                    if (hasMultipleVersions) {
-                        "This message has ${deletingMessage.versions.size} versions. Delete only the current version or delete the entire message with all versions?"
-                    } else {
-                        "Are you sure you want to delete this message?"
-                    }
-                )
+        DeleteMessageDialog(
+            message = deletingMessage,
+            onDeleteVersion = {
+                onDeleteMessageVersion(deletingMessage.id)
+                deletingMessageId = null
             },
-            confirmButton = {
-                if (hasMultipleVersions) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        TextButton(
-                            onClick = {
-                                onDeleteMessageVersion(deletingMessage.id)
-                                deletingMessageId = null
-                            },
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Text("Delete current version")
-                        }
-                        TextButton(
-                            onClick = {
-                                onDeleteMessage(deletingMessage.id)
-                                deletingMessageId = null
-                            },
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Text("Delete all versions")
-                        }
-                    }
-                } else {
-                    Button(
-                        onClick = {
-                            onDeleteMessage(deletingMessage.id)
-                            deletingMessageId = null
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text("Delete")
-                    }
-                }
+            onDeleteAll = {
+                onDeleteMessage(deletingMessage.id)
+                deletingMessageId = null
             },
-            dismissButton = {
-                TextButton(onClick = { deletingMessageId = null }) {
-                    Text("Cancel")
-                }
-            }
+            onDismiss = { deletingMessageId = null }
         )
     }
 }

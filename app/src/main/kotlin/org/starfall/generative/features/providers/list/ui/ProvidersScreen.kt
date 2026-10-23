@@ -25,7 +25,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import java.util.UUID
@@ -70,7 +69,7 @@ fun ProvidersScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var deletingProviderId by remember { mutableStateOf<String?>(null) }
+    val dialogs = rememberProviderListDialogs()
     var orderedProviders by remember { mutableStateOf(providers) }
     var rootItems by remember { mutableStateOf(providerRootItems(providers, providerGroups)) }
     var pendingProviderOrder by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
@@ -78,15 +77,11 @@ fun ProvidersScreen(
     var pendingGridLayout by remember { mutableStateOf<ProviderDragLayout?>(null) }
     var collapsedSections by remember { mutableStateOf(collapsedSectionsState) }
     var pendingCollapsedSections by remember { mutableStateOf<Set<String>?>(null) }
-    var groupToRename by remember { mutableStateOf<ProviderGroup?>(null) }
-    var deletingGroup by remember { mutableStateOf<ProviderGroup?>(null) }
-    var movingProvider by remember { mutableStateOf<ModelProvider?>(null) }
     // Preserve the opened folder when navigation temporarily disposes this screen for provider editing.
     var openGroupId by rememberSaveable { mutableStateOf<String?>(null) }
     var skipNextFolderEnterAnimation by rememberSaveable { mutableStateOf(false) }
     // Keep the last opened folder composed until its reverse exit animation finishes.
     var renderedFolderGroup by remember { mutableStateOf<ProviderGroup?>(null) }
-    var creatingGroup by remember { mutableStateOf(false) }
     var searching by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var searchFields by remember { mutableStateOf(setOf(ProviderSearchField.PROVIDER_NAME)) }
@@ -503,12 +498,12 @@ fun ProvidersScreen(
                     onToggleGridView = onToggleGridView,
                     onAddProvider = { createProvider(openGroupId) },
                     onAddProviderToGroup = { createProvider(it) },
-                    onCreateGroup = { creatingGroup = true },
+                    onCreateGroup = { dialogs.creatingGroup = true },
                     onOpenSearch = { openGroupId = null; searching = true },
                     onCloseSearch = ::closeSearch,
                     onCloseGroup = { openGroupId = null },
-                    onEditGroup = { groupToRename = it },
-                    onDeleteGroup = { deletingGroup = it; openGroupId = null }
+                    onEditGroup = { dialogs.groupToRename = it },
+                    onDeleteGroup = { dialogs.deletingGroup = it; openGroupId = null }
                 )
             }
         ) { padding ->
@@ -561,8 +556,8 @@ fun ProvidersScreen(
                                         isGrid = gridMode,
                                         isDropTarget = item is ProviderRootItem.GroupItem && dropFolderId == item.id,
                                         onEditProvider = { onOpenProviderEditor(it, false) },
-                                        onMoveProvider = { movingProvider = it },
-                                        onDeleteProvider = { deletingProviderId = it },
+                                        onMoveProvider = { dialogs.movingProvider = it },
+                                        onDeleteProvider = { dialogs.deletingProviderId = it },
                                         onOpenGroup = { openGroupId = it }
                                     )
                                 }
@@ -590,14 +585,14 @@ fun ProvidersScreen(
                                     renderedFolderGroup = null
                                 }
                             },
-                            onEditGroup = { groupToRename = group },
-                            onDeleteGroup = { deletingGroup = group; openGroupId = null },
+                            onEditGroup = { dialogs.groupToRename = group },
+                            onDeleteGroup = { dialogs.deletingGroup = group; openGroupId = null },
                             onEditProvider = {
                                 skipNextFolderEnterAnimation = true
                                 onOpenProviderEditor(it, false)
                             },
-                            onMoveProvider = { movingProvider = it },
-                            onDeleteProvider = { deletingProviderId = it }
+                            onMoveProvider = { dialogs.movingProvider = it },
+                            onDeleteProvider = { dialogs.deletingProviderId = it }
                         )
                     }
                 }
@@ -613,69 +608,16 @@ fun ProvidersScreen(
             }
         }
 
-        if (creatingGroup) {
-            ProviderGroupNameDialog(
-                title = stringResource(R.string.new_provider_group),
-                initialName = "",
-                initialIcon = null,
-                onDismiss = { creatingGroup = false },
-                onSave = { name, icon ->
-                    onSaveGroup(
-                        ProviderGroup(
-                            id = UUID.randomUUID().toString(),
-                            name = name,
-                            sortOrder = (rootItems.maxOfOrNull { it.sortOrder } ?: -1) + 1,
-                            icon = icon
-                        )
-                    )
-                    creatingGroup = false
-                }
-            )
-        }
-
-        groupToRename?.let { group ->
-            ProviderGroupNameDialog(
-                title = stringResource(R.string.edit_provider_group),
-                initialName = group.name,
-                initialIcon = group.icon,
-                onDismiss = { groupToRename = null },
-                onSave = { name, icon ->
-                    onSaveGroup(group.copy(name = name, icon = icon))
-                    groupToRename = null
-                }
-            )
-        }
-
-        deletingGroup?.let { group ->
-            ProviderDeleteGroupDialog(
-                onDismiss = { deletingGroup = null },
-                onConfirm = {
-                    onDeleteGroup(group.id)
-                    setCollapsedSections(collapsedSections - group.id)
-                    deletingGroup = null
-                }
-            )
-        }
-
-        movingProvider?.let { provider ->
-            ProviderGroupPickerDialog(
-                provider = provider,
-                groups = sortedGroups,
-                onDismiss = { movingProvider = null },
-                onSelect = { groupId ->
-                    onMoveProviderToGroup(provider.id, groupId)
-                    movingProvider = null
-                }
-            )
-        }
-
-        if (deletingProviderId != null) {
-            ProviderDeleteDialog(
-                onDismiss = { deletingProviderId = null },
-                onConfirm = {
-                    deletingProviderId?.let { onDeleteProvider(it) }
-                    deletingProviderId = null
-                }
-            )
-        }
+        ProviderDialogHost(
+            dialogs = dialogs,
+            sortedGroups = sortedGroups,
+            nextRootSortOrder = { (rootItems.maxOfOrNull { it.sortOrder } ?: -1) + 1 },
+            onSaveGroup = onSaveGroup,
+            onGroupDeleteConfirmed = { group ->
+                onDeleteGroup(group.id)
+                setCollapsedSections(collapsedSections - group.id)
+            },
+            onMoveProviderToGroup = onMoveProviderToGroup,
+            onProviderDeleteConfirmed = onDeleteProvider
+        )
 }
