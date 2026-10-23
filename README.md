@@ -17,11 +17,16 @@
 <p align="center">
   <img alt="Android" src="https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=white">
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=white">
+  <img alt="ChatGPT" src="https://img.shields.io/badge/ChatGPT-412991?logo=openai&logoColor=white">
+  <img alt="Claude" src="https://img.shields.io/badge/Claude-D97757?logo=claude&logoColor=white">
+  <img alt="Gemini" src="https://img.shields.io/badge/Gemini-4285F4?logo=googlegemini&logoColor=white">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-Starfall%20Org%20Copyleft%20v1.1-blue"></a>
 </p>
 
-<p align="center">
-  <img src="docs/screenshot1.png" width="280" alt="Generative chat screen">
+<p align="center" style="white-space: nowrap;">
+  <img src="docs/image1.png" width="30%" alt="Generative screenshot 1">
+  <img src="docs/image2.png" width="30%" alt="Generative screenshot 2">
+  <img src="docs/image3.png" width="30%" alt="Generative screenshot 3">
 </p>
 
 Generative is a native Android AI client built for people who want to choose their own models, connect their own tools, and keep their workflow in one place. Bring your own provider or account; Generative does not host models or include API credits.
