@@ -87,8 +87,7 @@ else
     --title "v$tag" --generate-notes --prerelease --latest=false
 fi
 
-# Prefix GitHub's generated changelog with release metadata that makes the
-# downloadable files and verification method obvious at a glance.
+# Prefer concise, user-facing changes from AI; retain legacy notes as a fallback.
 release_body="$(gh release view "$tag" --repo "$repo" --json body --jq '.body // ""')"
 release_marker='<!-- generative-release-info -->'
 ai_notes=""
@@ -184,25 +183,9 @@ fi
 notes_file="$(mktemp)"
 trap 'rm -f "$notes_file"' EXIT
 
-{
-  printf '%s\n' "$release_marker"
-  printf '## Generative %s\n\n' "$tag"
-  printf 'Android release build for **Generative %s**.\n\n' "$version"
-  printf -- "- **Version:** \`%s\`\n" "$version"
-  printf -- "- **Git tag:** \`%s\`\n" "$tag"
-  printf -- '- **Channel:** Pre-release\n'
-  printf -- "- **Commit:** \`%s\`\n\n" "$short_commit"
-
-  printf '### Downloads\n\n'
-  for apk in "${apks[@]}"; do
-    printf -- "- \`%s\`\n" "$(basename "$apk")"
-    printf -- "  - SHA-1 checksum: \`%s.sha1\`\n" "$(basename "$apk")"
-  done
-
-  printf '\n### Verify a downloaded APK\n\n'
-  printf "%s\n" "Run shasum -a 1 <apk-file> and compare the result with the matching .sha1 file attached to this release."
-  printf '\n### What changed\n\n%s\n' "$ai_notes"
-} > "$notes_file"
+# Release assets and tag already expose the version, APK, and checksum. Keep the
+# description focused on actual user-facing changes instead of repeating metadata.
+printf '%s\n' "$ai_notes" > "$notes_file"
 
 gh release edit "$tag" --repo "$repo" --title "v$tag" --notes-file "$notes_file"
 

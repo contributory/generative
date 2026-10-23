@@ -3,14 +3,13 @@ package org.starfall.generative
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasToggleAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.SemanticsMatcher
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -77,8 +76,11 @@ class ToolsManagementSheetsTest {
         compose.onNodeWithText("Video Generation").assertIsDisplayed()
         compose.onNodeWithText("Send File").assertIsDisplayed()
         compose.onNodeWithText("MCP Connectors").assertDoesNotExist()
-        compose.onAllNodes(hasToggleAction()).assertCountEquals(3)
-        compose.onAllNodes(hasToggleAction())[0].performClick()
+        val toggleableNodes = compose.onAllNodes(
+            SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState)
+        )
+        toggleableNodes.assertCountEquals(3)
+        toggleableNodes[0].performClick()
         compose.runOnIdle { assertEquals(listOf("generate_image" to true), updates) }
     }
 
