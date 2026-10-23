@@ -1,5 +1,6 @@
 package org.starfall.generative.home.shared.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -17,6 +18,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.theme.LocalAmoledMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -196,12 +198,19 @@ private fun AddActionTile(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val amoledMode = LocalAmoledMode.current
     Surface(
         modifier = modifier
             .aspectRatio(1f)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow
+        shape = RoundedCornerShape(24.dp),
+        color = if (amoledMode) MaterialTheme.colorScheme.surfaceContainerLow
+            else MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = if (amoledMode) {
+            BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant)
+        } else {
+            null
+        }
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),

@@ -1,5 +1,7 @@
 # Generative Structure
 
+This document is the detailed package map and architecture reference. The mandatory, high-priority rules agents must follow are summarized in [`AGENTS.md`](../AGENTS.md); keep that file concise and update it when a structural rule becomes critical for all code changes.
+
 ```text
 📦 org.starfall.generative/
 ├── 📁 appwiring/
@@ -528,26 +530,21 @@
 - 📄 File
 - 📦 Root package
 
-## Rules
+## Detailed rules
 
-- Keep each source file at 500 lines or fewer, counting every line including blank lines and comments. This is a soft limit, not a strict rule: a file may exceed 500 lines when splitting it would not provide a meaningful benefit or would create unnecessary fragmentation.
+The following sections give the package map's supporting conventions and feature-specific details.
 
-### Layers
+### Layer placement and boundaries
 
-- Dependency direction: `shared` ← `integrations` ← `features` and `home` ← `navigation` ← `appwiring`. A layer may import only the layers to its left.
-- `shared/` and `integrations/` never import `features/` or `home/`.
-- `features/` and `home/` never import each other, and a feature never imports another feature. Code needed by both moves down to `shared/` (UI, models, helpers) or `integrations/` (API clients).
-- `integrations/` holds code that calls an external API or service: HTTP clients, streaming/SSE readers, polling loops, OAuth flows, remote connections. A folder also keeps, next to its call files, the request builders, response parsers and small data types that only those files use.
-- Place code by who uses it, as close to its users as possible. Code used by one layer stays in that layer (a builder used only by `integrations/media/` lives in `integrations/media/`; code used only by the chat tool flow lives in `home/chat/logic/tool/`). Only code needed by at least two of `features/`, `home/` and `integrations/` moves down to `shared/`.
-- `shared/helpers/<topic>/` holds those multi-layer helpers: option validation and field descriptors, provider detection, tool schemas and argument parsers, input-file resolution. Their main job is preparing inputs or interpreting outputs, not I/O. Small, incidental I/O that is not worth its own integration (for example fetching a URL that a response returned, through the injected `ToolHttp` from `shared/networking`, or reading a file via `shared/files`) is tolerated in a helper as a stopgap. Once that I/O grows its own endpoint, authentication, streaming or polling protocol, or becomes the main purpose of the file, move that part into `integrations/`. Helpers never import `integrations/`.
-- Cross-feature terminal presentation and its Android/Termux adapter live in `shared/terminal/` and `shared/ui/terminal/`; they depend on the shared `RemoteTerminalSession` contract, not on a feature ViewModel or integration implementation.
-- Plain data types (data classes, enums) follow the same rule: they sit in `shared/model/<topic>/` only when at least two layers use them (for example `ImageOptionField`, `VideoApi`); otherwise they stay in the single layer's own `model/` or next to the code that uses them. Helpers import models; models never import helpers or integrations.
-- Rule of thumb: count the layers that import a file. One layer means it stays there; two or more means `shared/`. Inside `integrations/`, only the files that perform the call are clients; the builders and parsers beside them belong to that integration and are not helpers. A little incidental I/O does not turn a helper into an integration; I/O that is the file's purpose does.
-- Moving between screens goes through callbacks wired in `navigation/AppNavigation.kt`, never through a direct import of another screen.
+- Keep code close to the layer and users that need it. Code used in only one layer stays there; move code to global `shared/` only when it is genuinely used across layers. For example, a media request builder used only by `integrations/media/` stays there, while chat-tool-specific code stays in `home/chat/logic/tool/`.
+- `integrations/` owns external communication, including HTTP clients, streaming/SSE readers, polling loops, OAuth flows, and remote connections. Keep each integration's request builders, response parsers, and small data types beside the code that uses them; these are integration-specific, not shared helpers.
+- `shared/helpers/<topic>/` contains cross-layer helpers for preparing inputs or interpreting outputs, such as option validation, field descriptors, provider detection, tool schemas, argument parsers, and input-file resolution. Helpers must not import `integrations/`. Small incidental I/O may be tolerated as a stopgap—for example, fetching a URL returned by a response through injected `ToolHttp` from `shared/networking`, or reading a file through `shared/files`. Move the I/O into `integrations/` when it becomes the file's main purpose or grows its own endpoint, authentication, streaming, or polling protocol.
+- Put plain data types (data classes and enums) alongside their consumers by default. Use global `shared/model/<topic>/` for types shared across layers. Helpers may import models; models must not import helpers or integrations.
+- Cross-feature terminal presentation and its Android/Termux adapter live in `shared/terminal/` and `shared/ui/terminal/`. They depend on the shared `RemoteTerminalSession` contract, not on a feature ViewModel or a concrete integration implementation.
 
 ### UI component and file naming
 
-Use PascalCase for Compose UI components and Kotlin source files. A UI file should normally match its primary public composable/type; retain a useful feature or entity prefix, and keep closely related private helpers in the same file when that improves cohesion. Choose names by a component's responsibility and interaction, not just its appearance.
+Retain a useful feature or entity prefix, and keep closely related private helpers in the same file when that improves cohesion. Choose names by a component's responsibility and interaction, not just its appearance.
 
 | Name pattern | Use |
 | --- | --- |
@@ -565,9 +562,9 @@ Use PascalCase for Compose UI components and Kotlin source files. A UI file shou
 | `IconButton` | A space-saving icon-only action used in an AppBar, `SideBar`, `ToolBar`, or elsewhere. |
 | `DropdownOptions` | A control for choosing from a predefined set of options for an item or configuration. |
 
-Replace `Awesome` with the relevant feature/entity name (for example, `ChatScreen`, `ProviderEditor`, or `ModelConfigDialog`). Do not treat these roles as interchangeable: an `AwesomeSideDrawer` overlays content, a `SideBar` remains alongside it, and an `AwesomeScreen` is a screen rather than an overlay. Keep AppBars and platform/framework API names distinct from component `ToolBar` names. Apply renames consistently to declarations, filenames, imports, navigation, previews, tests, and this structure map; preserve behavior and persisted data.
+Replace `Awesome` with the relevant feature/entity name (for example, `ChatScreen`, `ProviderEditor`, or `ModelConfigDialog`). Use each suffix only for its defined role, and keep AppBars and platform/framework API names distinct from component `ToolBar` names.
 
-### features/
+### Feature organization
 
 - Every folder directly under `features/` except `main/` matches exactly one entry in `FeaturesScreen`; `main/` is that screen itself. Folder names are short, lowercase, a single word, with no underscores.
 
@@ -585,36 +582,25 @@ Replace `Awesome` with the relevant feature/entity name (for example, `ChatScree
 | System | Data Controls | `appdata/` |
 | System | About | `about/` |
 
-- A feature has either flat `ui/`, `logic/`, `model/` folders, or sub-features (for example `list/`, `editor/`, `details/`), each with its own `ui/`, `logic/`, `model/`, plus a `shared/` folder.
-- Sub-features never import each other. Code used by more than one sub-feature goes in that feature's `shared/`.
-- A feature's `shared/` may also contain `model/` when a value is shared by multiple sub-features but does not belong in global `shared/model/`.
-- Do not repeat the feature name as a nested folder (no `storage/storage/`).
+- A feature can use flat `ui/`, `logic/`, and `model/` folders, or be split into sub-features such as `list/`, `editor/`, and `details/`, each with its own applicable folders. Put code shared by multiple sub-features in the feature-local `shared/`, including `shared/model/` for data types that do not need to be shared across layers.
+- Do not repeat the feature name as a nested folder (for example, avoid `storage/storage/`).
 
-### home/
+### Home organization
 
-- `home/` contains the chat experience and its drawer. It is split into `chat/` (messages, input, markdown, tool UI), `drawer/`, and `shared/` (code used by more than one of them). Chat bottom sheets currently live in `home/shared/ui/`; `home/BottomSheetsLink.kt` is a top-level home component.
-- Keep `chat/` and `drawer/` independent; common code goes in `home/shared/`.
+- `home/` contains the chat experience and its drawer: `chat/` holds messages, input, markdown, and tool UI; `drawer/` holds the conversation drawer; `shared/` holds code needed by both. Keep `chat/` and `drawer/` independent.
+- Chat bottom sheets currently live in `home/shared/ui/`; `home/BottomSheetsLink.kt` is a top-level home component.
 
-### ui/, logic/, model/
+### Source-folder conventions
 
-| Folder | Contains | Rule |
-| --- | --- | --- |
-| `ui/` | Screens, sheets, dialogs, cards | Composable code only. Imports `logic/` and `model/` of the same feature. |
-| `logic/` | ViewModels, coordinators, services, parsers | No `@Composable` and no `androidx.compose.material3` import. |
-| `model/` | Data classes, enums, UI state | Never imports `ui/` or `logic/`. |
+- Sub-folders of `ui/` and `logic/` should mirror each other (for example, `chat/ui/markdown/` ↔ `chat/logic/markdown/`).
+- If a `logic/` folder grows beyond about 10 files, consider splitting it into `viewmodel/` and `service/`.
+- `shared/ui/` holds reusable UI. Other `shared/` and `integrations/` folders are organized by responsibility (for example, `storage/`, `networking/`, `helpers/`, and `modelapis/`) rather than a universal `ui/`/`logic/` split.
 
-- Direction inside a feature: `ui` → `logic` → `model`. Never the other way.
-- Sub-folders of `ui/` and `logic/` mirror each other (`chat/ui/markdown/` ↔ `chat/logic/markdown/`).
-- If a `logic/` folder grows past about 10 files, split it into `viewmodel/` and `service/`.
-- `shared/ui/` holds reusable UI; the other `shared/` and `integrations/` folders are named by role (`storage`, `networking`, `helpers`, `modelapis`...) and have no `ui/`/`logic/` split.
+### Main feature
 
-## Main feature
+- `features/main/ui/FeaturesScreen.kt` is the untitled feature directory; its header displays the light-background app logo (`drawable-nodpi/generative_logo_light.png`) in every theme.
 
-- `features/main/ui/FeaturesScreen.kt` is the untitled feature directory; its header displays the light-background app logo in every theme.
-
-- The feature header asset is `drawable-nodpi/generative_logo_light.png`.
-
-## Context and summary accounting
+### Context and summary accounting
 
 - API adapters emit one normalized usage snapshot per model request, including streaming/tool rounds. Context usage is the latest matching request's input plus its reported output, not a sum across requests. Cached input follows each protocol's accounting without double counting.
 - Usage is stored with each response version in nullable relational columns (Room v12). Hashed history/configuration keys prevent reuse after an edit, branch, model/provider change, prompt/tool-settings change or compact. Old/imported history without usage falls back to the local estimator; new messages after a valid snapshot add only an explicitly labeled local estimate.
