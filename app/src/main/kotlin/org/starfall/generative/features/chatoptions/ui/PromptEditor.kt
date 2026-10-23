@@ -2,6 +2,8 @@ package org.starfall.generative.features.chatoptions.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +19,6 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -29,8 +30,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.ChatRole
@@ -38,6 +45,7 @@ import org.starfall.generative.shared.model.SavedPrompt
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +59,7 @@ internal fun PromptEditor(
     var content by rememberSaveable(promptId) { mutableStateOf(prompt?.content.orEmpty()) }
     var role by rememberSaveable(promptId) { mutableStateOf(prompt?.role ?: ChatRole.SYSTEM) }
     var roleMenuExpanded by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
 
     fun draft(): SavedPrompt = SavedPrompt(
         id = prompt?.id.orEmpty(),
@@ -68,14 +77,28 @@ internal fun PromptEditor(
                         value = name,
                         onValueChange = { name = it },
                         singleLine = true,
-                        textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                        textStyle = MaterialTheme.typography.titleMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(end = 8.dp)
+                            .testTag("prompt_name_input"),
                         decorationBox = { innerTextField ->
                             if (name.isBlank()) {
                                 Text(
                                     stringResource(R.string.prompt_name_hint),
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                             innerTextField()
@@ -137,16 +160,18 @@ internal fun PromptEditor(
             )
         }
     ) { padding ->
-        OutlinedTextField(
+        SelectableOutlinedTextField(
             value = content,
             onValueChange = { content = it },
             label = { Text(stringResource(R.string.prompt_content)) },
             placeholder = { Text(stringResource(R.string.prompt_content_hint)) },
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .imePadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .testTag("prompt_content_input"),
             maxLines = Int.MAX_VALUE,
             textStyle = MaterialTheme.typography.bodyLarge
         )
