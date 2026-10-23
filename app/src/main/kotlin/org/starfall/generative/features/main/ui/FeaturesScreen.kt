@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -194,60 +196,103 @@ fun FeaturesScreen(
         item(key = "configuration-heading") {
             SectionHeading(stringResource(R.string.settings_group_configuration))
         }
-        item(key = "chat-options") {
-            FeatureButton(
-                stringResource(R.string.settings_chat_options),
-                stringResource(R.string.settings_chat_options_description),
-                FluentUi.Regular.Chat,
-                onNavigateToChatOptions
-            )
-        }
-        item(key = "tools-editor") {
-            FeatureButton(
-                stringResource(R.string.settings_tools_editor),
-                stringResource(R.string.settings_tools_editor_description),
-                FluentUi.Regular.WrenchScrewdriver,
-                onNavigateToToolsEditor
-            )
+        item(key = "configuration-group") {
+            FeatureGroup {
+                FeatureButton(
+                    stringResource(R.string.settings_chat_options),
+                    stringResource(R.string.settings_chat_options_description),
+                    FluentUi.Regular.Chat,
+                    onNavigateToChatOptions
+                )
+                FeatureButton(
+                    stringResource(R.string.settings_tools_editor),
+                    stringResource(R.string.settings_tools_editor_description),
+                    FluentUi.Regular.WrenchScrewdriver,
+                    onNavigateToToolsEditor,
+                    showDivider = false
+                )
+            }
         }
         item(key = "external-services-heading") {
             Spacer(Modifier.height(8.dp))
             SectionHeading(stringResource(R.string.settings_group_external_services))
         }
-        item(key = "providers") {
-            FeatureButton(stringResource(R.string.settings_providers), stringResource(R.string.settings_providers_description), FluentUi.Regular.Cloud, onNavigateToProviders)
-        }
-        item(key = "mcp") {
-            FeatureButton(stringResource(R.string.settings_mcp_manage), stringResource(R.string.settings_mcp_manage_description), FluentUi.Regular.PuzzlePiece, onNavigateToMcp)
-        }
-        item(key = "speech") {
-            FeatureButton(stringResource(R.string.settings_speech_services), stringResource(R.string.settings_speech_services_description), FluentUi.Regular.PersonVoice, onNavigateToSpeech)
-        }
-        item(key = "remote-machines") {
-            FeatureButton(stringResource(R.string.settings_remote_machines), stringResource(R.string.settings_remote_machines_description), FluentUi.Regular.Desktop, onNavigateToRemoteMachines)
+        item(key = "external-services-group") {
+            FeatureGroup {
+                FeatureButton(
+                    stringResource(R.string.settings_providers),
+                    stringResource(R.string.settings_providers_description),
+                    FluentUi.Regular.Cloud,
+                    onNavigateToProviders
+                )
+                FeatureButton(
+                    stringResource(R.string.settings_mcp_manage),
+                    stringResource(R.string.settings_mcp_manage_description),
+                    FluentUi.Regular.PuzzlePiece,
+                    onNavigateToMcp
+                )
+                FeatureButton(
+                    stringResource(R.string.settings_speech_services),
+                    stringResource(R.string.settings_speech_services_description),
+                    FluentUi.Regular.PersonVoice,
+                    onNavigateToSpeech
+                )
+                FeatureButton(
+                    stringResource(R.string.settings_remote_machines),
+                    stringResource(R.string.settings_remote_machines_description),
+                    FluentUi.Regular.Desktop,
+                    onNavigateToRemoteMachines,
+                    showDivider = false
+                )
+            }
         }
         item(key = "data-caching-heading") {
             Spacer(Modifier.height(8.dp))
             SectionHeading(stringResource(R.string.settings_group_data_caching))
         }
-        item(key = "storage") {
-            FeatureButton(stringResource(R.string.settings_storage), stringResource(R.string.settings_storage_description), FluentUi.Regular.FolderOpen, onNavigateToStorage)
-        }
-        item(key = "icons") {
-            FeatureButton(stringResource(R.string.icon_settings_title), stringResource(R.string.icon_settings_description), FluentUi.Regular.Image, onNavigateToIcons)
+        item(key = "data-caching-group") {
+            FeatureGroup {
+                FeatureButton(
+                    stringResource(R.string.settings_storage),
+                    stringResource(R.string.settings_storage_description),
+                    FluentUi.Regular.FolderOpen,
+                    onNavigateToStorage
+                )
+                FeatureButton(
+                    stringResource(R.string.icon_settings_title),
+                    stringResource(R.string.icon_settings_description),
+                    FluentUi.Regular.Image,
+                    onNavigateToIcons,
+                    showDivider = false
+                )
+            }
         }
         item(key = "system-heading") {
             Spacer(Modifier.height(8.dp))
             SectionHeading(stringResource(R.string.settings_group_system))
         }
-        item(key = "app-settings") {
-            FeatureButton(stringResource(R.string.settings_category_app_settings), stringResource(R.string.settings_category_app_settings_description), FluentUi.Regular.Settings, onNavigateToAppSettings)
-        }
-        item(key = "app-data") {
-            FeatureButton(stringResource(R.string.settings_category_app_data), stringResource(R.string.settings_category_app_data_description), FluentUi.Regular.History, onNavigateToAppData)
-        }
-        item(key = "about") {
-            FeatureButton(stringResource(R.string.settings_category_about), stringResource(R.string.settings_category_about_description), FluentUi.Regular.Info, onNavigateToAbout)
+        item(key = "system-group") {
+            FeatureGroup {
+                FeatureButton(
+                    stringResource(R.string.settings_category_app_settings),
+                    stringResource(R.string.settings_category_app_settings_description),
+                    FluentUi.Regular.Settings,
+                    onNavigateToAppSettings
+                )
+                FeatureButton(
+                    stringResource(R.string.settings_category_app_data),
+                    stringResource(R.string.settings_category_app_data_description),
+                    FluentUi.Regular.History,
+                    onNavigateToAppData
+                )
+                FeatureButton(
+                    stringResource(R.string.settings_category_about),
+                    stringResource(R.string.settings_category_about_description),
+                    FluentUi.Regular.Info,
+                    onNavigateToAbout,
+                    showDivider = false
+                )
+            }
         }
     }
 }
@@ -264,17 +309,29 @@ private fun SectionHeading(title: String) {
 }
 
 @Composable
+private fun FeatureGroup(content: @Composable ColumnScope.() -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    ) {
+        Column(content = content)
+    }
+}
+
+@Composable
 private fun FeatureButton(
     title: String,
     subtitle: String,
     icon: ImageVector,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    showDivider: Boolean = true
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier.padding(18.dp),
@@ -296,6 +353,12 @@ private fun FeatureButton(
             }
             Icon(imageVector = FluentUi.Regular.ArrowForward, contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
+        }
+        if (showDivider) {
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 80.dp, end = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
         }
     }
 }
