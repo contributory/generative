@@ -30,7 +30,7 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.home.chat.ui.tool.ToolActivityCards
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.home.chat.ui.markdown.toComposeFontFamily
+import org.starfall.generative.shared.ui.text.toComposeFontFamily
 
 @Composable
 fun ReasoningDropdown(

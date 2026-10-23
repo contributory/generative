@@ -509,6 +509,7 @@ This document is the detailed package map and architecture reference. The mandat
 │       ├── 📁 text/
 │       │   ├── 📄 ApiKeyMask.kt
 │       │   ├── 📄 GlyphSelectionGate.kt
+│       │   ├── 📄 MessageMarkdownStyle.kt
 │       │   ├── 📄 PlatformTextSelection.kt
 │       │   ├── 📄 SelectableTextFields.kt
 │       │   ├── 📄 StreamingTextFade.kt

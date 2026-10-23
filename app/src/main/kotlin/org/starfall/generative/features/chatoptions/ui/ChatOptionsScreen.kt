@@ -148,9 +148,6 @@ fun ChatOptionsScreen(
             is PromptPage.Editor -> {
                 PromptEditor(
                     prompt = editorPage.promptId?.let { id -> library.prompts.firstOrNull { it.id == id } },
-                    onSave = { saved ->
-                        if (savePromptDraft(saved) != null) leavePromptEditor()
-                    },
                     onPreview = ::openPromptPreview,
                     onBack = ::leavePromptEditor
                 )

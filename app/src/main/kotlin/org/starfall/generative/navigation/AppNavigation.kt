@@ -64,7 +64,6 @@ import org.starfall.generative.home.drawer.ui.ConversationSideDrawer
 import org.starfall.generative.home.drawer.ui.recordDrawerBackdrop
 import org.starfall.generative.home.drawer.ui.rememberDrawerBackdrop
 import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.RemoteMachine
@@ -152,14 +151,20 @@ fun AppNavigation(
     }
 
     val conversations: List<ConversationListItem> by viewModel.conversations.collectAsStateWithLifecycle()
-    val currentConv: Conversation? by viewModel.currentConversation.collectAsStateWithLifecycle()
+    val currentConvState = viewModel.currentConversation.collectAsStateWithLifecycle()
+    // Streaming republishes the conversation about 20 times a second. Reading it in this function would
+    // recompose the drawer, navigation and every CompositionLocal below on each tick, which slows the whole
+    // app. Only values that rarely change are derived here; the chat screen reads the conversation itself.
+    val currentConvId by remember { derivedStateOf { currentConvState.value?.id } }
+    val currentConvModel by remember { derivedStateOf { currentConvState.value?.let { it.providerId to it.modelId } } }
+    val currentConvPromptIds by remember { derivedStateOf { currentConvState.value?.selectedPromptIds } }
     val chatAttachments = remember { ChatAttachmentSelection() }
     var mcpEditor by remember { mutableStateOf<Pair<McpInfo, Boolean>?>(null) }
     var pendingNewProvider by remember { mutableStateOf<ProviderEditorPage?>(null) }
-    LaunchedEffect(currentConv?.id) { chatAttachments.clear() }
+    LaunchedEffect(currentConvId) { chatAttachments.clear() }
     val isGenerating: Boolean by viewModel.isGenerating.collectAsStateWithLifecycle()
     val generatingConversationIds by viewModel.generatingConversationIds.collectAsStateWithLifecycle()
-    val generatingConversationId = currentConv?.id.takeIf { isGenerating }
+    val generatingConversationId = currentConvId.takeIf { isGenerating }
     val chatError by viewModel.chatError.collectAsStateWithLifecycle()
     val speakingMessageId by viewModel.speakingMessageId.collectAsStateWithLifecycle()
     val activeTestSpeechServiceId by viewModel.activeTestSpeechServiceId.collectAsStateWithLifecycle()
@@ -279,16 +284,17 @@ fun AppNavigation(
     // The app preference is the default for new chats. Existing chats keep showing
     // the model they last used, independently of that default.
     val conversationModel =
-        currentConv?.takeIf { appPrefs.persistSelectedModel && it.modelId.isNotBlank() }?.let { conversation ->
-            providers.firstOrNull { provider ->
-                provider.id == conversation.providerId &&
-                        provider.config.modelIds?.contains(conversation.modelId) != false &&
-                        (provider.config.modelConfigs[conversation.modelId]?.modelType
-                            ?: ModelType.TEXT_GENERATION) == ModelType.TEXT_GENERATION
-            }?.let { conversation }
-        }
-    val chatProviderId = conversationModel?.providerId ?: appPrefs.selectedProviderId
-    val chatModelId = conversationModel?.modelId ?: appPrefs.selectedModelId
+        currentConvModel?.takeIf { (_, modelId) -> appPrefs.persistSelectedModel && modelId.isNotBlank() }
+            ?.let { (conversationProviderId, conversationModelId) ->
+                providers.firstOrNull { provider ->
+                    provider.id == conversationProviderId &&
+                            provider.config.modelIds?.contains(conversationModelId) != false &&
+                            (provider.config.modelConfigs[conversationModelId]?.modelType
+                                ?: ModelType.TEXT_GENERATION) == ModelType.TEXT_GENERATION
+                }?.let { conversationProviderId to conversationModelId }
+            }
+    val chatProviderId = conversationModel?.first ?: appPrefs.selectedProviderId
+    val chatModelId = conversationModel?.second ?: appPrefs.selectedModelId
     LaunchedEffect(Unit) {
         org.starfall.generative.shared.storage.LocalWriteErrors.errors.collect {
             Toast.makeText(context, "Could not save the change. Please try again.", Toast.LENGTH_LONG).show()
@@ -316,7 +322,7 @@ fun AppNavigation(
         org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences provides appPrefs,
         LocalChatAttachmentSelection provides chatAttachments,
         LocalPromptControls provides PromptControls(
-            library = appPrefs.promptLibraryFor(currentConv),
+            library = appPrefs.promptLibraryForSelection(currentConvPromptIds),
             setPromptEnabled = viewModel::setPromptEnabled,
             openInstructions = { openPromptInstructions() },
             editPrompt = { promptId -> openPromptInstructions(promptId) }
@@ -347,7 +353,7 @@ fun AppNavigation(
                     backdrop = drawerBackdrop,
                     conversations = conversations,
                     providers = providers,
-                    currentConversationId = currentConv?.id,
+                    currentConversationId = currentConvId,
                     isOpen = drawerState.isOpen,
                     generatingConversationIds = generatingConversationIds,
                     organization = appPrefs.sidebar,
@@ -401,7 +407,7 @@ fun AppNavigation(
                         )
                 ) {
                     ChatScreen(
-                        conversation = currentConv,
+                        conversation = currentConvState.value,
                         isGenerating = isGenerating,
                         generatingConversationId = generatingConversationId,
                         chatError = chatError,

@@ -7,7 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mikepenz.markdown.compose.Markdown
 import com.mikepenz.markdown.m3.markdownColor
-import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.State
 import com.mikepenz.markdown.model.markdownPadding
 import com.mikepenz.markdown.model.parseMarkdown
@@ -41,6 +41,7 @@ import org.starfall.generative.shared.model.SavedPrompt
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.text.messageMarkdownTypography
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,7 +77,11 @@ internal fun PromptPreview(
         }
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 12.dp, vertical = 20.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 12.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             PromptPreviewMessage(prompt.role, prompt.content)
@@ -103,15 +108,15 @@ private fun PromptPreviewMessage(role: ChatRole, content: String) {
             verticalAlignment = Alignment.Top
         ) {
             Surface(
-                modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth(if (role == ChatRole.SYSTEM) 1f else 0.86f),
+                modifier = Modifier.fillMaxWidth(if (role == ChatRole.SYSTEM) 1f else 0.92f),
                 shape = MaterialTheme.shapes.large,
                 color = bubbleColor
             ) {
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
                     if (content.isBlank()) {
                         Text(
                             stringResource(R.string.prompt_preview_empty),
-                            style = MaterialTheme.typography.bodyLarge
+                            style = messageMarkdownTypography().paragraph
                         )
                     } else {
                         SelectionContainer {
@@ -134,9 +139,7 @@ private fun PromptMarkdown(content: String) {
         state = state,
         modifier = Modifier.fillMaxWidth(),
         colors = markdownColor(),
-        typography = markdownTypography(
-            paragraph = MaterialTheme.typography.bodyLarge
-        ),
-        padding = markdownPadding(block = 6.dp)
+        typography = messageMarkdownTypography(),
+        padding = markdownPadding(block = 8.dp)
     )
 }

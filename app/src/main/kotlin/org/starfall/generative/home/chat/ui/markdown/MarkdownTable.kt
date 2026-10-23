@@ -30,6 +30,7 @@ import org.intellij.markdown.flavours.gfm.GFMTokenTypes
 import org.starfall.generative.home.chat.logic.markdown.MathPiece
 import org.starfall.generative.home.chat.logic.markdown.MathSplitter
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
+import org.starfall.generative.shared.ui.text.toComposeFontFamily
 
 private val MaxTableColumnWidth = 260.dp
 private val TableCellHorizontalPadding = 10.dp

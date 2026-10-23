@@ -134,7 +134,9 @@ data class AppPreferences(
     val effectiveToolRoundLimit: Int? get() = toolRoundLimit.takeIf { toolRoundLimitEnabled }
     /** The prompt library as [conversation] sees it; without its own prompt selection it uses the default. */
     fun promptLibraryFor(conversation: Conversation?): PromptLibrary =
-        (promptLibrary ?: PromptLibrary.fromLegacy(defaultSystemPrompt)).forChat(conversation?.selectedPromptIds)
+        promptLibraryForSelection(conversation?.selectedPromptIds)
+    fun promptLibraryForSelection(selectedPromptIds: Set<String>?): PromptLibrary =
+        (promptLibrary ?: PromptLibrary.fromLegacy(defaultSystemPrompt)).forChat(selectedPromptIds)
     fun systemPromptFor(conversation: Conversation?): String = promptLibraryFor(conversation).systemPrompt()
     fun promptRoleMessagesFor(conversation: Conversation?) = promptLibraryFor(conversation).roleMessages()
 }

@@ -2,20 +2,26 @@ package org.starfall.generative.features.chatoptions.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -39,7 +45,6 @@ import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 @Composable
 internal fun PromptEditor(
     prompt: SavedPrompt?,
-    onSave: (SavedPrompt) -> Unit,
     onPreview: (SavedPrompt) -> Unit,
     onBack: (SavedPrompt) -> Unit
 ) {
@@ -63,7 +68,7 @@ internal fun PromptEditor(
                 title = {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
-                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(1.dp)
+                        verticalArrangement = Arrangement.spacedBy(1.dp)
                     ) {
                         Text(
                             stringResource(R.string.prompt_name),
@@ -95,24 +100,26 @@ internal fun PromptEditor(
                     }
                 },
                 actions = {
-                    TextButton(
-                        enabled = name.isNotBlank() && content.isNotBlank(),
-                        onClick = { onSave(draft()) }
-                    ) { Text(stringResource(R.string.common_save)) }
                     Box {
-                        Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                            IconButton(onClick = { roleMenuExpanded = true }) {
+                        AssistChip(
+                            onClick = { roleMenuExpanded = true },
+                            label = { Text(promptRoleLabel(role)) },
+                            leadingIcon = {
                                 FluentIcon(
                                     Icons.Outlined.AccountCircle,
-                                    stringResource(R.string.prompt_role_accessibility, promptRoleLabel(role))
+                                    stringResource(R.string.prompt_role_accessibility, promptRoleLabel(role)),
+                                    modifier = Modifier.size(AssistChipDefaults.IconSize)
                                 )
-                            }
-                            Text(
-                                promptRoleLabel(role),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                            },
+                            trailingIcon = {
+                                FluentIcon(
+                                    Icons.Default.KeyboardArrowDown,
+                                    null,
+                                    modifier = Modifier.size(AssistChipDefaults.IconSize)
+                                )
+                            },
+                            shape = RoundedCornerShape(50)
+                        )
                         DropdownMenu(
                             expanded = roleMenuExpanded,
                             onDismissRequest = { roleMenuExpanded = false }
@@ -129,13 +136,15 @@ internal fun PromptEditor(
                         }
                     }
                     IconButton(
-                        onClick = { if (name.isNotBlank() && content.isNotBlank()) onPreview(draft()) }
+                        enabled = name.isNotBlank() && content.isNotBlank(),
+                        onClick = { onPreview(draft()) }
                     ) {
                         FluentIcon(
                             Icons.Outlined.Visibility,
                             stringResource(R.string.prompt_preview_open)
                         )
                     }
+                    Spacer(Modifier.width(4.dp))
                 }
             )
         }

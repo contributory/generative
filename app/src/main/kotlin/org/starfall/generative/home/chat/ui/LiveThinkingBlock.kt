@@ -28,7 +28,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.home.chat.ui.markdown.toComposeFontFamily
+import org.starfall.generative.shared.ui.text.toComposeFontFamily
 
 /** Time constant of the exponential follow; the remaining distance shrinks ~63% per interval. */
 private const val THINKING_FOLLOW_TIME_CONSTANT_SECONDS = 0.1f

@@ -78,7 +78,7 @@ class ChatOptionsAndToolsEditorTest {
         compose.onAllNodes(hasSetTextAction()).assertCountEquals(2)
         compose.onAllNodes(hasSetTextAction())[0].performTextInput("Concise")
         compose.onAllNodes(hasSetTextAction())[1].performTextInput("Keep answers concise")
-        compose.onNodeWithText("Save").performClick()
+        compose.onNodeWithContentDescription("Back").performClick()
 
         compose.onNodeWithText("Concise").assertIsDisplayed()
         compose.runOnIdle {

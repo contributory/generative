@@ -34,7 +34,6 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withContext
 import org.intellij.markdown.ast.getTextInNode
-import org.starfall.generative.shared.storage.preferences.MessageFontFamily
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.home.chat.logic.markdown.MathPiece
@@ -43,6 +42,8 @@ import org.starfall.generative.home.chat.logic.markdown.markdownFence
 import org.starfall.generative.home.chat.logic.markdown.parseLibraryMarkdown
 import org.starfall.generative.home.chat.ui.AssetKey
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
+import org.starfall.generative.shared.ui.text.messageMarkdownTypography
+import org.starfall.generative.shared.ui.text.toComposeFontFamily
 import org.starfall.generative.shared.ui.text.LocalStreamingTextFade
 import org.starfall.generative.home.chat.ui.MarkdownParseCache
 import org.starfall.generative.shared.ui.text.STREAM_FADE_DURATION_MS
@@ -111,16 +112,7 @@ fun MarkdownRenderer(
             .then(if (trimLeadingBlockSpace) Modifier.trimLeadingSpace(MARKDOWN_BLOCK_PADDING) else Modifier)
             .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier),
         colors = markdownColor(),
-        typography = markdownTypography(
-            h1 = type.headlineSmall.copy(fontFamily = messageFont, fontWeight = FontWeight.Bold, fontSize = bodySize * 1.375f, color = MaterialTheme.colorScheme.primary),
-            h2 = type.titleLarge.copy(fontFamily = messageFont, fontWeight = FontWeight.Bold, fontSize = bodySize * 1.125f),
-            h3 = type.titleMedium.copy(fontFamily = messageFont, fontWeight = FontWeight.SemiBold, fontSize = bodySize),
-            h4 = type.titleSmall.copy(fontFamily = messageFont, fontWeight = FontWeight.SemiBold, fontSize = bodySize * .90625f),
-            h5 = type.bodyLarge.copy(fontFamily = messageFont, fontWeight = FontWeight.Bold, fontSize = bodySize),
-            h6 = type.bodyLarge.copy(fontFamily = messageFont, fontWeight = FontWeight.Bold, fontSize = bodySize),
-            paragraph = type.bodyLarge.copy(fontFamily = messageFont, fontSize = bodySize, lineHeight = bodySize * 1.375f),
-            textLink = TextLinkStyles(SpanStyle(color = MaterialTheme.colorScheme.primary))
-        ),
+        typography = messageMarkdownTypography(),
         padding = markdownPadding(block = MARKDOWN_BLOCK_PADDING),
         components = markdownComponents(
             codeFence = { model ->
@@ -144,14 +136,6 @@ private fun Modifier.trimLeadingSpace(amount: androidx.compose.ui.unit.Dp): Modi
     val shift = amount.roundToPx()
     val placeable = measurable.measure(constraints)
     layout(placeable.width, (placeable.height - shift).coerceAtLeast(0)) { placeable.place(0, -shift) }
-}
-
-internal fun MessageFontFamily.toComposeFontFamily(): FontFamily = when (this) {
-    MessageFontFamily.DEFAULT -> FontFamily.Default
-    MessageFontFamily.SANS_SERIF -> FontFamily.SansSerif
-    MessageFontFamily.SERIF -> FontFamily.Serif
-    MessageFontFamily.MONOSPACE -> FontFamily.Monospace
-    MessageFontFamily.CURSIVE -> FontFamily.Cursive
 }
 
 /**
