@@ -49,8 +49,6 @@ import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.CodeBlockDisplayMode
 import org.starfall.generative.shared.storage.preferences.DEFAULT_TOOL_CALL_CONCURRENT_LIMIT
 import org.starfall.generative.shared.storage.preferences.DEFAULT_TOOL_ROUND_LIMIT
-import org.starfall.generative.shared.storage.preferences.MAX_AUTO_SUMMARY_PERCENT
-import org.starfall.generative.shared.storage.preferences.MIN_AUTO_SUMMARY_PERCENT
 import org.starfall.generative.shared.storage.preferences.MAX_TOOL_CALL_CONCURRENT_LIMIT
 import org.starfall.generative.shared.storage.preferences.MAX_TOOL_ROUND_LIMIT
 import org.starfall.generative.shared.storage.preferences.MessageFontFamily
@@ -313,26 +311,6 @@ fun PreferencesSettingsView(
                         isError = parsed == null, singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth().testTag("tool-call-concurrent-limit")
-                    )
-                }
-            }
-        }
-        item {
-            SettingsSection(stringResource(R.string.settings_summary)) {
-                PreferenceToggle(stringResource(R.string.settings_summary_suggestion), stringResource(R.string.settings_summary_suggestion_description),
-                    appPreferences.summarySuggestionEnabled, onSummarySuggestionEnabledChange)
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                PreferenceToggle(stringResource(R.string.settings_auto_summary), stringResource(R.string.settings_auto_summary_description),
-                    appPreferences.autoSummaryEnabled, onAutoSummaryEnabledChange)
-                if (appPreferences.autoSummaryEnabled) {
-                    Text(stringResource(R.string.settings_auto_summary_threshold, appPreferences.autoSummaryPercent),
-                        style = MaterialTheme.typography.bodyMedium)
-                    androidx.compose.material3.Slider(
-                        value = appPreferences.autoSummaryPercent.toFloat(),
-                        onValueChange = { onAutoSummaryPercentChange(kotlin.math.round(it).toInt()) },
-                        valueRange = MIN_AUTO_SUMMARY_PERCENT.toFloat()..MAX_AUTO_SUMMARY_PERCENT.toFloat(),
-                        steps = MAX_AUTO_SUMMARY_PERCENT - MIN_AUTO_SUMMARY_PERCENT - 1,
-                        modifier = Modifier.fillMaxWidth().testTag("auto-summary-percent")
                     )
                 }
             }

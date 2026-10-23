@@ -726,12 +726,16 @@ fun AppNavigation(
                         ChatOptionsScreen(
                             initialTab = chatOptionsEntry.arguments?.getString("tab") ?: "helpers",
                             initialPromptId = chatOptionsEntry.arguments?.getString("promptId").orEmpty(),
-                            promptLibrary = appPrefs.promptLibrary,
-                            defaultSystemPrompt = appPrefs.defaultSystemPrompt,
-                            onPromptLibraryChange = viewModel::setPromptLibrary,
-                            providers = providers,
-                            settings = toolSettings,
-                            providerGroups = providerGroups,
+                             promptLibrary = appPrefs.promptLibrary,
+                             defaultSystemPrompt = appPrefs.defaultSystemPrompt,
+                             onPromptLibraryChange = viewModel::setPromptLibrary,
+                             providers = providers,
+                             settings = toolSettings,
+                             appPreferences = appPrefs,
+                             onAutoSummaryEnabledChange = settingsViewModel::setAutoSummaryEnabled,
+                             onSummarySuggestionEnabledChange = settingsViewModel::setSummarySuggestionEnabled,
+                             onAutoSummaryPercentChange = settingsViewModel::setAutoSummaryPercent,
+                             providerGroups = providerGroups,
                             collapsedGroupIds = appPrefs.modelPickerCollapsedGroups,
                             collapsedProviderIds = appPrefs.modelPickerCollapsedProviders,
                             onCollapsedGroupIdsChange = settingsViewModel::setModelPickerCollapsedGroups,
@@ -908,10 +912,7 @@ fun AppNavigation(
                                     onToolCallConcurrentLimitChange = settingsViewModel::setToolCallConcurrentLimit,
                                     onScreenWakelockModeChange = settingsViewModel::setScreenWakelockMode,
                                     onAppLanguageChange = settingsViewModel::setAppLanguage,
-                                    onAutoSummaryEnabledChange = settingsViewModel::setAutoSummaryEnabled,
-                                    onSummarySuggestionEnabledChange = settingsViewModel::setSummarySuggestionEnabled,
-                                    onAutoSummaryPercentChange = settingsViewModel::setAutoSummaryPercent
-                                )
+                                 )
                             }
                         }
                     }

@@ -22,8 +22,10 @@
 │   ├── 📁 chatoptions/
 │   │   └── 📁 ui/
 │   │       ├── 📄 ChatOptionsScreen.kt
+│   │       ├── 📄 HelperSettings.kt
 │   │       ├── 📄 InstructionsTab.kt
-│   │       └── 📄 PromptEditor.kt
+│   │       ├── 📄 PromptEditor.kt
+│   │       └── 📄 PromptPreview.kt
 │   ├── 📁 icons/
 │   │   └── 📁 ui/
 │   │       └── 📄 IconsScreen.kt

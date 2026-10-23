@@ -13,6 +13,10 @@ import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.model.ConversationSummaryRequest
+import org.starfall.generative.shared.model.DEFAULT_TITLE_GENERATION_MIN_MESSAGES
+import org.starfall.generative.shared.model.DEFAULT_TITLE_GENERATION_MIN_WORDS
+import org.starfall.generative.shared.model.MIN_TITLE_GENERATION_MIN_MESSAGES
+import org.starfall.generative.shared.model.MIN_TITLE_GENERATION_MIN_WORDS
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.PromptLibrary
 import org.starfall.generative.shared.model.SpeechService
@@ -41,8 +45,17 @@ import org.starfall.generative.home.chat.logic.tool.ToolChatViewModel
 import org.starfall.generative.home.chat.logic.input.DirectMediaRequest
 import org.starfall.generative.home.chat.model.ContextWindowStatus
 
-internal fun shouldGenerateConversationTitle(userText: String, messageCount: Int): Boolean =
-    userText.trim().split(Regex("\\s+")).count { it.isNotEmpty() } >= 10 || messageCount >= 5
+internal fun shouldGenerateConversationTitle(
+    userText: String,
+    messageCount: Int,
+    minimumWords: Int = DEFAULT_TITLE_GENERATION_MIN_WORDS,
+    minimumMessages: Int = DEFAULT_TITLE_GENERATION_MIN_MESSAGES
+): Boolean {
+    val wordTrigger = minimumWords > MIN_TITLE_GENERATION_MIN_WORDS &&
+        userText.trim().split(Regex("\\s+")).count { it.isNotEmpty() } >= minimumWords
+    val messageTrigger = messageCount >= minimumMessages.coerceAtLeast(MIN_TITLE_GENERATION_MIN_MESSAGES)
+    return wordTrigger || messageTrigger
+}
 
 internal fun Conversation.startedWithDirectMedia(): Boolean =
     messages.firstOrNull { it.role == ChatRole.MODEL }?.activeVersion?.toolActivity?.any {

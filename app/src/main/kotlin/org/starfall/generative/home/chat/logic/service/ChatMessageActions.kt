@@ -15,6 +15,8 @@ import org.starfall.generative.home.chat.logic.tool.ToolChatViewModel
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationSummary
+import org.starfall.generative.shared.model.DEFAULT_TITLE_GENERATION_MIN_MESSAGES
+import org.starfall.generative.shared.model.DEFAULT_TITLE_GENERATION_MIN_WORDS
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.SystemToolConfig
@@ -171,9 +173,12 @@ internal class ChatMessageActions(
                 baseProvider.config.modelConfigs[modelId] ?: ModelConfiguration(displayName = modelId),
                 prefs.promptRoleMessagesFor(conv), toolSettings.value)
         )
+        val titleSettings = toolSettings.value.system["title_generation"]
         if (started && !conv.startedWithDirectMedia() && shouldGenerateConversationTitle(
-                userText,
-                conv.messages.count { it.role == ChatRole.USER || it.role == ChatRole.MODEL }
+                userText = userText,
+                messageCount = conv.messages.count { it.role == ChatRole.USER || it.role == ChatRole.MODEL },
+                minimumWords = titleSettings?.titleGenerationMinWords ?: DEFAULT_TITLE_GENERATION_MIN_WORDS,
+                minimumMessages = titleSettings?.titleGenerationMinMessages ?: DEFAULT_TITLE_GENERATION_MIN_MESSAGES
             )) {
             val originalUserText = conv.messages.firstOrNull { it.role == ChatRole.USER }?.content
                 .orEmpty().ifBlank { "Attachment" }

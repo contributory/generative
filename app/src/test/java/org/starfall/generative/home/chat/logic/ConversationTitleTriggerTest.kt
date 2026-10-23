@@ -19,6 +19,26 @@ class ConversationTitleTriggerTest {
     }
 
     @Test
+    fun titleRulesCanTriggerAfterTwoMessagesWithoutWordTrigger() {
+        assertFalse(
+            shouldGenerateConversationTitle(
+                userText = "short",
+                messageCount = 1,
+                minimumWords = 0,
+                minimumMessages = 2
+            )
+        )
+        assertTrue(
+            shouldGenerateConversationTitle(
+                userText = "short",
+                messageCount = 2,
+                minimumWords = 0,
+                minimumMessages = 2
+            )
+        )
+    }
+
+    @Test
     fun directMediaConversationIsRecognizedAndKeepsPromptBasedTitle() {
         val conversation = Conversation(
             id = "media",

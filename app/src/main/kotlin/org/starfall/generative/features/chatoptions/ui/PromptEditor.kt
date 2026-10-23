@@ -1,22 +1,19 @@
 package org.starfall.generative.features.chatoptions.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -24,6 +21,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -42,86 +40,112 @@ import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 internal fun PromptEditor(
     prompt: SavedPrompt?,
     onSave: (SavedPrompt) -> Unit,
-    onBack: () -> Unit
+    onPreview: (SavedPrompt) -> Unit,
+    onBack: (SavedPrompt) -> Unit
 ) {
     val promptId = prompt?.id.orEmpty()
     var name by rememberSaveable(promptId) { mutableStateOf(prompt?.name.orEmpty()) }
     var content by rememberSaveable(promptId) { mutableStateOf(prompt?.content.orEmpty()) }
     var role by rememberSaveable(promptId) { mutableStateOf(prompt?.role ?: ChatRole.SYSTEM) }
+    var roleMenuExpanded by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
+    fun draft(): SavedPrompt = SavedPrompt(
+        id = prompt?.id.orEmpty(),
+        name = name.trim(),
+        content = content.trim(),
+        role = role
+    )
+
+    BackHandler(enabled = LocalScreenTransitionActive.current, onBack = { onBack(draft()) })
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        stringResource(if (prompt == null) R.string.prompt_editor_new_title else R.string.prompt_editor_edit_title),
-                        fontWeight = FontWeight.SemiBold
+                    BasicTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        modifier = Modifier.fillMaxWidth(),
+                        decorationBox = { innerTextField ->
+                            if (name.isBlank()) {
+                                Text(
+                                    stringResource(
+                                        if (prompt == null) R.string.prompt_editor_new_title
+                                        else R.string.prompt_name
+                                    ),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            innerTextField()
+                        }
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { onBack(draft()) }) {
                         FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     }
                 },
                 actions = {
                     TextButton(
                         enabled = name.isNotBlank() && content.isNotBlank(),
-                        onClick = {
-                            onSave(
-                                SavedPrompt(
-                                    id = prompt?.id.orEmpty(),
-                                    name = name.trim(),
-                                    content = content.trim(),
-                                    role = role
+                        onClick = { onSave(draft()) }
+                    ) { Text(stringResource(R.string.common_save)) }
+                    Box {
+                        Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                            IconButton(onClick = { roleMenuExpanded = true }) {
+                                FluentIcon(
+                                    Icons.Outlined.AccountCircle,
+                                    stringResource(R.string.prompt_role_accessibility, promptRoleLabel(role))
                                 )
+                            }
+                            Text(
+                                promptRoleLabel(role),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    ) { Text(stringResource(R.string.common_save)) }
+                        DropdownMenu(
+                            expanded = roleMenuExpanded,
+                            onDismissRequest = { roleMenuExpanded = false }
+                        ) {
+                            listOf(ChatRole.SYSTEM, ChatRole.USER, ChatRole.MODEL).forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(promptRoleLabel(option)) },
+                                    onClick = {
+                                        role = option
+                                        roleMenuExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    IconButton(
+                        onClick = { if (name.isNotBlank() && content.isNotBlank()) onPreview(draft()) }
+                    ) {
+                        FluentIcon(
+                            Icons.Outlined.Visibility,
+                            stringResource(R.string.prompt_preview_open)
+                        )
+                    }
                 }
             )
         }
     ) { padding ->
-        Column(
-            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()
-                .verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text(stringResource(R.string.prompt_name)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    stringResource(R.string.prompt_role),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                val roles = listOf(ChatRole.SYSTEM, ChatRole.USER, ChatRole.MODEL)
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    roles.forEachIndexed { index, option ->
-                        SegmentedButton(
-                            selected = role == option,
-                            onClick = { role = option },
-                            shape = SegmentedButtonDefaults.itemShape(index, roles.size)
-                        ) { Text(promptRoleLabel(option)) }
-                    }
-                }
-            }
-            OutlinedTextField(
-                value = content,
-                onValueChange = { content = it },
-                label = { Text(stringResource(R.string.prompt_content)) },
-                placeholder = { Text(stringResource(R.string.prompt_content_hint)) },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 12,
-                maxLines = Int.MAX_VALUE,
-                textStyle = MaterialTheme.typography.bodyLarge
-            )
-        }
+        OutlinedTextField(
+            value = content,
+            onValueChange = { content = it },
+            label = { Text(stringResource(R.string.prompt_content)) },
+            placeholder = { Text(stringResource(R.string.prompt_content_hint)) },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .imePadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            maxLines = Int.MAX_VALUE,
+            textStyle = MaterialTheme.typography.bodyLarge
+        )
     }
 }
 

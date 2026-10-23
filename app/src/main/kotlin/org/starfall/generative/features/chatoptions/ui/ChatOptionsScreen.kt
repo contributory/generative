@@ -6,12 +6,10 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Tab
@@ -30,9 +28,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.model.DEFAULT_CHAT_SUMMARY_PROMPT
-import org.starfall.generative.shared.model.DEFAULT_TITLE_GENERATION_PROMPT
 import org.starfall.generative.shared.model.PromptLibrary
+import org.starfall.generative.shared.model.SavedPrompt
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.ToolSettings
 import java.util.UUID
@@ -47,14 +44,22 @@ import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.layout.SlideScreenContent
 import org.starfall.generative.shared.ui.model.DefaultModelSelector
 import org.starfall.generative.shared.ui.model.ModelPickerSheet
-import org.starfall.generative.shared.ui.sheets.AppSheet
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.storage.preferences.AppPreferences
+
+private sealed interface PromptPage {
+    data class Editor(val promptId: String?) : PromptPage
+    data class Preview(val promptId: String) : PromptPage
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatOptionsScreen(
     providers: List<ModelProvider>,
     settings: ToolSettings,
+    appPreferences: AppPreferences = AppPreferences(),
+    onAutoSummaryEnabledChange: (Boolean) -> Unit = {},
+    onSummarySuggestionEnabledChange: (Boolean) -> Unit = {},
+    onAutoSummaryPercentChange: (Int) -> Unit = {},
     providerGroups: List<ProviderGroup> = emptyList(),
     collapsedGroupIds: Set<String> = emptySet(),
     collapsedProviderIds: Set<String> = emptySet(),
@@ -72,7 +77,7 @@ fun ChatOptionsScreen(
     onBack: () -> Unit
 ) {
     var choosing by remember { mutableStateOf<String?>(null) }
-    var editingPrompt by rememberSaveable { mutableStateOf<String?>(null) }
+    var helperSettings by rememberSaveable { mutableStateOf<String?>(null) }
     val initialPage = if (initialTab == "instructions") 1 else 0
     val pager = rememberPagerState(initialPage = initialPage, pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
@@ -88,6 +93,7 @@ fun ChatOptionsScreen(
     var editingPromptId by rememberSaveable(initialPromptId) {
         mutableStateOf(initialPromptId.takeIf(String::isNotBlank))
     }
+    var previewingPromptId by rememberSaveable { mutableStateOf<String?>(null) }
     var library by remember(promptLibrary, defaultSystemPrompt) {
         mutableStateOf(promptLibrary ?: PromptLibrary.fromLegacy(defaultSystemPrompt))
     }
@@ -95,36 +101,76 @@ fun ChatOptionsScreen(
         library = next
         onPromptLibraryChange(next)
     }
-    fun leavePromptEditor() {
+    fun savePromptDraft(draft: SavedPrompt): SavedPrompt? {
+        if (draft.name.isBlank() || draft.content.isBlank()) return null
+        val prompt = if (draft.id.isBlank()) {
+            draft.copy(id = UUID.randomUUID().toString())
+        } else {
+            draft
+        }
+        val exists = library.prompts.any { it.id == prompt.id }
+        updateLibrary(
+            library.copy(
+                prompts = if (exists) library.prompts.map { if (it.id == prompt.id) prompt else it }
+                else library.prompts + prompt,
+                selectedIds = if (exists) library.selectedIds else library.selectedIds + prompt.id
+            )
+        )
+        return prompt
+    }
+
+    fun leavePromptEditor(draft: SavedPrompt? = null) {
+        draft?.let(::savePromptDraft)
         creatingPrompt = false
         editingPromptId = null
+        previewingPromptId = null
         coroutineScope.launch { pager.animateScrollToPage(1) }
     }
-    val editorPrompt = library.prompts.firstOrNull { it.id == editingPromptId }
-    val promptEditorOpen = creatingPrompt || editingPromptId != null
+
+    fun openPromptPreview(draft: SavedPrompt) {
+        val saved = savePromptDraft(draft) ?: return
+        creatingPrompt = false
+        editingPromptId = null
+        previewingPromptId = saved.id
+    }
+
+    val promptPage: PromptPage? = when {
+        creatingPrompt || editingPromptId != null -> PromptPage.Editor(editingPromptId)
+        previewingPromptId != null -> PromptPage.Preview(previewingPromptId!!)
+        else -> null
+    }
 
     SlideScreenContent(
-        editor = promptEditorOpen.takeIf { it },
-        label = "Prompt editor"
+        editor = promptPage,
+        label = "Prompt details"
     ) { editorPage ->
-        if (editorPage == true) {
-            PromptEditor(
-                prompt = editorPrompt,
-                onSave = { saved ->
-                    val prompt = if (saved.id.isBlank()) saved.copy(id = UUID.randomUUID().toString()) else saved
-                    val exists = library.prompts.any { it.id == prompt.id }
-                    updateLibrary(
-                        library.copy(
-                            prompts = if (exists) library.prompts.map { if (it.id == prompt.id) prompt else it }
-                            else library.prompts + prompt,
-                            selectedIds = if (exists) library.selectedIds else library.selectedIds + prompt.id
-                        )
+        when (editorPage) {
+            is PromptPage.Editor -> {
+                PromptEditor(
+                    prompt = editorPage.promptId?.let { id -> library.prompts.firstOrNull { it.id == id } },
+                    onSave = { saved ->
+                        if (savePromptDraft(saved) != null) leavePromptEditor()
+                    },
+                    onPreview = ::openPromptPreview,
+                    onBack = ::leavePromptEditor
+                )
+            }
+            is PromptPage.Preview -> {
+                val prompt = library.prompts.firstOrNull { it.id == editorPage.promptId }
+                if (prompt == null) {
+                    LaunchedEffect(editorPage.promptId) { previewingPromptId = null }
+                } else {
+                    PromptPreview(
+                        prompt = prompt,
+                        onEdit = {
+                            previewingPromptId = null
+                            editingPromptId = prompt.id
+                        },
+                        onBack = { previewingPromptId = null }
                     )
-                    leavePromptEditor()
-                },
-                onBack = ::leavePromptEditor
-            )
-        } else {
+                }
+            }
+            null -> {
             BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
             Scaffold(
                 topBar = {
@@ -184,31 +230,40 @@ fun ChatOptionsScreen(
                                     )
 
                                     SettingsCard {
-                                        Text(title, style = MaterialTheme.typography.titleMedium)
-                                        Text(
-                                            description,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Column(
+                                                Modifier.weight(1f),
+                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Text(title, style = MaterialTheme.typography.titleMedium)
+                                                Text(
+                                                    description,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            IconButton(onClick = { helperSettings = name }) {
+                                                FluentIcon(
+                                                    Icons.Outlined.Settings,
+                                                    stringResource(R.string.tool_settings_accessibility, title)
+                                                )
+                                            }
+                                        }
                                         DefaultModelSelector(
                                             provider = provider,
                                             modelId = config.modelId,
                                             model = model,
                                             onClick = { choosing = name }
                                         )
-                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            TextButton(onClick = { editingPrompt = name }) {
-                                                Text(stringResource(R.string.tool_instructions))
-                                            }
-                                        }
                                     }
                                 }
                             }
                             else -> InstructionsTab(
-                                library = library,
-                                onAddPrompt = { creatingPrompt = true },
-                                onEditPrompt = { editingPromptId = it.id },
-                                onTogglePrompt = { prompt, enabled ->
+                                 library = library,
+                                 onAddPrompt = { creatingPrompt = true },
+                                 onEditPrompt = { editingPromptId = it.id },
+                                 onPreviewPrompt = { previewingPromptId = it.id },
+                                 onTogglePrompt = { prompt, enabled ->
                                     updateLibrary(
                                         library.copy(
                                             selectedIds = if (enabled) library.selectedIds + prompt.id
@@ -229,61 +284,24 @@ fun ChatOptionsScreen(
                     }
                 }
             }
+            }
         }
     }
 
-    editingPrompt?.let { name ->
-        val config = settings.system[name] ?: SystemToolConfig()
-        val defaultPrompt = if (name == "title_generation") {
-            DEFAULT_TITLE_GENERATION_PROMPT
-        } else {
-            DEFAULT_CHAT_SUMMARY_PROMPT
-        }
-        var prompt by rememberSaveable(name) {
-            mutableStateOf(config.prompt.ifBlank { defaultPrompt })
-        }
-        AppSheet(onDismissRequest = { editingPrompt = null }) {
-            Column(
-                Modifier.fillMaxWidth().padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    stringResource(
-                        if (name == "title_generation") R.string.tool_title_generation_title
-                        else R.string.tool_chat_summary_title
-                    ),
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Text(
-                    stringResource(R.string.tool_customize_instructions_description),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                SelectableOutlinedTextField(
-                    value = prompt,
-                    onValueChange = { prompt = it },
-                    label = { Text(stringResource(R.string.tool_instruction_prompt)) },
-                    minLines = 5,
-                    maxLines = 10,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Row(Modifier.fillMaxWidth()) {
-                    TextButton(onClick = { prompt = defaultPrompt }) {
-                        Text(stringResource(R.string.tool_reset))
-                    }
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { editingPrompt = null }) {
-                        Text(stringResource(R.string.common_cancel))
-                    }
-                    Button(onClick = {
-                        onSave(name, config.copy(prompt = prompt.ifBlank { defaultPrompt }))
-                        editingPrompt = null
-                    }) {
-                        Text(stringResource(R.string.common_save))
-                    }
-                }
-            }
-        }
+    helperSettings?.let { name ->
+        HelperSettingsSheet(
+            name = name,
+            config = settings.system[name] ?: SystemToolConfig(),
+            appPreferences = appPreferences,
+            onSave = { config ->
+                onSave(name, config)
+                helperSettings = null
+            },
+            onAutoSummaryEnabledChange = onAutoSummaryEnabledChange,
+            onSummarySuggestionEnabledChange = onSummarySuggestionEnabledChange,
+            onAutoSummaryPercentChange = onAutoSummaryPercentChange,
+            onDismiss = { helperSettings = null }
+        )
     }
 
     choosing?.let { name ->

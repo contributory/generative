@@ -18,6 +18,10 @@ data class SystemToolConfig(
     val providerId: String = "",
     val modelId: String = "",
     val prompt: String = "",
+    /** Minimum user+assistant message count before title generation is attempted. */
+    val titleGenerationMinMessages: Int = DEFAULT_TITLE_GENERATION_MIN_MESSAGES,
+    /** Minimum words in the first user message; zero disables this early trigger. */
+    val titleGenerationMinWords: Int = DEFAULT_TITLE_GENERATION_MIN_WORDS,
     val imageOptionsByModel: Map<String, JsonObject> = emptyMap(),
     val videoOptionsByModel: Map<String, JsonObject> = emptyMap(),
     val imageGenerationMode: MediaGenerationMode = MediaGenerationMode.DEFAULT,
@@ -230,3 +234,9 @@ fun toolAllowed(
 
 const val DEFAULT_TITLE_GENERATION_PROMPT = "Generate a concise title for this conversation. Return only the title, without quotation marks or extra commentary. Keep it under 8 words."
 const val DEFAULT_CHAT_SUMMARY_PROMPT = "Summarize the conversation faithfully for use as future context. Preserve user goals, decisions, constraints, important facts, code or technical details, unresolved issues, and commitments. Remove repetition and incidental chatter. Do not invent information."
+const val DEFAULT_TITLE_GENERATION_MIN_MESSAGES = 5
+const val MIN_TITLE_GENERATION_MIN_MESSAGES = 1
+const val MAX_TITLE_GENERATION_MIN_MESSAGES = 50
+const val DEFAULT_TITLE_GENERATION_MIN_WORDS = 10
+const val MIN_TITLE_GENERATION_MIN_WORDS = 0
+const val MAX_TITLE_GENERATION_MIN_WORDS = 1000

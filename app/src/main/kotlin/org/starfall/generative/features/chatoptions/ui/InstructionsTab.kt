@@ -1,6 +1,7 @@
 package org.starfall.generative.features.chatoptions.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -40,6 +41,7 @@ internal fun InstructionsTab(
     library: PromptLibrary,
     onAddPrompt: () -> Unit,
     onEditPrompt: (SavedPrompt) -> Unit,
+    onPreviewPrompt: (SavedPrompt) -> Unit,
     onTogglePrompt: (SavedPrompt, Boolean) -> Unit,
     onDeletePrompt: (SavedPrompt) -> Unit
 ) {
@@ -72,7 +74,9 @@ internal fun InstructionsTab(
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
                 color = if (active) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.22f)
                 else MaterialTheme.colorScheme.surfaceContainerLow,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = { onPreviewPrompt(prompt) })
             ) {
                 Row(
                     Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
@@ -91,7 +95,7 @@ internal fun InstructionsTab(
                         )
                         Text(
                             prompt.content,
-                            maxLines = 3,
+                            maxLines = 4,
                             overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
