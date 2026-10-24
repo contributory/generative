@@ -144,6 +144,12 @@
     <string name="remove_unavailable_models">Remove unavailable models</string>
     <string name="model_removed_on_dialog_close">Will be removed when this dialog closes</string>
     <string name="connection_failed">Connection failed</string>
+    <string name="connection_no_content">No content</string>
+    <string name="connection_count_progress">%1$d of %2$d tested</string>
+    <string name="connection_count_passed">%1$d passed</string>
+    <string name="connection_count_warning">%1$d returned no content</string>
+    <string name="connection_count_failed">%1$d failed</string>
+    <string name="connection_tests_finished">Connection tests finished</string>
     <string name="connection_testing_unavailable">Connection testing is unavailable.</string>
     <string name="refresh_models">Refresh models</string>
     <string name="search_models">Search models</string>

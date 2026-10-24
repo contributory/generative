@@ -219,6 +219,14 @@ internal val LocalAmoledMode = staticCompositionLocalOf { false }
 internal val LocalDarkMode = staticCompositionLocalOf { false }
 internal val AmoledModalScrim = Color(0xFF606060)
 
+/**
+ * Warning amber for states that deserve caution without the failure meaning of `colorScheme.error`,
+ * such as a provider that answered a connection probe with an empty response. No Material role carries
+ * that meaning, so the pair is kept here with the other semantic colors and tuned per light and dark surfaces.
+ */
+@Composable
+fun warningColor(): Color = if (LocalDarkMode.current) Color(0xFFFFD54F) else Color(0xFFA05F00)
+
 @Composable
 internal fun modalScrimColor(default: Color): Color =
     when {

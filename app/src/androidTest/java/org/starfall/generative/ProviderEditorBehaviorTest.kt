@@ -245,6 +245,33 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         compose.onNodeWithText("text-bad").assertDoesNotExist()
     }
 
+    @Test fun emptyConnectionReplyWarnsAndFinishedNoticeSwipesAway() {
+        val models = mapOf("text-empty" to ModelConfiguration(), "text-ok" to ModelConfiguration())
+        compose.setContent { MaterialTheme {
+            ProviderEditor(provider.copy(config = ProviderConfiguration(modelConfigs = models)), false,
+                onSaveModels = { _, _ -> }, onReorderModels = { _, _ -> }, onDismiss = {}, onSave = {},
+                onTestConnection = { _, id -> if (id == "text-empty") Result.success("") else Result.success("OK") })
+        } }
+        compose.onNodeWithText("Models").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Test connection").performClick()
+        compose.onNodeWithContentDescription("Test all text models").performClick()
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithText("Connection tests finished", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("No content").assertIsDisplayed()
+        // The header reports the run with icons and counts rather than sentences.
+        compose.onNodeWithContentDescription("1 passed").assertIsDisplayed()
+        compose.onNodeWithContentDescription("1 returned no content").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Close").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Connection tests finished").assertIsDisplayed()
+        compose.onNodeWithTag("model-connection-status").performTouchInput { swipeLeft() }
+        compose.mainClock.advanceTimeBy(600)
+        compose.waitForIdle()
+        compose.onNodeWithTag("model-connection-status").assertDoesNotExist()
+    }
+
     @Test fun modelCatalogShowsApiMetadataAndCheckboxSelection() {
         var saved = emptyMap<String, ModelConfiguration>()
         compose.setContent { MaterialTheme {

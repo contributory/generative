@@ -98,10 +98,13 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       │   ├── 📄 ModelConnectionTests.kt
 │   │       │   └── 📄 OAuthAuthorizations.kt
 │   │       ├── 📁 model/
+│   │       │   ├── 📄 ModelConnectionStatus.kt
 │   │       │   └── 📄 ProviderApiKeysState.kt
 │   │       └── 📁 ui/
 │   │           ├── 📄 ModelConfigDialog.kt
 │   │           ├── 📄 ModelConnectionDialog.kt
+│   │           ├── 📄 ModelConnectionStatusAppearance.kt
+│   │           ├── 📄 ModelConnectionStatusBar.kt
 │   │           ├── 📄 OAuthAccountCard.kt
 │   │           ├── 📄 ProfileScreen.kt
 │   │           ├── 📄 ProviderApiKeysDialog.kt

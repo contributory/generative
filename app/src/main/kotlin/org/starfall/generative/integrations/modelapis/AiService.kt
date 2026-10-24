@@ -181,7 +181,8 @@ class AiService(
             if (output.startsWith("[Error:") || output.startsWith(" [Error:")) {
                 Result.failure(Exception(output.trim()))
             } else {
-                Result.success(if (output.isBlank()) "Model request completed successfully" else output)
+                // Keep a blank reply blank: the editor reports an empty response as a warning instead of claiming success.
+                Result.success(output)
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e

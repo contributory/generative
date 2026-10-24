@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.features.providers.shared.logic.isEmpty
+import org.starfall.generative.features.providers.shared.model.ModelConnectionStatus
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
@@ -38,6 +39,7 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
     val textModels = removals.modelIds
     val testableModels = textModels.filterNot { it in removals.pending }
     val testingAny = tests.batchRunning.value || textModels.any { tests.running[it] == true }
+    val progress = tests.progress(textModels)
     val unavailable = textModels.filter { tests.results[it]?.isFailure == true && it !in removals.pending }.toSet()
     val hasRemovals = removals.pending.isNotEmpty()
     fun close() {
@@ -48,6 +50,7 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
          title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.test_connection), Modifier.weight(1f))
+                ModelConnectionCounts(progress, showProgress = testingAny || progress.tested > 0, modifier = Modifier.padding(end = 6.dp))
                 IconButton(onClick = { if (testingAny) tests.cancelAll() else tests.testAll(provider, testableModels, skip = { it in removals.pending }) },
                      enabled = (testingAny || testableModels.isNotEmpty()) && available) {
                      if (testingAny) FluentIcon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
@@ -98,15 +101,12 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
                             if (removed) Text(stringResource(R.string.model_removed_on_dialog_close),
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                             result?.let { tested ->
+                                val status = tests.status(id) ?: ModelConnectionStatus.PASSED
                                 Spacer(Modifier.height(8.dp))
                                 Row(verticalAlignment = Alignment.Top) {
-                                    FluentIcon(if (tested.isSuccess) Icons.Default.CheckCircle else Icons.Default.Error, null,
-                                        tint = if (tested.isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(18.dp))
+                                    FluentIcon(status.icon(), null, tint = status.accent(), modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.width(8.dp))
-                                    Text(tested.getOrNull() ?: tested.exceptionOrNull()?.localizedMessage ?: stringResource(R.string.connection_failed),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (tested.isSuccess) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error)
+                                    Text(status.message(tested), style = MaterialTheme.typography.bodySmall, color = status.textColor())
                                 }
                             }
                         }

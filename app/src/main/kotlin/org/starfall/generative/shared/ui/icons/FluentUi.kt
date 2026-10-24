@@ -28,10 +28,12 @@ import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIc
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsDelete as DeleteFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsDesktop as DesktopFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsDismiss as DismissFluentVector
+import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsDismissCircle as DismissCircleFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsDocument as DocumentFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsDocumentSparkle as DocumentSparkleFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsDocumentText as DocumentTextFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsEdit as EditFluentVector
+import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsErrorCircle as ErrorCircleFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsEye as EyeFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsEyeOff as EyeOffFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsFilter as FilterFluentVector
@@ -112,10 +114,12 @@ object FluentUi {
         val Delete: ImageVector get() = DeleteFluentVector
         val Desktop: ImageVector get() = DesktopFluentVector
         val Dismiss: ImageVector get() = DismissFluentVector
+        val DismissCircle: ImageVector get() = DismissCircleFluentVector
         val Document: ImageVector get() = DocumentFluentVector
         val DocumentSparkle: ImageVector get() = DocumentSparkleFluentVector
         val DocumentText: ImageVector get() = DocumentTextFluentVector
         val Edit: ImageVector get() = EditFluentVector
+        val ErrorCircle: ImageVector get() = ErrorCircleFluentVector
         val Eye: ImageVector get() = EyeFluentVector
         val EyeOff: ImageVector get() = EyeOffFluentVector
         val Filter: ImageVector get() = FilterFluentVector
