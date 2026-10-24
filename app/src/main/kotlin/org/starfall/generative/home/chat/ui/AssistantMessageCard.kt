@@ -93,17 +93,16 @@ fun AssistantMessageCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        if (isStreaming && message.content.isBlank() && activeVersion.toolActivity.none { it.files.isNotEmpty() }) {
-            StreamingProcessingPreview(activeVersion)
-        } else {
-            CompletedAssistantContent(
-                version = activeVersion,
-                processingDurationMillis = processingDurationMillis.takeUnless { isStreaming },
-                animateStreamingContent = isStreaming,
-                selectedImageAttachments = selectedImageAttachments,
-                onToggleChatImage = onToggleChatImage
-            )
-        }
+        // One call site for streaming and finished states. Switching between two composables here
+        // (e.g. when a tool's image arrives before any text) recreated the processing dropdown,
+        // resetting its expanded/visibility state and making it snap closed and animate open again.
+        CompletedAssistantContent(
+            version = activeVersion,
+            processingDurationMillis = processingDurationMillis.takeUnless { isStreaming },
+            animateStreamingContent = isStreaming,
+            selectedImageAttachments = selectedImageAttachments,
+            onToggleChatImage = onToggleChatImage
+        )
         if (isStreaming) {
             GenerationLoadingIndicator(
                 modelName = generatedModelName,
@@ -436,24 +435,6 @@ private fun longJsonStrings(element: JsonElement): Sequence<String> = sequence {
 }
 
 @Composable
-private fun StreamingProcessingPreview(version: MessageVersion) {
-    val items = remember(version.reasoningContent, version.toolActivity, version.content.length) {
-        buildProcessingTimeline(version).map { it.toDropdownItem() }
-    }
-    // Reuse the finished-message dropdown so its expand/collapse header is available while the model
-    // is still running (before any answer text) and nothing jumps when the first text arrives.
-    // ProcessingDropdown keeps the newest items and any running tool visible while collapsed.
-    ProcessingDropdown(
-        items = items,
-        durationMillis = null,
-        startNumber = 1,
-        modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
-        isStreaming = true,
-        previewCount = 2
-    )
-}
-
-@Composable
 private fun SmoothStreamingMarkdownMessage(content: String, isStreaming: Boolean) {
     StreamingMarkdownRenderer(content = content, isStreaming = isStreaming)
 }
@@ -511,10 +492,13 @@ private fun CompletedAssistantContent(
                                 )
                             }
                     }
-                    key(block.offset, block.items.map { item ->
-                        when (item) {
-                            is ProcessingDropdownItem.Thinking -> "thinking:${item.reasoning.hashCode()}"
-                            is ProcessingDropdownItem.Tool -> "tool:${item.activity.id}"
+                    // Identity is the block's position plus its first item. Keying on every item (or on
+                    // the reasoning text) recreated the dropdown on each streamed token or new tool call.
+                    val live = animateStreamingContent && block === blocks.last() && !answerStarted
+                    key(block.offset, block.items.firstOrNull()?.let { first ->
+                        when (first) {
+                            is ProcessingDropdownItem.Thinking -> "thinking"
+                            is ProcessingDropdownItem.Tool -> "tool:${first.activity.id}"
                         }
                     }) {
                         ProcessingDropdown(
@@ -522,7 +506,8 @@ private fun CompletedAssistantContent(
                             durationMillis = processingDurationMillis.takeIf { blocks.size == 1 },
                             startNumber = nextItemNumber,
                             modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
-                            previewCount = if (animateStreamingContent && block === blocks.last() && !answerStarted) 2 else 0
+                            isStreaming = live,
+                            previewCount = if (live) 2 else 0
                         )
                     }
                     val files = block.items.filterIsInstance<ProcessingDropdownItem.Tool>()
