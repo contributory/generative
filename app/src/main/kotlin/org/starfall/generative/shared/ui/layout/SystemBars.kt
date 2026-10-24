@@ -7,6 +7,8 @@ import android.os.Build
 import androidx.core.view.WindowCompat
 
 /** Applies Chat's edge-to-edge, genuinely transparent system bars to every visible Activity host. */
+// Transparent colors and contrast flags are deprecated on newer Android but still needed on API 26–34.
+@Suppress("DEPRECATION")
 fun Activity.enableTransparentSystemBars() {
     WindowCompat.setDecorFitsSystemWindows(window, false)
     window.statusBarColor = Color.TRANSPARENT

@@ -116,9 +116,6 @@ class MainActivity : ComponentActivity() {
             ) {
                 val darkBars = MaterialTheme.colorScheme.background.luminance() < 0.5f
                 SideEffect {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        window.isNavigationBarContrastEnforced = false
-                    }
                     WindowCompat.getInsetsController(window, window.decorView).apply {
                         isAppearanceLightStatusBars = !darkBars
                         isAppearanceLightNavigationBars = !darkBars
