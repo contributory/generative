@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -50,88 +49,16 @@ import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 /**
- * Two shortcut cards at the top of the left drawer:
- * - Media Storage: single tap navigates to StorageScreen
- * - Remote Machines: expandable card that lets the model be toggled per-machine
- *   without opening a bottom sheet.
+ * Single combined card at the top of the left drawer.
+ * - Remote: expandable, shows machine toggles, title is "Remote"
+ * - Media: navigates to StorageScreen, title is "Media"
+ * Both rows share the same [prominentContainerColor] block.
  */
 @Composable
 internal fun DrawerQuickShortcuts(
     onOpenMediaStorage: () -> Unit,
     onOpenRemoteMachines: () -> Unit,
     modifier: Modifier = Modifier,
-    maxExpandedHeight: Dp = 280.dp
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        RemoteMachinesShortcut(onOpenRemoteMachines, maxExpandedHeight = maxExpandedHeight)
-        MediaStorageShortcut(onOpenMediaStorage)
-    }
-}
-
-@Composable
-private fun MediaStorageShortcut(onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(18.dp),
-        color = prominentContainerColor(),
-        border = prominentContainerBorder(),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(42.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    FluentIcon(
-                        imageVector = FluentUi.Regular.FolderOpen,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.settings_storage),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = stringResource(R.string.settings_storage_description),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-            FluentIcon(
-                imageVector = FluentUi.Regular.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(16.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun RemoteMachinesShortcut(
-    onOpenSettings: () -> Unit,
     maxExpandedHeight: Dp = 280.dp
 ) {
     val controls = LocalToolControls.current
@@ -142,23 +69,22 @@ private fun RemoteMachinesShortcut(
     val subtitle = if (machines.isEmpty()) {
         stringResource(R.string.remote_machine_none_configured)
     } else {
-        // Keep English for the count badge because no l10n string exists for this state;
-        // remote_machines_* strings are marked translatable=false.
         "${machines.size} machines • $enabledCount enabled"
     }
 
-    // Total card (header + expanded list) must stay within half the drawer.
-    // Reserve ~72dp for the header row + divider, the list itself scrolls.
-    val listMaxHeight = (maxExpandedHeight - 72.dp).coerceAtLeast(120.dp)
+    // Header (~72dp) + Media row (~66dp) + dividers ≈ 150dp. Rest is scrollable list.
+    val listMaxHeight = (maxExpandedHeight - 150.dp).coerceAtLeast(100.dp)
+
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = prominentContainerColor(),
         border = prominentContainerBorder(),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .heightIn(max = if (expanded) maxExpandedHeight else Dp.Unspecified)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
+            // Remote row — expands/collapses the machine list
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -184,13 +110,13 @@ private fun RemoteMachinesShortcut(
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = stringResource(R.string.remote_machines_title),
+                        text = "Remote",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.heightIn(min = 2.dp))
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
@@ -200,12 +126,15 @@ private fun RemoteMachinesShortcut(
                     )
                 }
                 IconButton(
-                    onClick = onOpenSettings,
+                    onClick = onOpenRemoteMachines,
                     modifier = Modifier.size(36.dp)
                 ) {
                     FluentIcon(
                         imageVector = FluentUi.Regular.Settings,
-                        contentDescription = stringResource(R.string.tool_settings_accessibility, stringResource(R.string.remote_machines_title)),
+                        contentDescription = stringResource(
+                            R.string.tool_settings_accessibility,
+                            stringResource(R.string.remote_machines_title)
+                        ),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
@@ -296,6 +225,61 @@ private fun RemoteMachinesShortcut(
                         }
                     }
                 }
+            }
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                modifier = Modifier.padding(horizontal = 14.dp)
+            )
+
+            // Media row — navigates to StorageScreen
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onOpenMediaStorage)
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(42.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        FluentIcon(
+                            imageVector = FluentUi.Regular.FolderOpen,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Media",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.heightIn(min = 2.dp))
+                    Text(
+                        text = stringResource(R.string.settings_storage_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                FluentIcon(
+                    imageVector = FluentUi.Regular.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
             }
         }
     }
