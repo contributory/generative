@@ -145,8 +145,8 @@ internal class OpenAICodexAdapter(
     }
 
     override fun prepareRequestProvider(sourceProvider: ModelProvider, wireProvider: ModelProvider,
-        requestBody: JsonObject): ModelProvider {
-        val sessionId = codexSessionId(sourceProvider, requestBody)
+        body: JsonObject): ModelProvider {
+        val sessionId = codexSessionId(sourceProvider, body)
         return wireProvider.copy(config = wireProvider.config.copy(headers = wireProvider.config.headers +
             ("Session_id" to sessionId) + ("Conversation_id" to sessionId)))
     }

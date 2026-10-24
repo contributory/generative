@@ -58,7 +58,7 @@ internal class ChatModelContextCoordinator(
         val provider = conversationProvider ?: availableProviders.find {
             it.id == preferences.selectedProviderId
         }
-        val modelId = conversationProvider?.let { conversation?.modelId }
+        val modelId = conversationProvider?.let { conversation.modelId }
             ?: preferences.selectedModelId
         val config = provider?.config?.modelConfigs?.get(modelId)
             ?: provider?.takeIf { modelId.isNotBlank() }?.let {
