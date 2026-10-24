@@ -80,7 +80,7 @@ private fun sentFileNames(result: JsonObject): List<String> {
  * User-visible status labels for tool activity. English defaults keep plain text for callers
  * without a [android.content.Context]; the app wiring passes localized values.
  */
-internal data class ToolChatLabels(
+data class ToolChatLabels(
     val toolsReady: String = "Tools ready",
     val stopped: String = "Stopped",
     val fileSent: String = "File sent to chat.",
@@ -89,7 +89,7 @@ internal data class ToolChatLabels(
 )
 
 /** Native structured tool calls, bounded rounds, no executable text extracted from answers. */
-class ToolChatViewModel(
+class ToolChatViewModel internal constructor(
     private val http: ToolHttp,
     private val mcp: McpService,
     private val aiService: AiService,
