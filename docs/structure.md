@@ -208,7 +208,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       ├── 📄 ConversationItem.kt
 │   │       ├── 📄 ConversationSideDrawer.kt
 │   │       ├── 📄 DrawerBackdrop.kt
-│   │       └── 📄 DrawerShortcuts.kt
+│   │       └── 📄 DrawerQuickShortcuts.kt
 │   ├── 📁 shared/
 │   │   ├── 📁 logic/
 │   │   │   ├── 📄 ChatBackgroundService.kt

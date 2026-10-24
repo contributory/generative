@@ -1,6 +1,5 @@
 package org.starfall.generative.shared.ui.layout
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -37,13 +36,12 @@ fun ScreenCover(
         onDismissRequest = onDismiss,
         properties = PopupProperties(
             focusable = true,
-            dismissOnBackPress = false,
+            dismissOnBackPress = true,
             dismissOnClickOutside = false,
             usePlatformDefaultWidth = false,
             clippingEnabled = true
         )
     ) {
-        BackHandler(onBack = onDismiss)
         Box(
             modifier = Modifier
                 .fillMaxSize()
