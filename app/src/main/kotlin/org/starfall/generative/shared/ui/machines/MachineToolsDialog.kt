@@ -11,13 +11,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,8 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.REMOTE_TOOL_CLOSE_TERMINAL
@@ -38,11 +33,8 @@ import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.remoteMachineToolNames
 import org.starfall.generative.shared.ui.ToolSwitch
 import org.starfall.generative.shared.ui.dialogs.AppDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
-import org.starfall.generative.shared.ui.icons.Icons
 
 /** Shared per-machine tool editor used by the drawer and the Remote Machines context menu. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MachineToolsDialog(
     machine: RemoteMachine,
@@ -60,29 +52,10 @@ fun MachineToolsDialog(
     AppDialog(onDismissRequest = onDismiss) {
         Surface(shape = MaterialTheme.shapes.extraLarge, modifier = Modifier.fillMaxWidth().heightIn(max = 640.dp)) {
             Column {
-                TopAppBar(
-                    title = {
-                        Column {
-                            Text(
-                                stringResource(R.string.remote_machine_tools_section),
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                machine.name.ifBlank { stringResource(R.string.remote_machine_unnamed) },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = onDismiss) {
-                            FluentIcon(Icons.Default.Close, stringResource(R.string.common_close))
-                        }
-                    }
+                MachineDialogTopBar(
+                    title = stringResource(R.string.remote_machine_tools_section),
+                    machine = machine,
+                    onClose = onDismiss
                 )
                 Column(
                     Modifier

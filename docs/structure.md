@@ -502,6 +502,7 @@ This document is the detailed package map and architecture reference. The mandat
 │       │   ├── 📄 DebugLogOverlay.kt
 │       │   └── 📄 DebugLogPanel.kt
 │       ├── 📁 machines/
+│       │   ├── 📄 MachineDialogTopBar.kt
 │       │   └── 📄 MachineToolsDialog.kt
 │       ├── 📁 media/
 │       │   ├── 📄 ChatAttachmentSelection.kt
