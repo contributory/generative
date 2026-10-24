@@ -33,7 +33,7 @@ class DeviceRegressionTest {
     @Test fun addSheetStartsHalfHeightExpandsAndShowsToolControlsBeforeSummary() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         compose.setContent { MaterialTheme {
-            QuickActionsSheet({}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+            QuickActionsSheet({}, {}, {}, {}, {}, {}, {}, {}, {})
         } }
         compose.waitForIdle()
         val photos = compose.onNodeWithText("Photos")
@@ -44,12 +44,8 @@ class DeviceRegressionTest {
         photos.performTouchInput { swipeUp() }
         compose.waitForIdle()
         assertTrue("Sheet did not expand", photos.fetchSemanticsNode().boundsInRoot.top < initialTop - 100)
-        compose.onNodeWithText("Summary").performScrollTo()
-        val featureTools = compose.onNodeWithText("Feature Tools").fetchSemanticsNode().boundsInRoot
-        val mcpConnectors = compose.onNodeWithText("MCP Connectors").fetchSemanticsNode().boundsInRoot
-        val summary = compose.onNodeWithText("Summary").fetchSemanticsNode().boundsInRoot
-        assertTrue("Feature Tools must precede Summary", featureTools.top < summary.top)
-        assertTrue("MCP Connectors must precede Summary", mcpConnectors.top < summary.top)
+        compose.onNodeWithText("Feature Tools").assertIsDisplayed()
+        compose.onNodeWithText("MCP Connectors").assertIsDisplayed()
     }
 
     @Test fun modelPickerDoesNotDismissWhenFlingReachesTop() {

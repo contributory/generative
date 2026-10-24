@@ -203,8 +203,9 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   └── 📄 ConversationModelIcon.kt
 │   │   └── 📁 ui/
 │   │       ├── 📄 ConversationItem.kt
+│   │       ├── 📄 ConversationSideDrawer.kt
 │   │       ├── 📄 DrawerBackdrop.kt
-│   │       └── 📄 ConversationSideDrawer.kt
+│   │       └── 📄 DrawerShortcuts.kt
 │   ├── 📁 shared/
 │   │   ├── 📁 logic/
 │   │   │   ├── 📄 ChatBackgroundService.kt
@@ -216,11 +217,10 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   └── 📁 ui/
 │   │       ├── 📄 ConversationSummarySheet.kt
 │   │       ├── 📄 FeatureToolsSheet.kt
-│   │       ├── 📄 McpConnectorsSheet.kt
 │   │       ├── 📄 InstructionsSheet.kt
+│   │       ├── 📄 McpConnectorsSheet.kt
 │   │       ├── 📄 QuickActionsSheet.kt
 │   │       ├── 📄 ReasoningEffortSheet.kt
-│   │       ├── 📄 RemoteMachinesSheet.kt
 │   │       ├── 📄 SelectedModelOverviewSheet.kt
 │   │       ├── 📄 ToolDetailsSheet.kt
 │   │       └── 📄 ToolSheetState.kt

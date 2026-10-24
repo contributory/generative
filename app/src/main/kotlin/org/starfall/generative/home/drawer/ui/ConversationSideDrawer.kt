@@ -74,6 +74,8 @@ fun ConversationSideDrawer(
     onNavigateToSettings: () -> Unit,
     featuresLogoImage: String? = null,
     onCloseDrawer: () -> Unit,
+    onOpenMediaStorage: () -> Unit = {},
+    onOpenRemoteMachines: () -> Unit = {},
     modifier: Modifier = Modifier,
     providers: List<ModelProvider> = emptyList(),
     backdrop: DrawerBackdrop? = null
@@ -184,6 +186,28 @@ fun ConversationSideDrawer(
                     IconButton(enabled = selected.isNotEmpty(), onClick = { folderName = ""; grouping = true }) { FluentIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.sidebar_move_selected_to_folder)) }
                     IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
                 }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    DrawerQuickShortcuts(
+                        onOpenMediaStorage = {
+                            unfocusSearch()
+                            onOpenMediaStorage()
+                        },
+                        onOpenRemoteMachines = {
+                            unfocusSearch()
+                            onOpenRemoteMachines()
+                        }
+                    )
+                }
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                )
             }
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Bottom)) {
                 val folders = organization.folders.sortedByDescending { it.pinned }

@@ -380,6 +380,14 @@ fun AppNavigation(
                     featuresLogoImage = appPrefs.featuresLogoImage,
                     onCloseDrawer = {
                         coroutineScope.launch { drawerState.close() }
+                    },
+                    onOpenMediaStorage = {
+                        coroutineScope.launch { drawerState.close() }
+                        openConfiguration(AppDestination.STORAGE)
+                    },
+                    onOpenRemoteMachines = {
+                        coroutineScope.launch { drawerState.close() }
+                        openConfiguration(AppDestination.REMOTE_MACHINES)
                     }
                 )
             }
@@ -507,8 +515,7 @@ fun AppNavigation(
                              terminalMachine = machine
                          },
                          onOpenFeatureToolsSettings = { openConfiguration(AppDestination.TOOLS_EDITOR) },
-                         onOpenMcpConnectorsSettings = { openConfiguration(AppDestination.MCP) },
-                         onOpenRemoteMachinesSettings = { openConfiguration(AppDestination.REMOTE_MACHINES) }
+                         onOpenMcpConnectorsSettings = { openConfiguration(AppDestination.MCP) }
                      )
                 }
                 NavHost(

@@ -146,7 +146,6 @@ fun ChatScreen(
     onOpenTerminal: (RemoteMachine) -> Unit = {},
     onOpenFeatureToolsSettings: () -> Unit = {},
     onOpenMcpConnectorsSettings: () -> Unit = {},
-    onOpenRemoteMachinesSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val conversationKey = conversation?.id ?: "__empty_conversation__"
@@ -822,8 +821,7 @@ fun ChatScreen(
                  onEditProvider = onEditProvider,
                  onFetchOllamaModels = onFetchOllamaModels,
                  onOpenFeatureToolsSettings = onOpenFeatureToolsSettings,
-                 onOpenMcpConnectorsSettings = onOpenMcpConnectorsSettings,
-                 onOpenRemoteMachinesSettings = onOpenRemoteMachinesSettings
+                 onOpenMcpConnectorsSettings = onOpenMcpConnectorsSettings
              )
         }
 
