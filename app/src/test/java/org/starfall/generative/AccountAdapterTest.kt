@@ -116,8 +116,9 @@ class AccountAdapterTest {
             try { http.json(request); fail("Normal provider errors must still fail") } catch (_: IllegalStateException) { }
         }
     }
-    @Test fun refreshRotatesCredentialsAndPreservesIdentityAndProject() {
-        val old = AccountTokenState("old", "refresh", "Bearer", 100, "account", "user@example.com", "project")
+    @Test fun refreshRotatesCredentialsAndPreservesIdentityProjectAndRoute() {
+        val old = AccountTokenState("old", "refresh", "Bearer", 100, "account", "user@example.com", "project",
+            "https://daily-cloudcode-pa.googleapis.com")
         val rotated = accountTokenFromResponse(obj("access_token" to str("new"),
             "refresh_token" to str("rotated"), "expires_in" to JsonPrimitive(3600)), old, now = 1000)
         assertEquals("new", rotated.accessToken)
@@ -126,9 +127,11 @@ class AccountAdapterTest {
         assertEquals(old.accountId, rotated.accountId)
         assertEquals(old.email, rotated.email)
         assertEquals(old.projectId, rotated.projectId)
+        assertEquals(old.codeAssistBaseUrl, rotated.codeAssistBaseUrl)
         val partial = accountTokenFromResponse(obj("access_token" to str("newer")), rotated)
         assertEquals("rotated", partial.refreshToken)
         assertNull(partial.expiresAt)
+        assertEquals(old.codeAssistBaseUrl, partial.codeAssistBaseUrl)
     }
 
     @Test fun encryptedCredentialsAreIsolatedByProviderAndAdapter() {

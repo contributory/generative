@@ -248,6 +248,26 @@ class AccountModelDiscoveryTest {
         assertEquals("https://daily-cloudcode-pa.googleapis.com", ModelApiType.ANTIGRAVITY.defaultBaseUrl)
     }
 
+    @Test fun antigravityGenerationRouteUsesDailyForBuiltInAndPreservesCustomBase() {
+        val adapter = AntigravityAdapter(context, AttachmentResolver(context))
+        val store = AccountTokenStore(context, "antigravity")
+        val legacy = ModelProvider("legacy", "Antigravity", ModelApiType.ANTIGRAVITY,
+            baseUrl = "https://daily-cloudcode-pa.sandbox.googleapis.com",
+            auth = Authorization(AuthMethod.OAUTH, value = "legacy-marker", oauthAccountId = "legacy-route"))
+        store.save("legacy-route", AccountTokenState("access", "refresh", projectId = "legacy-project",
+            codeAssistBaseUrl = "https://autopush-cloudcode-pa.sandbox.googleapis.com"))
+        assertEquals("https://daily-cloudcode-pa.googleapis.com/v1internal:generateContent",
+            adapter.requestUrl(legacy, legacy.copy(type = ModelApiType.GOOGLE), "unused"))
+
+        MockWebServer().use { server ->
+            val custom = provider(ModelApiType.ANTIGRAVITY, server, "custom-route")
+            store.save("custom-route", AccountTokenState("access", "refresh", projectId = "project",
+                codeAssistBaseUrl = custom.baseUrl))
+            assertEquals("${custom.baseUrl}/v1internal:generateContent",
+                adapter.requestUrl(custom, custom.copy(type = ModelApiType.GOOGLE), "unused"))
+        }
+    }
+
     @Test fun copilotUsesCurrentAccountEntitlementsAndPreservesMetadataThroughService() = runBlocking {
         MockWebServer().use { server ->
             val catalog = """{"data":[

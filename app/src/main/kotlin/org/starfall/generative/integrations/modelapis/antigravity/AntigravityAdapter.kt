@@ -123,12 +123,11 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
     override suspend fun prepareAuthenticatedProvider(provider: ModelProvider): ModelProvider =
         wire(provider, ensureToken(provider))
 
+    private fun isBuiltInRoute(provider: ModelProvider): Boolean =
+        provider.baseUrl.trimEnd('/') in setOf(ModelApiType.ANTIGRAVITY.defaultBaseUrl, LEGACY_DEFAULT_BASE_URL)
+
     private fun bases(provider: ModelProvider): List<String> =
-        if (provider.baseUrl.trimEnd('/') in setOf(ModelApiType.ANTIGRAVITY.defaultBaseUrl, LEGACY_DEFAULT_BASE_URL))
-            listOf(
-                "https://daily-cloudcode-pa.googleapis.com", "https://cloudcode-pa.googleapis.com",
-                "https://daily-cloudcode-pa.sandbox.googleapis.com", "https://autopush-cloudcode-pa.sandbox.googleapis.com"
-            )
+        if (isBuiltInRoute(provider)) listOf(ModelApiType.ANTIGRAVITY.defaultBaseUrl)
         else listOf(provider.baseUrl.trimEnd('/'))
 
     private fun projectValue(value: JsonElement?): String? = when (value) {
@@ -145,6 +144,12 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
 
     private suspend fun ensureProject(provider: ModelProvider): AccountTokenState = projectLock.withLock {
         var token = ensureToken(provider)
+        // Legacy builds could provision/cache a project against prod or sandbox. Consumer OAuth
+        // now has one authoritative route, so an automatic project cached against another endpoint
+        // cannot bypass discovery on daily.
+        if (isBuiltInRoute(provider) && token.codeAssistBaseUrl != ModelApiType.ANTIGRAVITY.defaultBaseUrl) {
+            token = token.copy(projectId = null, codeAssistBaseUrl = null)
+        }
         val configuredProject = provider.config.antigravityProjectId(provider.oauthCredentialId)
         if (configuredProject != null) return@withLock token.copy(projectId = configuredProject)
         if (!token.projectId.isNullOrBlank()) return@withLock token
@@ -311,7 +316,7 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
 
     override fun requestUrl(sourceProvider: ModelProvider, wireProvider: ModelProvider, defaultUrl: String) =
         (store.load(sourceProvider.oauthCredentialId)?.codeAssistBaseUrl?.takeIf { it in bases(sourceProvider) }
-            ?: sourceProvider.baseUrl.trimEnd('/')) + "/v1internal:generateContent"
+            ?: bases(sourceProvider).first()) + "/v1internal:generateContent"
 
     override fun unwrapResponse(response: JsonObject): JsonObject = (response["response"] as? JsonObject) ?: response
 }

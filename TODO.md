@@ -124,14 +124,16 @@ A false logical stream flag selects `:generateContent`. The reference still uses
 
 ### [x] 5. Update Antigravity client identity and onboarding wire contract
 
-**Status:** implemented and source-reviewed against `internal/auth/antigravity/auth.go` and `internal/misc/antigravity_version.go`; exact-payload/header tests updated but not executed. Load/onboard metadata, tier/project extraction, Hub 2.24.0 fallback identity, long onboarding UA, and daily default now match the reference. Onboarding polls by repeating `POST /v1internal:onboardUser` up to five times; an inferred `GET /v1internal/{operation.name}` was removed after reference review because it can produce an entity-not-found response. The previous sandbox default remains recognized as a legacy built-in value so existing installs are not reclassified as custom endpoints.
+**Status:** implemented and source-reviewed against `internal/auth/antigravity/auth.go`, `internal/misc/antigravity_version.go`, `internal/runtime/executor/antigravity_executor_request.go`, and `sdk/cliproxy/antigravity_models.go`; exact-payload/header tests updated but not executed. Load/onboard metadata, tier/project extraction, Hub 2.24.0 fallback identity, long onboarding UA, and daily default now match the reference. Built-in consumer routing uses only the daily endpoint instead of racing prod/sandbox/autopush catalogs; automatic projects cached against a legacy route are rediscovered on daily, while explicit custom bases retain their route. Onboarding polls by repeating `POST /v1internal:onboardUser` up to five times; an inferred `GET /v1internal/{operation.name}` was removed after reference review because it can produce an entity-not-found response. The previous sandbox default remains recognized as a legacy built-in value so existing installs are migrated to daily rather than reclassified as custom endpoints.
 
 **Relevant code:**
 
 - `app/src/main/kotlin/org/starfall/generative/integrations/modelapis/antigravity/AntigravityAdapter.kt`
 - `app/src/main/kotlin/org/starfall/generative/integrations/modelapis/antigravity/AntigravityModels.kt`
+- `app/src/main/kotlin/org/starfall/generative/integrations/modelapis/account/AccountTokenResponse.kt`
 - `app/src/main/kotlin/org/starfall/generative/shared/model/api/ModelApiType.kt`
 - `app/src/test/java/org/starfall/generative/AccountModelDiscoveryTest.kt:93-110`
+- `app/src/test/java/org/starfall/generative/AccountAdapterTest.kt`
 
 **Current differences:**
 
@@ -153,6 +155,8 @@ A false logical stream flag selects `:generateContent`. The reference still uses
 
 - Capture exact load and onboarding requests for default-tier, current-tier, and fallback-tier cases.
 - Verify the successful onboarding base URL is persisted and used for generation.
+- Verify built-in legacy/cached sandbox routes resolve to daily while an explicit custom base remains unchanged.
+- Verify OAuth refresh preserves both the discovered project and its Code Assist route.
 - Verify user agent, metadata platform, and version are internally consistent.
 - Do not treat camelCase/snake_case spelling alone as proof of live rejection; verify semantics with sanitized real responses where possible.
 
