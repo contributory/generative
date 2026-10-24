@@ -159,7 +159,13 @@ internal fun MediaViewer(store: ToolFiles, file: File, onDismiss: () -> Unit) {
                 )
             )
         }
-        add(MediaViewerAction(stringResource(R.string.media_save), Icons.Outlined.Save) { save.launch(file.name) })
+        add(
+            MediaViewerAction(
+                label = stringResource(R.string.media_save),
+                icon = Icons.Outlined.Save,
+                onClick = { save.launch(file.name) }
+            )
+        )
         add(MediaViewerAction(stringResource(R.string.media_share), Icons.Outlined.Share, share))
         add(
             MediaViewerAction(

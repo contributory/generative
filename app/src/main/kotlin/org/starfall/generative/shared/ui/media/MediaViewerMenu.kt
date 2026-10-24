@@ -49,7 +49,7 @@ internal fun MediaViewerMenu(
             .statusBarsPadding()
             .padding(8.dp)
     ) {
-        Box(Modifier.align(Alignment.TopLeft)) {
+        Box(Modifier.align(Alignment.Absolute.TopLeft)) {
             ViewerOverlayButton {
                 IconButton(onClick = { expanded = true }) {
                     FluentIcon(
@@ -88,7 +88,7 @@ internal fun MediaViewerMenu(
                 }
             }
         }
-        ViewerOverlayButton(modifier = Modifier.align(Alignment.TopRight)) {
+        ViewerOverlayButton(modifier = Modifier.align(Alignment.Absolute.TopRight)) {
             IconButton(onClick = onDismiss) {
                 FluentIcon(
                     Icons.Default.Close,
