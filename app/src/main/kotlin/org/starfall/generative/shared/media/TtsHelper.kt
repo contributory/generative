@@ -6,6 +6,7 @@ import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.widget.Toast
+import androidx.annotation.StringRes
 import org.starfall.generative.R
 import java.util.Locale
 
@@ -121,6 +122,16 @@ class TtsHelper(context: Context) {
 
     fun reportError(message: String) {
         handler.post { Toast.makeText(appContext, message, Toast.LENGTH_LONG).show() }
+    }
+
+    fun reportError(@StringRes messageRes: Int) {
+        handler.post { Toast.makeText(appContext, messageRes, Toast.LENGTH_LONG).show() }
+    }
+
+    fun reportError(message: String?, @StringRes fallbackRes: Int) {
+        handler.post {
+            Toast.makeText(appContext, message ?: appContext.getString(fallbackRes), Toast.LENGTH_LONG).show()
+        }
     }
 
     fun stop() {

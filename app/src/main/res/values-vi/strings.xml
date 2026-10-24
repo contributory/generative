@@ -6,10 +6,7 @@
     <string name="model_tools_hint">Bật các công cụ tích hợp mà model này hỗ trợ. Các công cụ được gửi trực tiếp trong yêu cầu API.</string>
     <string name="model_arguments">Arguments</string>
     <string name="model_tool_name">Tên tool</string>
-    <string name="model_tool_custom">Tool tùy chỉnh</string>
-    <string name="model_tool_add">Thêm</string>
     <string name="model_tools_editor_hint">Chọn tool mặc định, thêm tên tool tùy chỉnh và bật hoặc tắt từng tool.</string>
-    <string name="model_tools_unsupported_provider">API của provider này hiện chưa hỗ trợ model tools tích hợp trong Generative.</string>
     <string name="thinking">Đang suy nghĩ</string>
     <string name="thinking_streaming">Đang suy nghĩ...</string>
     <string name="thought_process">Quá trình suy luận</string>
@@ -21,8 +18,6 @@
     <string name="tool_executed_in">Đã thực thi công cụ trong %1$s</string>
     <!-- Chỉ dịch mô tả, hướng dẫn và nội dung giới thiệu; tiêu đề dùng bản tiếng Anh mặc định. -->
     <string name="use_system_language_desc">Theo ngôn ngữ của thiết bị. Tắt để tùy chỉnh ngôn ngữ ứng dụng.</string>
-    <string name="settings_category_appearance_description">Chủ đề, màu sắc và cách hiển thị tin nhắn</string>
-    <string name="settings_category_preferences_description">Hành vi, phản hồi và tích hợp</string>
     <string name="settings_category_app_settings_description">Giao diện, tùy chọn và hành vi của ứng dụng</string>
     <string name="settings_category_app_data_description">Lịch sử hội thoại và đặt lại ứng dụng</string>
     <string name="settings_category_about_description">Thông tin ứng dụng, cập nhật phần mềm và giấy phép</string>
@@ -40,8 +35,8 @@
     <string name="settings_persist_selected_model_description">Dùng model đã chọn của từng cuộc trò chuyện khi mở lại</string>
     <string name="settings_auto_scroll_description">Theo dõi các phản hồi mới khi chúng được tạo</string>
     <string name="settings_limit_tool_rounds_description">Tắt: model không bị giới hạn lượt gọi tool. Bật: dừng AI sau số lượt hành động quy định.</string>
-    <string name="settings_tool_rounds_invalid">Nhập số từ 1 đến %1$d.</string>
-    <string name="settings_tool_rounds_default">Mặc định là %1$d.</string>
+    <string name="common_number_range_invalid">Nhập số từ 1 đến %1$d.</string>
+    <string name="common_number_range_default">Mặc định là %1$d.</string>
     <string name="settings_haptic_vibration_description">Rung khi chạm và khi tạo phản hồi</string>
     <string name="settings_read_code_blocks_description">Bao gồm các khối code có hàng rào và thụt dòng khi đọc tin nhắn</string>
     <string name="settings_latex_description">Tự động nhận diện LaTeX, đồng thời giữ ký tự dollar ở dạng văn bản thuần.</string>
@@ -50,7 +45,7 @@
     <string name="settings_debug_log_scope_description">Chọn loại log mà nút debug nổi sẽ ghi lại.</string>
     <string name="debug_log_category_network">Mạng</string>
     <string name="debug_log_category_payload">Payload</string>
-    <string name="debug_log_category_tools">Tool</string>
+    <string name="common_tools">Tool</string>
     <string name="debug_log_category_tokens">Token</string>
     <string name="debug_log_category_errors">Lỗi</string>
     <string name="debug_log_title">Log debug</string>
@@ -58,7 +53,7 @@
     <string name="debug_log_copy_entry">Sao chép khối log này</string>
     <string name="debug_log_copy_all">Sao chép tất cả log</string>
     <string name="debug_log_clear_all">Xóa tất cả log</string>
-    <string name="debug_log_copied">Đã sao chép vào bộ nhớ tạm</string>
+    <string name="common_copied_to_clipboard">Đã sao chép vào bộ nhớ tạm</string>
     <string name="debug_log_copy_failed">Không thể sao chép log</string>
     <string name="debug_log_empty">Chưa có log. Hoạt động thuộc phạm vi đã chọn sẽ hiện ở đây theo thời gian thực.</string>
     <string name="settings_manage_data_description">Quản lý các cuộc hội thoại và cấu hình được lưu trên thiết bị này.</string>
@@ -76,25 +71,18 @@
     <string name="icon_cache_search">Tìm biểu tượng hoặc quy tắc khớp</string>
     <string name="icon_cache_no_results">Không tìm thấy kết quả phù hợp.</string>
     <string name="icon_cache_no_matches">Chưa có quy tắc khớp tùy chỉnh</string>
-    <string name="icon_cache_actions">Thao tác biểu tượng</string>
     <string name="icon_cache_edit">Chỉnh sửa biểu tượng</string>
     <string name="icon_cache_add_match">Thêm trường hợp khớp</string>
-    <string name="icon_cache_add">Thêm biểu tượng</string>
     <string name="icon_cache_save_failed">Không thể lưu quy tắc biểu tượng.</string>
     <string name="icon_cache_empty">Chưa có biểu tượng nào được lưu đệm. Hãy thêm ảnh hoặc chọn biểu tượng trong trình chỉnh sửa.</string>
     <string name="icon_cache_regex">Biểu thức chính quy</string>
     <string name="icon_cache_invalid_regex">Nhập biểu thức chính quy hợp lệ.</string>
-    <string name="icon_cache_delete">Xóa quy tắc</string>
     <string name="choose_icon">Chọn ảnh</string>
-    <string name="remove_icon">Xóa biểu tượng</string>
     <string name="icon_import_failed">Không thể tải ảnh này. Hãy chọn ảnh khác.</string>
     <string name="icon_variant_normal">Sáng</string>
     <string name="icon_variant_dark">Tối (không bắt buộc)</string>
-    <string name="icon_cache_help">Biểu tượng dùng chung cho Provider, Model và MCP Server. Khi thiếu, tự tìm trên LobeHub và chỉ tải vào bộ nhớ đệm lúc sử dụng. Biểu tượng riêng và regex được ưu tiên.</string>
-    <string name="icon_cache_match_help">Mỗi regex khớp toàn bộ tên, không phân biệt hoa thường. Với model, thử tên trước dấu gạch ngang đầu tiên rồi gom dần từng hậu tố. Phần sau / được xét trước phần trước /.</string>
     <string name="common_description">Mô tả</string>
     <string name="providers_description">Quản lý các provider AI</string>
-    <string name="model_display_name_hint">Để trống để hiển thị Model ID.</string>
     <string name="model_id_api_hint">ID được gửi đến API của provider.</string>
     <string name="mcp_servers_description">Công cụ Model Context Protocol</string>
     <string name="no_mcp_servers_hint">Nhấn + để kết nối Model Context Protocol server</string>
@@ -104,8 +92,6 @@
     <string name="mcp_oauth_client_id_help">Chỉ nhập khi authorization server không hỗ trợ đăng ký client động hoặc bạn đã đăng ký Generative thủ công.</string>
     <string name="mcp_oauth_client_secret_help">Không bắt buộc. Chỉ dùng secret được cấp cho confidential client đã đăng ký trước.</string>
     <string name="mcp_oauth_redirect_uri_help">Nhập chính xác callback URL đã đăng ký cho client này. Mặc định: %1$s</string>
-    <string name="mcp_custom_headers_help">Thêm HTTP header tùy chỉnh cho yêu cầu MCP server</string>
-    <string name="context_window_help">Dùng giới hạn API cung cấp; mặc định 128.000 token nếu không có.</string>
     <string name="favicon_homepage_help">Dán link trang chủ hoặc link hình ảnh trực tiếp. Để trống để sử dụng trang chủ được suy ra từ URL cơ sở.</string>
     <string name="word_wrap_column_hint">Bounded ngắt dòng theo giới hạn nhỏ hơn giữa chiều rộng màn hình và số cột này.</string>
     <string name="code_preview_hint">Hiển thị nút xem trước trên các khối code được hỗ trợ.</string>
@@ -126,16 +112,13 @@
     <string name="tool_summary_settings_title">Cách tóm tắt</string>
     <string name="tool_summary_settings_description">Kiểm soát thời điểm Generative gợi ý hoặc tự động tóm tắt cuộc hội thoại. Các tùy chọn này áp dụng cho helper Chat Summary.</string>
     <string name="tool_select_model_hint">Nhấn để chọn model</string>
-    <string name="prompt_preview_title">Xem trước prompt</string>
-    <string name="prompt_preview_description">Xem prompt này như một tin nhắn chat. Role quyết định prompt thuộc phía nào của cuộc hội thoại.</string>
-    <string name="prompt_preview_edit">Chỉnh sửa prompt</string>
-    <string name="prompt_preview_open">Mở xem trước prompt</string>
-    <string name="prompt_preview_empty">Prompt này đang trống.</string>
-    <string name="prompt_role_accessibility">Chọn role của prompt. Role hiện tại: %1$s</string>
+    <string name="instruction_preview_title">Xem trước hướng dẫn</string>
+    <string name="instruction_preview_edit">Chỉnh sửa hướng dẫn</string>
+    <string name="instruction_preview_open">Mở xem trước hướng dẫn</string>
+    <string name="instruction_preview_empty">Hướng dẫn này đang trống.</string>
+    <string name="instruction_role_accessibility">Chọn vai trò của hướng dẫn. Vai trò hiện tại: %1$s</string>
     <string name="tool_generate_image_description">Tạo ảnh từ prompt bằng model đã chọn.</string>
     <string name="tool_generate_video_description">Tạo video từ prompt bằng model đã chọn.</string>
-    <string name="tool_optional_params_title">Tham số tùy chọn</string>
-    <string name="tool_optional_params_description">Tắt tham số để ẩn khỏi AI và bỏ qua nếu AI vẫn truyền vào.</string>
     <string name="tool_settings_other_tools_title">Công cụ khác</string>
     <string name="tool_send_file_title">Gửi tệp</string>
     <string name="tool_send_file_description">Cho phép AI hiển thị tệp từ kết quả công cụ trong cuộc trò chuyện.</string>
@@ -148,7 +131,7 @@
     <string name="image_tool_json_invalid_hint">Sửa JSON trong JSON nâng cao để sử dụng biểu mẫu.</string>
     <string name="image_tool_discard_video_message">Cài đặt video của bạn chưa được lưu.</string>
     <string name="image_tool_discard_image_message">Cài đặt ảnh của bạn chưa được lưu.</string>
-    <string name="image_tool_provider_default_hint">Mặc định của provider</string>
+    <string name="image_tool_provider_default">Mặc định của provider</string>
     <string name="image_tool_range_hint">Phạm vi: %1$s – %2$s</string>
     <string name="speech_voice_optional_hint">Giọng đọc không bắt buộc, nhưng dịch vụ này có thể không hoạt động nếu thiếu giọng đọc.</string>
     <string name="speech_voice_instructions_help">Ngữ điệu, giọng đọc, cảm xúc%1$s.</string>
@@ -183,7 +166,7 @@
     <string name="remote_machine_terminal_disconnected">Đã ngắt kết nối</string>
     <string name="remote_machine_terminal_no_sessions_hint">Máy này sẽ ngắt kết nối khi phiên terminal cuối cùng của nó bị đóng. Mở một phiên mới để kết nối lại.</string>
     <string name="remote_machine_terminal_connection_lost">Mất kết nối</string>
-    <string name="remote_machine_terminal_connection_failed">Kết nối thất bại</string>
+    <string name="connection_failed">Kết nối thất bại</string>
     <string name="remote_machine_not_configured">Chưa cấu hình</string>
     <string name="drag_to_exit_folder_hint">Kéo lên thanh ứng dụng hoặc xuống thanh điều hướng để thoát khỏi thư mục</string>
 </resources>

@@ -1,5 +1,6 @@
 package org.starfall.generative.home.chat.ui
 
+import org.starfall.generative.R
 import org.starfall.generative.shared.ui.text.GlyphHitRegistry
 import org.starfall.generative.shared.ui.text.LocalGlyphHitRegistry
 import org.starfall.generative.shared.ui.text.LocalSelectionBlocked
@@ -125,7 +126,7 @@ fun UserMessageCard(
                                 enabled = message.activeVersionIndex > 0,
                                 modifier = Modifier.size(24.dp)
                             ) {
-                                FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Prev Version", modifier = Modifier.size(14.dp))
+                                FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.message_previous_version), modifier = Modifier.size(14.dp))
                             }
                             Text(
                                 text = "${message.activeVersionIndex + 1}/${message.versions.size}",
@@ -142,7 +143,7 @@ fun UserMessageCard(
                                 enabled = message.activeVersionIndex < message.versions.size - 1,
                                 modifier = Modifier.size(24.dp)
                             ) {
-                                FluentIcon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next Version", modifier = Modifier.size(14.dp))
+                                FluentIcon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = stringResource(R.string.message_next_version), modifier = Modifier.size(14.dp))
                             }
                         }
                     }
@@ -153,13 +154,13 @@ fun UserMessageCard(
                         onDismissRequest = { showMenu = false }
                     ) {
                         if (!message.isQueued) DropdownMenuItem(
-                            text = { Text("Copy") },
+                            text = { Text(stringResource(R.string.common_copy)) },
                             leadingIcon = { FluentIcon(Icons.Outlined.ContentCopy, contentDescription = null) },
                             onClick = {
                                 showMenu = false
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText("Copied", message.content))
-                                Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                                clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.common_copy), message.content))
+                                Toast.makeText(context, context.getString(R.string.common_copied_to_clipboard), Toast.LENGTH_SHORT).show()
                             }
                         )
                         if (onResendFromMenu != null) DropdownMenuItem(
@@ -172,7 +173,7 @@ fun UserMessageCard(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Edit") },
+                            text = { Text(stringResource(R.string.common_edit)) },
                             leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
                             onClick = {
                                 showMenu = false
@@ -180,7 +181,7 @@ fun UserMessageCard(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text(if (message.isQueued) "Cancel" else "Delete") },
+                            text = { Text(stringResource(if (message.isQueued) R.string.common_cancel else R.string.common_delete)) },
                             leadingIcon = { FluentIcon(if (message.isQueued) Icons.Outlined.Close else Icons.Outlined.Delete, contentDescription = null) },
                             onClick = {
                                 showMenu = false

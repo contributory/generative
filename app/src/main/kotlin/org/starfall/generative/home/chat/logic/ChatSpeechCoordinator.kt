@@ -2,6 +2,7 @@ package org.starfall.generative.home.chat.logic
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import org.starfall.generative.R
 import org.starfall.generative.shared.media.SpeechAudioPlayer
 import org.starfall.generative.shared.media.SpeechSynthesisService
 import org.starfall.generative.shared.media.TtsHelper
@@ -47,16 +48,29 @@ internal class ChatSpeechCoordinator(
         job = scope.launch {
             try {
                 val provider = providers.value.find { it.id == service.provider }
-                    ?: error("Speech provider no longer exists.")
-                val modelId = service.modelId ?: error("Select a TTS model first.")
-                require(provider.config.modelConfigs[modelId]?.modelType == ModelType.TEXT_TO_SPEECH &&
-                    provider.config.modelIds?.contains(modelId) != false) { "The selected TTS model is unavailable." }
+                if (provider == null) {
+                    tts.reportError(R.string.speech_provider_missing)
+                    onFinished()
+                    return@launch
+                }
+                val modelId = service.modelId
+                if (modelId == null) {
+                    tts.reportError(R.string.speech_model_missing)
+                    onFinished()
+                    return@launch
+                }
+                if (provider.config.modelConfigs[modelId]?.modelType != ModelType.TEXT_TO_SPEECH ||
+                    provider.config.modelIds?.contains(modelId) == false) {
+                    tts.reportError(R.string.speech_model_unavailable)
+                    onFinished()
+                    return@launch
+                }
                 val audio = synthesis.synthesize(provider, service, plainText)
                 ensureActive()
-                player.play(audio, onFinished, onError = { tts.reportError("Could not play synthesized speech.") })
+                player.play(audio, onFinished, onError = { tts.reportError(R.string.speech_playback_failed) })
             } catch (e: CancellationException) { throw e
             } catch (e: Exception) {
-                tts.reportError(e.localizedMessage ?: "Speech synthesis failed.")
+                tts.reportError(e.localizedMessage, R.string.speech_synthesis_failed)
                 onFinished()
             }
         }

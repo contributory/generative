@@ -172,7 +172,7 @@ class RemoteConnectionService : Service() {
             .setContentTitle(getString(R.string.remote_connection_notification_title, name))
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-            .addAction(0, getString(R.string.remote_connection_disconnect), disconnect)
+            .addAction(0, getString(R.string.remote_machine_disconnect), disconnect)
             .build()
     }
 

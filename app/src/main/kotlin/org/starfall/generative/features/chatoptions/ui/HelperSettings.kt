@@ -106,13 +106,13 @@ internal fun HelperSettingsSheet(
                     SelectableOutlinedTextField(
                         value = prompt,
                         onValueChange = { prompt = it },
-                        label = { Text(stringResource(R.string.tool_instruction_prompt)) },
+                        label = { Text(stringResource(R.string.common_instructions)) },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                         minLines = 6,
                         maxLines = 14,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("helper_prompt_input")
+                            .testTag("helper_instruction_input")
                     )
                 }
                 if (!isSummary) {
@@ -222,7 +222,7 @@ internal fun HelperSettingsSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(onClick = { prompt = defaultPrompt }) {
-                    Text(stringResource(R.string.tool_reset))
+                    Text(stringResource(R.string.common_reset))
                 }
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onDismiss) {

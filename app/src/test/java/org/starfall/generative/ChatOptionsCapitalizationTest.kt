@@ -22,7 +22,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.features.chatoptions.ui.ChatOptionsScreen
 import org.starfall.generative.features.chatoptions.ui.HelperSettingsSheet
-import org.starfall.generative.features.chatoptions.ui.PromptEditor
+import org.starfall.generative.features.chatoptions.ui.InstructionEditor
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.storage.preferences.AppPreferences
@@ -51,8 +51,8 @@ class ChatOptionsCapitalizationTest {
             ) {
                 GenerativeTheme(darkTheme = false, amoledMode = false) {
                     if (!showHelperSheet) {
-                        PromptEditor(
-                            prompt = null,
+                        InstructionEditor(
+                            instruction = null,
                             onPreview = {},
                             onBack = {}
                         )
@@ -72,21 +72,21 @@ class ChatOptionsCapitalizationTest {
             }
         }
 
-        // 1. Prompt Editor: prompt name field in TopAppBar
-        compose.onNodeWithTag("prompt_name_input").performClick()
+        // 1. Instruction editor: instruction name field in TopAppBar
+        compose.onNodeWithTag("instruction_name_input").performClick()
         compose.waitForIdle()
         assertNotEquals(
-            "Prompt name input should request sentence capitalization",
+            "Instruction name input should request sentence capitalization",
             0,
             lastInputType and InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
         )
 
-        // 2. Prompt Editor: prompt content field
+        // 2. Instruction editor: instruction content field
         lastInputType = 0
-        compose.onNodeWithTag("prompt_content_input").performClick()
+        compose.onNodeWithTag("instruction_content_input").performClick()
         compose.waitForIdle()
         assertNotEquals(
-            "Prompt content input should request sentence capitalization",
+            "Instruction content input should request sentence capitalization",
             0,
             lastInputType and InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
         )
@@ -95,7 +95,7 @@ class ChatOptionsCapitalizationTest {
         lastInputType = 0
         showHelperSheet = true
         compose.waitForIdle()
-        compose.onNodeWithTag("helper_prompt_input").performClick()
+        compose.onNodeWithTag("helper_instruction_input").performClick()
         compose.waitForIdle()
         assertNotEquals(
             "Helper instruction prompt input should request sentence capitalization",
@@ -105,7 +105,7 @@ class ChatOptionsCapitalizationTest {
     }
 
     @Test
-    fun instructionsTab_placesAddPromptIconButtonInTopAppBar() {
+    fun instructionsTab_placesAddInstructionIconButtonInTopAppBar() {
         var activeTab by mutableStateOf("helpers")
 
         compose.setContent {
@@ -120,18 +120,18 @@ class ChatOptionsCapitalizationTest {
             }
         }
 
-        // Helpers tab does not show the Add prompt action in the TopAppBar.
-        compose.onNodeWithContentDescription("Add prompt").assertDoesNotExist()
+        // Helpers tab does not show the Add action in the TopAppBar.
+        compose.onNodeWithContentDescription("Add").assertDoesNotExist()
 
-        // Instructions tab exposes Add prompt as a TopAppBar IconButton (not a body text Button)
-        // and opens PromptEditor when clicked.
+        // Instructions tab exposes Add as a TopAppBar IconButton (not a body text Button)
+        // and opens InstructionEditor when clicked.
         activeTab = "instructions"
         compose.waitForIdle()
-        compose.onNodeWithText("Add prompt").assertDoesNotExist()
-        compose.onNodeWithContentDescription("Add prompt")
+        compose.onNodeWithText("Add").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Add")
             .assertIsDisplayed()
             .performClick()
         compose.waitForIdle()
-        compose.onNodeWithTag("prompt_name_input").assertIsDisplayed()
+        compose.onNodeWithTag("instruction_name_input").assertIsDisplayed()
     }
 }

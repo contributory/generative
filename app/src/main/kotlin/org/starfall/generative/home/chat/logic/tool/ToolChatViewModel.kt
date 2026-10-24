@@ -76,12 +76,25 @@ private fun sentFileNames(result: JsonObject): List<String> {
     return (listed + legacy.orEmpty()).distinct()
 }
 
+/**
+ * User-visible status labels for tool activity. English defaults keep plain text for callers
+ * without a [android.content.Context]; the app wiring passes localized values.
+ */
+internal data class ToolChatLabels(
+    val toolsReady: String = "Tools ready",
+    val stopped: String = "Stopped",
+    val fileSent: String = "File sent to chat.",
+    val mediaDisplayed: (Int) -> String = { "Displayed $it media item(s) in chat." },
+    val roundLimit: (Int) -> String = { "Stopped after $it tool rounds. Send another message to continue." },
+)
+
 /** Native structured tool calls, bounded rounds, no executable text extracted from answers. */
 class ToolChatViewModel(
     private val http: ToolHttp,
     private val mcp: McpService,
     private val aiService: AiService,
-    private val remoteMachines: RemoteMachineService? = null
+    private val remoteMachines: RemoteMachineService? = null,
+    private val labels: ToolChatLabels = ToolChatLabels()
 ) {
     private val toolRequest = ToolRequestService(http, aiService)
     private val mediaGeneration = ToolMediaGenerationService(http, aiService)
@@ -148,7 +161,7 @@ class ToolChatViewModel(
                         }
                         tools += discovered
                         if (discovered.isNotEmpty()) mcpEntries += McpPagination.Entry(server.id, server.name, discovered)
-                        send(GenerationEvent.Tool(activity.copy(status = "success", summary = "Tools ready")))
+                        send(GenerationEvent.Tool(activity.copy(status = "success", summary = labels.toolsReady)))
                     } catch (e: CancellationException) {
                         send(GenerationEvent.Tool(activity.copy(status = "cancelled")))
                         throw e
@@ -474,8 +487,9 @@ class ToolChatViewModel(
                                     status = if (isError) "error" else "success",
                                     summary = when {
                                         paginationTool -> pagination.lastPreview
-                                        name == SEND_FILE_TOOL_NAME && tool.serverId == null -> "File sent to chat."
-                                        contentApiMedia?.files?.isNotEmpty() == true -> "Displayed ${contentApiMedia.files.size} media item(s) in chat."
+                                        name == SEND_FILE_TOOL_NAME && tool.serverId == null -> labels.fileSent
+                                        contentApiMedia?.files?.isNotEmpty() == true ->
+                                            labels.mediaDisplayed(contentApiMedia.files.size)
                                         else -> summary.preview
                                     },
                                     files = when {
@@ -492,7 +506,7 @@ class ToolChatViewModel(
                             )
                         )
                     } catch (e: CancellationException) {
-                        send(GenerationEvent.Tool(activity.copy(status = "cancelled", summary = "Stopped")))
+                        send(GenerationEvent.Tool(activity.copy(status = "cancelled", summary = labels.stopped)))
                         throw e
                     } catch (e: Exception) {
                         result = obj(
@@ -539,7 +553,7 @@ class ToolChatViewModel(
                     }
                 }
             }
-            error("Stopped after $round tool rounds. Send another message to continue.")
+            error(labels.roundLimit(round))
         } finally {
             sessions.values.forEach { it.close() }
         }

@@ -94,7 +94,7 @@ fun ServerEditor(
             Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
                 PrimaryTabRow(selectedTabIndex = selectedTab) {
                     Tab(selectedTab == 0, { selectedTab = 0 }, text = { Text(stringResource(R.string.mcp_basic_settings), fontWeight = FontWeight.SemiBold) })
-                    Tab(selectedTab == 1, { selectedTab = 1 }, text = { Text(stringResource(R.string.mcp_tools), fontWeight = FontWeight.SemiBold) })
+                    Tab(selectedTab == 1, { selectedTab = 1 }, text = { Text(stringResource(R.string.common_tools), fontWeight = FontWeight.SemiBold) })
                 }
                 if (selectedTab == 0) McpConnectionSettings(
                     name = name, icon = serverIcon, onIconChange = { serverIcon = it }, onIconBusyChange = { iconImporting = it },

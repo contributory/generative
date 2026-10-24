@@ -56,7 +56,7 @@ fun DefaultModelSelector(
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    modelName ?: stringResource(R.string.tool_select_model),
+                    modelName ?: stringResource(R.string.select_model),
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis

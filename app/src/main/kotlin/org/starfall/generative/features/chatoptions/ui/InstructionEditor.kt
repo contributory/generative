@@ -41,7 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.ChatRole
-import org.starfall.generative.shared.model.SavedPrompt
+import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
@@ -49,20 +49,20 @@ import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun PromptEditor(
-    prompt: SavedPrompt?,
-    onPreview: (SavedPrompt) -> Unit,
-    onBack: (SavedPrompt) -> Unit
+internal fun InstructionEditor(
+    instruction: SavedInstruction?,
+    onPreview: (SavedInstruction) -> Unit,
+    onBack: (SavedInstruction) -> Unit
 ) {
-    val promptId = prompt?.id.orEmpty()
-    var name by rememberSaveable(promptId) { mutableStateOf(prompt?.name.orEmpty()) }
-    var content by rememberSaveable(promptId) { mutableStateOf(prompt?.content.orEmpty()) }
-    var role by rememberSaveable(promptId) { mutableStateOf(prompt?.role ?: ChatRole.SYSTEM) }
+    val instructionId = instruction?.id.orEmpty()
+    var name by rememberSaveable(instructionId) { mutableStateOf(instruction?.name.orEmpty()) }
+    var content by rememberSaveable(instructionId) { mutableStateOf(instruction?.content.orEmpty()) }
+    var role by rememberSaveable(instructionId) { mutableStateOf(instruction?.role ?: ChatRole.SYSTEM) }
     var roleMenuExpanded by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
-    fun draft(): SavedPrompt = SavedPrompt(
-        id = prompt?.id.orEmpty(),
+    fun draft(): SavedInstruction = SavedInstruction(
+        id = instruction?.id.orEmpty(),
         name = name.trim(),
         content = content.trim(),
         role = role
@@ -90,11 +90,11 @@ internal fun PromptEditor(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(end = 8.dp)
-                            .testTag("prompt_name_input"),
+                            .testTag("instruction_name_input"),
                         decorationBox = { innerTextField ->
                             if (name.isBlank()) {
                                 Text(
-                                    stringResource(R.string.prompt_name_hint),
+                                    stringResource(R.string.common_name),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
@@ -114,11 +114,11 @@ internal fun PromptEditor(
                     Box {
                         AssistChip(
                             onClick = { roleMenuExpanded = true },
-                            label = { Text(promptRoleLabel(role)) },
+                            label = { Text(instructionRoleLabel(role)) },
                             leadingIcon = {
                                 FluentIcon(
                                     Icons.Outlined.AccountCircle,
-                                    stringResource(R.string.prompt_role_accessibility, promptRoleLabel(role)),
+                                    stringResource(R.string.instruction_role_accessibility, instructionRoleLabel(role)),
                                     modifier = Modifier.size(AssistChipDefaults.IconSize)
                                 )
                             },
@@ -137,7 +137,7 @@ internal fun PromptEditor(
                         ) {
                             listOf(ChatRole.SYSTEM, ChatRole.USER, ChatRole.MODEL).forEach { option ->
                                 DropdownMenuItem(
-                                    text = { Text(promptRoleLabel(option)) },
+                                    text = { Text(instructionRoleLabel(option)) },
                                     onClick = {
                                         role = option
                                         roleMenuExpanded = false
@@ -152,7 +152,7 @@ internal fun PromptEditor(
                     ) {
                         FluentIcon(
                             Icons.Outlined.Visibility,
-                            stringResource(R.string.prompt_preview_open)
+                            stringResource(R.string.instruction_preview_open)
                         )
                     }
                     Spacer(Modifier.width(4.dp))
@@ -163,15 +163,15 @@ internal fun PromptEditor(
         SelectableOutlinedTextField(
             value = content,
             onValueChange = { content = it },
-            label = { Text(stringResource(R.string.prompt_content)) },
-            placeholder = { Text(stringResource(R.string.prompt_content_hint)) },
+            label = { Text(stringResource(R.string.instruction_content)) },
+            placeholder = { Text(stringResource(R.string.instruction_content_hint)) },
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .imePadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
-                .testTag("prompt_content_input"),
+                .testTag("instruction_content_input"),
             maxLines = Int.MAX_VALUE,
             textStyle = MaterialTheme.typography.bodyLarge
         )
@@ -179,10 +179,10 @@ internal fun PromptEditor(
 }
 
 @Composable
-internal fun promptRoleLabel(role: ChatRole): String = stringResource(
+internal fun instructionRoleLabel(role: ChatRole): String = stringResource(
     when (role) {
-        ChatRole.SYSTEM -> R.string.prompt_role_system
-        ChatRole.USER -> R.string.prompt_role_user
-        ChatRole.MODEL -> R.string.prompt_role_assistant
+        ChatRole.SYSTEM -> R.string.common_system
+        ChatRole.USER -> R.string.common_user
+        ChatRole.MODEL -> R.string.common_assistant
     }
 )

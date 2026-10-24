@@ -124,10 +124,10 @@ fun ProviderEditor(
             if (authMethod == AuthMethod.BEARER_TOKEN) bearerHeaderValue(authName.ifBlank { "Authorization" }, apiKey) else apiKey.trim())
     var showTestDialog by remember { mutableStateOf(false) }
     val currentTest by rememberUpdatedState(onTestConnection)
-    val tests = remember(scope, initialProvider.id) { ModelConnectionTests(scope) { provider, id ->
-        currentTest?.invoke(provider, id) ?: Result.failure(IllegalStateException("Connection testing is unavailable."))
-    } }
     val context = LocalContext.current
+    val tests = remember(scope, initialProvider.id) { ModelConnectionTests(scope) { provider, id ->
+        currentTest?.invoke(provider, id) ?: Result.failure(IllegalStateException(context.getString(R.string.connection_testing_unavailable)))
+    } }
     val memory = remember(context) { ModelConfigurationMemory(context) }
     LaunchedEffect(initialProvider.id) { initialProvider.config.modelConfigs.forEach { (id, config) -> memory.remember(id, config, onlyIfMissing = true) } }
     var typeExpanded by remember { mutableStateOf(false) }
@@ -189,13 +189,13 @@ fun ProviderEditor(
         activeOAuthRequest = request
         try {
             val result = onAuthorizeProvider?.invoke(request)
-                ?: Result.failure(IllegalStateException("OAuth is unavailable for this provider."))
+                ?: Result.failure(IllegalStateException(context.getString(R.string.provider_oauth_unavailable)))
             result.onSuccess { signedIn ->
                 val authorized = signedIn.recordOAuthAccount(label)
                 providerPersisted = true; oauthAuthorized = true; oauthIdentity = authorized.auth.key
                 oauthMarker = authorized.auth.value.orEmpty(); oauthAccountId = authorized.auth.oauthAccountId
                 oauthAccounts = authorized.config.oauthAccounts; baseUrl = authorized.baseUrl
-            }.onFailure { oauthAuthError = it.message ?: "OAuth authorization failed." }
+            }.onFailure { oauthAuthError = it.message ?: context.getString(R.string.provider_oauth_failed) }
             return result
         } catch (e: CancellationException) {
             oauthAuthError = context.getString(R.string.oauth_sign_in_cancelled)
@@ -209,13 +209,13 @@ fun ProviderEditor(
         try {
             val request = draft().copy(auth = account?.authorization() ?: originalAuth)
             val result = onClearOAuthCredentials?.invoke(request)
-                ?: Result.failure(IllegalStateException("OAuth credential removal is unavailable."))
+                ?: Result.failure(IllegalStateException(context.getString(R.string.provider_oauth_removal_unavailable)))
             result.onSuccess { cleared ->
                 oauthAccounts = cleared.config.oauthAccounts
                 val auth = if ((originalAuth.oauthAccountId ?: initialProvider.id) != accountId) originalAuth else cleared.auth
                 oauthAccountId = auth.oauthAccountId; oauthIdentity = auth.key; oauthMarker = auth.value.orEmpty()
                 oauthAuthorized = !auth.value.isNullOrBlank()
-            }.onFailure { oauthAuthError = it.message ?: "Could not remove OAuth credentials." }
+            }.onFailure { oauthAuthError = it.message ?: context.getString(R.string.provider_oauth_remove_failed) }
             return result
         } finally { oauthClearing = false; oauthAuthorizing = false }
     }
@@ -226,7 +226,7 @@ fun ProviderEditor(
         if (providerPersisted) onSaveModels(initialProvider.id, order.associateWith { updated.getValue(it) })
     }
     BackHandler(enabled = LocalScreenTransitionActive.current && editingModel == null, onBack = onDismiss)
-    SlideScreenContent(editor = editingModel, label = "Model editor") { modelId ->
+    SlideScreenContent(editor = editingModel, label = stringResource(R.string.model_editor)) { modelId ->
         if (modelId != null) key(modelId) {
             ModelEditor(initialProvider.copy(type = type, config = requestConfig()), modelId, models.keys,
                 customImageMediaProfiles = customImageMediaProfiles,
@@ -245,17 +245,17 @@ fun ProviderEditor(
                                 enabled = testingConnection || (onTestConnection != null && (type.isAccountProvider || baseUrl.isNotBlank()) && valid && models.isNotEmpty())) {
                                 Box(contentAlignment = Alignment.Center) {
                                     if (testingConnection && !showTestDialog) CircularProgressIndicator(Modifier.size(36.dp), strokeWidth = 2.dp)
-                                    FluentIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.test_connection_lower))
+                                    FluentIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.test_connection))
                                 }
                             }
-                            IconButton(onClick = { editingModel = "" }) { FluentIcon(Icons.Default.Add, stringResource(R.string.add_model_manually)) }
+                            IconButton(onClick = { editingModel = "" }) { FluentIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
                             IconButton(onClick = { showCatalog = true }) { FluentIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.open_model_catalog)) }
                         }
                     })
             }) { padding ->
                 Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
                     PrimaryTabRow(selectedTabIndex = pager.currentPage) {
-                        Tab(pager.currentPage == 0, { scope.launch { pager.animateScrollToPage(0) } }, text = { Text(stringResource(R.string.provider_configuration)) })
+                        Tab(pager.currentPage == 0, { scope.launch { pager.animateScrollToPage(0) } }, text = { Text(stringResource(R.string.common_configuration)) })
                         Tab(pager.currentPage == 1, { scope.launch { pager.animateScrollToPage(1) } }, text = { Text(stringResource(R.string.provider_models)) })
                     }
                     ModelConnectionStatusBar(testProgress, testingConnection, showTestSummary, onDismissSummary = { showTestSummary = false })
@@ -285,7 +285,7 @@ fun ProviderEditor(
                             if (!type.isAccountProvider && baseUrl.trim().startsWith("http://", true)) Text(stringResource(R.string.http_unencrypted_provider_warning),
                                 color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                             if (authMethod in listOf(AuthMethod.BEARER_TOKEN, AuthMethod.QUERY_PARAM)) SelectableOutlinedTextField(authName, { authName = it },
-                                label = { Text(if (authMethod == AuthMethod.BEARER_TOKEN) "Header key" else "Query parameter name") },
+                                label = { Text(stringResource(if (authMethod == AuthMethod.BEARER_TOKEN) R.string.header_key else R.string.query_parameter_name)) },
                                 isError = !authValid, singleLine = true, modifier = Modifier.fillMaxWidth())
                             if (!type.isAccountProvider || authMethod != AuthMethod.OAUTH) ProviderAuthField(authMethod, apiKey, !type.isAccountProvider,
                                 onMethodChange = { authMethod = it; authName = if (it == AuthMethod.QUERY_PARAM) "key" else "Authorization"; oauthAuthError = null },
@@ -342,7 +342,7 @@ fun ProviderEditor(
                             OutlinedButton(onClick = { showHeaders = true }, modifier = Modifier.fillMaxWidth()) {
                                 Text(stringResource(R.string.headers))
                             }
-                            if (!headersValid && !showHeaders) Text("Header names and values must be valid and header names must be unique.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            if (!headersValid && !showHeaders) Text(stringResource(R.string.provider_headers_invalid), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                         } else ProviderModelsPane(order, models, modelList, onMove = { from, to -> order = order.moved(from, to) },
                             onDrop = { if (providerPersisted) onReorderModels(initialProvider.id, order) }, onEdit = { editingModel = it },
                             onDelete = { updateModels(models - it) }, onOpenCatalog = { showCatalog = true })
@@ -360,7 +360,7 @@ fun ProviderEditor(
             )
             if (showHeaders) ProviderHeadersDialog(headerRows, headersValid, onDismiss = { showHeaders = false })
             if (showApiKeys) ProviderApiKeysDialog(apiKeys, ::keyIdentity, onDismiss = { showApiKeys = false })
-            if (showTestDialog) ModelConnectionDialog(draft().copy(name = name.trim().ifEmpty { "Provider" }), tests, onTestConnection != null,
+            if (showTestDialog) ModelConnectionDialog(draft().copy(name = name.trim().ifEmpty { context.getString(R.string.provider_fallback_name) }), tests, onTestConnection != null,
                 onRemoveModels = { updateModels(models - it) }, onDismiss = { showTestDialog = false })
             if (showCatalog) ProviderModelCatalogSheet(initialProvider.copy(name = name, type = type, baseUrl = baseUrl.trim(), auth = authorization(), config = requestConfig()),
                 models.keys, onFetchModels, onCatalogLoaded = { discovered ->

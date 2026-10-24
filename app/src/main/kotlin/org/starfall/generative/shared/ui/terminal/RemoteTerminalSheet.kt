@@ -153,7 +153,7 @@ private fun RemoteTerminalContent(
     val currentSecretRequest by rememberUpdatedState(secretRequest)
     val terminalBackground = MaterialTheme.colorScheme.background
     val terminalForeground = MaterialTheme.colorScheme.onBackground
-    val connectionFailedMessage = stringResource(R.string.remote_machine_terminal_connection_failed)
+    val connectionFailedMessage = stringResource(R.string.connection_failed)
     val terminalBackgroundArgb = terminalBackground.toArgb()
     val terminalForegroundArgb = terminalForeground.toArgb()
 

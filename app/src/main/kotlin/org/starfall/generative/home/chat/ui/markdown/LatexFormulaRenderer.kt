@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.isSpecified
@@ -27,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import ru.noties.jlatexmath.JLatexMathDrawable
 import kotlin.math.roundToInt
+import org.starfall.generative.R
 import org.starfall.generative.home.chat.ui.AssetKey
 import org.starfall.generative.home.chat.ui.ChatRenderCaches
 import org.starfall.generative.home.chat.ui.EvictableCache
@@ -77,7 +79,7 @@ internal fun LatexFormulaRenderer(
             ) {
                 Image(
                     painter = rememberLatexDrawablePainter(renderResult.drawable),
-                    contentDescription = "Rendered LaTeX formula"
+                    contentDescription = stringResource(R.string.latex_rendered_formula)
                 )
             }
         }

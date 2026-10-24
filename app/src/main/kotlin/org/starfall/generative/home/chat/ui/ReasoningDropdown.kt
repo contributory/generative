@@ -288,14 +288,15 @@ private fun CollapsibleThinkingText(
     )
 }
 
+@Composable
 private fun formatProcessingDuration(durationMillis: Long): String {
     val totalSeconds = (durationMillis.coerceAtLeast(0L) + 500L) / 1000L
     val hours = totalSeconds / 3600L
     val minutes = (totalSeconds % 3600L) / 60L
     val seconds = totalSeconds % 60L
     return when {
-        hours > 0 -> "${hours}h ${minutes}m ${seconds}s"
-        minutes > 0 -> "${minutes}m ${seconds}s"
-        else -> "${seconds}s"
+        hours > 0 -> stringResource(R.string.duration_hours_minutes_seconds, hours, minutes, seconds)
+        minutes > 0 -> stringResource(R.string.duration_minutes_seconds, minutes, seconds)
+        else -> stringResource(R.string.duration_seconds, seconds)
     }
 }

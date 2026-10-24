@@ -47,11 +47,11 @@ internal fun FeatureToolsSheetContent(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         QuickActionsSubpageHeader(
-            title = stringResource(R.string.quick_action_feature_tools),
+            title = stringResource(R.string.common_feature_tools),
             onBack = onBack,
             actions = {
                 QuickActionsSettingsButton(
-                    title = stringResource(R.string.quick_action_feature_tools),
+                    title = stringResource(R.string.common_feature_tools),
                     onClick = onOpenSettings
                 )
             }

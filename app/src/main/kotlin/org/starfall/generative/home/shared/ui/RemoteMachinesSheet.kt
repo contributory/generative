@@ -8,8 +8,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.starfall.generative.R
 import org.starfall.generative.shared.ui.LocalToolControls
 import org.starfall.generative.shared.model.remoteMachineEnabled
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
@@ -45,18 +47,18 @@ internal fun RemoteMachinesSheetContent(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         QuickActionsSubpageHeader(
-            title = "Remote Machines",
+            title = stringResource(R.string.remote_machines_title),
             onBack = onBack,
             actions = {
                 QuickActionsSettingsButton(
-                    title = "Remote Machines",
+                    title = stringResource(R.string.remote_machines_title),
                     onClick = onOpenSettings
                 )
             }
         )
         if (controls.machines.isEmpty()) {
             Text(
-                "No remote machines configured",
+                stringResource(R.string.remote_machine_none_configured),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -97,7 +97,7 @@ fun MediaContent(reference: String, mime: String, onImageZoomChanged: (Boolean) 
             mime.startsWith("image/") -> ZoomableMediaImage(reference, mime, onImageZoomChanged, fullscreen)
             mime.startsWith("video/") -> VideoPlayback(reference)
             mime.startsWith("audio/") -> AudioPlayback(reference)
-            else -> Text("Preview unavailable for this file type.")
+            else -> Text(stringResource(R.string.media_preview_unsupported))
         }
     }
 }
@@ -122,12 +122,12 @@ private fun ZoomableMediaImage(reference: String, mime: String, onZoomChanged: (
         }), contentAlignment = Alignment.Center) {
         coil3.compose.AsyncImage(
             model = org.starfall.generative.shared.icons.AppImages.source(reference),
-            contentDescription = "Image preview", contentScale = ContentScale.Fit,
+            contentDescription = stringResource(R.string.media_image_preview), contentScale = ContentScale.Fit,
             modifier = (if (fullscreen || scale > 1.02f) Modifier.fillMaxSize() else Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.6f))
                 .graphicsLayer { scaleX = scale; scaleY = scale; translationX = offset.x; translationY = offset.y },
             onSuccess = { loaded = true }, onError = { loaded = true; error = true }
         )
-        if (error) Text("Unable to open this image. The file may be unavailable or unsupported.")
+        if (error) Text(stringResource(R.string.media_image_open_failed))
         else if (!loaded) CircularProgressIndicator()
     }
 }
@@ -145,11 +145,11 @@ fun InlineVideoPreview(reference: String, thumbnail: ImageBitmap?, modifier: Mod
             VideoPlayback(reference, inline = true, initialPosition = resumePosition, autoPlay = resumePlaying,
                 onPositionChanged = { resumePosition = it }, onPlayingChanged = { resumePlaying = it }, onFullscreen = { fullscreen = true })
         }
-        else Box(Modifier.fillMaxSize().clickable(onClickLabel = "Play video") { activated = true },
+        else Box(Modifier.fillMaxSize().clickable(onClickLabel = stringResource(R.string.media_play_video)) { activated = true },
             contentAlignment = Alignment.Center) {
-            thumbnail?.let { Image(it, "Video preview", Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
+            thumbnail?.let { Image(it, stringResource(R.string.media_video_preview), Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
             Surface(shape = MaterialTheme.shapes.extraLarge, color = Color.Black.copy(alpha = 0.55f)) {
-                FluentIcon(Icons.Default.PlayArrow, "Play video", Modifier.padding(12.dp), tint = Color.White)
+                FluentIcon(Icons.Default.PlayArrow, stringResource(R.string.media_play_video), Modifier.padding(12.dp), tint = Color.White)
             }
             IconButton(onClick = { activated = true; fullscreen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp)) {
                 FluentIcon(Icons.Outlined.Fullscreen, stringResource(R.string.video_fullscreen), tint = Color.White)
@@ -211,7 +211,7 @@ private fun VideoPlayback(reference: String, inline: Boolean = false,
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = ::togglePlayback) {
                 FluentIcon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    if (playing) "Pause video" else "Play video", tint = Color.White)
+                    stringResource(if (playing) R.string.media_pause_video else R.string.media_play_video), tint = Color.White)
             }
             MediaSeekBar(value = seekPosition ?: position.toFloat().coerceIn(0f, duration.toFloat()),
                 onValueChange = { seekPosition = it },
@@ -257,7 +257,7 @@ private fun VideoPlayback(reference: String, inline: Boolean = false,
                 onRelease = { texture -> player.clearVideoTextureView(texture); textureView = null }
             )
             if (!ready) CircularProgressIndicator()
-        } else Text("Unable to play this video. The file may be unavailable or unsupported.",
+        } else Text(stringResource(R.string.media_video_play_failed),
             color = MaterialTheme.colorScheme.inverseOnSurface, modifier = Modifier.padding(16.dp))
         if ((inline || fullscreen) && ready && !error) {
             Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color.Black.copy(alpha = 0.45f))) { controls() }
@@ -307,13 +307,13 @@ private fun AudioPlayback(reference: String) {
     val position = playback.position
     var seekPosition by remember { mutableStateOf<Float?>(null) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (error) Text("Unable to play this audio. The file may be unavailable or unsupported.", color = MaterialTheme.colorScheme.error)
+        if (error) Text(stringResource(R.string.media_audio_play_failed), color = MaterialTheme.colorScheme.error)
         else if (!ready) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
         else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 FilledIconButton(onClick = playback::toggle) {
                     FluentIcon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        if (playing) "Pause audio" else "Play audio")
+                        stringResource(if (playing) R.string.media_pause_audio else R.string.media_play_audio))
                 }
                 Slider(
                     value = seekPosition ?: position.toFloat().coerceIn(0f, duration.toFloat()),

@@ -171,7 +171,7 @@ fun ConversationSideDrawer(
         ) {
             if (selecting) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = ::stopSelecting) { FluentIcon(Icons.Default.Close, "Exit selection") }
+                    IconButton(onClick = ::stopSelecting) { FluentIcon(Icons.Default.Close, stringResource(R.string.sidebar_exit_selection)) }
                     Text("${selected.size}", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                     val allSelected = matchingIds.isNotEmpty() && selected.containsAll(matchingIds)
                     Checkbox(
@@ -181,13 +181,13 @@ fun ConversationSideDrawer(
                         },
                         enabled = matchingIds.isNotEmpty()
                     )
-                    IconButton(enabled = selected.isNotEmpty(), onClick = { folderName = ""; grouping = true }) { FluentIcon(Icons.Outlined.CreateNewFolder, "Move selected chats to folder") }
-                    IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { FluentIcon(Icons.Outlined.Delete, "Delete selected chats", tint = MaterialTheme.colorScheme.error) }
+                    IconButton(enabled = selected.isNotEmpty(), onClick = { folderName = ""; grouping = true }) { FluentIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.sidebar_move_selected_to_folder)) }
+                    IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
                 }
             }
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Bottom)) {
                 val folders = organization.folders.sortedByDescending { it.pinned }
-                if (folders.isNotEmpty()) item(key = "folders-label") { SidebarLabel("Folders") }
+                if (folders.isNotEmpty()) item(key = "folders-label") { SidebarLabel(stringResource(R.string.sidebar_folders)) }
                 folders.forEach { folder ->
                     val chats = matches.filter { organization.chatFolders[it.id] == folder.id }
                         .sortedWith(compareByDescending<ConversationListItem> { it.id in organization.pinnedChatIds }.thenByDescending { it.updatedAt })
@@ -202,20 +202,20 @@ fun ConversationSideDrawer(
                                 Row(Modifier.fillMaxWidth().combinedClickable(onClick = {
                                     onUpdateOrganization { state -> state.copy(folders = state.folders.map { if (it.id == folder.id) it.copy(expanded = !it.expanded) else it }) }
                                 }).padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    FluentIcon(if (folder.expanded || search.isNotBlank()) Icons.Default.ExpandMore else Icons.Default.ChevronRight, "Toggle folder")
+                                    FluentIcon(if (folder.expanded || search.isNotBlank()) Icons.Default.ExpandMore else Icons.Default.ChevronRight, stringResource(R.string.sidebar_toggle_folder))
                                     FluentIcon(Icons.Outlined.Folder, null, modifier = Modifier.size(20.dp))
                                     Text(folder.name, Modifier.weight(1f).padding(8.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     Text("${chats.size}", style = MaterialTheme.typography.labelSmall)
-                                    if (folder.pinned) FluentIcon(Icons.Default.PushPin, "Pinned folder", Modifier.size(14.dp))
+                                    if (folder.pinned) FluentIcon(Icons.Default.PushPin, stringResource(R.string.sidebar_pinned_folder), Modifier.size(14.dp))
                                     Box {
-                                        IconButton(onClick = { menu = true }) { FluentIcon(Icons.Default.MoreVert, "Folder options") }
+                                        IconButton(onClick = { menu = true }) { FluentIcon(Icons.Default.MoreVert, stringResource(R.string.sidebar_folder_options)) }
                                         DropdownMenu(menu, { menu = false }) {
-                                            DropdownMenuItem(text = { Text(if (folder.pinned) "Unpin" else "Pin") }, leadingIcon = { FluentIcon(Icons.Outlined.PushPin, null) }, onClick = {
+                                            DropdownMenuItem(text = { Text(stringResource(if (folder.pinned) R.string.sidebar_unpin else R.string.sidebar_pin)) }, leadingIcon = { FluentIcon(Icons.Outlined.PushPin, null) }, onClick = {
                                                 menu = false
                                                 onUpdateOrganization { state -> state.copy(folders = state.folders.map { if (it.id == folder.id) it.copy(pinned = !it.pinned) else it }) }
                                             })
-                                            DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; editingFolder = folder; folderName = folder.name })
-                                            DropdownMenuItem(text = { Text("Remove folder") }, onClick = { menu = false; deletingFolder = folder })
+                                            DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_rename)) }, onClick = { menu = false; editingFolder = folder; folderName = folder.name })
+                                            DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_remove_folder)) }, onClick = { menu = false; deletingFolder = folder })
                                         }
                                     }
                                 }
@@ -249,7 +249,7 @@ fun ConversationSideDrawer(
                         onRename = { renaming = chat; title = chat.title }, onDelete = { deleting = setOf(chat.id) },
                         onMove = { selecting = true; selected = setOf(chat.id); folderName = ""; grouping = true })
                 }
-                if (matches.isEmpty()) item { Text(if (search.isBlank()) stringResource(R.string.no_conversations_yet) else "No matching conversations", Modifier.padding(12.dp), color = MaterialTheme.colorScheme.outline) }
+                if (matches.isEmpty()) item { Text(if (search.isBlank()) stringResource(R.string.no_conversations_yet) else stringResource(R.string.sidebar_no_matching_conversations), Modifier.padding(12.dp), color = MaterialTheme.colorScheme.outline) }
             }
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -258,8 +258,8 @@ fun ConversationSideDrawer(
                 SelectableOutlinedTextField(
                     value = search, onValueChange = { search = it }, singleLine = true,
                     placeholder = { Text(stringResource(R.string.search_history), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    leadingIcon = { FluentIcon(Icons.Default.Search, "Search") },
-                    trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { FluentIcon(Icons.Default.Close, "Clear search") } },
+                    leadingIcon = { FluentIcon(Icons.Default.Search, stringResource(R.string.sidebar_search)) },
+                    trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { FluentIcon(Icons.Default.Close, stringResource(R.string.sidebar_clear_search)) } },
                     shape = RoundedCornerShape(28.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         // Soft outline: muted when idle, only a gentle accent when focused.
@@ -291,7 +291,7 @@ fun ConversationSideDrawer(
                         modifier = Modifier.size(newChatButtonSize),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
                         colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-                    ) { FluentIcon(Icons.Outlined.Compose, "New chat") }
+                    ) { FluentIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
                 } else {
                     FilledIconButton(
                         onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
@@ -300,7 +300,7 @@ fun ConversationSideDrawer(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                    ) { FluentIcon(Icons.Outlined.Compose, "New chat") }
+                    ) { FluentIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
                 }
             }
         }
@@ -331,7 +331,7 @@ fun ConversationSideDrawer(
     if (creatingFolder) AlertDialog(
         onDismissRequest = { creatingFolder = false },
         title = { Text(stringResource(R.string.sidebar_create_folder)) },
-        text = { SelectableOutlinedTextField(folderName, { folderName = it }, label = { Text(stringResource(R.string.sidebar_folder_name)) }, singleLine = true) },
+        text = { SelectableOutlinedTextField(folderName, { folderName = it }, label = { Text(stringResource(R.string.common_folder_name)) }, singleLine = true) },
         confirmButton = {
             TextButton(enabled = folderName.isNotBlank(), onClick = {
                 val name = folderName.trim()
@@ -342,30 +342,30 @@ fun ConversationSideDrawer(
         dismissButton = { TextButton(onClick = { creatingFolder = false }) { Text(stringResource(R.string.common_cancel)) } }
     )
     if (grouping) AlertDialog(
-        onDismissRequest = { grouping = false }, title = { Text("Move to folder") },
+        onDismissRequest = { grouping = false }, title = { Text(stringResource(R.string.sidebar_move_to_folder)) },
         text = {
             LazyColumn(Modifier.windowHeightIn(maxFraction = 0.5f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(organization.folders, key = { it.id }) { folder -> TextButton(onClick = { moveToFolder(folder.id) }, modifier = Modifier.fillMaxWidth()) { FluentIcon(Icons.Outlined.Folder, null); Spacer(Modifier.width(8.dp)); Text(folder.name) } }
-                item { TextButton(onClick = { moveToFolder(null) }) { Text("Move to History") } }
-                item { SelectableOutlinedTextField(folderName, { folderName = it }, label = { Text("New folder name") }, singleLine = true) }
+                item { TextButton(onClick = { moveToFolder(null) }) { Text(stringResource(R.string.sidebar_move_to_history)) } }
+                item { SelectableOutlinedTextField(folderName, { folderName = it }, label = { Text(stringResource(R.string.sidebar_new_folder_name)) }, singleLine = true) }
             }
         },
         confirmButton = { TextButton(enabled = folderName.isNotBlank(), onClick = {
             val name = folderName.trim(); val ids = selected; val id = UUID.randomUUID().toString()
             onUpdateOrganization { it.copy(folders = it.folders + ChatFolder(id, name)).moveChats(ids, id) }
             grouping = false; stopSelecting()
-        }) { Text("Create folder") } }, dismissButton = { TextButton(onClick = { grouping = false }) { Text("Cancel") } }
+        }) { Text(stringResource(R.string.sidebar_create_folder)) } }, dismissButton = { TextButton(onClick = { grouping = false }) { Text(stringResource(R.string.common_cancel)) } }
     )
-    if (deleting.isNotEmpty()) AlertDialog(onDismissRequest = { deleting = emptySet() }, title = { Text("Delete chats?") },
-        text = { Text("Delete ${deleting.size} conversation(s) and all their messages?") },
-        confirmButton = { TextButton(onClick = { val ids = deleting; deleting = emptySet(); if (ids.size == 1) onDeleteConversation(ids.first()) else onDeleteConversations(ids); stopSelecting() }) { Text("Delete", color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton(onClick = { deleting = emptySet() }) { Text("Cancel") } })
-    if (renaming != null) AlertDialog(onDismissRequest = { renaming = null }, title = { Text("Rename chat") },
-        text = { SelectableOutlinedTextField(title, { title = it }, singleLine = true, label = { Text("Chat title") }) },
-        confirmButton = { TextButton(enabled = title.isNotBlank(), onClick = { renaming?.let { onRenameConversation(it.id, title.trim()) }; renaming = null }) { Text("Save") } }, dismissButton = { TextButton(onClick = { renaming = null }) { Text("Cancel") } })
-    if (editingFolder != null) AlertDialog(onDismissRequest = { editingFolder = null }, title = { Text("Rename folder") },
+    if (deleting.isNotEmpty()) AlertDialog(onDismissRequest = { deleting = emptySet() },
+        text = { Text(stringResource(R.string.sidebar_delete_chats_message, deleting.size)) },
+        confirmButton = { TextButton(onClick = { val ids = deleting; deleting = emptySet(); if (ids.size == 1) onDeleteConversation(ids.first()) else onDeleteConversations(ids); stopSelecting() }) { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton(onClick = { deleting = emptySet() }) { Text(stringResource(R.string.common_cancel)) } })
+    if (renaming != null) AlertDialog(onDismissRequest = { renaming = null }, title = { Text(stringResource(R.string.sidebar_rename_chat)) },
+        text = { SelectableOutlinedTextField(title, { title = it }, singleLine = true, label = { Text(stringResource(R.string.sidebar_chat_title)) }) },
+        confirmButton = { TextButton(enabled = title.isNotBlank(), onClick = { renaming?.let { onRenameConversation(it.id, title.trim()) }; renaming = null }) { Text(stringResource(R.string.common_save)) } }, dismissButton = { TextButton(onClick = { renaming = null }) { Text(stringResource(R.string.common_cancel)) } })
+    if (editingFolder != null) AlertDialog(onDismissRequest = { editingFolder = null }, title = { Text(stringResource(R.string.sidebar_rename_folder)) },
         text = { SelectableOutlinedTextField(folderName, { folderName = it }, singleLine = true) },
-        confirmButton = { TextButton(enabled = folderName.isNotBlank(), onClick = { val id = editingFolder!!.id; val name = folderName.trim(); onUpdateOrganization { state -> state.copy(folders = state.folders.map { if (it.id == id) it.copy(name = name) else it }) }; editingFolder = null }) { Text("Save") } }, dismissButton = { TextButton(onClick = { editingFolder = null }) { Text("Cancel") } })
-    if (deletingFolder != null) AlertDialog(onDismissRequest = { deletingFolder = null }, title = { Text("Remove folder?") }, text = { Text("Its chats will return to History.") },
-        confirmButton = { TextButton(onClick = { val id = deletingFolder!!.id; onUpdateOrganization { it.removeFolder(id) }; deletingFolder = null }) { Text("Remove") } }, dismissButton = { TextButton(onClick = { deletingFolder = null }) { Text("Cancel") } })
+        confirmButton = { TextButton(enabled = folderName.isNotBlank(), onClick = { val id = editingFolder!!.id; val name = folderName.trim(); onUpdateOrganization { state -> state.copy(folders = state.folders.map { if (it.id == id) it.copy(name = name) else it }) }; editingFolder = null }) { Text(stringResource(R.string.common_save)) } }, dismissButton = { TextButton(onClick = { editingFolder = null }) { Text(stringResource(R.string.common_cancel)) } })
+    if (deletingFolder != null) AlertDialog(onDismissRequest = { deletingFolder = null }, text = { Text(stringResource(R.string.sidebar_remove_folder_message)) },
+        confirmButton = { TextButton(onClick = { val id = deletingFolder!!.id; onUpdateOrganization { it.removeFolder(id) }; deletingFolder = null }) { Text(stringResource(R.string.common_remove)) } }, dismissButton = { TextButton(onClick = { deletingFolder = null }) { Text(stringResource(R.string.common_cancel)) } })
 }

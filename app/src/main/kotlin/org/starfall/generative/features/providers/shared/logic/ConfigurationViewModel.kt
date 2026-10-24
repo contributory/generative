@@ -71,8 +71,8 @@ class ConfigurationViewModel(
 
     private val _importedProviderId = MutableStateFlow<String?>(null)
     val importedProviderId = _importedProviderId.asStateFlow()
-    private val _providerImportError = MutableStateFlow<String?>(null)
-    val providerImportError = _providerImportError.asStateFlow()
+    private val _providerImportFailed = MutableStateFlow(false)
+    val providerImportFailed = _providerImportFailed.asStateFlow()
 
     fun importProvider(provider: ModelProvider) {
         viewModelScope.launch(LocalWriteErrors.handler) {
@@ -83,7 +83,7 @@ class ConfigurationViewModel(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (_: Exception) {
-                _providerImportError.value = "Could not save the imported provider. Please try again."
+                _providerImportFailed.value = true
             }
         }
     }
@@ -93,7 +93,7 @@ class ConfigurationViewModel(
     }
 
     fun providerImportOpened(id: String) { _importedProviderId.compareAndSet(id, null) }
-    fun clearProviderImportError() { _providerImportError.value = null }
+    fun clearProviderImportFailed() { _providerImportFailed.value = false }
 
     private val _mcpToolsCache = MutableStateFlow<Map<String, List<ToolDefinition>>>(emptyMap())
     val mcpToolsCache: StateFlow<Map<String, List<ToolDefinition>>> = _mcpToolsCache.asStateFlow()

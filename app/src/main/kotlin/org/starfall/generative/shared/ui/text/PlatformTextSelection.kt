@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.TextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.ui.text.AnnotatedString
 import kotlin.math.roundToInt
+import org.starfall.generative.R
 
 /** Keep selection in Compose while letting Android render and populate its floating toolbar. */
 @Composable
@@ -121,7 +122,7 @@ internal class PlatformSelectionToolbar(
             action(android.R.id.copy, view.context.getString(android.R.string.copy), copy != null)
             action(android.R.id.paste, view.context.getString(android.R.string.paste), paste != null)
             action(android.R.id.selectAll, view.context.getString(android.R.string.selectAll), selectAll != null)
-            action(SHARE, "Share", copy != null)
+            action(SHARE, view.context.getString(R.string.common_share), copy != null)
             if (copy != null) {
                 val manager = view.context.packageManager
                 manager.queryIntentActivities(Intent(Intent.ACTION_PROCESS_TEXT).setType("text/plain"), 0)
@@ -159,7 +160,7 @@ internal class PlatformSelectionToolbar(
                     Intent(Intent.ACTION_PROCESS_TEXT).setType("text/plain").setComponent(component)
                         .putExtra(Intent.EXTRA_PROCESS_TEXT, text).putExtra(Intent.EXTRA_PROCESS_TEXT_READONLY, true)
                 } else Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                    .putExtra(Intent.EXTRA_TEXT, text), "Share text")
+                    .putExtra(Intent.EXTRA_TEXT, text), view.context.getString(R.string.common_share_text))
                 runCatching { view.context.startActivity(intent) }
                 mode.finish()
                 return true

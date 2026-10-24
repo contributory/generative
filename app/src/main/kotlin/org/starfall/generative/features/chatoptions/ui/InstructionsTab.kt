@@ -23,8 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.model.PromptLibrary
-import org.starfall.generative.shared.model.SavedPrompt
+import org.starfall.generative.shared.model.InstructionLibrary
+import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.ui.layout.groupedItemShape
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -32,38 +32,38 @@ import org.starfall.generative.shared.ui.menus.ItemContextMenu
 
 @Composable
 internal fun InstructionsTab(
-    library: PromptLibrary,
-    onEditPrompt: (SavedPrompt) -> Unit,
-    onPreviewPrompt: (SavedPrompt) -> Unit,
-    onDeletePrompt: (SavedPrompt) -> Unit
+    library: InstructionLibrary,
+    onEditInstruction: (SavedInstruction) -> Unit,
+    onPreviewInstruction: (SavedInstruction) -> Unit,
+    onDeleteInstruction: (SavedInstruction) -> Unit
 ) {
-    var promptPendingDelete by remember { mutableStateOf<SavedPrompt?>(null) }
+    var instructionPendingDelete by remember { mutableStateOf<SavedInstruction?>(null) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (library.prompts.isEmpty()) {
+        if (library.instructions.isEmpty()) {
             item {
                 Text(
-                    stringResource(R.string.prompt_library_empty),
+                    stringResource(R.string.instruction_library_empty),
                     Modifier.fillMaxWidth().padding(vertical = 24.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
-        if (library.prompts.isNotEmpty()) {
+        if (library.instructions.isNotEmpty()) {
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    library.prompts.forEachIndexed { index, prompt ->
+                    library.instructions.forEachIndexed { index, instruction ->
                         Surface(
-                            onClick = { onPreviewPrompt(prompt) },
+                            onClick = { onPreviewInstruction(instruction) },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = groupedItemShape(index, library.prompts.size),
+                            shape = groupedItemShape(index, library.instructions.size),
                             color = prominentContainerColor(),
                             border = prominentContainerBorder()
                         ) {
@@ -72,21 +72,21 @@ internal fun InstructionsTab(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(prompt.name, style = MaterialTheme.typography.titleMedium)
+                                    Text(instruction.name, style = MaterialTheme.typography.titleMedium)
                                     Text(
                                         stringResource(
-                                            R.string.prompt_metadata,
-                                            promptRoleLabel(prompt.role),
-                                            prompt.content.length,
-                                            estimatePromptTokens(prompt.content)
+                                            R.string.instruction_metadata,
+                                            instructionRoleLabel(instruction.role),
+                                            instruction.content.length,
+                                            estimateInstructionTokens(instruction.content)
                                         ),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 ItemContextMenu(
-                                    onEdit = { onEditPrompt(prompt) },
-                                    onDelete = { promptPendingDelete = prompt },
+                                    onEdit = { onEditInstruction(instruction) },
+                                    onDelete = { instructionPendingDelete = instruction },
                                     deleteColor = MaterialTheme.colorScheme.error
                                 )
                             }
@@ -97,19 +97,18 @@ internal fun InstructionsTab(
         }
     }
 
-    promptPendingDelete?.let { prompt ->
+    instructionPendingDelete?.let { instruction ->
         AlertDialog(
-            onDismissRequest = { promptPendingDelete = null },
-            title = { Text(stringResource(R.string.prompt_delete_title)) },
-            text = { Text(stringResource(R.string.prompt_delete_confirmation, prompt.name)) },
+            onDismissRequest = { instructionPendingDelete = null },
+            text = { Text(stringResource(R.string.instruction_delete_confirmation, instruction.name)) },
             confirmButton = {
                 TextButton(onClick = {
-                    onDeletePrompt(prompt)
-                    promptPendingDelete = null
+                    onDeleteInstruction(instruction)
+                    instructionPendingDelete = null
                 }) { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { promptPendingDelete = null }) {
+                TextButton(onClick = { instructionPendingDelete = null }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             }
@@ -117,5 +116,5 @@ internal fun InstructionsTab(
     }
 }
 
-private fun estimatePromptTokens(content: String): Int =
+private fun estimateInstructionTokens(content: String): Int =
     if (content.isBlank()) 0 else ((content.length + 3) / 4).coerceAtLeast(1)

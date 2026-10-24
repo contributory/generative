@@ -73,9 +73,9 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.theme.modalScrimColor
-import org.starfall.generative.shared.ui.LocalPromptControls
+import org.starfall.generative.shared.ui.InstructionControls
+import org.starfall.generative.shared.ui.LocalInstructionControls
 import org.starfall.generative.shared.ui.LocalToolControls
-import org.starfall.generative.shared.ui.PromptControls
 import org.starfall.generative.shared.ui.ToolControls
 import org.starfall.generative.shared.ui.layout.SlideScreenContent
 import org.starfall.generative.shared.ui.media.ChatAttachmentSelection
@@ -140,12 +140,12 @@ fun AppNavigation(
         navController.navigate(destination.route) { launchSingleTop = true }
     }
 
-    fun openPromptInstructions(promptId: String? = null) {
+    fun openInstructions(instructionId: String? = null) {
         coroutineScope.launch { drawerState.close() }
         val route = buildString {
             append(AppDestination.CHAT_OPTIONS.route)
             append("?tab=instructions")
-            promptId?.let { append("&promptId=${Uri.encode(it)}") }
+            instructionId?.let { append("&instructionId=${Uri.encode(it)}") }
         }
         navController.navigate(route) { launchSingleTop = true }
     }
@@ -157,7 +157,7 @@ fun AppNavigation(
     // app. Only values that rarely change are derived here; the chat screen reads the conversation itself.
     val currentConvId by remember { derivedStateOf { currentConvState.value?.id } }
     val currentConvModel by remember { derivedStateOf { currentConvState.value?.let { it.providerId to it.modelId } } }
-    val currentConvPromptIds by remember { derivedStateOf { currentConvState.value?.selectedPromptIds } }
+    val currentConvInstructionIds by remember { derivedStateOf { currentConvState.value?.selectedInstructionIds } }
     val chatAttachments = remember { ChatAttachmentSelection() }
     var mcpEditor by remember { mutableStateOf<Pair<McpInfo, Boolean>?>(null) }
     var pendingNewProvider by remember { mutableStateOf<ProviderEditorPage?>(null) }
@@ -187,7 +187,7 @@ fun AppNavigation(
     val toolSettings by viewModel.toolSettings.collectAsStateWithLifecycle()
     val queuedMessages by viewModel.queuedMessages.collectAsStateWithLifecycle()
     val importedProviderId by configurationViewModel.importedProviderId.collectAsStateWithLifecycle()
-    val providerImportError by configurationViewModel.providerImportError.collectAsStateWithLifecycle()
+    val providerImportFailed by configurationViewModel.providerImportFailed.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var pendingExport by remember { mutableStateOf<String?>(null) }
     var preparingExport by remember { mutableStateOf(false) }
@@ -203,13 +203,13 @@ fun AppNavigation(
                 withContext(Dispatchers.IO) {
                     context.contentResolver.openOutputStream(uri)?.use { output ->
                         OutputStreamWriter(output, Charsets.UTF_8).use { it.write(payload) }
-                    } ?: error("Could not open the selected file.")
+                    } ?: error(context.getString(R.string.export_open_file_failed))
                 }
-                Toast.makeText(context, "JSON file exported", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.export_json_success, Toast.LENGTH_SHORT).show()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                Toast.makeText(context, "Export failed: could not write the selected file. Choose a writable location and retry.", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, R.string.export_write_failed, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -234,7 +234,7 @@ fun AppNavigation(
                 throw cancelled
             } catch (_: Exception) {
                 pendingExport = null
-                Toast.makeText(context, "Export failed: could not prepare a complete backup. Check provider/MCP credentials and try again.", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, R.string.export_prepare_failed, Toast.LENGTH_LONG).show()
             } finally {
                 preparingExport = false
             }
@@ -251,7 +251,7 @@ fun AppNavigation(
             try {
                 val raw = withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-                        ?: error("Could not open the selected file.")
+                        ?: error(context.getString(R.string.export_open_file_failed))
                 }
                 val fileName = withContext(Dispatchers.IO) {
                     context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
@@ -270,9 +270,9 @@ fun AppNavigation(
                 val count = backup.providers.orEmpty().size + backup.providerGroups.orEmpty().size +
                     backup.mcpServers.orEmpty().size + backup.speechServices.orEmpty().size +
                     backup.conversations.orEmpty().size
-                Toast.makeText(context, "$count item(s) imported", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.import_success, count), Toast.LENGTH_SHORT).show()
             } catch (error: Exception) {
-                Toast.makeText(context, "Import failed: ${error.message.orEmpty()}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, context.getString(R.string.import_failed, error.message.orEmpty()), Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -297,7 +297,7 @@ fun AppNavigation(
     val chatModelId = conversationModel?.second ?: appPrefs.selectedModelId
     LaunchedEffect(Unit) {
         org.starfall.generative.shared.storage.LocalWriteErrors.errors.collect {
-            Toast.makeText(context, "Could not save the change. Please try again.", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, R.string.save_change_failed, Toast.LENGTH_LONG).show()
         }
     }
     LaunchedEffect(importedProviderId) {
@@ -307,10 +307,10 @@ fun AppNavigation(
             configurationViewModel.providerImportOpened(id)
         }
     }
-    LaunchedEffect(providerImportError) {
-        providerImportError?.let {
-            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
-            configurationViewModel.clearProviderImportError()
+    LaunchedEffect(providerImportFailed) {
+        if (providerImportFailed) {
+            Toast.makeText(context, context.getString(R.string.provider_import_failed), Toast.LENGTH_LONG).show()
+            configurationViewModel.clearProviderImportFailed()
         }
     }
     LaunchedEffect(chatOnTop) {
@@ -321,11 +321,11 @@ fun AppNavigation(
     CompositionLocalProvider(
         org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences provides appPrefs,
         LocalChatAttachmentSelection provides chatAttachments,
-        LocalPromptControls provides PromptControls(
-            library = appPrefs.promptLibraryForSelection(currentConvPromptIds),
-            setPromptEnabled = viewModel::setPromptEnabled,
-            openInstructions = { openPromptInstructions() },
-            editPrompt = { promptId -> openPromptInstructions(promptId) }
+        LocalInstructionControls provides InstructionControls(
+            library = appPrefs.instructionLibraryForSelection(currentConvInstructionIds),
+            setInstructionEnabled = viewModel::setInstructionEnabled,
+            openInstructions = { openInstructions() },
+            editInstruction = { instructionId -> openInstructions(instructionId) }
         ),
         LocalToolControls provides ToolControls(
             servers = mcpServers,
@@ -588,8 +588,8 @@ fun AppNavigation(
                         val modelId = entry.arguments?.getString("modelId")
                         TargetedEditorContent(
                             recordId = providerId,
-                            title = "Provider editor",
-                            loadingMessage = "Loading provider and saved credentials…",
+                            title = stringResource(R.string.provider_editor),
+                            loadingMessage = stringResource(R.string.loading_provider_editor),
                             onBack = { navController.popBackStack() },
                             load = { configurationViewModel.loadProviderForEditor(providerId) }
                         ) { provider ->
@@ -664,8 +664,8 @@ fun AppNavigation(
                             if (page != null) {
                                 TargetedEditorContent(
                                     recordId = page.first.id,
-                                    title = stringResource(R.string.configure_mcp_server_title),
-                                    loadingMessage = "Loading MCP server and saved credentials…",
+                                    title = stringResource(R.string.mcp_editor),
+                                    loadingMessage = stringResource(R.string.loading_mcp_server_editor),
                                     onBack = { mcpEditor = null },
                                     load = { configurationViewModel.loadMcpServerForEditor(page.first.id) },
                                     draft = page.first.takeIf { page.second }
@@ -727,18 +727,18 @@ fun AppNavigation(
                     }
 
                     composable(
-                        route = "${AppDestination.CHAT_OPTIONS.route}?tab={tab}&promptId={promptId}",
+                        route = "${AppDestination.CHAT_OPTIONS.route}?tab={tab}&instructionId={instructionId}",
                         arguments = listOf(
                             navArgument("tab") { type = NavType.StringType; defaultValue = "helpers" },
-                            navArgument("promptId") { type = NavType.StringType; defaultValue = "" }
+                            navArgument("instructionId") { type = NavType.StringType; defaultValue = "" }
                         )
                     ) { chatOptionsEntry ->
                         ChatOptionsScreen(
                             initialTab = chatOptionsEntry.arguments?.getString("tab") ?: "helpers",
-                            initialPromptId = chatOptionsEntry.arguments?.getString("promptId").orEmpty(),
-                             promptLibrary = appPrefs.promptLibrary,
-                             defaultSystemPrompt = appPrefs.defaultSystemPrompt,
-                             onPromptLibraryChange = viewModel::setPromptLibrary,
+                            initialInstructionId = chatOptionsEntry.arguments?.getString("instructionId").orEmpty(),
+                            instructionLibrary = appPrefs.instructionLibrary,
+                            defaultSystemPrompt = appPrefs.defaultSystemPrompt,
+                            onInstructionLibraryChange = viewModel::setInstructionLibrary,
                              providers = providers,
                              settings = toolSettings,
                              appPreferences = appPrefs,

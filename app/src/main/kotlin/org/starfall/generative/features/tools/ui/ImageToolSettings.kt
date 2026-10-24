@@ -50,9 +50,9 @@ fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave:
     BackHandler(enabled = LocalScreenTransitionActive.current) { back() }
     Scaffold(
         topBar = { TopAppBar(
-            title = { Text(if (video) "Video settings" else "Image settings") },
-            navigationIcon = { IconButton(onClick = { back() }) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                    actions = { Button(enabled = error == null, onClick = { parsed?.let { onSave(it, disabledParams) } }, modifier = Modifier.padding(end = 8.dp)) { Text("Save") } }
+            title = { Text(stringResource(if (video) R.string.tool_video_settings else R.string.tool_image_settings)) },
+            navigationIcon = { IconButton(onClick = { back() }) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
+                    actions = { Button(enabled = error == null, onClick = { parsed?.let { onSave(it, disabledParams) } }, modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(R.string.common_save)) } }
         ) }
     ) { padding ->
         LazyColumn(
@@ -65,11 +65,11 @@ fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave:
                 Text(stringResource(R.string.image_tool_model_options_description),
                     style = MaterialTheme.typography.bodySmall)
             }
-            item { ToolSwitch("Advanced JSON", advanced) { advanced = it } }
+            item { ToolSwitch(stringResource(R.string.image_tool_advanced_json), advanced) { advanced = it } }
             if (advanced) item {
                 SelectableOutlinedTextField(
                     value = draft, onValueChange = { if (it.length <= 65536) draft = it },
-                    label = { Text("Additional request body") },
+                    label = { Text(stringResource(R.string.image_tool_additional_body)) },
                     supportingText = { Text(stringResource(R.string.image_tool_request_body_help)) },
                     isError = error != null, minLines = 8, maxLines = 18, modifier = Modifier.fillMaxWidth()
                 )
@@ -91,14 +91,14 @@ fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave:
                 }
             } else item { Text(stringResource(R.string.image_tool_json_invalid_hint), color = MaterialTheme.colorScheme.error) }
             error?.let { problem -> item { Text(problem, color = MaterialTheme.colorScheme.error) } }
-            item { TextButton(onClick = { draft = "{}"; disabledParams = emptySet() }) { Text("Reset this model to defaults") } }
+            item { TextButton(onClick = { draft = "{}"; disabledParams = emptySet() }) { Text(stringResource(R.string.image_tool_reset_defaults)) } }
         }
     }
     if (confirmDiscard) AlertDialog(
         onDismissRequest = { confirmDiscard = false },
-        title = { Text("Discard changes?") }, text = { Text(stringResource(if (video) R.string.image_tool_discard_video_message else R.string.image_tool_discard_image_message)) },
-        confirmButton = { TextButton(onClick = onBack) { Text("Discard") } },
-        dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text("Keep editing") } }
+        title = { Text(stringResource(R.string.common_discard_changes)) }, text = { Text(stringResource(if (video) R.string.image_tool_discard_video_message else R.string.image_tool_discard_image_message)) },
+        confirmButton = { TextButton(onClick = onBack) { Text(stringResource(R.string.common_discard)) } },
+        dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text(stringResource(R.string.common_keep_editing)) } }
     )
 }
 
@@ -133,15 +133,16 @@ internal fun ImageOptionInput(
                     else -> onChange(JsonPrimitive(input))
                 }
             },
-            label = { Text(field.label) }, placeholder = { Text(stringResource(R.string.image_tool_provider_default_hint)) },
+            label = { Text(if (field.labelRes != 0) stringResource(field.labelRes) else field.label) },
+            placeholder = { Text(stringResource(R.string.image_tool_provider_default)) },
             readOnly = field.kind == "boolean", singleLine = true, isError = invalid,
             modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused; onFocusChange(it.isFocused) },
              supportingText = if (field.min != null || field.max != null) {{ Text(stringResource(R.string.image_tool_range_hint, field.min ?: "…", field.max ?: "…")) }} else null
         )
         if (choices.isNotEmpty()) Box {
-            TextButton(onClick = { choosing = true }) { Text("Choose value") }
+            TextButton(onClick = { choosing = true }) { Text(stringResource(R.string.image_tool_choose_value)) }
             DropdownMenu(expanded = choosing, onDismissRequest = { choosing = false }) {
-                DropdownMenuItem(text = { Text("Provider default") }, onClick = { onChange(null); text = ""; choosing = false })
+                DropdownMenuItem(text = { Text(stringResource(R.string.image_tool_provider_default)) }, onClick = { onChange(null); text = ""; choosing = false })
                 choices.forEach { choice ->
                     DropdownMenuItem(text = { Text(choice) }, onClick = {
                         onChange(if (field.kind == "boolean") JsonPrimitive(choice.toBoolean()) else JsonPrimitive(choice))

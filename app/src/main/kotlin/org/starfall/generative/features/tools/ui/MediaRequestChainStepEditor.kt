@@ -364,7 +364,7 @@ private fun fileTransportLabel(transport: MediaFileTransport) = stringResource(
     when (transport) {
         MediaFileTransport.FILE -> R.string.media_chain_file
         MediaFileTransport.BASE64 -> R.string.media_chain_base64
-        MediaFileTransport.RAW -> R.string.media_chain_raw
+        MediaFileTransport.RAW -> R.string.common_raw
     }
 )
 

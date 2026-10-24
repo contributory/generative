@@ -237,7 +237,7 @@ class MainActivity : ComponentActivity() {
             runCatching { parseProviderLink(data) }
                 .onSuccess(configurationViewModel::importProvider)
                 .onFailure {
-                    Toast.makeText(this, it.message ?: "Invalid provider link.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, it.message ?: getString(R.string.invalid_provider_link), Toast.LENGTH_LONG).show()
                 }
             return
         }

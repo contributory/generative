@@ -67,7 +67,7 @@ class FaviconFetchState internal constructor(private val context: Context, priva
             } catch (failure: Exception) {
                 results = emptyList()
                 selected = null
-                error = failure.message ?: "Could not retrieve the image."
+                error = failure.message ?: context.getString(R.string.favicon_image_error)
             } finally {
                 fetching = false
             }

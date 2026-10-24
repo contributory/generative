@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.helpers.media
 
+import org.starfall.generative.R
 import org.starfall.generative.shared.model.media.ImageOptionField
 
 import kotlinx.serialization.json.*
@@ -19,6 +20,41 @@ fun validateImageOptions(provider: ModelProvider, model: String, options: JsonOb
 // Endpoint body names, not SDK-specific aliases.
 // https://developers.openai.com/api/reference/resources/images/methods/generate
 // https://ai.google.dev/api/generate-content#ImageConfig
+private val IMAGE_OPTION_LABEL_RES: Map<String, Int> = mapOf(
+    "Add watermark" to R.string.image_option_add_watermark,
+    "Aspect ratio" to R.string.image_option_aspect_ratio,
+    "Background" to R.string.image_option_background,
+    "Enhance prompt" to R.string.image_option_enhance_prompt,
+    "Guidance scale" to R.string.image_option_guidance_scale,
+    "Image size" to R.string.image_option_image_size,
+    "Include filter reason" to R.string.image_option_include_filter_reason,
+    "Include safety attributes" to R.string.image_option_include_safety_attributes,
+    "JPEG quality (%)" to R.string.image_option_jpeg_quality,
+    "Maximum output tokens" to R.string.image_option_maximum_output_tokens,
+    "Moderation" to R.string.image_option_moderation,
+    "Negative prompt" to R.string.image_option_negative_prompt,
+    "Number of images" to R.string.image_option_number_of_images,
+    "Output compression (%)" to R.string.image_option_output_compression,
+    "Output format" to R.string.image_option_output_format,
+    "Partial images when streaming" to R.string.image_option_partial_images_when_streaming,
+    "People" to R.string.image_option_people,
+    "Prompt language" to R.string.image_option_prompt_language,
+    "Quality" to R.string.image_option_quality,
+    "Response format (DALL·E)" to R.string.image_option_response_format_dall_e,
+    "Safety filter" to R.string.image_option_safety_filter,
+    "Seed" to R.string.image_option_seed,
+    "Stream image response" to R.string.image_option_stream_image_response,
+    "Style (DALL·E 3)" to R.string.image_option_style_dall_e_3,
+    "Temperature" to R.string.image_option_temperature,
+    "Thinking budget (-1 = automatic)" to R.string.image_option_thinking_budget_1_automatic,
+    "Thinking level" to R.string.image_option_thinking_level,
+    "Top K" to R.string.image_option_top_k,
+    "Top P" to R.string.image_option_top_p,
+    "User identifier" to R.string.image_option_user_identifier,
+)
+
+private fun imageOptionLabelRes(label: String): Int = IMAGE_OPTION_LABEL_RES[label] ?: 0
+
 fun imageOptionFields(type: ModelApiType, model: String): List<ImageOptionField> {
     fun choice(path: String, label: String, vararg values: String) = ImageOptionField(path, label, choices = values.toList())
     fun integer(path: String, label: String, min: Double, max: Double) = ImageOptionField(path, label, "integer", min = min, max = max)
@@ -65,7 +101,7 @@ fun imageOptionFields(type: ModelApiType, model: String): List<ImageOptionField>
             integer("generationConfig.thinkingConfig.thinkingBudget", "Thinking budget (-1 = automatic)", -1.0, 2147483647.0)
         )
         else -> emptyList()
-    }
+    }.map { it.copy(labelRes = imageOptionLabelRes(it.label)) }
 }
 
 fun JsonObject.optionAt(path: String): JsonElement? =

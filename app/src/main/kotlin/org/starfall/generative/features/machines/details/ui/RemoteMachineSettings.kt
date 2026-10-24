@@ -110,7 +110,7 @@ internal fun RemoteMachineSettings(
                         )
                     }
                     IconButton(onClick = { clientEditor = viewModel.newOAuthClient() }) {
-                        FluentIcon(Icons.Default.Add, stringResource(R.string.remote_machine_add_oauth))
+                        FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
                     }
                 }
             ) {

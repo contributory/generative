@@ -91,7 +91,7 @@ class ProviderFolderContainerTest {
     @Test
     fun searchShowsMatchingMembersDirectlyWithoutFolders() {
         showFolder()
-        compose.onNodeWithContentDescription("Search providers").performClick()
+        compose.onNodeWithContentDescription("Search model providers").performClick()
         compose.onNodeWithTag("provider_group_g").assertDoesNotExist()
         compose.onNodeWithTag("provider_search").performTextInput("Member")
         compose.onNodeWithTag("provider_member-a").assertExists()

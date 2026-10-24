@@ -30,6 +30,8 @@ import org.starfall.generative.shared.storage.SpeechRepository
 import org.starfall.generative.shared.storage.database.AppDatabase
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.storage.preferences.ToolSettingsStore
+import org.starfall.generative.R
+import org.starfall.generative.home.chat.logic.tool.ToolChatLabels
 import org.starfall.generative.home.chat.logic.tool.ToolChatViewModel
 import org.starfall.generative.home.chat.logic.ChatViewModel
 
@@ -69,7 +71,7 @@ class AppContainer(context: Context) {
                 providers,
                 mcp,
                 preferences,
-                ToolChatViewModel(toolHttp, mcpService, aiService, remoteMachineService),
+                ToolChatViewModel(toolHttp, mcpService, aiService, remoteMachineService, toolChatLabels(appContext)),
                 toolSettings,
                 speech,
                 TtsHelper(appContext),
@@ -83,3 +85,12 @@ class AppContainer(context: Context) {
         initializer { RemoteMachinesViewModel(remoteMachineService) }
     }
 }
+
+/** Localized tool status labels; English sources live in strings.xml. */
+private fun toolChatLabels(context: Context) = ToolChatLabels(
+    toolsReady = context.getString(R.string.tool_status_ready),
+    stopped = context.getString(R.string.tool_status_stopped),
+    fileSent = context.getString(R.string.tool_summary_file_sent),
+    mediaDisplayed = { count -> context.getString(R.string.tool_summary_media_displayed, count) },
+    roundLimit = { rounds -> context.getString(R.string.tool_round_limit_reached, rounds) },
+)

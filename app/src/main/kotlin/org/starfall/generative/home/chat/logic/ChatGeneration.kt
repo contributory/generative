@@ -23,6 +23,9 @@ private const val MAX_GENERATION_SIGNATURE_CHARS = 64_000
 // While streaming, the partial answer is checkpointed this often so a crash or process kill keeps it.
 private const val PARTIAL_SAVE_INTERVAL_MS = 2_000L
 
+/** Marks a persistence failure so the chat screen can show it inline in the user's language. */
+internal const val SAVE_CONVERSATION_ERROR_PREFIX = "Could not save conversation:"
+
 /** A single generation owns its conversation snapshot, independently of navigation. */
 internal class ChatGeneration(
     private val scope: CoroutineScope,
@@ -321,7 +324,7 @@ internal class ChatGeneration(
                         persist(snapshot!!)
                     }
                 } catch (e: Exception) {
-                    _error.value = "Could not save conversation: ${e.localizedMessage}"
+                    _error.value = "$SAVE_CONVERSATION_ERROR_PREFIX ${e.localizedMessage}"
                 } finally {
                     snapshot = null
                     _conversationId.value = null

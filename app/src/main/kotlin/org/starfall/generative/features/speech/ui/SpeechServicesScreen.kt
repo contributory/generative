@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +62,7 @@ fun SpeechServicesScreen(
     activeTestServiceId: String? = null,
     onStopPlayback: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     var editor by remember { mutableStateOf<SpeechEditor?>(null) }
     var deletingServiceId by remember { mutableStateOf<String?>(null) }
     var orderedServices by remember(speechServices) { mutableStateOf(speechServices) }
@@ -75,7 +77,7 @@ fun SpeechServicesScreen(
                 title = {
                     Column {
                         Text(
-                            "Speech Services",
+                            stringResource(R.string.speech_services_title),
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -89,21 +91,21 @@ fun SpeechServicesScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { onToggleGridView?.invoke(!isGridView) }) {
                         FluentIcon(
                             imageVector = if (isGridView) Icons.Default.List else Icons.Default.GridView,
-                            contentDescription = if (isGridView) "Switch to List View" else "Switch to Grid View"
+                            contentDescription = stringResource(if (isGridView) R.string.switch_to_list_view else R.string.switch_to_grid_view)
                         )
                     }
                     IconButton(
                         onClick = {
                             editor = SpeechEditor(SpeechService(
                                 id = UUID.randomUUID().toString(),
-                                name = "Custom TTS",
+                                name = context.getString(R.string.speech_custom_tts),
                                 icon = null,
                                 provider = "system",
                                 modelId = null,
@@ -113,7 +115,7 @@ fun SpeechServicesScreen(
                             ), true)
                         }
                     ) {
-                        FluentIcon(Icons.Default.Add, contentDescription = "Add speech service")
+                        FluentIcon(Icons.Default.Add, contentDescription = stringResource(R.string.speech_add_service))
                     }
                 }
             )
@@ -139,7 +141,7 @@ fun SpeechServicesScreen(
                 itemsIndexed(orderedServices, key = { _, item -> item.id }) { _, service ->
                     ReorderableItem(reorderState, key = service.id) { _ ->
                         val providerName = when {
-                            service.provider.equals("system", ignoreCase = true) -> "Android System TTS"
+                            service.provider.equals("system", ignoreCase = true) -> stringResource(R.string.speech_system_tts)
                             else -> providersById[service.provider]?.name ?: service.provider
                         }
                         val provider = providersById[service.provider]
@@ -156,7 +158,7 @@ fun SpeechServicesScreen(
                             onSelect = { onSelectService(service.id) },
                             onTest = {
                                 if (service.id == activeTestServiceId) onStopPlayback()
-                                else onTestVoice(service, "Hello! This is a preview of the ${service.name} voice.")
+                                else onTestVoice(service, context.getString(R.string.speech_preview_text, service.name))
                             },
                             onEdit = { editor = SpeechEditor(service, false) },
                             onDelete = { deletingServiceId = service.id }
@@ -296,7 +298,7 @@ private fun SpeechServiceUnifiedCard(
                         if (selected) {
                             FluentIcon(
                                 Icons.Default.Check,
-                                contentDescription = "Selected",
+                                contentDescription = stringResource(R.string.common_selected),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -309,9 +311,11 @@ private fun SpeechServiceUnifiedCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    val modelLine = service.modelId?.let { "Model: $it · " }.orEmpty()
+                    val voiceLine = service.modelId?.let {
+                        stringResource(R.string.speech_card_model_voice_line, it, service.voice)
+                    } ?: stringResource(R.string.speech_card_voice_line, service.voice)
                     Text(
-                        "${modelLine}Voice: ${service.voice}",
+                        voiceLine,
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                         color = MaterialTheme.colorScheme.outline,
                         maxLines = 1,

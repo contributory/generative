@@ -76,7 +76,7 @@ internal class ChatModelContextCoordinator(
                     conversation,
                     preferences.systemPromptFor(conversation),
                     config,
-                    preferences.promptRoleMessagesFor(conversation),
+                    preferences.instructionRoleMessagesFor(conversation),
                     provider?.id.orEmpty(),
                     modelId,
                     currentToolSettings
@@ -106,7 +106,7 @@ internal class ChatModelContextCoordinator(
                 conversation,
                 preferences.systemPromptFor(conversation),
                 model,
-                preferences.promptRoleMessagesFor(conversation),
+                preferences.instructionRoleMessagesFor(conversation),
                 preferences.selectedProviderId,
                 preferences.selectedModelId,
                 toolSettings.value

@@ -60,7 +60,7 @@
             "affinity": "TEXT"
           },
           {
-            "fieldPath": "selectedPromptIds",
+            "fieldPath": "selectedInstructionIds",
             "columnName": "selectedPromptIds",
             "affinity": "TEXT"
           }

@@ -52,6 +52,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.ui.model.LocalThinkingScreenBurst
 import org.starfall.generative.shared.ui.model.ReasoningEffortControl
 import org.starfall.generative.shared.ui.model.ThinkingScreenBurstLayer
+import org.starfall.generative.shared.ui.model.localizedReasoningEffortLabels
 import org.starfall.generative.shared.ui.model.maximumEffortCardBrush
 import org.starfall.generative.shared.ui.model.maximumThinkingCardBrush
 import org.starfall.generative.shared.ui.model.reasoningEffortBurstDuration
@@ -98,8 +99,9 @@ internal fun ModelPickerCard(
     drawBackground: Boolean = true
 ) {
     val supportedEfforts = config.supportedReasoningEfforts
-    val effortOptions = remember(supportedEfforts) {
-        reasoningEffortOptions(supportedEfforts)
+    val reasoningLabels = localizedReasoningEffortLabels()
+    val effortOptions = remember(supportedEfforts, reasoningLabels) {
+        reasoningEffortOptions(supportedEfforts, reasoningLabels)
     }
     var previewReasoningValue by remember(conversationReasoningEffort, isSelected, effortOptions) {
         mutableFloatStateOf(reasoningEffortIndex(conversationReasoningEffort, effortOptions).toFloat())
@@ -171,7 +173,7 @@ internal fun ModelPickerCard(
                     )
                     if (config.displayName.isNotBlank() && config.displayName != modelId) {
                         Text(
-                            text = "ID: ${compactModelLabel(modelId)}",
+                            text = stringResource(R.string.model_label_id, compactModelLabel(modelId)),
                             style = MaterialTheme.typography.labelSmall,
                              color = if (!embedded && enhancedThinking && tier >= 5) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -195,7 +197,7 @@ internal fun ModelPickerCard(
                             }
                             folderName?.takeIf { it.isNotBlank() }?.let {
                                 ModelContextChip(
-                                    text = "Group: $it",
+                                    text = stringResource(R.string.model_label_group, it),
                                     modifier = Modifier.weight(1f),
                                     containerAlpha = if (embedded) 0.5f else 0.78f,
                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -224,7 +226,7 @@ internal fun ModelPickerCard(
                         Box(contentAlignment = Alignment.Center) {
                             FluentIcon(
                                 imageVector = Icons.Default.Check,
-                                contentDescription = "Selected",
+                                contentDescription = stringResource(R.string.common_selected),
                                 tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(14.dp)
                             )
@@ -257,7 +259,7 @@ internal fun ModelPickerCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "Reasoning Effort",
+                            text = stringResource(R.string.reasoning_effort_title),
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = if (!embedded && enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
                         )
@@ -369,11 +371,11 @@ fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifier = Modif
     ) {
         ModelBadge(
             label = when (config.modelType) {
-                ModelType.TEXT_GENERATION -> "Chat"
-                ModelType.IMAGE_GENERATION -> "Image"
-                ModelType.VIDEO_GENERATION -> "Video"
-                ModelType.TEXT_TO_SPEECH -> "TTS"
-                ModelType.SPEECH_TO_TEXT -> "STT"
+                ModelType.TEXT_GENERATION -> stringResource(R.string.model_type_chat)
+                ModelType.IMAGE_GENERATION -> stringResource(R.string.common_image)
+                ModelType.VIDEO_GENERATION -> stringResource(R.string.common_video)
+                ModelType.TEXT_TO_SPEECH -> stringResource(R.string.model_type_tts)
+                ModelType.SPEECH_TO_TEXT -> stringResource(R.string.model_type_stt)
                 else -> config.modelType.displayName
             },
             icon = when (config.modelType) {
@@ -401,7 +403,7 @@ fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifier = Modif
         )
         if (config.supportsVision) {
             ModelBadge(
-                label = "Image",
+                label = stringResource(R.string.common_image),
                 iconOnly = true,
                 icon = Icons.Outlined.Image,
                 colors = AssistChipDefaults.assistChipColors(
@@ -413,7 +415,7 @@ fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifier = Modif
         }
         if (config.supportsVideoInput) {
             ModelBadge(
-                label = "Video",
+                label = stringResource(R.string.common_video),
                 iconOnly = true,
                 icon = Icons.Outlined.Videocam,
                 colors = AssistChipDefaults.assistChipColors(
@@ -425,7 +427,7 @@ fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifier = Modif
         }
         if (config.supportsAudioInput) {
             ModelBadge(
-                label = "Audio",
+                label = stringResource(R.string.common_audio),
                 iconOnly = true,
                 icon = Icons.Outlined.Audiotrack,
                 colors = AssistChipDefaults.assistChipColors(
@@ -437,7 +439,7 @@ fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifier = Modif
         }
         if (config.supportsThinking) {
             ModelBadge(
-                label = "Thinking",
+                label = stringResource(R.string.thinking),
                 iconOnly = true,
                 icon = Icons.Outlined.Psychology,
                 colors = AssistChipDefaults.assistChipColors(
@@ -449,7 +451,7 @@ fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifier = Modif
         }
         if (config.supportsToolCalls) {
             ModelBadge(
-                label = "Tools",
+                label = stringResource(R.string.common_tools),
                 iconOnly = true,
                 icon = Icons.Outlined.Build,
                 colors = AssistChipDefaults.assistChipColors(

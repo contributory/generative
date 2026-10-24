@@ -75,7 +75,7 @@ fun AppDataScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         DataStatItem(stringResource(R.string.settings_chats), conversationCount.toString())
-                        DataStatItem(stringResource(R.string.settings_providers), providerCount.toString())
+                        DataStatItem(stringResource(R.string.providers_title), providerCount.toString())
                     }
                 }
             }

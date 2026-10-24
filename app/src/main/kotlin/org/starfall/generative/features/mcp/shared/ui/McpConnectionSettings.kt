@@ -80,7 +80,7 @@ internal fun McpConnectionSettings(
             }
         }
         if (authMethod in listOf(McpAuthMethod.BEARER_TOKEN, McpAuthMethod.QUERY_PARAM)) SelectableOutlinedTextField(authKey, onAuthKeyChange,
-            label = { Text(if (authMethod == McpAuthMethod.BEARER_TOKEN) "Header key" else "Query parameter name") },
+            label = { Text(stringResource(if (authMethod == McpAuthMethod.BEARER_TOKEN) R.string.header_key else R.string.query_parameter_name)) },
             isError = !authValid, singleLine = true, modifier = Modifier.fillMaxWidth())
         if (authMethod == McpAuthMethod.OAUTH2) McpOAuthFields(url, oauthClientId, onOauthClientIdChange,
             oauthClientSecret, onOauthClientSecretChange, oauthAuthorized, oauthRedirectUri, onOauthRedirectUriChange,
@@ -105,7 +105,7 @@ internal fun McpConnectionSettings(
         HorizontalDivider()
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.custom_headers), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-            IconButton(onClick = { onHeadersChange(headers + ("" to "")) }) { FluentIcon(Icons.Default.Add, stringResource(R.string.add_header)) }
+            IconButton(onClick = { onHeadersChange(headers + ("" to "")) }) { FluentIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
         }
         headers.forEachIndexed { index, header ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -113,7 +113,7 @@ internal fun McpConnectionSettings(
                     label = { Text(stringResource(R.string.common_key)) }, singleLine = true, modifier = Modifier.weight(1f))
                 SelectableOutlinedTextField(header.second, { value -> onHeadersChange(headers.toMutableList().also { it[index] = header.first to value }) },
                     label = { Text(stringResource(R.string.common_value)) }, singleLine = true, modifier = Modifier.weight(1f))
-                IconButton(onClick = { onHeadersChange(headers.filterIndexed { i, _ -> i != index }) }) { FluentIcon(Icons.Outlined.Delete, stringResource(R.string.remove_header)) }
+                IconButton(onClick = { onHeadersChange(headers.filterIndexed { i, _ -> i != index }) }) { FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove)) }
             }
         }
         Spacer(Modifier.height(24.dp))

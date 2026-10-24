@@ -11,8 +11,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
@@ -33,14 +35,14 @@ internal fun RenderLatexBlock(source: String, formula: String) {
                  Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("∑", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = labelColor))
                     Spacer(Modifier.width(6.dp))
-                    Text("LaTeX Equation", style = MaterialTheme.typography.labelMedium, color = labelColor)
+                    Text(stringResource(R.string.latex_equation), style = MaterialTheme.typography.labelMedium, color = labelColor)
                 }
                  IconButton(onClick = {
                      val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                     clipboard.setPrimaryClip(ClipData.newPlainText("LaTeX Formula", source))
-                     Toast.makeText(context, "Formula copied", Toast.LENGTH_SHORT).show()
+                     clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.latex_formula_clip_label), source))
+                     Toast.makeText(context, context.getString(R.string.latex_formula_copied), Toast.LENGTH_SHORT).show()
                 }, modifier = Modifier.size(24.dp)) {
-                    FluentIcon(Icons.Outlined.ContentCopy, "Copy Formula", tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(14.dp))
+                    FluentIcon(Icons.Outlined.ContentCopy, stringResource(R.string.latex_copy_formula), tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(14.dp))
                 }
             }
             Spacer(Modifier.height(6.dp))

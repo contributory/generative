@@ -38,7 +38,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.home.shared.ui.FeatureToolsSheetContent
 import org.starfall.generative.home.shared.ui.McpConnectorsSheetContent
-import org.starfall.generative.home.shared.ui.PromptInstructionsSheetContent
+import org.starfall.generative.home.shared.ui.InstructionsSheetContent
 import org.starfall.generative.home.shared.ui.QuickActionsSheetContent
 import org.starfall.generative.home.shared.ui.RemoteMachinesSheetContent
 import org.starfall.generative.home.shared.ui.SelectedModelOverviewContent
@@ -52,7 +52,7 @@ import org.starfall.generative.shared.ui.sheets.LocalBottomSheetMaxContentHeight
 import org.starfall.generative.shared.ui.sheets.SlideSheetContent
 
 internal enum class QuickActionsPage {
-    PROMPT_INSTRUCTIONS,
+    INSTRUCTIONS,
     FEATURE_TOOLS,
     MCP_CONNECTORS,
     REMOTE_MACHINES,
@@ -78,8 +78,8 @@ internal class BottomSheetsLinkState {
     var showFilesSheet by mutableStateOf(false)
         private set
 
-    val showPromptInstructions: Boolean
-        get() = showAddMenu && quickActionsPage == QuickActionsPage.PROMPT_INSTRUCTIONS
+    val showInstructions: Boolean
+        get() = showAddMenu && quickActionsPage == QuickActionsPage.INSTRUCTIONS
     val showFeatureTools: Boolean
         get() = showAddMenu && quickActionsPage == QuickActionsPage.FEATURE_TOOLS
     val showMcpConnectors: Boolean
@@ -104,8 +104,8 @@ internal class BottomSheetsLinkState {
     fun backFromModelPicker() {
         if (pickerOpenedFromOverview) openSelectedModelOverview() else dismissModelSheet()
     }
-    fun openPromptInstructions() {
-        quickActionsPage = QuickActionsPage.PROMPT_INSTRUCTIONS
+    fun openInstructions() {
+        quickActionsPage = QuickActionsPage.INSTRUCTIONS
         showAddMenu = true
     }
     fun openFeatureTools() {
@@ -131,8 +131,8 @@ internal class BottomSheetsLinkState {
     fun dismissModelSheet() { modelSheetPage = null }
     fun dismissModelPicker() { if (showModelPicker) modelSheetPage = null }
     fun dismissSelectedModelOverview() { if (showSelectedModelOverview) modelSheetPage = null }
-    fun dismissPromptInstructions() {
-        if (quickActionsPage == QuickActionsPage.PROMPT_INSTRUCTIONS) quickActionsPage = null
+    fun dismissInstructions() {
+        if (quickActionsPage == QuickActionsPage.INSTRUCTIONS) quickActionsPage = null
     }
     fun dismissFeatureTools() {
         if (quickActionsPage == QuickActionsPage.FEATURE_TOOLS) quickActionsPage = null
@@ -261,8 +261,8 @@ internal fun BottomSheetsLink(
                                 onMediaKindChange(ModelType.VIDEO_GENERATION)
                             }
                         },
-                        onOpenPromptInstructions = {
-                            if (pageActive) sheets.openPromptInstructions()
+                        onOpenInstructions = {
+                            if (pageActive) sheets.openInstructions()
                         },
                         onOpenFeatureTools = {
                             if (pageActive) sheets.openFeatureTools()
@@ -277,7 +277,7 @@ internal fun BottomSheetsLink(
                             if (pageActive) sheets.dismissAddMenu()
                         }
                     )
-                    QuickActionsPage.PROMPT_INSTRUCTIONS -> PromptInstructionsSheetContent(
+                    QuickActionsPage.INSTRUCTIONS -> InstructionsSheetContent(
                         onBack = { if (pageActive) sheets.backToQuickActions() },
                         onLeave = { if (pageActive) sheets.dismissAddMenu() }
                     )
@@ -443,10 +443,10 @@ internal fun BottomSheetsLink(
     if (sheets.showFilesSheet) {
         AlertDialog(
             onDismissRequest = { sheets.dismissFilesUnavailableDialog() },
-            title = { Text("Camera unavailable") },
-            text = { Text("Camera capture is not connected yet. Use Photos or Files to attach existing media.") },
+            title = { Text(stringResource(R.string.camera_unavailable_title)) },
+            text = { Text(stringResource(R.string.camera_unavailable_message)) },
             confirmButton = {
-                TextButton(onClick = { sheets.dismissFilesUnavailableDialog() }) { Text("OK") }
+                TextButton(onClick = { sheets.dismissFilesUnavailableDialog() }) { Text(stringResource(R.string.common_ok)) }
             }
         )
     }

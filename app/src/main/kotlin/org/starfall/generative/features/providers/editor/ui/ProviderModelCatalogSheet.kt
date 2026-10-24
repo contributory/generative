@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -50,16 +51,18 @@ internal fun ProviderModelCatalogSheet(
     var loadError by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableStateOf(0) }
     var query by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val discoveryUnavailable = stringResource(R.string.model_discovery_unavailable)
     LaunchedEffect(refresh, discoveryIdentity) {
         loading = true
         loadError = null
         try {
-            val discovered = (onFetchModels ?: error("Model discovery is unavailable"))(provider).distinctBy { it.id }
+            val discovered = (onFetchModels ?: error(discoveryUnavailable))(provider).distinctBy { it.id }
             models = discovered
             onCatalogLoaded(discovered)
         } catch (e: CancellationException) { throw e
         } catch (e: Exception) {
-            loadError = e.localizedMessage ?: "Unable to load models"
+            loadError = e.localizedMessage ?: context.getString(R.string.unable_to_load_models)
         } finally { loading = false }
     }
     val modelsById = remember(models) { models.associateBy { it.id } }
@@ -85,7 +88,7 @@ internal fun ProviderModelCatalogSheet(
                     onClick = { onSetSelection(visibleModels, !allVisibleSelected) },
                     enabled = visibleModels.isNotEmpty(),
                     modifier = Modifier.semantics {
-                        contentDescription = if (allVisibleSelected) "Deselect visible models" else "Select visible models"
+                        contentDescription = stringResource(if (allVisibleSelected) R.string.provider_deselect_visible_models else R.string.select_all_visible_models)
                     }
                 )
             }
@@ -138,7 +141,7 @@ internal fun ProviderModelCatalogSheet(
                                 stringResource(if (expanded) R.string.collapse else R.string.expand), modifier = Modifier.size(20.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Checkbox(checked = added, onCheckedChange = { onToggle(id) }, modifier = Modifier.semantics {
-                                contentDescription = "Select model $id"
+                                contentDescription = stringResource(R.string.provider_select_model, id)
                             })
                         }
                         if (expanded) {
@@ -152,7 +155,7 @@ internal fun ProviderModelCatalogSheet(
                                     Text("$label: $detail", style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
-                                if (model == null) Text("Not returned by the current API result",
+                                if (model == null) Text(stringResource(R.string.provider_model_not_returned),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                             }
                         }

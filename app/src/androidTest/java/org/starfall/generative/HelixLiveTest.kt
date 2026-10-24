@@ -48,7 +48,7 @@ class HelixLiveTest {
             val credentials = ParcelFileDescriptor.AutoCloseInputStream(
                 automation.executeShellCommand("cat /data/local/tmp/generative-helix-test.json")
             ).bufferedReader().use { Json.parseToJsonElement(it.readText()).jsonObject }
-            compose.onNodeWithContentDescription(text(R.string.add_provider)).performClick()
+            compose.onNodeWithTag("add_provider").performClick()
             compose.onNode(hasSetTextAction() and hasText(text(R.string.common_name))).performScrollTo().performTextReplacement("Helix Test")
             compose.onNode(hasSetTextAction() and hasText(text(R.string.provider_base_url))).performScrollTo().performTextReplacement(credentials.getValue("base").jsonPrimitive.content)
             compose.onNode(hasSetTextAction() and hasText("Platform Default")).performScrollTo().performTextReplacement(credentials.getValue("key").jsonPrimitive.content)

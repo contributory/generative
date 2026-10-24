@@ -38,7 +38,7 @@ internal fun ProviderModelsPane(models: List<String>, configurations: Map<String
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.provider_no_models_description), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = { onEdit("") }) { FluentIcon(Icons.Outlined.Edit, stringResource(R.string.add_manually), Modifier.size(18.dp)) }
+                    OutlinedButton(onClick = { onEdit("") }) { FluentIcon(Icons.Outlined.Edit, stringResource(R.string.common_add), Modifier.size(18.dp)) }
                     Button(onClick = onOpenCatalog) { FluentIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.open_model_catalog), Modifier.size(18.dp)) }
                 }
             }

@@ -1,5 +1,7 @@
 package org.starfall.generative.home.chat.ui.markdown
 
+import androidx.compose.ui.res.stringResource
+import org.starfall.generative.R
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -76,7 +78,7 @@ fun MarkdownRenderer(
     if (content.length > MAX_MARKDOWN_RENDER_CHARS) {
         SelectionContainer {
             Text(
-                text = content.take(MAX_MARKDOWN_RENDER_CHARS) + "\n\n[Response preview truncated for performance]",
+                text = content.take(MAX_MARKDOWN_RENDER_CHARS) + "\n\n" + stringResource(R.string.chat_response_truncated),
                 style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp),
                 modifier = modifier.then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)
             )
@@ -251,14 +253,14 @@ private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String, fi
                     IconButton(
                         onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            clipboard.setPrimaryClip(ClipData.newPlainText("Error Message", text))
-                            Toast.makeText(context, "Copied error text", Toast.LENGTH_SHORT).show()
+                            clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.markdown_error_clip_label), text))
+                            Toast.makeText(context, context.getString(R.string.markdown_copied_error_text), Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.size(28.dp)
                     ) {
                         FluentIcon(
                             imageVector = Icons.Outlined.ContentCopy,
-                            contentDescription = "Copy Error",
+                            contentDescription = stringResource(R.string.message_copy_error),
                             tint = errorColor,
                             modifier = Modifier.size(16.dp)
                         )

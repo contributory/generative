@@ -22,9 +22,16 @@ internal class ProviderApiKeysState(current: String, enabled: Boolean, saved: Li
         }
     }
 
-    fun save(id: String?, label: String, value: String, identity: (String) -> String) {
-        require(value.isNotBlank()) { "Enter an API key." }
-        require(entries.none { it.id != id && identity(it.value) == identity(value) }) { "This API key already exists." }
+    fun save(
+        id: String?,
+        label: String,
+        value: String,
+        identity: (String) -> String,
+        blankError: String = "Enter an API key.",
+        duplicateError: String = "This API key already exists."
+    ) {
+        require(value.isNotBlank()) { blankError }
+        require(entries.none { it.id != id && identity(it.value) == identity(value) }) { duplicateError }
         val selected = selectedId(identity) == id && id != null
         val entry = ProviderApiKey(id ?: UUID.randomUUID().toString(), label.trim(), value.trim())
         entries = if (id == null) entries + entry else entries.map { if (it.id == id) entry else it }

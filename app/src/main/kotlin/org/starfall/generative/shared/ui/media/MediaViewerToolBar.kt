@@ -4,6 +4,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 
@@ -17,10 +19,10 @@ fun MediaViewerToolBar(
     Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically) {
-            onSave?.let { IconButton(onClick = it) { FluentIcon(Icons.Outlined.Download, "Save media") } }
-            onShare?.let { IconButton(onClick = it) { FluentIcon(Icons.Outlined.Share, "Share media") } }
-            onDelete?.let { IconButton(onClick = it) { FluentIcon(Icons.Outlined.Delete, "Delete media", tint = MaterialTheme.colorScheme.error) } }
-            IconButton(onClick = onClose) { FluentIcon(Icons.Outlined.Close, "Close viewer") }
+            onSave?.let { IconButton(onClick = it) { FluentIcon(Icons.Outlined.Download, stringResource(R.string.media_save)) } }
+            onShare?.let { IconButton(onClick = it) { FluentIcon(Icons.Outlined.Share, stringResource(R.string.media_share)) } }
+            onDelete?.let { IconButton(onClick = it) { FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) } }
+            IconButton(onClick = onClose) { FluentIcon(Icons.Outlined.Close, stringResource(R.string.media_close_viewer)) }
         }
     }
 }

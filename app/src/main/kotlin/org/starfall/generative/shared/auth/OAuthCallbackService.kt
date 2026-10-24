@@ -14,6 +14,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import java.util.concurrent.atomic.AtomicInteger
 import org.starfall.generative.MainActivity
+import org.starfall.generative.R
 
 /** Keeps browser callbacks and device-code polling active for the sign-in session. */
 class OAuthCallbackService : Service() {
@@ -24,16 +25,16 @@ class OAuthCallbackService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel(
-            CHANNEL_ID, "Account sign-in", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "Keeps account sign-in active while you use the browser."
+            CHANNEL_ID, getString(R.string.notification_oauth_channel_name), NotificationManager.IMPORTANCE_HIGH).apply {
+            description = getString(R.string.notification_oauth_channel_description)
         })
         val returnToApp = PendingIntent.getActivity(this, 0,
             Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         startForeground(NOTIFICATION_ID, NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_info_details)
-            .setContentTitle("Account sign-in in progress")
-            .setContentText(getString(org.starfall.generative.R.string.oauth_browser_pending))
+            .setContentTitle(getString(R.string.notification_oauth_title))
+            .setContentText(getString(R.string.oauth_browser_pending))
             .setContentIntent(returnToApp)
             .setOngoing(true)
             .setOnlyAlertOnce(true)

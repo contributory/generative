@@ -54,7 +54,7 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
                 IconButton(onClick = { if (testingAny) tests.cancelAll() else tests.testAll(provider, testableModels, skip = { it in removals.pending }) },
                      enabled = (testingAny || testableModels.isNotEmpty()) && available) {
                      if (testingAny) FluentIcon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
-                     else FluentIcon(Icons.Outlined.NetworkCheck, "Test all text models")
+                     else FluentIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.common_test_all_text_models))
                 }
                  IconButton(onClick = { if (hasRemovals) removals.restoreAll() else removals.mark(unavailable) },
                      enabled = hasRemovals || unavailable.isNotEmpty()) {
@@ -69,7 +69,7 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
         },
         text = {
             LazyColumn(Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.75f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (textModels.isEmpty()) item { Text("No text generation models") }
+                if (textModels.isEmpty()) item { Text(stringResource(R.string.model_no_text_models)) }
                 items(textModels, key = { it }) { id ->
                     val testing = tests.running[id] == true
                     val removed = id in removals.pending

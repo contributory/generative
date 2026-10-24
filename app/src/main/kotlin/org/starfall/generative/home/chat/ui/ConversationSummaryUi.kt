@@ -49,7 +49,7 @@ fun ConversationSummaryDivider(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = progress?.label ?: "Summary Conversation",
+                    text = progress?.label ?: stringResource(R.string.conversation_summary_title),
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -110,7 +110,7 @@ fun ConversationSummaryDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Summary Conversation") },
+        title = { Text(stringResource(R.string.conversation_summary_title)) },
         text = {
             Column(
                 modifier = Modifier
@@ -124,12 +124,12 @@ fun ConversationSummaryDialog(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 HorizontalDivider()
-                Text("Send summary to AI as", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.summary_send_as), style = MaterialTheme.typography.titleSmall)
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                     val roles = listOf(
-                        SummaryRole.SYSTEM to "System",
-                        SummaryRole.ASSISTANT to "Assistant",
-                        SummaryRole.USER to "User"
+                        SummaryRole.SYSTEM to stringResource(R.string.common_system),
+                        SummaryRole.ASSISTANT to stringResource(R.string.common_assistant),
+                        SummaryRole.USER to stringResource(R.string.common_user)
                     )
                     roles.forEachIndexed { index, (role, label) ->
                         SegmentedButton(
@@ -143,7 +143,7 @@ fun ConversationSummaryDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
         },
         dismissButton = {
             TextButton(
@@ -155,7 +155,7 @@ fun ConversationSummaryDialog(
             ) {
                 FluentIcon(Icons.Outlined.Delete, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
-                Text("Delete summary")
+                Text(stringResource(R.string.summary_delete))
             }
         }
     )

@@ -26,8 +26,8 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       ├── 📄 ChatOptionsScreen.kt
 │   │       ├── 📄 HelperSettings.kt
 │   │       ├── 📄 InstructionsTab.kt
-│   │       ├── 📄 PromptEditor.kt
-│   │       └── 📄 PromptPreview.kt
+│   │       ├── 📄 InstructionEditor.kt
+│   │       └── 📄 InstructionPreview.kt
 │   ├── 📁 icons/
 │   │   └── 📁 ui/
 │   │       └── 📄 IconsScreen.kt
@@ -106,7 +106,6 @@ This document is the detailed package map and architecture reference. The mandat
 │   │           ├── 📄 ModelConnectionStatusAppearance.kt
 │   │           ├── 📄 ModelConnectionStatusBar.kt
 │   │           ├── 📄 OAuthAccountCard.kt
-│   │           ├── 📄 ProfileScreen.kt
 │   │           ├── 📄 ProviderApiKeysDialog.kt
 │   │           ├── 📄 ProviderConnectionFields.kt
 │   │           ├── 📄 ProviderHeadersDialog.kt
@@ -218,7 +217,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       ├── 📄 ConversationSummarySheet.kt
 │   │       ├── 📄 FeatureToolsSheet.kt
 │   │       ├── 📄 McpConnectorsSheet.kt
-│   │       ├── 📄 PromptInstructionsSheet.kt
+│   │       ├── 📄 InstructionsSheet.kt
 │   │       ├── 📄 QuickActionsSheet.kt
 │   │       ├── 📄 ReasoningEffortSheet.kt
 │   │       ├── 📄 RemoteMachinesSheet.kt
@@ -396,7 +395,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   ├── 📄 DefaultOptions.kt
 │   │   ├── 📄 JsonExportKind.kt
 │   │   ├── 📄 McpInfo.kt
-│   │   ├── 📄 PromptLibrary.kt
+│   │   ├── 📄 InstructionLibrary.kt
 │   │   ├── 📄 ProviderLink.kt
 │   │   ├── 📄 RemoteMachineModels.kt
 │   │   ├── 📁 remote/
@@ -531,7 +530,7 @@ This document is the detailed package map and architecture reference. The mandat
 │       │   ├── 📄 StreamingTextFade.kt
 │       │   └── 📄 WordWrappedFadeText.kt
 │       ├── 📄 ProfileMcpPermissions.kt
-│       ├── 📄 PromptControls.kt
+│       ├── 📄 InstructionControls.kt
 │       ├── 📄 ToolControls.kt
 │       ├── 📄 ToolSwitch.kt
 │       └── 📁 terminal/

@@ -1,6 +1,8 @@
 package org.starfall.generative.home.chat.ui
 
 
+import androidx.compose.ui.res.stringResource
+import org.starfall.generative.R
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -117,8 +119,8 @@ fun AssistantMessageCard(
                 onRetry = onRetryError,
                 onCopy = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Error", error))
-                    Toast.makeText(context, "Error copied to clipboard", Toast.LENGTH_SHORT).show()
+                    clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.message_error_clip_label), error))
+                    Toast.makeText(context, context.getString(R.string.message_error_copied), Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier.padding(top = 8.dp)
             )
@@ -145,7 +147,7 @@ fun AssistantMessageCard(
                 ) {
                     FluentIcon(
                         Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Previous version",
+                        contentDescription = stringResource(R.string.message_previous_version),
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -165,7 +167,7 @@ fun AssistantMessageCard(
                 ) {
                     FluentIcon(
                         Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Next version",
+                        contentDescription = stringResource(R.string.message_next_version),
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -183,7 +185,7 @@ fun AssistantMessageCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                MessageActionButton(onClick = onRegenerate, contentDescription = "Regenerate") {
+                MessageActionButton(onClick = onRegenerate, contentDescription = stringResource(R.string.message_regenerate)) {
                     FluentIcon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
                 MessageActionButton(
@@ -192,9 +194,9 @@ fun AssistantMessageCard(
                             type = "text/plain"
                          putExtra(Intent.EXTRA_TEXT, toolbarText)
                         }
-                        context.startActivity(Intent.createChooser(share, "Share response"))
+                        context.startActivity(Intent.createChooser(share, context.getString(R.string.message_share_response)))
                     },
-                    contentDescription = "Share"
+                    contentDescription = stringResource(R.string.common_share)
                 ) {
                     FluentIcon(Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
@@ -203,17 +205,17 @@ fun AssistantMessageCard(
                         onCopy()
                     } else {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("Error", toolbarText))
-                        Toast.makeText(context, "Error copied to clipboard", Toast.LENGTH_SHORT).show()
+                        clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.message_error_clip_label), toolbarText))
+                        Toast.makeText(context, context.getString(R.string.message_error_copied), Toast.LENGTH_SHORT).show()
                     }
-                }, contentDescription = "Copy") {
+                }, contentDescription = stringResource(R.string.common_copy)) {
                     FluentIcon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
 
                 Box {
                     MessageActionButton(
                         onClick = { showMoreMenu = true },
-                        contentDescription = "More"
+                        contentDescription = stringResource(R.string.common_more)
                     ) {
                         FluentIcon(Icons.Default.MoreHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
@@ -222,7 +224,7 @@ fun AssistantMessageCard(
                         onDismissRequest = { showMoreMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Edit") },
+                            text = { Text(stringResource(R.string.common_edit)) },
                             leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
                             onClick = {
                                 showMoreMenu = false
@@ -230,7 +232,7 @@ fun AssistantMessageCard(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Delete") },
+                            text = { Text(stringResource(R.string.common_delete)) },
                             leadingIcon = { FluentIcon(Icons.Outlined.Delete, contentDescription = null) },
                             onClick = {
                                 showMoreMenu = false
@@ -248,7 +250,7 @@ fun AssistantMessageCard(
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 } else Spacer(modifier = Modifier.weight(1f))
 
-                MessageActionButton(onClick = onRead, contentDescription = if (isReading) "Stop reading" else "Read aloud") {
+                MessageActionButton(onClick = onRead, contentDescription = stringResource(if (isReading) R.string.message_stop_reading else R.string.message_read_aloud)) {
                     FluentIcon(if (isReading) Icons.Outlined.StopCircle else Icons.Outlined.VolumeUp,
                         contentDescription = null, modifier = Modifier.size(18.dp),
                         tint = if (isReading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -295,7 +297,7 @@ private fun GenerationErrorBlock(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "Generation error",
+                    text = stringResource(R.string.message_generation_error),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
@@ -304,7 +306,7 @@ private fun GenerationErrorBlock(
                     IconButton(onClick = onRetry, modifier = Modifier.size(32.dp)) {
                         FluentIcon(
                             Icons.Outlined.Refresh,
-                            contentDescription = "Retry from error",
+                            contentDescription = stringResource(R.string.message_retry_from_error),
                             tint = MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.size(18.dp)
                         )
@@ -313,14 +315,14 @@ private fun GenerationErrorBlock(
                 IconButton(onClick = onCopy, modifier = Modifier.size(32.dp)) {
                     FluentIcon(
                         Icons.Outlined.ContentCopy,
-                        contentDescription = "Copy error",
+                        contentDescription = stringResource(R.string.message_copy_error),
                         tint = MaterialTheme.colorScheme.onErrorContainer,
                         modifier = Modifier.size(18.dp)
                     )
                 }
                 FluentIcon(
                     imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = if (expanded) "Collapse error" else "Expand error",
+                    contentDescription = stringResource(if (expanded) R.string.message_collapse_error else R.string.message_expand_error),
                     tint = MaterialTheme.colorScheme.onErrorContainer,
                     modifier = Modifier.size(20.dp)
                 )
