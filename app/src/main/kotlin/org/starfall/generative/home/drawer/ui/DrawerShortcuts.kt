@@ -62,8 +62,8 @@ internal fun DrawerQuickShortcuts(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        MediaStorageShortcut(onOpenMediaStorage)
         RemoteMachinesShortcut(onOpenRemoteMachines)
+        MediaStorageShortcut(onOpenMediaStorage)
     }
 }
 
