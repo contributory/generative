@@ -53,10 +53,13 @@ internal fun PortForwardDialog(
     var remoteText by rememberSaveable(machine.id) { mutableStateOf(initial.remoteRules.joinToString("\n")) }
     var dynamicText by rememberSaveable(machine.id) { mutableStateOf(initial.dynamicPorts.joinToString(", ")) }
     var error by remember { mutableStateOf<String?>(null) }
+    val dynamicPorts = remember(dynamicText) {
+        dynamicText.splitEntries().mapNotNull(String::toIntOrNull)
+    }
     val hasPorts = when (selectedType) {
         ForwardType.LOCAL -> localText.splitEntries().isNotEmpty()
         ForwardType.REMOTE -> remoteText.splitEntries().isNotEmpty()
-        ForwardType.DYNAMIC -> dynamicText.splitEntries().isNotEmpty()
+        ForwardType.DYNAMIC -> dynamicPorts.isNotEmpty()
     }
 
     AppDialog(onDismissRequest = onDismiss) {
@@ -147,7 +150,7 @@ internal fun PortForwardDialog(
                                     localEnabled = false,
                                     remoteEnabled = false,
                                     dynamicEnabled = true,
-                                    dynamicPorts = dynamicText.splitEntries().mapNotNull(String::toIntOrNull)
+                                    dynamicPorts = dynamicPorts
                                 )
                             }
                             runCatching { nextConfig.validated() }
