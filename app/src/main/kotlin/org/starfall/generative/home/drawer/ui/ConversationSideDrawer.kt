@@ -160,17 +160,21 @@ fun ConversationSideDrawer(
         drawerShape = drawerShape,
         drawerContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = DrawerContainerAlpha)
     ) {
-        Column(
-            Modifier.fillMaxSize()
-                .imePadding()
-                // A tap on any non-interactive part of the drawer leaves the search field.
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = { unfocusSearch() },
-                        onLongPress = { blankContextMenu = true }
-                    )
-                }
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize()
         ) {
+            val halfDrawerHeight = maxHeight * 0.5f
+            Column(
+                Modifier.fillMaxSize()
+                    .imePadding()
+                    // A tap on any non-interactive part of the drawer leaves the search field.
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { unfocusSearch() },
+                            onLongPress = { blankContextMenu = true }
+                        )
+                    }
+            ) {
             if (selecting) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = ::stopSelecting) { FluentIcon(Icons.Default.Close, stringResource(R.string.sidebar_exit_selection)) }
@@ -201,7 +205,8 @@ fun ConversationSideDrawer(
                         onOpenRemoteMachines = {
                             unfocusSearch()
                             onOpenRemoteMachines()
-                        }
+                        },
+                        maxExpandedHeight = halfDrawerHeight
                     )
                 }
                 HorizontalDivider(
@@ -327,6 +332,7 @@ fun ConversationSideDrawer(
                     ) { FluentIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
                 }
             }
+        }
         }
         DropdownMenu(
             expanded = blankContextMenu,

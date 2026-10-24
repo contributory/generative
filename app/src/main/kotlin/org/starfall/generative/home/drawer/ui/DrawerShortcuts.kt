@@ -13,10 +13,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -24,7 +27,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.remoteMachineEnabled
@@ -56,13 +59,14 @@ import org.starfall.generative.shared.ui.layout.prominentContainerColor
 internal fun DrawerQuickShortcuts(
     onOpenMediaStorage: () -> Unit,
     onOpenRemoteMachines: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    maxExpandedHeight: Dp = 280.dp
 ) {
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        RemoteMachinesShortcut(onOpenRemoteMachines)
+        RemoteMachinesShortcut(onOpenRemoteMachines, maxExpandedHeight = maxExpandedHeight)
         MediaStorageShortcut(onOpenMediaStorage)
     }
 }
@@ -127,7 +131,8 @@ private fun MediaStorageShortcut(onClick: () -> Unit) {
 
 @Composable
 private fun RemoteMachinesShortcut(
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    maxExpandedHeight: Dp = 280.dp
 ) {
     val controls = LocalToolControls.current
     val machines = controls.machines
@@ -142,11 +147,16 @@ private fun RemoteMachinesShortcut(
         "${machines.size} machines • $enabledCount enabled"
     }
 
+    // Total card (header + expanded list) must stay within half the drawer.
+    // Reserve ~72dp for the header row + divider, the list itself scrolls.
+    val listMaxHeight = (maxExpandedHeight - 72.dp).coerceAtLeast(120.dp)
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = prominentContainerColor(),
         border = prominentContainerBorder(),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = if (expanded) maxExpandedHeight else Dp.Unspecified)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -236,6 +246,8 @@ private fun RemoteMachinesShortcut(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .heightIn(max = listMaxHeight)
+                                .verticalScroll(rememberScrollState())
                                 .padding(horizontal = 8.dp, vertical = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
