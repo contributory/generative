@@ -304,6 +304,7 @@
     <string name="file_download_failed">Could not save file</string>
     <string name="file_attach_next_message">Attach file to next message</string>
     <string name="file_remove_next_message">Remove file from next message</string>
+    <string name="media_exit_fullscreen">Exit fullscreen media</string>
     <string name="video_fullscreen">Open fullscreen video</string>
     <string name="video_exit_fullscreen">Exit fullscreen video</string>
     <string name="provider_multiple_api_keys">Multiple API Keys</string>

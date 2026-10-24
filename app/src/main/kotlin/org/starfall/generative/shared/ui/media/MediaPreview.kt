@@ -65,53 +65,28 @@ suspend fun mediaThumbnail(context: Context, reference: String, mime: String, si
 
 @Composable
 fun MediaPreviewDialog(reference: String, name: String, mime: String, onDismiss: () -> Unit) {
-    var zoomedImage by remember(reference, mime) { mutableStateOf(false) }
-
-    if (!zoomedImage) {
-        Dialog(onDismissRequest = onDismiss) {
-            Surface(
-                shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Column(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Box(Modifier.weight(1f, fill = false).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        MediaContent(reference, mime, onImageZoomChanged = { zoomedImage = it })
-                    }
-                    MediaViewerToolBar(onClose = onDismiss)
-                }
+    MediaViewerDialog(
+        mediaKey = reference to mime,
+        onDismiss = onDismiss,
+        header = {
+            Text(
+                name,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        content = { onZoomChanged ->
+            Box(Modifier.weight(1f, fill = false).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                MediaContent(reference, mime, onImageZoomChanged = onZoomChanged)
             }
-        }
-    } else {
-        // Use a separate edge-to-edge window so the image escapes the compact preview dialog entirely.
-        PlatformDialog(
-            onDismissRequest = { zoomedImage = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
-        ) {
-            val window = (LocalView.current.parent as? DialogWindowProvider)?.window
-            DisposableEffect(window) {
-                window?.let { WindowCompat.getInsetsController(it, it.decorView).hide(WindowInsetsCompat.Type.systemBars()) }
-                onDispose { }
-            }
-            Box(Modifier.fillMaxSize().background(Color.Black)) {
-                MediaContent(
-                    reference,
-                    mime,
-                    onImageZoomChanged = { if (!it) zoomedImage = false },
-                    fullscreen = true
-                )
-                IconButton(
-                    onClick = { zoomedImage = false },
-                    modifier = Modifier.align(Alignment.TopStart).padding(8.dp)
-                ) {
-                    FluentIcon(Icons.Outlined.Close, stringResource(R.string.video_exit_fullscreen), tint = Color.White)
-                }
-            }
-        }
-    }
+        },
+        fullscreenContent = { onZoomChanged ->
+            MediaContent(reference, mime, onImageZoomChanged = onZoomChanged, fullscreen = true)
+        },
+        toolbar = { onClose -> MediaViewerToolBar(onClose = onClose) }
+    )
 }
 
 @Composable

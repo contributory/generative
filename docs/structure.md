@@ -500,6 +500,7 @@ This document is the detailed package map and architecture reference. The mandat
 │       │   ├── 📄 MediaFileCard.kt
 │       │   ├── 📄 MediaPlaybackState.kt
 │       │   ├── 📄 MediaPreview.kt
+│       │   ├── 📄 MediaViewerDialog.kt
 │       │   └── 📄 MediaViewerToolBar.kt
 │       ├── 📁 menus/
 │       │   ├── 📄 ItemContextMenu.kt
@@ -605,6 +606,7 @@ Replace `Awesome` with the relevant feature/entity name (for example, `ChatScree
 
 ### Source-folder conventions
 
+- Attachment and stored-file previews share `shared/ui/media/MediaViewerDialog.kt`; zoomed images use its edge-to-edge viewer instead of remaining constrained to the compact dialog.
 - Sub-folders of `ui/` and `logic/` should mirror each other (for example, `chat/ui/markdown/` ↔ `chat/logic/markdown/`).
 - If a `logic/` folder grows beyond about 10 files, consider splitting it into `viewmodel/` and `service/`.
 - `shared/ui/` holds reusable UI. Other `shared/` and `integrations/` folders are organized by responsibility (for example, `storage/`, `networking/`, `helpers/`, and `modelapis/`) rather than a universal `ui/`/`logic/` split.

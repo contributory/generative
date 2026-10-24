@@ -7,7 +7,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,7 +25,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
-import org.starfall.generative.shared.ui.dialogs.AppDialog as Dialog
 import org.starfall.generative.shared.ui.media.ChatFilePreview
 import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 import org.starfall.generative.shared.ui.media.MediaContent
@@ -34,7 +32,6 @@ import org.starfall.generative.shared.ui.media.MediaViewerToolBar
 import org.starfall.generative.shared.ui.media.isPreviewableMedia
 import org.starfall.generative.shared.ui.media.mediaMimeType
 import org.starfall.generative.shared.ui.media.mediaThumbnail
-import org.starfall.generative.shared.ui.layout.windowHeightIn
 import org.starfall.generative.shared.ui.code.CodeBlockSurface
 import org.starfall.generative.shared.code.codeLanguage
 
@@ -95,21 +92,22 @@ fun MediaFileCard(
 }
 
 @Composable
-internal fun MediaViewer(store:ToolFiles,file:File,onDismiss:()->Unit) {
-    val context=LocalContext.current
+internal fun MediaViewer(store: ToolFiles, file: File, onDismiss: () -> Unit) {
+    val context = LocalContext.current
     val attachmentSelection = LocalChatAttachmentSelection.current
-    val scope=rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
+    val mime = remember(file.name) { file.mime() }
     val textual = remember(file.name) { file.isTextFile() }
     val language = remember(file.name) { file.codeLanguageName() }
     var truncated by remember(file.path) { mutableStateOf(false) }
     val text by produceState<String?>(null, file.path, file.lastModified()) {
         if (textual) value = withContext(Dispatchers.IO) {
             runCatching {
-                file.reader().use { r ->
+                file.reader().use { reader ->
                     val buffer = CharArray(TEXT_PREVIEW_LIMIT + 1)
                     var count = 0
                     while (count < buffer.size) {
-                        val read = r.read(buffer, count, buffer.size - count)
+                        val read = reader.read(buffer, count, buffer.size - count)
                         if (read < 0) break
                         count += read
                     }
@@ -120,56 +118,107 @@ internal fun MediaViewer(store:ToolFiles,file:File,onDismiss:()->Unit) {
         }
     }
     var confirmDelete by remember { mutableStateOf(false) }
-    val save=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(file.mime())) { uri ->
-        if(uri!=null) scope.launch {
-            val result=withContext(Dispatchers.IO){runCatching{context.contentResolver.openOutputStream(uri)!!.use{out->file.inputStream().use{it.copyTo(out)}}}}
-            Toast.makeText(context,if(result.isSuccess) "File saved" else "Could not save file",Toast.LENGTH_SHORT).show()
+    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(mime)) { uri ->
+        if (uri != null) scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openOutputStream(uri)!!.use { output ->
+                        file.inputStream().use { it.copyTo(output) }
+                    }
+                }
+            }
+            Toast.makeText(context, if (result.isSuccess) "File saved" else "Could not save file", Toast.LENGTH_SHORT).show()
         }
     }
-    Dialog(onDismissRequest=onDismiss) {
-        Surface(shape=MaterialTheme.shapes.large) {
-            Column(Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.85f).padding(12.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(file.name, modifier = Modifier.weight(1f), maxLines = 2,
-                        overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
-                    attachmentSelection?.let { selection ->
-                        val attached = file.path in selection.attachments.value
-                        val description = stringResource(if (attached) R.string.file_remove_next_message else R.string.file_attach_next_message)
-                        Checkbox(checked = attached, onCheckedChange = { selection.toggle(file.path) },
-                            modifier = Modifier.semantics { contentDescription = description })
-                    }
-                }
-                LazyColumn(Modifier.weight(1f,fill=false)) {
-                    item {
-                        when {
-                            isPreviewableMedia(file.mime()) -> MediaContent(file.path, file.mime())
-                            textual -> text?.let { content ->
-                                CodeBlockSurface(language = language, code = content)
-                                if (truncated) Text("Preview truncated to the first $TEXT_PREVIEW_LIMIT characters.",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            } ?: Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
-                            }
-                            else -> Text("Preview unavailable for this file type.")
-                        }
-                    }
-                }
-                MediaViewerToolBar(
-                    onSave = { save.launch(file.name) },
-                    onShare = {
-                        runCatching {
-                            val uri=FileProvider.getUriForFile(context,"${context.packageName}.tool-files",file)
-                            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType(file.mime()).putExtra(Intent.EXTRA_STREAM,uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),"Share file"))
-                        }.onFailure{Toast.makeText(context,"Could not share file",Toast.LENGTH_SHORT).show()}
-                    },
-                    onDelete = { confirmDelete = true },
-                    onClose = onDismiss
+
+    MediaViewerDialog(
+        mediaKey = file.path,
+        onDismiss = onDismiss,
+        header = {
+            Text(
+                file.name,
+                modifier = Modifier.weight(1f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleMedium
+            )
+            attachmentSelection?.let { selection ->
+                val attached = file.path in selection.attachments.value
+                val description = stringResource(
+                    if (attached) R.string.file_remove_next_message else R.string.file_attach_next_message
+                )
+                Checkbox(
+                    checked = attached,
+                    onCheckedChange = { selection.toggle(file.path) },
+                    modifier = Modifier.semantics { contentDescription = description }
                 )
             }
+        },
+        content = { onZoomChanged ->
+            LazyColumn(Modifier.weight(1f, fill = false)) {
+                item {
+                    when {
+                        isPreviewableMedia(mime) -> MediaContent(
+                            file.path,
+                            mime,
+                            onImageZoomChanged = onZoomChanged
+                        )
+                        textual -> text?.let { content ->
+                            CodeBlockSurface(language = language, code = content)
+                            if (truncated) Text(
+                                "Preview truncated to the first $TEXT_PREVIEW_LIMIT characters.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } ?: Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                        else -> Text("Preview unavailable for this file type.")
+                    }
+                }
+            }
+        },
+        fullscreenContent = { onZoomChanged ->
+            MediaContent(file.path, mime, onImageZoomChanged = onZoomChanged, fullscreen = true)
+        },
+        toolbar = { onClose ->
+            MediaViewerToolBar(
+                onSave = { save.launch(file.name) },
+                onShare = {
+                    runCatching {
+                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.tool-files", file)
+                        context.startActivity(
+                            Intent.createChooser(
+                                Intent(Intent.ACTION_SEND)
+                                    .setType(mime)
+                                    .putExtra(Intent.EXTRA_STREAM, uri)
+                                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
+                                "Share file"
+                            )
+                        )
+                    }.onFailure {
+                        Toast.makeText(context, "Could not share file", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onDelete = { confirmDelete = true },
+                onClose = onClose
+            )
         }
-    }
-    if(confirmDelete) AlertDialog(onDismissRequest={confirmDelete=false},title={Text("Delete file?")},text={Text("This file will no longer be available in chat.")},
-        confirmButton={TextButton(onClick={onDismiss();scope.launch{withContext(Dispatchers.IO){store.delete(listOf(file.name))}};confirmDelete=false}){Text("Delete")}},
-        dismissButton={TextButton(onClick={confirmDelete=false}){Text("Cancel")}})
+    )
+
+    if (confirmDelete) AlertDialog(
+        onDismissRequest = { confirmDelete = false },
+        title = { Text("Delete file?") },
+        text = { Text("This file will no longer be available in chat.") },
+        confirmButton = {
+            TextButton(onClick = {
+                onDismiss()
+                scope.launch { withContext(Dispatchers.IO) { store.delete(listOf(file.name)) } }
+                confirmDelete = false
+            }) { Text("Delete") }
+        },
+        dismissButton = {
+            TextButton(onClick = { confirmDelete = false }) { Text("Cancel") }
+        }
+    )
 }
