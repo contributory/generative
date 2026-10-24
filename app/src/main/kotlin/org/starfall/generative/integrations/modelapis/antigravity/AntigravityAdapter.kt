@@ -110,6 +110,23 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
 
     private val projectLock = Mutex()
 
+    /** Resolves the project right after sign-in so the editor can show the discovered ID; failures never block sign-in. */
+    override suspend fun authorize(provider: ModelProvider): Result<ModelProvider> {
+        val result = super.authorize(provider)
+        val signedIn = result.getOrNull() ?: return result
+        val credentialId = signedIn.oauthCredentialId
+        if (signedIn.config.antigravityProjectId(credentialId) != null) return result
+        val projectId = try {
+            ensureProject(signedIn).projectId?.trim()?.takeIf(String::isNotEmpty)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        } ?: return result
+        return Result.success(signedIn.copy(config = signedIn.config.copy(
+            antigravityProjectIds = signedIn.config.antigravityProjectIds + (credentialId to projectId))))
+    }
+
     private companion object {
         // Cloud Code requires >= 2.23.0 for newer models. Custom versions must not borrow another release's CL.
         const val ANTIGRAVITY_ONBOARD_NODE_USER_AGENT = "google-api-nodejs-client/10.3.0"

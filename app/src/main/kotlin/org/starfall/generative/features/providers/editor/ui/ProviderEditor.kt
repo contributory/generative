@@ -212,6 +212,7 @@ fun ProviderEditor(
                 providerPersisted = true; oauthAuthorized = true; oauthIdentity = authorized.auth.key
                 oauthMarker = authorized.auth.value.orEmpty(); oauthAccountId = authorized.auth.oauthAccountId
                 oauthAccounts = authorized.config.oauthAccounts; baseUrl = authorized.baseUrl
+                if (authorized.type == ModelApiType.ANTIGRAVITY) antigravityProjectIds = authorized.config.antigravityProjectIds
             }.onFailure { oauthAuthError = it.message ?: context.getString(R.string.provider_oauth_failed) }
             return result
         } catch (e: CancellationException) {
