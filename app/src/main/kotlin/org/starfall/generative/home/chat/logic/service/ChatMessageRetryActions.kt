@@ -9,7 +9,6 @@ import org.starfall.generative.home.chat.logic.prepareUserMessageRetry
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.MessageVersion
-import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 
@@ -22,7 +21,7 @@ internal class ChatMessageRetryActions(
     private val appPreferences: StateFlow<AppPreferences>,
     private val selectedChatModel: (Conversation?, AppPreferences) -> Pair<ModelProvider?, String>,
     private val generatedVersion: (ModelProvider?, String, String) -> MessageVersion,
-    private val mediaTargetOf: (StoredMessage?) -> ChatMessageActions.MediaTarget?,
+    private val composerMediaTarget: () -> ChatMessageActions.MediaTarget?,
     private val startMediaResponseAction: (
         Conversation, String, ChatMessageActions.MediaTarget, Conversation?
     ) -> Boolean,
@@ -46,7 +45,7 @@ internal class ChatMessageRetryActions(
         if (isGenerating.value || summaryJob()?.isActive == true || pendingConversationWrites() > 0) return false
         val current = currentConversation.value ?: return false
         val prefs = appPreferences.value
-        val mediaTarget = mediaTargetOf(current.messages.getOrNull(current.messages.indexOfFirst { it.id == messageId } + 1))
+        val mediaTarget = composerMediaTarget()
         val (baseProvider, model) = mediaTarget?.let { it.provider to it.modelId } ?: selectedChatModel(current, prefs)
         if (baseProvider == null || model.isBlank()) return false
         val responseId = UUID.randomUUID().toString()
@@ -75,7 +74,7 @@ internal class ChatMessageRetryActions(
             it.id == messageId && it.role == ChatRole.MODEL && it.activeVersion.generationError != null
         } ?: return
         val prefs = appPreferences.value
-        val mediaTarget = mediaTargetOf(failed)
+        val mediaTarget = composerMediaTarget()
         val (baseProvider, model) = mediaTarget?.let { it.provider to it.modelId } ?: selectedChatModel(current, prefs)
         if (baseProvider == null || model.isBlank()) return
         val version = failed.activeVersion
@@ -109,7 +108,7 @@ internal class ChatMessageRetryActions(
         if (isGenerating.value || summaryJob()?.isActive == true || pendingConversationWrites() > 0) return
         val current = currentConversation.value ?: return
         val prefs = appPreferences.value
-        val mediaTarget = mediaTargetOf(current.messages.firstOrNull { it.id == messageId })
+        val mediaTarget = composerMediaTarget()
         val (baseProvider, model) = mediaTarget?.let { it.provider to it.modelId } ?: selectedChatModel(current, prefs)
         if (baseProvider == null || model.isBlank()) return
         var conv = prepareRegeneration(current, messageId,

@@ -424,6 +424,7 @@ fun AppNavigation(
                          featuresLogoImage = appPrefs.featuresLogoImage,
                         autoScroll = appPrefs.autoScroll,
                         onSendMedia = viewModel::sendMedia,
+                        onMediaModeChange = viewModel::setComposerMedia,
                         onResendUserMessage = viewModel::resendUserMessage,
                         onSendMessage = { text, files ->
                             viewModel.sendMessage(text, files)

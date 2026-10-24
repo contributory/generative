@@ -43,6 +43,7 @@ import org.starfall.generative.home.chat.logic.service.ChatToolSettingsActions
 import org.starfall.generative.home.chat.logic.service.ConversationTitleGenerator
 import org.starfall.generative.home.chat.logic.tool.ToolChatViewModel
 import org.starfall.generative.home.chat.logic.input.DirectMediaRequest
+import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.home.chat.model.ContextWindowStatus
 
 internal fun shouldGenerateConversationTitle(
@@ -312,7 +313,7 @@ class ChatViewModel(
         appPreferences = appPreferences,
         selectedChatModel = modelContext::selectedChatModel,
         generatedVersion = messageActions::generatedVersion,
-        mediaTargetOf = messageActions::mediaTargetOf,
+        composerMediaTarget = messageActions::composerMediaTarget,
         startMediaResponseAction = { conversation, responseId, target, rollback ->
             messageActions.startMediaResponse(conversation, responseId, target, rollback)
         },
@@ -487,6 +488,8 @@ class ChatViewModel(
     fun sendMessage(userText: String, fileAttachments: List<String> = emptyList()): Boolean =
         messageActions.sendMessage(userText, fileAttachments)
     fun sendMedia(request: DirectMediaRequest): Boolean = messageActions.sendMedia(request)
+    fun setComposerMedia(kind: ModelType?, providerId: String, modelId: String) =
+        messageActions.setComposerMedia(kind, providerId, modelId)
     fun stopGeneration() = messageActions.stopGeneration()
     fun editMessage(messageId: String, newContent: String, files: List<String>): Boolean =
         messageActions.editMessage(messageId, newContent, files)

@@ -254,12 +254,21 @@ internal class ChatMessageActions(
     /** Image/video model a response was produced with, or null when it was a normal chat reply. */
     internal class MediaTarget(val provider: ModelProvider, val modelId: String, val kind: ModelType)
 
-    internal fun mediaTargetOf(response: StoredMessage?): MediaTarget? {
-        val version = response?.takeIf { it.role == ChatRole.MODEL }?.activeVersion ?: return null
-        val provider = providers.value.find { it.id == version.providerId } ?: return null
-        val kind = provider.config.modelConfigs[version.modelId]?.modelType
-            ?.takeIf { it == ModelType.IMAGE_GENERATION || it == ModelType.VIDEO_GENERATION } ?: return null
-        return MediaTarget(provider, version.modelId, kind)
+    private class ComposerMedia(val kind: ModelType, val providerId: String, val modelId: String)
+
+    @Volatile private var composerMedia: ComposerMedia? = null
+
+    /** Mirrors the composer's image/video mode; null kind means the composer is in chat mode. */
+    fun setComposerMedia(kind: ModelType?, providerId: String, modelId: String) {
+        composerMedia = kind?.let { ComposerMedia(it, providerId, modelId) }
+    }
+
+    /** Media target for the composer's current image/video mode, or null when it is in chat mode. */
+    internal fun composerMediaTarget(): MediaTarget? {
+        val media = composerMedia ?: return null
+        val provider = providers.value.find { it.id == media.providerId } ?: return null
+        if (provider.config.modelConfigs[media.modelId]?.modelType != media.kind) return null
+        return MediaTarget(provider, media.modelId, media.kind)
     }
 
     /** Restart a media response from the user message that precedes it (resend/regenerate/retry). */

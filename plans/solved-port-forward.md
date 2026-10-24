@@ -63,3 +63,10 @@ All items done. `testDebugUnitTest`: `RemoteMachineTest` passes (14/14, incl. th
 ## Update: simpler rules
 
 Rules are `port` (same port both sides) or `listen:target` (different ports, `->` also accepted); host defaults to `localhost`. The first number is always the port that is opened (device for Local, machine for Remote).
+
+
+## Update: Start Port Forward and connection notifications
+
+- The machine's context menu starts with **Start Port Forward**: it opens (or reuses) the SSH connection, applies the enabled forwards and pins the connection. A pinned connection is not closed for being idle, when its last terminal closes, or when chat generation ends; only Disconnect or a network failure ends it. It needs at least one valid enabled rule.
+- Terminals acquire the same shared connection, so opening one never creates another SSH connection.
+- `RemoteConnectionService` shows one ongoing notification per connected machine with a Disconnect action. It lists the forwards that were actually applied (`L 8080→10808`, `R 9090→3000`, `SOCKS 1080`), and removes the notification when the session closes.

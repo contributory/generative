@@ -25,6 +25,7 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.add
 import org.starfall.generative.shared.model.GCloudOAuthClient
+import org.starfall.generative.shared.model.PortForwardRule
 import org.starfall.generative.shared.model.REMOTE_TOOL_CLOSE_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_DISCONNECT
 import org.starfall.generative.shared.model.REMOTE_TOOL_EXECUTE
@@ -55,9 +56,12 @@ class RemoteMachineService(
 ) {
     private val appContext = context.applicationContext
     private val assets = RemoteMachineAssetsService(context, store)
-    private val connectionManager = RemoteMachineConnectionManager { machine, password, prompt ->
-        openSession(machine, password, prompt)
-    }
+    /** What [applyPortForwarding] really opened per session, for the connection notification. */
+    private val appliedForwards = java.util.Collections.synchronizedMap(java.util.WeakHashMap<Session, List<String>>())
+    private val connectionManager = RemoteMachineConnectionManager(
+        openSessionCallback = { machine, password, prompt -> openSession(machine, password, prompt) },
+        forwardLabelsOf = { session -> appliedForwards[session].orEmpty() }
+    )
     private val cloudShell = RemoteMachineCloudShellService(context, store, assets)
     private val sftpSessions = RemoteSftpSessionPool { machine -> openSession(machine) }
 
@@ -68,6 +72,24 @@ class RemoteMachineService(
      * execute). A terminal's private connection is not listed.
      */
     val connectedMachineIds: StateFlow<Set<String>> get() = connectionManager.connectedMachineIds
+
+    /** Forwards that are actually active, per connected machine, as short labels such as "L 8080→10808". */
+    val forwardedPorts: StateFlow<Map<String, List<String>>> get() = connectionManager.forwardedPorts
+
+    /**
+     * Starts a connection that is kept until the user disconnects it and applies the machine's port
+     * forwards. Terminals opened later reuse it.
+     */
+    suspend fun startPortForward(
+        machine: RemoteMachine,
+        passwordOverride: String? = null,
+        askSecret: RemoteSecretPrompt? = null
+    ) {
+        require(machine.portForwarding.hasActiveForwards) {
+            "Turn on a port forward with at least one valid rule in this machine's settings first."
+        }
+        connectionManager.startPortForward(machine, passwordOverride, askSecret)
+    }
 
     suspend fun saveMachine(machine: RemoteMachine) {
         val username = machine.username.trim()
@@ -353,7 +375,7 @@ class RemoteMachineService(
     ): Session {
         require(machine.host.isNotBlank()) { "Remote host is missing." }
         require(machine.username.isNotBlank()) { "Remote user is missing." }
-        AndroidEdDSA.install()
+        AndroidSshAlgorithms.install()
         val jsch = JSch()
         if (machine.identityFile.isNotBlank()) {
             val identity = assets.resolveIdentity(machine.identityFile)
@@ -426,19 +448,29 @@ class RemoteMachineService(
     /** Forwards die with the session. One failing rule (port in use, forwarding forbidden) must not fail the connection. */
     private fun applyPortForwarding(session: Session, machine: RemoteMachine) {
         val forwarding = machine.portForwarding
+        val applied = mutableListOf<String>()
         forwarding.activeLocalRules.forEach { rule ->
             runCatching { session.setPortForwardingL(LOCAL_FORWARD_BIND, rule.listenPort, rule.targetHost, rule.targetPort) }
+                .onSuccess { applied += "L ${rule.label()}" }
                 .onFailure { Log.w(TAG, "Local forward ${rule.listenPort} failed: ${it.message}") }
         }
         forwarding.activeRemoteRules.forEach { rule ->
             runCatching { session.setPortForwardingR(rule.listenPort, rule.targetHost, rule.targetPort) }
+                .onSuccess { applied += "R ${rule.label()}" }
                 .onFailure { Log.w(TAG, "Remote forward ${rule.listenPort} failed: ${it.message}") }
         }
         forwarding.activeDynamicPorts.forEach { port ->
             runCatching { RemoteSocksForwarder(session, port, machine.connectTimeoutSeconds * 1_000).start() }
+                .onSuccess { applied += "SOCKS $port" }
                 .onFailure { Log.w(TAG, "Dynamic forward $port failed: ${it.message}") }
         }
+        appliedForwards[session] = applied
     }
+
+    /** `8080→10808`, or `8080→db:3306` when the target is not this loopback. */
+    private fun PortForwardRule.label(): String =
+        if (targetHost == "localhost" || targetHost == "127.0.0.1") "$listenPort→$targetPort"
+        else "$listenPort→$targetHost:$targetPort"
 
     private fun JSchException.isAuthenticationFailure(): Boolean {
         val text = message.orEmpty().lowercase()

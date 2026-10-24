@@ -23,7 +23,9 @@ import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
 
 /** Owns persistent SSH sessions and interactive/exec channels for remote-machine operations. */
 internal class RemoteMachineConnectionManager(
-    private val openSessionCallback: suspend (RemoteMachine, String?, RemoteSecretPrompt?) -> Session
+    private val openSessionCallback: suspend (RemoteMachine, String?, RemoteSecretPrompt?) -> Session,
+    /** Short labels (e.g. "L 8080→10808") of the forwards that were really applied to a freshly opened session. */
+    private val forwardLabelsOf: (Session) -> List<String> = { emptyList() }
 ) {
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val connections = ConcurrentHashMap<String, SharedConnection>()
@@ -31,6 +33,9 @@ internal class RemoteMachineConnectionManager(
     private val machineLocks = ConcurrentHashMap<String, Mutex>()
     private val _connectedMachineIds = MutableStateFlow<Set<String>>(emptySet())
     val connectedMachineIds: StateFlow<Set<String>> = _connectedMachineIds.asStateFlow()
+    private val _forwardedPorts = MutableStateFlow<Map<String, List<String>>>(emptyMap())
+    /** Applied forward labels per connected machine; machines without any forward are absent. */
+    val forwardedPorts: StateFlow<Map<String, List<String>>> = _forwardedPorts.asStateFlow()
 
     private suspend fun openSession(machine: RemoteMachine, passwordOverride: String? = null,
         askSecret: RemoteSecretPrompt? = null): Session =
@@ -67,7 +72,8 @@ internal class RemoteMachineConnectionManager(
                         // terminal releases it instead of waiting for the idle timeout.
                         // requestClose() must run before release() so the release starts
                         // the immediate (zero-delay) shutdown rather than the idle one.
-                        shared.requestClose()
+                        // A pinned connection (port forwarding) outlives its terminals.
+                        if (!shared.pinned) shared.requestClose()
                     }
                     shared.release()
                 }
@@ -104,8 +110,26 @@ internal class RemoteMachineConnectionManager(
     fun isConnected(machineId: String): Boolean = connections[machineId]?.session?.isConnected == true
     fun disconnectMachine(machineId: String) { ioScope.launch { disconnectMachineNow(machineId) } }
     fun disconnectAllWhenIdle() { ioScope.launch {
-        connections.values.toList().forEach { connection -> if (connection.requestClose()) closeConnection(connection) }
+        connections.values.toList().filterNot { it.pinned }
+            .forEach { connection -> if (connection.requestClose()) closeConnection(connection) }
     } }
+
+    /**
+     * Opens (or reuses) the machine's connection and pins it: it is no longer closed for being idle, when
+     * its last terminal closes, or when chat generation ends. Only a disconnect or a network failure ends it.
+     * Terminals opened afterwards share this connection instead of creating another one.
+     */
+    suspend fun startPortForward(
+        machine: RemoteMachine,
+        passwordOverride: String? = null,
+        askSecret: RemoteSecretPrompt? = null
+    ) {
+        val shared = acquireShared(machine.id, create = machine, passwordOverride = passwordOverride, askSecret = askSecret)
+            ?: error("Could not open an SSH connection.")
+        shared.pinned = true
+        shared.release()
+    }
+
     suspend fun disconnectMachineNow(machineId: String): Boolean = withContext(NonCancellable + Dispatchers.IO) {
         val connection = connections[machineId] ?: run {
             closeAllTerminals(machineId)
@@ -120,8 +144,10 @@ internal class RemoteMachineConnectionManager(
         val machineId: String,
         val session: Session,
         /** Active port forwards live only as long as the session, so such a connection is never closed for being idle. */
-        private val keepOpenWhileIdle: Boolean = false,
+        pinned: Boolean = false,
+        val forwards: List<String> = emptyList(),
     ) {
+        @Volatile var pinned: Boolean = pinned
         private var users = 0
         private var closeOnRelease = false
         private var idleJob: Job? = null
@@ -150,7 +176,7 @@ internal class RemoteMachineConnectionManager(
         fun release() {
             if (users > 0) users--
             if (users == 0) {
-                if (keepOpenWhileIdle && !closeOnRelease) return
+                if (pinned && !closeOnRelease) return
                 val wait = if (closeOnRelease) 0L else RemoteMachineService.IDLE_DISCONNECT_MILLIS
                 idleJob?.cancel()
                 idleJob = ioScope.launch {
@@ -202,6 +228,9 @@ internal class RemoteMachineConnectionManager(
         withContext(NonCancellable + Dispatchers.IO) { closeConnection(connection) }
 
     private fun publishConnected() {
+        _forwardedPorts.value = connections.values
+            .filter { it.forwards.isNotEmpty() }
+            .associate { it.machineId to it.forwards }
         _connectedMachineIds.value = connections.keys.toSet()
     }
 
@@ -228,7 +257,12 @@ internal class RemoteMachineConnectionManager(
                 if (connection == null) {
                     if (create == null) return@withLock null
                     val session = openSession(create, passwordOverride, askSecret)
-                    connection = SharedConnection(machineId, session, create.portForwarding.hasActiveForwards)
+                    connection = SharedConnection(
+                        machineId,
+                        session,
+                        create.portForwarding.hasActiveForwards,
+                        forwardLabelsOf(session)
+                    )
                     connections[machineId] = connection
                     connection.startMonitor()
                     publishConnected()

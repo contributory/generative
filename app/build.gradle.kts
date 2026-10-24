@@ -197,7 +197,7 @@ dependencies {
     implementation("io.modelcontextprotocol:kotlin-sdk-client:0.15.0")
 
     // SSH transport used by the optional Remote Machines service.
-    implementation("com.github.mwiede:jsch:0.2.25")
+    implementation("com.github.mwiede:jsch:2.28.8")
     // Pure-Java Ed25519 for JSch (Android has no JDK 15+ EdDSA provider); see AndroidEdDSA.kt.
     implementation("net.i2p.crypto:eddsa:0.3.0")
 

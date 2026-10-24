@@ -32,6 +32,16 @@ class RemoteMachinesViewModel(
 
     fun disconnect(machineId: String) = service.disconnectMachine(machineId)
 
+    /**
+     * Starts a kept-alive connection that applies the machine's port forwards; terminals reuse it.
+     * Runs in the ViewModel scope so leaving the screen does not cancel a connection in progress.
+     */
+    fun startPortForward(machine: RemoteMachine, onResult: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            onResult(runCatching { service.startPortForward(machine) })
+        }
+    }
+
     fun openFiles(context: Context, machineId: String): Boolean =
         RemoteSftpDocumentsProvider.open(context, machineId)
 

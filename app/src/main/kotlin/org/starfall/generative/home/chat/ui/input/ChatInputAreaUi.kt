@@ -106,6 +106,7 @@ fun UserInputArea(
     isGenerating: Boolean,
     onSendMessage: (String, List<String>) -> Boolean,
     onSendMedia: (DirectMediaRequest) -> Boolean,
+    onMediaModeChange: (ModelType?, String, String) -> Unit = { _, _, _ -> },
     onEditMessage: (String, String, List<String>) -> Boolean,
     onSubmissionFailed: (String) -> Unit = {},
     editDraft: ChatInputEditDraft?,
@@ -243,6 +244,11 @@ fun UserInputArea(
             mediaModelId = mediaProviders.firstOrNull()?.config?.modelIds?.firstOrNull().orEmpty()
         }
     }
+    // Regenerate/resend follow the composer: media mode uses the selected media model, chat mode sends as chat.
+    LaunchedEffect(mediaKind, mediaProviderId, mediaModelId, mediaModel) {
+        onMediaModeChange(mediaKind.takeIf { mediaModel != null }, mediaProviderId, mediaModelId)
+    }
+    DisposableEffect(Unit) { onDispose { onMediaModeChange(null, "", "") } }
     val focusManager = LocalFocusManager.current
     val bottomSheets = remember { BottomSheetsLinkState() }
 

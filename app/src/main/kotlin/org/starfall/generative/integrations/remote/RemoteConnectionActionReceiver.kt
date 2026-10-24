@@ -12,5 +12,6 @@ class RemoteConnectionActionReceiver : BroadcastReceiver() {
         val owner = context.applicationContext as? RemoteMachineServiceOwner ?: return
         // Non-blocking: the connection closes on the manager's IO scope, then the service drops the notification.
         owner.remoteMachineService.disconnectMachine(machineId)
+        RemoteConnectionService.cancelNotification(context, machineId)
     }
 }

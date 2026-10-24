@@ -122,6 +122,15 @@ fun RemoteMachinesScreen(
                             machine = machine,
                             connected = machine.id in connectedIds,
                             onDisconnect = { viewModel.disconnect(machine.id) },
+                            onStartPortForward = {
+                                viewModel.startPortForward(machine) { result ->
+                                    val message = result.fold(
+                                        onSuccess = { context.getString(R.string.remote_machine_port_forward_started) },
+                                        onFailure = { it.message ?: it.toString() }
+                                    )
+                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                }
+                            },
                             onTerminal = { onOpenTerminal(machine) },
                             onFiles = {
                                 if (!viewModel.openFiles(context, machine.id)) {
@@ -185,6 +194,7 @@ private fun RemoteMachineCard(
     machine: RemoteMachine,
     connected: Boolean,
     onDisconnect: () -> Unit,
+    onStartPortForward: () -> Unit,
     onTerminal: () -> Unit,
     onFiles: () -> Unit,
     onEdit: () -> Unit,
@@ -250,6 +260,11 @@ private fun RemoteMachineCard(
                     FluentIcon(Icons.Default.MoreVert, stringResource(R.string.more_options))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.remote_machine_start_port_forward)) },
+                        leadingIcon = { FluentIcon(Icons.Outlined.Hub, null) },
+                        onClick = { menu = false; onStartPortForward() }
+                    )
                     if (gcloud) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.remote_machine_update_ip)) },

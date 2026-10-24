@@ -562,6 +562,8 @@
     <string name="remote_machine_sftp_directory" translatable="false">SFTP Directory</string>
     <string name="remote_machine_sftp_directory_help" translatable="false">Root folder for Files. Defaults to $HOME; ~ and absolute paths are also supported.</string>
     <string name="remote_machine_sftp_root_summary" translatable="false">%1$s@%2$s · %3$s</string>
+    <string name="remote_machine_start_port_forward" translatable="false">Start Port Forward</string>
+    <string name="remote_machine_port_forward_started" translatable="false">Port forwarding started. Open terminals reuse this connection.</string>
     <string name="remote_machine_files" translatable="false">Files</string>
     <string name="remote_machine_files_failed" translatable="false">Could not open the system file manager.</string>
     <string name="remote_machine_type_label" translatable="false">Machine type</string>
@@ -596,7 +598,7 @@
     <string name="remote_connection_channel_description" translatable="false">Shows the remote machines you are connected to, with a button to disconnect.</string>
     <string name="remote_connection_notification_title" translatable="false">Connected to %1$s</string>
     <string name="remote_connection_notification_text" translatable="false">SSH connection is open.</string>
-    <string name="remote_connection_notification_forwarding" translatable="false">SSH connection is open. Port forwarding is active.</string>
+    <string name="remote_connection_notification_forwarding" translatable="false">Forwarding %1$s</string>
     <string name="remote_connection_disconnect" translatable="false">Disconnect</string>
     <string name="remote_machine_port_forwarding_section" translatable="false">Port forwarding</string>
     <string name="remote_machine_port_forwarding_help" translatable="false">Forwards are applied when the SSH session connects and stop when it disconnects. A machine with an active forward is not disconnected for being idle.</string>

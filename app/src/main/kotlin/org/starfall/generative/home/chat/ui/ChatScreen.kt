@@ -68,6 +68,7 @@ import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.text.PlatformTextSelection
 import org.starfall.generative.home.chat.logic.input.ChatInputEditDraft
 import org.starfall.generative.home.chat.logic.input.DirectMediaRequest
+import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.home.chat.logic.unansweredUserMessageIds
 import org.starfall.generative.home.chat.ui.input.UserInputArea
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
@@ -105,6 +106,7 @@ fun ChatScreen(
     selectedModelName: String,
     onSendMessage: (String, List<String>) -> Boolean,
     onSendMedia: (DirectMediaRequest) -> Boolean,
+    onMediaModeChange: (ModelType?, String, String) -> Unit = { _, _, _ -> },
     onStopGenerating: () -> Unit,
     onOpenDrawer: () -> Unit,
     onNewChat: () -> Unit,
@@ -767,6 +769,7 @@ fun ChatScreen(
                     .onSizeChanged { inputAreaHeightPx = it.height }
                     .onGloballyPositioned { inputAreaBounds = it.boundsInRoot() },
                 isGenerating = isGenerating,
+                onMediaModeChange = onMediaModeChange,
                 onSendMedia = { request ->
                     inlineChatError = null
                     revealed = true
