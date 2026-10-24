@@ -9,10 +9,13 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -52,7 +55,8 @@ import org.starfall.generative.shared.files.AttachmentResolver
  */
 internal class OpenAICodexAdapter(
     context: Context,
-    attachments: AttachmentResolver
+    attachments: AttachmentResolver,
+    private val tokenEndpoint: String = "$ISSUER/oauth/token"
 ) : AccountProviderAdapter {
     override val providerType: ModelApiType = ModelApiType.OPENAI_CODEX
 
@@ -114,18 +118,18 @@ internal class OpenAICodexAdapter(
 
     override suspend fun prepareAuthenticatedProvider(provider: ModelProvider): ModelProvider {
         val token = ensureToken(provider)
-        val sessionId = UUID.randomUUID().toString()
         val headers = linkedMapOf(
             "User-Agent" to CODEX_USER_AGENT,
             "Connection" to "Keep-Alive",
-            "Originator" to "codex-tui",
-            "Session_id" to sessionId,
-            "Conversation_id" to sessionId
+            "Originator" to "codex-tui"
         )
         token.accountId?.takeIf { it.isNotBlank() }?.let {
             headers["Chatgpt-Account-Id"] = it
         }
         headers.putAll(provider.config.headers)
+        val sessionId = codexSessionId(provider)
+        headers["Session_id"] = sessionId
+        headers["Conversation_id"] = sessionId
 
         return provider.copy(
             type = ModelApiType.OPENAI_RESPONSES,
@@ -135,15 +139,30 @@ internal class OpenAICodexAdapter(
         )
     }
 
+    override fun prepareRequestProvider(sourceProvider: ModelProvider, wireProvider: ModelProvider,
+        requestBody: JsonObject): ModelProvider {
+        val sessionId = codexSessionId(sourceProvider, requestBody)
+        return wireProvider.copy(config = wireProvider.config.copy(headers = wireProvider.config.headers +
+            ("Session_id" to sessionId) + ("Conversation_id" to sessionId)))
+    }
+
+    override fun shouldStreamUpstream(
+        sourceProvider: ModelProvider,
+        wireProvider: ModelProvider,
+        modelName: String,
+        callerStream: Boolean
+    ): Boolean = true
+
     override fun normalizeToolRequest(
         sourceProvider: ModelProvider,
         wireProvider: ModelProvider,
         body: JsonObject,
         systemPrompt: String
     ): JsonObject {
-        val sessionId = wireProvider.config.headers["Session_id"] ?: UUID.randomUUID().toString()
+        val sessionId = codexSessionId(sourceProvider, body)
         val values = body.toMutableMap()
         listOf(
+            CODEX_SESSION_SCOPE,
             "user",
             "metadata",
             "prompt_cache_retention",
@@ -190,7 +209,11 @@ internal class OpenAICodexAdapter(
         systemPrompt: String,
         maxOutputTokens: Int
     ): Flow<GenerationEvent> = flow {
-        val wire = prepareAuthenticatedProvider(provider)
+        val authenticated = prepareAuthenticatedProvider(provider)
+        val scopeRequest = buildJsonObject {
+            codexConversationScope(messages)?.let { put(CODEX_SESSION_SCOPE, it) }
+        }
+        val wire = prepareRequestProvider(provider, authenticated, scopeRequest)
         val instructions = systemPrompt.takeIf(String::isNotBlank)
             ?: "You are a coding assistant. Follow the user's request accurately and concisely."
         emitAll(OpenAIResponsesAdapter(sdk).stream(ModelApiRequest(
@@ -216,28 +239,33 @@ internal class OpenAICodexAdapter(
         require(provider.auth.method == AuthMethod.OAUTH && provider.auth.value == AUTH_MARKER) {
             "OpenAI Codex is not authorized. Open OAuth in the browser from Provider settings."
         }
-        val current = tokenStore.load(provider.oauthCredentialId)
-            ?: error("OpenAI Codex credentials are missing. Sign in again.")
-
-        val expiresAt = current.expiresAt
-        if (expiresAt == null || expiresAt > System.currentTimeMillis() + REFRESH_BUFFER_MS) {
-            return current
+        val credentialId = provider.oauthCredentialId
+        return refreshLocks.computeIfAbsent(credentialId) { Mutex() }.withLock {
+            // Reload after acquiring the per-credential lock: another caller may already have rotated it.
+            val current = tokenStore.load(credentialId)
+                ?: error("OpenAI Codex credentials are missing. Sign in again.")
+            val expiresAt = current.expiresAt
+            if (expiresAt == null || expiresAt > System.currentTimeMillis() + REFRESH_BUFFER_MS) {
+                return@withLock current
+            }
+            require(current.refreshToken.isNotBlank()) {
+                "OpenAI Codex authorization expired. Sign in again."
+            }
+            val refreshed = refresh(current)
+            tokenStore.save(credentialId, refreshed)
+            refreshed
         }
-
-        val refreshed = refresh(current)
-        tokenStore.save(provider.oauthCredentialId, refreshed)
-        return refreshed
     }
 
     private suspend fun exchangeAuthorizationCode(code: String, verifier: String): CodexTokenState {
-        val request = AppAuthTransactions.token("$ISSUER/oauth/token", CLIENT_ID,
+        val request = AppAuthTransactions.token(tokenEndpoint, CLIENT_ID,
             mapOf("grant_type" to "authorization_code", "code" to code, "redirect_uri" to REDIRECT_URI, "code_verifier" to verifier))
         val payload = AppAuthTransactions.executeToken(request)
         return tokenStateFromResponse(payload.toString(), previousRefreshToken = null)
     }
 
     private suspend fun refresh(current: CodexTokenState): CodexTokenState {
-        val request = AppAuthTransactions.token("$ISSUER/oauth/token", CLIENT_ID,
+        val request = AppAuthTransactions.token(tokenEndpoint, CLIENT_ID,
             mapOf("grant_type" to "refresh_token", "refresh_token" to current.refreshToken, "scope" to REFRESH_SCOPE))
         val payload = AppAuthTransactions.executeToken(request)
         val next = tokenStateFromResponse(payload.toString(), previousRefreshToken = current.refreshToken)
@@ -281,6 +309,7 @@ internal class OpenAICodexAdapter(
         private const val REFRESH_SCOPE = "openid profile email"
         private const val AUTH_TIMEOUT_MS = 5 * 60 * 1000L
         private const val REFRESH_BUFFER_MS = 5 * 60 * 1000L
+        private val refreshLocks = ConcurrentHashMap<String, Mutex>()
         private const val CODEX_USER_AGENT =
             "codex-tui/$CODEX_CLIENT_VERSION (Android; arm64) Generative"
     }

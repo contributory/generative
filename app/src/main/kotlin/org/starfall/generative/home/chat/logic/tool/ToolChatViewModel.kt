@@ -141,6 +141,7 @@ class ToolChatViewModel(
         takePendingMessage: () -> StoredMessage? = { null }
     ): Flow<GenerationEvent> = channelFlow {
         val selectedProvider = aiService.resolveProvider(provider)
+        val sessionKey = messages.firstOrNull { it.role == ChatRole.USER }?.id
         val sessions = mutableMapOf<String, McpSession>()
         val tools = mutableListOf<ToolDefinition>()
         val mcpEntries = mutableListOf<McpPagination.Entry>()
@@ -333,7 +334,8 @@ class ToolChatViewModel(
                     sendThinking = sendThinkingContent,
                     onText = { send(GenerationEvent.Text(it)) },
                     onReasoning = { send(GenerationEvent.Reasoning(it)) },
-                    onUsage = { turnUsage = it }
+                    onUsage = { turnUsage = it },
+                    sessionKey = sessionKey
                 )
                 val reasoningSignature = turn.text("reasoning_signature").takeIf { it.isNotBlank() }
                 if (!streaming) {

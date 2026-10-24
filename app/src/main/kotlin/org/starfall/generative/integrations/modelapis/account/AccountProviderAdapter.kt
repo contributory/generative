@@ -35,6 +35,22 @@ internal interface AccountProviderAdapter {
         systemPrompt: String
     ): JsonObject = body
 
+    /** Restore provider-private wire names before the shared response parser sees them. */
+    fun restoreToolResponse(
+        sourceProvider: ModelProvider,
+        wireProvider: ModelProvider,
+        requestBody: JsonObject,
+        responseBody: JsonObject
+    ): JsonObject = responseBody
+
+    /** Upstream transport can differ from the caller-visible streaming mode. */
+    fun shouldStreamUpstream(
+        sourceProvider: ModelProvider,
+        wireProvider: ModelProvider,
+        modelName: String,
+        callerStream: Boolean
+    ): Boolean = callerStream
+
     fun streamEvents(
         provider: ModelProvider,
         modelName: String,

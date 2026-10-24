@@ -39,9 +39,11 @@ internal class ProviderAdaptersTestSupport(context: Context) {
 
     fun streamAnthropic(
         provider: ModelProvider, modelName: String, messages: List<StoredMessage>, systemPrompt: String,
-        temperature: Double?, topP: Double?, maxTokens: Int, topK: Int? = null
+        temperature: Double?, topP: Double?, maxTokens: Int, topK: Int? = null,
+        callerSystemPrompt: String? = null
     ): Flow<GenerationEvent> = adapter(ModelApiType.ANTHROPIC).stream(ModelApiRequest(
-        provider, modelName, messages, systemPrompt, temperature, topP, topK, maxTokens
+        provider, modelName, messages, systemPrompt, temperature, topP, topK, maxTokens,
+        callerSystemPrompt = callerSystemPrompt
     ))
 
     fun streamGoogle(

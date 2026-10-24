@@ -38,12 +38,12 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
     private val metadata =
         obj("ideType" to str("ANTIGRAVITY"), "platform" to str("MACOS"), "pluginType" to str("GEMINI"))
 
-    // loadCodeAssist/onboardUser validate this field against a different API enum;
-    // WINDOWS/MACOS are rejected there, so use the API's unspecified enum value.
-    private val codeAssistMetadata = obj(
-        "ideType" to str("ANTIGRAVITY"),
-        "platform" to str("PLATFORM_UNSPECIFIED"),
-        "pluginType" to str("GEMINI")
+    // Code Assist uses different metadata contracts for project loading and onboarding.
+    private val loadCodeAssistMetadata = obj("ideType" to str("ANTIGRAVITY"))
+    private val onboardingMetadata = obj(
+        "ide_type" to str("ANTIGRAVITY"),
+        "ide_version" to str(ANTIGRAVITY_VERSION),
+        "ide_name" to str("antigravity")
     )
 
     // Match the reference provider's raw OAuth token exchange. AppAuth's OIDC token parsing
@@ -106,7 +106,7 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
         auth = Authorization(AuthMethod.CUSTOM_HEADER, "Authorization", "Bearer ${token.accessToken}"),
         config = provider.config.copy(
             headers = provider.config.headers + mapOf(
-                "User-Agent" to "antigravity/1.23.2 windows/amd64",
+                "User-Agent" to ANTIGRAVITY_USER_AGENT,
                 "X-Goog-Api-Client" to "google-cloud-sdk vscode_cloudshelleditor/0.1",
                 "Client-Metadata" to metadata.toString()
             )
@@ -116,6 +116,14 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
     private val projectLock = Mutex()
 
     private companion object {
+        // Keep the version and its verified changelist in sync. Cloud Code requires >= 2.23.0 for newer models.
+        const val ANTIGRAVITY_VERSION = "2.24.0"
+        const val ANTIGRAVITY_USER_AGENT =
+            "antigravity/hub/$ANTIGRAVITY_VERSION (aidev_client; os_type=darwin; arch=arm64; cl=1000335682)"
+        const val ANTIGRAVITY_ONBOARD_USER_AGENT =
+            "$ANTIGRAVITY_USER_AGENT google-api-nodejs-client/10.3.0"
+        const val ANTIGRAVITY_ONBOARD_API_CLIENT = "gl-node/22.21.1"
+        const val LEGACY_DEFAULT_BASE_URL = "https://daily-cloudcode-pa.sandbox.googleapis.com"
         const val GEMINI_CLI_USER_AGENT = "GeminiCLI/0.1.5 (Windows; AMD64)"
         const val GEMINI_CLI_API_CLIENT = "gl-node/22.18.0"
         const val GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v1/userinfo?alt=json"
@@ -125,48 +133,59 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
         wire(provider, ensureToken(provider))
 
     private fun bases(provider: ModelProvider): List<String> =
-        if (provider.baseUrl.trimEnd('/') == ModelApiType.ANTIGRAVITY.defaultBaseUrl)
+        if (provider.baseUrl.trimEnd('/') in setOf(ModelApiType.ANTIGRAVITY.defaultBaseUrl, LEGACY_DEFAULT_BASE_URL))
             listOf(
-                "https://cloudcode-pa.googleapis.com", "https://daily-cloudcode-pa.sandbox.googleapis.com",
-                "https://autopush-cloudcode-pa.sandbox.googleapis.com", "https://daily-cloudcode-pa.googleapis.com"
+                "https://daily-cloudcode-pa.googleapis.com", "https://cloudcode-pa.googleapis.com",
+                "https://daily-cloudcode-pa.sandbox.googleapis.com", "https://autopush-cloudcode-pa.sandbox.googleapis.com"
             )
         else listOf(provider.baseUrl.trimEnd('/'))
 
-    private fun project(value: JsonElement?): String? = when (value) {
-        is JsonPrimitive -> value.contentOrNull?.takeIf(String::isNotBlank)
-        is JsonObject -> value.text("id").takeIf(String::isNotBlank)
+    private fun projectValue(value: JsonElement?): String? = when (value) {
+        is JsonPrimitive -> value.contentOrNull?.trim()?.takeIf(String::isNotBlank)
+        is JsonObject -> value.text("id").trim().takeIf(String::isNotBlank)
         else -> null
+    }
+
+    private fun extractProject(data: JsonObject?): String? {
+        if (data == null) return null
+        return listOf("cloudaicompanionProject", "projectId", "project")
+            .firstNotNullOfOrNull { key -> projectValue(data[key]) }
     }
 
     private suspend fun ensureProject(provider: ModelProvider): AccountTokenState = projectLock.withLock {
         var token = ensureToken(provider)
         if (!token.projectId.isNullOrBlank()) return@withLock token
         val authenticated = wire(provider, token)
+        val onboarding = authenticated.copy(config = authenticated.config.copy(
+            headers = authenticated.config.headers + mapOf(
+                "Accept" to "*/*",
+                "User-Agent" to ANTIGRAVITY_ONBOARD_USER_AGENT,
+                "X-Goog-Api-Client" to ANTIGRAVITY_ONBOARD_API_CLIENT
+            )
+        ))
         var lastFailure: Exception? = null
         for (base in bases(provider)) {
             try {
-                val loaded = http.post("$base/v1internal:loadCodeAssist", obj("metadata" to codeAssistMetadata), authenticated)
-                check(loaded["projectValidationError"] == null || loaded["projectValidationError"] == JsonNull) {
-                    "Antigravity rejected the project returned by Code Assist"
-                }
-                var projectId = project(loaded["cloudaicompanionProject"])
+                val loaded = http.post(
+                    "$base/v1internal:loadCodeAssist",
+                    obj("metadata" to loadCodeAssistMetadata),
+                    authenticated
+                )
+                var projectId = extractProject(loaded)
                 if (projectId == null) {
-                    val tier = (loaded["allowedTiers"] as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }
-                        .firstOrNull { (it["isDefault"] as? JsonPrimitive)?.booleanOrNull == true }
-                        ?.text("id")?.takeIf(String::isNotBlank) ?: "legacy-tier"
-                    val body = obj("tierId" to str(tier), "metadata" to codeAssistMetadata)
-                    var operation = http.post("$base/v1internal:onboardUser", body, authenticated)
+                    val body = obj("tier_id" to str(antigravityTierId(loaded)), "metadata" to onboardingMetadata)
+                    var operation = http.post("$base/v1internal:onboardUser", body, onboarding)
                     for (attempt in 0 until 10) {
                         if ((operation["done"] as? JsonPrimitive)?.booleanOrNull == true) {
-                            projectId = project((operation["response"] as? JsonObject)?.get("cloudaicompanionProject"))
+                            projectId = extractProject(operation["response"] as? JsonObject)
                             break
                         }
                         if (attempt == 9) break
                         delay(2000)
                         val name = operation.text("name").trimStart('/').removePrefix("v1internal/")
                         operation = if (name.isNotBlank()) {
-                            http.json(http.request("$base/v1internal/$name", authenticated).get().build())
-                        } else http.post("$base/v1internal:onboardUser", body, authenticated)
+                            http.json(http.request("$base/v1internal/$name", onboarding).get().build())
+                        } else http.post("$base/v1internal:onboardUser", body, onboarding)
                     }
                 }
                 if (!projectId.isNullOrBlank()) {
@@ -231,6 +250,14 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
         "Antigravity authorization is ready."
     }
 
+    override fun shouldStreamUpstream(
+        sourceProvider: ModelProvider,
+        wireProvider: ModelProvider,
+        modelName: String,
+        callerStream: Boolean
+    ): Boolean = callerStream || modelName.contains("claude", ignoreCase = true) ||
+        modelName.contains("gemini-3-pro") || modelName.contains("gemini-3.1-flash-image")
+
     override fun normalizeToolRequest(
         sourceProvider: ModelProvider, wireProvider: ModelProvider,
         body: JsonObject, systemPrompt: String
@@ -265,22 +292,39 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
                 request["generationConfig"] = JsonObject(config + ("thinkingConfig" to thinkingConfig))
             }
         }
+        val resolvedModel = (modelConfig?.modelJson?.get("model") as? JsonPrimitive)?.contentOrNull
+            ?.takeIf(String::isNotBlank) ?: if (modelConfig?.modelJson?.isNotEmpty() == true) model
+        else AntigravityModels.resolve(model, modelConfig?.wireReasoningEffort)
+        val normalizedRequest = normalizeAntigravityRequest(
+            JsonObject(request), resolvedModel, sourceProvider.oauthCredentialId)
+        val imageModel = resolvedModel.contains("image")
         return obj(
-            "project" to str(project), "model" to str(
-                (modelConfig?.modelJson?.get("model") as? JsonPrimitive)?.contentOrNull?.takeIf(String::isNotBlank)
-                    ?: if (modelConfig?.modelJson?.isNotEmpty() == true) model else AntigravityModels.resolve(
-                        model,
-                        modelConfig?.wireReasoningEffort
-                    )
-            ), "requestId" to str("agent-${UUID.randomUUID()}"),
-            "userAgent" to str("antigravity"), "requestType" to str("agent"),
-            "request" to JsonObject(request)
+            "project" to str(project), "model" to str(resolvedModel),
+            "requestId" to str(if (imageModel) "image_gen/${System.currentTimeMillis()}/${UUID.randomUUID()}/12"
+            else "agent-${UUID.randomUUID()}"),
+            "userAgent" to str("antigravity"), "requestType" to str(if (imageModel) "image_gen" else "agent"),
+            "request" to normalizedRequest
         )
     }
+
+    override fun restoreToolResponse(sourceProvider: ModelProvider, wireProvider: ModelProvider,
+        requestBody: JsonObject, responseBody: JsonObject): JsonObject =
+        restoreAntigravityToolArguments(requestBody, responseBody)
 
     override fun requestUrl(sourceProvider: ModelProvider, wireProvider: ModelProvider, defaultUrl: String) =
         (store.load(sourceProvider.oauthCredentialId)?.codeAssistBaseUrl?.takeIf { it in bases(sourceProvider) }
             ?: sourceProvider.baseUrl.trimEnd('/')) + "/v1internal:generateContent"
 
     override fun unwrapResponse(response: JsonObject): JsonObject = (response["response"] as? JsonObject) ?: response
+}
+
+internal fun antigravityTierId(load: JsonObject): String {
+    val defaultTier = (load["allowedTiers"] as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }
+        .firstNotNullOfOrNull { tier ->
+            if ((tier["isDefault"] as? JsonPrimitive)?.booleanOrNull == true)
+                tier.text("id").trim().takeIf(String::isNotBlank) else null
+        }
+    if (defaultTier != null) return defaultTier
+    return (load["currentTier"] as? JsonObject)?.text("id")?.trim()?.takeIf(String::isNotBlank)
+        ?: "free-tier"
 }

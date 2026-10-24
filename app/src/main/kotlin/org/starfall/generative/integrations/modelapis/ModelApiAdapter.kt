@@ -17,7 +17,9 @@ internal data class ModelApiRequest(
     val maxTokens: Int,
     val reasoningEffort: String? = null,
     val sendThinkingContent: Boolean = false,
-    val enabledModelTools: List<String> = emptyList()
+    val enabledModelTools: List<String> = emptyList(),
+    /** Original caller instructions when an account adapter relocates them from top-level system. */
+    val callerSystemPrompt: String? = null
 )
 
 internal interface ModelApiAdapter {

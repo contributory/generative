@@ -72,14 +72,19 @@ internal class GitHubCopilotAdapter(context: Context, attachments: AttachmentRes
     }
     override suspend fun prepareModelProvider(provider: ModelProvider, modelName: String): ModelProvider {
         // Resolve against the current account's live catalog; never reuse another account's routing.
-        val model = runCatching { fetchModelCatalog(provider).firstOrNull { it.id == modelName } }.getOrNull()
-        val supported = (model?.metadata?.get("supported_endpoints") as? JsonArray).orEmpty()
+        // A missing model or a failed catalog request must not silently fall back to name-based routing.
+        val model = fetchModelCatalog(provider).firstOrNull { it.id == modelName }
+            ?: error("Copilot model $modelName is unavailable for the selected account.")
+        val supported = (model.metadata["supported_endpoints"] as? JsonArray).orEmpty()
             .mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
         val wire = prepareAuthenticatedProvider(provider)
         val type = copilotProtocol(modelName, supported)
+        val headers = wire.config.headers.toMutableMap()
+        if (type == ModelApiType.ANTHROPIC) headers["anthropic-beta"] = "interleaved-thinking-2025-05-14"
+        else headers.remove("anthropic-beta")
         return wire.copy(type = type,
             auth = if (type == ModelApiType.ANTHROPIC) Authorization(AuthMethod.CUSTOM_HEADER, "Authorization", "Bearer ${wire.auth.token}") else wire.auth,
-            config = wire.config.copy(headers = wire.config.headers + mapOf("anthropic-beta" to "interleaved-thinking-2025-05-14")))
+            config = wire.config.copy(headers = headers))
     }
 
     override suspend fun fetchModels(provider: ModelProvider): List<String> = fetchModelCatalog(provider).map { it.id }
@@ -141,5 +146,21 @@ internal fun copilotProtocol(id: String, supported: List<String>): ModelApiType 
 
 internal fun copilotDiscoveredModel(item: JsonObject): DiscoveredModel? {
     val id = item.text("id").takeIf(String::isNotBlank) ?: return null
+    if ((item["policy"] as? JsonObject)?.text("state").equals("disabled", ignoreCase = true)) return null
+    if (item.containsKey("model_picker_enabled") &&
+        (item["model_picker_enabled"] as? JsonPrimitive)?.booleanOrNull != true) return null
+    val capabilities = item["capabilities"] as? JsonObject ?: return null
+    if (capabilities.text("type").lowercase() in setOf(
+        "embedding", "embeddings", "image", "images", "audio", "video", "moderation", "rerank")) return null
+    val limits = capabilities["limits"] as? JsonObject ?: return null
+    fun usableLimit(name: String) = (limits[name] as? JsonPrimitive)?.longOrNull?.let { it > 0 } == true
+    // These are the serving limits required by both supplementary reference clients.
+    if (!usableLimit("max_output_tokens") || !usableLimit("max_prompt_tokens")) return null
+    val supports = capabilities["supports"] as? JsonObject ?: return null
+    if ((supports["tool_calls"] as? JsonPrimitive)?.booleanOrNull == null) return null
+    val endpoints = (item["supported_endpoints"] as? JsonArray).orEmpty()
+        .mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+    if (endpoints.isNotEmpty() && endpoints.none {
+        it in setOf("/chat/completions", "/responses", "/v1/messages") }) return null
     return discoveredModel(id, item)
 }

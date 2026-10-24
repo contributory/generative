@@ -19,7 +19,10 @@ import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.starfall.generative.integrations.modelapis.account.AccountProviderAdapterRegistry
-import org.starfall.generative.integrations.modelapis.claudecode.ClaudeCodeAdapter
+import org.starfall.generative.integrations.modelapis.openaicodex.CODEX_SESSION_SCOPE
+import org.starfall.generative.integrations.modelapis.openaicodex.CodexTokenState
+import org.starfall.generative.integrations.modelapis.openaicodex.CodexTokenStore
+import org.starfall.generative.integrations.modelapis.openaicodex.OpenAICodexAdapter
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.shared.files.AttachmentResolver
 import org.starfall.generative.shared.files.*
@@ -65,17 +68,6 @@ class AccountAdapterTest {
             assertNotNull(registry.get(type))
             assertEquals("", Authorization(AuthMethod.OAUTH, value = "private-token").token)
         }
-    }
-
-    @Test fun claudeNormalizationPreservesUserSystemAndTools() {
-        val adapter = ClaudeCodeAdapter(context, AttachmentResolver(context))
-        val provider = ModelProvider("test", "Claude", ModelApiType.CLAUDE_CODE, baseUrl = ModelApiType.CLAUDE_CODE.defaultBaseUrl)
-        val body = obj("system" to str("User instructions"), "tools" to JsonArray(listOf(obj("name" to str("lookup")))))
-        val result = adapter.normalizeToolRequest(provider, provider, body, "User instructions")
-        assertEquals(body["tools"], result["tools"])
-        val blocks = result.getValue("system").jsonArray
-        assertTrue(blocks.first().jsonObject.text("text").contains("Claude Code"))
-        assertEquals("User instructions", blocks.last().jsonObject.text("text"))
     }
 
     @Test fun copilotSetsInitiatorAndVisionHeadersFromRequest() {
@@ -209,6 +201,28 @@ class AccountAdapterTest {
         }
     }
 
+    @Test fun cancellingSseAggregationDuringResponseBodyPropagates() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream")
+                .setBody("data: {\"id\":\"chatcmpl-test\",\"choices\":[]}\n\n")
+                .throttleBody(1, 1, java.util.concurrent.TimeUnit.DAYS))
+            val provider = ModelProvider("sse-cancel", "Test", ModelApiType.OPENAI,
+                auth = Authorization(AuthMethod.BEARER_TOKEN, value = "token"),
+                baseUrl = server.url("/v1").toString())
+            val job = async {
+                ToolHttp().modelResponse(server.url("/v1/chat/completions").toString(), obj(), provider,
+                    true, {}, {})
+            }
+            withContext(Dispatchers.IO) { assertNotNull(server.takeRequest(5, java.util.concurrent.TimeUnit.SECONDS)) }
+            delay(100) // Allow the streaming parser to enter the throttled response body.
+            job.cancel()
+            try {
+                job.await()
+                fail("SSE aggregation cancellation must propagate")
+            } catch (_: CancellationException) { }
+        }
+    }
+
     @Test fun accountAdaptersGenerateRegularChatWithAndWithoutStreaming() = runBlocking {
         for (type in listOf(ModelApiType.CLAUDE_CODE, ModelApiType.ANTIGRAVITY, ModelApiType.GITHUB_COPILOT)) {
             for (stream in listOf(false, true)) {
@@ -238,7 +252,7 @@ class AccountAdapterTest {
                         else -> """data: {"id":"chatcmpl-test","object":"chat.completion.chunk","created":0,"model":"chat","choices":[{"index":0,"delta":{"content":"hello","reasoning_content":"plan"},"finish_reason":null}]}""" + "\n\ndata: [DONE]\n\n"
                     }
                     if (type == ModelApiType.GITHUB_COPILOT)
-                        server.enqueue(MockResponse().setBody("""{"data":[{"id":"chat","supported_endpoints":["/chat/completions"]}]}"""))
+                        server.enqueue(MockResponse().setBody("""{"data":[{"id":"chat","supported_endpoints":["/chat/completions"],"capabilities":{"limits":{"max_output_tokens":1000,"max_prompt_tokens":10000},"supports":{"tool_calls":true}}}]}"""))
                     server.enqueue(MockResponse().setHeader("Content-Type",
                         if (stream) "text/event-stream" else "application/json").setBody(if (stream) eventBody else body))
                     val provider = ModelProvider(id, type.displayName, type,
@@ -298,6 +312,96 @@ class AccountAdapterTest {
             val request = Json.parseToJsonElement(server.takeRequest().body.readUtf8()).jsonObject
             assertEquals("refresh_token", request.text("grant_type"))
             assertEquals("old-refresh", request.text("refresh_token"))
+        }
+    }
+
+    @Test fun codexSessionAndCacheIdentityAreStableExplicitAndConversationScoped() = runBlocking {
+        val store = CodexTokenStore(context)
+        store.save("codex-session", CodexTokenState("access", "refresh", expiresAt = Long.MAX_VALUE))
+        val provider = ModelProvider("codex-session", "Codex", ModelApiType.OPENAI_CODEX,
+            auth = Authorization(AuthMethod.OAUTH, value = OpenAICodexAdapter.AUTH_MARKER),
+            baseUrl = ModelApiType.OPENAI_CODEX.defaultBaseUrl)
+        val adapter = OpenAICodexAdapter(context, AttachmentResolver(context))
+        val wire = adapter.prepareAuthenticatedProvider(provider)
+        val secondWire = adapter.prepareAuthenticatedProvider(provider)
+        assertEquals(wire.config.headers["Session_id"], secondWire.config.headers["Session_id"])
+
+        fun request(scope: String) = obj(
+            "model" to str("gpt-5-codex"), CODEX_SESSION_SCOPE to str(scope),
+            "input" to JsonArray(listOf(obj("role" to str("user"), "content" to str("same text"))))
+        )
+        val first = adapter.normalizeToolRequest(provider, wire, request("message-a"), "")
+        val repeated = adapter.normalizeToolRequest(provider, wire, request("message-a"), "")
+        val independent = adapter.normalizeToolRequest(provider, wire, request("message-b"), "")
+        val cache = first.text("prompt_cache_key")
+        assertEquals(cache, repeated.text("prompt_cache_key"))
+        assertNotEquals(cache, independent.text("prompt_cache_key"))
+        assertFalse(first.containsKey(CODEX_SESSION_SCOPE))
+        val otherAccount = adapter.normalizeToolRequest(provider.copy(id = "other-account"), wire,
+            request("message-a"), "")
+        assertNotEquals(cache, otherAccount.text("prompt_cache_key"))
+
+        val scopedWire = adapter.prepareRequestProvider(provider, wire, request("message-a"))
+        assertEquals(cache, scopedWire.config.headers["Session_id"])
+        assertEquals(cache, scopedWire.config.headers["Conversation_id"])
+        val explicit = JsonObject(request("message-a") + ("prompt_cache_key" to str("caller-cache")))
+        assertEquals("caller-cache", adapter.normalizeToolRequest(provider, wire, explicit, "").text("prompt_cache_key"))
+        val explicitWire = adapter.prepareRequestProvider(provider, wire, explicit)
+        assertEquals("caller-cache", explicitWire.config.headers["Session_id"])
+        assertEquals("caller-cache", explicitWire.config.headers["Conversation_id"])
+    }
+
+    @Test fun codexConcurrentRefreshIsSerializedAndPersistsRotatedToken() = runBlocking {
+        MockWebServer().use { server ->
+            val store = CodexTokenStore(context)
+            store.save("codex-refresh", CodexTokenState("expired", "old-refresh", expiresAt = 1,
+                accountId = "account", email = "user@example.com"))
+            server.enqueue(MockResponse().setBody(
+                """{"access_token":"fresh","refresh_token":"rotated","expires_in":3600}"""))
+            val provider = ModelProvider("codex-refresh", "Codex", ModelApiType.OPENAI_CODEX,
+                auth = Authorization(AuthMethod.OAUTH, value = OpenAICodexAdapter.AUTH_MARKER),
+                baseUrl = ModelApiType.OPENAI_CODEX.defaultBaseUrl)
+            val adapters = List(2) {
+                OpenAICodexAdapter(context, AttachmentResolver(context),
+                    tokenEndpoint = server.url("/token").toString())
+            }
+            val prepared = (1..10).map { index ->
+                async { adapters[index % adapters.size].prepareAuthenticatedProvider(provider) }
+            }.awaitAll()
+            assertTrue(prepared.all { it.auth.token == "fresh" })
+            assertEquals(1, server.requestCount)
+            val saved = store.load("codex-refresh")!!
+            assertEquals("rotated", saved.refreshToken)
+            assertEquals("account", saved.accountId)
+            assertEquals("user@example.com", saved.email)
+            val request = server.takeRequest()
+            val body = request.body.readUtf8()
+            assertTrue(body.contains("grant_type=refresh_token"))
+            assertTrue(body.contains("refresh_token=old-refresh"))
+        }
+    }
+
+    @Test fun codexCancellingRefreshKeepsStoredCredentialsAndPropagatesCancellation() = runBlocking {
+        MockWebServer().use { server ->
+            val original = CodexTokenState("expired", "refresh", expiresAt = 1)
+            val store = CodexTokenStore(context)
+            store.save("codex-cancel-refresh", original)
+            server.enqueue(MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.NO_RESPONSE))
+            val provider = ModelProvider("codex-cancel-refresh", "Codex", ModelApiType.OPENAI_CODEX,
+                auth = Authorization(AuthMethod.OAUTH, value = OpenAICodexAdapter.AUTH_MARKER),
+                baseUrl = ModelApiType.OPENAI_CODEX.defaultBaseUrl)
+            val adapter = OpenAICodexAdapter(context, AttachmentResolver(context),
+                tokenEndpoint = server.url("/token").toString())
+            val job = async { adapter.prepareAuthenticatedProvider(provider) }
+            withContext(Dispatchers.IO) {
+                assertNotNull(server.takeRequest(5, java.util.concurrent.TimeUnit.SECONDS))
+            }
+            job.cancel()
+            try {
+                job.await()
+                fail("Codex refresh cancellation must propagate")
+            } catch (_: CancellationException) { }
+            assertEquals(original, store.load("codex-cancel-refresh"))
         }
     }
 

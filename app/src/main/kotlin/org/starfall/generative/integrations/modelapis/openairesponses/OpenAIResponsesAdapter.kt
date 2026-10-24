@@ -105,7 +105,7 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
                     )
                 }
             }
-            if (!provider.config.supportStream) {
+            if (!provider.config.supportStream && !codexWire) {
                 val response = sdk.sdkCall { client.responses().create(params.build()) }
                 check(!response.error().isPresent) { "OpenAI Responses request failed" }
                 response.output().forEach { item ->
@@ -123,17 +123,22 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
                 val iterator = response.stream().iterator()
                 var finished = false
                 var usage: TokenUsage? = null
+                // Codex requires upstream SSE even for a non-stream caller. Buffer those events
+                // until completion so the caller's configured delivery semantics stay unchanged.
+                val bufferEvents = codexWire && !provider.config.supportStream
+                val bufferedText = StringBuilder()
+                val bufferedReasoning = StringBuilder()
                 while (sdk.sdkCall { iterator.hasNext() }) {
                     val event = iterator.next()
                     check(!event.error().isPresent && !event.failed().isPresent) { "OpenAI Responses stream failed" }
                     event.reasoningTextDelta().orElse(null)?.delta()?.takeIf { it.isNotEmpty() }?.let {
-                        emit(GenerationEvent.Reasoning(it))
+                        if (bufferEvents) bufferedReasoning.append(it) else emit(GenerationEvent.Reasoning(it))
                     }
                     event.reasoningSummaryTextDelta().orElse(null)?.delta()?.takeIf { it.isNotEmpty() }?.let {
-                        emit(GenerationEvent.Reasoning(it))
+                        if (bufferEvents) bufferedReasoning.append(it) else emit(GenerationEvent.Reasoning(it))
                     }
                     event.outputTextDelta().orElse(null)?.delta()?.takeIf { it.isNotEmpty() }?.let {
-                        emit(GenerationEvent.Text(it))
+                        if (bufferEvents) bufferedText.append(it) else emit(GenerationEvent.Text(it))
                     }
                     if (event.completed().isPresent || event.incomplete().isPresent) {
                         finished = true
@@ -143,6 +148,10 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
                     }
                 }
                 check(finished) { "OpenAI Responses stream ended without a final response" }
+                if (bufferEvents) {
+                    if (bufferedReasoning.isNotEmpty()) emit(GenerationEvent.Reasoning(bufferedReasoning.toString()))
+                    if (bufferedText.isNotEmpty()) emit(GenerationEvent.Text(bufferedText.toString()))
+                }
                 usage?.let { emit(GenerationEvent.Usage(it)) }
             }
         }
