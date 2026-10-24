@@ -12,6 +12,8 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import org.starfall.generative.features.providers.shared.logic.isEmpty
+import org.starfall.generative.features.providers.shared.model.ModelConnectionProgress
+import org.starfall.generative.features.providers.shared.model.ModelConnectionStatus
 import org.starfall.generative.shared.model.provider.ModelProvider
 
 internal class ModelConnectionTests(
@@ -29,6 +31,28 @@ internal class ModelConnectionTests(
     private val manualSemaphore = Semaphore(4)
     private val revisions = mutableMapOf<String, Long>()
     private fun revision(id: String): Long = revisions[id] ?: 0L
+
+    /** Outcome of one model's last probe, or null while it has no result to show. */
+    fun status(modelId: String): ModelConnectionStatus? = results[modelId]?.let { result ->
+        when {
+            result.isFailure -> ModelConnectionStatus.FAILED
+            // A blank reply proves the endpoint answered yet delivered nothing; report it as a warning, not a pass.
+            result.getOrNull().isNullOrBlank() -> ModelConnectionStatus.WARNING
+            else -> ModelConnectionStatus.PASSED
+        }
+    }
+
+    /** How far testing has come across [modelIds] and how the finished probes ended. */
+    fun progress(modelIds: Collection<String>): ModelConnectionProgress {
+        val outcomes = modelIds.mapNotNull { status(it) }
+        return ModelConnectionProgress(
+            tested = outcomes.size,
+            total = modelIds.size,
+            passed = outcomes.count { it == ModelConnectionStatus.PASSED },
+            warnings = outcomes.count { it == ModelConnectionStatus.WARNING },
+            failures = outcomes.count { it == ModelConnectionStatus.FAILED }
+        )
+    }
 
     fun test(provider: ModelProvider, modelId: String) {
         if (!scope.isActive || batchRunning.value || running[modelId] == true) return

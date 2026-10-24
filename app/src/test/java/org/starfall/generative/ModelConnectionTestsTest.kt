@@ -5,6 +5,8 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.features.providers.shared.logic.ModelConnectionTests
+import org.starfall.generative.features.providers.shared.model.ModelConnectionProgress
+import org.starfall.generative.features.providers.shared.model.ModelConnectionStatus
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
 
@@ -88,5 +90,26 @@ class ModelConnectionTestsTest {
         assertFalse(tests.results.containsKey("pending"))
         tests.test(provider, "after-cancellation")
         assertFalse(tests.running.containsKey("after-cancellation"))
+    }
+
+    @Test fun blankRepliesBecomeWarningsAndDoNotCountAsTestedFailures() = runBlocking {
+        val tests = ModelConnectionTests(CoroutineScope(coroutineContext + Dispatchers.Unconfined)) { _, id ->
+            when (id) {
+                "empty" -> Result.success("")
+                "whitespace" -> Result.success("   ")
+                "gone" -> Result.failure(IllegalStateException("HTTP 404"))
+                else -> Result.success("OK")
+            }
+        }
+        tests.testAll(provider, listOf("ok", "empty", "whitespace", "gone"))
+        assertEquals(ModelConnectionStatus.PASSED, tests.status("ok"))
+        assertEquals(ModelConnectionStatus.WARNING, tests.status("empty"))
+        assertEquals(ModelConnectionStatus.WARNING, tests.status("whitespace"))
+        assertEquals(ModelConnectionStatus.FAILED, tests.status("gone"))
+        assertNull(tests.status("unchecked"))
+
+        val models = listOf("ok", "empty", "whitespace", "gone", "unchecked")
+        assertEquals(ModelConnectionProgress(tested = 4, total = 5, passed = 1, warnings = 2, failures = 1), tests.progress(models))
+        assertEquals(ModelConnectionProgress(tested = 0, total = 1), tests.progress(listOf("unchecked")))
     }
 }

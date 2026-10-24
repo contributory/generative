@@ -30,6 +30,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import org.starfall.generative.features.providers.shared.ui.ModelConnectionDialog
+import org.starfall.generative.features.providers.shared.ui.ModelConnectionStatusBar
 import org.starfall.generative.features.providers.shared.logic.ModelConnectionTests
 import org.starfall.generative.features.providers.shared.ui.OAuthAccountCard
 import org.starfall.generative.features.providers.shared.ui.ProviderApiKeysDialog
@@ -47,6 +48,7 @@ import org.starfall.generative.shared.model.auth.defaultAuthorization
 import org.starfall.generative.shared.model.auth.editMethod
 import org.starfall.generative.shared.model.language.DiscoveredModel
 import org.starfall.generative.shared.model.language.ModelConfiguration
+import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.media.MediaRequestProfile
 import org.starfall.generative.shared.model.provider.ProviderOAuthAccount
@@ -141,6 +143,21 @@ fun ProviderEditor(
     var editingModel by remember(initialProvider.id, initialEditingModelId) { mutableStateOf(initialEditingModelId) }
     var showCatalog by remember { mutableStateOf(false) }
     var catalog by remember { mutableStateOf<Map<String, DiscoveredModel>>(emptyMap()) }
+    // Probes belong to this screen rather than the dialog, so the status strip keeps reporting them
+    // while the dialog is closed and stops when the editor is left.
+    val testScope = order.filter { models[it]?.modelType == ModelType.TEXT_GENERATION }
+    val testingConnection = tests.batchRunning.value || testScope.any { tests.running[it] == true }
+    val testProgress = tests.progress(testScope)
+    var showTestSummary by remember(initialProvider.id) { mutableStateOf(false) }
+    var testingConnectionBefore by remember(initialProvider.id) { mutableStateOf(false) }
+    LaunchedEffect(testingConnection, initialProvider.id) {
+        if (testingConnection) {
+            showTestSummary = false; testingConnectionBefore = true
+        } else if (testingConnectionBefore) {
+            // Report the run only once it has actually finished, so a reopened screen does not repeat an old notice.
+            showTestSummary = testProgress.tested > 0; testingConnectionBefore = false
+        }
+    }
     val activeHeaders = headerRows.filterNot { (key, value) -> key.isBlank() && value.isBlank() }
     val headersValid = activeHeaders.all { (key, value) -> key.isNotBlank() && key.none { it <= ' ' || it == ':' || it.code >= 127 } && value.none { it == '\r' || it == '\n' } } &&
         activeHeaders.map { it.first.lowercase() }.distinct().size == activeHeaders.size
@@ -224,7 +241,6 @@ fun ProviderEditor(
                         if (pager.currentPage == 0) Button(enabled = valid && !oauthAuthorizing && !iconImporting,
                             onClick = { onSave(draft()) }, modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(R.string.common_save)) }
                         else {
-                            val testingConnection = tests.batchRunning.value || tests.running.values.any { it }
                             IconButton(onClick = { showTestDialog = true },
                                 enabled = testingConnection || (onTestConnection != null && (type.isAccountProvider || baseUrl.isNotBlank()) && valid && models.isNotEmpty())) {
                                 Box(contentAlignment = Alignment.Center) {
@@ -242,6 +258,7 @@ fun ProviderEditor(
                         Tab(pager.currentPage == 0, { scope.launch { pager.animateScrollToPage(0) } }, text = { Text(stringResource(R.string.provider_configuration)) })
                         Tab(pager.currentPage == 1, { scope.launch { pager.animateScrollToPage(1) } }, text = { Text(stringResource(R.string.provider_models)) })
                     }
+                    ModelConnectionStatusBar(testProgress, testingConnection, showTestSummary, onDismissSummary = { showTestSummary = false })
                     HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
                         if (page == 0) Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             IconPickerRow(providerIcon, { providerIcon = it }, text = providerInitials(name), onBusyChange = { iconImporting = it }, matchName = name, faviconBaseUrl = baseUrl, fetchState = faviconFetch)
