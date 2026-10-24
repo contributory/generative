@@ -15,10 +15,13 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -46,6 +49,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -132,6 +136,8 @@ fun FeaturesScreen(
         (LocalConfiguration.current.screenWidthDp.dp.toPx() / 2f)
     }
     val backThresholdPx = with(androidx.compose.ui.platform.LocalDensity.current) { 80.dp.toPx() }
+    val safeDrawing = WindowInsets.safeDrawing.asPaddingValues()
+    val layoutDirection = LocalLayoutDirection.current
 
     LazyColumn(
         modifier = modifier.fillMaxSize()
@@ -162,7 +168,22 @@ fun FeaturesScreen(
                     }
                 )
             },
-        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 24.dp),
+        // Draw the list itself behind transparent system bars, but keep interactive content inside
+        // the safe area. This is the same edge-to-edge arrangement used by ChatScreen.
+        contentPadding = PaddingValues(
+            start = 16.dp + if (layoutDirection == androidx.compose.ui.unit.LayoutDirection.Ltr) {
+                safeDrawing.calculateLeftPadding(layoutDirection)
+            } else {
+                safeDrawing.calculateRightPadding(layoutDirection)
+            },
+            top = 16.dp + safeDrawing.calculateTopPadding(),
+            end = 16.dp + if (layoutDirection == androidx.compose.ui.unit.LayoutDirection.Ltr) {
+                safeDrawing.calculateRightPadding(layoutDirection)
+            } else {
+                safeDrawing.calculateLeftPadding(layoutDirection)
+            },
+            bottom = 24.dp + safeDrawing.calculateBottomPadding()
+        ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item(key = "app-logo") {
