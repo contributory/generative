@@ -487,6 +487,7 @@ This document is the detailed package map and architecture reference. The mandat
 │       │   ├── 📄 AdaptiveCardLayout.kt
 │       │   ├── 📄 AmoledBorder.kt
 │       │   ├── 📄 ResponsiveLayout.kt
+│       │   ├── 📄 ScreenCover.kt
 │       │   ├── 📄 SettingsCard.kt
 │       │   └── 📄 SlideScreenContent.kt
 │       ├── 📁 lists/

@@ -157,18 +157,27 @@ fun InlineVideoPreview(reference: String, thumbnail: ImageBitmap?, modifier: Mod
         }
         overlay()
     }
-    if (fullscreen) Dialog(onDismissRequest = { fullscreen = false },
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        val window = (LocalView.current.parent as? DialogWindowProvider)?.window
-        DisposableEffect(window) {
-            window?.let { WindowCompat.getInsetsController(it, it.decorView).hide(WindowInsetsCompat.Type.systemBars()) }
-            onDispose { }
-        }
-        Box(Modifier.fillMaxSize().background(Color.Black)) {
-            VideoPlayback(reference, fullscreen = true, initialPosition = resumePosition, autoPlay = resumePlaying,
-                onPositionChanged = { resumePosition = it }, onPlayingChanged = { resumePlaying = it }, onFullscreen = { fullscreen = false })
-            IconButton(onClick = { fullscreen = false }, modifier = Modifier.align(Alignment.TopStart).padding(8.dp)) {
-                FluentIcon(Icons.Outlined.Close, stringResource(R.string.video_exit_fullscreen), tint = Color.White)
+    if (fullscreen) {
+        org.starfall.generative.shared.ui.layout.ScreenCover(onDismiss = { fullscreen = false }) {
+            Box(Modifier.fillMaxSize().background(Color.Black)) {
+                VideoPlayback(
+                    reference,
+                    fullscreen = true,
+                    initialPosition = resumePosition,
+                    autoPlay = resumePlaying,
+                    onPositionChanged = { resumePosition = it },
+                    onPlayingChanged = { resumePlaying = it },
+                    onFullscreen = { fullscreen = false })
+                IconButton(
+                    onClick = { fullscreen = false },
+                    modifier = Modifier.align(Alignment.TopStart).padding(8.dp).statusBarsPadding()
+                ) {
+                    FluentIcon(
+                        Icons.Outlined.Close,
+                        stringResource(R.string.video_exit_fullscreen),
+                        tint = Color.White
+                    )
+                }
             }
         }
     }
