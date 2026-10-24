@@ -233,6 +233,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         compose.onNodeWithText("Models").performClick()
         compose.waitForIdle()
         compose.onNodeWithContentDescription("Test connection").performClick()
+        compose.onNode(hasText("Test connection") and hasAnyAncestor(isDialog())).assertDoesNotExist()
         compose.onNode(hasText("image-only") and hasAnyAncestor(isDialog())).assertDoesNotExist()
         compose.onNodeWithContentDescription("Test all language models").performClick()
         compose.waitUntil(5_000) { calls.size == 2 }
@@ -245,7 +246,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         compose.onNodeWithText("text-bad").assertDoesNotExist()
     }
 
-    @Test fun emptyConnectionReplyWarnsAndFinishedNoticeSwipesAway() {
+    @Test fun emptyConnectionReplyWarnsInsideDialogWithoutOutsideResultBanner() {
         val models = mapOf("text-empty" to ModelConfiguration(), "text-ok" to ModelConfiguration())
         compose.setContent { MaterialTheme {
             ProviderEditor(provider.copy(config = ProviderConfiguration(modelConfigs = models)), false,
@@ -257,18 +258,19 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         compose.onNodeWithContentDescription("Test connection").performClick()
         compose.onNodeWithContentDescription("Test all language models").performClick()
         compose.waitUntil(5_000) {
-            compose.onAllNodesWithText("Connection tests finished", substring = true).fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodesWithText("No content").fetchSemanticsNodes().isNotEmpty() &&
+                compose.onAllNodesWithContentDescription("1 passed").fetchSemanticsNodes().isNotEmpty() &&
+                compose.onAllNodesWithContentDescription("1 returned no content").fetchSemanticsNodes().isNotEmpty()
         }
         compose.onNodeWithText("No content").assertIsDisplayed()
-        // The header reports the run with icons and counts rather than sentences.
+        // The dialog toolbar reports the run with icons and counts rather than a title or banner.
         compose.onNodeWithContentDescription("1 passed").assertIsDisplayed()
         compose.onNodeWithContentDescription("1 returned no content").assertIsDisplayed()
+        compose.onNodeWithText("Connection tests finished").assertDoesNotExist()
+        compose.onNodeWithTag("model-connection-status").assertDoesNotExist()
         compose.onNodeWithContentDescription("Close").performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("Connection tests finished").assertIsDisplayed()
-        compose.onNodeWithTag("model-connection-status").performTouchInput { swipeLeft() }
-        compose.mainClock.advanceTimeBy(600)
-        compose.waitForIdle()
+        compose.onNodeWithText("Connection tests finished").assertDoesNotExist()
         compose.onNodeWithTag("model-connection-status").assertDoesNotExist()
     }
 
