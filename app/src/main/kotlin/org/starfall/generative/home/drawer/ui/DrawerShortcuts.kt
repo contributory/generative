@@ -224,30 +224,14 @@ private fun RemoteMachinesShortcut(
                         modifier = Modifier.padding(horizontal = 14.dp)
                     )
                     if (machines.isEmpty()) {
-                        Column(
+                        Text(
+                            text = stringResource(R.string.remote_machine_empty_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.remote_machine_empty_hint),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            TextButton(
-                                onClick = onOpenSettings,
-                                modifier = Modifier.align(Alignment.Start)
-                            ) {
-                                Text(stringResource(R.string.remote_machines_title))
-                                Spacer(Modifier.width(4.dp))
-                                FluentIcon(
-                                    FluentUi.Regular.ArrowForward,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                        }
+                                .padding(horizontal = 14.dp, vertical = 12.dp)
+                        )
                     } else {
                         Column(
                             modifier = Modifier
@@ -295,23 +279,6 @@ private fun RemoteMachinesShortcut(
                                             )
                                         )
                                     }
-                                }
-                            }
-                            // Footer action to manage machines when the list is long.
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 4.dp),
-                                horizontalArrangement = Arrangement.End
-                            ) {
-                                TextButton(onClick = onOpenSettings) {
-                                    Text(stringResource(R.string.remote_machine_settings))
-                                    Spacer(Modifier.width(4.dp))
-                                    FluentIcon(
-                                        FluentUi.Regular.Open,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp)
-                                    )
                                 }
                             }
                         }
