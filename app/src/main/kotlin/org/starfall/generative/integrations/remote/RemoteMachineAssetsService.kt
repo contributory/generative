@@ -149,7 +149,7 @@ internal class RemoteMachineAssetsService(
         uploadedPublicKey(file)?.let { return it }
         val jsch = JSch()
         if (machine.identityPassphrase.isBlank()) jsch.addIdentity(file.absolutePath)
-        else jsch.addIdentity(file.absolutePath, machine.identityPassphrase)
+        else jsch.addIdentity(file.absolutePath, machine.identityPassphrase.toByteArray(Charsets.UTF_8))
         val identity = jsch.identityRepository.identities.firstOrNull()
             ?: error("Could not read the public key for IdentityFile.")
         val algorithm = identity.algName

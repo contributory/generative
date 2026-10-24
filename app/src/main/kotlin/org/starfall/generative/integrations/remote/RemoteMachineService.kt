@@ -381,7 +381,7 @@ class RemoteMachineService(
             val identity = assets.resolveIdentity(machine.identityFile)
                 ?: error("Identity file not found: ${machine.identityFile.substringAfterLast('/')}. Upload it in Remote Settings or fix IdentityFile.")
             if (machine.identityPassphrase.isBlank()) jsch.addIdentity(identity.absolutePath)
-            else jsch.addIdentity(identity.absolutePath, machine.identityPassphrase)
+            else jsch.addIdentity(identity.absolutePath, machine.identityPassphrase.toByteArray(Charsets.UTF_8))
         }
         val session = jsch.getSession(machine.username, machine.host, machine.port)
         val passwordMode = machine.authentication == RemoteAuthentication.PASSWORD
@@ -392,7 +392,7 @@ class RemoteMachineService(
         if (!plainSavedPassword) {
             session.setUserInfo(PasswordKeyboardInteractiveUserInfo(machine.username, password, askSecret))
         }
-        if (password.isNotEmpty()) session.setPassword(password)
+        if (password.isNotEmpty()) session.setPassword(password.toByteArray(Charsets.UTF_8))
         session.setConfig("StrictHostKeyChecking", if (machine.strictHostKeyChecking) "yes" else "no")
         session.setConfig(
             "PreferredAuthentications",
