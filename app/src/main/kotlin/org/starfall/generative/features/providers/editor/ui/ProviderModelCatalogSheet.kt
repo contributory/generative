@@ -151,9 +151,10 @@ internal fun ProviderModelCatalogSheet(
                         if (expanded) {
                             Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 12.dp),
                                 verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                model?.metadata?.filter { (key, value) ->
+                                val metadata = model?.metadata?.filter { (key, value) ->
                                     key !in setOf("id", "name", "display_name", "displayName") && value != JsonNull
-                                }?.forEach { (key, value) ->
+                                }.orEmpty()
+                                for ((key, value) in metadata) {
                                     val label = key.replace('_', ' ').replaceFirstChar { it.uppercase() }
                                     val detail = formatCatalogMetadata(key, value)
                                     Text("$label: $detail", style = MaterialTheme.typography.bodySmall,
