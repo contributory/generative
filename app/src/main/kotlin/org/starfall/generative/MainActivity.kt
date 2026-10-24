@@ -9,8 +9,6 @@ import android.widget.Toast
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
-import androidx.activity.SystemBarStyle
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.luminance
@@ -43,6 +41,7 @@ import org.starfall.generative.features.machines.shared.logic.RemoteMachinesView
 import org.starfall.generative.shared.model.parseProviderLink
 import org.starfall.generative.shared.ui.dialogs.CrashReportDialog
 import org.starfall.generative.shared.ui.logging.DebugLogOverlay
+import org.starfall.generative.shared.ui.layout.enableTransparentSystemBars
 import org.starfall.generative.navigation.AppNavigation
 import org.starfall.generative.home.chat.logic.ChatViewModel
 import org.starfall.generative.home.shared.logic.ChatBackgroundService
@@ -71,18 +70,7 @@ class MainActivity : ComponentActivity() {
         // A recreated Activity (rotation, locale change, process restore) still carries the original
         // launch intent; only a fresh launch may import its provider link.
         if (savedInstanceState == null) handleIntent(intent)
-        // Keep both system bars genuinely transparent in gesture and three-button navigation modes.
-        // The default edge-to-edge navigation style may add a contrast scrim on some Android versions.
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.auto(
-                android.graphics.Color.TRANSPARENT,
-                android.graphics.Color.TRANSPARENT
-            ),
-            navigationBarStyle = SystemBarStyle.auto(
-                android.graphics.Color.TRANSPARENT,
-                android.graphics.Color.TRANSPARENT
-            )
-        )
+        enableTransparentSystemBars()
 
         lifecycleScope.launch {
             viewModel.isAnyGenerating.collect { busy ->

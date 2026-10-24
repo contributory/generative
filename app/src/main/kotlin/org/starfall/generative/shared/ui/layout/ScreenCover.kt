@@ -12,32 +12,35 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import org.starfall.generative.shared.theme.modalScrimColor
 
 /**
- * Full-screen cover that dims the content behind it while keeping it visible.
- *
- * Unlike a [androidx.compose.ui.window.Dialog], the background behind the cover
- * remains composed and is only darkened by the scrim. The cover itself fills
- * the window via a [Popup] so it can be invoked from nested layouts (chat
- * bubbles, storage rows) and still cover the entire screen.
+ * A full-window cover with a tappable scrim. Content is deliberately not click-consuming:
+ * interactive media and controls consume their own gestures, while uncovered areas dismiss.
  */
 @Composable
 fun ScreenCover(
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.fillMaxSize(),
     scrimColor: Color = modalScrimColor(Color.Black.copy(alpha = 0.60f)),
     content: @Composable BoxScope.() -> Unit
 ) {
     Popup(
+        popupPositionProvider = FullWindowPopupPositionProvider,
         onDismissRequest = onDismiss,
         properties = PopupProperties(
             focusable = true,
             dismissOnBackPress = false,
+            dismissOnClickOutside = false,
             usePlatformDefaultWidth = false,
-            clippingEnabled = false
+            clippingEnabled = true
         )
     ) {
         BackHandler(onBack = onDismiss)
@@ -52,18 +55,17 @@ fun ScreenCover(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            // Content layer consumes clicks so the scrim underneath is not dismissed
-            // when the viewer itself is tapped.
-            Box(
-                modifier = modifier
-                    .fillMaxSize()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {}
-                    ),
-                content = content
-            )
+            Box(modifier = modifier, content = content)
         }
     }
+}
+
+/** Pins the cover to the window rather than to the message or file tile that opened it. */
+internal object FullWindowPopupPositionProvider : PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize
+    ): IntOffset = IntOffset.Zero
 }

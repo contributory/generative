@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
 import org.starfall.generative.home.chat.ui.markdown.LatexCacheKey
+import org.starfall.generative.home.chat.ui.markdown.LatexDisplayMode
 import org.starfall.generative.home.chat.ui.markdown.latexCacheKey
 import org.starfall.generative.home.chat.ui.markdown.latexFallbackSource
 
@@ -22,5 +23,10 @@ class LatexFormulaRendererTest {
         val unsupported = "\\unsupported{formula}"
 
         assertEquals(unsupported, latexFallbackSource(unsupported))
+    }
+
+    @Test fun displayModeCyclesBetweenOverflowAndFitWidth() {
+        assertEquals(LatexDisplayMode.FitWidth, LatexDisplayMode.Overflow.next())
+        assertEquals(LatexDisplayMode.Overflow, LatexDisplayMode.FitWidth.next())
     }
 }

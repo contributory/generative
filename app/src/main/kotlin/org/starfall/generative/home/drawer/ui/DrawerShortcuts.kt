@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -40,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
+import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.remoteMachineEnabled
 import org.starfall.generative.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.icons.FluentIcon
@@ -47,6 +49,7 @@ import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
+import org.starfall.generative.shared.ui.machines.MachineToolsDialog
 
 /**
  * Single combined card at the top of the left drawer.
@@ -58,6 +61,7 @@ import org.starfall.generative.shared.ui.layout.prominentContainerColor
 internal fun DrawerQuickShortcuts(
     onOpenMediaStorage: () -> Unit,
     onOpenRemoteMachines: () -> Unit,
+    onSaveMachineTools: (RemoteMachine) -> Unit,
     modifier: Modifier = Modifier,
     maxExpandedHeight: Dp = 280.dp
 ) {
@@ -65,15 +69,17 @@ internal fun DrawerQuickShortcuts(
     val machines = controls.machines
     val enabledCount = machines.count { remoteMachineEnabled(controls.settings, it) }
     var expanded by rememberSaveable { mutableStateOf(false) }
+    var toolsMachine by remember { mutableStateOf<RemoteMachine?>(null) }
 
     val subtitle = if (machines.isEmpty()) {
         stringResource(R.string.remote_machine_none_configured)
     } else {
-        "${machines.size} machines • $enabledCount enabled"
+        stringResource(R.string.remote_machine_counts, machines.size, enabledCount)
     }
 
     // Header (~72dp) + Media row (~66dp) + dividers ≈ 150dp. Rest is scrollable list.
-    val listMaxHeight = (maxExpandedHeight - 150.dp).coerceAtLeast(100.dp)
+    // On short screens preserve those rows instead of forcing the card beyond its half-drawer cap.
+    val listMaxHeight = (maxExpandedHeight - 150.dp).coerceAtLeast(0.dp)
 
     Surface(
         shape = RoundedCornerShape(18.dp),
@@ -110,7 +116,7 @@ internal fun DrawerQuickShortcuts(
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Remote",
+                        text = stringResource(R.string.remote_machine_short_title),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -191,6 +197,8 @@ internal fun DrawerQuickShortcuts(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .clickable { toolsMachine = machine }
                                             .padding(horizontal = 8.dp, vertical = 6.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -258,7 +266,7 @@ internal fun DrawerQuickShortcuts(
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Media",
+                        text = stringResource(R.string.storage_short_title),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -282,5 +290,16 @@ internal fun DrawerQuickShortcuts(
                 )
             }
         }
+    }
+
+    toolsMachine?.let { machine ->
+        MachineToolsDialog(
+            machine = machine,
+            onDismiss = { toolsMachine = null },
+            onSave = { updated ->
+                onSaveMachineTools(updated)
+                toolsMachine = null
+            }
+        )
     }
 }

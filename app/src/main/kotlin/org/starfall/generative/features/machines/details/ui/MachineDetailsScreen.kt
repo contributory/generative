@@ -44,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -62,21 +63,15 @@ import org.starfall.generative.features.machines.shared.ui.RemoteMachinesTopBar
 import org.starfall.generative.features.machines.shared.ui.RemoteSection
 import org.starfall.generative.features.machines.shared.ui.RemoteTextField
 import org.starfall.generative.features.machines.shared.ui.RemoteToggle
+import org.starfall.generative.features.machines.shared.ui.remoteLiteralKeyboardOptions
 import org.starfall.generative.shared.model.GCloudOAuthClient
 import org.starfall.generative.shared.model.GoogleOAuthClientType
 import org.starfall.generative.shared.model.REMOTE_SFTP_HOME
-import org.starfall.generative.shared.model.REMOTE_TOOL_CLOSE_TERMINAL
-import org.starfall.generative.shared.model.REMOTE_TOOL_DISCONNECT
-import org.starfall.generative.shared.model.REMOTE_TOOL_LIST_TERMINAL
-import org.starfall.generative.shared.model.REMOTE_TOOL_OPEN_TERMINAL
-import org.starfall.generative.shared.model.REMOTE_TOOL_START_MACHINE
-import org.starfall.generative.shared.model.REMOTE_TOOL_UPDATE_IP
 import org.starfall.generative.shared.model.RemoteAuthentication
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineState
 import org.starfall.generative.shared.model.RemoteMachineType
 import org.starfall.generative.shared.model.remote.REMOTE_GOOGLE_CLOUD_SCOPE
-import org.starfall.generative.shared.model.remoteMachineToolNames
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
@@ -114,18 +109,7 @@ internal fun MachineDetailsScreen(
     var timeout by remember(initial.id) { mutableStateOf(initial.connectTimeoutSeconds.toString()) }
     var oauthClientId by remember(initial.id) { mutableStateOf(initial.oauthClientId) }
     var environment by remember(initial.id) { mutableStateOf(initial.environmentName) }
-    var sftpDirectory by remember(initial.id) {
-        mutableStateOf(initial.sftpDirectory.ifBlank { REMOTE_SFTP_HOME })
-    }
-    var portForwarding by remember(initial.id) { mutableStateOf(initial.portForwarding) }
-    var aiTools by remember(initial.id) {
-        mutableStateOf(
-            initial.aiTools.ifEmpty {
-                if (initial.aiToolsEnabled) emptyMap()
-                else initial.supportedToolNames().associateWith { false }
-            }
-        )
-    }
+    var sftpDirectory by remember(initial.id) { mutableStateOf(initial.sftpDirectory.ifBlank { REMOTE_SFTP_HOME }) }
     var error by remember { mutableStateOf<String?>(null) }
     val nameRequiredError = stringResource(R.string.remote_machine_name_required)
     val hostRequiredError = stringResource(R.string.remote_machine_host_required)
@@ -194,10 +178,7 @@ internal fun MachineDetailsScreen(
             oauthClientId = oauthClientId,
             environmentName = environment,
             sftpDirectory = sftpDirectory.trim().ifBlank { REMOTE_SFTP_HOME },
-            portForwarding = portForwarding,
-            gcloudUsername = if (type == RemoteMachineType.GCLOUD_SHELL) username else initial.gcloudUsername,
-            aiToolsEnabled = true,
-            aiTools = aiTools
+            gcloudUsername = if (type == RemoteMachineType.GCLOUD_SHELL) username else initial.gcloudUsername
         )
         runCatching {
             require(name.isNotBlank()) { nameRequiredError }
@@ -205,7 +186,6 @@ internal fun MachineDetailsScreen(
             require(type != RemoteMachineType.SSH || auth != RemoteAuthentication.PRIVATE_KEY || identityFile.isNotBlank()) {
                 identityRequiredError
             }
-            portForwarding.validated()
         }.onSuccess { onSave(machine) }.onFailure { error = it.message }
     }
 
@@ -247,13 +227,19 @@ internal fun MachineDetailsScreen(
             RemoteSection(stringResource(R.string.remote_machine_connection_section)) {
                 if (type == RemoteMachineType.SSH) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        RemoteTextField(host, { host = it }, stringResource(R.string.remote_machine_host), Modifier.weight(1f))
-                        RemoteTextField(port, { if (it.all(Char::isDigit)) port = it }, stringResource(R.string.remote_machine_port), Modifier.width(100.dp))
+                        RemoteTextField(
+                            host, { host = it }, stringResource(R.string.remote_machine_host), Modifier.weight(1f),
+                            keyboardOptions = remoteLiteralKeyboardOptions()
+                        )
+                        RemoteTextField(
+                            port, { if (it.all(Char::isDigit)) port = it }, stringResource(R.string.remote_machine_port), Modifier.width(100.dp),
+                            keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
+                        )
                     }
                 } else {
-                    RemoteTextField(environment, { environment = it }, stringResource(R.string.remote_machine_environment))
+                    RemoteTextField(environment, { environment = it }, stringResource(R.string.remote_machine_environment), keyboardOptions = remoteLiteralKeyboardOptions())
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        RemoteTextField(host, {}, stringResource(R.string.remote_machine_ip), Modifier.weight(1f), readOnly = true)
+                        RemoteTextField(host, {}, stringResource(R.string.remote_machine_ip), Modifier.weight(1f), readOnly = true, keyboardOptions = remoteLiteralKeyboardOptions())
                         OutlinedButton(enabled = !loadingIp, onClick = {
                             loadingIp = true
                             scope.launch {
@@ -288,13 +274,13 @@ internal fun MachineDetailsScreen(
                     RemoteTextField(
                         username, {}, stringResource(R.string.remote_machine_username),
                         readOnly = true,
-                        supporting = stringResource(R.string.remote_machine_username_auto),
+                        keyboardOptions = remoteLiteralKeyboardOptions(),
                         trailingIcon = if (fetchingUsername) {
                             { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) }
                         } else null
                     )
                 } else {
-                    RemoteTextField(username, { username = it }, stringResource(R.string.remote_machine_username))
+                    RemoteTextField(username, { username = it }, stringResource(R.string.remote_machine_username), keyboardOptions = remoteLiteralKeyboardOptions())
                 }
                 RemoteDropdownField(
                     label = stringResource(R.string.remote_machine_authentication),
@@ -310,8 +296,8 @@ internal fun MachineDetailsScreen(
                         value = password,
                         onValueChange = { password = it },
                         label = stringResource(R.string.remote_machine_password),
-                        supporting = stringResource(R.string.remote_machine_password_help),
                         visual = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = remoteLiteralKeyboardOptions(),
                         trailingIcon = {
                             IconButton(onClick = { showPassword = !showPassword }) {
                                 FluentIcon(
@@ -326,7 +312,6 @@ internal fun MachineDetailsScreen(
                     RemoteToggle(
                         label = stringResource(R.string.remote_machine_keyboard_interactive),
                         checked = keyboardInteractive,
-                        description = stringResource(R.string.remote_machine_keyboard_interactive_help),
                         onCheckedChange = { keyboardInteractive = it }
                     )
                 } else {
@@ -334,7 +319,7 @@ internal fun MachineDetailsScreen(
                         identityFile,
                         { identityFile = it },
                         stringResource(R.string.remote_machine_identity_file),
-                        supporting = stringResource(R.string.remote_machine_identity_file_help)
+                        keyboardOptions = remoteLiteralKeyboardOptions()
                     )
                     var keyMenu by remember { mutableStateOf(false) }
                     Box {
@@ -359,25 +344,12 @@ internal fun MachineDetailsScreen(
                             }
                         }
                     }
-                    RemoteTextField(passphrase, { passphrase = it }, stringResource(R.string.remote_machine_key_passphrase), visual = PasswordVisualTransformation())
+                    RemoteTextField(
+                        passphrase, { passphrase = it }, stringResource(R.string.remote_machine_key_passphrase),
+                        visual = PasswordVisualTransformation(),
+                        keyboardOptions = remoteLiteralKeyboardOptions()
+                    )
                 }
-            }
-            RemoteSection(
-                title = stringResource(R.string.remote_machine_sftp_section),
-                description = stringResource(R.string.remote_machine_sftp_section_help)
-            ) {
-                RemoteTextField(
-                    value = sftpDirectory,
-                    onValueChange = { sftpDirectory = it },
-                    label = stringResource(R.string.remote_machine_sftp_directory),
-                    supporting = stringResource(R.string.remote_machine_sftp_directory_help)
-                )
-            }
-            PortForwardingSection(
-                initial = portForwarding,
-                onChange = { portForwarding = it }
-            )
-            RemoteSection(stringResource(R.string.remote_machine_ssh_options)) {
                 RemoteListRow(
                     title = stringResource(R.string.remote_machine_websocket_proxy),
                     subtitle = websocketProxy?.url?.takeIf { it.isNotBlank() }
@@ -404,9 +376,25 @@ internal fun MachineDetailsScreen(
                         onSelect = { proxyMachineId = it; if (it.isNotBlank()) websocketProxy = null }
                     )
                 }
+            }
+            RemoteSection(stringResource(R.string.remote_machine_sftp_section)) {
+                RemoteTextField(
+                    value = sftpDirectory,
+                    onValueChange = { sftpDirectory = it },
+                    label = stringResource(R.string.remote_machine_sftp_directory),
+                    keyboardOptions = remoteLiteralKeyboardOptions()
+                )
+            }
+            RemoteSection(stringResource(R.string.remote_machine_ssh_options)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    RemoteTextField(timeout, { if (it.all(Char::isDigit)) timeout = it }, stringResource(R.string.remote_machine_timeout), Modifier.weight(1f))
-                    RemoteTextField(keepAlive, { if (it.all(Char::isDigit)) keepAlive = it }, stringResource(R.string.remote_machine_keep_alive), Modifier.weight(1f))
+                    RemoteTextField(
+                        timeout, { if (it.all(Char::isDigit)) timeout = it }, stringResource(R.string.remote_machine_timeout), Modifier.weight(1f),
+                        keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
+                    )
+                    RemoteTextField(
+                        keepAlive, { if (it.all(Char::isDigit)) keepAlive = it }, stringResource(R.string.remote_machine_keep_alive), Modifier.weight(1f),
+                        keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
+                    )
                 }
                 RemoteToggle(stringResource(R.string.remote_machine_strict_host_key), strictHostKey) { strictHostKey = it }
                 RemoteToggle(stringResource(R.string.remote_machine_compression), compression) { compression = it }
@@ -427,9 +415,6 @@ internal fun MachineDetailsScreen(
                         selected = oauthClientId,
                         onSelect = { oauthClientId = it }
                     )
-                    if (state.oauthClients.isEmpty()) {
-                        RemoteErrorText(stringResource(R.string.remote_machine_add_oauth_hint))
-                    }
                     val selectedOAuthClient = state.oauthClients.firstOrNull { it.id == oauthClientId }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedButton(
@@ -498,31 +483,6 @@ internal fun MachineDetailsScreen(
                             )
                         }
                     }
-                }
-            }
-            RemoteSection(
-                title = stringResource(R.string.remote_machine_tools_section),
-                description = stringResource(R.string.remote_machine_tools_choose)
-            ) {
-                remoteMachineToolNames(type).forEach { toolName ->
-                    RemoteToggle(
-                        label = stringResource(
-                            when (toolName) {
-                                REMOTE_TOOL_UPDATE_IP -> R.string.remote_machine_update_ip
-                                REMOTE_TOOL_DISCONNECT -> R.string.remote_machine_disconnect
-                                REMOTE_TOOL_OPEN_TERMINAL -> R.string.remote_machine_open_terminal
-                                REMOTE_TOOL_CLOSE_TERMINAL -> R.string.remote_machine_tool_close_terminal
-                                REMOTE_TOOL_LIST_TERMINAL -> R.string.remote_machine_tool_list_terminal
-                                else -> R.string.remote_machine_tool_execute
-                            }
-                        ),
-                        checked = aiTools[toolName]
-                            ?: if (toolName == REMOTE_TOOL_UPDATE_IP) aiTools[REMOTE_TOOL_START_MACHINE] != false else true,
-                        description = if (toolName == REMOTE_TOOL_UPDATE_IP) {
-                            stringResource(R.string.remote_machine_tool_update_ip_help)
-                        } else null,
-                        onCheckedChange = { enabled -> aiTools = aiTools + (toolName to enabled) }
-                    )
                 }
             }
             error?.let { RemoteErrorText(it) }

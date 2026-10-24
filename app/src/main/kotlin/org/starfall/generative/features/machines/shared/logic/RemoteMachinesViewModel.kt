@@ -33,12 +33,15 @@ class RemoteMachinesViewModel(
     fun disconnect(machineId: String) = service.disconnectMachine(machineId)
 
     /**
-     * Starts a kept-alive connection that applies the machine's port forwards; terminals reuse it.
-     * Runs in the ViewModel scope so leaving the screen does not cancel a connection in progress.
+     * Persists the dialog's forwarding rules before opening the kept-alive connection. Saving also
+     * closes an older session, so the newly selected rules cannot be skipped by connection reuse.
      */
-    fun startPortForward(machine: RemoteMachine, onResult: (Result<Unit>) -> Unit) {
+    fun saveMachineAndStartPortForward(machine: RemoteMachine, onResult: (Result<Unit>) -> Unit) {
         viewModelScope.launch {
-            onResult(runCatching { service.startPortForward(machine) })
+            onResult(runCatching {
+                service.saveMachine(machine)
+                service.startPortForward(machine)
+            })
         }
     }
 
@@ -47,6 +50,10 @@ class RemoteMachinesViewModel(
 
     fun saveMachine(machine: RemoteMachine) {
         viewModelScope.launch(LocalWriteErrors.handler) { service.saveMachine(machine) }
+    }
+
+    fun saveMachineTools(machine: RemoteMachine) {
+        viewModelScope.launch(LocalWriteErrors.handler) { service.saveMachineTools(machine) }
     }
 
     fun deleteMachine(id: String) {

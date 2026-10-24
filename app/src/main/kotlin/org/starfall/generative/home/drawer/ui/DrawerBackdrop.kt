@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /** Opacity of the drawer sheet. Shared so blurred items are tinted exactly like the empty sheet area. */
-internal const val DrawerContainerAlpha = 0.8f
+internal const val DrawerContainerAlpha = 0.55f
 
 private val DrawerBackdropBlurRadius = 20.dp
 

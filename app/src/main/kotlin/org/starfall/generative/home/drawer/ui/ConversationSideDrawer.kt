@@ -38,6 +38,7 @@ import org.starfall.generative.R
 import java.util.UUID
 import org.starfall.generative.shared.model.ChatFolder
 import org.starfall.generative.shared.model.ConversationListItem
+import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.theme.LocalAmoledMode
@@ -76,6 +77,7 @@ fun ConversationSideDrawer(
     onCloseDrawer: () -> Unit,
     onOpenMediaStorage: () -> Unit = {},
     onOpenRemoteMachines: () -> Unit = {},
+    onSaveMachineTools: (RemoteMachine) -> Unit = {},
     modifier: Modifier = Modifier,
     providers: List<ModelProvider> = emptyList(),
     backdrop: DrawerBackdrop? = null
@@ -206,6 +208,7 @@ fun ConversationSideDrawer(
                             unfocusSearch()
                             onOpenRemoteMachines()
                         },
+                        onSaveMachineTools = onSaveMachineTools,
                         maxExpandedHeight = halfDrawerHeight
                     )
                 }

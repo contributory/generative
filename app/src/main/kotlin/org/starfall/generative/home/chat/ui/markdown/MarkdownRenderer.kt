@@ -35,6 +35,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withContext
+import org.intellij.markdown.MarkdownTokenTypes
 import org.intellij.markdown.ast.getTextInNode
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -129,6 +130,18 @@ fun MarkdownRenderer(
                     isStreaming && !fence.closed && model.node.endOffset == model.content.length)
             },
             codeBlock = { model -> RenderCodeBlock("", model.node.getTextInNode(model.content).toString().trimEnd(), false) },
+            heading1 = { model -> RenderMarkdownHeading(model, model.typography.h1, effectiveLatexMode, fillMaxWidth) },
+            heading2 = { model -> RenderMarkdownHeading(model, model.typography.h2, effectiveLatexMode, fillMaxWidth) },
+            heading3 = { model -> RenderMarkdownHeading(model, model.typography.h3, effectiveLatexMode, fillMaxWidth) },
+            heading4 = { model -> RenderMarkdownHeading(model, model.typography.h4, effectiveLatexMode, fillMaxWidth) },
+            heading5 = { model -> RenderMarkdownHeading(model, model.typography.h5, effectiveLatexMode, fillMaxWidth) },
+            heading6 = { model -> RenderMarkdownHeading(model, model.typography.h6, effectiveLatexMode, fillMaxWidth) },
+            setextHeading1 = { model ->
+                RenderMarkdownHeading(model, model.typography.h1, effectiveLatexMode, fillMaxWidth, MarkdownTokenTypes.SETEXT_CONTENT)
+            },
+            setextHeading2 = { model ->
+                RenderMarkdownHeading(model, model.typography.h2, effectiveLatexMode, fillMaxWidth, MarkdownTokenTypes.SETEXT_CONTENT)
+            },
             paragraph = { model -> RenderParagraph(model, effectiveLatexMode, fillMaxWidth) },
             table = { model -> RenderMarkdownTable(model) }
         ),

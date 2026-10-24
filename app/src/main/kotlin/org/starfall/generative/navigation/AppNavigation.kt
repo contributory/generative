@@ -388,7 +388,8 @@ fun AppNavigation(
                     onOpenRemoteMachines = {
                         coroutineScope.launch { drawerState.close() }
                         openConfiguration(AppDestination.REMOTE_MACHINES)
-                    }
+                    },
+                    onSaveMachineTools = remoteMachinesViewModel::saveMachineTools
                 )
             }
         ) {

@@ -140,6 +140,17 @@ class RemoteMachineService(
         sftpSessions.invalidate(normalized.id)
     }
 
+    /** Tool switches do not affect SSH transport, so changing them must not interrupt live sessions. */
+    suspend fun saveMachineTools(machine: RemoteMachine) {
+        store.update { current ->
+            current.copy(machines = current.machines.map { existing ->
+                if (existing.id == machine.id) {
+                    existing.copy(aiToolsEnabled = machine.aiToolsEnabled, aiTools = machine.aiTools)
+                } else existing
+            })
+        }
+    }
+
     suspend fun deleteMachine(id: String) {
         disconnectMachineNow(id)
         sftpSessions.invalidate(id)

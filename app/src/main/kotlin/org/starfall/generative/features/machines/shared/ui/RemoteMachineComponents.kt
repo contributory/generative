@@ -38,6 +38,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -123,6 +125,15 @@ internal fun RemoteSection(
         content()
     }
 }
+
+/** Raw SSH/host/path/secret input: no sentence capitalization, autocorrection or IME suggestions. */
+internal fun remoteLiteralKeyboardOptions(
+    keyboardType: KeyboardType = KeyboardType.Password
+) = KeyboardOptions(
+    capitalization = KeyboardCapitalization.None,
+    autoCorrectEnabled = false,
+    keyboardType = keyboardType
+)
 
 @Composable
 internal fun RemoteTextField(
