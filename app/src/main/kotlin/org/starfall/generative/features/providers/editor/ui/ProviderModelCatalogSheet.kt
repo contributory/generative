@@ -70,6 +70,9 @@ internal fun ProviderModelCatalogSheet(
         it.contains(query, ignoreCase = true) || modelsById[it]?.displayName?.contains(query, ignoreCase = true) == true
     }
     val allVisibleSelected = visibleModels.isNotEmpty() && visibleModels.all { it in selectedModels }
+    val selectionDescription = stringResource(
+        if (allVisibleSelected) R.string.provider_deselect_visible_models else R.string.select_all_visible_models
+    )
     AppSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
@@ -88,7 +91,7 @@ internal fun ProviderModelCatalogSheet(
                     onClick = { onSetSelection(visibleModels, !allVisibleSelected) },
                     enabled = visibleModels.isNotEmpty(),
                     modifier = Modifier.semantics {
-                        contentDescription = stringResource(if (allVisibleSelected) R.string.provider_deselect_visible_models else R.string.select_all_visible_models)
+                        contentDescription = selectionDescription
                     }
                 )
             }
@@ -112,6 +115,7 @@ internal fun ProviderModelCatalogSheet(
                     val added = id in selectedModels
                     val model = modelsById[id]
                     val title = model?.displayName?.ifBlank { id } ?: id
+                    val modelSelectionDescription = stringResource(R.string.provider_select_model, id)
                     Surface(
                         onClick = { expanded = !expanded },
                         modifier = Modifier.fillMaxWidth(),
@@ -137,12 +141,12 @@ internal fun ProviderModelCatalogSheet(
                                 if (title != id) Text(id, style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = if (expanded) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
                             }
-                            FluentIcon(if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                stringResource(if (expanded) R.string.collapse else R.string.expand), modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Checkbox(checked = added, onCheckedChange = { onToggle(id) }, modifier = Modifier.semantics {
-                                contentDescription = stringResource(R.string.provider_select_model, id)
-                            })
+                             FluentIcon(if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                 stringResource(if (expanded) R.string.collapse else R.string.expand), modifier = Modifier.size(20.dp),
+                                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                             Checkbox(checked = added, onCheckedChange = { onToggle(id) }, modifier = Modifier.semantics {
+                                 contentDescription = modelSelectionDescription
+                             })
                         }
                         if (expanded) {
                             Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 12.dp),

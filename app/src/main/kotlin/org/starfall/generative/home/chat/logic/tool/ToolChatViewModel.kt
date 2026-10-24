@@ -89,7 +89,7 @@ internal data class ToolChatLabels(
 )
 
 /** Native structured tool calls, bounded rounds, no executable text extracted from answers. */
-class ToolChatViewModel(
+class ToolChatViewModel internal constructor(
     private val http: ToolHttp,
     private val mcp: McpService,
     private val aiService: AiService,
