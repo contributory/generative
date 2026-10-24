@@ -16,7 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -49,7 +49,7 @@ internal fun MediaViewerMenu(
             .statusBarsPadding()
             .padding(8.dp)
     ) {
-        Box(Modifier.align(Alignment.Absolute.TopLeft)) {
+        Box(Modifier.align(AbsoluteAlignment.TopLeft)) {
             ViewerOverlayButton {
                 IconButton(onClick = { expanded = true }) {
                     FluentIcon(
@@ -88,7 +88,7 @@ internal fun MediaViewerMenu(
                 }
             }
         }
-        ViewerOverlayButton(modifier = Modifier.align(Alignment.Absolute.TopRight)) {
+        ViewerOverlayButton(modifier = Modifier.align(AbsoluteAlignment.TopRight)) {
             IconButton(onClick = onDismiss) {
                 FluentIcon(
                     Icons.Default.Close,
