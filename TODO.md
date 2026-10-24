@@ -124,7 +124,7 @@ A false logical stream flag selects `:generateContent`. The reference still uses
 
 ### [x] 5. Update Antigravity client identity and onboarding wire contract
 
-**Status:** implemented and source-reviewed against `internal/auth/antigravity/auth.go` and `internal/misc/antigravity_version.go`; exact-payload/header tests updated but not executed. Load/onboard metadata, tier/project extraction, Hub 2.24.0 fallback identity, long onboarding UA, and daily default now match the reference. The previous sandbox default remains recognized as a legacy built-in value so existing installs are not reclassified as custom endpoints.
+**Status:** implemented and source-reviewed against `internal/auth/antigravity/auth.go` and `internal/misc/antigravity_version.go`; exact-payload/header tests updated but not executed. Load/onboard metadata, tier/project extraction, Hub 2.24.0 fallback identity, long onboarding UA, and daily default now match the reference. Onboarding polls by repeating `POST /v1internal:onboardUser` up to five times; an inferred `GET /v1internal/{operation.name}` was removed after reference review because it can produce an entity-not-found response. The previous sandbox default remains recognized as a legacy built-in value so existing installs are not reclassified as custom endpoints.
 
 **Relevant code:**
 
@@ -318,6 +318,57 @@ The catalog accepts essentially every entry with an ID. Tests explicitly retain 
 - Captured requests for all three protocols contain only the intended beta and API headers.
 - Explicit `supported_endpoints` always wins over name heuristics.
 
+### [x] 12. Make the Codex client version configurable per provider
+
+**Status:** implemented and source-reviewed against `cmd/fetch_codex_models/main.go`; regression tests added but not executed. The default is now `0.159.0`, matching the reference fetcher's actual constant. ProviderEditor can override or clear it to restore the default. The effective value is URL-encoded into the catalog `client_version` query and used in the Codex User-Agent, with validation against unsafe header/query input. Structured provider metadata persists the setting without a Room schema migration, and catalog refresh identity includes it.
+
+**Relevant code:**
+
+- `app/src/main/kotlin/org/starfall/generative/integrations/modelapis/openaicodex/OpenAICodexAdapter.kt`
+- `app/src/main/kotlin/org/starfall/generative/shared/model/provider/ProviderConfiguration.kt`
+- `app/src/main/kotlin/org/starfall/generative/shared/model/provider/ProviderConfigurationExtensions.kt`
+- `app/src/main/kotlin/org/starfall/generative/features/providers/editor/ui/ProviderEditor.kt`
+- `app/src/main/kotlin/org/starfall/generative/shared/storage/ProviderStorageMapper.kt`
+- `app/src/test/java/org/starfall/generative/AccountAdapterTest.kt`
+- `app/src/test/java/org/starfall/generative/ConfigurationTest.kt`
+- `app/src/test/java/org/starfall/generative/Phase4StorageTest.kt`
+
+**Acceptance tests:**
+
+- An unset or blank version sends `client_version=0.159.0` and the matching User-Agent.
+- A valid per-provider override reaches both paths without affecting other providers.
+- ProviderEditor rejects invalid values and the adapter rejects them before dispatch into headers/query parameters.
+- Custom values survive metadata, resolved-provider, export/import, and credential-preserving storage round trips; clearing the value removes the stored override.
+
+### [x] 13. Expose optional Antigravity build and per-account project settings
+
+**Status:** implemented and source-reviewed against `internal/misc/antigravity_version.go`, `internal/auth/antigravity/auth.go`, and `internal/runtime/executor/antigravity_executor_request.go`; regression tests added but not executed. ProviderEditor exposes optional client version and changelist while Antigravity's built-in route remains unchanged. Blank values preserve version `2.24.0` and its verified CL `1000335682`; a custom version without a CL omits `cl` instead of borrowing another release's identity. Version reaches onboarding `ide_version` and short/long User-Agents, and version/CL participate in catalog refresh identity. Each OAuth account can also have an optional project ID beside the selected-account controls: explicit values take precedence over discovery for catalog and generation, while blank values retain onboarding. Project overrides are stored per credential in structured provider metadata and removed with their account; they are not written into encrypted authentication payloads or the token store. Settings persist without a Room migration. Codex and Antigravity literal fields now use raw IME options, and only canonical English strings were added; the earlier Vietnamese-only addition was reverted in accordance with AGENTS.md. The reference's custom `base_url` is a private-deployment mechanism, not a general Antigravity-compatible provider option, so it is not exposed by this change.
+
+**Relevant code:**
+
+- `app/src/main/kotlin/org/starfall/generative/integrations/modelapis/antigravity/AntigravityAdapter.kt`
+- `app/src/main/kotlin/org/starfall/generative/features/providers/editor/ui/ProviderEditor.kt`
+- `app/src/main/kotlin/org/starfall/generative/features/providers/shared/ui/ProviderConnectionFields.kt`
+- `app/src/main/kotlin/org/starfall/generative/shared/model/provider/ProviderConfiguration.kt`
+- `app/src/main/kotlin/org/starfall/generative/shared/model/provider/ProviderConfigurationExtensions.kt`
+- `app/src/main/kotlin/org/starfall/generative/shared/model/provider/ProviderOAuthAccount.kt`
+- `app/src/main/kotlin/org/starfall/generative/shared/storage/ProviderStorageMapper.kt`
+- `app/src/test/java/org/starfall/generative/AccountModelDiscoveryTest.kt`
+- `app/src/test/java/org/starfall/generative/ConfigurationTest.kt`
+- `app/src/test/java/org/starfall/generative/Phase4StorageTest.kt`
+- `app/src/test/java/org/starfall/generative/ProviderOAuthAccountsTest.kt`
+
+**Acceptance tests:**
+
+- Default requests retain the verified `2.24.0`/`1000335682` identity and existing payload behavior.
+- Antigravity remains on its built-in route in ProviderEditor; no general compatibility endpoint is advertised.
+- Custom version and matching CL reach short/long User-Agents and onboarding metadata consistently.
+- A custom version with no CL does not claim the default release's changelist.
+- Optional values survive metadata, resolved-provider, export/import, and credential-preserving storage round trips.
+- A selected account's explicit project overrides token discovery for catalog and generation without an onboarding request; blank entries retain discovery.
+- Removing an OAuth account removes only its project override and leaves the selected remaining account's override intact.
+- No partial non-English localization change remains; literal fields disable capitalization, autocorrection, and IME composition.
+
 ## Regression coverage status
 
 The checked coverage below is implemented but has not been executed; project instructions prohibit build/test execution unless explicitly requested.
@@ -327,6 +378,9 @@ The checked coverage below is implemented but has not been executed; project ins
 - [x] Capture upstream requests for every account provider in stream and non-stream modes, with exact-wire golden checks for the changed normalization/cloaking rules.
 - [x] Cover cancellation during OAuth refresh, catalog loading, and SSE aggregation; synchronous response restoration has separate round-trip coverage.
 - [x] Verify both SDK and manual/MCP paths where they build requests independently.
+- [x] Capture default and overridden Codex client versions in catalog and generation headers, plus validation and storage round trips.
+- [x] Capture Antigravity version/changelist across load, onboarding, and catalog requests; verify unknown releases omit stale CL metadata.
+- [x] Capture per-account Antigravity project overrides in catalog and generation normalization; verify storage round trips and account-deletion cleanup.
 - [ ] Run the existing account adapter, model discovery, token usage, OAuth persistence, and MCP tool-loop tests together after the fixes (awaiting explicit permission to build/test).
 
 ## Checked non-issues — do not regress or “fix” without new evidence

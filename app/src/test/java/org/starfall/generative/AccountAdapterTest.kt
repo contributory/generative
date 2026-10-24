@@ -351,6 +351,35 @@ class AccountAdapterTest {
         assertEquals("caller-cache", explicitWire.config.headers["Conversation_id"])
     }
 
+    @Test fun codexClientVersionDefaultsAndCanBeOverriddenPerProvider() = runBlocking {
+        MockWebServer().use { server ->
+            repeat(2) {
+                server.enqueue(MockResponse().setHeader("Content-Type", "application/json")
+                    .setBody("""{"models":[{"slug":"gpt-test"}]}"""))
+            }
+            CodexTokenStore(context).save("codex-version",
+                CodexTokenState("access", "refresh", accountId = "account"))
+            val provider = ModelProvider("codex-version", "Codex", ModelApiType.OPENAI_CODEX,
+                auth = Authorization(AuthMethod.OAUTH, value = OpenAICodexAdapter.AUTH_MARKER),
+                baseUrl = ModelApiType.OPENAI_CODEX.defaultBaseUrl)
+            val adapter = OpenAICodexAdapter(context, AttachmentResolver(context),
+                modelsEndpoint = server.url("/models").toString())
+
+            assertEquals(listOf("gpt-test"), adapter.fetchModels(provider))
+            val defaultRequest = server.takeRequest()
+            assertEquals("/models?client_version=0.159.0", defaultRequest.path)
+            assertEquals("codex-tui/0.159.0 (Android; arm64) Generative", defaultRequest.getHeader("User-Agent"))
+
+            val custom = provider.copy(config = ProviderConfiguration(codexClientVersion = "0.160.0"))
+            assertEquals(listOf("gpt-test"), adapter.fetchModels(custom))
+            val customRequest = server.takeRequest()
+            assertEquals("/models?client_version=0.160.0", customRequest.path)
+            assertEquals("codex-tui/0.160.0 (Android; arm64) Generative", customRequest.getHeader("User-Agent"))
+            assertEquals("codex-tui/0.160.0 (Android; arm64) Generative",
+                adapter.prepareAuthenticatedProvider(custom).config.headers["User-Agent"])
+        }
+    }
+
     @Test fun codexConcurrentRefreshIsSerializedAndPersistsRotatedToken() = runBlocking {
         MockWebServer().use { server ->
             val store = CodexTokenStore(context)

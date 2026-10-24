@@ -74,6 +74,11 @@ class Phase4StorageTest {
             assertTrue(it.config.socksProxy.isEmpty())
             assertEquals("https://provider.example.test/v1", it.baseUrl)
             assertEquals("https://provider.example.test/models", it.config.customListModelsUrl)
+            assertEquals("0.158.0", it.config.codexClientVersion)
+            assertEquals("2.25.0", it.config.antigravityVersion)
+            assertEquals("123456789", it.config.antigravityChangelist)
+            assertEquals(mapOf("account-1" to "project-fixture", "account-2" to "project-backup"),
+                it.config.antigravityProjectIds)
             assertEquals(broken.config.modelConfigs, it.config.modelConfigs)
         }
         assertEquals(healthy, reader.getProviderById(healthy.id))

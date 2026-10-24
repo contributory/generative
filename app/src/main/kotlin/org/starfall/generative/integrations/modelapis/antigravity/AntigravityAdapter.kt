@@ -40,11 +40,6 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
 
     // Code Assist uses different metadata contracts for project loading and onboarding.
     private val loadCodeAssistMetadata = obj("ideType" to str("ANTIGRAVITY"))
-    private val onboardingMetadata = obj(
-        "ide_type" to str("ANTIGRAVITY"),
-        "ide_version" to str(ANTIGRAVITY_VERSION),
-        "ide_name" to str("antigravity")
-    )
 
     // Match the reference provider's raw OAuth token exchange. AppAuth's OIDC token parsing
     // rejects Google's Antigravity response with "Invalid ID Token".
@@ -106,7 +101,7 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
         auth = Authorization(AuthMethod.CUSTOM_HEADER, "Authorization", "Bearer ${token.accessToken}"),
         config = provider.config.copy(
             headers = provider.config.headers + mapOf(
-                "User-Agent" to ANTIGRAVITY_USER_AGENT,
+                "User-Agent" to antigravityUserAgent(provider.config),
                 "X-Goog-Api-Client" to "google-cloud-sdk vscode_cloudshelleditor/0.1",
                 "Client-Metadata" to metadata.toString()
             )
@@ -116,12 +111,8 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
     private val projectLock = Mutex()
 
     private companion object {
-        // Keep the version and its verified changelist in sync. Cloud Code requires >= 2.23.0 for newer models.
-        const val ANTIGRAVITY_VERSION = "2.24.0"
-        const val ANTIGRAVITY_USER_AGENT =
-            "antigravity/hub/$ANTIGRAVITY_VERSION (aidev_client; os_type=darwin; arch=arm64; cl=1000335682)"
-        const val ANTIGRAVITY_ONBOARD_USER_AGENT =
-            "$ANTIGRAVITY_USER_AGENT google-api-nodejs-client/10.3.0"
+        // Cloud Code requires >= 2.23.0 for newer models. Custom versions must not borrow another release's CL.
+        const val ANTIGRAVITY_ONBOARD_NODE_USER_AGENT = "google-api-nodejs-client/10.3.0"
         const val ANTIGRAVITY_ONBOARD_API_CLIENT = "gl-node/22.21.1"
         const val LEGACY_DEFAULT_BASE_URL = "https://daily-cloudcode-pa.sandbox.googleapis.com"
         const val GEMINI_CLI_USER_AGENT = "GeminiCLI/0.1.5 (Windows; AMD64)"
@@ -154,12 +145,14 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
 
     private suspend fun ensureProject(provider: ModelProvider): AccountTokenState = projectLock.withLock {
         var token = ensureToken(provider)
+        val configuredProject = provider.config.antigravityProjectId(provider.oauthCredentialId)
+        if (configuredProject != null) return@withLock token.copy(projectId = configuredProject)
         if (!token.projectId.isNullOrBlank()) return@withLock token
         val authenticated = wire(provider, token)
         val onboarding = authenticated.copy(config = authenticated.config.copy(
             headers = authenticated.config.headers + mapOf(
                 "Accept" to "*/*",
-                "User-Agent" to ANTIGRAVITY_ONBOARD_USER_AGENT,
+                "User-Agent" to "${antigravityUserAgent(provider.config)} $ANTIGRAVITY_ONBOARD_NODE_USER_AGENT",
                 "X-Goog-Api-Client" to ANTIGRAVITY_ONBOARD_API_CLIENT
             )
         ))
@@ -173,19 +166,22 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
                 )
                 var projectId = extractProject(loaded)
                 if (projectId == null) {
-                    val body = obj("tier_id" to str(antigravityTierId(loaded)), "metadata" to onboardingMetadata)
+                    val body = obj("tier_id" to str(antigravityTierId(loaded)), "metadata" to obj(
+                        "ide_type" to str("ANTIGRAVITY"),
+                        "ide_version" to str(provider.config.effectiveAntigravityVersion()),
+                        "ide_name" to str("antigravity")
+                    ))
                     var operation = http.post("$base/v1internal:onboardUser", body, onboarding)
-                    for (attempt in 0 until 10) {
+                    for (attempt in 0 until 5) {
                         if ((operation["done"] as? JsonPrimitive)?.booleanOrNull == true) {
                             projectId = extractProject(operation["response"] as? JsonObject)
                             break
                         }
-                        if (attempt == 9) break
+                        if (attempt == 4) break
                         delay(2000)
-                        val name = operation.text("name").trimStart('/').removePrefix("v1internal/")
-                        operation = if (name.isNotBlank()) {
-                            http.json(http.request("$base/v1internal/$name", onboarding).get().build())
-                        } else http.post("$base/v1internal:onboardUser", body, onboarding)
+                        // The reference contract polls by repeating onboardUser; do not infer
+                        // a publicly routable GET resource from the returned operation name.
+                        operation = http.post("$base/v1internal:onboardUser", body, onboarding)
                     }
                 }
                 if (!projectId.isNullOrBlank()) {
@@ -230,7 +226,8 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
                 // Keep the generation route on the endpoint that returned this account's catalog.
                 if (token.codeAssistBaseUrl != base) projectLock.withLock {
                     val current = store.load(provider.oauthCredentialId)
-                    if (current?.projectId == token.projectId) store.save(
+                    val hasConfiguredProject = provider.config.antigravityProjectId(provider.oauthCredentialId) != null
+                    if (current != null && (hasConfiguredProject || current.projectId == token.projectId)) store.save(
                         provider.oauthCredentialId,
                         current.copy(codeAssistBaseUrl = base)
                     )
@@ -262,7 +259,8 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
         sourceProvider: ModelProvider, wireProvider: ModelProvider,
         body: JsonObject, systemPrompt: String
     ): JsonObject {
-        val project = store.load(sourceProvider.oauthCredentialId)?.projectId ?: error("Antigravity project is missing")
+        val project = sourceProvider.config.antigravityProjectId(sourceProvider.oauthCredentialId)
+            ?: store.load(sourceProvider.oauthCredentialId)?.projectId ?: error("Antigravity project is missing")
         val model = body.text("model")
         require(model.isNotBlank()) { "Antigravity request needs a model" }
         val request = body.toMutableMap().apply { remove("model") }
@@ -316,6 +314,16 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
             ?: sourceProvider.baseUrl.trimEnd('/')) + "/v1internal:generateContent"
 
     override fun unwrapResponse(response: JsonObject): JsonObject = (response["response"] as? JsonObject) ?: response
+}
+
+internal fun antigravityUserAgent(config: ProviderConfiguration): String {
+    val version = config.effectiveAntigravityVersion()
+    val changelist = config.effectiveAntigravityChangelist()
+    val metadata = buildString {
+        append("aidev_client; os_type=darwin; arch=arm64")
+        changelist?.let { append("; cl=").append(it) }
+    }
+    return "antigravity/hub/$version ($metadata)"
 }
 
 internal fun antigravityTierId(load: JsonObject): String {

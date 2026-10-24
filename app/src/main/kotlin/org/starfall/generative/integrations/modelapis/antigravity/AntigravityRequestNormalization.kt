@@ -117,7 +117,7 @@ private fun cleanArguments(args: JsonObject, schema: JsonObject): JsonObject = J
     if (key == "_" && placeholderInjected(schema)) return@mapNotNull null
     val childSchema = propertySchema(schema, key)
     key to cleanArgumentValue(value, childSchema)
-}.toMap())
+})
 
 private fun cleanArgumentValue(value: JsonElement, schema: JsonObject?): JsonElement = when {
     value is JsonObject && schema != null -> cleanArguments(value, schema)

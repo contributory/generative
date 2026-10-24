@@ -21,6 +21,12 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
+import org.starfall.generative.shared.model.provider.effectiveAntigravityVersion
+import org.starfall.generative.shared.model.provider.antigravityProjectId
+import org.starfall.generative.shared.model.provider.effectiveAntigravityChangelist
+import org.starfall.generative.shared.model.provider.effectiveCodexClientVersion
+import org.starfall.generative.shared.model.provider.isValidAntigravityChangelist
+import org.starfall.generative.shared.model.provider.isValidClientVersion
 import org.starfall.generative.shared.model.provider.streamEnabledFor
 
 @Config(sdk = [28])
@@ -44,6 +50,43 @@ class ConfigurationTest {
             modelConfigs = mapOf("custom/a" to ModelConfiguration(0.4, 0.8, 12), "custom/b" to ModelConfiguration()))
         assertEquals(config, json.decodeFromString<ProviderConfiguration>(json.encodeToString(config)))
         assertEquals(4000, json.decodeFromString<ProviderConfiguration>("{}").maxTokens)
+    }
+
+    @Test fun codexClientVersionDefaultsAndRejectsUnsafeHeaderValues() {
+        assertEquals("0.159.0", ProviderConfiguration().effectiveCodexClientVersion())
+        assertEquals("0.159.0", ProviderConfiguration(codexClientVersion = "  ").effectiveCodexClientVersion())
+        assertEquals("0.160.0-beta.1", ProviderConfiguration(
+            codexClientVersion = " 0.160.0-beta.1 ").effectiveCodexClientVersion())
+        assertTrue(isValidClientVersion("0.160.0+build.2"))
+        assertFalse(isValidClientVersion("0.160.0\r\nX-Injected: true"))
+        assertFalse(isValidClientVersion("not-a-version"))
+        assertTrue(runCatching { ProviderConfiguration(
+            codexClientVersion = "not-a-version").effectiveCodexClientVersion() }.isFailure)
+    }
+
+    @Test fun antigravityVersionAndChangelistDefaultAndValidateIndependently() {
+        val defaults = ProviderConfiguration()
+        assertEquals("2.24.0", defaults.effectiveAntigravityVersion())
+        assertEquals("1000335682", defaults.effectiveAntigravityChangelist())
+        assertNull(ProviderConfiguration(antigravityVersion = "2.25.0").effectiveAntigravityChangelist())
+        assertEquals("2.25.0", ProviderConfiguration(
+            antigravityVersion = " 2.25.0 ").effectiveAntigravityVersion())
+        assertEquals("123456789", ProviderConfiguration(
+            antigravityChangelist = " 123456789 ").effectiveAntigravityChangelist())
+        assertTrue(isValidAntigravityChangelist("1000335682"))
+        assertFalse(isValidAntigravityChangelist("1000335682-beta"))
+        assertFalse(isValidAntigravityChangelist("1000335682\r\nX-Injected: true"))
+        assertTrue(runCatching { ProviderConfiguration(
+            antigravityVersion = "not-a-version").effectiveAntigravityVersion() }.isFailure)
+    }
+
+    @Test fun antigravityProjectOverrideIsTrimmedAndScopedToCredential() {
+        val config = ProviderConfiguration(antigravityProjectIds = mapOf(
+            "account-a" to " project-a ", "account-blank" to "  "))
+        assertEquals("project-a", config.antigravityProjectId("account-a"))
+        assertNull(config.antigravityProjectId("account-blank"))
+        assertNull(config.antigravityProjectId("account-b"))
+        assertEquals(config, json.decodeFromString<ProviderConfiguration>(json.encodeToString(config)))
     }
 
     @Test fun modelSwitchAndProviderSwitchUseSeparateSamplingAndRequestSettings() = runBlocking {

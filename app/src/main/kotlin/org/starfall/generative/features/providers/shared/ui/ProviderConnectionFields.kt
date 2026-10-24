@@ -9,16 +9,26 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.layout.Box
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.api.ModelApiType
+import org.starfall.generative.shared.model.provider.DEFAULT_ANTIGRAVITY_CHANGELIST
+import org.starfall.generative.shared.model.provider.DEFAULT_ANTIGRAVITY_VERSION
+import org.starfall.generative.shared.model.provider.DEFAULT_CODEX_CLIENT_VERSION
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.ui.text.ApiKeyMask
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+
+private val literalInputKeyboardOptions = KeyboardOptions(
+    capitalization = KeyboardCapitalization.None,
+    autoCorrectEnabled = false,
+    keyboardType = KeyboardType.Password
+)
 
 @Composable
 private fun AuthMethod.legacyDisplayName(): String = when (this) {
@@ -56,7 +66,71 @@ internal fun ProviderBaseUrlField(type: ModelApiType, value: String, valid: Bool
                 FluentIcon(Icons.Outlined.Language, stringResource(R.string.provider_restore_default_url))
             }
         },
+        keyboardOptions = literalInputKeyboardOptions,
+        visualTransformation = VisualTransformation.None,
         singleLine = true, modifier = Modifier.fillMaxWidth()
+    )
+}
+
+@Composable
+internal fun CodexClientVersionField(value: String, valid: Boolean, onChange: (String) -> Unit) {
+    SelectableOutlinedTextField(
+        value = value, onValueChange = onChange,
+        label = { Text(stringResource(R.string.provider_codex_client_version)) },
+        supportingText = { Text(stringResource(if (valid)
+            R.string.provider_codex_client_version_help else R.string.provider_codex_client_version_invalid,
+            DEFAULT_CODEX_CLIENT_VERSION)) },
+        isError = !valid,
+        keyboardOptions = literalInputKeyboardOptions,
+        visualTransformation = VisualTransformation.None,
+        singleLine = true, modifier = Modifier.fillMaxWidth()
+    )
+}
+
+@Composable
+internal fun AntigravityVersionFields(
+    version: String,
+    versionValid: Boolean,
+    onVersionChange: (String) -> Unit,
+    changelist: String,
+    changelistValid: Boolean,
+    onChangelistChange: (String) -> Unit
+) {
+    SelectableOutlinedTextField(
+        value = version, onValueChange = onVersionChange,
+        label = { Text(stringResource(R.string.provider_antigravity_version)) },
+        supportingText = { Text(stringResource(if (versionValid)
+            R.string.provider_antigravity_version_help else R.string.provider_antigravity_version_invalid,
+            DEFAULT_ANTIGRAVITY_VERSION)) },
+        isError = !versionValid,
+        keyboardOptions = literalInputKeyboardOptions,
+        visualTransformation = VisualTransformation.None,
+        singleLine = true, modifier = Modifier.fillMaxWidth()
+    )
+    SelectableOutlinedTextField(
+        value = changelist, onValueChange = onChangelistChange,
+        label = { Text(stringResource(R.string.provider_antigravity_changelist)) },
+        supportingText = {
+            if (changelistValid) Text(stringResource(R.string.provider_antigravity_changelist_help,
+                DEFAULT_ANTIGRAVITY_VERSION, DEFAULT_ANTIGRAVITY_CHANGELIST))
+            else Text(stringResource(R.string.provider_antigravity_changelist_invalid))
+        },
+        isError = !changelistValid,
+        keyboardOptions = literalInputKeyboardOptions,
+        visualTransformation = VisualTransformation.None,
+        singleLine = true, modifier = Modifier.fillMaxWidth()
+    )
+}
+
+@Composable
+internal fun AntigravityProjectIdField(value: String, onChange: (String) -> Unit) {
+    SelectableOutlinedTextField(
+        value = value, onValueChange = onChange,
+        label = { Text(stringResource(R.string.provider_antigravity_project_id)) },
+        supportingText = { Text(stringResource(R.string.provider_antigravity_project_id_help)) },
+        keyboardOptions = literalInputKeyboardOptions,
+        visualTransformation = VisualTransformation.None,
+        singleLine = true, modifier = Modifier.fillMaxWidth().testTag("antigravity-project-id")
     )
 }
 

@@ -15,6 +15,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.integrations.modelapis.antigravity.AntigravityAdapter
 import org.starfall.generative.integrations.modelapis.antigravity.antigravityTierId
+import org.starfall.generative.integrations.modelapis.antigravity.antigravityUserAgent
 import org.starfall.generative.shared.auth.*
 import org.starfall.generative.integrations.modelapis.githubcopilot.GitHubCopilotAdapter
 import org.starfall.generative.integrations.modelapis.githubcopilot.copilotDiscoveredModel
@@ -80,9 +81,8 @@ class AccountModelDiscoveryTest {
                 assertEquals(setOf("ideType"), metadata.keys)
                 assertEquals("ANTIGRAVITY", metadata.text("ideType"))
                 val userAgent = load.getHeader("User-Agent")!!
-                assertTrue(userAgent.startsWith("antigravity/hub/2.24.0"))
-                assertTrue(userAgent.contains("os_type=darwin"))
-                assertTrue(userAgent.contains("arch=arm64"))
+                assertEquals("antigravity/hub/2.24.0 (aidev_client; os_type=darwin; arch=arm64; cl=1000335682)",
+                    userAgent)
             }
             listOf(1 to "project-a", 3 to "project-b", 4 to "project-a").forEach { (index, project) ->
                 assertEquals("/v1internal:fetchAvailableModels", requests[index].path)
@@ -97,6 +97,72 @@ class AccountModelDiscoveryTest {
             val normalized = adapter.normalizeToolRequest(selected, wire, obj("model" to str("opaque-M7")), "")
             assertEquals("wire-model-a", normalized.text("model"))
             assertEquals("project-a", normalized.text("project"))
+        }
+    }
+
+    @Test fun antigravityOptionalVersionAndMatchingChangelistReachRequests() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(json("""{"allowedTiers":[{"id":"free-tier","isDefault":true}]}"""))
+            server.enqueue(json("""{"done":true,"response":{"cloudaicompanionProject":"project-custom"}}"""))
+            server.enqueue(json("""{"models":{"custom-model":{"displayName":"Custom model"}}}"""))
+            AccountTokenStore(context, "antigravity").save("antigravity:custom",
+                AccountTokenState("access-custom", "refresh-custom"))
+            val accountProvider = provider(ModelApiType.ANTIGRAVITY, server, "antigravity:custom").let {
+                it.copy(config = it.config.copy(
+                    antigravityVersion = "2.25.0", antigravityChangelist = "123456789"))
+            }
+            val adapter = AntigravityAdapter(context, AttachmentResolver(context))
+            assertEquals(listOf("custom-model"), adapter.fetchModelCatalog(accountProvider).map { it.id })
+
+            val requests = List(3) { server.takeRequest(5, TimeUnit.SECONDS)!! }
+            val userAgent = "antigravity/hub/2.25.0 (aidev_client; os_type=darwin; arch=arm64; cl=123456789)"
+            assertEquals("/v1internal:loadCodeAssist", requests[0].path)
+            assertEquals(userAgent, requests[0].getHeader("User-Agent"))
+            assertEquals("/v1internal:onboardUser", requests[1].path)
+            assertEquals("$userAgent google-api-nodejs-client/10.3.0", requests[1].getHeader("User-Agent"))
+            assertEquals("2.25.0", Json.parseToJsonElement(requests[1].body.readUtf8()).jsonObject
+                .getValue("metadata").jsonObject.text("ide_version"))
+            assertEquals("/v1internal:fetchAvailableModels", requests[2].path)
+            assertEquals(userAgent, requests[2].getHeader("User-Agent"))
+            assertEquals("project-custom", Json.parseToJsonElement(requests[2].body.readUtf8()).jsonObject.text("project"))
+            assertEquals("antigravity/hub/2.25.0 (aidev_client; os_type=darwin; arch=arm64)",
+                antigravityUserAgent(accountProvider.config.copy(antigravityChangelist = null)))
+        }
+    }
+
+    @Test fun antigravityManualProjectIsScopedToAccountAndSkipsOnboarding() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(json("""{"models":{"manual-model":{"displayName":"Manual project model"}}}"""))
+            val store = AccountTokenStore(context, "antigravity")
+            store.save("antigravity:manual", AccountTokenState("access-manual", "refresh-manual"))
+            val accountProvider = provider(ModelApiType.ANTIGRAVITY, server, "antigravity:manual").let {
+                it.copy(config = it.config.copy(
+                    antigravityProjectIds = mapOf("antigravity:manual" to "project-manual")))
+            }
+            val adapter = AntigravityAdapter(context, AttachmentResolver(context))
+            assertEquals(listOf("manual-model"), adapter.fetchModelCatalog(accountProvider).map { it.id })
+
+            val request = server.takeRequest(5, TimeUnit.SECONDS)!!
+            assertEquals("/v1internal:fetchAvailableModels", request.path)
+            assertEquals("project-manual", Json.parseToJsonElement(request.body.readUtf8()).jsonObject.text("project"))
+            assertEquals(1, server.requestCount)
+            assertNull(store.load("antigravity:manual")!!.projectId)
+            assertEquals(accountProvider.baseUrl, store.load("antigravity:manual")!!.codeAssistBaseUrl)
+            assertNull(accountProvider.config.antigravityProjectIds["antigravity:other"])
+
+            // An explicit project also wins over a previously discovered token-store project.
+            store.save("antigravity:manual", store.load("antigravity:manual")!!.copy(projectId = "project-discovered"))
+            server.enqueue(json("""{"models":{"manual-model":{"displayName":"Manual project model"}}}"""))
+            adapter.fetchModelCatalog(accountProvider)
+            val overridden = server.takeRequest(5, TimeUnit.SECONDS)!!
+            assertEquals("project-manual", Json.parseToJsonElement(overridden.body.readUtf8()).jsonObject.text("project"))
+            assertEquals("project-discovered", store.load("antigravity:manual")!!.projectId)
+
+            val wire = adapter.prepareModelProvider(accountProvider, "manual-model")
+            val normalized = adapter.normalizeToolRequest(accountProvider, wire,
+                obj("model" to str("manual-model")), "")
+            assertEquals("project-manual", normalized.text("project"))
+            assertEquals("project-discovered", store.load("antigravity:manual")!!.projectId)
         }
     }
 
@@ -136,7 +202,7 @@ class AccountModelDiscoveryTest {
         }
     }
 
-    @Test fun antigravityOnboardingPollsOperationAndUsesDefaultTierAndValidMetadata() = runBlocking {
+    @Test fun antigravityOnboardingRepeatsPostAndUsesDefaultTierAndValidMetadata() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(json("""{"allowedTiers":[{"id":"other"},{"id":"free-tier","isDefault":true}]}"""))
             server.enqueue(json("""{"name":"operations/onboard-test","done":false}"""))
@@ -163,8 +229,12 @@ class AccountModelDiscoveryTest {
             assertEquals("gl-node/22.21.1", onboard.getHeader("X-Goog-Api-Client"))
             assertEquals("*/*", onboard.getHeader("Accept"))
             val poll = server.takeRequest(5, TimeUnit.SECONDS)!!
-            assertEquals("GET", poll.method)
-            assertEquals("/v1internal/operations/onboard-test", poll.path)
+            assertEquals("POST", poll.method)
+            assertEquals("/v1internal:onboardUser", poll.path)
+            assertEquals(body, Json.parseToJsonElement(poll.body.readUtf8()).jsonObject)
+            val catalog = server.takeRequest(5, TimeUnit.SECONDS)!!
+            assertEquals("POST", catalog.method)
+            assertEquals("/v1internal:fetchAvailableModels", catalog.path)
         }
     }
 
