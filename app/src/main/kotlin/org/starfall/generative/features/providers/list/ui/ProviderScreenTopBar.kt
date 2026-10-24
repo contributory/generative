@@ -84,7 +84,7 @@ internal fun ProviderScreenTopBar(
                                 DropdownMenu(expanded = searchFilterOpen, onDismissRequest = { onSearchFilterOpenChange(false) }) {
                                     listOf(
                                         ProviderSearchField.PROVIDER_NAME to R.string.provider_search_name,
-                                        ProviderSearchField.FOLDER_NAME to R.string.provider_search_folder,
+                                        ProviderSearchField.FOLDER_NAME to R.string.common_folder_name,
                                         ProviderSearchField.MODEL_NAME to R.string.provider_search_model
                                     ).forEach { (field, label) ->
                                         val selected = field in searchFields
@@ -154,7 +154,7 @@ internal fun ProviderScreenTopBar(
                         onClick = { onAddProviderToGroup(appBarGroup.id) },
                         modifier = Modifier.testTag("add_provider")
                     ) {
-                        FluentIcon(Icons.Default.Add, stringResource(R.string.add_provider))
+                        FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
                     }
                     IconButton(onClick = { onToggleGridView?.invoke(!isGridView) }) {
                         FluentIcon(
@@ -188,14 +188,14 @@ internal fun ProviderScreenTopBar(
                             )
                         )
                     }
-                    IconButton(onClick = onCreateGroup) {
-                        FluentIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.add_provider_group))
+                    IconButton(onClick = onCreateGroup, modifier = Modifier.testTag("add_provider_group")) {
+                        FluentIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.common_add))
                     }
                     IconButton(
                         onClick = onAddProvider,
                         modifier = Modifier.testTag("add_provider")
                     ) {
-                        FluentIcon(Icons.Default.Add, stringResource(R.string.add_provider))
+                        FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
                     }
                 }
             }

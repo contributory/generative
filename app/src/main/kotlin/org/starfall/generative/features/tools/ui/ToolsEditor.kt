@@ -161,7 +161,7 @@ fun ToolsEditor(
             Scaffold(
                 topBar = {
                     TopAppBar(
-                        title = { Text(stringResource(R.string.settings_tools_editor)) },
+                        title = { Text(stringResource(R.string.common_feature_tools)) },
                         navigationIcon = {
                             IconButton(onClick = onBack) {
                                 FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
@@ -250,7 +250,7 @@ fun ToolsEditor(
                                     SelectableOutlinedTextField(
                                         value = stringResource(
                                             if (generationMode == MediaGenerationMode.DEFAULT) {
-                                                R.string.media_chain_default
+                                                R.string.common_default
                                             } else {
                                                 R.string.media_chain_custom
                                             }
@@ -279,7 +279,7 @@ fun ToolsEditor(
                                                     Text(
                                                         stringResource(
                                                             if (mode == MediaGenerationMode.DEFAULT) {
-                                                                R.string.media_chain_default
+                                                                R.string.common_default
                                                             } else {
                                                                 R.string.media_chain_custom
                                                             }

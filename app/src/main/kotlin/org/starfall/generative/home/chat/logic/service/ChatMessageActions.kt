@@ -147,7 +147,7 @@ internal class ChatMessageActions(
             providerId = baseProvider?.id.orEmpty(),
             modelId = modelId,
             profileId = null,
-            selectedPromptIds = existing?.selectedPromptIds ?: prefs.promptLibraryFor(null).selectedIds
+            selectedInstructionIds = existing?.selectedInstructionIds ?: prefs.instructionLibraryFor(null).selectedIds
         )
         _currentConversation.value = conv
         viewModelScope.launch(LocalWriteErrors.handler) {
@@ -164,14 +164,14 @@ internal class ChatMessageActions(
             conv,
             conv.messages.dropLast(1),
             prefs.systemPromptFor(conv)
-        ).let { it.copy(messages = prefs.promptRoleMessagesFor(conv) + it.messages) }
+        ).let { it.copy(messages = prefs.instructionRoleMessagesFor(conv) + it.messages) }
         val started = generationFor(conv.id).startEvents(
             conv,
             assistant.id,
             toolEvents(provider, modelId, context.messages, context.systemPrompt, conv.id),
             usageContextKey = contextUsageKey(conv, prefs.systemPromptFor(conv),
                 baseProvider.config.modelConfigs[modelId] ?: ModelConfiguration(displayName = modelId),
-                prefs.promptRoleMessagesFor(conv), toolSettings.value)
+                prefs.instructionRoleMessagesFor(conv), toolSettings.value)
         )
         val titleSettings = toolSettings.value.system["title_generation"]
         if (started && !conv.startedWithDirectMedia() && shouldGenerateConversationTitle(
@@ -405,7 +405,7 @@ internal class ChatMessageActions(
             conversation,
             contextMessages.dropLast(1),
             preferences.systemPromptFor(conversation)
-        ).let { it.copy(messages = preferences.promptRoleMessagesFor(conversation) + it.messages + contextMessages.last()) }
+        ).let { it.copy(messages = preferences.instructionRoleMessagesFor(conversation) + it.messages + contextMessages.last()) }
         val configuredProvider = providerWithReasoning(provider, modelId, conversation)
         return generationFor(conversation.id).startEvents(
             conversation,
@@ -415,7 +415,7 @@ internal class ChatMessageActions(
             resume = resume,
             usageContextKey = contextUsageKey(conversation, preferences.systemPromptFor(conversation),
                 provider.config.modelConfigs[modelId] ?: ModelConfiguration(displayName = modelId),
-                preferences.promptRoleMessagesFor(conversation), toolSettings.value)
+                preferences.instructionRoleMessagesFor(conversation), toolSettings.value)
         )
     }
 

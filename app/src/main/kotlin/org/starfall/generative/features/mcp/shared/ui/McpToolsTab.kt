@@ -156,11 +156,11 @@ private fun McpToolParameter(
                     Text(type, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface)
                     if (required) {
                         Spacer(Modifier.width(6.dp))
-                        Text("required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.mcp_schema_required), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                     }
                 }
                 if (!description.isNullOrBlank()) Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (!enumValues.isNullOrBlank()) Text("Allowed: $enumValues", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                if (!enumValues.isNullOrBlank()) Text(stringResource(R.string.mcp_schema_allowed_values, enumValues), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
             }
             Switch(
                 checked = config.enabled,

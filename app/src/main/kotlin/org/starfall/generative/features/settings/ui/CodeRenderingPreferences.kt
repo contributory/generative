@@ -38,7 +38,7 @@ internal fun CodeRenderingPreferences(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val labels = mapOf(
-        WordWrapMode.OFF to stringResource(R.string.word_wrap_off),
+        WordWrapMode.OFF to stringResource(R.string.common_off),
         WordWrapMode.VIEWPORT to stringResource(R.string.word_wrap_viewport),
         WordWrapMode.COLUMN to stringResource(R.string.word_wrap_column),
         WordWrapMode.BOUNDED to stringResource(R.string.word_wrap_bounded)
@@ -69,7 +69,7 @@ internal fun CodeRenderingPreferences(
                 }
             },
             label = { Text(stringResource(R.string.word_wrap_column_count)) },
-            supportingText = { Text(stringResource(if (parsed == null) R.string.word_wrap_column_invalid else R.string.word_wrap_column_hint)) },
+            supportingText = { Text(stringResource(if (parsed == null) R.string.common_enter_positive_whole_number else R.string.word_wrap_column_hint)) },
             isError = parsed == null, singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth().testTag("word-wrap-column")
@@ -118,7 +118,7 @@ internal fun CodeRenderingPreferences(
             },
             label = { Text(stringResource(R.string.code_block_max_lines)) },
             supportingText = {
-                Text(stringResource(if (parsedMaxLines == null) R.string.code_block_max_lines_invalid
+                Text(stringResource(if (parsedMaxLines == null) R.string.common_enter_positive_whole_number
                     else R.string.code_block_max_lines_hint))
             },
             isError = parsedMaxLines == null,

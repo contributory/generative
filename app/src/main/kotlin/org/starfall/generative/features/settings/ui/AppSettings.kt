@@ -111,7 +111,7 @@ fun AppearanceSettingsView(
                     listOf("SYSTEM", "LIGHT", "DARK").forEach { mode ->
                         FilterChip(selected = appPreferences.themeMode == mode, onClick = { onThemeChange(mode) },
                             label = { Text(stringResource(when (mode) {
-                                "SYSTEM" -> R.string.settings_theme_system
+                                "SYSTEM" -> R.string.common_system
                                 "LIGHT" -> R.string.settings_theme_light
                                 else -> R.string.settings_theme_dark
                             })) }, modifier = Modifier.weight(1f))
@@ -240,9 +240,9 @@ fun PreferencesSettingsView(
         item {
             var wakelockExpanded by remember { mutableStateOf(false) }
             val wakelockLabels = mapOf(
-                ScreenWakelockMode.EXCEPT_TOOL_CALLS to stringResource(R.string.screen_wakelock_except_tool_calls),
-                ScreenWakelockMode.ALL to stringResource(R.string.screen_wakelock_all),
-                ScreenWakelockMode.NONE to stringResource(R.string.screen_wakelock_none)
+                ScreenWakelockMode.EXCEPT_TOOL_CALLS to stringResource(R.string.common_auto),
+                ScreenWakelockMode.ALL to stringResource(R.string.common_on),
+                ScreenWakelockMode.NONE to stringResource(R.string.common_off)
             )
             SettingsSection(stringResource(R.string.screen_wakelock_title)) {
                 Text(stringResource(R.string.screen_wakelock_description),
@@ -323,7 +323,7 @@ fun PreferencesSettingsView(
                         },
                         label = { Text(stringResource(R.string.tool_call_concurrent_limit)) },
                         supportingText = { Text(stringResource(
-                            if (parsed == null) R.string.tool_call_concurrent_limit_invalid else R.string.tool_call_concurrent_limit_default,
+                            if (parsed == null) R.string.common_number_range_invalid else R.string.common_number_range_default,
                             if (parsed == null) MAX_TOOL_CALL_CONCURRENT_LIMIT else DEFAULT_TOOL_CALL_CONCURRENT_LIMIT
                         )) },
                         isError = parsed == null, singleLine = true,
@@ -350,7 +350,7 @@ fun PreferencesSettingsView(
                         },
                         label = { Text(stringResource(R.string.settings_maximum_tool_rounds)) },
                         supportingText = { Text(stringResource(
-                            if (parsed == null) R.string.settings_tool_rounds_invalid else R.string.settings_tool_rounds_default,
+                            if (parsed == null) R.string.common_number_range_invalid else R.string.common_number_range_default,
                             if (parsed == null) MAX_TOOL_ROUND_LIMIT else DEFAULT_TOOL_ROUND_LIMIT
                         )) },
                         isError = parsed == null, singleLine = true,

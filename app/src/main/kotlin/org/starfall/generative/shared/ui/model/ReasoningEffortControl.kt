@@ -29,17 +29,38 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.hypot
 import kotlin.math.roundToInt
+import org.starfall.generative.R
 import org.starfall.generative.shared.model.language.DEFAULT_REASONING_EFFORTS
 import org.starfall.generative.shared.model.language.REASONING_EFFORT_ACTIVE
 import org.starfall.generative.shared.model.language.SELECTABLE_REASONING_EFFORTS
 
-internal fun reasoningEffortLabel(effort: String): String = when (effort) {
-    "xhigh" -> "X-High"
+/** Labels for the built-in reasoning options. Defaults keep plain English for non-Compose callers. */
+internal data class ReasoningEffortLabels(
+    val none: String = "None",
+    val default: String = "Default",
+    val active: String = "Active",
+    val xhigh: String = "X-High",
+)
+
+@Composable
+internal fun localizedReasoningEffortLabels(): ReasoningEffortLabels = ReasoningEffortLabels(
+    none = stringResource(R.string.common_none),
+    default = stringResource(R.string.common_default),
+    active = stringResource(R.string.common_active),
+    xhigh = stringResource(R.string.reasoning_level_xhigh),
+)
+
+internal fun reasoningEffortLabel(
+    effort: String,
+    labels: ReasoningEffortLabels = ReasoningEffortLabels()
+): String = when (effort) {
+    "xhigh" -> labels.xhigh
     else -> effort.replaceFirstChar { it.uppercase() }
 }
 
@@ -84,14 +105,15 @@ internal fun reasoningEffortBurstDuration(tier: Int): Int = when (tier) {
 internal data class ReasoningEffortOption(val effort: String?, val label: String)
 
 internal fun reasoningEffortOptions(
-    supportedEfforts: List<String> = DEFAULT_REASONING_EFFORTS
+    supportedEfforts: List<String> = DEFAULT_REASONING_EFFORTS,
+    labels: ReasoningEffortLabels = ReasoningEffortLabels()
 ): List<ReasoningEffortOption> {
     val levels = SELECTABLE_REASONING_EFFORTS.filter { it in supportedEfforts }.map { effort ->
-        ReasoningEffortOption(effort, reasoningEffortLabel(effort))
+        ReasoningEffortOption(effort, reasoningEffortLabel(effort, labels))
     }
     // Active asks the server to enable reasoning without choosing a configured level.
-    val active = if (levels.isEmpty()) listOf(ReasoningEffortOption(REASONING_EFFORT_ACTIVE, "Active")) else emptyList()
-    return listOf(ReasoningEffortOption("none", "None"), ReasoningEffortOption(null, "Default")) +
+    val active = if (levels.isEmpty()) listOf(ReasoningEffortOption(REASONING_EFFORT_ACTIVE, labels.active)) else emptyList()
+    return listOf(ReasoningEffortOption("none", labels.none), ReasoningEffortOption(null, labels.default)) +
         if (levels.isEmpty()) active else levels
 }
 
@@ -116,7 +138,7 @@ internal fun ReasoningEffortControl(
     effort: String?,
     onEffortChange: (String?) -> Unit,
     onPreviewValueChange: (Float) -> Unit = {},
-    options: List<ReasoningEffortOption> = reasoningEffortOptions(),
+    options: List<ReasoningEffortOption> = reasoningEffortOptions(labels = localizedReasoningEffortLabels()),
     onColorBurst: (Offset, Int) -> Unit = { _, _ -> },
     trackBackground: Color = MaterialTheme.colorScheme.surface
 ) {

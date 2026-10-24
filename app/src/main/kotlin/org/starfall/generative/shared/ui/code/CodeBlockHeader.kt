@@ -64,7 +64,7 @@ internal fun CodeBlockHeader(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f))
                 .padding(horizontal = 6.dp, vertical = 2.dp)) {
-                Text(language.ifBlank { "code" }, style = MaterialTheme.typography.labelSmall.copy(
+                Text(language.ifBlank { stringResource(R.string.code_language_fallback) }, style = MaterialTheme.typography.labelSmall.copy(
                     fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
             if (isStreaming) {
@@ -95,12 +95,12 @@ internal fun CodeBlockHeader(
                 // Very large texts exceed the clipboard binder limit; fail softly instead of crashing.
                 val result = runCatching {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Code", originalCode))
+                    clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.code_copy), originalCode))
                 }
                 if (result.isSuccess) copied = true
-                Toast.makeText(context, if (result.isSuccess) "Code copied" else "Too large to copy", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(if (result.isSuccess) R.string.code_copied else R.string.code_too_large_to_copy), Toast.LENGTH_SHORT).show()
             }, modifier = Modifier.size(28.dp)) {
-                FluentIcon(if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, "Copy code",
+                FluentIcon(if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, stringResource(R.string.code_copy),
                     tint = if (copied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
             }
         }

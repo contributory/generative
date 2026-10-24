@@ -31,7 +31,7 @@ internal fun ProviderHeadersDialog(
                 TopAppBar(
                     title = { Text(stringResource(R.string.headers), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     actions = {
-                        IconButton(onClick = { rows.add("" to "") }) { FluentIcon(Icons.Default.Add, stringResource(R.string.add_header)) }
+                        IconButton(onClick = { rows.add("" to "") }) { FluentIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
                         IconButton(onClick = onDismiss) { FluentIcon(Icons.Default.Close, stringResource(R.string.common_close)) }
                     }
                 )
@@ -57,13 +57,13 @@ internal fun ProviderHeadersDialog(
                                 maxLines = 2, modifier = Modifier.weight(1f)
                             )
                             IconButton(onClick = { rows.removeAt(index) }) {
-                                FluentIcon(Icons.Outlined.Delete, stringResource(R.string.delete_header))
+                                FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete))
                             }
                         }
                     }
                     if (!valid) item {
                         Text(
-                            "Header names and values must be valid and header names must be unique.",
+                            stringResource(R.string.provider_headers_invalid),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall
                         )

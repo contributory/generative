@@ -45,11 +45,11 @@ internal fun McpConnectorsSheetContent(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         QuickActionsSubpageHeader(
-            title = stringResource(R.string.quick_action_mcp_connectors),
+            title = stringResource(R.string.common_mcp_connectors),
             onBack = onBack,
             actions = {
                 QuickActionsSettingsButton(
-                    title = stringResource(R.string.quick_action_mcp_connectors),
+                    title = stringResource(R.string.common_mcp_connectors),
                     onClick = onOpenSettings
                 )
             }

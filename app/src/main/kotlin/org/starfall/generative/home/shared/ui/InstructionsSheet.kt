@@ -31,8 +31,8 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.model.SavedPrompt
-import org.starfall.generative.shared.ui.LocalPromptControls
+import org.starfall.generative.shared.model.SavedInstruction
+import org.starfall.generative.shared.ui.LocalInstructionControls
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.groupedItemShape
@@ -40,25 +40,25 @@ import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.sheets.AppSheet
 
-/** Bottom sheet that turns each saved prompt on or off for the open chat. */
+/** Bottom sheet that turns each saved instruction on or off for the open chat. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PromptInstructionsSheet(onDismiss: () -> Unit) {
+fun InstructionsSheet(onDismiss: () -> Unit) {
     AppSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
-        PromptInstructionsSheetContent(onLeave = onDismiss)
+        InstructionsSheetContent(onLeave = onDismiss)
     }
 }
 
 /** [onLeave] runs just before the sheet hands over to Chat Options, so the caller can close it. */
 @Composable
-internal fun PromptInstructionsSheetContent(
+internal fun InstructionsSheetContent(
     onBack: (() -> Unit)? = null,
     onLeave: () -> Unit = {}
 ) {
-    val controls = LocalPromptControls.current
+    val controls = LocalInstructionControls.current
     val library = controls.library
     Column(
         modifier = Modifier
@@ -68,7 +68,7 @@ internal fun PromptInstructionsSheetContent(
             .padding(bottom = 24.dp)
     ) {
         QuickActionsSubpageHeader(
-            title = stringResource(R.string.quick_action_prompt_instructions),
+            title = stringResource(R.string.common_instructions),
             onBack = onBack,
             actions = {
                 IconButton(
@@ -80,29 +80,29 @@ internal fun PromptInstructionsSheetContent(
                 ) {
                     FluentIcon(
                         Icons.Outlined.Settings,
-                        stringResource(R.string.prompt_open_instructions)
+                        stringResource(R.string.instruction_open_instructions)
                     )
                 }
             }
         )
-        if (library.prompts.isEmpty()) {
+        if (library.instructions.isEmpty()) {
             Text(
-                stringResource(R.string.prompt_library_empty),
+                stringResource(R.string.instruction_library_empty),
                 modifier = Modifier.padding(top = 16.dp),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                library.prompts.forEachIndexed { index, prompt ->
-                    PromptToggleRow(
-                        prompt = prompt,
-                        active = prompt.id in library.selectedIds,
-                        shape = groupedItemShape(index, library.prompts.size, outerCorner = 20.dp, innerCorner = 6.dp),
-                        onToggle = { controls.setPromptEnabled(prompt.id, it) },
+                library.instructions.forEachIndexed { index, instruction ->
+                    InstructionToggleRow(
+                        instruction = instruction,
+                        active = instruction.id in library.selectedIds,
+                        shape = groupedItemShape(index, library.instructions.size, outerCorner = 20.dp, innerCorner = 6.dp),
+                        onToggle = { controls.setInstructionEnabled(instruction.id, it) },
                         onEdit = {
                             onLeave()
-                            controls.editPrompt(prompt.id)
+                            controls.editInstruction(instruction.id)
                         }
                     )
                 }
@@ -113,8 +113,8 @@ internal fun PromptInstructionsSheetContent(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PromptToggleRow(
-    prompt: SavedPrompt,
+private fun InstructionToggleRow(
+    instruction: SavedInstruction,
     active: Boolean,
     shape: Shape,
     onToggle: (Boolean) -> Unit,
@@ -127,7 +127,7 @@ private fun PromptToggleRow(
             .semantics(mergeDescendants = true) { toggleableState = ToggleableState(active) }
             .combinedClickable(
                 role = Role.Switch,
-                onLongClickLabel = stringResource(R.string.prompt_edit_accessibility, prompt.name),
+                onLongClickLabel = stringResource(R.string.instruction_edit_accessibility, instruction.name),
                 onLongClick = onEdit,
                 onClick = { onToggle(!active) }
             ),
@@ -145,7 +145,7 @@ private fun PromptToggleRow(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    prompt.name,
+                    instruction.name,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,

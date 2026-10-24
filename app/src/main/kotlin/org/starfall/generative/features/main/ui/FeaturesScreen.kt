@@ -188,7 +188,7 @@ fun FeaturesScreen(
                         onDismissRequest = { logoMenuExpanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.features_logo_choose_image)) },
+                            text = { Text(stringResource(R.string.choose_icon)) },
                             enabled = !logoBusy,
                             onClick = {
                                 logoMenuExpanded = false
@@ -196,7 +196,7 @@ fun FeaturesScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.features_logo_remove)) },
+                            text = { Text(stringResource(R.string.common_remove)) },
                             enabled = !logoBusy && logoImage != null,
                             onClick = {
                                 logoMenuExpanded = false
@@ -218,7 +218,7 @@ fun FeaturesScreen(
             }
         }
         item(key = "configuration-heading") {
-            SectionHeading(stringResource(R.string.settings_group_configuration))
+            SectionHeading(stringResource(R.string.common_configuration))
         }
         item(key = "configuration-group") {
             FeatureGroup {
@@ -230,7 +230,7 @@ fun FeaturesScreen(
                     shape = GroupTopShape
                 )
                 FeatureButton(
-                    stringResource(R.string.settings_tools_editor),
+                    stringResource(R.string.common_feature_tools),
                     stringResource(R.string.settings_tools_editor_description),
                     FluentUi.Regular.WrenchScrewdriver,
                     onNavigateToToolsEditor,
@@ -245,29 +245,29 @@ fun FeaturesScreen(
         item(key = "external-services-group") {
             FeatureGroup {
                 FeatureButton(
-                    stringResource(R.string.settings_providers),
+                    stringResource(R.string.providers_title),
                     stringResource(R.string.settings_providers_description),
                     FluentUi.Regular.Cloud,
                     onNavigateToProviders,
                     shape = GroupTopShape
                 )
                 FeatureButton(
-                    stringResource(R.string.settings_mcp_manage),
+                    stringResource(R.string.common_mcp_connectors),
                     stringResource(R.string.settings_mcp_manage_description),
                     FluentUi.Regular.PuzzlePiece,
                     onNavigateToMcp,
                     shape = GroupMiddleShape
                 )
                 FeatureButton(
-                    stringResource(R.string.settings_speech_services),
+                    stringResource(R.string.speech_services_title),
                     stringResource(R.string.settings_speech_services_description),
                     FluentUi.Regular.PersonVoice,
                     onNavigateToSpeech,
                     shape = GroupMiddleShape
                 )
                 FeatureButton(
-                    stringResource(R.string.settings_remote_machines),
-                    stringResource(R.string.settings_remote_machines_description),
+                    stringResource(R.string.remote_machines_title),
+                    stringResource(R.string.remote_machines_description),
                     FluentUi.Regular.Desktop,
                     onNavigateToRemoteMachines,
                     shape = GroupBottomShape
@@ -298,7 +298,7 @@ fun FeaturesScreen(
         }
         item(key = "system-heading") {
             Spacer(Modifier.height(8.dp))
-            SectionHeading(stringResource(R.string.settings_group_system))
+            SectionHeading(stringResource(R.string.common_system))
         }
         item(key = "system-group") {
             FeatureGroup {

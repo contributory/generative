@@ -98,7 +98,7 @@ internal fun MediaRequestProfileEditor(
                 SelectableOutlinedTextField(
                     value = draft.name,
                     onValueChange = { draft = draft.copy(name = it) },
-                    label = { Text(stringResource(R.string.media_chain_profile_name)) },
+                    label = { Text(stringResource(R.string.profile_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -124,7 +124,7 @@ internal fun MediaRequestProfileEditor(
                             draft = draft.copy(chain = draft.chain.copy(steps = draft.chain.steps + MediaRequestStep()))
                             editingStep = draft.chain.steps.lastIndex
                         }) {
-                            FluentIcon(Icons.Default.Add, stringResource(R.string.media_chain_add_step))
+                            FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
                         }
                     }
                     draft.chain.steps.forEachIndexed { index, step ->
@@ -148,7 +148,7 @@ internal fun MediaRequestProfileEditor(
                                         style = MaterialTheme.typography.bodySmall
                                     )
                                 }
-                                FluentIcon(Icons.Outlined.Edit, stringResource(R.string.media_chain_edit_step))
+                                FluentIcon(Icons.Outlined.Edit, stringResource(R.string.common_edit))
                             }
                         }
                     }
@@ -166,7 +166,7 @@ internal fun MediaRequestProfileEditor(
                             )
                         }
                         IconButton(onClick = { editingFinalResponse = true }) {
-                            FluentIcon(Icons.Outlined.Edit, stringResource(R.string.media_chain_edit_final_response))
+                            FluentIcon(Icons.Outlined.Edit, stringResource(R.string.common_edit))
                         }
                     }
                 }
@@ -191,7 +191,7 @@ internal fun MediaRequestProfileEditor(
                         enabled = draft.chain.steps.size > 1,
                         onClick = { removeStep(index) }
                     ) {
-                        FluentIcon(Icons.Outlined.Delete, stringResource(R.string.media_chain_remove_step))
+                        FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove))
                     }
                     IconButton(onClick = ::closeStepEditor) {
                         FluentIcon(Icons.Outlined.Check, stringResource(R.string.common_done))
@@ -243,7 +243,7 @@ internal fun MediaRequestProfileEditor(
 
     if (confirmDiscard) AlertDialog(
         onDismissRequest = { confirmDiscard = false },
-        title = { Text(stringResource(R.string.media_chain_discard_title)) },
+        title = { Text(stringResource(R.string.common_discard_changes)) },
         text = { Text(stringResource(R.string.media_chain_discard_message)) },
         confirmButton = {
             TextButton(onClick = { confirmDiscard = false; onBack() }) {
@@ -252,14 +252,15 @@ internal fun MediaRequestProfileEditor(
         },
         dismissButton = {
             TextButton(onClick = { confirmDiscard = false }) {
-                Text(stringResource(R.string.media_chain_keep_editing))
+                Text(stringResource(R.string.common_keep_editing))
             }
         }
     )
 }
 
+@Composable
 private fun finalResponseSummary(response: MediaFinalResponse): String = when (response.type) {
     org.starfall.generative.shared.model.media.MediaResponseType.JSON ->
-        response.mediaPath.ifBlank { "JSON path not configured" }
+        response.mediaPath.ifBlank { stringResource(R.string.media_chain_json_path_missing) }
     else -> response.type.name.lowercase().replace('_', '-')
 }

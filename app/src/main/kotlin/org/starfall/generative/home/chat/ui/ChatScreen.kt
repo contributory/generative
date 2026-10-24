@@ -1,5 +1,6 @@
 package org.starfall.generative.home.chat.ui
 
+import org.starfall.generative.R
 import org.starfall.generative.home.BottomSheetsLink
 import org.starfall.generative.home.BottomSheetsLinkState
 
@@ -50,6 +51,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
+import org.starfall.generative.home.chat.logic.SAVE_CONVERSATION_ERROR_PREFIX
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationSummaryProgress
@@ -435,8 +437,11 @@ fun ChatScreen(
             }
         }
     }
-    LaunchedEffect(chatError) {
-        chatError?.takeIf { it.startsWith("Could not save conversation:") }?.let { inlineChatError = it }
+    val saveConversationFailedPrefix = stringResource(R.string.chat_save_conversation_failed_prefix)
+    LaunchedEffect(chatError, saveConversationFailedPrefix) {
+        chatError?.takeIf { it.startsWith(SAVE_CONVERSATION_ERROR_PREFIX) }?.let { error ->
+            inlineChatError = saveConversationFailedPrefix + error.removePrefix(SAVE_CONVERSATION_ERROR_PREFIX)
+        }
     }
     LaunchedEffect(conversation?.id) {
         focusManager.clearFocus(force = true)
@@ -501,7 +506,7 @@ fun ChatScreen(
                     modifier = Modifier.padding(24.dp)
                 ) {
                     Text(
-                        text = "Generative",
+                        text = stringResource(R.string.app_name),
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -517,7 +522,7 @@ fun ChatScreen(
 
             if (isGenerating && !streamingHere) {
                 Text(
-                    "A response is running in another conversation. Use Stop to cancel it.",
+                    stringResource(R.string.chat_error_other_conversation),
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = 8.dp, start = 12.dp, end = 12.dp),
@@ -552,7 +557,7 @@ fun ChatScreen(
                 if (isGenerating && !streamingHere) {
                     item(key = "generation-warning") {
                         Text(
-                            "A response is running in another conversation. Use Stop to cancel it.",
+                            stringResource(R.string.chat_error_other_conversation),
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -630,8 +635,8 @@ fun ChatScreen(
                             isStreaming = streamingHere && msg.id == streamingMessage?.id,
                             onCopy = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText("Copied", msg.content))
-                                Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                                clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.common_copy), msg.content))
+                                Toast.makeText(context, context.getString(R.string.common_copied_to_clipboard), Toast.LENGTH_SHORT).show()
                             },
                             onRegenerate = {
                                 whenIdle {
@@ -707,7 +712,7 @@ fun ChatScreen(
                             style = MaterialTheme.typography.bodySmall
                         )
                         IconButton(onClick = { inlineChatError = null }) {
-                            FluentIcon(Icons.Default.Close, contentDescription = "Dismiss error", tint = MaterialTheme.colorScheme.onErrorContainer)
+                            FluentIcon(Icons.Default.Close, contentDescription = stringResource(R.string.chat_dismiss_error), tint = MaterialTheme.colorScheme.onErrorContainer)
                         }
                     }
                 }
@@ -733,7 +738,7 @@ fun ChatScreen(
                 ) {
                     FluentIcon(
                         imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Jump to latest",
+                        contentDescription = stringResource(R.string.chat_jump_to_latest),
                         modifier = Modifier.size(24.dp)
                     )
                 }

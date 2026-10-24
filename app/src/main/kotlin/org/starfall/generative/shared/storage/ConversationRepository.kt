@@ -171,7 +171,7 @@ class ConversationRepository(private val db: AppDatabase) {
             profileId = entity.profileId,
             summary = dao.getSummary(entity.id)?.toModel(),
             reasoningEffort = entity.reasoningEffort,
-            selectedPromptIds = entity.selectedPromptIds?.let(::decodePromptIds)
+            selectedInstructionIds = entity.selectedInstructionIds?.let(::decodeInstructionIds)
         )
     }
 
@@ -291,14 +291,14 @@ class ConversationRepository(private val db: AppDatabase) {
         modelId = conversation.modelId,
         profileId = conversation.profileId,
         reasoningEffort = conversation.reasoningEffort,
-        selectedPromptIds = conversation.selectedPromptIds?.let(::encodePromptIds)
+        selectedInstructionIds = conversation.selectedInstructionIds?.let(::encodeInstructionIds)
     )
 
-    private fun encodePromptIds(ids: Set<String>): String =
+    private fun encodeInstructionIds(ids: Set<String>): String =
         json.encodeToString(SetSerializer(String.serializer()), ids)
 
     // A damaged value falls back to the library default instead of making the chat unreadable.
-    private fun decodePromptIds(raw: String): Set<String>? =
+    private fun decodeInstructionIds(raw: String): Set<String>? =
         runCatching { json.decodeFromString(SetSerializer(String.serializer()), raw) }.getOrNull()
 
     private fun MessageVersionEntity.toContextUsage(): ContextUsageSnapshot? {

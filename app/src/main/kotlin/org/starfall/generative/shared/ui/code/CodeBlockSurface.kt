@@ -99,7 +99,7 @@ internal fun CodeBlockSurface(
             }
             onExpansionChange?.let { toggle ->
                 TextButton(onClick = toggle, modifier = Modifier.align(Alignment.End).padding(end = 8.dp, bottom = 4.dp)) {
-                    Text(stringResource(if (expanded) R.string.code_block_collapse else R.string.code_block_extend))
+                    Text(stringResource(if (expanded) R.string.collapse else R.string.code_block_extend))
                 }
             }
         }

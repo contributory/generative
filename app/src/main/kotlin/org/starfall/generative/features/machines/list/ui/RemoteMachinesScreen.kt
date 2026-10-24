@@ -80,7 +80,7 @@ fun RemoteMachinesScreen(
                 onBack = onBack,
                 actions = {
                     IconButton(onClick = { onOpenEditor(viewModel.newMachine(), true) }) {
-                        FluentIcon(Icons.Default.Add, stringResource(R.string.remote_machine_add))
+                        FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
                     }
                     IconButton(onClick = onOpenSettings) {
                         FluentIcon(Icons.Outlined.Settings, stringResource(R.string.remote_machine_settings))
@@ -108,7 +108,7 @@ fun RemoteMachinesScreen(
                     Button(onClick = { onOpenEditor(viewModel.newMachine(), true) }) {
                         FluentIcon(Icons.Default.Add, null)
                         Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.remote_machine_add))
+                        Text(stringResource(R.string.common_add))
                     }
                 }
             } else {
@@ -134,7 +134,7 @@ fun RemoteMachinesScreen(
                             onTerminal = { onOpenTerminal(machine) },
                             onFiles = {
                                 if (!viewModel.openFiles(context, machine.id)) {
-                                    Toast.makeText(context, R.string.remote_machine_files_failed, Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, R.string.storage_open_in_files_failed, Toast.LENGTH_SHORT).show()
                                 }
                             },
                             onEdit = { onOpenEditor(machine, false) },
@@ -161,7 +161,6 @@ fun RemoteMachinesScreen(
     deleting?.let { machine ->
         AppAlertDialog(
             onDismissRequest = { deleting = null },
-            title = { Text(stringResource(R.string.remote_machine_delete_title)) },
             text = { Text(stringResource(R.string.remote_machine_delete_message, machine.name)) },
             confirmButton = {
                 Button(onClick = {
@@ -257,7 +256,7 @@ private fun RemoteMachineCard(
             }
             Box {
                 IconButton(onClick = { menu = true }) {
-                    FluentIcon(Icons.Default.MoreVert, stringResource(R.string.more_options))
+                    FluentIcon(Icons.Default.MoreVert, stringResource(R.string.common_more_options))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(
@@ -273,7 +272,7 @@ private fun RemoteMachineCard(
                         )
                     }
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.remote_machine_files)) },
+                        text = { Text(stringResource(R.string.common_files)) },
                         leadingIcon = { FluentIcon(Icons.Outlined.Folder, null) },
                         onClick = { menu = false; onFiles() }
                     )

@@ -93,7 +93,7 @@ fun ChatAppBar(
             Box(contentAlignment = Alignment.Center) {
                 FluentIcon(
                     imageVector = Icons.Default.Menu,
-                    contentDescription = "Open side navigation",
+                    contentDescription = stringResource(R.string.chat_open_side_navigation),
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(24.dp)
                 )
@@ -181,7 +181,7 @@ fun ChatAppBar(
                     Box(contentAlignment = Alignment.Center) {
                         FluentIcon(
                             imageVector = Icons.Outlined.Compose,
-                            contentDescription = "New chat",
+                            contentDescription = stringResource(R.string.sidebar_new_chat),
                             tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(24.dp)
                         )
@@ -218,7 +218,7 @@ internal fun ContextWindowDetails(status: ContextWindowStatus, onCompact: () -> 
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Text("Context window", style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.chat_context_window), style = MaterialTheme.typography.titleSmall)
             Text(
                 text = stringResource(R.string.context_window_compact_hint),
                 style = MaterialTheme.typography.labelSmall,
@@ -234,7 +234,7 @@ internal fun ContextWindowDetails(status: ContextWindowStatus, onCompact: () -> 
             ContextWindowRing(status, 96.dp)
         }
         Text(
-            text = "${formatContextTokens(status.usedTokens)} / ${formatContextTokens(status.limit.toLong())} tokens",
+            text = stringResource(R.string.chat_context_window_tokens, formatContextTokens(status.usedTokens), formatContextTokens(status.limit.toLong())),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

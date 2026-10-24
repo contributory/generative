@@ -45,7 +45,7 @@ internal fun ModelPickerToolbar(
             value = query,
             onValueChange = onQueryChange,
             leadingIcon = { FluentIcon(Icons.Outlined.Search, contentDescription = null) },
-            placeholder = { Text(stringResource(R.string.search_models_placeholder)) },
+            placeholder = { Text(stringResource(R.string.search_models)) },
             singleLine = true,
             shape = RoundedCornerShape(28.dp),
             modifier = Modifier.weight(1f)

@@ -18,7 +18,7 @@ import org.starfall.generative.shared.model.DEFAULT_TITLE_GENERATION_MIN_WORDS
 import org.starfall.generative.shared.model.MIN_TITLE_GENERATION_MIN_MESSAGES
 import org.starfall.generative.shared.model.MIN_TITLE_GENERATION_MIN_WORDS
 import org.starfall.generative.shared.model.McpInfo
-import org.starfall.generative.shared.model.PromptLibrary
+import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.SummaryRole
@@ -369,9 +369,9 @@ class ChatViewModel(
             prefsRepo.setDefaultSystemPrompt(prompt)
         }
     }
-    fun setPromptEnabled(promptId: String, enabled: Boolean) =
-        conversationCoordinator.setPromptEnabled(promptId, enabled)
-    fun setPromptLibrary(library: PromptLibrary) { viewModelScope.launch(LocalWriteErrors.handler) { prefsRepo.setPromptLibrary(library) } }
+    fun setInstructionEnabled(instructionId: String, enabled: Boolean) =
+        conversationCoordinator.setInstructionEnabled(instructionId, enabled)
+    fun setInstructionLibrary(library: InstructionLibrary) { viewModelScope.launch(LocalWriteErrors.handler) { prefsRepo.setInstructionLibrary(library) } }
 
     fun selectModel(providerId: String, modelId: String) {
         viewModelScope.launch(LocalWriteErrors.handler) {

@@ -44,7 +44,7 @@ internal fun ProviderGroupContextMenu(onEdit: () -> Unit, onDelete: () -> Unit, 
         ) {
             FluentIcon(
                 Icons.Default.MoreVert,
-                contentDescription = stringResource(R.string.more_options),
+                contentDescription = stringResource(R.string.common_more_options),
                 modifier = if (compact) Modifier.size(20.dp) else Modifier
             )
         }
@@ -212,7 +212,6 @@ private fun ProviderGroupChoiceCard(
 internal fun ProviderDeleteGroupDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.delete_provider_group)) },
         text = { Text(stringResource(R.string.delete_provider_group_message)) },
         confirmButton = {
             Button(
@@ -233,7 +232,6 @@ internal fun ProviderDeleteGroupDialog(onDismiss: () -> Unit, onConfirm: () -> U
 internal fun ProviderDeleteDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.delete_provider_title)) },
         text = { Text(stringResource(R.string.delete_provider_message)) },
         confirmButton = {
             Button(

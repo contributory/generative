@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.storage.database.entities
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -19,8 +20,8 @@ data class ConversationEntity(
     val modelId: String,
     val profileId: String?,
     val reasoningEffort: String?,
-    /** JSON array of the prompt ids switched on for this chat; null while it follows the library default. */
-    val selectedPromptIds: String? = null
+    /** JSON array of the instruction ids switched on for this chat; null while it follows the library default. */
+    @ColumnInfo(name = "selectedPromptIds") val selectedInstructionIds: String? = null
 )
 
 @Entity(tableName = "chat_profiles")

@@ -25,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -50,8 +51,7 @@ import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 internal fun DeleteSpeechServiceDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete Speech Service") },
-        text = { Text("Are you sure you want to remove this TTS configuration?") },
+        text = { Text(stringResource(R.string.speech_delete_message)) },
         confirmButton = {
             Button(
                 onClick = onConfirm,
@@ -59,12 +59,12 @@ internal fun DeleteSpeechServiceDialog(onConfirm: () -> Unit, onDismiss: () -> U
                     containerColor = MaterialTheme.colorScheme.error
                 )
             ) {
-                Text("Delete")
+                Text(stringResource(R.string.common_delete))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )
@@ -81,6 +81,7 @@ internal fun AddOrEditSpeechDialog(
     onDismiss: () -> Unit,
     onSave: (SpeechService) -> Unit
 ) {
+    val context = LocalContext.current
     val ttsModelsByProvider = remember(providers) {
         providers.filter(::supportsSpeechProvider).associate { provider ->
             provider.id to provider.config.modelConfigs
@@ -151,7 +152,7 @@ internal fun AddOrEditSpeechDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isNew) "Add Speech Service" else "Edit Speech Service") },
+        title = { Text(stringResource(if (isNew) R.string.speech_add_service else R.string.speech_edit_title)) },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -160,7 +161,7 @@ internal fun AddOrEditSpeechDialog(
                 SelectableOutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Service name") },
+                    label = { Text(stringResource(R.string.speech_service_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -186,7 +187,7 @@ internal fun AddOrEditSpeechDialog(
                     ) {
                         Text(
                             if (providerId.equals("system", true)) {
-                                "Android System TTS"
+                                stringResource(R.string.speech_system_tts)
                             } else {
                                 providers.find { it.id == providerId }?.name ?: providerId
                             },
@@ -199,7 +200,7 @@ internal fun AddOrEditSpeechDialog(
                         onDismissRequest = { providerExpanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Android System TTS") },
+                            text = { Text(stringResource(R.string.speech_system_tts)) },
                             onClick = {
                                 providerId = "system"
                                 providerExpanded = false
@@ -224,7 +225,7 @@ internal fun AddOrEditSpeechDialog(
                             onClick = { modelExpanded = true },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(modelId ?: "Select TTS model", modifier = Modifier.weight(1f))
+                            Text(modelId ?: stringResource(R.string.speech_select_tts_model), modifier = Modifier.weight(1f))
                             FluentIcon(Icons.Default.KeyboardArrowDown, contentDescription = null)
                         }
                         DropdownMenu(
@@ -251,7 +252,7 @@ internal fun AddOrEditSpeechDialog(
                     }
                 } else if (ttsModelsByProvider.isEmpty()) {
                     Text(
-                        "No Provider models are marked as Text to speech yet. Configure a model type in Providers to use it here.",
+                        stringResource(R.string.speech_no_tts_models),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -263,9 +264,9 @@ internal fun AddOrEditSpeechDialog(
                     label = {
                         Text(
                             if (providerId.equals("system", true)) {
-                                "Voice"
+                                stringResource(R.string.speech_voice)
                             } else {
-                                 if (google) "Gemini voice (for example: Kore)" else "Voice ID (for example: alloy)"
+                                 if (google) stringResource(R.string.speech_voice_gemini_hint) else stringResource(R.string.speech_voice_id_hint)
                             }
                         )
                     },
@@ -279,7 +280,7 @@ internal fun AddOrEditSpeechDialog(
                 )
 
                 if (!google) {
-                Text("Speed: ${String.format("%.1f", speed)}x")
+                Text(stringResource(R.string.speech_speed_value, String.format("%.1f", speed)))
                 Slider(
                     value = speed,
                     onValueChange = { speed = it },
@@ -291,15 +292,15 @@ internal fun AddOrEditSpeechDialog(
                     if (supportsInstructions) {
                         SelectableOutlinedTextField(
                             value = instructions, onValueChange = { instructions = it },
-                            label = { Text("Voice instructions") },
-                            supportingText = { Text(stringResource(R.string.speech_voice_instructions_help, if (google) " and speaking speed" else "")) },
+                            label = { Text(stringResource(R.string.speech_voice_instructions)) },
+                            supportingText = { Text(stringResource(if (google) R.string.speech_voice_instructions_help_google else R.string.speech_voice_instructions_help, "")) },
                             modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4
                         )
                     }
                     if (google) {
                         SelectableOutlinedTextField(
                             value = languageCode, onValueChange = { languageCode = it },
-                            label = { Text("Language code (optional)") },
+                            label = { Text(stringResource(R.string.speech_language_code)) },
                             placeholder = { Text("vi-VN") }, singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -308,7 +309,7 @@ internal fun AddOrEditSpeechDialog(
                         var formatExpanded by remember { mutableStateOf(false) }
                         Box {
                             OutlinedButton(onClick = { formatExpanded = true }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Audio format: $responseFormat", Modifier.weight(1f))
+                                Text(stringResource(R.string.speech_audio_format, responseFormat), Modifier.weight(1f))
                                 FluentIcon(Icons.Default.KeyboardArrowDown, null)
                             }
                             DropdownMenu(expanded = formatExpanded, onDismissRequest = { formatExpanded = false }) {
@@ -320,14 +321,14 @@ internal fun AddOrEditSpeechDialog(
                     }
                     SelectableOutlinedTextField(
                         value = extraBodyText, onValueChange = { extraBodyText = it },
-                        label = { Text("Additional API parameters (JSON)") },
+                        label = { Text(stringResource(R.string.speech_additional_parameters)) },
                         isError = extraBody == null,
                          supportingText = { Text(stringResource(if (extraBody == null) R.string.speech_json_invalid_hint else R.string.speech_provider_parameters_help)) },
                         modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 5
                     )
                     SelectableOutlinedTextField(
                         value = apiKey, onValueChange = { apiKey = it },
-                        label = { Text("API key override (optional)") },
+                        label = { Text(stringResource(R.string.speech_api_key_override)) },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
                          supportingText = { Text(stringResource(R.string.speech_api_key_help)) },
                         visualTransformation = ApiKeyMask, singleLine = true,
@@ -336,7 +337,7 @@ internal fun AddOrEditSpeechDialog(
                 }
 
                 if (providerId.equals("system", true)) {
-                    Text("Pitch: ${String.format("%.1f", pitch)}x")
+                    Text(stringResource(R.string.speech_pitch_value, String.format("%.1f", pitch)))
                     Slider(
                         value = pitch,
                         onValueChange = { pitch = it },
@@ -346,7 +347,7 @@ internal fun AddOrEditSpeechDialog(
 
                 OutlinedButton(
                     onClick = {
-                        onTest(currentService(), "Testing speech voice output.")
+                        onTest(currentService(), context.getString(R.string.speech_test_announcement))
                     },
                     enabled = canSave,
                     modifier = Modifier.fillMaxWidth()
@@ -365,12 +366,12 @@ internal fun AddOrEditSpeechDialog(
                 onClick = { onSave(currentService()) },
                 enabled = canSave && !iconImporting
             ) {
-                Text("Save")
+                Text(stringResource(R.string.common_save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )

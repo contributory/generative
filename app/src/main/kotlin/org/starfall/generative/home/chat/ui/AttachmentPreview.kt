@@ -26,11 +26,13 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import org.starfall.generative.R
 import org.starfall.generative.shared.files.AttachmentResolver
 import org.starfall.generative.shared.ui.media.ChatFilePreview
 import org.starfall.generative.shared.ui.icons.FluentIcon
@@ -165,7 +167,7 @@ private fun AttachmentTile(
         if (preview?.mimeType?.startsWith("video/") == true || preview?.mimeType?.startsWith("audio/") == true) {
             Surface(modifier = Modifier.align(Alignment.Center), shape = CircleShape,
                 color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.65f)) {
-                FluentIcon(Icons.Default.PlayArrow, "Play media", Modifier.padding(8.dp), tint = MaterialTheme.colorScheme.inverseOnSurface)
+                FluentIcon(Icons.Default.PlayArrow, stringResource(R.string.attachment_play_media), Modifier.padding(8.dp), tint = MaterialTheme.colorScheme.inverseOnSurface)
             }
         }
         preview?.durationMs?.let { duration ->
@@ -208,7 +210,7 @@ private fun AttachmentTile(
                 )
             ) {
                 FluentIcon(if (selectedForChat) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
-                    if (selectedForChat) "Remove image from next message" else "Attach image to next message")
+                    if (selectedForChat) stringResource(R.string.attachment_remove_from_next) else stringResource(R.string.attachment_attach_to_next))
             }
         }
     }
@@ -236,7 +238,7 @@ internal object AttachmentPreviewCache {
 private suspend fun loadPreview(context: Context, reference: String): AttachmentPreviewData {
     val uri = Uri.parse(reference)
     val metadata = runCatching { AttachmentResolver(context).metadata(reference) }.getOrNull()
-    val name = metadata?.name ?: uri.lastPathSegment ?: "Attachment"
+    val name = metadata?.name ?: uri.lastPathSegment ?: context.getString(R.string.attachment_fallback_name)
     val mime = metadata?.mimeType.orEmpty()
     val bitmap = mediaThumbnail(context, reference, mime, 480)
     var duration: Long? = null

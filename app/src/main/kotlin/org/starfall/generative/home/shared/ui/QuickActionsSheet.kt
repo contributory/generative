@@ -29,7 +29,7 @@ fun QuickActionsSheet(
     onTakePhoto: () -> Unit,
     onCreateImage: () -> Unit,
     onCreateVideo: () -> Unit,
-    onOpenPromptInstructions: () -> Unit,
+    onOpenInstructions: () -> Unit,
     onOpenFeatureTools: () -> Unit,
     onOpenMcpConnectors: () -> Unit,
     onOpenRemoteMachines: () -> Unit,
@@ -45,7 +45,7 @@ fun QuickActionsSheet(
             onTakePhoto = onTakePhoto,
             onCreateImage = onCreateImage,
             onCreateVideo = onCreateVideo,
-            onOpenPromptInstructions = onOpenPromptInstructions,
+            onOpenInstructions = onOpenInstructions,
             onOpenFeatureTools = onOpenFeatureTools,
             onOpenMcpConnectors = onOpenMcpConnectors,
             onOpenRemoteMachines = onOpenRemoteMachines,
@@ -61,7 +61,7 @@ internal fun QuickActionsSheetContent(
     onTakePhoto: () -> Unit,
     onCreateImage: () -> Unit,
     onCreateVideo: () -> Unit,
-    onOpenPromptInstructions: () -> Unit,
+    onOpenInstructions: () -> Unit,
     onOpenFeatureTools: () -> Unit,
     onOpenMcpConnectors: () -> Unit,
     onOpenRemoteMachines: () -> Unit,
@@ -80,7 +80,7 @@ internal fun QuickActionsSheetContent(
         ) {
             AddActionTile(
                 icon = Icons.Outlined.Image,
-                label = "Photos",
+                label = stringResource(R.string.quick_action_photos),
                 modifier = Modifier.weight(1f),
                 onClick = {
                     onPickImage()
@@ -89,7 +89,7 @@ internal fun QuickActionsSheetContent(
             )
             AddActionTile(
                 icon = Icons.Outlined.CameraAlt,
-                label = "Camera",
+                label = stringResource(R.string.quick_action_camera),
                 modifier = Modifier.weight(1f),
                 onClick = {
                     onTakePhoto()
@@ -98,7 +98,7 @@ internal fun QuickActionsSheetContent(
             )
             AddActionTile(
                 icon = Icons.Outlined.Description,
-                label = "Files",
+                label = stringResource(R.string.common_files),
                 modifier = Modifier.weight(1f),
                 onClick = {
                     onPickDocument()
@@ -111,38 +111,38 @@ internal fun QuickActionsSheetContent(
 
         AddActionRow(
             icon = Icons.Outlined.Image,
-            title = "Image",
-            subtitle = "Send directly to an image generation model",
+            title = stringResource(R.string.common_image),
+            subtitle = stringResource(R.string.quick_action_image_description),
             onClick = { onCreateImage(); onDismiss() }
         )
         AddActionRow(
             icon = Icons.Outlined.Videocam,
-            title = "Video",
-            subtitle = "Send directly to a video generation model",
+            title = stringResource(R.string.common_video),
+            subtitle = stringResource(R.string.quick_action_video_description),
             onClick = { onCreateVideo(); onDismiss() }
         )
         AddActionRow(
             icon = Icons.Outlined.DocumentSparkle,
-            title = stringResource(R.string.quick_action_prompt_instructions),
-            subtitle = stringResource(R.string.quick_action_prompt_instructions_description),
-            onClick = onOpenPromptInstructions
+            title = stringResource(R.string.common_instructions),
+            subtitle = stringResource(R.string.quick_action_instructions_description),
+            onClick = onOpenInstructions
         )
         AddActionRow(
             icon = Icons.Outlined.Build,
-            title = stringResource(R.string.quick_action_feature_tools),
+            title = stringResource(R.string.common_feature_tools),
             subtitle = stringResource(R.string.quick_action_feature_tools_description),
             onClick = onOpenFeatureTools
         )
         AddActionRow(
             icon = Icons.Outlined.Extension,
-            title = stringResource(R.string.quick_action_mcp_connectors),
+            title = stringResource(R.string.common_mcp_connectors),
             subtitle = stringResource(R.string.quick_action_mcp_connectors_description),
             onClick = onOpenMcpConnectors
         )
         AddActionRow(
             icon = Icons.Outlined.Computer,
-            title = "Remote Machines",
-            subtitle = "Choose which machines the model may use",
+            title = stringResource(R.string.remote_machines_title),
+            subtitle = stringResource(R.string.quick_action_remote_machines_description),
             onClick = onOpenRemoteMachines
         )
     }

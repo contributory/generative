@@ -33,6 +33,7 @@ internal fun <T : Any> TargetedEditorContent(
     var record by remember(recordId, isDraft) { mutableStateOf(draft) }
     var failure by remember(recordId, isDraft) { mutableStateOf<String?>(null) }
     var attempt by remember(recordId, isDraft) { mutableIntStateOf(0) }
+    val loadFailureFallback = stringResource(R.string.editor_load_failed_fallback)
     LaunchedEffect(recordId, isDraft, attempt) {
         if (isDraft) return@LaunchedEffect
         record = null
@@ -43,7 +44,7 @@ internal fun <T : Any> TargetedEditorContent(
             throw cancelled
         } catch (error: Exception) {
             failure = error.message?.takeIf { it.isNotBlank() }
-                ?: "Could not load the saved record and its credentials."
+                ?: loadFailureFallback
         }
     }
 
@@ -76,9 +77,9 @@ internal fun <T : Any> TargetedEditorContent(
                 CircularProgressIndicator()
                 Text(loadingMessage, textAlign = TextAlign.Center)
             } else {
-                Text("Could not open this editor", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.editor_open_failed), style = MaterialTheme.typography.titleMedium)
                 Text(error, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.error)
-                Text("Retry, or go back to choose another record. Saved data has been retained.", textAlign = TextAlign.Center)
+                Text(stringResource(R.string.editor_load_retry_hint), textAlign = TextAlign.Center)
                 Button(onClick = { failure = null; attempt++ }) { Text(stringResource(R.string.common_retry)) }
             }
             TextButton(onClick = onBack) { Text(stringResource(R.string.common_back)) }

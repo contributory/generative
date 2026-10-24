@@ -17,11 +17,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import org.starfall.generative.R
 import org.starfall.generative.shared.ui.text.selectAllOnTripleClick
 
 private data class MediaVariableSuggestion(
@@ -123,20 +125,21 @@ internal fun MediaTemplateAutocompleteField(
     }
 }
 
+@Composable
 private fun mediaVariableSuggestions(stepNumber: Int): List<MediaVariableSuggestion> = buildList {
-    add(MediaVariableSuggestion("prompt", "The generation prompt"))
-    add(MediaVariableSuggestion("model", "The selected model ID"))
-    add(MediaVariableSuggestion("api_token", "The provider API token"))
-    add(MediaVariableSuggestion("input_files", "All attached input files"))
-    add(MediaVariableSuggestion("input_file[0]", "The first attached input file"))
+    add(MediaVariableSuggestion("prompt", stringResource(R.string.media_var_prompt)))
+    add(MediaVariableSuggestion("model", stringResource(R.string.media_var_model)))
+    add(MediaVariableSuggestion("api_token", stringResource(R.string.media_var_api_token)))
+    add(MediaVariableSuggestion("input_files", stringResource(R.string.media_var_input_files)))
+    add(MediaVariableSuggestion("input_file[0]", stringResource(R.string.media_var_first_input_file)))
     for (step in 1 until stepNumber) {
-        add(MediaVariableSuggestion("step$step.response.body", "The JSON response body from step $step"))
-        add(MediaVariableSuggestion("step$step.response.body.", "A JSON path from step $step response body", pathHint = "path"))
-        add(MediaVariableSuggestion("step$step.response.headers.", "A response header from step $step", pathHint = "header"))
-        add(MediaVariableSuggestion("step$step.request.headers.", "A request header sent in step $step", pathHint = "header"))
-        add(MediaVariableSuggestion("step$step.request.body.", "A JSON path from step $step request body", pathHint = "path"))
-        add(MediaVariableSuggestion("step$step.url", "The resolved request URL for step $step"))
-        add(MediaVariableSuggestion("step$step.request.method", "The request method used in step $step"))
-        add(MediaVariableSuggestion("step$step.response.status", "The HTTP status code returned by step $step"))
+        add(MediaVariableSuggestion("step$step.response.body", stringResource(R.string.media_var_step_response_body, step)))
+        add(MediaVariableSuggestion("step$step.response.body.", stringResource(R.string.media_var_step_response_body_path, step), pathHint = "path"))
+        add(MediaVariableSuggestion("step$step.response.headers.", stringResource(R.string.media_var_step_response_header, step), pathHint = "header"))
+        add(MediaVariableSuggestion("step$step.request.headers.", stringResource(R.string.media_var_step_request_header, step), pathHint = "header"))
+        add(MediaVariableSuggestion("step$step.request.body.", stringResource(R.string.media_var_step_request_body, step), pathHint = "path"))
+        add(MediaVariableSuggestion("step$step.url", stringResource(R.string.media_var_step_url, step)))
+        add(MediaVariableSuggestion("step$step.request.method", stringResource(R.string.media_var_step_method, step)))
+        add(MediaVariableSuggestion("step$step.response.status", stringResource(R.string.media_var_step_status, step)))
     }
 }

@@ -46,6 +46,8 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
     var value by remember { mutableStateOf("") }
     var revealed by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    val keyRequiredError = stringResource(R.string.provider_api_key_required)
+    val keyDuplicateError = stringResource(R.string.provider_api_key_duplicate)
     fun edit(id: String?) {
         val entry = state.entries.firstOrNull { it.id == id }
         editingId = id; label = entry?.label.orEmpty(); value = entry?.value.orEmpty()
@@ -63,15 +65,21 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                     } },
                     actions = {
                         if (editing) IconButton(enabled = value.isNotBlank(), onClick = {
-                            runCatching { state.save(editingId, label, value, identity) }.onSuccess { editing = false }.onFailure { error = it.message }
+                            runCatching {
+                                state.save(
+                                    editingId, label, value, identity,
+                                    blankError = keyRequiredError,
+                                    duplicateError = keyDuplicateError
+                                )
+                            }.onSuccess { editing = false }.onFailure { error = it.message }
                         }) { FluentIcon(Icons.Outlined.Save, stringResource(R.string.provider_save_api_key)) }
-                        else IconButton(onClick = { edit(null) }) { FluentIcon(Icons.Default.Add, stringResource(R.string.provider_add_api_key)) }
+                        else IconButton(onClick = { edit(null) }) { FluentIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
                         IconButton(onClick = onDismiss) { FluentIcon(Icons.Default.Close, stringResource(R.string.common_close)) }
                     }
                 )
                 if (editing) Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SelectableOutlinedTextField(label, { label = it }, label = { Text(stringResource(R.string.provider_api_key_name)) },
+                    SelectableOutlinedTextField(label, { label = it }, label = { Text(stringResource(R.string.common_label)) },
                         singleLine = true, modifier = Modifier.fillMaxWidth().testTag("provider_api_key_label"))
                     SelectableOutlinedTextField(value, { value = it; error = null }, label = { Text(stringResource(R.string.provider_api_key_value)) },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
@@ -121,10 +129,10 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                                 ) {
                                     Column(Modifier.weight(1f).padding(vertical = 12.dp)) {
                                         Text(entry.label.ifBlank { maskedProviderApiKey(entry.value) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        if (selected) Text(stringResource(R.string.provider_selected_api_key), style = MaterialTheme.typography.labelMedium,
+                                        if (selected) Text(stringResource(R.string.common_selected), style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onSecondaryContainer)
                                     }
-                                    if (selected) FluentIcon(Icons.Default.Check, stringResource(R.string.provider_selected_api_key))
+                                    if (selected) FluentIcon(Icons.Default.Check, stringResource(R.string.common_selected))
                                     Box {
                                         IconButton(onClick = { menu = true }) { FluentIcon(Icons.Default.MoreVert,
                                             stringResource(R.string.provider_api_key_actions, entry.label.ifBlank { maskedProviderApiKey(entry.value) })) }

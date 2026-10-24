@@ -78,17 +78,17 @@ internal fun ConversationItem(
                 )
             }
             Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                Text(chat.title.ifBlank { "New Chat" }, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+                Text(chat.title.ifBlank { stringResource(R.string.conversation_untitled) }, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
                 Text(formatTimestamp(chat.updatedAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             }
-            if (pinned) FluentIcon(Icons.Default.PushPin, "Pinned chat", Modifier.padding(end = 10.dp).size(14.dp))
+            if (pinned) FluentIcon(Icons.Default.PushPin, stringResource(R.string.conversation_pinned), Modifier.padding(end = 10.dp).size(14.dp))
             if (!selecting) {
                 DropdownMenu(expanded = menu, onDismissRequest = onContextMenuDismiss) {
                     DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_select)) }, leadingIcon = { FluentIcon(Icons.Outlined.CheckCircle, null) }, onClick = onSelect)
-                    DropdownMenuItem(text = { Text(if (pinned) "Unpin" else "Pin") }, leadingIcon = { FluentIcon(Icons.Outlined.PushPin, null) }, onClick = { onContextMenuDismiss(); onPin() })
-                    DropdownMenuItem(text = { Text("Move to folder") }, leadingIcon = { FluentIcon(Icons.Outlined.Folder, null) }, onClick = { onContextMenuDismiss(); onMove() })
-                    DropdownMenuItem(text = { Text("Rename") }, leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) }, onClick = { onContextMenuDismiss(); onRename() })
-                    DropdownMenuItem(text = { Text("Delete", color = MaterialTheme.colorScheme.error) }, leadingIcon = { FluentIcon(Icons.Outlined.Delete, null) }, onClick = { onContextMenuDismiss(); onDelete() })
+                    DropdownMenuItem(text = { Text(stringResource(if (pinned) R.string.sidebar_unpin else R.string.sidebar_pin)) }, leadingIcon = { FluentIcon(Icons.Outlined.PushPin, null) }, onClick = { onContextMenuDismiss(); onPin() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_move_to_folder)) }, leadingIcon = { FluentIcon(Icons.Outlined.Folder, null) }, onClick = { onContextMenuDismiss(); onMove() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_rename)) }, leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) }, onClick = { onContextMenuDismiss(); onRename() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) }, leadingIcon = { FluentIcon(Icons.Outlined.Delete, null) }, onClick = { onContextMenuDismiss(); onDelete() })
                 }
             }
         }
@@ -204,7 +204,14 @@ private fun ConversationLeadingIcon(
         }
     }
 }
+@Composable
 private fun formatTimestamp(timestamp: Long): String {
     val minutes = ((System.currentTimeMillis() - timestamp) / 60000).coerceAtLeast(0)
-    return when { minutes < 1 -> "Just now"; minutes < 60 -> "${minutes}m ago"; minutes < 1440 -> "${minutes / 60}h ago"; minutes < 10080 -> "${minutes / 1440}d ago"; else -> "${minutes / 10080}w ago" }
+    return when {
+        minutes < 1 -> stringResource(R.string.time_just_now)
+        minutes < 60 -> stringResource(R.string.time_minutes_ago, minutes)
+        minutes < 1440 -> stringResource(R.string.time_hours_ago, minutes / 60)
+        minutes < 10080 -> stringResource(R.string.time_days_ago, minutes / 1440)
+        else -> stringResource(R.string.time_weeks_ago, minutes / 10080)
+    }
 }

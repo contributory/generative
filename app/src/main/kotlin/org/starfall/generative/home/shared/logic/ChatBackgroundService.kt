@@ -121,8 +121,8 @@ class ChatBackgroundService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("AI is thinking...")
-            .setContentText("The AI model is generating a response in the background.")
+            .setContentTitle(getString(org.starfall.generative.R.string.notification_generation_title))
+            .setContentText(getString(org.starfall.generative.R.string.notification_generation_text))
             .setSmallIcon(R.drawable.ic_menu_info_details)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
@@ -140,10 +140,10 @@ class ChatBackgroundService : Service() {
             if (manager.getNotificationChannel(CHANNEL_ID) == null) {
                 val channel = NotificationChannel(
                     CHANNEL_ID,
-                    "AI Background Generation",
+                    getString(org.starfall.generative.R.string.notification_generation_channel_name),
                     NotificationManager.IMPORTANCE_LOW
                 ).apply {
-                    description = "Keeps AI generation alive in the background"
+                    description = getString(org.starfall.generative.R.string.notification_generation_channel_description)
                 }
                 manager.createNotificationChannel(channel)
             }

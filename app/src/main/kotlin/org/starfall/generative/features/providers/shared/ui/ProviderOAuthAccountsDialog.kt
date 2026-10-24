@@ -75,14 +75,14 @@ internal fun ProviderOAuthAccountsDialog(
                             if (editingId == null) signIn() else { onSaveLabel(editingId!!, label); editing = false }
                         }) { FluentIcon(Icons.Outlined.Save, stringResource(R.string.common_save)) }
                         if (!editing) IconButton(enabled = !busy && canAuthorize, onClick = { edit(null) }) {
-                            FluentIcon(Icons.Default.Add, stringResource(R.string.provider_add_account))
+                            FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
                         }
                         IconButton(onClick = ::dismiss) { FluentIcon(Icons.Default.Close, stringResource(R.string.common_close)) }
                     })
                 error?.let { Text(it, Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error) }
                 if (editing) Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SelectableOutlinedTextField(label, { label = it }, singleLine = true, enabled = !busy,
-                        label = { Text(stringResource(R.string.provider_account_label)) },
+                        label = { Text(stringResource(R.string.common_label)) },
                         modifier = Modifier.fillMaxWidth().testTag("oauth-account-label"))
                     accounts.firstOrNull { it.id == editingId }?.identity?.let { Text(it) }
                     Button(enabled = !busy && canAuthorize, onClick = signIn, modifier = Modifier.fillMaxWidth()) {
@@ -124,7 +124,7 @@ internal fun ProviderOAuthAccountsDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(Modifier.weight(1f).padding(vertical = 12.dp)) {
-                                    Text(account.label.ifBlank { account.identity ?: "Account ${accounts.indexOf(account) + 1}" })
+                                    Text(account.label.ifBlank { account.identity ?: stringResource(R.string.provider_account_number, accounts.indexOf(account) + 1) })
                                     if (account.label.isNotBlank() && !account.identity.isNullOrBlank()) Text(account.identity,
                                         style = MaterialTheme.typography.bodySmall)
                                     if (selected) Text(stringResource(R.string.provider_selected_account),

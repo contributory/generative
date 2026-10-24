@@ -34,8 +34,8 @@ import org.starfall.generative.features.providers.list.ui.ProviderRootCard
 import org.starfall.generative.home.drawer.ui.ConversationItem
 import org.starfall.generative.home.shared.ui.QuickActionsSheetContent
 import org.starfall.generative.shared.model.ConversationListItem
-import org.starfall.generative.shared.model.PromptLibrary
-import org.starfall.generative.shared.model.SavedPrompt
+import org.starfall.generative.shared.model.InstructionLibrary
+import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.theme.GenerativeTheme
@@ -143,9 +143,9 @@ class AppSurfaceAndClipConsistencyTest {
             type = ModelApiType.OPENAI,
             baseUrl = "https://api.openai.com/v1"
         )
-        val prompts = listOf(
-            SavedPrompt(id = "s1", name = "First Prompt", content = "Be concise."),
-            SavedPrompt(id = "s2", name = "Second Prompt", content = "Show code.")
+        val instructions = listOf(
+            SavedInstruction(id = "s1", name = "First Instruction", content = "Be concise."),
+            SavedInstruction(id = "s2", name = "Second Instruction", content = "Show code.")
         )
         val chatItem = ConversationListItem(
             id = "c1",
@@ -162,7 +162,7 @@ class AppSurfaceAndClipConsistencyTest {
         )
 
         var providerClicks = 0
-        var previewedPromptId: String? = null
+        var previewedInstructionId: String? = null
         var quickPhotoClicks = 0
         var chatClicks = 0
         var mode by mutableStateOf(0)
@@ -183,10 +183,10 @@ class AppSurfaceAndClipConsistencyTest {
                         )
                     }
                     1 -> InstructionsTab(
-                        library = PromptLibrary(prompts = prompts),
-                        onEditPrompt = {},
-                        onPreviewPrompt = { previewedPromptId = it.id },
-                        onDeletePrompt = {}
+                        library = InstructionLibrary(instructions = instructions),
+                        onEditInstruction = {},
+                        onPreviewInstruction = { previewedInstructionId = it.id },
+                        onDeleteInstruction = {}
                     )
                     2 -> QuickActionsSheetContent(
                         onPickImage = { quickPhotoClicks++ },
@@ -194,7 +194,7 @@ class AppSurfaceAndClipConsistencyTest {
                         onTakePhoto = {},
                         onCreateImage = {},
                         onCreateVideo = {},
-                        onOpenPromptInstructions = {},
+                        onOpenInstructions = {},
                         onOpenFeatureTools = {},
                         onOpenMcpConnectors = {},
                         onOpenRemoteMachines = {},
@@ -234,20 +234,20 @@ class AppSurfaceAndClipConsistencyTest {
         compose.waitForIdle()
         assertEquals(1, providerClicks)
 
-        // 2. InstructionsTab grouped prompts (24.dp outer top corner, 6.dp inner bottom corner).
+        // 2. InstructionsTab grouped instructions (24.dp outer top corner, 6.dp inner bottom corner).
         mode = 1
         compose.waitForIdle()
-        compose.onNodeWithText("First Prompt").performTouchInput {
+        compose.onNodeWithText("First Instruction").performTouchInput {
             // Note: onNodeWithText resolves to the merged clickable Surface semantics node.
             click(Offset(2.dp.toPx(), 2.dp.toPx()))
         }
         compose.waitForIdle()
-        assertNull("Click outside 24.dp outer top corner of grouped prompt should not fire", previewedPromptId)
-        compose.onNodeWithText("First Prompt").performTouchInput {
+        assertNull("Click outside 24.dp outer top corner of grouped instruction should not fire", previewedInstructionId)
+        compose.onNodeWithText("First Instruction").performTouchInput {
             click(Offset(2.dp.toPx(), height - 2.dp.toPx()))
         }
         compose.waitForIdle()
-        assertEquals("Click inside 6.dp inner bottom corner of grouped prompt should fire", "s1", previewedPromptId)
+        assertEquals("Click inside 6.dp inner bottom corner of grouped instruction should fire", "s1", previewedInstructionId)
 
         // 3. QuickActionsSheet tile (24.dp rounded corners).
         mode = 2

@@ -47,21 +47,21 @@ fun ModelConfigDialog(
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(provider.name, style = MaterialTheme.typography.labelLarge)
                 Text(stringResource(R.string.model_stream_settings_description))
-                SelectableOutlinedTextField(temperature, { temperature = it }, label = { Text("Temperature (0–$tempMax)") },
+                SelectableOutlinedTextField(temperature, { temperature = it }, label = { Text(stringResource(R.string.model_temperature_label, tempMax)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                      supportingText = { if (!tempValid) Text(stringResource(R.string.model_temperature_invalid, tempMax)) },
                     isError = !tempValid, singleLine = true, modifier = Modifier.fillMaxWidth())
-                SelectableOutlinedTextField(topP, { topP = it }, label = { Text("Top-p (0–1)") },
+                SelectableOutlinedTextField(topP, { topP = it }, label = { Text(stringResource(R.string.model_top_p_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                      supportingText = { if (!topPValid) Text(stringResource(R.string.model_top_p_invalid)) },
                     isError = !topPValid, singleLine = true, modifier = Modifier.fillMaxWidth())
                 if (supportsTopK) {
-                    SelectableOutlinedTextField(topK, { topK = it }, label = { Text("Top-k (positive integer)") },
+                    SelectableOutlinedTextField(topK, { topK = it }, label = { Text(stringResource(R.string.model_top_k_label)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                          supportingText = { if (!topKValid) Text(stringResource(R.string.model_top_k_invalid)) },
                         isError = !topKValid, singleLine = true, modifier = Modifier.fillMaxWidth())
                 }
-                TextButton(onClick = { temperature = ""; topP = ""; topK = "" }) { Text("Reset sampling to API defaults") }
+                TextButton(onClick = { temperature = ""; topP = ""; topK = "" }) { Text(stringResource(R.string.model_reset_sampling)) }
             }
         },
         confirmButton = {
@@ -69,9 +69,9 @@ fun ModelConfigDialog(
                 onSave(config.copy(temperature = temperature.toDoubleOrNull(), topP = topP.toDoubleOrNull(),
                     topK = if (supportsTopK) topK.toIntOrNull() else null))
                 onDismiss()
-            }) { Text("Save") }
+            }) { Text(stringResource(R.string.common_save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
     )
 }
 
@@ -160,7 +160,7 @@ fun ModelToolsDialog(
                     onClick = { toolNames.add("") },
                     modifier = Modifier.fillMaxWidth().testTag("model-tool-add-button")
                 ) {
-                    Text(stringResource(R.string.model_tool_add))
+                    Text(stringResource(R.string.common_add))
                 }
             }
         },

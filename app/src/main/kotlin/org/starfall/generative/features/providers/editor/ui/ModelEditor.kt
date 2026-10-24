@@ -237,9 +237,9 @@ fun ModelEditor(
                             ) {
                                 Text(
                                     when (level) {
-                                        "minimal" -> "Min"
-                                        "medium" -> "Med"
-                                        "xhigh" -> "XHigh"
+                                        "minimal" -> stringResource(R.string.model_reasoning_level_min)
+                                        "medium" -> stringResource(R.string.model_reasoning_level_med)
+                                        "xhigh" -> stringResource(R.string.model_reasoning_level_xhigh)
                                         else -> level.replaceFirstChar { it.uppercase() }
                                     },
                                     maxLines = 1,
@@ -278,7 +278,7 @@ fun ModelEditor(
                     config = config.copy(supportsToolCalls = it)
                 }
                 HorizontalDivider()
-                Text(stringResource(R.string.streaming), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.stream), style = MaterialTheme.typography.titleMedium)
                 val streamOptions = listOf(null, true, false)
                 val streamLabels = listOf(
                     stringResource(R.string.common_default),
@@ -319,7 +319,7 @@ fun ModelEditor(
                     onExpandedChange = { apiTypeExpanded = !apiTypeExpanded }
                 ) {
                     SelectableOutlinedTextField(
-                        value = stringResource(if (config.mediaApiType == MediaGenerationMode.DEFAULT) R.string.media_chain_default else R.string.media_chain_custom),
+                        value = stringResource(if (config.mediaApiType == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text(stringResource(R.string.media_api_type)) },
@@ -329,7 +329,7 @@ fun ModelEditor(
                     ExposedDropdownMenu(expanded = apiTypeExpanded, onDismissRequest = { apiTypeExpanded = false }) {
                         listOf(MediaGenerationMode.DEFAULT, MediaGenerationMode.CUSTOM).forEach { mode ->
                             DropdownMenuItem(
-                                text = { Text(stringResource(if (mode == MediaGenerationMode.DEFAULT) R.string.media_chain_default else R.string.media_chain_custom)) },
+                                text = { Text(stringResource(if (mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom)) },
                                 onClick = {
                                     config = config.copy(
                                         mediaApiType = mode,

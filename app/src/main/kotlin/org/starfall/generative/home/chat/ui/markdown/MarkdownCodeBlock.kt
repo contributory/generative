@@ -27,6 +27,7 @@ import org.starfall.generative.shared.ui.layout.nestedContainerColor
 internal fun RenderCodeBlock(language: String, code: String, isStreaming: Boolean) {
     val preferences = LocalCodeRenderingPreferences.current
     val lineCount = code.lineSequence().count()
+    val codeLanguageFallback = stringResource(R.string.code_language_fallback)
     val managesUndefined = preferences.codeBlockIncludeUndefined || language.isNotBlank()
     val isLong = !isStreaming && managesUndefined && lineCount > preferences.codeBlockMaxLines
     val displayMode = preferences.codeBlockDisplayMode
@@ -46,7 +47,7 @@ internal fun RenderCodeBlock(language: String, code: String, isStreaming: Boolea
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "${language.ifBlank { "code" }} | $lineCount lines",
+                    stringResource(R.string.code_block_summary, language.ifBlank { codeLanguageFallback }, lineCount),
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelLarge

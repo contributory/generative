@@ -9,7 +9,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.starfall.generative.shared.model.Conversation
-import org.starfall.generative.shared.model.PromptLibrary
+import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.storage.ImmediateState
@@ -78,7 +78,7 @@ data class AppPreferences(
     val useDynamicColor: Boolean = true,
     val colorSchemeName: String = "DEFAULT", // DEFAULT, EMERALD, SUNSET, CRIMSON, VIOLET
     val defaultSystemPrompt: String = "",
-    val promptLibrary: org.starfall.generative.shared.model.PromptLibrary? = null,
+    val instructionLibrary: org.starfall.generative.shared.model.InstructionLibrary? = null,
     val continueLastConversation: Boolean = false,
     /** Null means not recorded yet; an empty string explicitly means no chat should be restored. */
     val lastActiveConversationId: String? = null,
@@ -132,13 +132,13 @@ data class AppPreferences(
     val effectiveMessageFontSize: Int get() = if (messageFontSizeCustom) messageFontSize else DEFAULT_MESSAGE_FONT_SIZE
     /** Null means tool rounds are unlimited. */
     val effectiveToolRoundLimit: Int? get() = toolRoundLimit.takeIf { toolRoundLimitEnabled }
-    /** The prompt library as [conversation] sees it; without its own prompt selection it uses the default. */
-    fun promptLibraryFor(conversation: Conversation?): PromptLibrary =
-        promptLibraryForSelection(conversation?.selectedPromptIds)
-    fun promptLibraryForSelection(selectedPromptIds: Set<String>?): PromptLibrary =
-        (promptLibrary ?: PromptLibrary.fromLegacy(defaultSystemPrompt)).forChat(selectedPromptIds)
-    fun systemPromptFor(conversation: Conversation?): String = promptLibraryFor(conversation).systemPrompt()
-    fun promptRoleMessagesFor(conversation: Conversation?) = promptLibraryFor(conversation).roleMessages()
+    /** The instruction library as [conversation] sees it; without its own instruction selection it uses the default. */
+    fun instructionLibraryFor(conversation: Conversation?): InstructionLibrary =
+        instructionLibraryForSelection(conversation?.selectedInstructionIds)
+    fun instructionLibraryForSelection(selectedInstructionIds: Set<String>?): InstructionLibrary =
+        (instructionLibrary ?: InstructionLibrary.fromLegacy(defaultSystemPrompt)).forChat(selectedInstructionIds)
+    fun systemPromptFor(conversation: Conversation?): String = instructionLibraryFor(conversation).systemPrompt()
+    fun instructionRoleMessagesFor(conversation: Conversation?) = instructionLibraryFor(conversation).roleMessages()
 }
 
 class AppPreferencesRepository(private val context: Context) {
@@ -154,7 +154,7 @@ class AppPreferencesRepository(private val context: Context) {
         val USE_DYNAMIC_COLOR = booleanPreferencesKey("use_dynamic_color")
         val COLOR_SCHEME_NAME = stringPreferencesKey("color_scheme_name")
         val DEFAULT_SYSTEM_PROMPT = stringPreferencesKey("default_system_prompt")
-        val PROMPT_LIBRARY = stringPreferencesKey("prompt_library")
+        val INSTRUCTION_LIBRARY = stringPreferencesKey("prompt_library")
         val CONTINUE_LAST_CONVERSATION = booleanPreferencesKey("continue_last_conversation")
         val LAST_ACTIVE_CONVERSATION_ID = stringPreferencesKey("last_active_conversation_id")
         val PERSIST_SELECTED_MODEL = booleanPreferencesKey("persist_chat_selection")
@@ -214,8 +214,8 @@ class AppPreferencesRepository(private val context: Context) {
                 useDynamicColor = preferences[PreferenceKeys.USE_DYNAMIC_COLOR] ?: true,
                 colorSchemeName = preferences[PreferenceKeys.COLOR_SCHEME_NAME] ?: "DEFAULT",
                 defaultSystemPrompt = preferences[PreferenceKeys.DEFAULT_SYSTEM_PROMPT] ?: "",
-                promptLibrary = preferences[PreferenceKeys.PROMPT_LIBRARY]?.let {
-                    runCatching { Json.decodeFromString<org.starfall.generative.shared.model.PromptLibrary>(it) }.getOrNull()
+                instructionLibrary = preferences[PreferenceKeys.INSTRUCTION_LIBRARY]?.let {
+                    runCatching { Json.decodeFromString<org.starfall.generative.shared.model.InstructionLibrary>(it) }.getOrNull()
                 },
                 continueLastConversation = preferences[PreferenceKeys.CONTINUE_LAST_CONVERSATION] ?: false,
                 lastActiveConversationId = preferences[PreferenceKeys.LAST_ACTIVE_CONVERSATION_ID],
@@ -356,10 +356,10 @@ class AppPreferencesRepository(private val context: Context) {
         }
     }
 
-    suspend fun setDefaultSystemPrompt(prompt: String) {
-        state.mutate({ it.copy(defaultSystemPrompt = prompt) }) {
+    suspend fun setDefaultSystemPrompt(instruction: String) {
+        state.mutate({ it.copy(defaultSystemPrompt = instruction) }) {
             context.dataStore.edit { preferences ->
-                preferences[PreferenceKeys.DEFAULT_SYSTEM_PROMPT] = prompt
+                preferences[PreferenceKeys.DEFAULT_SYSTEM_PROMPT] = instruction
             }
         }
     }
@@ -389,11 +389,11 @@ class AppPreferencesRepository(private val context: Context) {
         }
     }
 
-    suspend fun setPromptLibrary(library: org.starfall.generative.shared.model.PromptLibrary) {
-        state.mutate({ it.copy(promptLibrary = library.copy(prompts = library.prompts.distinctBy { p -> p.id }, selectedIds = library.selectedIds.intersect(library.prompts.map { p -> p.id }.toSet()))) }) {
-            val prompts = library.prompts.distinctBy { it.id }
-            val cleaned = library.copy(prompts = prompts, selectedIds = library.selectedIds.intersect(prompts.map { it.id }.toSet()))
-            context.dataStore.edit { it[PreferenceKeys.PROMPT_LIBRARY] = Json.encodeToString(cleaned) }
+    suspend fun setInstructionLibrary(library: org.starfall.generative.shared.model.InstructionLibrary) {
+        state.mutate({ it.copy(instructionLibrary = library.copy(instructions = library.instructions.distinctBy { p -> p.id }, selectedIds = library.selectedIds.intersect(library.instructions.map { p -> p.id }.toSet()))) }) {
+            val instructions = library.instructions.distinctBy { it.id }
+            val cleaned = library.copy(instructions = instructions, selectedIds = library.selectedIds.intersect(instructions.map { it.id }.toSet()))
+            context.dataStore.edit { it[PreferenceKeys.INSTRUCTION_LIBRARY] = Json.encodeToString(cleaned) }
         }
     }
 

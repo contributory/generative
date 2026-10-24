@@ -28,8 +28,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.model.PromptLibrary
-import org.starfall.generative.shared.model.SavedPrompt
+import org.starfall.generative.shared.model.InstructionLibrary
+import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.ToolSettings
 import java.util.UUID
@@ -46,9 +46,9 @@ import org.starfall.generative.shared.ui.model.DefaultModelSelector
 import org.starfall.generative.shared.ui.model.ModelPickerSheet
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 
-private sealed interface PromptPage {
-    data class Editor(val promptId: String?) : PromptPage
-    data class Preview(val promptId: String) : PromptPage
+private sealed interface InstructionPage {
+    data class Editor(val instructionId: String?) : InstructionPage
+    data class Preview(val instructionId: String) : InstructionPage
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,11 +68,11 @@ fun ChatOptionsScreen(
     selectedTabKey: String = "default",
     onSelectedTabKeyChange: (String) -> Unit = {},
     onEditProvider: (providerId: String) -> Unit = {},
-    promptLibrary: PromptLibrary? = null,
+    instructionLibrary: InstructionLibrary? = null,
     defaultSystemPrompt: String = "",
-    onPromptLibraryChange: (PromptLibrary) -> Unit = {},
+    onInstructionLibraryChange: (InstructionLibrary) -> Unit = {},
     initialTab: String = "helpers",
-    initialPromptId: String = "",
+    initialInstructionId: String = "",
     onSave: (String, SystemToolConfig) -> Unit,
     onBack: () -> Unit
 ) {
@@ -89,81 +89,81 @@ fun ChatOptionsScreen(
             pager.scrollToPage(requestedPage)
         }
     }
-    var creatingPrompt by rememberSaveable(initialPromptId) { mutableStateOf(false) }
-    var editingPromptId by rememberSaveable(initialPromptId) {
-        mutableStateOf(initialPromptId.takeIf(String::isNotBlank))
+    var creatingInstruction by rememberSaveable(initialInstructionId) { mutableStateOf(false) }
+    var editingInstructionId by rememberSaveable(initialInstructionId) {
+        mutableStateOf(initialInstructionId.takeIf(String::isNotBlank))
     }
-    var previewingPromptId by rememberSaveable { mutableStateOf<String?>(null) }
-    var library by remember(promptLibrary, defaultSystemPrompt) {
-        mutableStateOf(promptLibrary ?: PromptLibrary.fromLegacy(defaultSystemPrompt))
+    var previewingInstructionId by rememberSaveable { mutableStateOf<String?>(null) }
+    var library by remember(instructionLibrary, defaultSystemPrompt) {
+        mutableStateOf(instructionLibrary ?: InstructionLibrary.fromLegacy(defaultSystemPrompt))
     }
-    fun updateLibrary(next: PromptLibrary) {
+    fun updateLibrary(next: InstructionLibrary) {
         library = next
-        onPromptLibraryChange(next)
+        onInstructionLibraryChange(next)
     }
-    fun savePromptDraft(draft: SavedPrompt): SavedPrompt? {
+    fun saveInstructionDraft(draft: SavedInstruction): SavedInstruction? {
         if (draft.name.isBlank() || draft.content.isBlank()) return null
-        val prompt = if (draft.id.isBlank()) {
+        val instruction = if (draft.id.isBlank()) {
             draft.copy(id = UUID.randomUUID().toString())
         } else {
             draft
         }
-        val exists = library.prompts.any { it.id == prompt.id }
+        val exists = library.instructions.any { it.id == instruction.id }
         updateLibrary(
             library.copy(
-                prompts = if (exists) library.prompts.map { if (it.id == prompt.id) prompt else it }
-                else library.prompts + prompt,
+                instructions = if (exists) library.instructions.map { if (it.id == instruction.id) instruction else it }
+                else library.instructions + instruction,
                 selectedIds = library.selectedIds
             )
         )
-        return prompt
+        return instruction
     }
 
-    fun leavePromptEditor(draft: SavedPrompt? = null) {
-        draft?.let(::savePromptDraft)
-        creatingPrompt = false
-        editingPromptId = null
-        previewingPromptId = null
+    fun leaveInstructionEditor(draft: SavedInstruction? = null) {
+        draft?.let(::saveInstructionDraft)
+        creatingInstruction = false
+        editingInstructionId = null
+        previewingInstructionId = null
         coroutineScope.launch { pager.animateScrollToPage(1) }
     }
 
-    fun openPromptPreview(draft: SavedPrompt) {
-        val saved = savePromptDraft(draft) ?: return
-        creatingPrompt = false
-        editingPromptId = null
-        previewingPromptId = saved.id
+    fun openInstructionPreview(draft: SavedInstruction) {
+        val saved = saveInstructionDraft(draft) ?: return
+        creatingInstruction = false
+        editingInstructionId = null
+        previewingInstructionId = saved.id
     }
 
-    val promptPage: PromptPage? = when {
-        creatingPrompt || editingPromptId != null -> PromptPage.Editor(editingPromptId)
-        previewingPromptId != null -> PromptPage.Preview(previewingPromptId!!)
+    val instructionPage: InstructionPage? = when {
+        creatingInstruction || editingInstructionId != null -> InstructionPage.Editor(editingInstructionId)
+        previewingInstructionId != null -> InstructionPage.Preview(previewingInstructionId!!)
         else -> null
     }
 
     SlideScreenContent(
-        editor = promptPage,
-        label = "Prompt details"
+        editor = instructionPage,
+        label = stringResource(R.string.instruction_details)
     ) { editorPage ->
         when (editorPage) {
-            is PromptPage.Editor -> {
-                PromptEditor(
-                    prompt = editorPage.promptId?.let { id -> library.prompts.firstOrNull { it.id == id } },
-                    onPreview = ::openPromptPreview,
-                    onBack = ::leavePromptEditor
+            is InstructionPage.Editor -> {
+                InstructionEditor(
+                    instruction = editorPage.instructionId?.let { id -> library.instructions.firstOrNull { it.id == id } },
+                    onPreview = ::openInstructionPreview,
+                    onBack = ::leaveInstructionEditor
                 )
             }
-            is PromptPage.Preview -> {
-                val prompt = library.prompts.firstOrNull { it.id == editorPage.promptId }
-                if (prompt == null) {
-                    LaunchedEffect(editorPage.promptId) { previewingPromptId = null }
+            is InstructionPage.Preview -> {
+                val instruction = library.instructions.firstOrNull { it.id == editorPage.instructionId }
+                if (instruction == null) {
+                    LaunchedEffect(editorPage.instructionId) { previewingInstructionId = null }
                 } else {
-                    PromptPreview(
-                        prompt = prompt,
+                    InstructionPreview(
+                        instruction = instruction,
                         onEdit = {
-                            previewingPromptId = null
-                            editingPromptId = prompt.id
+                            previewingInstructionId = null
+                            editingInstructionId = instruction.id
                         },
-                        onBack = { previewingPromptId = null }
+                        onBack = { previewingInstructionId = null }
                     )
                 }
             }
@@ -180,8 +180,8 @@ fun ChatOptionsScreen(
                         },
                         actions = {
                             if (pager.currentPage == 1) {
-                                IconButton(onClick = { creatingPrompt = true }) {
-                                    FluentIcon(Icons.Default.Add, stringResource(R.string.prompt_add))
+                                IconButton(onClick = { creatingInstruction = true }) {
+                                    FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
                                 }
                             }
                         }
@@ -198,7 +198,7 @@ fun ChatOptionsScreen(
                         Tab(
                             selected = pager.currentPage == 1,
                             onClick = { coroutineScope.launch { pager.animateScrollToPage(1) } },
-                            text = { Text(stringResource(R.string.chat_options_tab_instructions)) }
+                            text = { Text(stringResource(R.string.common_instructions)) }
                         )
                     }
                     HorizontalPager(
@@ -264,13 +264,13 @@ fun ChatOptionsScreen(
                             }
                             else -> InstructionsTab(
                                 library = library,
-                                onEditPrompt = { editingPromptId = it.id },
-                                onPreviewPrompt = { previewingPromptId = it.id },
-                                onDeletePrompt = { prompt ->
+                                onEditInstruction = { editingInstructionId = it.id },
+                                onPreviewInstruction = { previewingInstructionId = it.id },
+                                onDeleteInstruction = { instruction ->
                                     updateLibrary(
                                         library.copy(
-                                            prompts = library.prompts.filterNot { it.id == prompt.id },
-                                            selectedIds = library.selectedIds - prompt.id
+                                            instructions = library.instructions.filterNot { it.id == instruction.id },
+                                            selectedIds = library.selectedIds - instruction.id
                                         )
                                     )
                                 }

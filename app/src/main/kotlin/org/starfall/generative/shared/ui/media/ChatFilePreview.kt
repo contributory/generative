@@ -91,9 +91,9 @@ fun ChatFilePreview(
     when {
         mime.startsWith("image/") -> BoundedMediaFrame(thumbnail?.let { it.width.toFloat() / it.height.coerceAtLeast(1) } ?: 1f, modifier) {
             Box(Modifier.fillMaxSize().clickable(onClick = onOpen), contentAlignment = Alignment.Center) {
-                thumbnail?.let { Image(it, "Generated image", Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
+                thumbnail?.let { Image(it, stringResource(R.string.media_generated_image), Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
                 if (loading) CircularProgressIndicator(Modifier.size(24.dp))
-                else if (thumbnail == null) Text("Image preview unavailable", color = Color.White)
+                else if (thumbnail == null) Text(stringResource(R.string.media_image_preview_unavailable), color = Color.White)
             }
             actions()
         }
@@ -103,7 +103,7 @@ fun ChatFilePreview(
         ) {
             Box(Modifier.fillMaxSize().clickable(onClick = onOpen), contentAlignment = Alignment.Center) {
                 thumbnail?.let {
-                    Image(it, "Video thumbnail", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    Image(it, stringResource(R.string.media_video_thumbnail), Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 }
                 Surface(
                     shape = androidx.compose.foundation.shape.CircleShape,
@@ -112,7 +112,7 @@ fun ChatFilePreview(
                 ) {
                     FluentIcon(
                         Icons.Outlined.PlayArrow,
-                        contentDescription = "Open video",
+                        contentDescription = stringResource(R.string.media_open_video),
                         tint = Color.White,
                         modifier = Modifier.padding(10.dp)
                     )
@@ -160,9 +160,9 @@ private fun FileCornerActions(reference: String, name: String, mime: String, sel
             downloading = true
             try {
                 withContext(Dispatchers.IO) {
-                    val input = AttachmentResolver(context).open(reference) ?: error("File unavailable")
+                    val input = AttachmentResolver(context).open(reference) ?: error(context.getString(R.string.attachment_file_unavailable))
                     input.use { source ->
-                        (context.contentResolver.openOutputStream(uri) ?: error("Cannot save file")).use { output ->
+                        (context.contentResolver.openOutputStream(uri) ?: error(context.getString(R.string.attachment_cannot_save_file))).use { output ->
                             val buffer = ByteArray(32768)
                             while (true) {
                                 ensureActive()
@@ -181,7 +181,7 @@ private fun FileCornerActions(reference: String, name: String, mime: String, sel
     }
     val image = mime.startsWith("image/")
     val selectionLabel = if (image) {
-        if (selected) "Remove image from next message" else "Attach image to next message"
+        if (selected) stringResource(R.string.attachment_remove_from_next) else stringResource(R.string.attachment_attach_to_next)
     } else stringResource(if (selected) R.string.file_remove_next_message else R.string.file_attach_next_message)
     Surface(modifier = modifier, shape = RoundedCornerShape(12.dp), color = Color.Black.copy(alpha = 0.62f)) {
         Row(verticalAlignment = Alignment.CenterVertically) {

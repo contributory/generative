@@ -182,7 +182,7 @@ fun IconsScreen(onBack: () -> Unit) {
                     IconButton(enabled = !busy, onClick = {
                         picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     }) {
-                        Icon(FluentUi.Regular.ImageAdd, contentDescription = stringResource(R.string.icon_cache_add))
+                        Icon(FluentUi.Regular.ImageAdd, contentDescription = stringResource(R.string.common_add))
                     }
                 }
             )
@@ -282,7 +282,7 @@ fun IconsScreen(onBack: () -> Unit) {
                                             busy = false
                                         }
                                     }
-                                }) { Icon(FluentUi.Regular.Dismiss, stringResource(R.string.remove_icon)) }
+                                }) { Icon(FluentUi.Regular.Dismiss, stringResource(R.string.common_remove)) }
                             }
                         }
                     }
@@ -302,7 +302,7 @@ fun IconsScreen(onBack: () -> Unit) {
                                 )
                                 IconButton(enabled = !busy, onClick = {
                                     patterns = patterns.filterIndexed { i, _ -> i != index }
-                                }) { Icon(FluentUi.Regular.Dismiss, stringResource(R.string.icon_cache_delete)) }
+                                }) { Icon(FluentUi.Regular.Dismiss, stringResource(R.string.common_delete)) }
                             }
                         }
                     }

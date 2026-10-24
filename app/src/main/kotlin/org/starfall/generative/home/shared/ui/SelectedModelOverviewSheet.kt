@@ -21,6 +21,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.ui.model.LocalThinkingScreenBurst
 import org.starfall.generative.shared.ui.model.ThinkingScreenBurstLayer
 import org.starfall.generative.shared.ui.model.ReasoningEffortControl
+import org.starfall.generative.shared.ui.model.localizedReasoningEffortLabels
 import org.starfall.generative.shared.ui.model.maximumEffortCardBrush
 import org.starfall.generative.shared.ui.model.reasoningEffortOptions
 import org.starfall.generative.shared.ui.model.reasoningEffortIndex
@@ -62,8 +63,9 @@ internal fun selectedModelSheetStyle(maxEffort: Boolean): SelectedModelSheetStyl
 /** Tier previewed by the effort slider; hoisted so a host sheet can restyle itself while it moves. */
 @Composable
 internal fun rememberPreviewTier(config: ModelConfiguration, conversationReasoningEffort: String?): MutableIntState {
-    val effortOptions = remember(config.supportedReasoningEfforts) {
-        reasoningEffortOptions(config.supportedReasoningEfforts)
+    val reasoningLabels = localizedReasoningEffortLabels()
+    val effortOptions = remember(config.supportedReasoningEfforts, reasoningLabels) {
+        reasoningEffortOptions(config.supportedReasoningEfforts, reasoningLabels)
     }
     return remember(conversationReasoningEffort, effortOptions) {
         mutableIntStateOf(reasoningEffortTier(reasoningEffortIndex(conversationReasoningEffort, effortOptions), effortOptions))
@@ -337,14 +339,15 @@ internal fun SelectedModelOverviewContent(
 }
 
 
+@Composable
 private fun modelToolDisplayName(tool: String): String = when (tool.lowercase()) {
-    "google_search", "web_search" -> "Web Search"
-    "google_maps" -> "Google Maps"
-    "url_context", "web_fetch" -> "URL Context"
-    "code_execution", "code_interpreter" -> "Code Execution"
-    "file_search" -> "File Search"
-    "image_generation" -> "Image Generation"
-    "computer_use", "computer" -> "Computer Use"
+    "google_search", "web_search" -> stringResource(R.string.model_tool_web_search)
+    "google_maps" -> stringResource(R.string.model_tool_google_maps)
+    "url_context", "web_fetch" -> stringResource(R.string.model_tool_url_context)
+    "code_execution", "code_interpreter" -> stringResource(R.string.model_tool_code_execution)
+    "file_search" -> stringResource(R.string.model_tool_file_search)
+    "image_generation" -> stringResource(R.string.tool_image_generation_title)
+    "computer_use", "computer" -> stringResource(R.string.model_tool_computer_use)
     else -> tool.split('_', '-', '.').filter { it.isNotBlank() }
         .joinToString(" ") { it.replaceFirstChar(Char::uppercase) }
 }

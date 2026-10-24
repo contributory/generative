@@ -9,7 +9,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
@@ -31,7 +33,7 @@ fun ItemContextMenu(
 
     Box {
         IconButton(enabled = enabled, onClick = { expanded = true }) {
-            FluentIcon(Icons.Default.MoreVert, contentDescription = "More options")
+            FluentIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.common_more_options))
         }
 
         MaterialTheme(
@@ -56,7 +58,7 @@ fun ItemContextMenu(
                     )
                 }
                 DropdownMenuItem(
-                    text = { Text("Edit") },
+                    text = { Text(stringResource(R.string.common_edit)) },
                     leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
                     onClick = {
                         expanded = false
@@ -64,7 +66,7 @@ fun ItemContextMenu(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Delete", color = deleteColor) },
+                    text = { Text(stringResource(R.string.common_delete), color = deleteColor) },
                     leadingIcon = {
                         FluentIcon(
                             Icons.Outlined.Delete,

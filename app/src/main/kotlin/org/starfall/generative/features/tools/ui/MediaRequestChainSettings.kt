@@ -31,11 +31,12 @@ fun MediaRequestChainSettings(
     onBack: () -> Unit,
     video: Boolean
 ) {
+    val newProfileName = stringResource(R.string.profile_new)
     val storedProfiles = if (video) config.videoRequestProfiles else config.imageRequestProfiles
     val initialProfiles = remember(provider.id, video) {
         storedProfiles.ifEmpty {
             val id = UUID.randomUUID().toString()
-            mapOf(id to MediaRequestProfile(id, "New profile"))
+            mapOf(id to MediaRequestProfile(id, newProfileName))
         }
     }
     var profiles by remember(provider.id, video) { mutableStateOf(initialProfiles) }
@@ -130,11 +131,11 @@ fun MediaRequestChainSettings(
                     )
                     IconButton(onClick = {
                         val id = UUID.randomUUID().toString()
-                        profiles = profiles + (id to MediaRequestProfile(id, "New profile"))
+                        profiles = profiles + (id to MediaRequestProfile(id, newProfileName))
                         activeId = id
                         editingProfileId = id
                     }) {
-                        FluentIcon(Icons.Default.Add, stringResource(R.string.media_chain_add_profile))
+                        FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
                     }
                 }
             }
@@ -155,13 +156,13 @@ fun MediaRequestChainSettings(
                             )
                         }
                     IconButton(onClick = { editingProfileId = profile.id }) {
-                        FluentIcon(Icons.Outlined.Edit, stringResource(R.string.media_chain_edit_profile))
+                        FluentIcon(Icons.Outlined.Edit, stringResource(R.string.common_edit))
                     }
                     IconButton(
                         enabled = profiles.size > 1,
                         onClick = { deletingProfileId = profile.id }
                     ) {
-                        FluentIcon(Icons.Outlined.Delete, stringResource(R.string.media_chain_remove_profile))
+                        FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove))
                     }
                     }
                     if (active) {
@@ -180,7 +181,6 @@ fun MediaRequestChainSettings(
     deletingProfileId?.let { profileId ->
         AlertDialog(
             onDismissRequest = { deletingProfileId = null },
-            title = { Text(stringResource(R.string.media_chain_remove_profile_title)) },
             text = { Text(stringResource(R.string.media_chain_remove_profile_message)) },
             confirmButton = {
                 TextButton(onClick = {
@@ -189,7 +189,7 @@ fun MediaRequestChainSettings(
                     if (activeId == profileId) activeId = nextProfiles.keys.first()
                     deletingProfileId = null
                 }) {
-                    Text(stringResource(R.string.media_chain_remove_profile))
+                    Text(stringResource(R.string.common_remove))
                 }
             },
             dismissButton = {
@@ -202,7 +202,7 @@ fun MediaRequestChainSettings(
 
     if (confirmDiscard) AlertDialog(
         onDismissRequest = { confirmDiscard = false },
-        title = { Text(stringResource(R.string.media_chain_discard_title)) },
+        title = { Text(stringResource(R.string.common_discard_changes)) },
         text = { Text(stringResource(R.string.media_chain_discard_message)) },
         confirmButton = {
             TextButton(onClick = { confirmDiscard = false; onBack() }) {
@@ -211,7 +211,7 @@ fun MediaRequestChainSettings(
         },
         dismissButton = {
             TextButton(onClick = { confirmDiscard = false }) {
-                Text(stringResource(R.string.media_chain_keep_editing))
+                Text(stringResource(R.string.common_keep_editing))
             }
         }
     )

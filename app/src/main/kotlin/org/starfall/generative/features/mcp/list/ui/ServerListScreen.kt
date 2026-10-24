@@ -66,7 +66,7 @@ fun ServerListScreen(
                     IconButton(onClick = {
                         onOpenEditor(McpInfo(id = UUID.randomUUID().toString(), name = "", protocol = McpProtocol.STREAMABLE_HTTP,
                             url = null, headers = emptyMap()), true)
-                    }) { FluentIcon(Icons.Default.Add, stringResource(R.string.add_server)) }
+                    }) { FluentIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
                 })
         }) { padding ->
             Box(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -103,7 +103,7 @@ fun ServerListScreen(
     }
 
     if (deletingServerId != null) AlertDialog(onDismissRequest = { deletingServerId = null },
-        title = { Text(stringResource(R.string.delete_mcp_server_title)) }, text = { Text(stringResource(R.string.delete_mcp_server_message)) },
+        text = { Text(stringResource(R.string.delete_mcp_server_message)) },
         confirmButton = { Button(onClick = { deletingServerId?.let(onDeleteMcpServer); deletingServerId = null },
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.common_delete)) } },
         dismissButton = { TextButton(onClick = { deletingServerId = null }) { Text(stringResource(R.string.common_cancel)) } })

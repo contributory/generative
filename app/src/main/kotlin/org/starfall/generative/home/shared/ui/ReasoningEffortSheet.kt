@@ -7,10 +7,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import org.starfall.generative.R
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.DEFAULT_REASONING_EFFORTS
+import org.starfall.generative.shared.ui.model.localizedReasoningEffortLabels
 import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.generative.shared.ui.model.ReasoningEffortControl
@@ -29,8 +32,9 @@ fun ReasoningEffortSheet(
     supportedEfforts: List<String> = DEFAULT_REASONING_EFFORTS
 ) {
     var effort by remember(currentEffort) { mutableStateOf(currentEffort) }
-    val options = remember(supportedEfforts) {
-        reasoningEffortOptions(supportedEfforts)
+    val reasoningLabels = localizedReasoningEffortLabels()
+    val options = remember(supportedEfforts, reasoningLabels) {
+        reasoningEffortOptions(supportedEfforts, reasoningLabels)
     }
 
     AppSheet(
@@ -44,9 +48,9 @@ fun ReasoningEffortSheet(
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Reasoning Effort", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.reasoning_effort_title), style = MaterialTheme.typography.titleLarge)
             Text(
-                "Controls the reasoning effort for this conversation. This overrides the model setting only for this chat.",
+                stringResource(R.string.reasoning_effort_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -62,7 +66,7 @@ fun ReasoningEffortSheet(
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Apply")
+                Text(stringResource(R.string.common_apply))
             }
         }
     }

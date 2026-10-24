@@ -127,6 +127,9 @@ internal fun MachineDetailsScreen(
         )
     }
     var error by remember { mutableStateOf<String?>(null) }
+    val nameRequiredError = stringResource(R.string.remote_machine_name_required)
+    val hostRequiredError = stringResource(R.string.remote_machine_host_required)
+    val identityRequiredError = stringResource(R.string.remote_machine_identity_required)
     var websocketDialog by remember { mutableStateOf(false) }
     var loadingIp by remember { mutableStateOf(false) }
     var authorizing by remember { mutableStateOf(false) }
@@ -197,10 +200,10 @@ internal fun MachineDetailsScreen(
             aiTools = aiTools
         )
         runCatching {
-            require(name.isNotBlank()) { "Machine name is required." }
-            require(type != RemoteMachineType.SSH || host.isNotBlank()) { "Host is required for SSH machines." }
+            require(name.isNotBlank()) { nameRequiredError }
+            require(type != RemoteMachineType.SSH || host.isNotBlank()) { hostRequiredError }
             require(type != RemoteMachineType.SSH || auth != RemoteAuthentication.PRIVATE_KEY || identityFile.isNotBlank()) {
-                "IdentityFile is required for private-key authentication."
+                identityRequiredError
             }
             portForwarding.validated()
         }.onSuccess { onSave(machine) }.onFailure { error = it.message }
@@ -484,7 +487,7 @@ internal fun MachineDetailsScreen(
                         if (authorizing) {
                             // Cancelling stops the loopback listener and closes its port.
                             TextButton(onClick = { authorizeJob?.cancel() }) {
-                                Text(stringResource(R.string.remote_machine_oauth_cancel))
+                                Text(stringResource(R.string.common_cancel))
                             }
                         }
                         if (oauthAuthorized) {
@@ -506,8 +509,8 @@ internal fun MachineDetailsScreen(
                         label = stringResource(
                             when (toolName) {
                                 REMOTE_TOOL_UPDATE_IP -> R.string.remote_machine_update_ip
-                                REMOTE_TOOL_DISCONNECT -> R.string.remote_machine_tool_disconnect
-                                REMOTE_TOOL_OPEN_TERMINAL -> R.string.remote_machine_tool_open_terminal
+                                REMOTE_TOOL_DISCONNECT -> R.string.remote_machine_disconnect
+                                REMOTE_TOOL_OPEN_TERMINAL -> R.string.remote_machine_open_terminal
                                 REMOTE_TOOL_CLOSE_TERMINAL -> R.string.remote_machine_tool_close_terminal
                                 REMOTE_TOOL_LIST_TERMINAL -> R.string.remote_machine_tool_list_terminal
                                 else -> R.string.remote_machine_tool_execute

@@ -6,6 +6,7 @@ import android.content.Context
 import android.widget.Toast
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
+import org.starfall.generative.R
 import org.starfall.generative.integrations.modelapis.account.*
 import org.starfall.generative.shared.auth.OAuthCallbackService
 import org.starfall.generative.shared.model.*
@@ -32,8 +33,8 @@ internal class GitHubCopilotAdapter(context: Context, attachments: AttachmentRes
             require(code.isNotBlank() && deviceCode.isNotBlank()) { "Invalid GitHub device response" }
             withContext(Dispatchers.Main) {
                 (appContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-                    .setPrimaryClip(ClipData.newPlainText("GitHub authorization code", code))
-                Toast.makeText(appContext, "Enter $code in GitHub (copied to clipboard)", Toast.LENGTH_LONG).show()
+                    .setPrimaryClip(ClipData.newPlainText(appContext.getString(R.string.github_copilot_device_code_clip_label), code))
+                Toast.makeText(appContext, appContext.getString(R.string.github_copilot_device_code_prompt, code), Toast.LENGTH_LONG).show()
             }
             openBrowser(device.text("verification_uri_complete").ifBlank { device.text("verification_uri") })
             var interval = ((device["interval"] as? JsonPrimitive)?.longOrNull ?: 5).coerceAtLeast(1)

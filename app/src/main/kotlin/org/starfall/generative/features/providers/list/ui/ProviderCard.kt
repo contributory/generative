@@ -256,7 +256,7 @@ private fun ProviderContextMenu(
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
-            FluentIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more_options))
+            FluentIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.common_more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(

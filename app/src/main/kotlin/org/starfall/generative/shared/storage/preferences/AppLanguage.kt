@@ -17,7 +17,8 @@ enum class AppLanguage(val tag: String, val nativeName: String) {
     KOREAN("ko", "한국어"),
     CHINESE_SIMPLIFIED("zh-CN", "简体中文"),
     CHINESE_TRADITIONAL("zh-TW", "繁體中文"),
-    SPANISH("es", "Español");
+    SPANISH("es", "Español"),
+    PORTUGUESE_BRAZIL("pt-BR", "Português (Brasil)");
 
     val locale: Locale get() = Locale.forLanguageTag(tag)
 

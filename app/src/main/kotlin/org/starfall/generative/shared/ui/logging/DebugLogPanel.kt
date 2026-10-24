@@ -164,12 +164,12 @@ private fun DebugLogEntryBlock(entry: DebugLogEntry, onCopy: () -> Unit) {
 
 private fun copyLog(context: Context, text: String) {
     val copied = runCatching {
-        val clipboard = context.getSystemService(ClipboardManager::class.java) ?: error("Clipboard unavailable")
-        clipboard.setPrimaryClip(ClipData.newPlainText("debug log", text))
+        val clipboard = context.getSystemService(ClipboardManager::class.java) ?: error(context.getString(R.string.debug_clipboard_unavailable))
+        clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.debug_log_clip_label), text))
     }.isSuccess
     // Android 13+ shows its own confirmation after a copy.
     if (!copied) Toast.makeText(context, R.string.debug_log_copy_failed, Toast.LENGTH_SHORT).show()
     else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-        Toast.makeText(context, R.string.debug_log_copied, Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, R.string.common_copied_to_clipboard, Toast.LENGTH_SHORT).show()
     }
 }

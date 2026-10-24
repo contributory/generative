@@ -8,6 +8,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.stringResource
+import org.starfall.generative.R
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 
@@ -16,10 +18,10 @@ import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 internal fun RegenerateResponseDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Regenerate this response?") },
-        text = { Text("Later messages will be removed. The current response will remain available as an earlier version.") },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Regenerate") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        title = { Text(stringResource(R.string.regenerate_title)) },
+        text = { Text(stringResource(R.string.regenerate_message)) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.message_regenerate)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
     )
 }
 
@@ -37,13 +39,12 @@ internal fun DeleteMessageDialog(
     val hasMultipleVersions = message.versions.size > 1
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (hasMultipleVersions) "Delete Message Version" else "Delete Message") },
         text = {
             Text(
                 if (hasMultipleVersions) {
-                    "This message has ${message.versions.size} versions. Delete only the current version or delete the entire message with all versions?"
+                    stringResource(R.string.delete_version_message, message.versions.size)
                 } else {
-                    "Are you sure you want to delete this message?"
+                    stringResource(R.string.delete_message_message)
                 }
             )
         },
@@ -54,13 +55,13 @@ internal fun DeleteMessageDialog(
                         onClick = onDeleteVersion,
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) {
-                        Text("Delete current version")
+                        Text(stringResource(R.string.delete_current_version))
                     }
                     TextButton(
                         onClick = onDeleteAll,
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) {
-                        Text("Delete all versions")
+                        Text(stringResource(R.string.delete_all_versions))
                     }
                 }
             } else {
@@ -68,13 +69,13 @@ internal fun DeleteMessageDialog(
                     onClick = onDeleteAll,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Delete")
+                    Text(stringResource(R.string.common_delete))
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     )

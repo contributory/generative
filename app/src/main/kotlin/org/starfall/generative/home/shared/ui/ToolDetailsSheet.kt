@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontFamily
@@ -31,6 +32,7 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.starfall.generative.R
 import org.starfall.generative.shared.ui.media.MediaViewer
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.model.ToolActivity
@@ -100,7 +102,7 @@ internal fun ToolDetailsSheet(
 
             Spacer(Modifier.height(24.dp))
             Text(
-                text = "Args",
+                text = stringResource(R.string.tool_details_args),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -114,12 +116,12 @@ internal fun ToolDetailsSheet(
                 Tab(
                     selected = argsTab == 0,
                     onClick = { argsTab = 0 },
-                    text = { Text("Pretty") }
+                    text = { Text(stringResource(R.string.tool_details_pretty)) }
                 )
                 Tab(
                     selected = argsTab == 1,
                     onClick = { argsTab = 1 },
-                    text = { Text("Raw") }
+                    text = { Text(stringResource(R.string.common_raw)) }
                 )
             }
 
@@ -132,7 +134,7 @@ internal fun ToolDetailsSheet(
 
             Spacer(Modifier.height(26.dp))
             Text(
-                text = "Response",
+                text = stringResource(R.string.tool_details_response),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -141,7 +143,7 @@ internal fun ToolDetailsSheet(
             LazyCodeBlock(
                 language = if (responseIsJson) "json" else "text",
                 text = responseText.ifBlank {
-                    if (activity.status == "running") "Waiting for tool response…" else "No response"
+                    if (activity.status == "running") stringResource(R.string.tool_details_waiting_response) else stringResource(R.string.tool_details_no_response)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 maxHeight = 440.dp,
@@ -151,7 +153,7 @@ internal fun ToolDetailsSheet(
             if (fileNames.isNotEmpty()) {
                 Spacer(Modifier.height(26.dp))
                 Text(
-                    text = "Files",
+                    text = stringResource(R.string.common_files),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -256,7 +258,7 @@ private fun ToolFileRow(name: String, file: File?, onOpen: () -> Unit) {
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Text(
-                    file?.let { android.text.format.Formatter.formatFileSize(context, it.length()) } ?: "File deleted",
+                    file?.let { android.text.format.Formatter.formatFileSize(context, it.length()) } ?: stringResource(R.string.file_deleted),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -343,7 +345,7 @@ private fun rememberResponseDownload(fileName: String, mime: String, source: () 
                     }
                 }.isSuccess
             }
-            Toast.makeText(context, if (saved) "File saved" else "Could not save file", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(if (saved) R.string.file_download_saved else R.string.file_download_failed), Toast.LENGTH_SHORT).show()
         }
     }
     return { pending = source(); launcher.launch(fileName) }

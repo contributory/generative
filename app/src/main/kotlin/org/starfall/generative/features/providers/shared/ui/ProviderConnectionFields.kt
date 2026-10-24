@@ -20,17 +20,19 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 
+@Composable
 private fun AuthMethod.legacyDisplayName(): String = when (this) {
-    AuthMethod.PLATFORM_DEFAULT -> "Platform Default"
-    AuthMethod.NONE, AuthMethod.OTHER -> "None"
-    AuthMethod.BEARER_TOKEN, AuthMethod.CUSTOM_HEADER -> "Bearer Token"
-    AuthMethod.QUERY_PARAM -> "URL Query"
-    AuthMethod.OAUTH -> "OAuth Flow"
+    AuthMethod.PLATFORM_DEFAULT -> stringResource(R.string.provider_auth_platform_default)
+    AuthMethod.NONE, AuthMethod.OTHER -> stringResource(R.string.common_none)
+    AuthMethod.BEARER_TOKEN, AuthMethod.CUSTOM_HEADER -> stringResource(R.string.bearer_token)
+    AuthMethod.QUERY_PARAM -> stringResource(R.string.url_query)
+    AuthMethod.OAUTH -> stringResource(R.string.oauth_flow)
 }
 
+@Composable
 private fun AuthMethod.displayNameFallback(): String = when (this) {
-    AuthMethod.BEARER_TOKEN -> "Bearer Token"
-    AuthMethod.CUSTOM_HEADER -> "Custom Header"
+    AuthMethod.BEARER_TOKEN -> stringResource(R.string.bearer_token)
+    AuthMethod.CUSTOM_HEADER -> stringResource(R.string.provider_auth_custom_header)
     else -> legacyDisplayName()
 }
 

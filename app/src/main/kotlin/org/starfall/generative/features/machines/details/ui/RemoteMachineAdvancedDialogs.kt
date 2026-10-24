@@ -93,7 +93,7 @@ internal fun SshOptionsEditor(
                     draftValue = ""
                 }
             ) {
-                FluentIcon(Icons.Default.Add, stringResource(R.string.remote_machine_add_ssh_option))
+                FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
             }
         }
     }

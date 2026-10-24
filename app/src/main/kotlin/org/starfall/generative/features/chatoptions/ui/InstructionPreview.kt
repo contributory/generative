@@ -35,7 +35,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.ChatRole
-import org.starfall.generative.shared.model.SavedPrompt
+import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
@@ -43,8 +43,8 @@ import org.starfall.generative.shared.ui.text.messageMarkdownTypography
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun PromptPreview(
-    prompt: SavedPrompt,
+internal fun InstructionPreview(
+    instruction: SavedInstruction,
     onEdit: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -54,7 +54,7 @@ internal fun PromptPreview(
             TopAppBar(
                 title = {
                     Text(
-                        prompt.name.ifBlank { stringResource(R.string.prompt_preview_title) },
+                        instruction.name.ifBlank { stringResource(R.string.instruction_preview_title) },
                         fontWeight = FontWeight.SemiBold
                     )
                 },
@@ -67,7 +67,7 @@ internal fun PromptPreview(
                     IconButton(onClick = onEdit) {
                         FluentIcon(
                             Icons.Outlined.Edit,
-                            stringResource(R.string.prompt_preview_edit)
+                            stringResource(R.string.instruction_preview_edit)
                         )
                     }
                 }
@@ -82,13 +82,13 @@ internal fun PromptPreview(
                 .padding(horizontal = 12.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            PromptPreviewMessage(prompt.role, prompt.content)
+            InstructionPreviewMessage(instruction.role, instruction.content)
         }
     }
 }
 
 @Composable
-private fun PromptPreviewMessage(role: ChatRole, content: String) {
+private fun InstructionPreviewMessage(role: ChatRole, content: String) {
     val isUser = role == ChatRole.USER
 
     Column(
@@ -108,12 +108,12 @@ private fun PromptPreviewMessage(role: ChatRole, content: String) {
             ) {
                 if (content.isBlank()) {
                     Text(
-                        stringResource(R.string.prompt_preview_empty),
+                        stringResource(R.string.instruction_preview_empty),
                         style = messageMarkdownTypography().paragraph
                     )
                 } else {
                     SelectionContainer {
-                        PromptMarkdown(content)
+                        InstructionMarkdown(content)
                     }
                 }
             }
@@ -122,7 +122,7 @@ private fun PromptPreviewMessage(role: ChatRole, content: String) {
 }
 
 @Composable
-private fun PromptMarkdown(content: String) {
+private fun InstructionMarkdown(content: String) {
     var state by remember(content) { mutableStateOf<State>(State.Loading()) }
     LaunchedEffect(content) {
         state = withContext(Dispatchers.Default) { parseMarkdown(content) }

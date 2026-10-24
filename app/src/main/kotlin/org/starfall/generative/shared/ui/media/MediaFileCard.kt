@@ -87,7 +87,7 @@ fun MediaFileCard(
         if (!imageOnly) Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-    } else Text("File deleted", style = MaterialTheme.typography.bodySmall)
+    } else Text(stringResource(R.string.file_deleted), style = MaterialTheme.typography.bodySmall)
     if (view && file != null) MediaViewer(store, file) { view = false }
 }
 
@@ -114,7 +114,7 @@ internal fun MediaViewer(store: ToolFiles, file: File, onDismiss: () -> Unit) {
                     truncated = count > TEXT_PREVIEW_LIMIT
                     String(buffer, 0, minOf(count, TEXT_PREVIEW_LIMIT))
                 }
-            }.getOrDefault("File deleted")
+            }.getOrDefault(context.getString(R.string.file_deleted))
         }
     }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -127,7 +127,7 @@ internal fun MediaViewer(store: ToolFiles, file: File, onDismiss: () -> Unit) {
                     }
                 }
             }
-            Toast.makeText(context, if (result.isSuccess) "File saved" else "Could not save file", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(if (result.isSuccess) R.string.file_download_saved else R.string.file_download_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -166,14 +166,14 @@ internal fun MediaViewer(store: ToolFiles, file: File, onDismiss: () -> Unit) {
                         textual -> text?.let { content ->
                             CodeBlockSurface(language = language, code = content)
                             if (truncated) Text(
-                                "Preview truncated to the first $TEXT_PREVIEW_LIMIT characters.",
+                                stringResource(R.string.media_preview_truncated, TEXT_PREVIEW_LIMIT),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         } ?: Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator()
                         }
-                        else -> Text("Preview unavailable for this file type.")
+                        else -> Text(stringResource(R.string.media_preview_unsupported))
                     }
                 }
             }
@@ -193,11 +193,11 @@ internal fun MediaViewer(store: ToolFiles, file: File, onDismiss: () -> Unit) {
                                     .setType(mime)
                                     .putExtra(Intent.EXTRA_STREAM, uri)
                                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
-                                "Share file"
+                                context.getString(R.string.media_share_file)
                             )
                         )
                     }.onFailure {
-                        Toast.makeText(context, "Could not share file", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.media_could_not_share_file), Toast.LENGTH_SHORT).show()
                     }
                 },
                 onDelete = { confirmDelete = true },
@@ -208,17 +208,16 @@ internal fun MediaViewer(store: ToolFiles, file: File, onDismiss: () -> Unit) {
 
     if (confirmDelete) AlertDialog(
         onDismissRequest = { confirmDelete = false },
-        title = { Text("Delete file?") },
-        text = { Text("This file will no longer be available in chat.") },
+        text = { Text(stringResource(R.string.media_delete_file_message)) },
         confirmButton = {
             TextButton(onClick = {
                 onDismiss()
                 scope.launch { withContext(Dispatchers.IO) { store.delete(listOf(file.name)) } }
                 confirmDelete = false
-            }) { Text("Delete") }
+            }) { Text(stringResource(R.string.common_delete)) }
         },
         dismissButton = {
-            TextButton(onClick = { confirmDelete = false }) { Text("Cancel") }
+            TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }

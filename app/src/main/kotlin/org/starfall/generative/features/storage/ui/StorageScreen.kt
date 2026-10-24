@@ -112,7 +112,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                 title = { Text(stringResource(R.string.settings_storage), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                     }
                 },
                 actions = {
@@ -143,9 +143,9 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(Modifier.padding(16.dp)) {
-                        Text("Tool files", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.storage_tool_files), style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "${files.size} files · ${android.text.format.Formatter.formatFileSize(context, snapshot.totalBytes)}",
+                            stringResource(R.string.storage_files_summary, files.size, android.text.format.Formatter.formatFileSize(context, snapshot.totalBytes)),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -154,14 +154,14 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                                 TextButton(onClick = {
                                     selected = if (allSelected) emptySet() else files.mapTo(mutableSetOf()) { it.name }
                                 }) {
-                                    Text(if (allSelected) "Clear selection" else "Select all")
+                                    Text(stringResource(if (allSelected) R.string.storage_clear_selection else R.string.storage_select_all))
                                 }
                                 Spacer(Modifier.weight(1f))
                                 FilledTonalButton(
                                     enabled = selected.isNotEmpty(),
                                     onClick = { confirmDelete = true }
                                 ) {
-                                    Text("Delete (${selected.size})")
+                                    Text(stringResource(R.string.storage_delete_selected, selected.size))
                                 }
                             }
                         }
@@ -181,7 +181,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                             modifier = Modifier.size(48.dp),
                             tint = MaterialTheme.colorScheme.outline
                         )
-                        Text("No tool files stored", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.storage_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             } else {
@@ -197,17 +197,16 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete ${selected.size} files?") },
-            text = { Text("Messages will remain, but these files will no longer be available in chat.") },
+            text = { Text(stringResource(R.string.storage_delete_message, selected.size)) },
             confirmButton = {
                 TextButton(onClick = {
                     val names = selected
                     scope.launch { withContext(Dispatchers.IO) { store.delete(names) } }
                     selected = emptySet()
                     confirmDelete = false
-                }) { Text("Delete") }
+                }) { Text(stringResource(R.string.common_delete)) }
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } }
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.common_cancel)) } }
         )
     }
 }

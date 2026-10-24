@@ -37,7 +37,7 @@ internal fun OAuthClientDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 RemoteTextField(name, { name = it }, stringResource(R.string.common_name))
-                RemoteTextField(clientId, { clientId = it }, stringResource(R.string.remote_machine_client_id))
+                RemoteTextField(clientId, { clientId = it }, stringResource(R.string.client_id))
                 RemoteDropdownField(
                     label = stringResource(R.string.remote_machine_oauth_client_type),
                     options = GoogleOAuthClientType.entries.map { option ->
@@ -50,7 +50,7 @@ internal fun OAuthClientDialog(
                     onSelect = { clientType = it }
                 )
                 if (clientType == GoogleOAuthClientType.DESKTOP) {
-                    RemoteTextField(secret, { secret = it }, stringResource(R.string.remote_machine_client_secret), visual = PasswordVisualTransformation())
+                    RemoteTextField(secret, { secret = it }, stringResource(R.string.client_secret), visual = PasswordVisualTransformation())
                 }
             }
         },

@@ -13,13 +13,13 @@ import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.features.chatoptions.ui.ChatOptionsScreen
 import org.starfall.generative.features.tools.ui.ToolsEditor
-import org.starfall.generative.home.shared.ui.PromptInstructionsSheetContent
+import org.starfall.generative.home.shared.ui.InstructionsSheetContent
 import org.starfall.generative.shared.model.ChatRole
-import org.starfall.generative.shared.model.PromptLibrary
-import org.starfall.generative.shared.model.SavedPrompt
+import org.starfall.generative.shared.model.InstructionLibrary
+import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.model.ToolSettings
-import org.starfall.generative.shared.ui.LocalPromptControls
-import org.starfall.generative.shared.ui.PromptControls
+import org.starfall.generative.shared.ui.InstructionControls
+import org.starfall.generative.shared.ui.LocalInstructionControls
 
 class ChatOptionsAndToolsEditorTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
@@ -45,35 +45,35 @@ class ChatOptionsAndToolsEditorTest {
         compose.onNodeWithText("Send File").assertDoesNotExist()
 
         compose.onNodeWithText("Conversation helpers").performTouchInput { swipeLeft() }
-        compose.onNodeWithText("Add prompt").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Add").assertIsDisplayed()
         compose.onNodeWithText("System Prompt & Instructions").assertDoesNotExist()
         compose.onNodeWithText("Conversation helpers").assertIsNotDisplayed()
 
         compose.onNodeWithText("Helpers").performClick()
         compose.onNodeWithText("Conversation helpers").assertIsDisplayed()
         compose.onNodeWithText("Instructions").performClick()
-        compose.onNodeWithText("Add prompt").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Add").assertIsDisplayed()
     }
 
     @Test
-    fun instructionsTabOpensDedicatedPromptEditorAndSavesPrompt() {
-        var savedLibrary = PromptLibrary()
+    fun instructionsTabOpensDedicatedInstructionEditorAndSavesInstruction() {
+        var savedLibrary = InstructionLibrary()
         compose.setContent {
             TestTheme {
                 ChatOptionsScreen(
                     providers = emptyList(),
                     settings = ToolSettings(),
-                    promptLibrary = savedLibrary,
+                    instructionLibrary = savedLibrary,
                     initialTab = "instructions",
-                    onPromptLibraryChange = { savedLibrary = it },
+                    onInstructionLibraryChange = { savedLibrary = it },
                     onSave = { _, _ -> },
                     onBack = {}
                 )
             }
         }
 
-        compose.onNodeWithText("Add prompt").performClick()
-        compose.onNodeWithText("New Prompt").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Add").performClick()
+        compose.onNodeWithTag("instruction_name_input").assertIsDisplayed()
         compose.onNodeWithText("System").assertIsDisplayed()
         compose.onAllNodes(hasSetTextAction()).assertCountEquals(2)
         compose.onAllNodes(hasSetTextAction())[0].performTextInput("Concise")
@@ -82,7 +82,7 @@ class ChatOptionsAndToolsEditorTest {
 
         compose.onNodeWithText("Concise").assertIsDisplayed()
         compose.runOnIdle {
-            val saved = savedLibrary.prompts.single()
+            val saved = savedLibrary.instructions.single()
             assertEquals("Concise", saved.name)
             assertEquals("Keep answers concise", saved.content)
             assertFalse(saved.id in savedLibrary.selectedIds)
@@ -90,38 +90,38 @@ class ChatOptionsAndToolsEditorTest {
     }
 
     @Test
-    fun promptSheetOnlyTogglesPromptsAndRoutesManagementAndEditing() {
-        val prompt = SavedPrompt("prompt-id", "System prompt", "Answer clearly", ChatRole.SYSTEM)
-        var library = PromptLibrary(listOf(prompt), setOf(prompt.id))
+    fun instructionSheetOnlyTogglesInstructionsAndRoutesManagementAndEditing() {
+        val instruction = SavedInstruction("instruction-id", "System instruction", "Answer clearly", ChatRole.SYSTEM)
+        var library = InstructionLibrary(listOf(instruction), setOf(instruction.id))
         var openedInstructions = false
-        var editedPromptId: String? = null
+        var editedInstructionId: String? = null
         compose.setContent {
             TestTheme {
                 CompositionLocalProvider(
-                    LocalPromptControls provides PromptControls(
+                    LocalInstructionControls provides InstructionControls(
                         library = library,
-                        setPromptEnabled = { id, enabled ->
+                        setInstructionEnabled = { id, enabled ->
                             library = library.copy(
                                 selectedIds = if (enabled) library.selectedIds + id else library.selectedIds - id
                             )
                         },
                         openInstructions = { openedInstructions = true },
-                        editPrompt = { editedPromptId = it }
+                        editInstruction = { editedInstructionId = it }
                     )
                 ) {
-                    PromptInstructionsSheetContent()
+                    InstructionsSheetContent()
                 }
             }
         }
 
-        compose.onNodeWithText("Add prompt").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Add").assertDoesNotExist()
         compose.onNodeWithText("Answer clearly").assertDoesNotExist()
-        compose.onNodeWithText("System prompt").performClick()
+        compose.onNodeWithText("System instruction").performClick()
         compose.runOnIdle { assertTrue(library.selectedIds.isEmpty()) }
-        compose.onNodeWithText("System prompt").performTouchInput { longClick() }
+        compose.onNodeWithText("System instruction").performTouchInput { longClick() }
         compose.onNodeWithContentDescription("Open Chat Options > Instructions").performClick()
         compose.runOnIdle {
-            assertEquals("prompt-id", editedPromptId)
+            assertEquals("instruction-id", editedInstructionId)
             assertTrue(openedInstructions)
         }
     }

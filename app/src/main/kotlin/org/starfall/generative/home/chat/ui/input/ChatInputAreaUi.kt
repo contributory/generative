@@ -78,6 +78,7 @@ import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.model.localizedReasoningEffortLabels
 import org.starfall.generative.shared.ui.text.selectAllOnTripleClick
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.model.reasoningEffortIndex
@@ -216,8 +217,9 @@ fun UserInputArea(
     val thinkingProvider = providers.firstOrNull { it.id == selectedProviderId }
     val thinkingConfig = thinkingProvider?.config?.modelConfigs?.get(selectedModelName)
     val thinkingEfforts = thinkingConfig?.supportedReasoningEfforts ?: DEFAULT_REASONING_EFFORTS
-    val thinkingOptions = remember(thinkingEfforts) {
-        reasoningEffortOptions(thinkingEfforts)
+    val reasoningLabels = localizedReasoningEffortLabels()
+    val thinkingOptions = remember(thinkingEfforts, reasoningLabels) {
+        reasoningEffortOptions(thinkingEfforts, reasoningLabels)
     }
     val currentEffort = conversationReasoningEffort ?: thinkingConfig?.reasoningEffort
     val amoledMode = LocalAmoledMode.current
@@ -237,7 +239,12 @@ fun UserInputArea(
     val mediaProviders = filterMediaProvidersForKind(providers, mediaKind)
     val mediaProvider = mediaProviders.find { it.id == mediaProviderId }
     val mediaModel = mediaProvider?.config?.modelConfigs?.get(mediaModelId)
-    val mediaLabel = if (mediaKind == ModelType.VIDEO_GENERATION) "Video" else "Image"
+    val mediaLabel = stringResource(if (mediaKind == ModelType.VIDEO_GENERATION) R.string.common_video else R.string.common_image)
+    val exitMediaModeLabel = stringResource(R.string.chat_exit_generation_mode, mediaLabel)
+    val selectMediaModelLabel = stringResource(R.string.chat_select_generation_model, mediaLabel)
+    val generateMediaLabel = stringResource(R.string.chat_generate_media, mediaLabel)
+    val selectModelLabel = stringResource(R.string.select_model)
+    val sendMessageLabel = stringResource(R.string.chat_send_message)
     LaunchedEffect(mediaKind, mediaProviders) {
         if (mediaKind != null && mediaModel == null) {
             mediaProviderId = mediaProviders.firstOrNull()?.id.orEmpty()
@@ -362,7 +369,7 @@ fun UserInputArea(
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f))
                                 .clickable { mediaKind = null }
-                                .semantics { contentDescription = "Exit $mediaLabel generation mode" }
+                                .semantics { contentDescription = exitMediaModeLabel }
                                 .padding(horizontal = 10.dp, vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -403,7 +410,7 @@ fun UserInputArea(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Editing message",
+                            stringResource(R.string.chat_editing_message),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f)
@@ -414,7 +421,7 @@ fun UserInputArea(
                                 textFieldValue = TextFieldValue()
                                 onAttachmentsChange(emptyList())
                             }
-                        ) { Text("Cancel") }
+                        ) { Text(stringResource(R.string.common_cancel)) }
                     }
                 }
                 if (attachments.isNotEmpty()) {
@@ -437,7 +444,7 @@ fun UserInputArea(
                     ) {
                         FluentIcon(
                             imageVector = Icons.Default.Add,
-                            contentDescription = "Attachments and tools",
+                            contentDescription = stringResource(R.string.chat_attachments_and_tools),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(26.dp)
                         )
@@ -474,7 +481,7 @@ fun UserInputArea(
                             .clip(CircleShape)
                             .background(if (mediaKind != null) MaterialTheme.colorScheme.primaryContainer
                                 else MaterialTheme.colorScheme.surfaceContainerHighest)
-                            .semantics { contentDescription = if (mediaKind != null) "Select $mediaLabel model" else "Select model" }
+                            .semantics { contentDescription = if (mediaKind != null) selectMediaModelLabel else selectModelLabel }
                             .clickable {
                                 if (mediaKind != null) bottomSheets.openModelPicker()
                                 else bottomSheets.openSelectedModelOverview()
@@ -548,7 +555,7 @@ fun UserInputArea(
                         if (showStop) {
                             FluentIcon(
                                 imageVector = Icons.Default.Stop,
-                                contentDescription = "Stop generation",
+                                contentDescription = stringResource(R.string.chat_stop_generation),
                                 tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -559,7 +566,7 @@ fun UserInputArea(
                                     ModelType.VIDEO_GENERATION -> Icons.Outlined.Videocam
                                     else -> Icons.Default.ArrowUpward
                                 },
-                                contentDescription = if (mediaKind != null) "Generate $mediaLabel" else "Send message",
+                                contentDescription = if (mediaKind != null) generateMediaLabel else sendMessageLabel,
                                 tint = if (canSend) {
                                     MaterialTheme.colorScheme.onPrimary
                                 } else {
@@ -617,8 +624,8 @@ fun UserInputArea(
                                 if (textState.isEmpty()) {
                                     Text(
                                         text = when (mediaKind) {
-                                            ModelType.IMAGE_GENERATION -> "Describe an image…"
-                                            ModelType.VIDEO_GENERATION -> "Describe a video…"
+                                            ModelType.IMAGE_GENERATION -> stringResource(R.string.chat_describe_image)
+                                            ModelType.VIDEO_GENERATION -> stringResource(R.string.chat_describe_video)
                                             else -> stringResource(R.string.chat_input_placeholder)
                                         },
                                         style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 22.sp),
