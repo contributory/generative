@@ -32,7 +32,8 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
 
     override fun stream(request: ModelApiRequest): Flow<GenerationEvent> = streamAnthropic(
         request.provider, request.modelName, request.messages, request.systemPrompt,
-        request.temperature, request.topP, request.maxTokens, request.topK, request.sendThinkingContent, request.enabledModelTools
+        request.temperature, request.topP, request.maxTokens, request.topK, request.sendThinkingContent,
+        request.enabledModelTools, request.callerSystemPrompt
     )
 
     private fun streamAnthropic(
@@ -45,7 +46,8 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
         maxTokens: Int,
         topK: Int? = null,
         sendThinkingContent: Boolean = false,
-        enabledModelTools: List<String> = emptyList()
+        enabledModelTools: List<String> = emptyList(),
+        callerSystemPrompt: String? = null
     ): Flow<GenerationEvent> = flow {
         sdk.anthropic(provider).useClient { client ->
             val params = MessageCreateParams.builder().model(modelName).maxTokens(maxTokens.toLong())
@@ -59,8 +61,22 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
                         if (primitive.isString) primitive.content else primitive.intOrNull ?: primitive.content
                     }))
             }
-            if (systemPrompt.isNotBlank()) params.system(systemPrompt)
-            messages.forEach { message ->
+            if (systemPrompt.isNotBlank()) {
+                if (callerSystemPrompt == null) params.system(systemPrompt)
+                else params.systemOfTextBlockParams(listOf(com.anthropic.models.messages.TextBlockParam.of(systemPrompt)))
+            }
+            val firstUser = messages.indexOfFirst { it.role == ChatRole.USER }
+            val useMidSystem = callerSystemPrompt != null && claudeCodeSupportsMidConversationSystem(modelName)
+            val reminderUser = if (callerSystemPrompt != null && !useMidSystem) firstUser else -1
+            var systemInsertAt = if (useMidSystem && firstUser >= 0) firstUser + 1 else -1
+            if (systemInsertAt >= 0) {
+                while (systemInsertAt < messages.size && messages[systemInsertAt].role == ChatRole.USER) systemInsertAt++
+            }
+            messages.forEachIndexed { index, message ->
+                if (index == systemInsertAt) {
+                    params.addSystemMessageOfBlockParams(listOf(
+                        com.anthropic.models.messages.ContentBlockParam.ofText(callerSystemPrompt.orEmpty())))
+                }
                 if (message.role == ChatRole.MODEL && sendThinkingContent && !message.reasoningContent.isNullOrBlank()) {
                     val blocks = mutableListOf<com.anthropic.models.messages.ContentBlockParam>()
                     val thinking = com.anthropic.models.messages.ThinkingBlockParam.builder()
@@ -79,16 +95,23 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
                     )
                 } else if (message.role == ChatRole.MODEL) {
                     params.addAssistantMessage(message.content)
-                } else if (message.files.isNotEmpty()) {
+                } else if (message.files.isNotEmpty() || index == reminderUser) {
+                    val content = sdk.anthropicContent(message).toMutableList()
+                    if (index == reminderUser) content.add(0, com.anthropic.models.messages.ContentBlockParam.ofText(
+                        claudeCodeSystemReminder(callerSystemPrompt.orEmpty())))
                     params.addMessage(
                         com.anthropic.models.messages.MessageParam.builder()
                             .role(com.anthropic.models.messages.MessageParam.Role.USER)
-                            .contentOfBlockParams(sdk.anthropicContent(message))
+                            .contentOfBlockParams(content)
                             .build()
                     )
                 } else {
                     params.addUserMessage(message.content)
                 }
+            }
+            if (systemInsertAt == messages.size) {
+                params.addSystemMessageOfBlockParams(listOf(
+                    com.anthropic.models.messages.ContentBlockParam.ofText(callerSystemPrompt.orEmpty())))
             }
             @Suppress("DEPRECATION")
             run {

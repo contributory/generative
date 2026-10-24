@@ -22,6 +22,7 @@ internal fun accountTokenFromResponse(
             ?: payload.text("account_id").takeIf(String::isNotBlank) ?: previous?.accountId,
         email = account?.text("email_address")?.takeIf(String::isNotBlank)
             ?: payload.text("email").takeIf(String::isNotBlank) ?: previous?.email,
-        projectId = previous?.projectId
+        projectId = previous?.projectId,
+        codeAssistBaseUrl = previous?.codeAssistBaseUrl
     )
 }

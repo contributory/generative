@@ -129,8 +129,25 @@ class AiService(
             ?.normalizeToolRequest(sourceProvider, wireProvider, body, systemPrompt)
             ?: body
 
+    fun restoreAccountToolResponse(
+        sourceProvider: ModelProvider,
+        wireProvider: ModelProvider,
+        requestBody: JsonObject,
+        responseBody: JsonObject
+    ): JsonObject = accountAdapters.get(sourceProvider.type)
+        ?.restoreToolResponse(sourceProvider, wireProvider, requestBody, responseBody)
+        ?: responseBody
+
     fun prepareAccountRequest(source: ModelProvider, wire: ModelProvider, body: JsonObject): ModelProvider =
         accountAdapters.get(source.type)?.prepareRequestProvider(source, wire, body) ?: wire
+
+    fun accountShouldStreamUpstream(
+        source: ModelProvider,
+        wire: ModelProvider,
+        modelName: String,
+        callerStream: Boolean
+    ): Boolean = accountAdapters.get(source.type)
+        ?.shouldStreamUpstream(source, wire, modelName, callerStream) ?: callerStream
 
     fun accountRequestUrl(source: ModelProvider, wire: ModelProvider, url: String): String =
         accountAdapters.get(source.type)?.requestUrl(source, wire, url) ?: url

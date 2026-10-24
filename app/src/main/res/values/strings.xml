@@ -147,6 +147,17 @@
     <string name="provider_models">Models</string>
     <string name="provider_base_url">Base URL</string>
     <string name="provider_invalid_base_url">Use an HTTP(S) base URL without query, fragment or embedded credentials.</string>
+    <string name="provider_codex_client_version">Codex client version</string>
+    <string name="provider_codex_client_version_help">Used for model discovery and the Codex User-Agent. Leave empty to use %1$s.</string>
+    <string name="provider_codex_client_version_invalid">Enter a dot-separated version such as %1$s, with an optional pre-release or build suffix.</string>
+    <string name="provider_antigravity_version">Antigravity client version</string>
+    <string name="provider_antigravity_version_help">Used in onboarding metadata and the Antigravity User-Agent. Leave empty to use %1$s.</string>
+    <string name="provider_antigravity_version_invalid">Enter a dot-separated version such as %1$s, with an optional pre-release or build suffix.</string>
+    <string name="provider_antigravity_changelist">Antigravity changelist (optional)</string>
+    <string name="provider_antigravity_changelist_help">The verified changelist for version %1$s is %2$s. Other versions omit it unless you enter their matching value.</string>
+    <string name="provider_antigravity_changelist_invalid">Enter digits only, or leave empty to use the version-aware default.</string>
+    <string name="provider_antigravity_project_id">Antigravity project ID (optional)</string>
+    <string name="provider_antigravity_project_id_help">Used only for the selected OAuth account. Leave empty to discover or onboard the project automatically.</string>
     <string name="http_unencrypted_provider_warning">HTTP is unencrypted. API keys, headers and messages can be read on the network. Use HTTPS outside a trusted local network.</string>
     <string name="stream" translatable="false">Stream Response</string>
     <string name="custom_headers">Custom Headers</string>

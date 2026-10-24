@@ -104,15 +104,18 @@ class AccountTokenUsageTest {
                             ModelApiType.OPENAI_RESPONSES -> "/responses"
                             else -> "/chat/completions"
                         }
-                        server.enqueue(MockResponse().setBody("""{"data":[{"id":"chat","supported_endpoints":["$endpoint"]}]}"""))
+                        server.enqueue(MockResponse().setBody("""{"data":[{"id":"chat","supported_endpoints":["$endpoint"],"capabilities":{"limits":{"max_output_tokens":1000,"max_prompt_tokens":10000},"supports":{"tool_calls":true}}}]}"""))
                     }
+                    val modelName = if (account == ModelApiType.ANTIGRAVITY) "claude-test" else "chat"
                     fun envelope(value: JsonObject) = if (account == ModelApiType.ANTIGRAVITY)
                         obj("response" to value) else value
-                    val body = if (stream) streamBody(wire, includeUsage, ::envelope)
+                    // Codex and Antigravity Claude require upstream SSE even for a non-stream caller.
+                    val upstreamStream = stream || account == ModelApiType.OPENAI_CODEX || account == ModelApiType.ANTIGRAVITY
+                    val body = if (upstreamStream) streamBody(wire, includeUsage, ::envelope)
                         else envelope(response(wire, includeUsage)).toString()
                     // Codex must also consume a terminal usage event without a trailing blank line.
-                    server.enqueue(MockResponse().setHeader("Content-Type", if (stream) "text/event-stream" else "application/json")
-                        .setBody(if (account == ModelApiType.OPENAI_CODEX && stream) body.trimEnd() else body))
+                    server.enqueue(MockResponse().setHeader("Content-Type", if (upstreamStream) "text/event-stream" else "application/json")
+                        .setBody(if (account == ModelApiType.OPENAI_CODEX) body.trimEnd() else body))
                     val provider = ModelProvider(id, "Usage", account, auth = auth,
                         baseUrl = server.url(if (account == ModelApiType.OPENAI_CODEX) "/responses" else "/v1").toString(),
                         config = ProviderConfiguration(supportStream = stream))
@@ -120,7 +123,7 @@ class AccountTokenUsageTest {
                     val text = StringBuilder()
                     val usages = mutableListOf<TokenUsage>()
                     if (toolRequest) {
-                        val turn = ToolRequestService(ToolHttp(), AiService(context)).request(provider, "chat",
+                        val turn = ToolRequestService(ToolHttp(), AiService(context)).request(provider, modelName,
                             listOf(obj("role" to str("user"), "content" to str("hi"))), emptyList(), "instructions", false,
                             onText = { text.append(it) }, onReasoning = {}, onUsage = { usages += it })
                         if (!stream) text.append(turn.text("content"))
@@ -128,7 +131,7 @@ class AccountTokenUsageTest {
                         assertFalse(label, turn.toString().contains("\"usageMetadata\":"))
                     } else {
                         val adapter = AccountProviderAdapterRegistry(context, AttachmentResolver(context)).get(account)!!
-                        val events = adapter.streamEvents(provider, "chat",
+                        val events = adapter.streamEvents(provider, modelName,
                             listOf(StoredMessage("u", ChatRole.USER, listOf(MessageVersion("hi")))), "instructions", 100).toList()
                         events.filterIsInstance<GenerationEvent.Text>().forEach { text.append(it.text) }
                         usages += events.filterIsInstance<GenerationEvent.Usage>().map { it.usage }
@@ -136,11 +139,21 @@ class AccountTokenUsageTest {
                     assertEquals(label, "hello", text.toString())
                     assertEquals(label, if (includeUsage) listOf(TokenUsage(60, 7)) else emptyList<TokenUsage>(), usages)
                     if (account == ModelApiType.GITHUB_COPILOT) server.takeRequest()
-                    val request = Json.parseToJsonElement(server.takeRequest().body.readUtf8()).jsonObject
+                    val recorded = server.takeRequest()
+                    if (account == ModelApiType.ANTIGRAVITY) {
+                        assertEquals(label, "/v1/v1internal:streamGenerateContent?alt=sse", recorded.path)
+                    }
+                    val request = Json.parseToJsonElement(recorded.body.readUtf8()).jsonObject
+                    if (account == ModelApiType.OPENAI_CODEX) {
+                        assertEquals(label, JsonPrimitive(true), request["stream"])
+                    }
                     assertFalse(label, request.toString().contains("\"usage\":"))
                     assertFalse(label, request.toString().contains("\"usageMetadata\":"))
                     if (wire == ModelApiType.OPENAI && stream) {
                         assertEquals(JsonPrimitive(true), request["stream_options"]?.jsonObject?.get("include_usage"))
+                    }
+                    if (account == ModelApiType.OPENAI_CODEX) {
+                        assertEquals(label, JsonPrimitive(true), request["stream"])
                     }
                 }
             }

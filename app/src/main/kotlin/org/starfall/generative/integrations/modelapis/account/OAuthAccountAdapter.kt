@@ -139,6 +139,9 @@ internal abstract class OAuthAccountAdapter(
 
     protected open fun sdkSystemPrompt(systemPrompt: String): String = systemPrompt
 
+    /** Original caller instructions for account protocols with a separate conversation system slot. */
+    protected open fun sdkCallerSystemPrompt(systemPrompt: String): String? = null
+
     override fun streamEvents(provider: ModelProvider, modelName: String, messages: List<StoredMessage>,
         systemPrompt: String, maxOutputTokens: Int): Flow<GenerationEvent> =
         if (useOfficialSdkForGeneration) streamEventsWithSdk(provider, modelName, messages, systemPrompt, maxOutputTokens)
@@ -149,6 +152,10 @@ internal abstract class OAuthAccountAdapter(
         val wire = prepareModelProvider(provider, modelName)
         val modelConfig = provider.config.modelConfigs[modelName] ?: ModelConfiguration()
         val requestContext = buildJsonObject {
+            put("model", modelName)
+            if (wire.type == ModelApiType.ANTHROPIC) {
+                modelConfig.claudeThinkingParameters(modelName, maxOutputTokens).forEach { (key, value) -> put(key, value) }
+            }
             put("messages", JsonArray(messages.filter { it.role != ChatRole.SYSTEM }.map { message ->
                 buildJsonObject {
                     put("role", if (message.role == ChatRole.MODEL) "assistant" else "user")
@@ -193,7 +200,8 @@ internal abstract class OAuthAccountAdapter(
             reasoningEffort = modelConfig.wireReasoningEffort,
             sendThinkingContent = modelConfig.sendsThinkingBack(messages.hasToolCalls()),
             enabledModelTools = modelConfig.enabledModelTools
-                .filter { it in modelConfig.supportedModelTools }.distinct()
+                .filter { it in modelConfig.supportedModelTools }.distinct(),
+            callerSystemPrompt = sdkCallerSystemPrompt(systemPrompt)
         )))
     }.flowOn(Dispatchers.IO)
 
@@ -208,10 +216,13 @@ internal abstract class OAuthAccountAdapter(
             ModelApiType.OPENAI_RESPONSES -> "$base/responses"
             else -> "$base/chat/completions"
         }
+        val callerStream = provider.streamEnabledFor(modelName)
+        val upstreamStream = shouldStreamUpstream(provider, wire, modelName, callerStream)
         val response = http.modelResponse(requestUrl(provider, wire, url),
-            normalizeToolRequest(provider, wire, body, systemPrompt), prepareRequestProvider(provider, wire, body), provider.streamEnabledFor(modelName),
-            { send(GenerationEvent.Text(it)) }, { send(GenerationEvent.Reasoning(it)) }, ::unwrapResponse)
-        if (provider.streamEnabledFor(modelName) && wire.type == ModelApiType.ANTHROPIC) {
+            normalizeToolRequest(provider, wire, body, systemPrompt), prepareRequestProvider(provider, wire, body), upstreamStream,
+            { chunk -> if (callerStream) send(GenerationEvent.Text(chunk)) },
+            { chunk -> if (callerStream) send(GenerationEvent.Reasoning(chunk)) }, ::unwrapResponse)
+        if (callerStream && wire.type == ModelApiType.ANTHROPIC) {
             (response["content"] as? JsonArray).orEmpty().forEach {
                 val part = it.jsonObject
                 part.text("signature").takeIf(String::isNotBlank)?.let { signature ->
@@ -219,7 +230,7 @@ internal abstract class OAuthAccountAdapter(
                 }
             }
         }
-        if (!provider.streamEnabledFor(modelName)) {
+        if (!callerStream) {
             when (wire.type) {
                 ModelApiType.ANTHROPIC -> (response["content"] as? JsonArray).orEmpty().forEach {
                     val part = it.jsonObject

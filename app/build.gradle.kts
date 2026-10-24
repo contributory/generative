@@ -69,10 +69,8 @@ android {
 
     buildTypes {
         debug {
-            // Opt into an isolated package ID for shareable test APKs without changing release IDs.
-            if (providers.gradleProperty("tempAppId").orNull == "true") {
-                applicationIdSuffix = ".temp"
-            }
+            // Keep debug installs isolated from the release app without changing the release ID.
+            applicationIdSuffix = ".debug"
         }
         release {
             // Codemagic maps CM_* signing variables to KEYSTORE_PATH/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD.

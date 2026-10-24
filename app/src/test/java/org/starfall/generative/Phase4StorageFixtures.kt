@@ -56,7 +56,11 @@ internal object Phase4StorageFixtures {
             multipleApiKeys = true,
             apiKeys = listOf(ProviderApiKey("key-1", "Primary", "fixture-provider-token"),
                 ProviderApiKey("key-2", "Backup", "fixture-backup-token")),
-            oauthAccounts = listOf(ProviderOAuthAccount("account-1", "Fixture", "fixture@example.test", "fixture-marker"))
+            oauthAccounts = listOf(ProviderOAuthAccount("account-1", "Fixture", "fixture@example.test", "fixture-marker")),
+            codexClientVersion = "0.158.0",
+            antigravityVersion = "2.25.0",
+            antigravityChangelist = "123456789",
+            antigravityProjectIds = linkedMapOf("account-1" to "project-fixture", "account-2" to "project-backup")
         )
     )
 

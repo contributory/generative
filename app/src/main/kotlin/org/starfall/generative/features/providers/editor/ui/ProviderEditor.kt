@@ -30,9 +30,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import org.starfall.generative.features.providers.shared.ui.ModelConnectionDialog
-import org.starfall.generative.features.providers.shared.ui.ModelConnectionStatusBar
 import org.starfall.generative.features.providers.shared.logic.ModelConnectionTests
 import org.starfall.generative.features.providers.shared.ui.OAuthAccountCard
+import org.starfall.generative.features.providers.shared.ui.AntigravityVersionFields
+import org.starfall.generative.features.providers.shared.ui.AntigravityProjectIdField
+import org.starfall.generative.features.providers.shared.ui.CodexClientVersionField
 import org.starfall.generative.features.providers.shared.ui.ProviderApiKeysDialog
 import org.starfall.generative.features.providers.shared.model.ProviderApiKeysState
 import org.starfall.generative.features.providers.shared.ui.ProviderAuthField
@@ -50,6 +52,10 @@ import org.starfall.generative.shared.model.language.DiscoveredModel
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
+import org.starfall.generative.shared.model.provider.DEFAULT_CODEX_CLIENT_VERSION
+import org.starfall.generative.shared.model.provider.DEFAULT_ANTIGRAVITY_VERSION
+import org.starfall.generative.shared.model.provider.isValidAntigravityChangelist
+import org.starfall.generative.shared.model.provider.isValidClientVersion
 import org.starfall.generative.shared.model.media.MediaRequestProfile
 import org.starfall.generative.shared.model.provider.ProviderOAuthAccount
 import org.starfall.generative.shared.model.provider.oauthAccountsWithCurrent
@@ -132,6 +138,18 @@ fun ProviderEditor(
     LaunchedEffect(initialProvider.id) { initialProvider.config.modelConfigs.forEach { (id, config) -> memory.remember(id, config, onlyIfMissing = true) } }
     var typeExpanded by remember { mutableStateOf(false) }
     var supportStream by remember { mutableStateOf(initialProvider.config.supportStream) }
+    var codexClientVersion by remember(initialProvider.id) {
+        mutableStateOf(initialProvider.config.codexClientVersion ?: DEFAULT_CODEX_CLIENT_VERSION)
+    }
+    var antigravityVersion by remember(initialProvider.id) {
+        mutableStateOf(initialProvider.config.antigravityVersion ?: DEFAULT_ANTIGRAVITY_VERSION)
+    }
+    var antigravityChangelist by remember(initialProvider.id) {
+        mutableStateOf(initialProvider.config.antigravityChangelist.orEmpty())
+    }
+    var antigravityProjectIds by remember(initialProvider.id) {
+        mutableStateOf(initialProvider.config.antigravityProjectIds)
+    }
     var showHeaders by rememberSaveable { mutableStateOf(false) }
     val headerRows = remember { mutableStateListOf<Pair<String, String>>().apply { addAll(initialProvider.config.headers.entries.map { it.key to it.value }) } }
     val pager = rememberPagerState(pageCount = { 2 })
@@ -143,35 +161,34 @@ fun ProviderEditor(
     var editingModel by remember(initialProvider.id, initialEditingModelId) { mutableStateOf(initialEditingModelId) }
     var showCatalog by remember { mutableStateOf(false) }
     var catalog by remember { mutableStateOf<Map<String, DiscoveredModel>>(emptyMap()) }
-    // Probes belong to this screen rather than the dialog, so the status strip keeps reporting them
-    // while the dialog is closed and stops when the editor is left.
+    // Probes belong to this screen rather than the dialog, so the top-bar action can keep showing
+    // running state while the dialog is closed and testing still stops when the editor is left.
     val testScope = order.filter { models[it]?.modelType == ModelType.TEXT_GENERATION }
     val testingConnection = tests.batchRunning.value || testScope.any { tests.running[it] == true }
-    val testProgress = tests.progress(testScope)
-    var showTestSummary by remember(initialProvider.id) { mutableStateOf(false) }
-    var testingConnectionBefore by remember(initialProvider.id) { mutableStateOf(false) }
-    LaunchedEffect(testingConnection, initialProvider.id) {
-        if (testingConnection) {
-            showTestSummary = false; testingConnectionBefore = true
-        } else if (testingConnectionBefore) {
-            // Report the run only once it has actually finished, so a reopened screen does not repeat an old notice.
-            showTestSummary = testProgress.tested > 0; testingConnectionBefore = false
-        }
-    }
     val activeHeaders = headerRows.filterNot { (key, value) -> key.isBlank() && value.isBlank() }
     val headersValid = activeHeaders.all { (key, value) -> key.isNotBlank() && key.none { it <= ' ' || it == ':' || it.code >= 127 } && value.none { it == '\r' || it == '\n' } } &&
         activeHeaders.map { it.first.lowercase() }.distinct().size == activeHeaders.size
     val parsedHeaders = if (headersValid) activeHeaders.associate { it.first.trim() to it.second } else null
-    val urlValid = type.isAccountProvider || baseUrl.isBlank() || runCatching { providerBase(initialProvider.copy(baseUrl = baseUrl)) }.isSuccess
+    val urlValid = type.isAccountProvider || baseUrl.isBlank() ||
+        runCatching { providerBase(initialProvider.copy(type = type, baseUrl = baseUrl)) }.isSuccess
     val authValid = apiKey.isBlank() || authMethod !in listOf(AuthMethod.BEARER_TOKEN, AuthMethod.QUERY_PARAM) || authName.isBlank() || authName.none { it <= ' ' || it == ':' || it.code >= 127 }
-    val valid = urlValid && authValid && headersValid
+    val codexClientVersionValid = type != ModelApiType.OPENAI_CODEX || isValidClientVersion(codexClientVersion)
+    val antigravityVersionValid = type != ModelApiType.ANTIGRAVITY || isValidClientVersion(antigravityVersion)
+    val antigravityChangelistValid = type != ModelApiType.ANTIGRAVITY || isValidAntigravityChangelist(antigravityChangelist)
+    val valid = urlValid && authValid && headersValid && codexClientVersionValid &&
+        antigravityVersionValid && antigravityChangelistValid
     fun requestConfig() = initialProvider.config.copy(supportStream = supportStream, headers = parsedHeaders ?: initialProvider.config.headers,
         multipleApiKeys = apiKeys.enabled, apiKeys = apiKeys.entries, oauthAccounts = oauthAccounts,
+        codexClientVersion = if (type == ModelApiType.OPENAI_CODEX) codexClientVersion.trim().ifEmpty { null } else null,
+        antigravityVersion = if (type == ModelApiType.ANTIGRAVITY) antigravityVersion.trim().ifEmpty { null } else null,
+        antigravityChangelist = if (type == ModelApiType.ANTIGRAVITY) antigravityChangelist.trim().ifEmpty { null } else null,
+        antigravityProjectIds = if (type == ModelApiType.ANTIGRAVITY) antigravityProjectIds else emptyMap(),
         modelConfigs = order.associateWith { models.getValue(it) }, modelIds = order)
     fun draft(): ModelProvider {
         if (apiKeys.enabled && authMethod !in listOf(AuthMethod.OAUTH, AuthMethod.NONE, AuthMethod.OTHER)) apiKeys.ensureCurrent(::keyIdentity)
         return initialProvider.copy(name = name.trim().ifEmpty { type.defaultName }, icon = providerIcon, type = type,
-            baseUrl = if (type.isAccountProvider) type.defaultBaseUrl else baseUrl.trim(), auth = authorization(), config = requestConfig())
+            baseUrl = if (type.isAccountProvider) type.defaultBaseUrl else baseUrl.trim(),
+            auth = authorization(), config = requestConfig())
     }
     fun selectOAuthAccount(account: ProviderOAuthAccount) {
         oauthAccountId = account.id; oauthIdentity = account.identity; oauthMarker = account.marker
@@ -212,6 +229,7 @@ fun ProviderEditor(
                 ?: Result.failure(IllegalStateException(context.getString(R.string.provider_oauth_removal_unavailable)))
             result.onSuccess { cleared ->
                 oauthAccounts = cleared.config.oauthAccounts
+                antigravityProjectIds = cleared.config.antigravityProjectIds
                 val auth = if ((originalAuth.oauthAccountId ?: initialProvider.id) != accountId) originalAuth else cleared.auth
                 oauthAccountId = auth.oauthAccountId; oauthIdentity = auth.key; oauthMarker = auth.value.orEmpty()
                 oauthAuthorized = !auth.value.isNullOrBlank()
@@ -258,7 +276,6 @@ fun ProviderEditor(
                         Tab(pager.currentPage == 0, { scope.launch { pager.animateScrollToPage(0) } }, text = { Text(stringResource(R.string.common_configuration)) })
                         Tab(pager.currentPage == 1, { scope.launch { pager.animateScrollToPage(1) } }, text = { Text(stringResource(R.string.provider_models)) })
                     }
-                    ModelConnectionStatusBar(testProgress, testingConnection, showTestSummary, onDismissSummary = { showTestSummary = false })
                     HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
                         if (page == 0) Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             IconPickerRow(providerIcon, { providerIcon = it }, text = providerInitials(name), onBusyChange = { iconImporting = it }, matchName = name, faviconBaseUrl = baseUrl, fetchState = faviconFetch)
@@ -275,7 +292,8 @@ fun ProviderEditor(
                                             // since the new type may send the key in a different form.
                                             if (authMethod == AuthMethod.BEARER_TOKEN) apiKey = apiKey.replace(Regex("^\\s*Bearer\\s+", RegexOption.IGNORE_CASE), "")
                                             authMethod = auth.method; authName = auth.key.orEmpty()
-                                            oauthAuthorized = false; oauthIdentity = null; oauthMarker = ""; oauthAccountId = null; oauthAccounts = emptyList(); oauthAuthError = null
+                                            oauthAuthorized = false; oauthIdentity = null; oauthMarker = ""; oauthAccountId = null; oauthAccounts = emptyList()
+                                            antigravityProjectIds = emptyMap(); oauthAuthError = null
                                         }
                                         typeExpanded = false
                                     }) }
@@ -284,6 +302,11 @@ fun ProviderEditor(
                             if (!type.isAccountProvider) ProviderBaseUrlField(type, baseUrl, urlValid) { baseUrl = it }
                             if (!type.isAccountProvider && baseUrl.trim().startsWith("http://", true)) Text(stringResource(R.string.http_unencrypted_provider_warning),
                                 color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            if (type == ModelApiType.OPENAI_CODEX) CodexClientVersionField(
+                                codexClientVersion, codexClientVersionValid) { codexClientVersion = it }
+                            if (type == ModelApiType.ANTIGRAVITY) AntigravityVersionFields(
+                                antigravityVersion, antigravityVersionValid, { antigravityVersion = it },
+                                antigravityChangelist, antigravityChangelistValid, { antigravityChangelist = it })
                             if (authMethod in listOf(AuthMethod.BEARER_TOKEN, AuthMethod.QUERY_PARAM)) SelectableOutlinedTextField(authName, { authName = it },
                                 label = { Text(stringResource(if (authMethod == AuthMethod.BEARER_TOKEN) R.string.header_key else R.string.query_parameter_name)) },
                                 isError = !authValid, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -316,6 +339,13 @@ fun ProviderEditor(
                                 } }, onCancelSignIn = {
                                     activeOAuthRequest?.let { onCancelProviderAuthorization?.invoke(it) }
                                 }, onSignOut = { scope.launch { removeOAuthAccount(oauthAccountId ?: initialProvider.id) } })
+                            if (type == ModelApiType.ANTIGRAVITY && authMethod == AuthMethod.OAUTH && oauthAuthorized) {
+                                val projectAccountId = oauthAccountId?.takeIf(String::isNotBlank) ?: initialProvider.id
+                                AntigravityProjectIdField(antigravityProjectIds[projectAccountId].orEmpty()) { value ->
+                                    antigravityProjectIds = if (value.isBlank()) antigravityProjectIds - projectAccountId
+                                    else antigravityProjectIds + (projectAccountId to value)
+                                }
+                            }
                             if (authMethod == AuthMethod.OAUTH) {
                                 Row(
                                     Modifier

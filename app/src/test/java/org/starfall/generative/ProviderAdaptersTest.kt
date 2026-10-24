@@ -21,6 +21,9 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.language.SELECTABLE_REASONING_EFFORTS
+import org.starfall.generative.integrations.modelapis.anthropic.CLAUDE_CODE_IDENTITY
+import org.starfall.generative.integrations.modelapis.anthropic.claudeCodeSystemReminder
+import org.starfall.generative.shared.networking.text
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)
@@ -71,6 +74,33 @@ class ProviderAdaptersTest {
             val request = server.takeRequest(5, TimeUnit.SECONDS)!!
             assertEquals("/v1/messages", request.path)
             assertEquals("test-key", request.getHeader("x-api-key"))
+        }
+    }
+
+    @Test fun claudeCodeSdkRelocatesCallerSystemByModelCapability() = runBlocking {
+        for (model in listOf("claude-sonnet-5", "claude-sonnet-4-5")) {
+            MockWebServer().use { server ->
+                server.enqueue(sse("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"))
+                adapters.streamAnthropic(provider(server, ModelApiType.ANTHROPIC), model, messages,
+                    CLAUDE_CODE_IDENTITY, null, null, 50, callerSystemPrompt = "Caller instructions").toList()
+                val body = Json.parseToJsonElement(server.takeRequest(5, TimeUnit.SECONDS)!!.body.readUtf8()).jsonObject
+                val system = body.getValue("system").jsonArray
+                assertEquals(model, 1, system.size)
+                assertEquals(CLAUDE_CODE_IDENTITY, system.single().jsonObject.text("text"))
+                assertFalse(model, system.toString().contains("Caller instructions"))
+                val wireMessages = body.getValue("messages").jsonArray.map { it.jsonObject }
+                if (model == "claude-sonnet-5") {
+                    assertEquals(listOf("user", "system"), wireMessages.map { it.text("role") })
+                    assertEquals("Caller instructions",
+                        wireMessages[1].getValue("content").jsonArray.single().jsonObject.text("text"))
+                    assertFalse(body.toString().contains("<system-reminder>"))
+                } else {
+                    assertTrue(wireMessages.none { it.text("role") == "system" })
+                    val content = wireMessages.single().getValue("content").jsonArray
+                    assertEquals(claudeCodeSystemReminder("Caller instructions"), content[0].jsonObject.text("text"))
+                    assertEquals("Hello", content[1].jsonObject.text("text"))
+                }
+            }
         }
     }
 

@@ -62,7 +62,7 @@ class McpToolLoopTest {
                 if(request.method=="GET" && request.path=="/mcp") return MockResponse().setResponseCode(405)
                     if (request.path?.endsWith("/models") == true)
                         return MockResponse().addHeader("Content-Type", "application/json")
-                            .setBody("""{"data":[{"id":"chat","supported_endpoints":["/chat/completions"]}]}""")
+                            .setBody("""{"data":[{"id":"chat","supported_endpoints":["/chat/completions"],"capabilities":{"limits":{"max_output_tokens":1000,"max_prompt_tokens":10000},"supports":{"tool_calls":true}}}]}""")
                     var body=Json.parseToJsonElement(request.body.readUtf8()).jsonObject
                     fun json(value:JsonElement)=MockResponse().addHeader("Content-Type","application/json").setBody(value.toString())
                     if(request.path=="/mcp") {

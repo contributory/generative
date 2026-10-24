@@ -237,7 +237,12 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
             authorized.config.oauthAccounts).associateBy { it.id }.values.toList()
         return (persisted ?: authorized).copy(type = authorized.type, baseUrl = authorized.baseUrl, auth = authorized.auth,
             config = (persisted?.config ?: authorized.config).copy(oauthAccounts = accounts,
-                multipleApiKeys = authorized.config.multipleApiKeys), credentialState = CredentialLoadState.LOADED)
+                multipleApiKeys = authorized.config.multipleApiKeys,
+                codexClientVersion = authorized.config.codexClientVersion,
+                antigravityVersion = authorized.config.antigravityVersion,
+                antigravityChangelist = authorized.config.antigravityChangelist,
+                antigravityProjectIds = authorized.config.antigravityProjectIds),
+            credentialState = CredentialLoadState.LOADED)
     }
 
     suspend fun authorizeProvider(provider: ModelProvider): Result<ModelProvider> = runCatching {

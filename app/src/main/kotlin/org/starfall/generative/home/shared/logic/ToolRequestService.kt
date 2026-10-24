@@ -8,6 +8,7 @@ import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.generation.TokenUsage
 import kotlinx.serialization.json.*
 import org.starfall.generative.integrations.modelapis.AiService
+import org.starfall.generative.integrations.modelapis.openaicodex.CODEX_SESSION_SCOPE
 import org.starfall.generative.shared.model.ToolDefinition
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.claudeAllowsSampling
@@ -62,7 +63,8 @@ internal class ToolRequestService(
         sendThinking: Boolean,
         onText: suspend (String) -> Unit,
         onReasoning: suspend (String) -> Unit,
-        onUsage: suspend (TokenUsage) -> Unit = {}
+        onUsage: suspend (TokenUsage) -> Unit = {},
+        sessionKey: String? = null
     ): JsonObject {
         val defs = JsonArray(tools.map { obj("type" to str("function"),"function" to obj("name" to str(it.name),"description" to str(it.description),"parameters" to it.schema)) })
         val wireProvider = aiService.prepareAccountProvider(p, model)
@@ -70,12 +72,19 @@ internal class ToolRequestService(
         val config = p.config.modelConfigs[model] ?: ModelConfiguration()
         suspend fun modelResponse(url: String, body: JsonObject, provider: ModelProvider,
             stream: Boolean, text: suspend (String) -> Unit, reasoning: suspend (String) -> Unit = {}): JsonObject {
-            val requestBody = if (p.type == ModelApiType.ANTIGRAVITY) JsonObject(body + ("model" to str(model))) else body
+            val scopedBody = if (p.type == ModelApiType.OPENAI_CODEX && !sessionKey.isNullOrBlank())
+                JsonObject(body + (CODEX_SESSION_SCOPE to str(sessionKey))) else body
+            val requestBody = if (p.type == ModelApiType.ANTIGRAVITY)
+                JsonObject(scopedBody + ("model" to str(model))) else scopedBody
+            val requestProvider = aiService.prepareAccountRequest(p, provider, requestBody)
+            val upstreamStream = aiService.accountShouldStreamUpstream(p, requestProvider, model, stream)
             val response = http.modelResponse(aiService.accountRequestUrl(p, provider, url),
-                aiService.normalizeAccountToolRequest(p, provider, requestBody, prompt), aiService.prepareAccountRequest(p, provider, requestBody), stream, text, reasoning,
+                aiService.normalizeAccountToolRequest(p, provider, requestBody, prompt), requestProvider, upstreamStream,
+                { chunk -> if (stream) text(chunk) }, { chunk -> if (stream) reasoning(chunk) },
                 { aiService.unwrapAccountResponse(p, it) })
-            providerTokenUsage(provider.type, response)?.takeIf { it.isValid }?.let { onUsage(it) }
-            return response
+            val restored = aiService.restoreAccountToolResponse(p, provider, requestBody, response)
+            providerTokenUsage(provider.type, restored)?.takeIf { it.isValid }?.let { onUsage(it) }
+            return restored
         }
 
         return when(wireProvider.type) {

@@ -45,7 +45,9 @@ internal fun ProviderModelCatalogSheet(
     onDismiss: () -> Unit
 ) {
     val discoveryIdentity = listOf(provider.id, provider.type, provider.baseUrl, provider.auth,
-        provider.config.customListModelsUrl, provider.config.headers)
+        provider.config.customListModelsUrl, provider.config.codexClientVersion,
+        provider.config.antigravityVersion, provider.config.antigravityChangelist,
+        provider.config.antigravityProjectIds, provider.config.headers)
     var models by remember(discoveryIdentity) { mutableStateOf<List<DiscoveredModel>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf<String?>(null) }

@@ -52,14 +52,20 @@ class ProviderOAuthAccountsTest {
         val first = legacy.recordOAuthAccount()
         val second = first.copy(auth = Authorization(AuthMethod.OAUTH, "second@example.test", marker, "provider:second"))
             .recordOAuthAccount()
-        assertEquals(second.auth, second.removeOAuthAccount("provider").auth)
-        val remaining = second.removeOAuthAccount("provider:second")
+        val configured = second.copy(config = second.config.copy(antigravityProjectIds = mapOf(
+            "provider" to "project-primary", "provider:second" to "project-backup")))
+        val withoutPrimary = configured.removeOAuthAccount("provider")
+        assertEquals(configured.auth, withoutPrimary.auth)
+        assertEquals(mapOf("provider:second" to "project-backup"), withoutPrimary.config.antigravityProjectIds)
+        val remaining = configured.removeOAuthAccount("provider:second")
         assertEquals("first@example.test", remaining.auth.key)
         assertEquals("provider", remaining.oauthCredentialId)
+        assertEquals(mapOf("provider" to "project-primary"), remaining.config.antigravityProjectIds)
         val empty = remaining.removeOAuthAccount("provider")
         assertEquals(AuthMethod.OAUTH, empty.auth.method)
         assertNull(empty.auth.value)
         assertTrue(empty.config.oauthAccounts.isEmpty())
+        assertTrue(empty.config.antigravityProjectIds.isEmpty())
     }
 
     @Test fun repositoryDeletesOnlyRequestedAccountThenProviderDeletionClearsAllSlots() = runBlocking {
@@ -74,14 +80,17 @@ class ProviderOAuthAccountsTest {
                 .recordOAuthAccount()
             store.save("provider", AccountTokenState("first-secret", "first-refresh"))
             store.save("provider:second", AccountTokenState("second-secret", "second-refresh"))
-            repository.saveProvider(second)
+            val configured = second.copy(config = second.config.copy(antigravityProjectIds = mapOf(
+                "provider" to "project-primary", "provider:second" to "project-backup")))
+            repository.saveProvider(configured)
             // Removing an unselected account must not sign out the selected account in storage.
-            repository.clearOAuthCredentials(second.copy(auth = first.auth)).getOrThrow()
+            repository.clearOAuthCredentials(configured.copy(auth = first.auth)).getOrThrow()
             assertNull(store.load("provider"))
             assertEquals("second-secret", store.load("provider:second")!!.accessToken)
             val persisted = repository.getProviderById("provider")!!
             assertEquals("provider:second", persisted.oauthCredentialId)
             assertEquals(listOf("provider:second"), persisted.config.oauthAccounts.map { it.id })
+            assertEquals(mapOf("provider:second" to "project-backup"), persisted.config.antigravityProjectIds)
             repository.deleteProvider("provider")
             assertNull(store.load("provider:second"))
         } finally { db.close() }

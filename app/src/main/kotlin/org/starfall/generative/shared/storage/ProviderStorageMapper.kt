@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.auth.Authorization
@@ -87,7 +88,13 @@ internal class ProviderStorageMapper(private val db: AppDatabase) {
                 customListModelsUrl = EndpointSecrets.split(entity.customListModelsUrl).publicUrl,
                 maxTokens = entity.maxTokens, modelConfigs = configs,
                 modelIds = if (entity.modelSelectionMode == "DISCOVERY") null else selections.map { it.modelId },
-                multipleApiKeys = entity.multipleApiKeys
+                multipleApiKeys = entity.multipleApiKeys,
+                codexClientVersion = (structured.readDocument("provider", entity.id, "codex_client_version") as? JsonPrimitive)?.content,
+                antigravityVersion = (structured.readDocument("provider", entity.id, "antigravity_version") as? JsonPrimitive)?.content,
+                antigravityChangelist = (structured.readDocument("provider", entity.id, "antigravity_changelist") as? JsonPrimitive)?.content,
+                antigravityProjectIds = (structured.readDocument("provider", entity.id, "antigravity_project_ids") as? JsonObject)
+                    ?.mapNotNull { (id, value) -> (value as? JsonPrimitive)?.contentOrNull?.trim()
+                        ?.takeIf(String::isNotEmpty)?.let { id to it } }?.toMap().orEmpty()
             ),
             sortOrder = entity.sortOrder, groupId = entity.groupId,
             credentialState = if (entity.authId == null) CredentialLoadState.NOT_CONFIGURED else CredentialLoadState.NOT_REQUESTED
@@ -158,6 +165,20 @@ internal class ProviderStorageMapper(private val db: AppDatabase) {
             if (authId == null) structured.replaceDocument(StructuredJsonDocument("provider", provider.id, "auth_method", JsonPrimitive(provider.auth.method.name)))
             else deleteDocument("provider", provider.id, "auth_method")
         }
+        suspend fun persistOptionalValue(field: String, value: String?) {
+            val normalized = value?.trim()?.ifEmpty { null }
+            if (normalized == null) deleteDocument("provider", provider.id, field)
+            else structured.replaceDocument(StructuredJsonDocument("provider", provider.id, field, JsonPrimitive(normalized)))
+        }
+        persistOptionalValue("codex_client_version", provider.config.codexClientVersion)
+        persistOptionalValue("antigravity_version", provider.config.antigravityVersion)
+        persistOptionalValue("antigravity_changelist", provider.config.antigravityChangelist)
+        val projectIds = provider.config.antigravityProjectIds.entries.mapNotNull { (id, projectId) ->
+            projectId.trim().takeIf { it.isNotEmpty() && id.isNotBlank() }?.let { id to it }
+        }.toMap()
+        if (projectIds.isEmpty()) deleteDocument("provider", provider.id, "antigravity_project_ids")
+        else structured.replaceDocument(StructuredJsonDocument("provider", provider.id, "antigravity_project_ids",
+            JsonObject(projectIds.mapValues { JsonPrimitive(it.value) })))
         val removedModels = dao.getModelConfigurations(provider.id).map { it.modelId } - provider.config.modelConfigs.keys
         removedModels.forEach { deleteDocument("provider_model", "${provider.id}/$it", "model_json") }
         dao.deleteModelSelection(provider.id)
@@ -184,6 +205,10 @@ internal class ProviderStorageMapper(private val db: AppDatabase) {
     suspend fun deleteDocuments(providerId: String) {
         dao.getModelConfigurations(providerId).forEach { deleteDocument("provider_model", "$providerId/${it.modelId}", "model_json") }
         deleteDocument("provider", providerId, "auth_method")
+        deleteDocument("provider", providerId, "codex_client_version")
+        deleteDocument("provider", providerId, "antigravity_version")
+        deleteDocument("provider", providerId, "antigravity_changelist")
+        deleteDocument("provider", providerId, "antigravity_project_ids")
         deleteDocument("provider_catalog", providerId, "cache_state")
     }
 

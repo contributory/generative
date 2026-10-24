@@ -38,5 +38,6 @@ internal fun ModelProvider.removeOAuthAccount(accountId: String): ModelProvider 
     val nextAuth = if (oauthCredentialId == accountId) {
         accounts.firstOrNull()?.authorization() ?: Authorization(AuthMethod.OAUTH)
     } else auth
-    return copy(auth = nextAuth, config = config.copy(oauthAccounts = accounts))
+    return copy(auth = nextAuth, config = config.copy(
+        oauthAccounts = accounts, antigravityProjectIds = config.antigravityProjectIds - accountId))
 }

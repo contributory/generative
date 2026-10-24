@@ -29,6 +29,7 @@ import org.starfall.generative.shared.ui.layout.windowHeightIn
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnectionTests, available: Boolean,
     onRemoveModels: (Set<String>) -> Unit, onDismiss: () -> Unit) {
@@ -46,28 +47,39 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
         // Closing the dialog only hides its UI; connection tests belong to the editor screen.
         removals.close(remove = { ids -> tests.forget(ids); onRemoveModels(ids) }, dismiss = onDismiss)
     }
-    AlertDialog(onDismissRequest = ::close,
-         title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.test_connection), Modifier.weight(1f))
-                ModelConnectionCounts(progress, showProgress = testingAny || progress.tested > 0, modifier = Modifier.padding(end = 6.dp))
-                IconButton(onClick = { if (testingAny) tests.cancelAll() else tests.testAll(provider, testableModels, skip = { it in removals.pending }) },
-                     enabled = (testingAny || testableModels.isNotEmpty()) && available) {
-                     if (testingAny) FluentIcon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
-                     else FluentIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.common_test_all_text_models))
+    AlertDialog(onDismissRequest = ::close, text = {
+        val showCounts = testingAny || progress.tested > 0
+        Column(Modifier.fillMaxWidth()) {
+            // Actions live in the content rather than a constrained dialog title. Counts and the
+            // action group wrap as units on narrow screens instead of squeezing each other.
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (showCounts) ModelConnectionCounts(progress, showProgress = true,
+                    modifier = Modifier.weight(1f).padding(vertical = 14.dp, horizontal = 4.dp))
+                Row(
+                    modifier = if (showCounts) Modifier else Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { if (testingAny) tests.cancelAll() else tests.testAll(provider, testableModels, skip = { it in removals.pending }) },
+                        enabled = (testingAny || testableModels.isNotEmpty()) && available) {
+                        if (testingAny) FluentIcon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
+                        else FluentIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.common_test_all_text_models))
+                    }
+                    IconButton(onClick = { if (hasRemovals) removals.restoreAll() else removals.mark(unavailable) },
+                        enabled = hasRemovals || unavailable.isNotEmpty()) {
+                        FluentIcon(if (hasRemovals) Icons.Outlined.Restore else Icons.Outlined.DeleteSweep,
+                            stringResource(if (hasRemovals) R.string.restore_removed_models else R.string.remove_unavailable_models),
+                            tint = if (hasRemovals) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                    }
+                    IconButton(onClick = ::close) {
+                        FluentIcon(Icons.Outlined.Close, stringResource(R.string.common_close))
+                    }
                 }
-                 IconButton(onClick = { if (hasRemovals) removals.restoreAll() else removals.mark(unavailable) },
-                     enabled = hasRemovals || unavailable.isNotEmpty()) {
-                    FluentIcon(if (hasRemovals) Icons.Outlined.Restore else Icons.Outlined.DeleteSweep,
-                        stringResource(if (hasRemovals) R.string.restore_removed_models else R.string.remove_unavailable_models),
-                         tint = if (hasRemovals) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
-                 }
-                 IconButton(onClick = ::close) {
-                     FluentIcon(Icons.Outlined.Close, stringResource(R.string.common_close))
-                 }
             }
-        },
-        text = {
             LazyColumn(Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.75f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (textModels.isEmpty()) item { Text(stringResource(R.string.model_no_text_models)) }
                 items(textModels, key = { it }) { id ->
@@ -113,5 +125,6 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
                     }
                 }
             }
-        }, confirmButton = {})
+        }
+    }, confirmButton = {})
 }

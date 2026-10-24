@@ -19,5 +19,12 @@ data class ProviderConfiguration(
     val modelIds: List<String>? = null,
     val multipleApiKeys: Boolean = false,
     val apiKeys: List<ProviderApiKey> = emptyList(),
-    val oauthAccounts: List<ProviderOAuthAccount> = emptyList()
+    val oauthAccounts: List<ProviderOAuthAccount> = emptyList(),
+    // null/blank uses the current Codex default; ignored by other provider types.
+    val codexClientVersion: String? = null,
+    // Antigravity's build identity; blank selects the verified fallback or omits an unknown CL.
+    val antigravityVersion: String? = null,
+    val antigravityChangelist: String? = null,
+    // Optional per-credential project overrides; blank/absent entries use discovery/onboarding.
+    val antigravityProjectIds: Map<String, String> = emptyMap()
 )

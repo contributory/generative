@@ -14,7 +14,7 @@ enum class ModelApiType(val displayName: String, val defaultName: String, val de
     @SerialName("ollama")
     OLLAMA("Ollama Cloud", "Ollama Cloud", "https://ollama.com/api"),
     @SerialName("antigravity")
-    ANTIGRAVITY("Antigravity", "Antigravity", "https://daily-cloudcode-pa.sandbox.googleapis.com"),
+    ANTIGRAVITY("Antigravity", "Antigravity", "https://daily-cloudcode-pa.googleapis.com"),
     @SerialName("github_copilot")
     GITHUB_COPILOT("GitHub Copilot", "GitHub Copilot", "https://api.githubcopilot.com"),
     @SerialName("openai_codex")
