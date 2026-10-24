@@ -119,6 +119,19 @@
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="AI model response generation in background" />
         </service>
+        <service
+            android:name="org.starfall.generative.integrations.remote.RemoteConnectionService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keep remote SSH connections and port forwards alive and let the user disconnect them" />
+        </service>
+
+        <receiver
+            android:name="org.starfall.generative.integrations.remote.RemoteConnectionActionReceiver"
+            android:enabled="true"
+            android:exported="false" />
     </application>
 
 </manifest>

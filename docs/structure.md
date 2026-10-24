@@ -274,6 +274,8 @@ This document is the detailed package map and architecture reference. The mandat
 │   └── 📁 remote/
 │       ├── 📄 AndroidEdDSA.kt
 │       ├── 📄 CloudShellApi.kt
+│       ├── 📄 RemoteConnectionActionReceiver.kt
+│       ├── 📄 RemoteConnectionService.kt
 │       ├── 📄 RemoteMachineAssetsService.kt
 │       ├── 📄 RemoteMachineCloudShellService.kt
 │       ├── 📄 RemoteMachineConnectionManager.kt

@@ -9,6 +9,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.starfall.generative.shared.storage.preferences.AppLocale
 import org.starfall.generative.appwiring.AppContainer
+import org.starfall.generative.integrations.remote.RemoteConnectionService
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.integrations.remote.RemoteMachineServiceOwner
 import org.starfall.generative.shared.files.CrashReportStore
@@ -44,5 +45,12 @@ class GenerativeApplication : Application(), RemoteMachineServiceOwner, coil3.Si
             override fun onConfigurationChanged(newConfig: Configuration) = Unit
         })
         applicationScope.launch { container.defaultDataInitializer.initialize() }
+        // Off the main thread: the first access builds the machine store. One notification per
+        // connected machine (with a Disconnect button) is owned by RemoteConnectionService.
+        applicationScope.launch(Dispatchers.Default) {
+            remoteMachineService.connectedMachineIds.collect { ids ->
+                if (ids.isNotEmpty()) RemoteConnectionService.start(this@GenerativeApplication)
+            }
+        }
     }
 }

@@ -592,6 +592,12 @@
     <string name="remote_machine_public_key_missing" translatable="false">No public key (needed for Cloud Shell)</string>
     <string name="remote_machine_ssh_key_used_by" translatable="false">Used by %1$d machine(s)</string>
     <string name="remote_machine_key_passphrase" translatable="false">Key passphrase</string>
+    <string name="remote_connection_channel_name" translatable="false">Remote machine connections</string>
+    <string name="remote_connection_channel_description" translatable="false">Shows the remote machines you are connected to, with a button to disconnect.</string>
+    <string name="remote_connection_notification_title" translatable="false">Connected to %1$s</string>
+    <string name="remote_connection_notification_text" translatable="false">SSH connection is open.</string>
+    <string name="remote_connection_notification_forwarding" translatable="false">SSH connection is open. Port forwarding is active.</string>
+    <string name="remote_connection_disconnect" translatable="false">Disconnect</string>
     <string name="remote_machine_port_forwarding_section" translatable="false">Port forwarding</string>
     <string name="remote_machine_port_forwarding_help" translatable="false">Forwards are applied when the SSH session connects and stop when it disconnects. A machine with an active forward is not disconnected for being idle.</string>
     <string name="remote_machine_forward_local" translatable="false">Local forward</string>
