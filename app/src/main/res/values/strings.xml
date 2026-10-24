@@ -148,16 +148,12 @@
     <string name="provider_base_url">Base URL</string>
     <string name="provider_invalid_base_url">Use an HTTP(S) base URL without query, fragment or embedded credentials.</string>
     <string name="provider_codex_client_version">Codex client version</string>
-    <string name="provider_codex_client_version_help">Used for model discovery and the Codex User-Agent. Leave empty to use %1$s.</string>
     <string name="provider_codex_client_version_invalid">Enter a dot-separated version such as %1$s, with an optional pre-release or build suffix.</string>
     <string name="provider_antigravity_version">Antigravity client version</string>
-    <string name="provider_antigravity_version_help">Used in onboarding metadata and the Antigravity User-Agent. Leave empty to use %1$s.</string>
     <string name="provider_antigravity_version_invalid">Enter a dot-separated version such as %1$s, with an optional pre-release or build suffix.</string>
     <string name="provider_antigravity_changelist">Antigravity changelist (optional)</string>
-    <string name="provider_antigravity_changelist_help">The verified changelist for version %1$s is %2$s. Other versions omit it unless you enter their matching value.</string>
     <string name="provider_antigravity_changelist_invalid">Enter digits only, or leave empty to use the version-aware default.</string>
     <string name="provider_antigravity_project_id">Antigravity project ID (optional)</string>
-    <string name="provider_antigravity_project_id_help">Used only for the selected OAuth account. Leave empty to discover or onboard the project automatically.</string>
     <string name="http_unencrypted_provider_warning">HTTP is unencrypted. API keys, headers and messages can be read on the network. Use HTTPS outside a trusted local network.</string>
     <string name="stream" translatable="false">Stream Response</string>
     <string name="custom_headers">Custom Headers</string>
@@ -401,6 +397,9 @@
     <string name="latex_formula_clip_label">LaTeX formula</string>
     <string name="latex_formula_copied">Formula copied</string>
     <string name="latex_copy_formula">Copy Formula</string>
+    <string name="latex_display_mode_overflow">Overflow</string>
+    <string name="latex_display_mode_fit_width">Fit Width</string>
+    <string name="latex_display_mode_switch">Equation display: %1$s. Switch to %2$s</string>
     <string name="provider_account_number">Account %1$d</string>
     <string name="unable_to_load_models">Unable to load models</string>
     <string name="no_models_returned">No models returned.</string>
@@ -617,6 +616,7 @@
     <string name="settings_mcp_manage_description">Tool servers &amp; integrations</string>
     <string name="settings_speech_services_description">Text-to-speech models &amp; voices</string>
     <string name="settings_storage">Media Storage</string>
+    <string name="storage_short_title" translatable="false">Media</string>
     <string name="settings_storage_description">Files created by your tools</string>
     <string name="storage_open_in_files" translatable="false">Open in Files</string>
     <string name="storage_open_in_files_failed">Could not open the system file manager.</string>
@@ -711,6 +711,8 @@
     <string name="settings_open_github_release">Open GitHub Release Page</string>
     <string name="settings_find_latest_release">Find the latest Generative release on GitHub.</string>
     <string name="remote_machines_title" translatable="false">Remote Machines</string>
+    <string name="remote_machine_short_title" translatable="false">Remote</string>
+    <string name="remote_machine_counts" translatable="false">Configured: %1$d • Enabled: %2$d</string>
     <string name="remote_machines_description" translatable="false">SSH and Google Cloud Shell connections</string>
     <string name="remote_machine_settings" translatable="false">Remote Settings</string>
     <string name="remote_machine_settings_description" translatable="false">OAuth clients and SSH keys used by your machines</string>
@@ -765,6 +767,7 @@
     <string name="remote_connection_notification_forwarding" translatable="false">Forwarding %1$s</string>
     <string name="remote_machine_port_forwarding_section" translatable="false">Port forwarding</string>
     <string name="remote_machine_port_forwarding_help" translatable="false">Forwards start when the SSH session connects and stop when it disconnects. A machine with an active forward is not disconnected when idle.</string>
+    <string name="remote_machine_forward_type" translatable="false">Forward type</string>
     <string name="remote_machine_forward_local" translatable="false">Local forward</string>
     <string name="remote_machine_forward_local_help" translatable="false">Opens a port on this device that forwards to a port on the machine.</string>
     <string name="remote_machine_forward_local_rules" translatable="false">Local forwards</string>
@@ -808,7 +811,7 @@
     <string name="remote_machine_username_auto" translatable="false">Fetched automatically from the Google Cloud Shell API once Google is authorized.</string>
     <string name="remote_machine_oauth_authorized" translatable="false">Google account connected</string>
     <string name="remote_machine_add_oauth_hint" translatable="false">Add an OAuth client in Remote Settings, select it here, and sign in before connecting.</string>
-    <string name="remote_machine_tools_section" translatable="false">Model tools</string>
+    <string name="remote_machine_tools_section" translatable="false">Machine Tools</string>
     <string name="remote_machine_tool_execute" translatable="false">Execute commands</string>
     <string name="remote_machine_update_ip" translatable="false">Update IP</string>
     <string name="remote_machine_tool_close_terminal" translatable="false">Close terminal</string>

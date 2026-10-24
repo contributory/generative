@@ -3,8 +3,12 @@ package org.starfall.generative.home.chat.ui.markdown
 import android.graphics.drawable.Drawable
 import android.util.LruCache
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -22,6 +26,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +40,16 @@ import org.starfall.generative.home.chat.ui.EvictableCache
 import org.starfall.generative.home.chat.ui.TrackPendingWork
 import org.starfall.generative.home.chat.ui.TrackReadyAssets
 
+internal enum class LatexDisplayMode {
+    Overflow,
+    FitWidth;
+
+    fun next(): LatexDisplayMode = when (this) {
+        Overflow -> FitWidth
+        FitWidth -> Overflow
+    }
+}
+
 /**
  * Renders one formula with JLatexMath and keeps the source visible while the
  * drawable is being built. The source is also the fallback for unsupported
@@ -45,7 +60,8 @@ internal fun LatexFormulaRenderer(
     formula: String,
     textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
     displayMode: Boolean = true,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    widthMode: LatexDisplayMode = LatexDisplayMode.Overflow
 ) {
     val color = if (textStyle.color.isSpecified) textStyle.color else MaterialTheme.colorScheme.onSurface
     val textSize = if (textStyle.fontSize.isSpecified) textStyle.fontSize else 16.sp
@@ -73,14 +89,31 @@ internal fun LatexFormulaRenderer(
         LatexRenderResult.Loading -> LatexFallbackText(formula, textStyle, modifier)
         is LatexRenderResult.Fallback -> LatexFallbackText(renderResult.source, textStyle, modifier)
         is LatexRenderResult.Ready -> {
-            Box(
-                modifier = modifier.fillMaxWidth(),
-                contentAlignment = if (displayMode) Alignment.Center else Alignment.CenterStart
-            ) {
-                Image(
-                    painter = rememberLatexDrawablePainter(renderResult.drawable),
-                    contentDescription = stringResource(R.string.latex_rendered_formula)
-                )
+            if (widthMode == LatexDisplayMode.Overflow) {
+                BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+                    val viewportWidth = if (constraints.hasBoundedWidth) maxWidth else 0.dp
+                    Box(
+                        modifier = Modifier
+                            .horizontalScroll(rememberScrollState())
+                            .defaultMinSize(minWidth = viewportWidth),
+                        contentAlignment = if (displayMode) Alignment.Center else Alignment.CenterStart
+                    ) {
+                        Image(
+                            painter = rememberLatexDrawablePainter(renderResult.drawable),
+                            contentDescription = stringResource(R.string.latex_rendered_formula)
+                        )
+                    }
+                }
+            } else {
+                Box(
+                    modifier = modifier.fillMaxWidth(),
+                    contentAlignment = if (displayMode) Alignment.Center else Alignment.CenterStart
+                ) {
+                    Image(
+                        painter = rememberLatexDrawablePainter(renderResult.drawable),
+                        contentDescription = stringResource(R.string.latex_rendered_formula)
+                    )
+                }
             }
         }
     }

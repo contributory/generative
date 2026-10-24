@@ -15,7 +15,7 @@ private val RESERVED_SSH_OPTIONS = setOf(
  * which would otherwise make a typo look like a saved setting that has no effect.
  */
 internal fun normalizeSshOptions(options: Map<String, String>): Map<String, String> {
-    val known = JSch.getConfig().keys.mapNotNull { it as? String }
+    val known = JSch.getConfig().keys.toList()
         .associateBy { it.lowercase() }
     val normalized = linkedMapOf<String, String>()
     options.forEach { (rawKey, rawValue) ->

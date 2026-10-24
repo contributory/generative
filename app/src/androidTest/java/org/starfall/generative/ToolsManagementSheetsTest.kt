@@ -39,7 +39,6 @@ class ToolsManagementSheetsTest {
                     onOpenInstructions = {},
                     onOpenFeatureTools = { featureToolsOpened = true },
                     onOpenMcpConnectors = { mcpConnectorsOpened = true },
-                    onOpenRemoteMachines = {},
                     onDismiss = {}
                 )
             }

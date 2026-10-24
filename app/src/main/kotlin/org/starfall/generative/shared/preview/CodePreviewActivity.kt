@@ -20,6 +20,7 @@ import org.starfall.generative.shared.storage.preferences.AppLocale
 import org.starfall.generative.shared.theme.GenerativeTheme
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.layout.enableTransparentSystemBars
 
 /** Private Activity keeps generated scripts away from native app state and credentials. */
 class CodePreviewActivity : ComponentActivity() {
@@ -32,6 +33,7 @@ class CodePreviewActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableTransparentSystemBars()
         val name = intent.getStringExtra(EXTRA_DOCUMENT)
         previewFile = name?.takeIf { it.matches(Regex("[a-f0-9-]{36}\\.html")) }?.let { File(cacheDir, "code-preview/$it") }
         val document = previewFile?.let { runCatching { it.readText() }.getOrNull() }

@@ -1,13 +1,9 @@
 package org.starfall.generative.shared.ui.media
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.Dialog as PlatformDialog
-import androidx.compose.ui.window.DialogWindowProvider
-import org.starfall.generative.shared.ui.dialogs.AppDialog as Dialog
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
 import org.starfall.generative.R
 import android.content.Context
 import android.graphics.Matrix
@@ -33,7 +29,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
@@ -43,6 +38,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.starfall.generative.shared.files.AttachmentResolver
 import org.starfall.generative.shared.ui.icons.FluentIcon
@@ -64,28 +60,44 @@ suspend fun mediaThumbnail(context: Context, reference: String, mime: String, si
     } else null
 
 @Composable
-fun MediaPreviewDialog(reference: String, name: String, mime: String, onDismiss: () -> Unit) {
-    MediaViewerDialog(
+fun MediaPreviewCover(reference: String, name: String, mime: String, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val saveMime = mime.ifBlank { "application/octet-stream" }
+    val saveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(saveMime)) { target ->
+        if (target == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    AttachmentResolver(context).open(reference)?.use { input ->
+                        context.contentResolver.openOutputStream(target)?.use { output -> input.copyTo(output) }
+                            ?: error(context.getString(R.string.file_download_failed))
+                    } ?: error(context.getString(R.string.file_download_failed))
+                }
+            }
+            Toast.makeText(
+                context,
+                if (result.isSuccess) R.string.file_download_saved else R.string.file_download_failed,
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+    MediaViewerCover(
         mediaKey = reference to mime,
         onDismiss = onDismiss,
-        header = {
-            Text(
-                name,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+        actions = listOf(
+            MediaViewerAction(
+                label = stringResource(R.string.media_save),
+                icon = Icons.Outlined.Save,
+                onClick = { saveLauncher.launch(name) }
             )
-        },
+        ),
         content = { onZoomChanged ->
-            Box(Modifier.weight(1f, fill = false).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                MediaContent(reference, mime, onImageZoomChanged = onZoomChanged)
-            }
+            MediaContent(reference, mime, onImageZoomChanged = onZoomChanged)
         },
         fullscreenContent = { onZoomChanged ->
             MediaContent(reference, mime, onImageZoomChanged = onZoomChanged, fullscreen = true)
-        },
-        toolbar = { onClose -> MediaViewerToolBar(onClose = onClose) }
+        }
     )
 }
 
@@ -96,8 +108,8 @@ fun MediaContent(reference: String, mime: String, onImageZoomChanged: (Boolean) 
         when {
             mime.startsWith("image/") -> ZoomableMediaImage(reference, mime, onImageZoomChanged, fullscreen)
             mime.startsWith("video/") -> VideoPlayback(reference)
-            mime.startsWith("audio/") -> AudioPlayback(reference)
-            else -> Text(stringResource(R.string.media_preview_unsupported))
+            mime.startsWith("audio/") -> AudioPlayback(reference, onDarkBackground = true)
+            else -> Text(stringResource(R.string.media_preview_unsupported), color = Color.White)
         }
     }
 }
@@ -127,7 +139,7 @@ private fun ZoomableMediaImage(reference: String, mime: String, onZoomChanged: (
                 .graphicsLayer { scaleX = scale; scaleY = scale; translationX = offset.x; translationY = offset.y },
             onSuccess = { loaded = true }, onError = { loaded = true; error = true }
         )
-        if (error) Text(stringResource(R.string.media_image_open_failed))
+        if (error) Text(stringResource(R.string.media_image_open_failed), color = Color.White)
         else if (!loaded) CircularProgressIndicator()
     }
 }
@@ -157,18 +169,27 @@ fun InlineVideoPreview(reference: String, thumbnail: ImageBitmap?, modifier: Mod
         }
         overlay()
     }
-    if (fullscreen) Dialog(onDismissRequest = { fullscreen = false },
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        val window = (LocalView.current.parent as? DialogWindowProvider)?.window
-        DisposableEffect(window) {
-            window?.let { WindowCompat.getInsetsController(it, it.decorView).hide(WindowInsetsCompat.Type.systemBars()) }
-            onDispose { }
-        }
-        Box(Modifier.fillMaxSize().background(Color.Black)) {
-            VideoPlayback(reference, fullscreen = true, initialPosition = resumePosition, autoPlay = resumePlaying,
-                onPositionChanged = { resumePosition = it }, onPlayingChanged = { resumePlaying = it }, onFullscreen = { fullscreen = false })
-            IconButton(onClick = { fullscreen = false }, modifier = Modifier.align(Alignment.TopStart).padding(8.dp)) {
-                FluentIcon(Icons.Outlined.Close, stringResource(R.string.video_exit_fullscreen), tint = Color.White)
+    if (fullscreen) {
+        org.starfall.generative.shared.ui.layout.ScreenCover(onDismiss = { fullscreen = false }) {
+            Box(Modifier.fillMaxSize().background(Color.Black)) {
+                VideoPlayback(
+                    reference,
+                    fullscreen = true,
+                    initialPosition = resumePosition,
+                    autoPlay = resumePlaying,
+                    onPositionChanged = { resumePosition = it },
+                    onPlayingChanged = { resumePlaying = it },
+                    onFullscreen = { fullscreen = false })
+                IconButton(
+                    onClick = { fullscreen = false },
+                    modifier = Modifier.align(Alignment.TopStart).padding(8.dp).statusBarsPadding()
+                ) {
+                    FluentIcon(
+                        Icons.Outlined.Close,
+                        stringResource(R.string.video_exit_fullscreen),
+                        tint = Color.White
+                    )
+                }
             }
         }
     }
@@ -298,7 +319,7 @@ private fun MediaSeekBar(value: Float, onValueChange: (Float) -> Unit, onValueCh
 }
 
 @Composable
-private fun AudioPlayback(reference: String) {
+private fun AudioPlayback(reference: String, onDarkBackground: Boolean = false) {
     val playback = rememberMediaPlayback(reference)
     val ready = playback.ready
     val error = playback.error
@@ -306,12 +327,25 @@ private fun AudioPlayback(reference: String) {
     val duration = playback.duration
     val position = playback.position
     var seekPosition by remember { mutableStateOf<Float?>(null) }
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = if (onDarkBackground) 24.dp else 0.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         if (error) Text(stringResource(R.string.media_audio_play_failed), color = MaterialTheme.colorScheme.error)
         else if (!ready) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
         else {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                FilledIconButton(onClick = playback::toggle) {
+                FilledIconButton(
+                    onClick = playback::toggle,
+                    colors = if (onDarkBackground) {
+                        IconButtonDefaults.filledIconButtonColors(
+                            containerColor = Color.White.copy(alpha = 0.2f),
+                            contentColor = Color.White
+                        )
+                    } else IconButtonDefaults.filledIconButtonColors()
+                ) {
                     FluentIcon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                         stringResource(if (playing) R.string.media_pause_audio else R.string.media_play_audio))
                 }
@@ -323,11 +357,22 @@ private fun AudioPlayback(reference: String) {
                         seekPosition = null
                     },
                     valueRange = 0f..duration.coerceAtLeast(1).toFloat(),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = if (onDarkBackground) {
+                        SliderDefaults.colors(
+                            thumbColor = Color.White,
+                            activeTrackColor = Color.White,
+                            inactiveTrackColor = Color.Gray
+                        )
+                    } else SliderDefaults.colors()
                 )
             }
-            Text("${mediaTime(position)} / ${mediaTime(duration)}", style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.align(Alignment.End))
+            Text(
+                "${mediaTime(position)} / ${mediaTime(duration)}",
+                style = MaterialTheme.typography.labelMedium,
+                color = if (onDarkBackground) Color.White else Color.Unspecified,
+                modifier = Modifier.align(Alignment.End)
+            )
         }
     }
 }

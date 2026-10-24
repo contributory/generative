@@ -120,7 +120,7 @@ fun ChatAppBar(
                     text = displayedModelName.ifBlank { stringResource(R.string.select_model) },
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 16.sp
+                        fontSize = 14.sp
                     ),
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,

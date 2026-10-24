@@ -445,6 +445,7 @@ fun AppSettings(
                 text = { Text(stringResource(R.string.settings_tab_appearances)) }
             )
         }
+        Spacer(Modifier.height(12.dp))
         HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
             when (page) {
                 0 -> PreferencesSettingsView(

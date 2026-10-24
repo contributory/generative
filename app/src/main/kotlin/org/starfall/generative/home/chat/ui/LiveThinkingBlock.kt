@@ -30,7 +30,6 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.shared.ui.text.toComposeFontFamily
 
 /** Time constant of the exponential follow; the remaining distance shrinks ~63% per interval. */
 private const val THINKING_FOLLOW_TIME_CONSTANT_SECONDS = 0.1f
@@ -75,7 +74,6 @@ internal fun LiveThinkingBlock(reasoning: String, active: Boolean, showHeader: B
     val density = LocalDensity.current
     val preferences = LocalCodeRenderingPreferences.current
     val bodySize = preferences.effectiveMessageFontSize.sp
-    val messageFont = preferences.messageFontFamily.toComposeFontFamily()
     val bodyLineHeight = bodySize * 1.375f
     val previewHeight = with(density) { (bodyLineHeight * 5f).toDp() }
     val fadeHeight = with(density) { bodyLineHeight.toPx() }
@@ -148,17 +146,13 @@ internal fun LiveThinkingBlock(reasoning: String, active: Boolean, showHeader: B
                 .then(scrollModifier)
                 .clickable { expanded = !expanded }
         ) {
-            // No per-token fade here: it redraws the whole text once per recent token and double-draws
+            // No per-token fade here: it redraws the whole block once per recent token and double-draws
             // anti-aliased glyph edges, which shows as flicker (worst with light text on dark). The
             // preview's own edge mask and smooth scroll already provide the soft entrance.
-            Text(
-                reasoning,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontFamily = messageFont,
-                    fontSize = bodySize,
-                    lineHeight = bodyLineHeight
-                ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
+            ThinkingMarkdown(
+                reasoning = reasoning,
+                isStreaming = active,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }

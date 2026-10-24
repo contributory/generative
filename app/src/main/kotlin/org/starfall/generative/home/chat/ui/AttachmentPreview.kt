@@ -37,7 +37,7 @@ import org.starfall.generative.shared.files.AttachmentResolver
 import org.starfall.generative.shared.ui.media.ChatFilePreview
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.media.MediaPreviewDialog
+import org.starfall.generative.shared.ui.media.MediaPreviewCover
 import org.starfall.generative.shared.ui.media.mediaThumbnail
 import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
@@ -116,7 +116,7 @@ private fun AttachmentTile(
         val preview = data!!
         ChatFilePreview(reference, preview.name, preview.mimeType, preview.bitmap, false,
             selectedForChat = selectedForChat, onToggleAttachment = onToggleChatImage, onOpen = { showPreview = true })
-        if (showPreview) MediaPreviewDialog(reference, preview.name, preview.mimeType) { showPreview = false }
+        if (showPreview) MediaPreviewCover(reference, preview.name, preview.mimeType) { showPreview = false }
         return
     }
 
@@ -216,7 +216,7 @@ private fun AttachmentTile(
     }
     val preview = data
     if (showPreview && preview != null) {
-        MediaPreviewDialog(reference, preview.name, preview.mimeType) { showPreview = false }
+        MediaPreviewCover(reference, preview.name, preview.mimeType) { showPreview = false }
     }
 }
 

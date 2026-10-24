@@ -5,11 +5,14 @@ import android.net.Uri
 import android.os.Bundle
 import android.widget.TextView
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import net.openid.appauth.AuthorizationService
 import kotlinx.coroutines.*
 import org.starfall.generative.R
 import org.starfall.generative.shared.auth.OAuthBrowser
 import org.starfall.generative.shared.auth.OAuthBrowserKeepAliveService
+import org.starfall.generative.shared.ui.layout.enableTransparentSystemBars
 
 /** Compatibility browser host for registered HTTP loopback and device-code polling sessions. */
 class OAuthBrowserActivity : Activity() {
@@ -22,9 +25,19 @@ class OAuthBrowserActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableTransparentSystemBars()
         sessionId = intent.getStringExtra(SESSION).orEmpty()
         if (intent.getBooleanExtra(COMPLETE, false) || !OAuthBrowser.isActive(sessionId)) { finish(); return }
-        setContentView(TextView(this).apply { text = getString(R.string.oauth_opening_browser); setPadding(32, 64, 32, 32) })
+        val openingMessage = TextView(this).apply {
+            text = getString(R.string.oauth_opening_browser)
+            setPadding(32, 64, 32, 32)
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(openingMessage) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.setPadding(32 + bars.left, 64 + bars.top, 32 + bars.right, 32 + bars.bottom)
+            insets
+        }
+        setContentView(openingMessage)
         launched = savedInstanceState?.getBoolean("launched") == true
         if (launched) { stoppedForBrowser = true; return }
         val url = Uri.parse(intent.getStringExtra(URL).orEmpty())

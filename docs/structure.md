@@ -36,13 +36,13 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   └── 📁 ui/
 │   │   │       ├── 📄 MachineDetailsScreen.kt
 │   │   │       ├── 📄 OAuthClientDialog.kt
-│   │   │       ├── 📄 PortForwardingSection.kt
 │   │   │       ├── 📄 RemoteMachineAdvancedDialogs.kt
 │   │   │       └── 📄 RemoteMachineSettings.kt
 │   │   ├── 📁 list/
 │   │   │   ├── 📁 model/
 │   │   │   │   └── 📄 MachineIpUpdateNotice.kt
 │   │   │   └── 📁 ui/
+│   │   │       ├── 📄 PortForwardDialog.kt
 │   │   │       └── 📄 RemoteMachinesScreen.kt
 │   │   └── 📁 shared/
 │   │       ├── 📁 logic/
@@ -142,6 +142,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   │   └── 📄 ChatInputAreaViewModel.kt
 │   │   │   ├── 📁 markdown/
 │   │   │   │   ├── 📄 LatexDetector.kt
+│   │   │   │   ├── 📄 MarkdownHeading.kt
 │   │   │   │   ├── 📄 MarkdownLibrary.kt
 │   │   │   │   ├── 📄 MathSplitter.kt
 │   │   │   │   └── 📄 StableMarkdownPrefix.kt
@@ -173,11 +174,12 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   └── 📁 ui/
 │   │       ├── 📁 input/
 │   │       │   └── 📄 ChatInputAreaUi.kt
-│   │       ├── 📁 markdown/
-│   │       │   ├── 📄 ChunkedStreamingMarkdown.kt
-│   │       │   ├── 📄 LatexFormulaRenderer.kt
-│   │       │   ├── 📄 MarkdownCodeBlock.kt
-│   │       │   ├── 📄 MarkdownInlineText.kt
+│       │   ├── 📁 markdown/
+│       │   │   ├── 📄 ChunkedStreamingMarkdown.kt
+│       │   │   ├── 📄 LatexFormulaRenderer.kt
+│       │   │   ├── 📄 MarkdownCodeBlock.kt
+│       │   │   ├── 📄 MarkdownHeading.kt
+│       │   │   ├── 📄 MarkdownInlineText.kt
 │   │       │   ├── 📄 MarkdownLatexBlock.kt
 │   │       │   ├── 📄 MarkdownMathParagraph.kt
 │   │       │   ├── 📄 MarkdownRenderer.kt
@@ -196,15 +198,17 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       ├── 📄 GenerationLoadingIndicator.kt
 │   │       ├── 📄 LiveThinkingBlock.kt
 │   │       ├── 📄 MessageBubble.kt
-│   │       ├── 📄 ReasoningDropdown.kt
-│   │       └── 📄 UserMessageCard.kt
+│       │   ├── 📄 ReasoningDropdown.kt
+│       │   ├── 📄 ThinkingMarkdown.kt
+│       │   └── 📄 UserMessageCard.kt
 │   ├── 📁 drawer/
 │   │   ├── 📁 logic/
 │   │   │   └── 📄 ConversationModelIcon.kt
 │   │   └── 📁 ui/
 │   │       ├── 📄 ConversationItem.kt
+│   │       ├── 📄 ConversationSideDrawer.kt
 │   │       ├── 📄 DrawerBackdrop.kt
-│   │       └── 📄 ConversationSideDrawer.kt
+│   │       └── 📄 DrawerQuickShortcuts.kt
 │   ├── 📁 shared/
 │   │   ├── 📁 logic/
 │   │   │   ├── 📄 ChatBackgroundService.kt
@@ -216,11 +220,10 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   └── 📁 ui/
 │   │       ├── 📄 ConversationSummarySheet.kt
 │   │       ├── 📄 FeatureToolsSheet.kt
-│   │       ├── 📄 McpConnectorsSheet.kt
 │   │       ├── 📄 InstructionsSheet.kt
+│   │       ├── 📄 McpConnectorsSheet.kt
 │   │       ├── 📄 QuickActionsSheet.kt
 │   │       ├── 📄 ReasoningEffortSheet.kt
-│   │       ├── 📄 RemoteMachinesSheet.kt
 │   │       ├── 📄 SelectedModelOverviewSheet.kt
 │   │       ├── 📄 ToolDetailsSheet.kt
 │   │       └── 📄 ToolSheetState.kt
@@ -487,8 +490,10 @@ This document is the detailed package map and architecture reference. The mandat
 │       │   ├── 📄 AdaptiveCardLayout.kt
 │       │   ├── 📄 AmoledBorder.kt
 │       │   ├── 📄 ResponsiveLayout.kt
+│       │   ├── 📄 ScreenCover.kt
 │       │   ├── 📄 SettingsCard.kt
-│       │   └── 📄 SlideScreenContent.kt
+│       │   ├── 📄 SlideScreenContent.kt
+│       │   └── 📄 SystemBars.kt
 │       ├── 📁 lists/
 │       │   ├── 📄 FadeGridListContent.kt
 │       │   └── 📄 ListOrder.kt
@@ -496,14 +501,17 @@ This document is the detailed package map and architecture reference. The mandat
 │       │   ├── 📄 DebugLogCategoryLabel.kt
 │       │   ├── 📄 DebugLogOverlay.kt
 │       │   └── 📄 DebugLogPanel.kt
+│       ├── 📁 machines/
+│       │   ├── 📄 MachineDialogTopBar.kt
+│       │   └── 📄 MachineToolsDialog.kt
 │       ├── 📁 media/
 │       │   ├── 📄 ChatAttachmentSelection.kt
 │       │   ├── 📄 ChatFilePreview.kt
 │       │   ├── 📄 MediaFileCard.kt
 │       │   ├── 📄 MediaPlaybackState.kt
 │       │   ├── 📄 MediaPreview.kt
-│       │   ├── 📄 MediaViewerDialog.kt
-│       │   └── 📄 MediaViewerToolBar.kt
+│       │   ├── 📄 MediaViewerCover.kt
+│       │   └── 📄 MediaViewerMenu.kt
 │       ├── 📁 menus/
 │       │   ├── 📄 ItemContextMenu.kt
 │       │   └── 📄 RoundedDropdownMenuItem.kt
@@ -608,7 +616,8 @@ Replace `Awesome` with the relevant feature/entity name (for example, `ChatScree
 
 ### Source-folder conventions
 
-- Attachment and stored-file previews share `shared/ui/media/MediaViewerDialog.kt`; zoomed images use its edge-to-edge viewer instead of remaining constrained to the compact dialog.
+- Attachment and stored-file previews share `shared/ui/media/MediaViewerCover.kt`: media is presented without a dialog container, uncovered areas dismiss it, and actions live in the overlay menu. Zoomed images use the same edge-to-edge cover.
+- Every Activity host applies `shared/ui/layout/SystemBars.kt`; screens draw behind transparent system bars and handle their own content insets.
 - Sub-folders of `ui/` and `logic/` should mirror each other (for example, `chat/ui/markdown/` ↔ `chat/logic/markdown/`).
 - If a `logic/` folder grows beyond about 10 files, consider splitting it into `viewmodel/` and `service/`.
 - `shared/ui/` holds reusable UI. Other `shared/` and `integrations/` folders are organized by responsibility (for example, `storage/`, `networking/`, `helpers/`, and `modelapis/`) rather than a universal `ui/`/`logic/` split.

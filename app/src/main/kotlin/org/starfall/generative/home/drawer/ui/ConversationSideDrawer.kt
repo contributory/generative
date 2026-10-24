@@ -38,6 +38,7 @@ import org.starfall.generative.R
 import java.util.UUID
 import org.starfall.generative.shared.model.ChatFolder
 import org.starfall.generative.shared.model.ConversationListItem
+import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.theme.LocalAmoledMode
@@ -74,6 +75,9 @@ fun ConversationSideDrawer(
     onNavigateToSettings: () -> Unit,
     featuresLogoImage: String? = null,
     onCloseDrawer: () -> Unit,
+    onOpenMediaStorage: () -> Unit = {},
+    onOpenRemoteMachines: () -> Unit = {},
+    onSaveMachineTools: (RemoteMachine) -> Unit = {},
     modifier: Modifier = Modifier,
     providers: List<ModelProvider> = emptyList(),
     backdrop: DrawerBackdrop? = null
@@ -158,17 +162,21 @@ fun ConversationSideDrawer(
         drawerShape = drawerShape,
         drawerContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = DrawerContainerAlpha)
     ) {
-        Column(
-            Modifier.fillMaxSize()
-                .imePadding()
-                // A tap on any non-interactive part of the drawer leaves the search field.
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = { unfocusSearch() },
-                        onLongPress = { blankContextMenu = true }
-                    )
-                }
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize()
         ) {
+            val halfDrawerHeight = maxHeight * 0.5f
+            Column(
+                Modifier.fillMaxSize()
+                    .imePadding()
+                    // A tap on any non-interactive part of the drawer leaves the search field.
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { unfocusSearch() },
+                            onLongPress = { blankContextMenu = true }
+                        )
+                    }
+            ) {
             if (selecting) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = ::stopSelecting) { FluentIcon(Icons.Default.Close, stringResource(R.string.sidebar_exit_selection)) }
@@ -184,6 +192,30 @@ fun ConversationSideDrawer(
                     IconButton(enabled = selected.isNotEmpty(), onClick = { folderName = ""; grouping = true }) { FluentIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.sidebar_move_selected_to_folder)) }
                     IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
                 }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    DrawerQuickShortcuts(
+                        onOpenMediaStorage = {
+                            unfocusSearch()
+                            onOpenMediaStorage()
+                        },
+                        onOpenRemoteMachines = {
+                            unfocusSearch()
+                            onOpenRemoteMachines()
+                        },
+                        onSaveMachineTools = onSaveMachineTools,
+                        maxExpandedHeight = halfDrawerHeight
+                    )
+                }
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                )
             }
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Bottom)) {
                 val folders = organization.folders.sortedByDescending { it.pinned }
@@ -303,6 +335,7 @@ fun ConversationSideDrawer(
                     ) { FluentIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
                 }
             }
+        }
         }
         DropdownMenu(
             expanded = blankContextMenu,

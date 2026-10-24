@@ -13,6 +13,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -20,9 +22,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.starfall.generative.R
@@ -30,7 +32,6 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.home.chat.ui.tool.ToolActivityCards
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.shared.ui.text.toComposeFontFamily
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
@@ -94,6 +95,7 @@ fun ReasoningDropdown(
             CollapsibleThinkingText(
                 reasoning = reasoning,
                 expanded = isExpanded,
+                isStreaming = isStreaming,
                 onToggle = { isExpanded = !isExpanded },
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 10.dp)
             )
@@ -264,28 +266,29 @@ private fun CollapsibleThinkingText(
     reasoning: String,
     expanded: Boolean,
     onToggle: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isStreaming: Boolean = false
 ) {
     val preferences = LocalCodeRenderingPreferences.current
     val bodySize = preferences.effectiveMessageFontSize.sp
-    val messageFont = preferences.messageFontFamily.toComposeFontFamily()
     val bodyLineHeight = bodySize * 1.375f
-    Text(
-        text = reasoning,
-        style = MaterialTheme.typography.bodyLarge.copy(
-            fontFamily = messageFont,
-            fontSize = bodySize,
-            lineHeight = bodyLineHeight
-        ),
-        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
-        maxLines = if (expanded) Int.MAX_VALUE else 5,
-        overflow = TextOverflow.Ellipsis,
+    val previewHeight = with(LocalDensity.current) { (bodyLineHeight * 5f).toDp() }
+    val scrollState = rememberScrollState()
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize()
+            .then(if (expanded) Modifier else Modifier.heightIn(max = previewHeight))
             .clip(RoundedCornerShape(8.dp))
+            .then(if (expanded) Modifier else Modifier.verticalScroll(scrollState))
             .clickable(onClick = onToggle)
-    )
+    ) {
+        ThinkingMarkdown(
+            reasoning = reasoning,
+            isStreaming = isStreaming,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }
 
 @Composable

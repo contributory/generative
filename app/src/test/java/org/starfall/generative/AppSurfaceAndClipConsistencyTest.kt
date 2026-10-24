@@ -197,7 +197,6 @@ class AppSurfaceAndClipConsistencyTest {
                         onOpenInstructions = {},
                         onOpenFeatureTools = {},
                         onOpenMcpConnectors = {},
-                        onOpenRemoteMachines = {},
                         onDismiss = {}
                     )
                     else -> ConversationItem(

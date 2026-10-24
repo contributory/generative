@@ -19,7 +19,7 @@ import org.junit.Test
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.features.providers.shared.ui.*
-import org.starfall.generative.shared.ui.media.MediaPreviewDialog
+import org.starfall.generative.shared.ui.media.MediaPreviewCover
 import org.starfall.generative.shared.ui.media.MediaFileCard
 import org.starfall.generative.shared.ui.media.ChatFilePreview
 import org.starfall.generative.shared.ui.media.InlineVideoPreview
@@ -123,9 +123,8 @@ class ChatMediaUiTest {
         val maximum = context.resources.configuration.screenHeightDp * context.resources.displayMetrics.density / 2
         assertTrue(bounds.height <= maximum + 1)
         compose.onNodeWithContentDescription("Open fullscreen video").performClick()
-        compose.onAllNodes(isDialog()).assertCountEquals(1)
-        compose.onNodeWithContentDescription("Exit fullscreen video").performClick()
-        compose.onAllNodes(isDialog()).assertCountEquals(0)
+        compose.onNodeWithContentDescription("Exit fullscreen video").assertExists().performClick()
+        compose.onNodeWithContentDescription("Exit fullscreen video").assertDoesNotExist()
     }
     @Test fun returnedVideoHasNoFileLabelsAndPlaybackErrorsStayInline() {
         val store = ToolFiles(context)
@@ -139,7 +138,6 @@ class ChatMediaUiTest {
             compose.waitUntil(5_000) {
                 compose.onAllNodesWithText("Unable to play this video.", substring = true).fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onAllNodes(isDialog()).assertCountEquals(0)
             compose.onNodeWithContentDescription("Close viewer").assertDoesNotExist()
         } finally { store.delete(listOf(name)) }
     }
@@ -274,7 +272,6 @@ class ChatMediaUiTest {
         try {
             compose.setContent { MaterialTheme { AttachmentStrip(listOf(file.path), removable = false) } }
             compose.onNodeWithContentDescription("Play audio").assertDoesNotExist()
-            compose.onAllNodes(isDialog()).assertCountEquals(0)
             compose.waitUntil(5_000) {
                 compose.onAllNodesWithContentDescription("Play media").fetchSemanticsNodes().isNotEmpty()
             }
@@ -286,15 +283,14 @@ class ChatMediaUiTest {
             compose.onNodeWithContentDescription("Pause audio").assertExists().performClick()
             compose.onNodeWithContentDescription("Play audio").assertExists()
             compose.onNode(SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.ProgressBarRangeInfo)).assertExists()
-            compose.onAllNodes(isDialog()).assertCountEquals(1)
-            compose.onNodeWithContentDescription("Close viewer").performClick()
+            compose.onNodeWithContentDescription("Close viewer").assertExists().performClick()
             compose.onNodeWithContentDescription("Play audio").assertDoesNotExist()
         } finally { file.delete() }
     }
 
     @Test fun unavailableVideoShowsErrorAndCanBeClosed() {
         compose.setContent {
-            MaterialTheme { MediaPreviewDialog("${context.cacheDir}/missing-video.mp4", "Video", "video/mp4", {}) }
+            MaterialTheme { MediaPreviewCover("${context.cacheDir}/missing-video.mp4", "Video", "video/mp4", {}) }
         }
         compose.waitUntil(5_000) {
             compose.onAllNodesWithText("Unable to play this video.", substring = true).fetchSemanticsNodes().isNotEmpty()

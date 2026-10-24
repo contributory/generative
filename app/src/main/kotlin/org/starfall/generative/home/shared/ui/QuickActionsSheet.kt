@@ -32,7 +32,6 @@ fun QuickActionsSheet(
     onOpenInstructions: () -> Unit,
     onOpenFeatureTools: () -> Unit,
     onOpenMcpConnectors: () -> Unit,
-    onOpenRemoteMachines: () -> Unit,
     onDismiss: () -> Unit
 ) {
     AppSheet(
@@ -48,7 +47,6 @@ fun QuickActionsSheet(
             onOpenInstructions = onOpenInstructions,
             onOpenFeatureTools = onOpenFeatureTools,
             onOpenMcpConnectors = onOpenMcpConnectors,
-            onOpenRemoteMachines = onOpenRemoteMachines,
             onDismiss = onDismiss
         )
     }
@@ -64,7 +62,6 @@ internal fun QuickActionsSheetContent(
     onOpenInstructions: () -> Unit,
     onOpenFeatureTools: () -> Unit,
     onOpenMcpConnectors: () -> Unit,
-    onOpenRemoteMachines: () -> Unit,
     onDismiss: () -> Unit
 ) {
     Column(
@@ -138,12 +135,6 @@ internal fun QuickActionsSheetContent(
             title = stringResource(R.string.common_mcp_connectors),
             subtitle = stringResource(R.string.quick_action_mcp_connectors_description),
             onClick = onOpenMcpConnectors
-        )
-        AddActionRow(
-            icon = Icons.Outlined.Computer,
-            title = stringResource(R.string.remote_machines_title),
-            subtitle = stringResource(R.string.quick_action_remote_machines_description),
-            onClick = onOpenRemoteMachines
         )
     }
 }

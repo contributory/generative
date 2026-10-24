@@ -124,18 +124,11 @@ class QuickActionsSheetTransitionTest {
         val restoredHeight = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
         assertEquals(quickActionsHeight, restoredHeight, 2f)
 
-        // Feature Tools and Remote Machines also transition within the same sheet instance.
+        // Feature Tools also transitions within the same sheet instance.
         compose.onNodeWithText("Feature Tools").performClick()
         compose.mainClock.advanceTimeBy(450)
         assertEquals(sheetNodeId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
         compose.onNodeWithText("Image Generation").assertIsDisplayed()
-        compose.onNodeWithContentDescription("Back").performClick()
-        compose.mainClock.advanceTimeBy(450)
-
-        compose.onNodeWithText("Remote Machines").performClick()
-        compose.mainClock.advanceTimeBy(450)
-        assertEquals(sheetNodeId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
-        compose.onNodeWithText("No remote machines configured").assertIsDisplayed()
         compose.onNodeWithContentDescription("Back").performClick()
         compose.mainClock.advanceTimeBy(450)
         assertEquals(sheetNodeId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)

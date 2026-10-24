@@ -32,12 +32,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.features.machines.shared.ui.RemoteErrorText
 import org.starfall.generative.features.machines.shared.ui.RemoteTextField
 import org.starfall.generative.features.machines.shared.ui.RemoteToggle
+import org.starfall.generative.features.machines.shared.ui.remoteLiteralKeyboardOptions
 import org.starfall.generative.shared.model.WebSocketProxyConfig
 import org.starfall.generative.shared.ui.dialogs.AppDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
@@ -54,46 +56,55 @@ internal fun SshOptionsEditor(
 ) {
     var draftKey by remember { mutableStateOf("") }
     var draftValue by remember { mutableStateOf("") }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            stringResource(R.string.remote_machine_ssh_options_help),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         options.entries.forEach { (key, value) ->
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                RemoteTextField(key, {}, stringResource(R.string.remote_machine_ssh_option_name), Modifier.weight(1f), readOnly = true)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RemoteTextField(
+                        key,
+                        {},
+                        stringResource(R.string.remote_machine_ssh_option_name),
+                        Modifier.weight(1f),
+                        readOnly = true,
+                        keyboardOptions = remoteLiteralKeyboardOptions()
+                    )
+                    IconButton(onClick = { onChange(options - key) }) {
+                        FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove), tint = MaterialTheme.colorScheme.error)
+                    }
+                }
                 RemoteTextField(
                     value,
                     { newValue -> onChange(options + (key to newValue)) },
                     stringResource(R.string.remote_machine_ssh_option_value),
-                    Modifier.weight(1f)
+                    keyboardOptions = remoteLiteralKeyboardOptions()
                 )
-                IconButton(onClick = { onChange(options - key) }) {
-                    FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove), tint = MaterialTheme.colorScheme.error)
-                }
             }
         }
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            RemoteTextField(draftKey, { draftKey = it }, stringResource(R.string.remote_machine_ssh_option_name), Modifier.weight(1f))
-            RemoteTextField(draftValue, { draftValue = it }, stringResource(R.string.remote_machine_ssh_option_value), Modifier.weight(1f))
-            IconButton(
-                enabled = draftKey.isNotBlank() && draftValue.isNotBlank() && draftKey.trim() !in options,
-                onClick = {
-                    onChange(options + (draftKey.trim() to draftValue.trim()))
-                    draftKey = ""
-                    draftValue = ""
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            RemoteTextField(
+                draftKey,
+                { draftKey = it },
+                stringResource(R.string.remote_machine_ssh_option_name),
+                keyboardOptions = remoteLiteralKeyboardOptions()
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RemoteTextField(
+                    draftValue,
+                    { draftValue = it },
+                    stringResource(R.string.remote_machine_ssh_option_value),
+                    Modifier.weight(1f),
+                    keyboardOptions = remoteLiteralKeyboardOptions()
+                )
+                IconButton(
+                    enabled = draftKey.isNotBlank() && draftValue.isNotBlank() && draftKey.trim() !in options,
+                    onClick = {
+                        onChange(options + (draftKey.trim() to draftValue.trim()))
+                        draftKey = ""
+                        draftValue = ""
+                    }
+                ) {
+                    FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
                 }
-            ) {
-                FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
             }
         }
     }
@@ -159,19 +170,21 @@ internal fun WebSocketProxyDialog(
                         url,
                         { url = it; error = null },
                         stringResource(R.string.remote_machine_websocket_url),
-                        supporting = stringResource(R.string.remote_machine_websocket_url_help)
+                        keyboardOptions = remoteLiteralKeyboardOptions()
                     )
                     RemoteTextField(
                         headersText,
                         { headersText = it },
                         stringResource(R.string.remote_machine_websocket_headers),
+                        keyboardOptions = remoteLiteralKeyboardOptions(),
                         minLines = 3,
                         maxLines = 6
                     )
                     RemoteTextField(
                         connectTimeout,
                         numeric { connectTimeout = it },
-                        stringResource(R.string.remote_machine_websocket_connect_timeout)
+                        stringResource(R.string.remote_machine_websocket_connect_timeout),
+                        keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
                     )
                     RemoteToggle(
                         label = stringResource(R.string.remote_machine_websocket_skip_certificates),
@@ -209,33 +222,39 @@ internal fun WebSocketProxyDialog(
                                 caCertificate,
                                 { caCertificate = it },
                                 stringResource(R.string.remote_machine_websocket_ca_certificate),
+                                keyboardOptions = remoteLiteralKeyboardOptions(),
                                 minLines = 3,
                                 maxLines = 8
                             )
                             RemoteTextField(
                                 handshakeTimeout,
                                 numeric { handshakeTimeout = it },
-                                stringResource(R.string.remote_machine_websocket_handshake_timeout)
+                                stringResource(R.string.remote_machine_websocket_handshake_timeout),
+                                keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
                             )
                             RemoteTextField(
                                 readTimeout,
                                 numeric { readTimeout = it },
-                                stringResource(R.string.remote_machine_websocket_read_timeout)
+                                stringResource(R.string.remote_machine_websocket_read_timeout),
+                                keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
                             )
                             RemoteTextField(
                                 writeTimeout,
                                 numeric { writeTimeout = it },
-                                stringResource(R.string.remote_machine_websocket_write_timeout)
+                                stringResource(R.string.remote_machine_websocket_write_timeout),
+                                keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
                             )
                             RemoteTextField(
                                 closeTimeout,
                                 numeric { closeTimeout = it },
-                                stringResource(R.string.remote_machine_websocket_close_timeout)
+                                stringResource(R.string.remote_machine_websocket_close_timeout),
+                                keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
                             )
                             RemoteTextField(
                                 subProtocols,
                                 { subProtocols = it },
-                                stringResource(R.string.remote_machine_websocket_subprotocols)
+                                stringResource(R.string.remote_machine_websocket_subprotocols),
+                                keyboardOptions = remoteLiteralKeyboardOptions()
                             )
                         }
                     }

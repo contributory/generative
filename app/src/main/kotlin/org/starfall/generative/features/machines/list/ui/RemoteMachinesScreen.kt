@@ -56,6 +56,7 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
+import org.starfall.generative.shared.ui.machines.MachineToolsDialog
 
 @Composable
 fun RemoteMachinesScreen(
@@ -68,6 +69,8 @@ fun RemoteMachinesScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val connectedIds by viewModel.connectedMachineIds.collectAsStateWithLifecycle()
     var deleting by remember { mutableStateOf<RemoteMachine?>(null) }
+    var portForwardMachine by remember { mutableStateOf<RemoteMachine?>(null) }
+    var toolsMachine by remember { mutableStateOf<RemoteMachine?>(null) }
     var ipUpdateNotice by remember { mutableStateOf<MachineIpUpdateNotice?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -122,15 +125,8 @@ fun RemoteMachinesScreen(
                             machine = machine,
                             connected = machine.id in connectedIds,
                             onDisconnect = { viewModel.disconnect(machine.id) },
-                            onStartPortForward = {
-                                viewModel.startPortForward(machine) { result ->
-                                    val message = result.fold(
-                                        onSuccess = { context.getString(R.string.remote_machine_port_forward_started) },
-                                        onFailure = { it.message ?: it.toString() }
-                                    )
-                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                                }
-                            },
+                            onStartPortForward = { portForwardMachine = machine },
+                            onMachineTools = { toolsMachine = machine },
                             onTerminal = { onOpenTerminal(machine) },
                             onFiles = {
                                 if (!viewModel.openFiles(context, machine.id)) {
@@ -156,6 +152,34 @@ fun RemoteMachinesScreen(
                 }
             }
         }
+    }
+
+    portForwardMachine?.let { machine ->
+        PortForwardDialog(
+            machine = machine,
+            onDismiss = { portForwardMachine = null },
+            onSaveAndStart = { updated ->
+                portForwardMachine = null
+                viewModel.saveMachineAndStartPortForward(updated) { result ->
+                    val message = result.fold(
+                        onSuccess = { context.getString(R.string.remote_machine_port_forward_started) },
+                        onFailure = { it.message ?: it.toString() }
+                    )
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
+            }
+        )
+    }
+
+    toolsMachine?.let { machine ->
+        MachineToolsDialog(
+            machine = machine,
+            onDismiss = { toolsMachine = null },
+            onSave = { updated ->
+                viewModel.saveMachineTools(updated)
+                toolsMachine = null
+            }
+        )
     }
 
     deleting?.let { machine ->
@@ -194,6 +218,7 @@ private fun RemoteMachineCard(
     connected: Boolean,
     onDisconnect: () -> Unit,
     onStartPortForward: () -> Unit,
+    onMachineTools: () -> Unit,
     onTerminal: () -> Unit,
     onFiles: () -> Unit,
     onEdit: () -> Unit,
@@ -263,6 +288,11 @@ private fun RemoteMachineCard(
                         text = { Text(stringResource(R.string.remote_machine_start_port_forward)) },
                         leadingIcon = { FluentIcon(Icons.Outlined.Hub, null) },
                         onClick = { menu = false; onStartPortForward() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.remote_machine_tools_section)) },
+                        leadingIcon = { FluentIcon(Icons.Outlined.Build, null) },
+                        onClick = { menu = false; onMachineTools() }
                     )
                     if (gcloud) {
                         DropdownMenuItem(

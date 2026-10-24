@@ -77,9 +77,9 @@ internal fun CodexClientVersionField(value: String, valid: Boolean, onChange: (S
     SelectableOutlinedTextField(
         value = value, onValueChange = onChange,
         label = { Text(stringResource(R.string.provider_codex_client_version)) },
-        supportingText = { Text(stringResource(if (valid)
-            R.string.provider_codex_client_version_help else R.string.provider_codex_client_version_invalid,
-            DEFAULT_CODEX_CLIENT_VERSION)) },
+        placeholder = { Text(DEFAULT_CODEX_CLIENT_VERSION) },
+        supportingText = if (!valid) ({ Text(stringResource(R.string.provider_codex_client_version_invalid,
+            DEFAULT_CODEX_CLIENT_VERSION)) }) else null,
         isError = !valid,
         keyboardOptions = literalInputKeyboardOptions,
         visualTransformation = VisualTransformation.None,
@@ -99,9 +99,9 @@ internal fun AntigravityVersionFields(
     SelectableOutlinedTextField(
         value = version, onValueChange = onVersionChange,
         label = { Text(stringResource(R.string.provider_antigravity_version)) },
-        supportingText = { Text(stringResource(if (versionValid)
-            R.string.provider_antigravity_version_help else R.string.provider_antigravity_version_invalid,
-            DEFAULT_ANTIGRAVITY_VERSION)) },
+        placeholder = { Text(DEFAULT_ANTIGRAVITY_VERSION) },
+        supportingText = if (!versionValid) ({ Text(stringResource(R.string.provider_antigravity_version_invalid,
+            DEFAULT_ANTIGRAVITY_VERSION)) }) else null,
         isError = !versionValid,
         keyboardOptions = literalInputKeyboardOptions,
         visualTransformation = VisualTransformation.None,
@@ -110,11 +110,8 @@ internal fun AntigravityVersionFields(
     SelectableOutlinedTextField(
         value = changelist, onValueChange = onChangelistChange,
         label = { Text(stringResource(R.string.provider_antigravity_changelist)) },
-        supportingText = {
-            if (changelistValid) Text(stringResource(R.string.provider_antigravity_changelist_help,
-                DEFAULT_ANTIGRAVITY_VERSION, DEFAULT_ANTIGRAVITY_CHANGELIST))
-            else Text(stringResource(R.string.provider_antigravity_changelist_invalid))
-        },
+        placeholder = { Text(DEFAULT_ANTIGRAVITY_CHANGELIST) },
+        supportingText = if (!changelistValid) ({ Text(stringResource(R.string.provider_antigravity_changelist_invalid)) }) else null,
         isError = !changelistValid,
         keyboardOptions = literalInputKeyboardOptions,
         visualTransformation = VisualTransformation.None,
@@ -127,7 +124,6 @@ internal fun AntigravityProjectIdField(value: String, onChange: (String) -> Unit
     SelectableOutlinedTextField(
         value = value, onValueChange = onChange,
         label = { Text(stringResource(R.string.provider_antigravity_project_id)) },
-        supportingText = { Text(stringResource(R.string.provider_antigravity_project_id_help)) },
         keyboardOptions = literalInputKeyboardOptions,
         visualTransformation = VisualTransformation.None,
         singleLine = true, modifier = Modifier.fillMaxWidth().testTag("antigravity-project-id")

@@ -37,10 +37,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.home.shared.ui.FeatureToolsSheetContent
-import org.starfall.generative.home.shared.ui.McpConnectorsSheetContent
 import org.starfall.generative.home.shared.ui.InstructionsSheetContent
+import org.starfall.generative.home.shared.ui.McpConnectorsSheetContent
 import org.starfall.generative.home.shared.ui.QuickActionsSheetContent
-import org.starfall.generative.home.shared.ui.RemoteMachinesSheetContent
 import org.starfall.generative.home.shared.ui.SelectedModelOverviewContent
 import org.starfall.generative.home.shared.ui.rememberPreviewTier
 import org.starfall.generative.home.shared.ui.selectedModelSheetStyle
@@ -55,7 +54,6 @@ internal enum class QuickActionsPage {
     INSTRUCTIONS,
     FEATURE_TOOLS,
     MCP_CONNECTORS,
-    REMOTE_MACHINES,
 }
 
 internal enum class ModelSheetPage {
@@ -84,8 +82,6 @@ internal class BottomSheetsLinkState {
         get() = showAddMenu && quickActionsPage == QuickActionsPage.FEATURE_TOOLS
     val showMcpConnectors: Boolean
         get() = showAddMenu && quickActionsPage == QuickActionsPage.MCP_CONNECTORS
-    val showRemoteMachines: Boolean
-        get() = showAddMenu && quickActionsPage == QuickActionsPage.REMOTE_MACHINES
 
     fun openAddMenu() {
         quickActionsPage = null
@@ -116,10 +112,6 @@ internal class BottomSheetsLinkState {
         quickActionsPage = QuickActionsPage.MCP_CONNECTORS
         showAddMenu = true
     }
-    fun openRemoteMachines() {
-        quickActionsPage = QuickActionsPage.REMOTE_MACHINES
-        showAddMenu = true
-    }
     fun backToQuickActions() {
         quickActionsPage = null
     }
@@ -139,9 +131,6 @@ internal class BottomSheetsLinkState {
     }
     fun dismissMcpConnectors() {
         if (quickActionsPage == QuickActionsPage.MCP_CONNECTORS) quickActionsPage = null
-    }
-    fun dismissRemoteMachines() {
-        if (quickActionsPage == QuickActionsPage.REMOTE_MACHINES) quickActionsPage = null
     }
     fun dismissFilesUnavailableDialog() { showFilesSheet = false }
 }
@@ -180,8 +169,7 @@ internal fun BottomSheetsLink(
     attachments: List<String>,
     onAttachmentsChange: (List<String>) -> Unit,
     onOpenFeatureToolsSettings: () -> Unit = {},
-    onOpenMcpConnectorsSettings: () -> Unit = {},
-    onOpenRemoteMachinesSettings: () -> Unit = {}
+    onOpenMcpConnectorsSettings: () -> Unit = {}
 ) {
     val context = LocalContext.current
     fun retainReadPermission(uri: Uri) {
@@ -270,9 +258,6 @@ internal fun BottomSheetsLink(
                         onOpenMcpConnectors = {
                             if (pageActive) sheets.openMcpConnectors()
                         },
-                        onOpenRemoteMachines = {
-                            if (pageActive) sheets.openRemoteMachines()
-                        },
                         onDismiss = {
                             if (pageActive) sheets.dismissAddMenu()
                         }
@@ -296,15 +281,6 @@ internal fun BottomSheetsLink(
                             if (pageActive) {
                                 sheets.dismissAddMenu()
                                 onOpenMcpConnectorsSettings()
-                            }
-                        }
-                    )
-                    QuickActionsPage.REMOTE_MACHINES -> RemoteMachinesSheetContent(
-                        onBack = { if (pageActive) sheets.backToQuickActions() },
-                        onOpenSettings = {
-                            if (pageActive) {
-                                sheets.dismissAddMenu()
-                                onOpenRemoteMachinesSettings()
                             }
                         }
                     )

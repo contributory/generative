@@ -13,8 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
@@ -28,7 +26,8 @@ import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.media.ChatFilePreview
 import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 import org.starfall.generative.shared.ui.media.MediaContent
-import org.starfall.generative.shared.ui.media.MediaViewerToolBar
+import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.layout.windowHeightIn
 import org.starfall.generative.shared.ui.media.isPreviewableMedia
 import org.starfall.generative.shared.ui.media.mediaMimeType
 import org.starfall.generative.shared.ui.media.mediaThumbnail
@@ -131,78 +130,85 @@ internal fun MediaViewer(store: ToolFiles, file: File, onDismiss: () -> Unit) {
         }
     }
 
-    MediaViewerDialog(
+    val share: () -> Unit = {
+        runCatching {
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.tool-files", file)
+            context.startActivity(
+                Intent.createChooser(
+                    Intent(Intent.ACTION_SEND)
+                        .setType(mime)
+                        .putExtra(Intent.EXTRA_STREAM, uri)
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
+                    context.getString(R.string.media_share_file)
+                )
+            )
+        }.onFailure {
+            Toast.makeText(context, context.getString(R.string.media_could_not_share_file), Toast.LENGTH_SHORT).show()
+        }
+    }
+    val actions = buildList {
+        attachmentSelection?.let { selection ->
+            val attached = file.path in selection.attachments.value
+            add(
+                MediaViewerAction(
+                    label = stringResource(
+                        if (attached) R.string.file_remove_next_message else R.string.file_attach_next_message
+                    ),
+                    icon = if (attached) Icons.Outlined.CheckCircle else Icons.Outlined.AttachFile,
+                    onClick = { selection.toggle(file.path) }
+                )
+            )
+        }
+        add(
+            MediaViewerAction(
+                label = stringResource(R.string.media_save),
+                icon = Icons.Outlined.Save,
+                onClick = { save.launch(file.name) }
+            )
+        )
+        add(MediaViewerAction(stringResource(R.string.media_share), Icons.Outlined.Share, share))
+        add(
+            MediaViewerAction(
+                label = stringResource(R.string.common_delete),
+                icon = Icons.Outlined.Delete,
+                onClick = { confirmDelete = true },
+                tint = MaterialTheme.colorScheme.error
+            )
+        )
+    }
+
+    MediaViewerCover(
         mediaKey = file.path,
         onDismiss = onDismiss,
-        header = {
-            Text(
-                file.name,
-                modifier = Modifier.weight(1f),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleMedium
-            )
-            attachmentSelection?.let { selection ->
-                val attached = file.path in selection.attachments.value
-                val description = stringResource(
-                    if (attached) R.string.file_remove_next_message else R.string.file_attach_next_message
-                )
-                Checkbox(
-                    checked = attached,
-                    onCheckedChange = { selection.toggle(file.path) },
-                    modifier = Modifier.semantics { contentDescription = description }
-                )
-            }
-        },
+        actions = actions,
         content = { onZoomChanged ->
-            LazyColumn(Modifier.weight(1f, fill = false)) {
-                item {
-                    when {
-                        isPreviewableMedia(mime) -> MediaContent(
-                            file.path,
-                            mime,
-                            onImageZoomChanged = onZoomChanged
-                        )
-                        textual -> text?.let { content ->
-                            CodeBlockSurface(language = language, code = content)
-                            if (truncated) Text(
-                                stringResource(R.string.media_preview_truncated, TEXT_PREVIEW_LIMIT),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+            if (isPreviewableMedia(mime)) {
+                MediaContent(file.path, mime, onImageZoomChanged = onZoomChanged)
+            } else {
+                LazyColumn(Modifier.windowHeightIn(maxFraction = 0.8f)) {
+                    item {
+                        when {
+                            textual -> text?.let { content ->
+                                CodeBlockSurface(language = language, code = content)
+                                if (truncated) Text(
+                                    stringResource(R.string.media_preview_truncated, TEXT_PREVIEW_LIMIT),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = androidx.compose.ui.graphics.Color.White
+                                )
+                            } ?: Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
+                            else -> Text(
+                                stringResource(R.string.media_preview_unsupported),
+                                color = androidx.compose.ui.graphics.Color.White
                             )
-                        } ?: Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
                         }
-                        else -> Text(stringResource(R.string.media_preview_unsupported))
                     }
                 }
             }
         },
         fullscreenContent = { onZoomChanged ->
             MediaContent(file.path, mime, onImageZoomChanged = onZoomChanged, fullscreen = true)
-        },
-        toolbar = { onClose ->
-            MediaViewerToolBar(
-                onSave = { save.launch(file.name) },
-                onShare = {
-                    runCatching {
-                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.tool-files", file)
-                        context.startActivity(
-                            Intent.createChooser(
-                                Intent(Intent.ACTION_SEND)
-                                    .setType(mime)
-                                    .putExtra(Intent.EXTRA_STREAM, uri)
-                                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
-                                context.getString(R.string.media_share_file)
-                            )
-                        )
-                    }.onFailure {
-                        Toast.makeText(context, context.getString(R.string.media_could_not_share_file), Toast.LENGTH_SHORT).show()
-                    }
-                },
-                onDelete = { confirmDelete = true },
-                onClose = onClose
-            )
         }
     )
 

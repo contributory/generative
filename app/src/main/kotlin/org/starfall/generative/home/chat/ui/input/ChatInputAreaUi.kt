@@ -139,7 +139,6 @@ fun UserInputArea(
     onAttachmentsChange: (List<String>) -> Unit = {},
     onOpenFeatureToolsSettings: () -> Unit = {},
     onOpenMcpConnectorsSettings: () -> Unit = {},
-    onOpenRemoteMachinesSettings: () -> Unit = {},
     chatModeRequest: Int = 0,
     modifier: Modifier = Modifier
 ) {
@@ -692,8 +691,7 @@ fun UserInputArea(
         attachments = attachments,
         onAttachmentsChange = onAttachmentsChange,
         onOpenFeatureToolsSettings = onOpenFeatureToolsSettings,
-        onOpenMcpConnectorsSettings = onOpenMcpConnectorsSettings,
-        onOpenRemoteMachinesSettings = onOpenRemoteMachinesSettings
+        onOpenMcpConnectorsSettings = onOpenMcpConnectorsSettings
 
     )
 }
