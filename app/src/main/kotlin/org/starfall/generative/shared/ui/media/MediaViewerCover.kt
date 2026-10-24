@@ -1,8 +1,6 @@
 package org.starfall.generative.shared.ui.media
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -17,56 +15,43 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import org.starfall.generative.shared.ui.layout.ScreenCover
 
-/** Edge-to-edge media cover. Only the media bounds consume taps; the uncovered scrim dismisses. */
+/**
+ * Edge-to-edge media cover with a single content instance. Zooming never swaps the content tree:
+ * it only fades a black backdrop in behind it, so gesture/image state survives the whole pinch.
+ */
 @Composable
 internal fun MediaViewerCover(
     mediaKey: Any,
     onDismiss: () -> Unit,
     actions: List<MediaViewerAction>,
-    content: @Composable BoxScope.(onZoomChanged: (Boolean) -> Unit) -> Unit,
-    fullscreenContent: @Composable BoxScope.(onZoomChanged: (Boolean) -> Unit) -> Unit
+    content: @Composable BoxScope.(onZoomChanged: (Boolean) -> Unit) -> Unit
 ) {
-    var fullscreen by remember(mediaKey) { mutableStateOf(false) }
-    val contentInteraction = remember(mediaKey) { MutableInteractionSource() }
+    var zoomed by remember(mediaKey) { mutableStateOf(false) }
+    val backdrop by animateFloatAsState(if (zoomed) 1f else 0f, label = "mediaZoomBackdrop")
 
     ScreenCover(onDismiss = onDismiss) {
-        Box(Modifier.fillMaxSize()) {
-            AnimatedVisibility(
-                visible = !fullscreen,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(indication = null, interactionSource = contentInteraction) {},
-                        contentAlignment = Alignment.Center
-                    ) {
-                        content { zoomed -> fullscreen = zoomed }
-                    }
-                }
-            }
-
-            AnimatedVisibility(
-                visible = fullscreen,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black)
-                        .clickable(indication = null, interactionSource = contentInteraction) {}
-                ) {
-                    fullscreenContent(this) { zoomed -> fullscreen = zoomed }
-                }
-            }
-
+        Box(
+            Modifier.fillMaxSize().drawBehind { drawRect(Color.Black.copy(alpha = backdrop)) },
+            contentAlignment = Alignment.Center
+        ) {
+            content { zoomed = it }
             MediaViewerMenu(actions = actions, onDismiss = onDismiss)
         }
     }
+}
+
+/** Non-zoomable media (video, audio, text): taps inside its bounds don't reach the dismissing scrim. */
+@Composable
+internal fun MediaTapShield(content: @Composable BoxScope.() -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {},
+        contentAlignment = Alignment.Center,
+        content = content
+    )
 }

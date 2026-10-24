@@ -184,7 +184,7 @@ internal fun MediaViewer(store: ToolFiles, file: File, onDismiss: () -> Unit) {
         content = { onZoomChanged ->
             if (isPreviewableMedia(mime)) {
                 MediaContent(file.path, mime, onImageZoomChanged = onZoomChanged)
-            } else {
+            } else MediaTapShield {
                 LazyColumn(Modifier.windowHeightIn(maxFraction = 0.8f)) {
                     item {
                         when {
@@ -206,9 +206,6 @@ internal fun MediaViewer(store: ToolFiles, file: File, onDismiss: () -> Unit) {
                     }
                 }
             }
-        },
-        fullscreenContent = { onZoomChanged ->
-            MediaContent(file.path, mime, onImageZoomChanged = onZoomChanged, fullscreen = true)
         }
     )
 

@@ -13,6 +13,7 @@ import android.webkit.MimeTypeMap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
@@ -94,53 +95,57 @@ fun MediaPreviewCover(reference: String, name: String, mime: String, onDismiss: 
         ),
         content = { onZoomChanged ->
             MediaContent(reference, mime, onImageZoomChanged = onZoomChanged)
-        },
-        fullscreenContent = { onZoomChanged ->
-            MediaContent(reference, mime, onImageZoomChanged = onZoomChanged, fullscreen = true)
         }
     )
 }
 
 @Composable
-fun MediaContent(reference: String, mime: String, onImageZoomChanged: (Boolean) -> Unit = {}, fullscreen: Boolean = false) {
+fun MediaContent(reference: String, mime: String, onImageZoomChanged: (Boolean) -> Unit = {}) {
     // A new source gets its own player and loading/error state.
     key(reference, mime) {
         when {
-            mime.startsWith("image/") -> ZoomableMediaImage(reference, mime, onImageZoomChanged, fullscreen)
-            mime.startsWith("video/") -> VideoPlayback(reference)
-            mime.startsWith("audio/") -> AudioPlayback(reference, onDarkBackground = true)
-            else -> Text(stringResource(R.string.media_preview_unsupported), color = Color.White)
+            mime.startsWith("image/") -> ZoomableMediaImage(reference, onImageZoomChanged)
+            mime.startsWith("video/") -> MediaTapShield { VideoPlayback(reference) }
+            mime.startsWith("audio/") -> MediaTapShield { AudioPlayback(reference, onDarkBackground = true) }
+            else -> MediaTapShield { Text(stringResource(R.string.media_preview_unsupported), color = Color.White) }
         }
     }
 }
 
 @Composable
-private fun ZoomableMediaImage(reference: String, mime: String, onZoomChanged: (Boolean) -> Unit, fullscreen: Boolean) {
-    val context = LocalContext.current
+private fun ZoomableMediaImage(reference: String, onZoomChanged: (Boolean) -> Unit) {
     var loaded by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf(false) }
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
-    Box((if (fullscreen || scale > 1.02f) Modifier.fillMaxSize() else Modifier.fillMaxWidth().windowHeightIn(minFraction = 0.22f, maxFraction = 0.6f)).clipToBounds()
-        .onSizeChanged { viewportSize = it }
+    var frameSize by remember { mutableStateOf(IntSize.Zero) }
+    // The gesture surface and the image frame keep a constant size for the whole pinch, so the
+    // layout never re-measures mid-gesture. Only the graphicsLayer changes. Taps outside the image
+    // fall through to the scrim (dismiss); taps on the (transformed) image are consumed.
+    Box(Modifier.fillMaxSize().onSizeChanged { viewportSize = it }
         .transformable(rememberTransformableState { _, zoom, pan, _ ->
             scale = (scale * zoom).coerceIn(1f, 5f)
             onZoomChanged(scale > 1.02f)
-            val boundX = viewportSize.width * (scale - 1f) / 2f
-            val boundY = viewportSize.height * (scale - 1f) / 2f
+            val boundX = maxOf(0f, (frameSize.width * scale - viewportSize.width) / 2f)
+            val boundY = maxOf(0f, (frameSize.height * scale - viewportSize.height) / 2f)
             offset = Offset((offset.x + pan.x).coerceIn(-boundX, boundX),
                 (offset.y + pan.y).coerceIn(-boundY, boundY))
         }), contentAlignment = Alignment.Center) {
-        coil3.compose.AsyncImage(
-            model = org.starfall.generative.shared.icons.AppImages.source(reference),
-            contentDescription = stringResource(R.string.media_image_preview), contentScale = ContentScale.Fit,
-            modifier = (if (fullscreen || scale > 1.02f) Modifier.fillMaxSize() else Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.6f))
-                .graphicsLayer { scaleX = scale; scaleY = scale; translationX = offset.x; translationY = offset.y },
-            onSuccess = { loaded = true }, onError = { loaded = true; error = true }
-        )
-        if (error) Text(stringResource(R.string.media_image_open_failed), color = Color.White)
-        else if (!loaded) CircularProgressIndicator()
+        Box(Modifier.fillMaxWidth().windowHeightIn(minFraction = 0.22f, maxFraction = 0.6f)
+            .onSizeChanged { frameSize = it }
+            .graphicsLayer { scaleX = scale; scaleY = scale; translationX = offset.x; translationY = offset.y }
+            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {},
+            contentAlignment = Alignment.Center) {
+            coil3.compose.AsyncImage(
+                model = org.starfall.generative.shared.icons.AppImages.source(reference),
+                contentDescription = stringResource(R.string.media_image_preview), contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.6f),
+                onSuccess = { loaded = true }, onError = { loaded = true; error = true }
+            )
+            if (error) Text(stringResource(R.string.media_image_open_failed), color = Color.White)
+            else if (!loaded) CircularProgressIndicator()
+        }
     }
 }
 
