@@ -2,6 +2,8 @@
 
 package org.starfall.generative.features.machines.details.ui
 
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -22,7 +24,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -262,7 +263,7 @@ internal fun MachineDetailsScreen(
                                 loadingIp = false
                             }
                         }) {
-                            if (loadingIp) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                            if (loadingIp) GenerativeLoadingIndicator(Modifier.size(16.dp))
                             else FluentIcon(Icons.Outlined.Refresh, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.remote_machine_get_ip))
@@ -276,7 +277,7 @@ internal fun MachineDetailsScreen(
                         readOnly = true,
                         keyboardOptions = remoteLiteralKeyboardOptions(),
                         trailingIcon = if (fetchingUsername) {
-                            { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) }
+                            { GenerativeLoadingIndicator(Modifier.size(18.dp)) }
                         } else null
                     )
                 } else {
@@ -464,7 +465,7 @@ internal fun MachineDetailsScreen(
                                 }
                             }
                         ) {
-                            if (authorizing) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                            if (authorizing) GenerativeLoadingIndicator(Modifier.size(16.dp))
                             else FluentIcon(Icons.Outlined.Key, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.remote_machine_oauth_sign_in))

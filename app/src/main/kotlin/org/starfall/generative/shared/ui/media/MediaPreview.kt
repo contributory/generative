@@ -44,6 +44,7 @@ import kotlinx.coroutines.withContext
 import org.starfall.generative.shared.files.AttachmentResolver
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 import org.starfall.generative.shared.ui.layout.windowHeight
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 
@@ -144,7 +145,7 @@ private fun ZoomableMediaImage(reference: String, onZoomChanged: (Boolean) -> Un
                 onSuccess = { loaded = true }, onError = { loaded = true; error = true }
             )
             if (error) Text(stringResource(R.string.media_image_open_failed), color = Color.White)
-            else if (!loaded) CircularProgressIndicator()
+            else if (!loaded) GenerativeLoadingIndicator()
         }
     }
 }
@@ -282,7 +283,7 @@ private fun VideoPlayback(reference: String, inline: Boolean = false,
                 },
                 onRelease = { texture -> player.clearVideoTextureView(texture); textureView = null }
             )
-            if (!ready) CircularProgressIndicator()
+            if (!ready) GenerativeLoadingIndicator()
         } else Text(stringResource(R.string.media_video_play_failed),
             color = MaterialTheme.colorScheme.inverseOnSurface, modifier = Modifier.padding(16.dp))
         if ((inline || fullscreen) && ready && !error) {
@@ -343,7 +344,7 @@ private fun AudioPlayback(reference: String, onDarkBackground: Boolean = false) 
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (error) Text(stringResource(R.string.media_audio_play_failed), color = MaterialTheme.colorScheme.error)
-        else if (!ready) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+        else if (!ready) GenerativeLoadingIndicator(Modifier.align(Alignment.CenterHorizontally))
         else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 FilledIconButton(

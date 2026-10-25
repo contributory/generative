@@ -16,6 +16,7 @@ import org.starfall.generative.shared.model.ConversationSummary
 import org.starfall.generative.shared.model.ConversationSummaryProgress
 import org.starfall.generative.shared.model.SummaryRole
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
+import org.starfall.generative.shared.ui.GenerativeLinearWavyProgressIndicator
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
@@ -61,7 +62,7 @@ fun ConversationSummaryDivider(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    LinearProgressIndicator(
+                    GenerativeLinearWavyProgressIndicator(
                         progress = { progress.progress.coerceIn(0f, 1f) },
                         modifier = Modifier.weight(1f)
                     )

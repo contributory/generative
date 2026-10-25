@@ -28,6 +28,7 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.GenerativeLinearWavyProgressIndicator
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
@@ -97,7 +98,7 @@ internal fun ProviderModelCatalogSheet(
                     }
                 )
             }
-            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (loading) GenerativeLinearWavyProgressIndicator(Modifier.fillMaxWidth())
             loadError?.let {
                 Text(it, color = MaterialTheme.colorScheme.error)
                 TextButton(onClick = { refresh++ }, enabled = !loading) { Text(stringResource(R.string.common_retry)) }

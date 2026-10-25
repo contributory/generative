@@ -20,6 +20,7 @@ import org.starfall.generative.shared.model.McpToolParameterConfig
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.GenerativeLinearWavyProgressIndicator
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
@@ -41,7 +42,7 @@ internal fun McpToolsTab(
                 Text(stringResource(if (loading) R.string.refreshing else R.string.refresh))
             }
         }
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (loading) GenerativeLinearWavyProgressIndicator(Modifier.fillMaxWidth())
         if (!ready) {
             ToolListPlaceholder(R.string.mcp_enter_server_first)
             return@Column

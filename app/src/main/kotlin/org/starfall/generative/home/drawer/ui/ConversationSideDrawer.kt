@@ -12,6 +12,8 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -32,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import org.starfall.generative.R
@@ -84,6 +87,8 @@ fun ConversationSideDrawer(
 ) {
     val providersById = remember(providers) { providers.associateBy { it.id } }
     var search by remember { mutableStateOf("") }
+    var searchExpanded by remember { mutableStateOf(false) }
+    val searchFocusRequester = remember { FocusRequester() }
     var selecting by remember { mutableStateOf(false) }
     // Long-press opens a chat's context menu; selection mode is entered explicitly via Select.
     var contextChatId by remember { mutableStateOf<String?>(null) }
@@ -135,18 +140,41 @@ fun ConversationSideDrawer(
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     var searchFocused by remember { mutableStateOf(false) }
-    fun unfocusSearch() { focusManager.clearFocus(); keyboard?.hide() }
+    fun unfocusSearch() {
+        searchFocused = false
+        searchExpanded = false
+        search = ""
+        focusManager.clearFocus(force = true)
+        keyboard?.hide()
+    }
+    LaunchedEffect(searchExpanded) {
+        if (searchExpanded) {
+            withFrameNanos { }
+            searchFocusRequester.requestFocus()
+        }
+    }
     // Closing the keyboard (back gesture, IME close button) also leaves the search field.
     val imeVisible = WindowInsets.isImeVisible
     var imeWasVisible by remember { mutableStateOf(false) }
     LaunchedEffect(imeVisible) {
         if (imeVisible) imeWasVisible = true
-        else if (imeWasVisible) { imeWasVisible = false; if (searchFocused) unfocusSearch() }
+        else if (imeWasVisible) { imeWasVisible = false; if (searchExpanded) unfocusSearch() }
     }
-    LaunchedEffect(isOpen) { if (!isOpen) { stopSelecting(); unfocusSearch() } }
+    LaunchedEffect(isOpen) {
+        if (isOpen) {
+            // ModalNavigationDrawer can restore focus to the first text field while its sheet opens.
+            // Clear that restored focus after the opening frame; tapping Search afterwards still
+            // focuses it normally.
+            withFrameNanos { }
+            unfocusSearch()
+        } else {
+            stopSelecting()
+            unfocusSearch()
+        }
+    }
     BackHandler(enabled = selecting && isOpen) { stopSelecting() }
     val newChatButtonSize by animateDpAsState(
-        targetValue = if (searchFocused) 40.dp else 52.dp,
+        targetValue = if (searchExpanded) 40.dp else 52.dp,
         label = "new chat button size"
     )
 
@@ -287,25 +315,45 @@ fun ConversationSideDrawer(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                SelectableOutlinedTextField(
-                    value = search, onValueChange = { search = it }, singleLine = true,
-                    placeholder = { Text(stringResource(R.string.search_history), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    leadingIcon = { FluentIcon(Icons.Default.Search, stringResource(R.string.sidebar_search)) },
-                    trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { FluentIcon(Icons.Default.Close, stringResource(R.string.sidebar_clear_search)) } },
-                    shape = RoundedCornerShape(28.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        // Soft outline: muted when idle, only a gentle accent when focused.
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                    ),
-                    modifier = Modifier
-                        .weight(1f)
-                        .widthIn(max = 220.dp)
-                        .onFocusChanged { searchFocused = it.isFocused }
-                )
+                if (searchExpanded) {
+                    SelectableOutlinedTextField(
+                        value = search, onValueChange = { search = it }, singleLine = true,
+                        placeholder = { Text(stringResource(R.string.search_history), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        leadingIcon = { FluentIcon(Icons.Default.Search, stringResource(R.string.sidebar_search)) },
+                        trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { FluentIcon(Icons.Default.Close, stringResource(R.string.sidebar_clear_search)) } },
+                        shape = RoundedCornerShape(28.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            // Soft outline: muted when idle, only a gentle accent when focused.
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .widthIn(max = 220.dp)
+                            .focusRequester(searchFocusRequester)
+                            .testTag("conversation_drawer_search")
+                            .onFocusChanged {
+                                if (!it.isFocused && searchFocused && searchExpanded) unfocusSearch()
+                                searchFocused = it.isFocused
+                            }
+                    )
+                } else {
+                    OutlinedButton(
+                        onClick = { searchExpanded = true },
+                        shape = RoundedCornerShape(28.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 52.dp)
+                            .testTag("conversation_drawer_search_button")
+                    ) {
+                        FluentIcon(Icons.Default.Search, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.search_history), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
                 // Secondary actions step aside while the search field is expanded.
                 AnimatedVisibility(
-                    visible = !searchFocused,
+                    visible = !searchExpanded,
                     enter = fadeIn() + expandHorizontally(),
                     exit = fadeOut() + shrinkHorizontally()
                 ) {

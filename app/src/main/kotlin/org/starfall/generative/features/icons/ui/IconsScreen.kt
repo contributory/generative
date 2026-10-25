@@ -33,6 +33,7 @@ import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.icons.model.StoredIcon
+import org.starfall.generative.shared.ui.GenerativeLinearWavyProgressIndicator
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
@@ -192,7 +193,7 @@ fun IconsScreen(onBack: () -> Unit) {
             Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (busy) GenerativeLinearWavyProgressIndicator(Modifier.fillMaxWidth())
             LazyColumn(
                 Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(12.dp),

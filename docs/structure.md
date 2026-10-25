@@ -546,6 +546,7 @@ This document is the detailed package map and architecture reference. The mandat
 │       │   ├── 📄 StreamingTextFade.kt
 │       │   └── 📄 WordWrappedFadeText.kt
 │       ├── 📄 ProfileMcpPermissions.kt
+│       ├── 📄 LoadingIndicator.kt
 │       ├── 📄 InstructionControls.kt
 │       ├── 📄 ToolControls.kt
 │       ├── 📄 ToolSwitch.kt

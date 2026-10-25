@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,6 +38,7 @@ import org.starfall.generative.shared.code.highlightedCode
 import org.starfall.generative.shared.storage.preferences.WordWrapMode
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 
 /**
  * Code surface for texts that may be huge: only the chunks on screen are composed (and highlighted).
@@ -87,7 +87,7 @@ internal fun LazyCodeBlock(
             val chunks = starts
             if (chunks == null) {
                 Box(Modifier.fillMaxWidth().height(56.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                    GenerativeLoadingIndicator(Modifier.size(24.dp))
                 }
             } else {
                 BoxWithConstraints(Modifier.fillMaxWidth()) {

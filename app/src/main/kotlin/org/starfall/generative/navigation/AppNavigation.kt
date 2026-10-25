@@ -75,6 +75,7 @@ import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.theme.modalScrimColor
 import org.starfall.generative.shared.ui.InstructionControls
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 import org.starfall.generative.shared.ui.LocalInstructionControls
 import org.starfall.generative.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.ToolControls
@@ -556,7 +557,7 @@ fun AppNavigation(
                         if (page == null) {
                             LaunchedEffect(Unit) { navController.popBackStack() }
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
+                                GenerativeLoadingIndicator()
                             }
                         } else {
                             // Clear the pending page only once this screen has left composition. Clearing it

@@ -1,5 +1,7 @@
 package org.starfall.generative.features.providers.shared.ui
 
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
@@ -57,7 +59,7 @@ internal fun OAuthAccountCard(
                 ) {
                     Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
                         if (busy) {
-                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            GenerativeLoadingIndicator(Modifier.size(20.dp))
                         } else {
                             FluentIcon(
                                 if (signedIn) Icons.Outlined.CheckCircle else Icons.Outlined.AccountCircle,

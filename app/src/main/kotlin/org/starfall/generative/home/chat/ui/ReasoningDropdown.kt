@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 import org.starfall.generative.home.chat.ui.tool.ToolActivityCards
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
@@ -72,9 +73,8 @@ fun ReasoningDropdown(
                     modifier = Modifier.weight(1f)
                 )
                 if (isStreaming) {
-                    CircularProgressIndicator(
+                    GenerativeLoadingIndicator(
                         modifier = Modifier.size(14.dp),
-                        strokeWidth = 2.dp,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(8.dp))

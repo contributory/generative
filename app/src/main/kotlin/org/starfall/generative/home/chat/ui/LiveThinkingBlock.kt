@@ -29,6 +29,7 @@ import kotlin.math.max
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 
 /** Time constant of the exponential follow; the remaining distance shrinks ~63% per interval. */
@@ -94,9 +95,8 @@ internal fun LiveThinkingBlock(reasoning: String, active: Boolean, showHeader: B
             Spacer(Modifier.weight(1f))
             if (active) {
                 Spacer(Modifier.width(6.dp))
-                CircularProgressIndicator(
+                GenerativeLoadingIndicator(
                     Modifier.size(12.dp),
-                    strokeWidth = 1.5.dp,
                     color = MaterialTheme.colorScheme.outline
                 )
             }

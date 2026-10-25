@@ -19,6 +19,7 @@ import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 import org.starfall.generative.home.chat.ui.markdown.MarkdownRenderer
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -74,10 +75,7 @@ fun MessageBubble(
                 modifier = Modifier.padding(14.dp)
             ) {
                 if (message.content.isBlank()) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp
-                    )
+                    GenerativeLoadingIndicator(modifier = Modifier.size(18.dp))
                 } else {
                     SelectionContainer {
                         MarkdownRenderer(content = message.content)
