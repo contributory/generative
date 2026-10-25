@@ -14,7 +14,7 @@ import org.starfall.generative.features.mcp.shared.ui.*
 import org.starfall.generative.integrations.mcp.*
 import org.starfall.generative.features.machines.shared.ui.*
 import org.starfall.generative.integrations.remote.*
-import org.starfall.generative.home.chat.*
+import org.starfall.generative.features.home.chat.*
 import org.starfall.generative.integrations.modelapis.*
 import org.starfall.generative.shared.files.*
 import org.starfall.generative.shared.icons.*
@@ -28,9 +28,9 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.generative.home.chat.logic.ChatViewModel
-import org.starfall.generative.home.chat.logic.tool.ToolChatViewModel
-import org.starfall.generative.home.chat.ui.input.UserInputArea
+import org.starfall.generative.features.home.chat.logic.ChatViewModel
+import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
+import org.starfall.generative.features.home.chat.ui.input.UserInputArea
 
 class ChatInputBehaviorTest {
     @get:Rule val compose = createComposeRule()

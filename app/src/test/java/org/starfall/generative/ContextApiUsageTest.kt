@@ -6,8 +6,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.home.chat.logic.*
-import org.starfall.generative.home.chat.model.ContextWindowStatus
+import org.starfall.generative.features.home.chat.logic.*
+import org.starfall.generative.features.home.chat.model.ContextWindowStatus
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.generation.TokenUsage

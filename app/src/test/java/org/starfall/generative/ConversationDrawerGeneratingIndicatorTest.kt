@@ -22,7 +22,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.home.drawer.ui.ConversationSideDrawer
+import org.starfall.generative.features.home.drawer.ui.ConversationSideDrawer
 import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.theme.GenerativeTheme

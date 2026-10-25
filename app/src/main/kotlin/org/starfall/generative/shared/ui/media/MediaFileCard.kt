@@ -28,6 +28,7 @@ import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 import org.starfall.generative.shared.ui.media.MediaContent
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.windowHeightIn
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 import org.starfall.generative.shared.ui.media.isPreviewableMedia
 import org.starfall.generative.shared.ui.media.mediaMimeType
 import org.starfall.generative.shared.ui.media.mediaThumbnail
@@ -196,7 +197,7 @@ internal fun MediaViewer(store: ToolFiles, file: File, onDismiss: () -> Unit) {
                                     color = androidx.compose.ui.graphics.Color.White
                                 )
                             } ?: Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
+                                GenerativeLoadingIndicator()
                             }
                             else -> Text(
                                 stringResource(R.string.media_preview_unsupported),

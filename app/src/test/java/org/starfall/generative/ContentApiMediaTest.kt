@@ -8,7 +8,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.isContentApiPreset
-import org.starfall.generative.home.chat.logic.tool.resolveContentApiMedia
+import org.starfall.generative.features.home.chat.logic.tool.resolveContentApiMedia
 import org.starfall.generative.shared.helpers.media.*
 import org.starfall.generative.shared.model.media.*
 import org.starfall.generative.shared.files.*

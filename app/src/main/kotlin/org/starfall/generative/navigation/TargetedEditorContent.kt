@@ -1,5 +1,7 @@
 package org.starfall.generative.navigation
 
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -74,7 +76,7 @@ internal fun <T : Any> TargetedEditorContent(
         ) {
             val error = failure
             if (error == null) {
-                CircularProgressIndicator()
+                GenerativeLoadingIndicator()
                 Text(loadingMessage, textAlign = TextAlign.Center)
             } else {
                 Text(stringResource(R.string.editor_open_failed), style = MaterialTheme.typography.titleMedium)

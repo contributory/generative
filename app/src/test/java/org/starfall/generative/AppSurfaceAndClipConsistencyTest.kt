@@ -31,8 +31,8 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.features.chatoptions.ui.InstructionsTab
 import org.starfall.generative.features.providers.list.logic.ProviderRootItem
 import org.starfall.generative.features.providers.list.ui.ProviderRootCard
-import org.starfall.generative.home.drawer.ui.ConversationItem
-import org.starfall.generative.home.shared.ui.QuickActionsSheetContent
+import org.starfall.generative.features.home.drawer.ui.ConversationItem
+import org.starfall.generative.features.home.shared.ui.QuickActionsSheetContent
 import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SavedInstruction

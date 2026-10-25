@@ -240,6 +240,10 @@ internal class OpenAICodexAdapter(
         tokenStore.delete(providerId)
     }
 
+    override fun exportCredentials(): Map<String, JsonObject> = tokenStore.exportAll()
+
+    override fun importCredentials(credentials: Map<String, JsonObject>) = tokenStore.importAll(credentials)
+
     private suspend fun ensureToken(provider: ModelProvider): CodexTokenState {
         require(provider.auth.method == AuthMethod.OAUTH && provider.auth.value == AUTH_MARKER) {
             "OpenAI Codex is not authorized. Open OAuth in the browser from Provider settings."

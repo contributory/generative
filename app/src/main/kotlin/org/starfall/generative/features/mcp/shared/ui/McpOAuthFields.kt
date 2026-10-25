@@ -1,5 +1,7 @@
 package org.starfall.generative.features.mcp.shared.ui
 
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,7 +77,7 @@ internal fun McpOAuthFields(url: String, clientId: String, onClientIdChange: (St
             }
         }
     }, enabled = !busy && url.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
-        if (busy) { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Spacer(Modifier.width(8.dp)) }
+        if (busy) { GenerativeLoadingIndicator(Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)) }
         Text(stringResource(if (authorized) R.string.mcp_reauthorize_oauth else R.string.authorize_in_browser))
     }
     if (authorizeJob?.isActive == true) {

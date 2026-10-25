@@ -15,7 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -41,6 +40,7 @@ import org.starfall.generative.R
 import org.starfall.generative.features.about.logic.GitHubReleaseInfo
 import org.starfall.generative.features.about.logic.compareReleaseVersions
 import org.starfall.generative.features.about.logic.fetchLatestGitHubRelease
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -114,7 +114,7 @@ private fun UpdateSection() {
         val latest = latestRelease
         when {
             isChecking -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                GenerativeLoadingIndicator(modifier = Modifier.size(18.dp))
                 Text(stringResource(R.string.settings_checking_releases))
             }
             error != null -> {

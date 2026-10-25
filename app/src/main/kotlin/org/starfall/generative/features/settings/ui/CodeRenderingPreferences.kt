@@ -157,11 +157,14 @@ internal fun TextAppearancePreferences(
         Text(stringResource(R.string.message_text_size_hint, preferences.messageFontSize),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(verticalAlignment = Alignment.CenterVertically) {
+            val fontSize = preferences.messageFontSize.toFloat()
+            val sliderState = remember {
+                SliderState(value = fontSize, steps = 11, trackRange = 12f..24f)
+            }
+            sliderState.value = fontSize
             Slider(
-                value = preferences.messageFontSize.toFloat(),
+                state = sliderState,
                 onValueChange = { onFontSizeChange(it.roundToInt()) },
-                valueRange = 12f..24f,
-                steps = 11,
                 modifier = Modifier.weight(1f).testTag("message-font-size")
             )
             IconButton(

@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.ToolSettings
+import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ModelType
@@ -44,14 +46,18 @@ import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as Dropdo
 import org.starfall.generative.shared.ui.model.DefaultModelSelector
 import org.starfall.generative.shared.ui.model.ModelPickerSheet
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.WebSearchProviderSettings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ToolsEditor(
     providers: List<ModelProvider>,
     settings: ToolSettings,
+    mcpServers: List<McpInfo> = emptyList(),
     onSave: (String, SystemToolConfig) -> Unit,
     onSetSendFile: (Boolean) -> Unit = {},
+    onSetWebSearchProvider: (String?) -> Unit = {},
+    onSetWebSearchEnabled: (Boolean) -> Unit = {},
     providerGroups: List<ProviderGroup> = emptyList(),
     collapsedGroupIds: Set<String> = emptySet(),
     collapsedProviderIds: Set<String> = emptySet(),
@@ -360,6 +366,14 @@ fun ToolsEditor(
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    item {
+                        WebSearchProviderSettings(
+                            servers = mcpServers,
+                            settings = settings,
+                            onProviderChange = onSetWebSearchProvider,
+                            onEnabledChange = onSetWebSearchEnabled
                         )
                     }
                     item {

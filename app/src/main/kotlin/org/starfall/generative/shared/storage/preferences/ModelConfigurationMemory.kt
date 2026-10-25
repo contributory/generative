@@ -1,9 +1,13 @@
 package org.starfall.generative.shared.storage.preferences
 
+import androidx.core.content.edit
 import android.content.Context
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 import java.util.Locale
 import org.starfall.generative.shared.model.language.DiscoveredModel
 import org.starfall.generative.shared.model.language.ModelConfiguration
@@ -32,5 +36,20 @@ class ModelConfigurationMemory(context: Context) {
         return saved.copy(displayName = model.displayName,
             contextWindowTokens = model.contextWindowTokens ?: saved.contextWindowTokens,
             modelJson = model.metadata)
+    }
+
+    internal fun exportAll(): Map<String, JsonObject> = preferences.all.mapNotNull { (key, value) ->
+        val raw = value as? String ?: return@mapNotNull null
+        runCatching { key to json.encodeToJsonElement<ModelConfiguration>(json.decodeFromString(raw)).jsonObject }.getOrNull()
+    }.toMap()
+
+    internal fun importAll(values: Map<String, JsonObject>) {
+        preferences.edit(commit = true) {
+            clear()
+            values.forEach { (key, value) ->
+                val config = json.decodeFromJsonElement<ModelConfiguration>(value)
+                putString(key, json.encodeToString(config))
+            }
+        }
     }
 }

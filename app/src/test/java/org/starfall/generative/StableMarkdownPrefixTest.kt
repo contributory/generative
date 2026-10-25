@@ -3,7 +3,7 @@ package org.starfall.generative
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.generative.home.chat.logic.markdown.stableMarkdownPrefixLength
+import org.starfall.generative.features.home.chat.logic.markdown.stableMarkdownPrefixLength
 
 class StableMarkdownPrefixTest {
     private fun offsetOf(text: String, marker: String): Int = text.indexOf(marker).also { assertTrue(it >= 0) }

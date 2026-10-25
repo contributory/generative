@@ -3,8 +3,8 @@ package org.starfall.generative
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.home.chat.logic.prepareUserMessageRetry
-import org.starfall.generative.home.chat.logic.unansweredUserMessageIds
+import org.starfall.generative.features.home.chat.logic.prepareUserMessageRetry
+import org.starfall.generative.features.home.chat.logic.unansweredUserMessageIds
 
 class UserMessageRetryTest {
     private fun user(id: String) = StoredMessage(id, ChatRole.USER,

@@ -1,7 +1,6 @@
 package org.starfall.generative.navigation
 
 import android.net.Uri
-import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -11,6 +10,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -26,16 +27,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import java.io.OutputStreamWriter
-import kotlinx.coroutines.CancellationException
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.features.about.ui.AboutScreen
-import org.starfall.generative.features.appdata.logic.buildJsonExport
-import org.starfall.generative.features.appdata.logic.parseFullAppDataExport
-import org.starfall.generative.shared.model.JsonExportKind
+import org.starfall.generative.features.appdata.logic.AppDataTransferService
+import org.starfall.generative.shared.model.BackupExportKind
 import org.starfall.generative.features.appdata.ui.AppDataScreen
 import org.starfall.generative.features.chatoptions.ui.ChatOptionsScreen
 import org.starfall.generative.features.icons.ui.IconsScreen
@@ -44,7 +43,7 @@ import org.starfall.generative.features.machines.details.ui.RemoteMachineSetting
 import org.starfall.generative.features.machines.list.ui.RemoteMachinesScreen
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
 import org.starfall.generative.shared.ui.terminal.RemoteTerminalSheet
-import org.starfall.generative.features.main.ui.FeaturesScreen
+import org.starfall.generative.features.menu.ui.AppMenuScreen
 import org.starfall.generative.features.mcp.editor.ui.ServerEditor
 import org.starfall.generative.features.mcp.list.ui.ServerListScreen
 import org.starfall.generative.features.providers.editor.ui.ProviderEditor
@@ -56,13 +55,13 @@ import org.starfall.generative.features.settings.ui.MainAppbar
 import org.starfall.generative.features.speech.ui.SpeechServicesScreen
 import org.starfall.generative.features.storage.ui.StorageScreen
 import org.starfall.generative.features.tools.ui.ToolsEditor
-import org.starfall.generative.home.chat.logic.ChatViewModel
-import org.starfall.generative.home.chat.logic.contextWindowStatus
-import org.starfall.generative.home.chat.ui.ChatScreen
+import org.starfall.generative.features.home.chat.logic.ChatViewModel
+import org.starfall.generative.features.home.chat.logic.contextWindowStatus
+import org.starfall.generative.features.home.chat.ui.ChatScreen
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.home.drawer.ui.ConversationSideDrawer
-import org.starfall.generative.home.drawer.ui.recordDrawerBackdrop
-import org.starfall.generative.home.drawer.ui.rememberDrawerBackdrop
+import org.starfall.generative.features.home.drawer.ui.ConversationSideDrawer
+import org.starfall.generative.features.home.drawer.ui.recordDrawerBackdrop
+import org.starfall.generative.features.home.drawer.ui.rememberDrawerBackdrop
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.model.McpInfo
@@ -74,6 +73,7 @@ import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.theme.modalScrimColor
 import org.starfall.generative.shared.ui.InstructionControls
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 import org.starfall.generative.shared.ui.LocalInstructionControls
 import org.starfall.generative.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.ToolControls
@@ -85,6 +85,11 @@ import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 private data class MachineEditorPage(val machine: RemoteMachine, val isNew: Boolean)
 private data class ProviderEditorPage(val provider: ModelProvider, val isNew: Boolean)
 private enum class RemoteMachineSettingsPage { SETTINGS }
+
+internal val NullableFilePathSaver = Saver<File?, String>(
+    save = { it?.absolutePath },
+    restore = { path -> path.takeIf { it.isNotBlank() }?.let(::File) }
+)
 
 enum class AppDestination(val route: String) {
     CHAT("chat"),
@@ -111,6 +116,7 @@ fun AppNavigation(
     settingsViewModel: SettingsViewModel,
     remoteMachinesViewModel: RemoteMachinesViewModel,
     toolFiles: ToolFiles,
+    appDataTransfer: AppDataTransferService,
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val drawerFocusManager = LocalFocusManager.current
@@ -189,56 +195,59 @@ fun AppNavigation(
     val importedProviderId by configurationViewModel.importedProviderId.collectAsStateWithLifecycle()
     val providerImportFailed by configurationViewModel.providerImportFailed.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var pendingExport by remember { mutableStateOf<String?>(null) }
-    var preparingExport by remember { mutableStateOf(false) }
-    var pendingImport by remember { mutableStateOf(false) }
+    var pendingExport by rememberSaveable(stateSaver = NullableFilePathSaver) { mutableStateOf<File?>(null) }
+    var exportPickerOpen by rememberSaveable { mutableStateOf(false) }
+    var pendingImport by rememberSaveable { mutableStateOf(false) }
+    val preparingExport by appDataTransfer.preparingExport.collectAsStateWithLifecycle()
+    val preparedExport by appDataTransfer.preparedExport.collectAsStateWithLifecycle()
+    val importInProgress by appDataTransfer.importInProgress.collectAsStateWithLifecycle()
     val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
+        ActivityResultContracts.CreateDocument("application/zip")
     ) { uri ->
-        val payload = pendingExport
+        val archive = pendingExport
+        val wasWaiting = exportPickerOpen
+        exportPickerOpen = false
+        if (uri == null || !wasWaiting) {
+            pendingExport = null
+            archive?.delete()
+            return@rememberLauncherForActivityResult
+        }
+        if (archive == null || !archive.isFile) {
+            pendingExport = null
+            Toast.makeText(context, R.string.export_write_failed, Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+        appDataTransfer.writeExportToUri(uri, archive)
         pendingExport = null
-        if (uri == null || payload == null) return@rememberLauncherForActivityResult
-        coroutineScope.launch {
+    }
+
+    LaunchedEffect(preparedExport, exportPickerOpen) {
+        if (preparedExport != null && !exportPickerOpen && pendingExport == null) {
+            val archive = appDataTransfer.consumePreparedExport() ?: return@LaunchedEffect
+            pendingExport = archive
+            exportPickerOpen = true
             try {
-                withContext(Dispatchers.IO) {
-                    context.contentResolver.openOutputStream(uri)?.use { output ->
-                        OutputStreamWriter(output, Charsets.UTF_8).use { it.write(payload) }
-                    } ?: error(context.getString(R.string.export_open_file_failed))
-                }
-                Toast.makeText(context, R.string.export_json_success, Toast.LENGTH_SHORT).show()
-            } catch (cancelled: CancellationException) {
-                throw cancelled
+                exportLauncher.launch(BackupExportKind.FULL_BACKUP.fileName)
             } catch (_: Exception) {
+                exportPickerOpen = false
+                pendingExport = null
+                archive.delete()
                 Toast.makeText(context, R.string.export_write_failed, Toast.LENGTH_LONG).show()
             }
         }
     }
 
-    fun exportJson() {
-        if (preparingExport || pendingExport != null) return
-        preparingExport = true
-        coroutineScope.launch {
-            try {
-                val fullProviders = configurationViewModel.loadProvidersForExport()
-                val fullServers = configurationViewModel.loadServersForExport()
-                val fullConversations = withContext(Dispatchers.IO) {
-                    viewModel.conversationsForExport()
-                }
-                val payload = withContext(Dispatchers.Default) {
-                    buildJsonExport(fullProviders, fullServers, speechServices, fullConversations, providerGroups)
-                }
-                pendingExport = payload
-                exportLauncher.launch(JsonExportKind.FULL_BACKUP.fileName)
-            } catch (cancelled: CancellationException) {
-                pendingExport = null
-                throw cancelled
-            } catch (_: Exception) {
-                pendingExport = null
-                Toast.makeText(context, R.string.export_prepare_failed, Toast.LENGTH_LONG).show()
-            } finally {
-                preparingExport = false
+    LaunchedEffect(exportPickerOpen, pendingExport?.absolutePath, preparedExport, preparingExport) {
+        if (!exportPickerOpen && pendingExport == null && preparedExport == null && !preparingExport) {
+            withContext(Dispatchers.IO) {
+                appDataTransfer.cleanupAbandonedExports()
             }
         }
+    }
+
+    fun exportData() {
+        if (preparingExport || exportPickerOpen || pendingExport != null || importInProgress) return
+        appDataTransfer.prepareExport()
     }
 
     val importLauncher = rememberLauncherForActivityResult(
@@ -246,40 +255,23 @@ fun AppNavigation(
     ) { uri ->
         val shouldImport = pendingImport
         pendingImport = false
-        if (uri == null || !shouldImport) return@rememberLauncherForActivityResult
-        coroutineScope.launch {
-            try {
-                val raw = withContext(Dispatchers.IO) {
-                    context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-                        ?: error(context.getString(R.string.export_open_file_failed))
-                }
-                val fileName = withContext(Dispatchers.IO) {
-                    context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
-                        ?.use { cursor ->
-                            if (cursor.moveToFirst()) cursor.getString(0) else null
-                        }
-                }
-                val backup = withContext(Dispatchers.Default) { parseFullAppDataExport(raw, fileName) }
-                withContext(Dispatchers.IO) {
-                    // Imports are additive/upserts: categories absent from legacy exports are untouched.
-                    backup.providers?.let { configurationViewModel.importProviders(it, backup.providerGroups) }
-                    backup.mcpServers?.let { configurationViewModel.importMcpServers(it) }
-                    backup.speechServices?.let { configurationViewModel.importSpeechServices(it) }
-                    backup.conversations?.let { viewModel.importConversations(it) }
-                }
-                val count = backup.providers.orEmpty().size + backup.providerGroups.orEmpty().size +
-                    backup.mcpServers.orEmpty().size + backup.speechServices.orEmpty().size +
-                    backup.conversations.orEmpty().size
-                Toast.makeText(context, context.getString(R.string.import_success, count), Toast.LENGTH_SHORT).show()
-            } catch (error: Exception) {
-                Toast.makeText(context, context.getString(R.string.import_failed, error.message.orEmpty()), Toast.LENGTH_LONG).show()
-            }
-        }
+        if (uri == null || !shouldImport || importInProgress) return@rememberLauncherForActivityResult
+        appDataTransfer.importFromUri(
+            uri = uri,
+            beforeFullRestore = viewModel::prepareForRestore,
+            afterFullRestore = viewModel::finishRestore
+        )
     }
 
-    fun importJson() {
+    fun importData() {
+        if (pendingImport || importInProgress || preparingExport || exportPickerOpen) return
         pendingImport = true
-        importLauncher.launch(arrayOf("application/json", "text/*"))
+        try {
+            importLauncher.launch(arrayOf("application/zip", "application/json", "text/*"))
+        } catch (_: Exception) {
+            pendingImport = false
+            Toast.makeText(context, R.string.export_open_file_failed, Toast.LENGTH_LONG).show()
+        }
     }
     // The app preference is the default for new chats. Existing chats keep showing
     // the model they last used, independently of that default.
@@ -334,6 +326,8 @@ fun AppNavigation(
             providers = providers,
             setSystem = viewModel::setSystemTool,
             setMcp = viewModel::setQuickMcp,
+            setWebSearchProvider = viewModel::setWebSearchProvider,
+            setWebSearchEnabled = viewModel::setWebSearchEnabled,
             setMachines = viewModel::setMachinesEnabled,
             setMachine = { machineId, enabled ->
                 viewModel.setMachineEnabled(machineId, enabled, remoteMachineState.machines.map { it.id })
@@ -545,7 +539,7 @@ fun AppNavigation(
                         if (page == null) {
                             LaunchedEffect(Unit) { navController.popBackStack() }
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
+                                GenerativeLoadingIndicator()
                             }
                         } else {
                             // Clear the pending page only once this screen has left composition. Clearing it
@@ -772,9 +766,12 @@ fun AppNavigation(
                     composable(AppDestination.TOOLS_EDITOR.route) {
                         ToolsEditor(
                             providers = providers,
+                            mcpServers = mcpServers,
                             settings = toolSettings,
                             onSave = viewModel::setSystemTool,
                             onSetSendFile = viewModel::setSendFileEnabled,
+                            onSetWebSearchProvider = viewModel::setWebSearchProvider,
+                            onSetWebSearchEnabled = viewModel::setWebSearchEnabled,
                             providerGroups = providerGroups,
                             collapsedGroupIds = appPrefs.modelPickerCollapsedGroups,
                             collapsedProviderIds = appPrefs.modelPickerCollapsedProviders,
@@ -844,7 +841,7 @@ fun AppNavigation(
                         }
                     }
                     composable(AppDestination.FEATURES.route) {
-                        FeaturesScreen(
+                        AppMenuScreen(
                             modifier = Modifier.fillMaxSize(),
                             logoImage = appPrefs.featuresLogoImage,
                             onLogoImageChange = settingsViewModel::setFeaturesLogoImage,
@@ -926,6 +923,7 @@ fun AppNavigation(
                                     onToolRoundLimitChange = settingsViewModel::setToolRoundLimit,
                                     onToolCallStrategyChange = settingsViewModel::setToolCallStrategy,
                                     onToolCallConcurrentLimitChange = settingsViewModel::setToolCallConcurrentLimit,
+                                    onMcpAttachmentsChange = settingsViewModel::setMcpAttachments,
                                     onScreenWakelockModeChange = settingsViewModel::setScreenWakelockMode,
                                     onAppLanguageChange = settingsViewModel::setAppLanguage,
                                  )
@@ -947,8 +945,10 @@ fun AppNavigation(
                             onResetAllData = {
                                 viewModel.deleteAllUserData(chatAttachments.attachments.value)
                             },
-                            onExportJson = ::exportJson,
-                            onImportJson = ::importJson,
+                            onExportZip = ::exportData,
+                            onImportZip = ::importData,
+                            exportInProgress = preparingExport,
+                            importInProgress = importInProgress,
                             onBack = { navController.popBackStack() }
                         )
                     }

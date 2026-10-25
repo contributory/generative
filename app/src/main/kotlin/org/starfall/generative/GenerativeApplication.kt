@@ -15,7 +15,7 @@ import org.starfall.generative.integrations.remote.RemoteMachineServiceOwner
 import org.starfall.generative.shared.files.CrashReportStore
 import org.starfall.generative.shared.files.CrashRecordingHandler
 import java.io.File
-import org.starfall.generative.home.chat.ui.ChatRenderCaches
+import org.starfall.generative.features.home.chat.ui.ChatRenderCaches
 
 class GenerativeApplication : Application(), RemoteMachineServiceOwner, coil3.SingletonImageLoader.Factory {
     override fun newImageLoader(context: android.content.Context): coil3.ImageLoader =

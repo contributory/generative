@@ -66,4 +66,8 @@ internal interface AccountProviderAdapter {
     fun unwrapResponse(response: JsonObject): JsonObject = response
 
     fun clearCredentials(providerId: String)
+
+    fun exportCredentials(): Map<String, JsonObject>
+
+    fun importCredentials(credentials: Map<String, JsonObject>)
 }

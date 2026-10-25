@@ -39,6 +39,7 @@ import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.layout.windowHeightIn
@@ -92,7 +93,7 @@ fun ChatFilePreview(
         mime.startsWith("image/") -> BoundedMediaFrame(thumbnail?.let { it.width.toFloat() / it.height.coerceAtLeast(1) } ?: 1f, modifier) {
             Box(Modifier.fillMaxSize().clickable(onClick = onOpen), contentAlignment = Alignment.Center) {
                 thumbnail?.let { Image(it, stringResource(R.string.media_generated_image), Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
-                if (loading) CircularProgressIndicator(Modifier.size(24.dp))
+                if (loading) GenerativeLoadingIndicator(Modifier.size(24.dp))
                 else if (thumbnail == null) Text(stringResource(R.string.media_image_preview_unavailable), color = Color.White)
             }
             actions()

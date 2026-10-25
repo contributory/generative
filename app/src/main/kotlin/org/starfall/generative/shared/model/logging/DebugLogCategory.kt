@@ -1,6 +1,9 @@
 package org.starfall.generative.shared.model.logging
 
+import kotlinx.serialization.Serializable
+
 /** Kinds of debug log the user can switch on or off individually in App settings. */
+@Serializable
 enum class DebugLogCategory(val value: String) {
     NETWORK("network"),
     PAYLOAD("payload"),

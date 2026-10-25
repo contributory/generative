@@ -34,8 +34,8 @@ import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.home.shared.logic.toolAttachmentParts
-import org.starfall.generative.home.shared.logic.toolMessageContent
+import org.starfall.generative.features.home.shared.logic.toolAttachmentParts
+import org.starfall.generative.features.home.shared.logic.toolMessageContent
 import org.starfall.generative.shared.model.auth.defaultAuthorization
 
 @Config(sdk = [28])

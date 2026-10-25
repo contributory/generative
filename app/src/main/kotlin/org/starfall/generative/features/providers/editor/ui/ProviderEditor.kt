@@ -1,5 +1,7 @@
 package org.starfall.generative.features.providers.editor.ui
 
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
@@ -265,7 +267,7 @@ fun ProviderEditor(
                             IconButton(onClick = { showTestDialog = true },
                                 enabled = testingConnection || (onTestConnection != null && (type.isAccountProvider || baseUrl.isNotBlank()) && valid && models.isNotEmpty())) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    if (testingConnection && !showTestDialog) CircularProgressIndicator(Modifier.size(36.dp), strokeWidth = 2.dp)
+                                    if (testingConnection && !showTestDialog) GenerativeLoadingIndicator(Modifier.size(36.dp))
                                     FluentIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.test_connection))
                                 }
                             }

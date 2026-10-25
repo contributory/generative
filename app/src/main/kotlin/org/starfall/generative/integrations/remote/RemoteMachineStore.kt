@@ -161,6 +161,16 @@ class RemoteMachineStore(context: Context) {
         update { RemoteMachineState() }
     }
 
+    suspend fun replaceState(state: RemoteMachineState) {
+        withContext(Dispatchers.IO) {
+            lock.withLock {
+                writeState(state)
+                runCatching { sshConfigFile.delete() }
+                _state.value = state
+            }
+        }
+    }
+
     private fun readState(): RemoteMachineState {
         val configFileText = readSshConfigFile()
         val stored = preferences.getString(KEY, null)

@@ -14,9 +14,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.generative.home.shared.ui.FeatureToolsSheet
-import org.starfall.generative.home.shared.ui.McpConnectorsSheet
-import org.starfall.generative.home.shared.ui.QuickActionsSheet
+import org.starfall.generative.features.home.shared.ui.FeatureToolsSheet
+import org.starfall.generative.features.home.shared.ui.McpConnectorsSheet
+import org.starfall.generative.features.home.shared.ui.QuickActionsSheet
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.ToolControls
@@ -74,6 +74,7 @@ class ToolsManagementSheetsTest {
         compose.onNodeWithText("Image Generation").assertIsDisplayed()
         compose.onNodeWithText("Video Generation").assertIsDisplayed()
         compose.onNodeWithText("Send File").assertIsDisplayed()
+        compose.onNodeWithText("Web Search Provider").assertIsDisplayed()
         compose.onNodeWithText("MCP Connectors").assertDoesNotExist()
         val toggleableNodes = compose.onAllNodes(
             SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState)

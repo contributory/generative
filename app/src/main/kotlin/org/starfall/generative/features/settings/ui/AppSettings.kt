@@ -51,6 +51,7 @@ import org.starfall.generative.shared.storage.preferences.DEFAULT_TOOL_CALL_CONC
 import org.starfall.generative.shared.storage.preferences.DEFAULT_TOOL_ROUND_LIMIT
 import org.starfall.generative.shared.storage.preferences.MAX_TOOL_CALL_CONCURRENT_LIMIT
 import org.starfall.generative.shared.storage.preferences.MAX_TOOL_ROUND_LIMIT
+import org.starfall.generative.shared.storage.preferences.McpAttachmentSettings
 import org.starfall.generative.shared.storage.preferences.MessageFontFamily
 import org.starfall.generative.shared.storage.preferences.ScreenWakelockMode
 import org.starfall.generative.shared.storage.preferences.ToolCallStrategy
@@ -199,6 +200,7 @@ fun PreferencesSettingsView(
     onToolRoundLimitChange: (Int) -> Unit = {},
     onToolCallStrategyChange: (ToolCallStrategy) -> Unit = {},
     onToolCallConcurrentLimitChange: (Int) -> Unit = {},
+    onMcpAttachmentsChange: (McpAttachmentSettings) -> Unit = {},
     onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit = {},
     onAppLanguageChange: (useSystem: Boolean, tag: String) -> Unit = { _, _ -> },
     onAutoSummaryEnabledChange: (Boolean) -> Unit = {},
@@ -279,15 +281,13 @@ fun PreferencesSettingsView(
             }
         }
         item {
-            var strategyExpanded by remember { mutableStateOf(false) }
-            val strategyLabels = mapOf(
-                ToolCallStrategy.SEQUENTIAL to stringResource(R.string.tool_call_strategy_sequential),
-                ToolCallStrategy.PARALLEL to stringResource(R.string.tool_call_strategy_parallel)
-            )
-            SettingsSection(
-                title = stringResource(R.string.tool_call_options),
-                description = stringResource(R.string.tool_call_strategy_description)
-            ) {
+            SettingsSection(stringResource(R.string.settings_mcp_tools)) {
+                Text(stringResource(R.string.tool_call_options), style = MaterialTheme.typography.titleMedium)
+                var strategyExpanded by remember { mutableStateOf(false) }
+                val strategyLabels = mapOf(
+                    ToolCallStrategy.SEQUENTIAL to stringResource(R.string.tool_call_strategy_sequential),
+                    ToolCallStrategy.PARALLEL to stringResource(R.string.tool_call_strategy_parallel)
+                )
                 ExposedDropdownMenuBox(strategyExpanded, { strategyExpanded = !strategyExpanded }) {
                     SelectableOutlinedTextField(
                         value = strategyLabels.getValue(appPreferences.toolCallStrategy),
@@ -306,58 +306,61 @@ fun PreferencesSettingsView(
                     }
                 }
                 if (appPreferences.toolCallStrategy == ToolCallStrategy.PARALLEL) {
-                    var limit by remember(appPreferences.toolCallConcurrentLimit) { mutableStateOf(appPreferences.toolCallConcurrentLimit.toString()) }
+                    var limit by remember(appPreferences.toolCallConcurrentLimit) {
+                        mutableStateOf(appPreferences.toolCallConcurrentLimit.takeUnless {
+                            it == DEFAULT_TOOL_CALL_CONCURRENT_LIMIT
+                        }?.toString().orEmpty())
+                    }
                     val parsed = limit.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_CALL_CONCURRENT_LIMIT }
-                    Text(
-                        stringResource(R.string.tool_call_concurrent_limit_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                     SelectableOutlinedTextField(
                         value = limit,
                         onValueChange = { text ->
                             if (text.length <= 2 && text.all(Char::isDigit)) {
                                 limit = text
-                                text.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_CALL_CONCURRENT_LIMIT }?.let(onToolCallConcurrentLimitChange)
+                                if (text.isBlank()) onToolCallConcurrentLimitChange(DEFAULT_TOOL_CALL_CONCURRENT_LIMIT)
+                                else text.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_CALL_CONCURRENT_LIMIT }?.let(onToolCallConcurrentLimitChange)
                             }
                         },
                         label = { Text(stringResource(R.string.tool_call_concurrent_limit)) },
-                        supportingText = { Text(stringResource(
-                            if (parsed == null) R.string.common_number_range_invalid else R.string.common_number_range_default,
-                            if (parsed == null) MAX_TOOL_CALL_CONCURRENT_LIMIT else DEFAULT_TOOL_CALL_CONCURRENT_LIMIT
-                        )) },
-                        isError = parsed == null, singleLine = true,
+                        placeholder = { Text(stringResource(R.string.common_default_value_hint, DEFAULT_TOOL_CALL_CONCURRENT_LIMIT)) },
+                        isError = limit.isNotBlank() && parsed == null,
+                        singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth().testTag("tool-call-concurrent-limit")
                     )
                 }
-            }
-        }
-        item {
-            SettingsSection(stringResource(R.string.settings_tool_calls)) {
-                PreferenceToggle(stringResource(R.string.settings_limit_tool_rounds), stringResource(R.string.settings_limit_tool_rounds_description),
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                PreferenceToggle(stringResource(R.string.settings_limit_tool_rounds),
+                    stringResource(R.string.settings_limit_tool_rounds_description),
                     appPreferences.toolRoundLimitEnabled, onToolRoundLimitEnabledChange)
                 if (appPreferences.toolRoundLimitEnabled) {
-                    var rounds by remember(appPreferences.toolRoundLimit) { mutableStateOf(appPreferences.toolRoundLimit.toString()) }
+                    var rounds by remember(appPreferences.toolRoundLimit) {
+                        mutableStateOf(appPreferences.toolRoundLimit.takeUnless {
+                            it == DEFAULT_TOOL_ROUND_LIMIT
+                        }?.toString().orEmpty())
+                    }
                     val parsed = rounds.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_ROUND_LIMIT }
                     SelectableOutlinedTextField(
                         value = rounds,
                         onValueChange = { text ->
                             if (text.length <= 4 && text.all(Char::isDigit)) {
                                 rounds = text
-                                text.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_ROUND_LIMIT }?.let(onToolRoundLimitChange)
+                                if (text.isBlank()) onToolRoundLimitChange(DEFAULT_TOOL_ROUND_LIMIT)
+                                else text.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_ROUND_LIMIT }?.let(onToolRoundLimitChange)
                             }
                         },
                         label = { Text(stringResource(R.string.settings_maximum_tool_rounds)) },
-                        supportingText = { Text(stringResource(
-                            if (parsed == null) R.string.common_number_range_invalid else R.string.common_number_range_default,
-                            if (parsed == null) MAX_TOOL_ROUND_LIMIT else DEFAULT_TOOL_ROUND_LIMIT
-                        )) },
-                        isError = parsed == null, singleLine = true,
+                        placeholder = { Text(stringResource(R.string.common_default_value_hint, DEFAULT_TOOL_ROUND_LIMIT)) },
+                        isError = rounds.isNotBlank() && parsed == null,
+                        singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth().testTag("tool-round-limit")
                     )
                 }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                McpAttachmentsPreferences(appPreferences.mcpAttachments, onMcpAttachmentsChange)
             }
         }
         item {
@@ -423,6 +426,7 @@ fun AppSettings(
     onToolRoundLimitChange: (Int) -> Unit,
     onToolCallStrategyChange: (ToolCallStrategy) -> Unit,
     onToolCallConcurrentLimitChange: (Int) -> Unit,
+    onMcpAttachmentsChange: (McpAttachmentSettings) -> Unit = {},
     onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit,
     onAppLanguageChange: (Boolean, String) -> Unit,
     onAutoSummaryEnabledChange: (Boolean) -> Unit = {},
@@ -461,6 +465,7 @@ fun AppSettings(
                     onToolRoundLimitChange = onToolRoundLimitChange,
                     onToolCallStrategyChange = onToolCallStrategyChange,
                     onToolCallConcurrentLimitChange = onToolCallConcurrentLimitChange,
+                    onMcpAttachmentsChange = onMcpAttachmentsChange,
                     onScreenWakelockModeChange = onScreenWakelockModeChange,
                     onAppLanguageChange = onAppLanguageChange,
                     onAutoSummaryEnabledChange = onAutoSummaryEnabledChange,

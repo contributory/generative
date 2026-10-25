@@ -7,9 +7,9 @@ import org.junit.Test
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.features.providers.shared.ui.*
 import org.starfall.generative.shared.model.generation.GenerationEvent
-import org.starfall.generative.home.chat.logic.ChatGeneration
-import org.starfall.generative.home.chat.logic.prepareRegeneration
-import org.starfall.generative.home.chat.logic.updateResponse
+import org.starfall.generative.features.home.chat.logic.ChatGeneration
+import org.starfall.generative.features.home.chat.logic.prepareRegeneration
+import org.starfall.generative.features.home.chat.logic.updateResponse
 
 class ChatGenerationTest {
     @Test fun regenerationAndStreamingPreserveOriginalAndNewModelNames() {

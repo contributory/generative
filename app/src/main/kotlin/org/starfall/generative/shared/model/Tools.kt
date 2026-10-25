@@ -66,6 +66,10 @@ data class SystemToolConfig(
 data class ToolSettings(
     val system: Map<String, SystemToolConfig> = emptyMap(),
     val quickMcp: Map<String, Boolean> = emptyMap(),
+    /** The MCP selected to provide web-search tools, or null when no provider is pinned. */
+    val webSearchProviderId: String? = null,
+    /** Whether the pinned web-search MCP is available to the language model. */
+    val webSearchEnabled: Boolean = false,
     val mcpTools: Map<String, Map<String, Boolean>> = emptyMap(),
     /** Per-server, per-tool parameter visibility and optional default values. */
     val mcpToolParameters: Map<String, Map<String, Map<String, McpToolParameterConfig>>> = emptyMap(),
@@ -209,6 +213,12 @@ fun systemMediaToolAvailable(
 
 fun globalMcpToolEnabled(settings: ToolSettings, serverId: String, name: String): Boolean =
     settings.mcpTools[serverId]?.get(name) != false
+
+fun isWebSearchProvider(settings: ToolSettings, serverId: String): Boolean =
+    settings.webSearchProviderId == serverId
+
+fun mcpServerEnabled(settings: ToolSettings, serverId: String): Boolean =
+    if (isWebSearchProvider(settings, serverId)) settings.webSearchEnabled else settings.quickMcp[serverId] != false
 
 fun remoteMachineEnabled(settings: ToolSettings, machine: org.starfall.generative.shared.model.RemoteMachine): Boolean =
     if (settings.enabledMachines.isNotEmpty()) {

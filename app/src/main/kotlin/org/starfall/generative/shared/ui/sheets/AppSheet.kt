@@ -81,7 +81,10 @@ fun AppSheet(
     contentKey: Any? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
+    )
     val scrollBoundary = remember { bottomSheetListScrollBoundary() }
     val windowHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.roundToPx() }
     var requestedHeight by remember { mutableStateOf<Float?>(null) }

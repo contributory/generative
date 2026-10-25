@@ -11,7 +11,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.home.shared.ui.ConversationSummarySheet
+import org.starfall.generative.features.home.shared.ui.ConversationSummarySheet
 import org.starfall.generative.shared.model.ConversationSummaryRequest
 
 @RunWith(RobolectricTestRunner::class)
@@ -22,7 +22,7 @@ class ConversationSummaryTargetUiTest {
     private var dismissals = 0
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
-    private fun show(accept: Boolean = false) {
+    private fun show(accept: Boolean = false, customTarget: Boolean = true) {
         compose.setContent {
             MaterialTheme {
                 ConversationSummarySheet(
@@ -30,11 +30,21 @@ class ConversationSummaryTargetUiTest {
                     onDismiss = { dismissals++ })
             }
         }
-        compose.onNode(isToggleable()).performScrollTo().performClick()
+        if (customTarget) compose.onNode(isToggleable()).performScrollTo().performClick()
     }
 
-    private fun target() = compose.onNode(hasSetTextAction() and hasText("Target tokens"))
-    private fun start() = compose.onNodeWithText("Start summary")
+    private fun target() = compose.onNode(hasSetTextAction() and hasText("Target size (tokens)"))
+    private fun start() = compose.onNodeWithText("Start summarization")
+
+    @Test fun opensAsConversationSummarizationWithSixThousandTokenDefaultAndNoDescriptionLines() {
+        show(customTarget = false)
+        compose.onNodeWithText(context.getString(R.string.conversation_summarization_title)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.conversation_summary_target_size, 6000)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.conversation_summary_description)).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.conversation_summary_tokens_note)).assertDoesNotExist()
+        start().performScrollTo().assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals(6000, requests.single().targetTokens) }
+    }
 
     @Test fun customTargetsAboveSixThousandAndIntegerBoundariesEnableStartAndReachTheCallback() {
         show()
@@ -78,7 +88,7 @@ class ConversationSummaryTargetUiTest {
         target().performScrollTo().performTextReplacement("8000")
         compose.onNodeWithText("Multiple passes").performScrollTo().performClick()
         compose.onAllNodes(isToggleable())[1].performScrollTo().performClick()
-        val chunk = compose.onNode(hasSetTextAction() and hasText("Tokens / pass"))
+        val chunk = compose.onNode(hasSetTextAction() and hasText("Tokens per pass"))
         val feedback = context.getString(R.string.conversation_summary_invalid_chunk)
         for (invalid in listOf("", "0", "-1", "100001", "2147483648")) {
             chunk.performScrollTo().performTextReplacement(invalid)

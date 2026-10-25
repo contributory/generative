@@ -31,6 +31,7 @@ import org.starfall.generative.shared.storage.database.AppDatabase
 import org.starfall.generative.shared.storage.database.entities.ProviderGroupEntity
 import org.starfall.generative.shared.storage.database.entities.ProviderCatalogModelEntity
 import org.starfall.generative.shared.storage.database.entities.ProviderCatalogToolEntity
+import kotlinx.serialization.json.JsonObject
 
 class ModelRepository(private val db: AppDatabase, private val service: AiService, private val icons: IconStore? = null) {
     suspend fun testConnection(provider: ModelProvider) = service.testConnection(resolveProvider(provider))
@@ -121,6 +122,18 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
 
     suspend fun loadProvidersForExport(): List<ModelProvider> = withContext(Dispatchers.IO) {
         db.withTransaction { providerDao.getAllProviders().first().map { mapper.selected(it) } }
+    }
+
+    internal fun exportAccountCredentials(): Map<String, Map<String, JsonObject>> = service.exportAccountCredentials()
+
+    internal fun importAccountCredentials(credentials: Map<String, Map<String, JsonObject>>) {
+        service.importAccountCredentials(credentials)
+    }
+
+    internal fun exportModelConfigurationMemory(): Map<String, JsonObject> = service.exportModelConfigurationMemory()
+
+    internal fun importModelConfigurationMemory(values: Map<String, JsonObject>) {
+        service.importModelConfigurationMemory(values)
     }
 
     suspend fun saveGroup(group: ProviderGroup) {
@@ -353,6 +366,13 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
                 }
             }
         }
+    }
+
+    /** Replaces the complete provider catalog during a full application restore. */
+    suspend fun replaceAll(providers: List<ModelProvider>, groups: List<ProviderGroup>) {
+        providerDao.getAllProviders().first().map { it.id }.forEach { deleteProvider(it) }
+        groupDao.getAllGroupsOnce().map { it.id }.forEach { deleteGroup(it) }
+        importProviders(providers, groups)
     }
 
     private fun Catalog.mergeImport(importedProviders: List<ModelProvider>, importedGroups: List<ProviderGroup>?): Catalog {

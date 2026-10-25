@@ -17,7 +17,7 @@ import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.WordWrapMode
 import org.starfall.generative.features.settings.ui.CodeRenderingPreferences
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.home.chat.ui.markdown.RenderCodeBlock
+import org.starfall.generative.features.home.chat.ui.markdown.RenderCodeBlock
 
 class CodeRenderingBehaviorTest {
     @get:Rule val compose = createComposeRule()

@@ -6,7 +6,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.home.chat.ui.markdown.buildMarkdownAnnotatedString
+import org.starfall.generative.features.home.chat.ui.markdown.buildMarkdownAnnotatedString
 
 class MarkdownInlineParserTest {
     @Test fun linksRetainCorrectAnnotationOffsetsAfterFormattingIsRemoved() {

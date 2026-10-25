@@ -17,7 +17,7 @@ import java.nio.file.Files
 import java.util.Base64
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.home.shared.logic.prepareToolResult
+import org.starfall.generative.features.home.shared.logic.prepareToolResult
 
 internal val referencePng: ByteArray get() = Base64.getDecoder().decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=")

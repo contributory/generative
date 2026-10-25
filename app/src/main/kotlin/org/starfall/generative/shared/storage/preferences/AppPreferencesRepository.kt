@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -16,6 +17,7 @@ import org.starfall.generative.shared.storage.ImmediateState
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "app_preferences")
 
+@Serializable
 enum class WordWrapMode(val value: String) {
     OFF("off"), VIEWPORT("on"), COLUMN("wordWrapColumn"), BOUNDED("bounded");
 
@@ -24,6 +26,7 @@ enum class WordWrapMode(val value: String) {
     }
 }
 
+@Serializable
 enum class MessageFontFamily(val value: String) {
     DEFAULT("default"), SANS_SERIF("sans_serif"), SERIF("serif"), MONOSPACE("monospace"), CURSIVE("cursive");
 
@@ -32,6 +35,7 @@ enum class MessageFontFamily(val value: String) {
     }
 }
 
+@Serializable
 enum class CodeBlockDisplayMode(val value: String) {
     SHOW_ALL("show_all"), EXTENDABLE("extendable"), SHOW_IN_DRAWER("show_in_drawer");
 
@@ -40,6 +44,7 @@ enum class CodeBlockDisplayMode(val value: String) {
     }
 }
 
+@Serializable
 enum class ToolCallStrategy(val value: String) {
     SEQUENTIAL("sequential"), PARALLEL("parallel");
 
@@ -48,6 +53,7 @@ enum class ToolCallStrategy(val value: String) {
     }
 }
 
+@Serializable
 enum class ScreenWakelockMode(val value: String) {
     NONE("none"), ALL("all"), EXCEPT_TOOL_CALLS("except_tool_calls");
 
@@ -67,6 +73,7 @@ const val MAX_TOOL_ROUND_LIMIT = 1000
 const val DEFAULT_TOOL_CALL_CONCURRENT_LIMIT = 2
 const val MAX_TOOL_CALL_CONCURRENT_LIMIT = 16
 
+@Serializable
 data class AppPreferences(
     val sidebar: SidebarOrganization = SidebarOrganization(),
     val selectedProfileId: String? = null,
@@ -121,6 +128,7 @@ data class AppPreferences(
     val toolRoundLimit: Int = DEFAULT_TOOL_ROUND_LIMIT,
     val toolCallStrategy: ToolCallStrategy = ToolCallStrategy.SEQUENTIAL,
     val toolCallConcurrentLimit: Int = DEFAULT_TOOL_CALL_CONCURRENT_LIMIT,
+    val mcpAttachments: McpAttachmentSettings = McpAttachmentSettings(),
     val screenWakelockMode: ScreenWakelockMode = ScreenWakelockMode.EXCEPT_TOOL_CALLS,
     /** Summarize automatically once estimated context usage reaches [autoSummaryPercent]. */
     val autoSummaryEnabled: Boolean = true,
@@ -192,6 +200,7 @@ class AppPreferencesRepository(private val context: Context) {
         val TOOL_ROUND_LIMIT = intPreferencesKey("tool_round_limit")
         val TOOL_CALL_STRATEGY = stringPreferencesKey("tool_call_strategy")
         val TOOL_CALL_CONCURRENT_LIMIT = intPreferencesKey("tool_call_concurrent_limit")
+        val MCP_ATTACHMENTS = stringPreferencesKey("mcp_attachments")
         val SCREEN_WAKELOCK_MODE = stringPreferencesKey("screen_wakelock_mode")
         val AUTO_SUMMARY_ENABLED = booleanPreferencesKey("auto_summary_enabled")
         val SUMMARY_SUGGESTION_ENABLED = booleanPreferencesKey("summary_suggestion_enabled")
@@ -257,6 +266,7 @@ class AppPreferencesRepository(private val context: Context) {
                 toolRoundLimit = preferences[PreferenceKeys.TOOL_ROUND_LIMIT]?.coerceIn(1, MAX_TOOL_ROUND_LIMIT) ?: DEFAULT_TOOL_ROUND_LIMIT,
                 toolCallStrategy = ToolCallStrategy.fromValue(preferences[PreferenceKeys.TOOL_CALL_STRATEGY]),
                 toolCallConcurrentLimit = preferences[PreferenceKeys.TOOL_CALL_CONCURRENT_LIMIT]?.coerceIn(1, MAX_TOOL_CALL_CONCURRENT_LIMIT) ?: DEFAULT_TOOL_CALL_CONCURRENT_LIMIT,
+                mcpAttachments = McpAttachmentSettings.decode(preferences[PreferenceKeys.MCP_ATTACHMENTS]),
                 screenWakelockMode = ScreenWakelockMode.fromValue(preferences[PreferenceKeys.SCREEN_WAKELOCK_MODE]),
                 autoSummaryEnabled = preferences[PreferenceKeys.AUTO_SUMMARY_ENABLED] ?: true,
                 summarySuggestionEnabled = preferences[PreferenceKeys.SUMMARY_SUGGESTION_ENABLED] ?: true,
@@ -636,6 +646,13 @@ class AppPreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun setMcpAttachments(settings: McpAttachmentSettings) {
+        val normalized = settings.normalized()
+        state.mutate({ it.copy(mcpAttachments = normalized) }) {
+            context.dataStore.edit { it[PreferenceKeys.MCP_ATTACHMENTS] = McpAttachmentSettings.encode(normalized) }
+        }
+    }
+
     suspend fun setAutoSummaryEnabled(enabled: Boolean) {
         state.mutate({ it.copy(autoSummaryEnabled = enabled) }) {
             context.dataStore.edit { it[PreferenceKeys.AUTO_SUMMARY_ENABLED] = enabled }
@@ -664,6 +681,69 @@ class AppPreferencesRepository(private val context: Context) {
     suspend fun setMessageFontFamily(family: MessageFontFamily) {
         state.mutate({ it.copy(messageFontFamily = family) }) {
             context.dataStore.edit { it[PreferenceKeys.MESSAGE_FONT_FAMILY] = family.value }
+        }
+    }
+
+    /** Replaces the complete preference snapshot during a full application restore. */
+    suspend fun replace(preferences: AppPreferences) {
+        AppLocale.save(context, preferences.useSystemLanguage, preferences.selectedLanguage)
+        state.mutate({ preferences }) {
+            context.dataStore.edit { stored ->
+                stored.clear()
+                stored[PreferenceKeys.SIDEBAR] = Json.encodeToString(preferences.sidebar)
+                preferences.selectedProfileId?.let { stored[PreferenceKeys.SELECTED_PROFILE_ID] = it }
+                stored[PreferenceKeys.SELECTED_PROVIDER_ID] = preferences.selectedProviderId
+                stored[PreferenceKeys.SELECTED_MODEL_ID] = preferences.selectedModelId
+                preferences.selectedSpeechServiceId?.let { stored[PreferenceKeys.SELECTED_SPEECH_SERVICE_ID] = it }
+                stored[PreferenceKeys.THEME_MODE] = preferences.themeMode
+                stored[PreferenceKeys.USE_AMOLED] = preferences.useAmoled
+                stored[PreferenceKeys.USE_DYNAMIC_COLOR] = preferences.useDynamicColor
+                stored[PreferenceKeys.COLOR_SCHEME_NAME] = preferences.colorSchemeName
+                stored[PreferenceKeys.DEFAULT_SYSTEM_PROMPT] = preferences.defaultSystemPrompt
+                preferences.instructionLibrary?.let { stored[PreferenceKeys.INSTRUCTION_LIBRARY] = Json.encodeToString(it) }
+                stored[PreferenceKeys.CONTINUE_LAST_CONVERSATION] = preferences.continueLastConversation
+                preferences.lastActiveConversationId?.let { stored[PreferenceKeys.LAST_ACTIVE_CONVERSATION_ID] = it }
+                stored[PreferenceKeys.PERSIST_SELECTED_MODEL] = preferences.persistSelectedModel
+                stored[PreferenceKeys.AUTO_SCROLL] = preferences.autoScroll
+                stored[PreferenceKeys.TTS_READ_CODE_BLOCKS] = preferences.ttsReadCodeBlocks
+                stored[PreferenceKeys.ENABLE_VIBRATION] = preferences.enableVibration
+                stored[PreferenceKeys.HIDE_STATUS_BAR] = preferences.hideStatusBar
+                stored[PreferenceKeys.HIDE_NAVIGATION_BAR] = preferences.hideNavigationBar
+                stored[PreferenceKeys.DEBUG_MODE] = preferences.debugMode
+                stored[PreferenceKeys.DEBUG_LOG_CATEGORIES] = preferences.debugLogCategories.map { it.value }.toSet()
+                stored[PreferenceKeys.SELECTED_LANGUAGE] = preferences.selectedLanguage
+                stored[PreferenceKeys.USE_SYSTEM_LANGUAGE] = preferences.useSystemLanguage
+                preferences.featuresLogoImage?.let { stored[PreferenceKeys.FEATURES_LOGO_IMAGE] = it }
+                stored[PreferenceKeys.SHOW_PROFILES_AS_GRID] = preferences.showProfilesAsGrid
+                stored[PreferenceKeys.SHOW_PROVIDERS_AS_GRID] = preferences.showProvidersAsGrid
+                stored[PreferenceKeys.SHOW_MCP_AS_GRID] = preferences.showMcpAsGrid
+                stored[PreferenceKeys.SHOW_SPEECH_AS_GRID] = preferences.showSpeechAsGrid
+                stored[PreferenceKeys.PROVIDERS_COLLAPSED_SECTIONS] = preferences.providersCollapsedSections
+                stored[PreferenceKeys.MODEL_PICKER_COLLAPSED_GROUPS] = preferences.modelPickerCollapsedGroups
+                stored[PreferenceKeys.MODEL_PICKER_COLLAPSED_PROVIDERS] = preferences.modelPickerCollapsedProviders
+                stored[PreferenceKeys.MODEL_PICKER_SELECTED_TAB] = preferences.modelPickerSelectedTab
+                stored[PreferenceKeys.MCP_PRESETS_INITIALIZED] = preferences.mcpPresetsInitialized
+                stored[PreferenceKeys.CONTENT_API_PRESET_INITIALIZED] = preferences.contentApiPresetInitialized
+                stored[PreferenceKeys.LATEX_MODE] = preferences.latexMode
+                stored[PreferenceKeys.WORD_WRAP_MODE] = preferences.wordWrapMode.value
+                stored[PreferenceKeys.WORD_WRAP_COLUMN] = preferences.wordWrapColumn
+                stored[PreferenceKeys.CODE_PREVIEW_ENABLED] = preferences.codePreviewEnabled
+                stored[PreferenceKeys.CODE_BLOCK_DISPLAY_MODE] = preferences.codeBlockDisplayMode.value
+                stored[PreferenceKeys.CODE_BLOCK_MAX_LINES] = preferences.codeBlockMaxLines
+                stored[PreferenceKeys.CODE_BLOCK_INCLUDE_UNDEFINED] = preferences.codeBlockIncludeUndefined
+                stored[PreferenceKeys.MESSAGE_FONT_SIZE] = preferences.messageFontSize
+                stored[PreferenceKeys.MESSAGE_FONT_SIZE_CUSTOM] = preferences.messageFontSizeCustom
+                stored[PreferenceKeys.MESSAGE_FONT_FAMILY] = preferences.messageFontFamily.value
+                stored[PreferenceKeys.TOOL_ROUND_LIMIT_ENABLED] = preferences.toolRoundLimitEnabled
+                stored[PreferenceKeys.TOOL_ROUND_LIMIT] = preferences.toolRoundLimit
+                stored[PreferenceKeys.TOOL_CALL_STRATEGY] = preferences.toolCallStrategy.value
+                stored[PreferenceKeys.TOOL_CALL_CONCURRENT_LIMIT] = preferences.toolCallConcurrentLimit
+                stored[PreferenceKeys.MCP_ATTACHMENTS] = McpAttachmentSettings.encode(preferences.mcpAttachments)
+                stored[PreferenceKeys.SCREEN_WAKELOCK_MODE] = preferences.screenWakelockMode.value
+                stored[PreferenceKeys.AUTO_SUMMARY_ENABLED] = preferences.autoSummaryEnabled
+                stored[PreferenceKeys.SUMMARY_SUGGESTION_ENABLED] = preferences.summarySuggestionEnabled
+                stored[PreferenceKeys.AUTO_SUMMARY_PERCENT] = preferences.autoSummaryPercent
+            }
         }
     }
 

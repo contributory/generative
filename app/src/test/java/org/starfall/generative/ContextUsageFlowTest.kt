@@ -14,9 +14,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.home.chat.logic.ChatGeneration
-import org.starfall.generative.home.chat.logic.contextUsageKey
-import org.starfall.generative.home.chat.logic.contextWindowStatus
+import org.starfall.generative.features.home.chat.logic.ChatGeneration
+import org.starfall.generative.features.home.chat.logic.contextUsageKey
+import org.starfall.generative.features.home.chat.logic.contextWindowStatus
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.shared.model.api.ModelApiType

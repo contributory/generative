@@ -240,13 +240,15 @@ internal fun modalScrimColor(default: Color): Color =
 @Composable
 fun GenerativeTheme(
     themeMode: String = "SYSTEM",
+    /** Compatibility override for tests and older callers; settings use [themeMode]. */
+    darkTheme: Boolean? = null,
     amoledMode: Boolean = false,
     dynamicColor: Boolean = true,
     colorSchemeName: String = "DEFAULT",
     content: @Composable () -> Unit
 ) {
     val systemDark = isSystemInDarkTheme()
-    val isDark = when (themeMode) {
+    val isDark = darkTheme ?: when (themeMode) {
         "LIGHT" -> false
         "DARK" -> true
         else -> systemDark

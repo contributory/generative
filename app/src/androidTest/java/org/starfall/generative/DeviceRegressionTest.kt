@@ -24,7 +24,7 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.home.shared.ui.QuickActionsSheet
+import org.starfall.generative.features.home.shared.ui.QuickActionsSheet
 import org.starfall.generative.shared.ui.model.ModelPickerSheet
 
 class DeviceRegressionTest {

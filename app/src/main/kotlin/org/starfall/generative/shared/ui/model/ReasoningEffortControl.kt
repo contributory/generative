@@ -164,10 +164,14 @@ internal fun ReasoningEffortControl(
     val thumbColor by animateColorAsState(accent, tween(500), label = "thinking-thumb-color")
     val sliderColors = SliderDefaults.colors(thumbColor = thumbColor)
     val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val sliderState = remember(options.size, maximumValue) {
+        SliderState(value = sliderValue, steps = options.size - 2, trackRange = 0f..maximumValue)
+    }
+    sliderState.value = sliderValue
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Slider(
-                value = sliderValue,
+                state = sliderState,
                 onValueChange = {
                     val previousBand = colorBand(sliderValue)
                     sliderValue = it
@@ -189,8 +193,6 @@ internal fun ReasoningEffortControl(
                 onValueChangeFinished = {
                     onEffortChange(options[sliderValue.roundToInt().coerceIn(options.indices)].effort)
                 },
-                valueRange = 0f..maximumValue,
-                steps = options.size - 2,
                 colors = sliderColors,
                 interactionSource = interactionSource,
                 thumb = {

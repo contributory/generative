@@ -16,7 +16,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.starfall.generative.features.appdata.model.FullAppDataExport
 import org.starfall.generative.shared.model.Conversation
-import org.starfall.generative.shared.model.JsonExportKind
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.provider.ModelProvider

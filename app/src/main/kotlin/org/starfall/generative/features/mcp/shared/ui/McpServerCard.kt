@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.McpInfo
+import org.starfall.generative.shared.model.isWebSearchProvider
+import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.layout.AdaptiveCardLayout
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -32,7 +34,8 @@ import org.starfall.generative.shared.ui.icons.providerInitials
 @Composable
 fun McpUnifiedCard(server: McpInfo, isGrid: Boolean, modifier: Modifier = Modifier, toolCount: Int?, toolError: String?,
     loading: Boolean, isEnabled: Boolean, onToggleEnabled: () -> Unit,
-    onToolErrorClick: (String) -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
+    onToolErrorClick: (String) -> Unit, onEdit: () -> Unit, onDelete: () -> Unit,
+    managedSettings: ToolSettings = ToolSettings()) {
     val corner by animateDpAsState(if (isGrid) 20.dp else 16.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow), label = "mcpShapeCorner")
     Surface(
@@ -50,9 +53,11 @@ fun McpUnifiedCard(server: McpInfo, isGrid: Boolean, modifier: Modifier = Modifi
                     onEdit = onEdit,
                     onDelete = onDelete,
                     deleteColor = MaterialTheme.colorScheme.error,
-                    firstActionText = stringResource(if (isEnabled) R.string.mcp_enabled else R.string.mcp_enable),
-                    firstActionIcon = if (isEnabled) R.drawable.ic_checkbox_checked else R.drawable.ic_checkbox_unchecked,
-                    onFirstAction = onToggleEnabled
+                    firstActionText = if (isWebSearchProvider(managedSettings, server.id)) null
+                        else stringResource(if (isEnabled) R.string.mcp_enabled else R.string.mcp_enable),
+                    firstActionIcon = (if (isEnabled) R.drawable.ic_checkbox_checked else R.drawable.ic_checkbox_unchecked)
+                        .takeUnless { isWebSearchProvider(managedSettings, server.id) },
+                    onFirstAction = onToggleEnabled.takeUnless { isWebSearchProvider(managedSettings, server.id) }
                 )
             },
             content = {

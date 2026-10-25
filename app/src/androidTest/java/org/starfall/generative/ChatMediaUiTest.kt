@@ -33,12 +33,12 @@ import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.home.chat.logic.input.DirectMediaRequest
-import org.starfall.generative.home.chat.ui.AssistantMessageCard
-import org.starfall.generative.home.chat.ui.AttachmentStrip
-import org.starfall.generative.home.chat.ui.UserMessageCard
-import org.starfall.generative.home.chat.ui.input.UserInputArea
-import org.starfall.generative.home.chat.ui.tool.ToolActivityCards
+import org.starfall.generative.features.home.chat.logic.input.DirectMediaRequest
+import org.starfall.generative.features.home.chat.ui.AssistantMessageCard
+import org.starfall.generative.features.home.chat.ui.AttachmentStrip
+import org.starfall.generative.features.home.chat.ui.UserMessageCard
+import org.starfall.generative.features.home.chat.ui.input.UserInputArea
+import org.starfall.generative.features.home.chat.ui.tool.ToolActivityCards
 
 class ChatMediaUiTest {
     @Test fun assistantFilesKeepTheirLargePreview() {

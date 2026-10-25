@@ -5,7 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.generative.home.chat.logic.markdown.LatexDetector
+import org.starfall.generative.features.home.chat.logic.markdown.LatexDetector
 
 class LatexDetectorTest {
     @Test fun pricesAreNotDetectedAsMath() {

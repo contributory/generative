@@ -44,6 +44,7 @@ import kotlinx.coroutines.withContext
 import org.starfall.generative.shared.files.AttachmentResolver
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 import org.starfall.generative.shared.ui.layout.windowHeight
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 
@@ -144,7 +145,7 @@ private fun ZoomableMediaImage(reference: String, onZoomChanged: (Boolean) -> Un
                 onSuccess = { loaded = true }, onError = { loaded = true; error = true }
             )
             if (error) Text(stringResource(R.string.media_image_open_failed), color = Color.White)
-            else if (!loaded) CircularProgressIndicator()
+            else if (!loaded) GenerativeLoadingIndicator()
         }
     }
 }
@@ -282,7 +283,7 @@ private fun VideoPlayback(reference: String, inline: Boolean = false,
                 },
                 onRelease = { texture -> player.clearVideoTextureView(texture); textureView = null }
             )
-            if (!ready) CircularProgressIndicator()
+            if (!ready) GenerativeLoadingIndicator()
         } else Text(stringResource(R.string.media_video_play_failed),
             color = MaterialTheme.colorScheme.inverseOnSurface, modifier = Modifier.padding(16.dp))
         if ((inline || fullscreen) && ready && !error) {
@@ -302,8 +303,12 @@ fun InlineAudioPreview(reference: String) {
 @Composable
 private fun MediaSeekBar(value: Float, onValueChange: (Float) -> Unit, onValueChangeFinished: () -> Unit,
     duration: Float, modifier: Modifier = Modifier) {
-    Slider(value = value, onValueChange = onValueChange, onValueChangeFinished = onValueChangeFinished,
-        valueRange = 0f..duration, modifier = modifier,
+    val sliderState = remember(duration) {
+        SliderState(value = value, trackRange = 0f..duration)
+    }
+    sliderState.value = value
+    Slider(state = sliderState, onValueChange = onValueChange, onValueChangeFinished = onValueChangeFinished,
+        modifier = modifier,
         colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White, inactiveTrackColor = Color.Gray),
         thumb = {
             // Material3 gives the thumb a minimum track-height slot. Center the
@@ -339,7 +344,7 @@ private fun AudioPlayback(reference: String, onDarkBackground: Boolean = false) 
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (error) Text(stringResource(R.string.media_audio_play_failed), color = MaterialTheme.colorScheme.error)
-        else if (!ready) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+        else if (!ready) GenerativeLoadingIndicator(Modifier.align(Alignment.CenterHorizontally))
         else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 FilledIconButton(
@@ -354,14 +359,18 @@ private fun AudioPlayback(reference: String, onDarkBackground: Boolean = false) 
                     FluentIcon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                         stringResource(if (playing) R.string.media_pause_audio else R.string.media_play_audio))
                 }
+                val seekValue = seekPosition ?: position.toFloat().coerceIn(0f, duration.toFloat())
+                val sliderState = remember(duration) {
+                    SliderState(value = seekValue, trackRange = 0f..duration.coerceAtLeast(1).toFloat())
+                }
+                sliderState.value = seekValue
                 Slider(
-                    value = seekPosition ?: position.toFloat().coerceIn(0f, duration.toFloat()),
+                    state = sliderState,
                     onValueChange = { seekPosition = it },
                     onValueChangeFinished = {
                         seekPosition?.toInt()?.let { playback.seek(it) }
                         seekPosition = null
                     },
-                    valueRange = 0f..duration.coerceAtLeast(1).toFloat(),
                     modifier = Modifier.weight(1f),
                     colors = if (onDarkBackground) {
                         SliderDefaults.colors(

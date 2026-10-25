@@ -67,6 +67,13 @@ class RemoteMachineService(
 
     val state = store.state
 
+    internal fun exportIdentityFiles(): Map<String, Pair<File, File?>> = state.value.identities.associate { identity ->
+        val privateKey = File(identity.path).takeIf { it.isFile }
+            ?: error("The private key for SSH identity ${identity.name} is missing.")
+        val publicKey = identity.publicKeyPath.takeIf(String::isNotBlank)?.let(::File)?.takeIf { it.isFile }
+        identity.id to (privateKey to publicKey)
+    }
+
     /**
      * Machines that currently hold a persistent SSH connection (opened by the connect tool or by
      * execute). A terminal's private connection is not listed.
@@ -138,6 +145,41 @@ class RemoteMachineService(
         // The next connection must use the saved settings.
         disconnectMachineNow(normalized.id)
         sftpSessions.invalidate(normalized.id)
+    }
+
+    /** Replaces the complete Remote Machines state and restores uploaded identity files. */
+    suspend fun replaceState(snapshot: org.starfall.generative.shared.model.RemoteMachineState, identityFiles: Map<String, Pair<File, File?>>) {
+        state.value.machines.forEach { disconnectMachineNow(it.id) }
+        val identityDirectory = File(appContext.filesDir, "remote-machines/identities").apply { mkdirs() }
+        identityDirectory.listFiles().orEmpty().forEach { it.delete() }
+
+        val rewrittenIdentities = snapshot.identities.map { identity ->
+            val assets = identityFiles[identity.id] ?: error("The SSH identity ${identity.name} is missing from the backup.")
+            val privateFile = File(identityDirectory, identity.id)
+            assets.first.inputStream().use { input -> privateFile.outputStream().use { input.copyTo(it) } }
+            privateFile.setReadable(false, false)
+            privateFile.setWritable(true, true)
+            val publicFile = assets.second?.let { source ->
+                val destination = File(identityDirectory, "${identity.id}.pub")
+                source.inputStream().use { input -> destination.outputStream().use { input.copyTo(it) } }
+                destination
+            }
+            identity.copy(path = privateFile.absolutePath, publicKeyPath = publicFile?.absolutePath.orEmpty())
+        }
+        val pathsByOldReference = snapshot.identities.associate { identity ->
+            identity.id to (identity.path to identity.name)
+        }
+        val newPathById = rewrittenIdentities.associateBy { it.id }
+        val rewrittenMachines = snapshot.machines.map { machine ->
+            val identity = snapshot.identities.firstOrNull { candidate ->
+                val old = pathsByOldReference.getValue(candidate.id)
+                machine.identityFile == old.first || machine.identityFile == old.second ||
+                    machine.identityFile.substringAfterLast('/') == old.second
+            }
+            val replacement = identity?.let { newPathById.getValue(it.id).path }
+            if (replacement == null) machine else machine.copy(identityFile = replacement)
+        }
+        store.replaceState(snapshot.copy(machines = rewrittenMachines, identities = rewrittenIdentities))
     }
 
     /** Tool switches do not affect SSH transport, so changing them must not interrupt live sessions. */

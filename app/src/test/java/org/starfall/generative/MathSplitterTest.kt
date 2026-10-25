@@ -3,13 +3,13 @@ package org.starfall.generative
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.generative.home.chat.logic.markdown.MAX_INLINE_FORMULAS
-import org.starfall.generative.home.chat.logic.markdown.MathBlock
-import org.starfall.generative.home.chat.logic.markdown.MathPiece
-import org.starfall.generative.home.chat.logic.markdown.MathSplitter
-import org.starfall.generative.home.chat.logic.markdown.groupMathBlocks
-import org.starfall.generative.home.chat.logic.markdown.mathPlaceholder
-import org.starfall.generative.home.chat.logic.markdown.placeholderMarkdown
+import org.starfall.generative.features.home.chat.logic.markdown.MAX_INLINE_FORMULAS
+import org.starfall.generative.features.home.chat.logic.markdown.MathBlock
+import org.starfall.generative.features.home.chat.logic.markdown.MathPiece
+import org.starfall.generative.features.home.chat.logic.markdown.MathSplitter
+import org.starfall.generative.features.home.chat.logic.markdown.groupMathBlocks
+import org.starfall.generative.features.home.chat.logic.markdown.mathPlaceholder
+import org.starfall.generative.features.home.chat.logic.markdown.placeholderMarkdown
 
 class MathSplitterTest {
     private fun split(text: String, mode: String = "AUTO") = MathSplitter.split(text, mode)

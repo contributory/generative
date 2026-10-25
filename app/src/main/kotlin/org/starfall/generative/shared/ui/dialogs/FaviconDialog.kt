@@ -27,6 +27,7 @@ import org.starfall.generative.shared.icons.FaviconService
 import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 import androidx.compose.foundation.BorderStroke
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
@@ -168,7 +169,7 @@ internal fun FaviconDialog(
                         }
                     }
                 )
-                if (busy) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+                if (busy) GenerativeLoadingIndicator(Modifier.align(Alignment.CenterHorizontally))
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 if (state.results.isNotEmpty()) {
                     FlowRow(
