@@ -107,7 +107,8 @@ class ChatViewModel(
         toolChat.generate(provider, model, messages, prompt, mcpServers.value, providers.value,
             settings = { toolSettings.value },
             maxToolRounds = { appPreferences.value.effectiveToolRoundLimit },
-            takePendingMessage = { takePendingMessage(conversationId) })
+            takePendingMessage = { takePendingMessage(conversationId) },
+            mcpAttachmentSettings = { appPreferences.value.mcpAttachments })
 
     private val deletingAllConversations = MutableStateFlow(false)
     private val deletingConversations = MutableStateFlow<Set<String>>(emptySet())

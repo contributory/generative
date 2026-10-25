@@ -56,6 +56,7 @@ import org.starfall.generative.shared.networking.requireObject
 import org.starfall.generative.shared.networking.str
 import org.starfall.generative.shared.networking.text
 import org.starfall.generative.shared.networking.toolArguments
+import org.starfall.generative.shared.storage.preferences.McpAttachmentSettings
 import org.starfall.generative.features.home.chat.logic.SEND_FILE_TOOL_NAME
 import org.starfall.generative.features.home.chat.logic.SendFileTool
 import org.starfall.generative.features.home.chat.logic.fileDeliveryResult
@@ -138,13 +139,14 @@ class ToolChatViewModel internal constructor(
         providers: List<ModelProvider>,
         settings: () -> ToolSettings,
         maxToolRounds: () -> Int? = { null },
-        takePendingMessage: () -> StoredMessage? = { null }
+        takePendingMessage: () -> StoredMessage? = { null },
+        mcpAttachmentSettings: () -> McpAttachmentSettings = { McpAttachmentSettings() }
     ): Flow<GenerationEvent> = channelFlow {
         val selectedProvider = aiService.resolveProvider(provider)
         val sessionKey = messages.firstOrNull { it.role == ChatRole.USER }?.id
         val sessions = mutableMapOf<String, McpSession>()
         val tools = mutableListOf<ToolDefinition>()
-        val mcpEntries = mutableListOf<McpPagination.Entry>()
+        val mcpEntries = mutableListOf<McpAttachments.Entry>()
         // Keep one catalog for a generation. The service still validates the selected machine at
         // execution time, so deleting a machine cannot redirect a call to another machine.
         val configuredMachines = toolExecution.configuredMachines()
@@ -161,7 +163,7 @@ class ToolChatViewModel internal constructor(
                             globalMcpToolEnabled(settings(), server.id, it.originalName)
                         }
                         tools += discovered
-                        if (discovered.isNotEmpty()) mcpEntries += McpPagination.Entry(server.id, server.name, discovered)
+                        if (discovered.isNotEmpty()) mcpEntries += McpAttachments.Entry(server.id, server.name, discovered)
                         send(GenerationEvent.Tool(activity.copy(status = "success", summary = labels.toolsReady)))
                     } catch (e: CancellationException) {
                         send(GenerationEvent.Tool(activity.copy(status = "cancelled")))
@@ -234,9 +236,9 @@ class ToolChatViewModel internal constructor(
             val uniquelyNamedTools = tools.withUniqueWireNames()
             tools.clear()
             tools += uniquelyNamedTools
-            // With many MCP servers, only one page is attached per request; the internal tools switch pages.
-            val pagination = McpPagination(mcpEntries)
-            if (pagination.active) tools += pagination.definitions()
+            // Classic attaches every MCP tool; Dynamic lets the model load MCPs on demand with the internal tools.
+            val mcpAttachments = McpAttachments(mcpEntries, mcpAttachmentSettings().normalized())
+            if (mcpAttachments.active) tools += mcpAttachments.definitions()
 
             http.requireFiles()
             val history = mutableListOf<JsonObject>()
@@ -248,15 +250,23 @@ class ToolChatViewModel internal constructor(
             // switches on as soon as the current turn makes a tool call (see below).
             var sendThinkingContent = passbackConfig.sendsThinkingBack(messages.hasToolCalls())
             val importedAttachments = mutableMapOf<String, String>()
+            // Rebuild which MCPs are still loaded: a load keeps an MCP for a few user messages, using it extends that.
+            val serverByWireName = tools.mapNotNull { tool -> tool.serverId?.let { tool.name to it } }.toMap()
             messages.forEach { message ->
+                if (message.role == ChatRole.USER) mcpAttachments.startUserTurn()
+                else if (mcpAttachments.active) message.activeVersion.toolActivity.forEach { activity ->
+                    if (activity.wireName == LOAD_MCPS_TOOL_NAME && activity.status == "success") {
+                        runCatching { toolArguments(JsonPrimitive(activity.arguments)) }.getOrNull()?.let(mcpAttachments::replayLoad)
+                    } else serverByWireName[activity.wireName]?.let(mcpAttachments::markUsed)
+                }
                 val activities = if (message.role == ChatRole.MODEL) {
                     // Connection handshakes are transport state, not conversation.
                     // With Send File off, earlier send_file calls are dropped too so the model never sees the tool.
                     message.activeVersion.toolActivity.filterNot {
                         it.name.endsWith(": connect") ||
                             (!settings().sendFileEnabled && it.wireName == SEND_FILE_TOOL_NAME) ||
-                            // Page state is per generation, so earlier switches must not be replayed.
-                            it.wireName in mcpPaginationToolNames
+                            // Loaded MCPs are per generation, so earlier list/load calls must not be replayed.
+                            it.wireName in mcpDynamicToolNames || it.wireName in legacyMcpPaginationToolNames
                     }
                 } else emptyList()
                 val replay = replayToolActivities(message.content, activities, http.requireFiles())
@@ -314,12 +324,12 @@ class ToolChatViewModel internal constructor(
                         } == true
                     } else if (tool.serverId == null) {
                         if (tool.name == SEND_FILE_TOOL_NAME) fileDeliveryAvailable && settings().sendFileEnabled
-                        else if (tool.name in mcpPaginationToolNames) pagination.active
+                        else if (tool.name in mcpDynamicToolNames) mcpAttachments.active
                         else settings().system[tool.name]?.enabled == true
                     } else {
                         settings().quickMcp[tool.serverId] != false &&
                             globalMcpToolEnabled(settings(), tool.serverId, tool.originalName) &&
-                            pagination.includes(tool.serverId)
+                            mcpAttachments.includes(tool.serverId)
                     }
                 }
 
@@ -329,7 +339,7 @@ class ToolChatViewModel internal constructor(
                     selectedProvider,
                     model,
                     history,
-                    allowed.map { pagination.present(configuredMcpTool(it, settings())) },
+                    allowed.map { mcpAttachments.present(configuredMcpTool(it, settings())) },
                     prompt,
                     sendThinking = sendThinkingContent,
                     onText = { send(GenerationEvent.Text(it)) },
@@ -385,15 +395,15 @@ class ToolChatViewModel internal constructor(
                     } == true
                     val mediaTool = tool != null && tool.serverId == null && tool.remoteMachineId == null &&
                         name in setOf("generate_image", "generate_video")
-                    val paginationTool = tool != null && tool.serverId == null && tool.remoteMachineId == null &&
-                        name in mcpPaginationToolNames
+                    val mcpAttachmentTool = tool != null && tool.serverId == null && tool.remoteMachineId == null &&
+                        name in mcpDynamicToolNames
                     send(GenerationEvent.Tool(activity))
 
                     var result: JsonObject
                     try {
                         require(tool != null) { "Tool is not enabled" }
-                        // Page switching is bookkeeping and does not count against the per-message tool limit.
-                        if (!paginationTool) budget.consume(if (tool.serverId == null) name else null)
+                        // Listing and loading MCPs is bookkeeping and does not count against the per-message tool limit.
+                        if (!mcpAttachmentTool) budget.consume(if (tool.serverId == null) name else null)
                         val args = toolArguments(function["arguments"])
                         result = if (tool.remoteMachineId != null) {
                             val machine = configuredMachines.firstOrNull { it.id == tool.remoteMachineId }
@@ -407,12 +417,13 @@ class ToolChatViewModel internal constructor(
                                 settings().quickMcp[tool.serverId] != false &&
                                     globalMcpToolEnabled(settings(), tool.serverId, tool.originalName)
                             ) { "MCP tool disabled" }
+                            mcpAttachments.markUsed(tool.serverId)
                             toolExecution.callMcpTool(
                                 sessions[tool.serverId] ?: error("MCP session unavailable"),
                                 tool.originalName, configuredMcpArguments(tool, args, settings())
                             )
-                        } else if (paginationTool) {
-                            pagination.execute(name, args)
+                        } else if (mcpAttachmentTool) {
+                            mcpAttachments.execute(name, args)
                         } else if (name == SEND_FILE_TOOL_NAME) {
                             check(settings().sendFileEnabled) { "Send File tool disabled" }
                             fileSender.execute(args)
@@ -488,7 +499,7 @@ class ToolChatViewModel internal constructor(
                                 activity.copy(
                                     status = if (isError) "error" else "success",
                                     summary = when {
-                                        paginationTool -> pagination.lastPreview
+                                        mcpAttachmentTool -> mcpAttachments.lastPreview
                                         name == SEND_FILE_TOOL_NAME && tool.serverId == null -> labels.fileSent
                                         contentApiMedia?.files?.isNotEmpty() == true ->
                                             labels.mediaDisplayed(contentApiMedia.files.size)

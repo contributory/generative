@@ -938,6 +938,7 @@ fun AppNavigation(
                                     onToolRoundLimitChange = settingsViewModel::setToolRoundLimit,
                                     onToolCallStrategyChange = settingsViewModel::setToolCallStrategy,
                                     onToolCallConcurrentLimitChange = settingsViewModel::setToolCallConcurrentLimit,
+                                    onMcpAttachmentsChange = settingsViewModel::setMcpAttachments,
                                     onScreenWakelockModeChange = settingsViewModel::setScreenWakelockMode,
                                     onAppLanguageChange = settingsViewModel::setAppLanguage,
                                  )

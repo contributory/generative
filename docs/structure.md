@@ -125,6 +125,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       ├── 📄 CodeRenderingPreferences.kt
 │   │       ├── 📄 DeveloperSettingsSection.kt
 │   │       ├── 📄 MainAppbar.kt
+│   │       ├── 📄 McpAttachmentsPreferences.kt
 │   │       └── 📄 SettingsComponents.kt
 │   ├── 📁 speech/
 │   │   └── 📁 ui/
@@ -162,6 +163,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   │   │   └── 📄 ConversationTitleGenerator.kt
 │   │   │   │   ├── 📁 tool/
 │   │   │   │   │   ├── 📄 ContentApiMediaDownloader.kt
+│   │   │   │   │   ├── 📄 McpAttachments.kt
 │   │   │   │   │   ├── 📄 ToolChatViewModel.kt
 │   │   │   │   │   ├── 📄 ToolHistoryReplay.kt
 │   │   │   │   │   └── 📄 ToolResultsViewModel.kt
@@ -448,6 +450,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   ├── 📁 preferences/
 │   │   │   ├── 📄 AppLanguage.kt
 │   │   │   ├── 📄 AppPreferencesRepository.kt
+│   │   │   ├── 📄 McpAttachmentSettings.kt
 │   │   │   ├── 📄 ModelConfigurationMemory.kt
 │   │   │   ├── 📄 RemoteTerminalPreferences.kt
 │   │   │   └── 📄 ToolSettingsStore.kt

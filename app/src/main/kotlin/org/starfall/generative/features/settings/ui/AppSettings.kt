@@ -51,6 +51,7 @@ import org.starfall.generative.shared.storage.preferences.DEFAULT_TOOL_CALL_CONC
 import org.starfall.generative.shared.storage.preferences.DEFAULT_TOOL_ROUND_LIMIT
 import org.starfall.generative.shared.storage.preferences.MAX_TOOL_CALL_CONCURRENT_LIMIT
 import org.starfall.generative.shared.storage.preferences.MAX_TOOL_ROUND_LIMIT
+import org.starfall.generative.shared.storage.preferences.McpAttachmentSettings
 import org.starfall.generative.shared.storage.preferences.MessageFontFamily
 import org.starfall.generative.shared.storage.preferences.ScreenWakelockMode
 import org.starfall.generative.shared.storage.preferences.ToolCallStrategy
@@ -199,6 +200,7 @@ fun PreferencesSettingsView(
     onToolRoundLimitChange: (Int) -> Unit = {},
     onToolCallStrategyChange: (ToolCallStrategy) -> Unit = {},
     onToolCallConcurrentLimitChange: (Int) -> Unit = {},
+    onMcpAttachmentsChange: (McpAttachmentSettings) -> Unit = {},
     onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit = {},
     onAppLanguageChange: (useSystem: Boolean, tag: String) -> Unit = { _, _ -> },
     onAutoSummaryEnabledChange: (Boolean) -> Unit = {},
@@ -361,6 +363,14 @@ fun PreferencesSettingsView(
             }
         }
         item {
+            SettingsSection(
+                title = stringResource(R.string.mcp_attachments_title),
+                description = stringResource(R.string.mcp_attachments_description)
+            ) {
+                McpAttachmentsPreferences(appPreferences.mcpAttachments, onMcpAttachmentsChange)
+            }
+        }
+        item {
             SettingsSection(stringResource(R.string.settings_feedback)) {
                 PreferenceToggle(stringResource(R.string.settings_haptic_vibration), stringResource(R.string.settings_haptic_vibration_description),
                     appPreferences.enableVibration, onEnableVibrationChange)
@@ -423,6 +433,7 @@ fun AppSettings(
     onToolRoundLimitChange: (Int) -> Unit,
     onToolCallStrategyChange: (ToolCallStrategy) -> Unit,
     onToolCallConcurrentLimitChange: (Int) -> Unit,
+    onMcpAttachmentsChange: (McpAttachmentSettings) -> Unit = {},
     onScreenWakelockModeChange: (ScreenWakelockMode) -> Unit,
     onAppLanguageChange: (Boolean, String) -> Unit,
     onAutoSummaryEnabledChange: (Boolean) -> Unit = {},
@@ -461,6 +472,7 @@ fun AppSettings(
                     onToolRoundLimitChange = onToolRoundLimitChange,
                     onToolCallStrategyChange = onToolCallStrategyChange,
                     onToolCallConcurrentLimitChange = onToolCallConcurrentLimitChange,
+                    onMcpAttachmentsChange = onMcpAttachmentsChange,
                     onScreenWakelockModeChange = onScreenWakelockModeChange,
                     onAppLanguageChange = onAppLanguageChange,
                     onAutoSummaryEnabledChange = onAutoSummaryEnabledChange,

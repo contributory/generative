@@ -13,6 +13,7 @@ import org.starfall.generative.shared.storage.preferences.AppPreferencesReposito
 import org.starfall.generative.shared.storage.preferences.CodeBlockDisplayMode
 import org.starfall.generative.shared.storage.preferences.MessageFontFamily
 import org.starfall.generative.shared.storage.preferences.ScreenWakelockMode
+import org.starfall.generative.shared.storage.preferences.McpAttachmentSettings
 import org.starfall.generative.shared.storage.preferences.ToolCallStrategy
 import org.starfall.generative.shared.storage.preferences.WordWrapMode
 
@@ -112,6 +113,9 @@ class SettingsViewModel(
     }
     fun setToolCallConcurrentLimit(value: Int) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setToolCallConcurrentLimit(value) }
+    }
+    fun setMcpAttachments(value: McpAttachmentSettings) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setMcpAttachments(value) }
     }
     fun setAutoSummaryEnabled(value: Boolean) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setAutoSummaryEnabled(value) }

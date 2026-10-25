@@ -1,6 +1,7 @@
 package org.starfall.generative.features.home.chat.logic.tool
 
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -8,129 +9,181 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.starfall.generative.shared.model.ToolDefinition
 import org.starfall.generative.shared.networking.obj
 import org.starfall.generative.shared.networking.str
+import org.starfall.generative.shared.storage.preferences.McpAttachmentMode
+import org.starfall.generative.shared.storage.preferences.McpAttachmentSettings
+import org.starfall.generative.shared.storage.preferences.McpDynamicStrategy
 
-internal const val LIST_MCP_TOOL_NAME = "list_mcp"
-internal const val MCPS_PAGINATE_TOOL_NAME = "mcps_paginate"
-internal const val SEARCH_MCP_TOOL_NAME = "search_mcp"
-internal val mcpPaginationToolNames = setOf(LIST_MCP_TOOL_NAME, MCPS_PAGINATE_TOOL_NAME, SEARCH_MCP_TOOL_NAME)
+internal const val LIST_MCPS_TOOL_NAME = "list_mcps"
+internal const val LOAD_MCPS_TOOL_NAME = "load_mcps"
+internal val mcpDynamicToolNames = setOf(LIST_MCPS_TOOL_NAME, LOAD_MCPS_TOOL_NAME)
 
-/** The internal tools only appear when at least this many MCP servers are connected. */
-internal const val MCP_PAGINATION_THRESHOLD = 5
-internal const val MCP_PAGE_DEFAULT_LENGTH = 5
-private const val MCP_PAGE_MAX_LENGTH = 50
+/** A loaded MCP is unloaded once this many user messages passed without it being loaded again or used. */
+internal const val MCP_AUTO_UNLOAD_USER_TURNS = 3
+
+/** Earlier paging tools. They are gone, but old conversations may still contain calls to them. */
+internal val legacyMcpPaginationToolNames = setOf("list_mcp", "mcps_paginate", "search_mcp")
 
 /**
- * Keeps the tool list small when many MCP servers are enabled. Only one page of servers is attached to
- * each model request; the model switches pages with [MCPS_PAGINATE_TOOL_NAME]. State lives for one generation.
- * Pages are 1-based and index 0 attaches every server.
+ * Decides which enabled MCP tools are attached to each model request, following the "MCP Attachments" preferences.
+ *
+ * Classic attaches every MCP tool. Dynamic attaches nothing up front (or only the first MCPs below the minimum, with
+ * the Overflow strategy) and gives the model [LIST_MCPS_TOOL_NAME] / [LOAD_MCPS_TOOL_NAME] to load the rest on demand.
+ * Dynamic only switches on when the MCP count and total tool count reach the configured minimums; below them everything
+ * is attached classically.
+ *
+ * Loaded MCPs are not stored: each generation rebuilds them by replaying the conversation (see [startUserTurn],
+ * [replayLoad], [markUsed]), so they also expire correctly after a restart, retry or branch.
  */
-internal class McpPagination(private val entries: List<Entry>) {
+internal class McpAttachments(private val entries: List<Entry>, private val settings: McpAttachmentSettings) {
     data class Entry(val serverId: String, val name: String, val tools: List<ToolDefinition>)
 
-    val active: Boolean = entries.size >= MCP_PAGINATION_THRESHOLD
-    private var page = 1
-    private var length = MCP_PAGE_DEFAULT_LENGTH
-    private var showDescription = false
+    /** MCPs attached classically while Dynamic is active: those below the minimum with the Overflow strategy. */
+    private val classicEntries: List<Entry>
+    /** MCPs the model has to load with [LOAD_MCPS_TOOL_NAME]. */
+    private val dynamicEntries: List<Entry>
+
+    /** True when the model gets the list/load tools. */
+    val active: Boolean
+
+    init {
+        val thresholdsMet = settings.mode == McpAttachmentMode.DYNAMIC && entries.isNotEmpty() &&
+            (settings.minMcps == 0 || entries.size >= settings.minMcps) &&
+            (settings.minTools == 0 || entries.sumOf { it.tools.size } >= settings.minTools)
+        val classicCount = if (settings.strategy == McpDynamicStrategy.OVERFLOW) {
+            (settings.minMcps - 1).coerceAtLeast(0)
+        } else 0
+        classicEntries = if (thresholdsMet) entries.take(classicCount) else entries
+        dynamicEntries = if (thresholdsMet) entries.drop(classicCount) else emptyList()
+        active = dynamicEntries.isNotEmpty()
+    }
+
+    private val classicIds = classicEntries.mapTo(HashSet()) { it.serverId }
+
+    /** Loaded MCPs, oldest first, mapped to whether their tool descriptions are attached. */
+    private val loaded = LinkedHashMap<String, Boolean>()
+
+    private val lastActiveTurn = HashMap<String, Int>()
+    private var userTurn = 0
+
+    /** Call once per user message, in order. MCPs idle for [MCP_AUTO_UNLOAD_USER_TURNS] user messages are unloaded. */
+    fun startUserTurn() {
+        userTurn++
+        loaded.keys.removeAll { userTurn - (lastActiveTurn[it] ?: userTurn) >= MCP_AUTO_UNLOAD_USER_TURNS }
+    }
+
+    /** Using one of a loaded MCP's tools keeps it loaded. */
+    fun markUsed(serverId: String) {
+        if (serverId in loaded) lastActiveTurn[serverId] = userTurn
+    }
+
+    /** Re-applies a successful earlier load_mcps call while rebuilding the state from the conversation. */
+    fun replayLoad(args: JsonObject) {
+        runCatching { load(args) }
+        lastPreview = ""
+    }
 
     /** Short app-side summary of the last internal call, shown in the tool activity. */
     var lastPreview: String = ""
         private set
 
-    fun includes(serverId: String): Boolean = !active || attached().any { it.serverId == serverId }
+    fun includes(serverId: String): Boolean = serverId in classicIds || serverId in loaded || dynamicEntries.none { it.serverId == serverId }
 
-    /** MCP tool descriptions are the bulk of the input, so they are dropped unless requested. */
-    fun present(tool: ToolDefinition): ToolDefinition =
-        if (!active || showDescription || tool.serverId == null) tool else tool.copy(description = "")
+    /** MCP tool descriptions are the bulk of the input, so they are only sent where the settings or the model ask for them. */
+    fun present(tool: ToolDefinition): ToolDefinition {
+        val serverId = tool.serverId ?: return tool
+        val withDescription = if (serverId in loaded) loaded.getValue(serverId) else settings.includeToolDescription
+        return if (withDescription) tool else tool.copy(description = "")
+    }
 
     fun definitions(): List<ToolDefinition> = listOf(
         ToolDefinition(
-            name = LIST_MCP_TOOL_NAME,
-            description = "List the names of all ${entries.size} enabled MCP servers and which of them are currently attached. " +
-                "Only one page of MCP servers is attached at a time.",
-            schema = emptySchema()
+            name = LIST_MCPS_TOOL_NAME,
+            description = "List the MCP servers that are not attached yet, as {mcp_name, mcp_id}. " +
+                "Their tools are only available after load_mcps.",
+            schema = obj("type" to str("object"), "properties" to obj())
         ),
         ToolDefinition(
-            name = MCPS_PAGINATE_TOOL_NAME,
-            description = "Choose which MCP servers are attached to the next requests. index is the 1-based page number " +
-                "(page size = length, default $MCP_PAGE_DEFAULT_LENGTH); index 0 or omitted attaches all MCP servers. " +
-                "Tool descriptions are hidden unless show_description is true. Returns OK; the attached tools appear in the next request.",
+            name = LOAD_MCPS_TOOL_NAME,
+            description = "Load MCP servers by mcp_id so their tools are added to the next requests; call them right after loading. " +
+                "At most ${settings.loadLimit} MCP servers stay loaded; loading more unloads the oldest, " +
+                "and a server not used for $MCP_AUTO_UNLOAD_USER_TURNS user messages is unloaded automatically. " +
+                "Returns only which servers were loaded, not their tools. detailed=true also attaches the tool descriptions.",
             schema = obj(
                 "type" to str("object"),
                 "properties" to obj(
-                    "index" to obj("type" to str("integer"), "description" to str("1-based page number. 0 or omitted attaches all MCP servers.")),
-                    "length" to obj("type" to str("integer"), "description" to str("MCP servers per page. Default $MCP_PAGE_DEFAULT_LENGTH.")),
-                    "show_description" to obj("type" to str("boolean"), "description" to str("Include tool descriptions. Default false."))
-                )
-            )
-        ),
-        ToolDefinition(
-            name = SEARCH_MCP_TOOL_NAME,
-            description = "Search the enabled MCP servers by keyword in the server name, tool name or tool description. " +
-                "Returns matching MCP names, the page each is on and matching tool names; use mcps_paginate to attach that page.",
-            schema = obj(
-                "type" to str("object"),
-                "properties" to obj("query" to obj("type" to str("string"), "description" to str("Keywords to search for."))),
-                "required" to JsonArray(listOf(str("query")))
+                    "mcp_ids" to obj(
+                        "type" to str("array"),
+                        "items" to obj("type" to str("string")),
+                        "description" to str("The mcp_id values returned by list_mcps.")
+                    ),
+                    "detailed" to obj(
+                        "type" to str("boolean"),
+                        "description" to str("Attach tool descriptions too. Default false.")
+                    )
+                ),
+                "required" to JsonArray(listOf(str("mcp_ids")))
             )
         )
     )
 
     fun execute(name: String, args: JsonObject): JsonObject = when (name) {
-        LIST_MCP_TOOL_NAME -> list()
-        MCPS_PAGINATE_TOOL_NAME -> paginate(args)
-        SEARCH_MCP_TOOL_NAME -> search(args)
+        LIST_MCPS_TOOL_NAME -> list()
+        LOAD_MCPS_TOOL_NAME -> load(args)
         else -> error("Unknown internal tool: $name")
     }
 
-    private fun attached(): List<Entry> =
-        if (page == 0) entries else entries.drop((page - 1) * length).take(length)
-
     private fun list(): JsonObject {
-        lastPreview = "Listed ${entries.size} MCP(s)."
-        return obj(
-            "total" to JsonPrimitive(entries.size),
-            "mcps" to JsonArray(entries.map { str(it.name) }),
-            "attached" to JsonArray(attached().map { str(it.name) })
+        val shown = dynamicEntries.take(settings.listLimit)
+        lastPreview = "Listed ${shown.size} MCP(s)."
+        val mcps = JsonArray(shown.map { obj("mcp_name" to str(it.name), "mcp_id" to str(it.serverId)) })
+        return if (shown.size < dynamicEntries.size) {
+            obj("mcps" to mcps, "total" to JsonPrimitive(dynamicEntries.size), "truncated" to JsonPrimitive(true))
+        } else {
+            obj("mcps" to mcps)
+        }
+    }
+
+    private fun load(args: JsonObject): JsonObject {
+        val requested = requestedIds(args["mcp_ids"])
+        require(requested.isNotEmpty()) { "mcp_ids is required." }
+        require(requested.size <= settings.loadLimit) {
+            "At most ${settings.loadLimit} MCP(s) can be loaded at once, but ${requested.size} were requested."
+        }
+        val detailed = args["detailed"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: false
+        val resolved = mutableListOf<Entry>()
+        val notFound = mutableListOf<String>()
+        requested.forEach { id ->
+            // Models sometimes pass the name instead of the id.
+            val entry = dynamicEntries.firstOrNull { it.serverId == id }
+                ?: dynamicEntries.filter { it.name.equals(id, ignoreCase = true) }.singleOrNull()
+            if (entry == null) notFound += id else if (entry !in resolved) resolved += entry
+        }
+        require(resolved.isNotEmpty()) { "Unknown mcp_id: ${notFound.joinToString()}. Call list_mcps for the available ones." }
+
+        resolved.forEach { entry ->
+            loaded.remove(entry.serverId)
+            loaded[entry.serverId] = detailed
+            lastActiveTurn[entry.serverId] = userTurn
+        }
+        val unloaded = mutableListOf<String>()
+        while (loaded.size > settings.loadLimit) {
+            val oldest = loaded.keys.first()
+            loaded.remove(oldest)
+            dynamicEntries.firstOrNull { it.serverId == oldest }?.let { unloaded += it.name }
+        }
+        lastPreview = "Loaded ${resolved.joinToString { it.name }}."
+        val fields = mutableListOf<Pair<String, JsonElement>>(
+            "status" to str("OK"),
+            "loaded" to JsonArray(resolved.map { str(it.name) })
         )
+        if (unloaded.isNotEmpty()) fields += "unloaded" to JsonArray(unloaded.map { str(it) })
+        if (notFound.isNotEmpty()) fields += "not_found" to JsonArray(notFound.map { str(it) })
+        return obj(*fields.toTypedArray())
     }
 
-    private fun paginate(args: JsonObject): JsonObject {
-        val index = args.int("index") ?: 0
-        val newLength = args.int("length") ?: MCP_PAGE_DEFAULT_LENGTH
-        require(newLength in 1..MCP_PAGE_MAX_LENGTH) { "length must be between 1 and $MCP_PAGE_MAX_LENGTH." }
-        val pages = (entries.size + newLength - 1) / newLength
-        require(index in 0..pages) {
-            "Page $index does not exist: there are $pages page(s) of $newLength. Use index 0 to attach all MCPs."
-        }
-        page = index
-        length = newLength
-        showDescription = args["show_description"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: false
-        val names = attached().joinToString { it.name }
-        lastPreview = if (index == 0) "Attached all ${entries.size} MCP(s)." else "Attached page $index/$pages: $names"
-        return obj("content" to JsonArray(listOf(obj("type" to str("text"), "text" to str("OK")))))
-    }
-
-    private fun search(args: JsonObject): JsonObject {
-        val query = args["query"]?.jsonPrimitive?.contentOrNull.orEmpty().trim()
-        require(query.isNotEmpty()) { "query is required." }
-        val terms = query.lowercase().split(Regex("\\s+"))
-        val matches = entries.mapIndexedNotNull { position, entry ->
-            val serverHit = terms.all { entry.name.lowercase().contains(it) }
-            val tools = entry.tools.filter { tool ->
-                val text = "${tool.originalName} ${tool.description}".lowercase()
-                terms.all { text.contains(it) }
-            }
-            if (!serverHit && tools.isEmpty()) null else obj(
-                "name" to str(entry.name),
-                "page" to JsonPrimitive(position / length + 1),
-                "matching_tools" to JsonArray(tools.take(5).map { str(it.originalName) })
-            )
-        }
-        lastPreview = "Found ${matches.size} MCP(s) for \"$query\"."
-        return obj("query" to str(query), "page_size" to JsonPrimitive(length), "matches" to JsonArray(matches))
-    }
-
-    private fun emptySchema() = obj("type" to str("object"), "properties" to obj())
-
-    private fun JsonObject.int(key: String): Int? = this[key]?.jsonPrimitive?.contentOrNull?.trim()?.toIntOrNull()
+    private fun requestedIds(value: JsonElement?): List<String> = when (value) {
+        is JsonArray -> value.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+        is JsonPrimitive -> value.contentOrNull.orEmpty().split(',')
+        else -> emptyList()
+    }.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
 }

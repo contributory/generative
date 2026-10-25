@@ -128,6 +128,7 @@ data class AppPreferences(
     val toolRoundLimit: Int = DEFAULT_TOOL_ROUND_LIMIT,
     val toolCallStrategy: ToolCallStrategy = ToolCallStrategy.SEQUENTIAL,
     val toolCallConcurrentLimit: Int = DEFAULT_TOOL_CALL_CONCURRENT_LIMIT,
+    val mcpAttachments: McpAttachmentSettings = McpAttachmentSettings(),
     val screenWakelockMode: ScreenWakelockMode = ScreenWakelockMode.EXCEPT_TOOL_CALLS,
     /** Summarize automatically once estimated context usage reaches [autoSummaryPercent]. */
     val autoSummaryEnabled: Boolean = true,
@@ -199,6 +200,7 @@ class AppPreferencesRepository(private val context: Context) {
         val TOOL_ROUND_LIMIT = intPreferencesKey("tool_round_limit")
         val TOOL_CALL_STRATEGY = stringPreferencesKey("tool_call_strategy")
         val TOOL_CALL_CONCURRENT_LIMIT = intPreferencesKey("tool_call_concurrent_limit")
+        val MCP_ATTACHMENTS = stringPreferencesKey("mcp_attachments")
         val SCREEN_WAKELOCK_MODE = stringPreferencesKey("screen_wakelock_mode")
         val AUTO_SUMMARY_ENABLED = booleanPreferencesKey("auto_summary_enabled")
         val SUMMARY_SUGGESTION_ENABLED = booleanPreferencesKey("summary_suggestion_enabled")
@@ -264,6 +266,7 @@ class AppPreferencesRepository(private val context: Context) {
                 toolRoundLimit = preferences[PreferenceKeys.TOOL_ROUND_LIMIT]?.coerceIn(1, MAX_TOOL_ROUND_LIMIT) ?: DEFAULT_TOOL_ROUND_LIMIT,
                 toolCallStrategy = ToolCallStrategy.fromValue(preferences[PreferenceKeys.TOOL_CALL_STRATEGY]),
                 toolCallConcurrentLimit = preferences[PreferenceKeys.TOOL_CALL_CONCURRENT_LIMIT]?.coerceIn(1, MAX_TOOL_CALL_CONCURRENT_LIMIT) ?: DEFAULT_TOOL_CALL_CONCURRENT_LIMIT,
+                mcpAttachments = McpAttachmentSettings.decode(preferences[PreferenceKeys.MCP_ATTACHMENTS]),
                 screenWakelockMode = ScreenWakelockMode.fromValue(preferences[PreferenceKeys.SCREEN_WAKELOCK_MODE]),
                 autoSummaryEnabled = preferences[PreferenceKeys.AUTO_SUMMARY_ENABLED] ?: true,
                 summarySuggestionEnabled = preferences[PreferenceKeys.SUMMARY_SUGGESTION_ENABLED] ?: true,
@@ -643,6 +646,13 @@ class AppPreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun setMcpAttachments(settings: McpAttachmentSettings) {
+        val normalized = settings.normalized()
+        state.mutate({ it.copy(mcpAttachments = normalized) }) {
+            context.dataStore.edit { it[PreferenceKeys.MCP_ATTACHMENTS] = McpAttachmentSettings.encode(normalized) }
+        }
+    }
+
     suspend fun setAutoSummaryEnabled(enabled: Boolean) {
         state.mutate({ it.copy(autoSummaryEnabled = enabled) }) {
             context.dataStore.edit { it[PreferenceKeys.AUTO_SUMMARY_ENABLED] = enabled }
@@ -728,6 +738,7 @@ class AppPreferencesRepository(private val context: Context) {
                 stored[PreferenceKeys.TOOL_ROUND_LIMIT] = preferences.toolRoundLimit
                 stored[PreferenceKeys.TOOL_CALL_STRATEGY] = preferences.toolCallStrategy.value
                 stored[PreferenceKeys.TOOL_CALL_CONCURRENT_LIMIT] = preferences.toolCallConcurrentLimit
+                stored[PreferenceKeys.MCP_ATTACHMENTS] = McpAttachmentSettings.encode(preferences.mcpAttachments)
                 stored[PreferenceKeys.SCREEN_WAKELOCK_MODE] = preferences.screenWakelockMode.value
                 stored[PreferenceKeys.AUTO_SUMMARY_ENABLED] = preferences.autoSummaryEnabled
                 stored[PreferenceKeys.SUMMARY_SUGGESTION_ENABLED] = preferences.summarySuggestionEnabled

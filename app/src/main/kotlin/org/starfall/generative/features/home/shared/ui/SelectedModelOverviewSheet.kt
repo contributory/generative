@@ -165,7 +165,6 @@ internal fun SelectedModelOverviewContent(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         val maxEffortSheet = previewTier == 6 && config.supportsThinking
-        val headerColor = if (maxEffortSheet) Color.White.copy(alpha = 0.82f) else MaterialTheme.colorScheme.onSurfaceVariant
         val changeModelButton: @Composable (Modifier) -> Unit = { buttonModifier ->
             FilledTonalButton(
                 onClick = {
@@ -189,44 +188,31 @@ internal fun SelectedModelOverviewContent(
                 )
             }
         }
-        if (onSummarize == null) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    stringResource(R.string.current_model),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = headerColor,
-                    modifier = Modifier.weight(1f)
-                )
-                changeModelButton(Modifier)
-            }
-        } else {
-            // Both labels are long, so the title gets its own line and the buttons share the next one.
-            Text(
-                stringResource(R.string.current_model),
-                style = MaterialTheme.typography.titleSmall,
-                color = headerColor
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
-            ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (onSummarize != null) Arrangement.SpaceBetween else Arrangement.End
+        ) {
+            if (onSummarize != null) {
                 FilledTonalButton(
                     onClick = {
                         screenBurst?.hide()
                         onSummarize()
                     },
-                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    contentPadding = PaddingValues(start = 12.dp, end = 16.dp),
                     modifier = Modifier.testTag("summarize-conversation-button")
                 ) {
+                    FluentIcon(
+                        Icons.Outlined.Summarize,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.summarize_now), maxLines = 1)
                 }
-                changeModelButton(Modifier.weight(1f, fill = false))
+                Spacer(Modifier.width(8.dp))
             }
+            changeModelButton(Modifier.weight(1f, fill = false))
         }
         contextWindowContent?.invoke(maxEffortSheet)
         ModelPickerCard(
