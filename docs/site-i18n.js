@@ -277,7 +277,32 @@
   const url = new URL(location.href);
   const requested = url.searchParams.get("lang");
   const stored = (() => { try { return localStorage.getItem("generative-site-language"); } catch { return null; } })();
-  const active = languages.includes(requested) ? requested : languages.includes(stored) ? stored : "en";
+  const localeAliases = {
+    en: "en", vi: "vi", fr: "fr", de: "de", ja: "ja", ko: "ko", es: "es",
+    pt: "pt-BR", "pt-br": "pt-BR", zh: "zh-CN", "zh-cn": "zh-CN",
+    "zh-sg": "zh-CN", "zh-hans": "zh-CN", "zh-tw": "zh-TW", "zh-hk": "zh-TW",
+    "zh-mo": "zh-TW", "zh-hant": "zh-TW"
+  };
+  const matchLocale = value => {
+    if (!value) return null;
+    const tag = String(value).trim().replace(/_/g, "-");
+    if (languages.includes(tag)) return tag;
+    const normalized = tag.toLowerCase();
+    if (localeAliases[normalized]) return localeAliases[normalized];
+    const base = normalized.split("-")[0];
+    return localeAliases[base] || null;
+  };
+  const browserLocale = (() => {
+    const preferences = Array.isArray(navigator.languages) && navigator.languages.length
+      ? navigator.languages
+      : [navigator.language || ""];
+    for (const preference of preferences) {
+      const match = matchLocale(preference);
+      if (match) return match;
+    }
+    return "en";
+  })();
+  const active = matchLocale(requested) || matchLocale(stored) || browserLocale;
   const localeIndex = languages.indexOf(active);
   const t = source => {
     const row = M[String(source ?? "").trim()];
