@@ -52,7 +52,10 @@ internal class ChatConversationCoordinator(
     private val sendMessage: (String, List<String>) -> Boolean,
 ) {
     private var conversationSelectionToken = 0L
-    private var pendingWrites = 0
+    @Volatile private var pendingWrites = 0
+    @Volatile private var restoreInProgress = false
+    private val writeStateLock = Any()
+    private val pendingWritesFlow = MutableStateFlow(0)
     private val serializedWrites = Mutex()
 
     val pendingConversationWrites: Int get() = pendingWrites
@@ -106,6 +109,7 @@ internal class ChatConversationCoordinator(
     }
 
     fun drainQueuedMessages() {
+        if (restoreInProgress) return
         val conversationId = currentConversation.value?.id ?: return
         if (existingGeneration(conversationId)?.busy?.value == true || isGenerationReplacementActive() ||
             isSummaryActive() || pendingWrites > 0) return
@@ -120,15 +124,52 @@ internal class ChatConversationCoordinator(
     }
 
     fun writeConversation(serialize: Boolean = false, block: suspend () -> Unit) {
-        pendingWrites++
+        val accepted = synchronized(writeStateLock) {
+            if (restoreInProgress) {
+                false
+            } else {
+                pendingWrites++
+                pendingWritesFlow.value = pendingWrites
+                true
+            }
+        }
+        if (!accepted) return
+
         scope.launch(LocalWriteErrors.handler) {
             try {
                 if (serialize) serializedWrites.withLock { block() } else block()
             } finally {
-                pendingWrites--
+                synchronized(writeStateLock) {
+                    pendingWrites--
+                    pendingWritesFlow.value = pendingWrites
+                }
                 drainQueuedMessages()
             }
         }
+    }
+
+    /** Blocks new conversation writes and waits for all previously accepted writes to finish. */
+    suspend fun beginRestore() {
+        synchronized(writeStateLock) {
+            check(!restoreInProgress) { "A full restore is already in progress." }
+            restoreInProgress = true
+        }
+        try {
+            pendingWritesFlow.first { it == 0 }
+            serializedWrites.withLock {
+                cancelSummary()
+                allGenerations().forEach { it.stopAndJoin() }
+            }
+        } catch (error: Throwable) {
+            endRestore()
+            throw error
+        }
+    }
+
+    /** Re-enables conversation writes after a restore has either committed or rolled back. */
+    fun endRestore() {
+        synchronized(writeStateLock) { restoreInProgress = false }
+        drainQueuedMessages()
     }
 
     fun saveEditedConversation(previous: Conversation, updated: Conversation) {

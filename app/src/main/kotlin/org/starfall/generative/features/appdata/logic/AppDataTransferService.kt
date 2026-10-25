@@ -12,6 +12,8 @@ import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.starfall.generative.features.appdata.model.AppDataBackup
 import org.starfall.generative.features.appdata.model.RemoteTerminalPreferencesState
@@ -47,6 +49,8 @@ class AppDataTransferService(
     private val toolFiles: ToolFiles,
     private val remoteMachineService: RemoteMachineService
 ) {
+    private val restoreMutex = Mutex()
+
     suspend fun createZipBackup(): File = withContext(Dispatchers.IO) {
         val storedFiles = toolFiles.list().associateBy { it.name }
         val backup = AppDataBackup(
@@ -83,7 +87,11 @@ class AppDataTransferService(
         }
     }
 
-    suspend fun import(input: InputStream, fileNameHint: String? = null): AppDataImportResult = withContext(Dispatchers.IO) {
+    suspend fun import(
+        input: InputStream,
+        fileNameHint: String? = null,
+        beforeFullRestore: suspend () -> Unit
+    ): AppDataImportResult = withContext(Dispatchers.IO) {
         val buffered = if (input is BufferedInputStream) input else BufferedInputStream(input)
         buffered.mark(4)
         val signature = ByteArray(4)
@@ -94,7 +102,7 @@ class AppDataTransferService(
             val staging = createStagingDirectory("generative-import-")
             try {
                 val backup = readZipBackup(buffered, staging)
-                restoreFullBackup(backup)
+                restoreFullBackup(backup, beforeFullRestore)
                 AppDataImportResult(itemCount = backup.data.providers.size + backup.data.providerGroups.size +
                     backup.data.mcpServers.size + backup.data.speechServices.size + backup.data.conversations.size +
                     backup.data.profiles.size, fullRestore = true)
@@ -117,11 +125,16 @@ class AppDataTransferService(
         }
     }
 
-    private suspend fun restoreFullBackup(imported: ZipAppDataBackup) {
+    private suspend fun restoreFullBackup(
+        imported: ZipAppDataBackup,
+        beforeFullRestore: suspend () -> Unit
+    ) = restoreMutex.withLock {
+        // Reject malformed archives before asking the chat UI to discard transient state.
         validateBackupFiles(imported)
+        beforeFullRestore()
 
         // Keep a private, short-lived snapshot so a failed multi-store restore can roll back.
-        // createZipBackup fails before any mutation if the existing state cannot be backed up.
+        // The callback has drained writes and stopped active generations before this snapshot.
         val safetySnapshot = createZipBackup()
         try {
             try {

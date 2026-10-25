@@ -28,8 +28,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import java.io.File
 import java.io.FileInputStream
-import java.util.Locale
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -194,6 +194,7 @@ fun AppNavigation(
     var pendingExport by remember { mutableStateOf<File?>(null) }
     var preparingExport by remember { mutableStateOf(false) }
     var pendingImport by remember { mutableStateOf(false) }
+    var importInProgress by remember { mutableStateOf(false) }
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip")
     ) { uri ->
@@ -247,9 +248,11 @@ fun AppNavigation(
     ) { uri ->
         val shouldImport = pendingImport
         pendingImport = false
-        if (uri == null || !shouldImport) return@rememberLauncherForActivityResult
+        if (uri == null || !shouldImport || importInProgress) return@rememberLauncherForActivityResult
+        importInProgress = true
         coroutineScope.launch {
             var chatPreparedForRestore = false
+            var restoreSucceeded = false
             try {
                 val fileName = withContext(Dispatchers.IO) {
                     context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
@@ -257,42 +260,35 @@ fun AppNavigation(
                             if (cursor.moveToFirst()) cursor.getString(0) else null
                         }
                 }
-                val isZipBackup = withContext(Dispatchers.IO) {
-                    val signature = context.contentResolver.openInputStream(uri)?.use { input ->
-                        val bytes = ByteArray(2)
-                        var offset = 0
-                        while (offset < bytes.size) {
-                            val count = input.read(bytes, offset, bytes.size - offset)
-                            if (count < 0) break
-                            offset += count
-                        }
-                        bytes.take(offset)
-                    } ?: error(context.getString(R.string.export_open_file_failed))
-                    (signature.size == 2 && signature[0] == 'P'.code.toByte() && signature[1] == 'K'.code.toByte()) ||
-                        fileName.orEmpty().lowercase(Locale.ROOT).endsWith(".zip")
-                }
-                if (isZipBackup) {
-                    viewModel.prepareForRestore()
-                    chatPreparedForRestore = true
-                }
                 val result = withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(uri)?.use { input ->
-                        appDataTransfer.import(input, fileName)
-                    }
-                        ?: error(context.getString(R.string.export_open_file_failed))
+                        appDataTransfer.import(input, fileName) {
+                            // Invoked only after the ZIP manifest, entries and file sets validate.
+                            viewModel.prepareForRestore()
+                            chatPreparedForRestore = true
+                        }
+                    } ?: error(context.getString(R.string.export_open_file_failed))
                 }
+                restoreSucceeded = result.fullRestore
                 Toast.makeText(context, context.getString(R.string.import_success, result.itemCount), Toast.LENGTH_SHORT).show()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
                 Toast.makeText(context, context.getString(R.string.import_failed, error.message.orEmpty()), Toast.LENGTH_LONG).show()
             } finally {
-                if (chatPreparedForRestore) viewModel.reloadAfterRestore()
+                try {
+                    if (chatPreparedForRestore) {
+                        withContext(NonCancellable) { viewModel.finishRestore(restoreSucceeded) }
+                    }
+                } finally {
+                    importInProgress = false
+                }
             }
         }
     }
 
     fun importData() {
+        if (pendingImport || importInProgress) return
         pendingImport = true
         importLauncher.launch(arrayOf("application/zip", "application/json", "text/*"))
     }

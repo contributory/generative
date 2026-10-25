@@ -350,19 +350,24 @@ class ChatViewModel(
         conversationCoordinator.clearAllConversations(attachedFiles)
     suspend fun importConversations(items: List<Conversation>) = conversationCoordinator.importConversations(items)
     suspend fun conversationsForExport(): List<Conversation> = conversationCoordinator.conversationsForExport()
-    /** Stops all chat work before application data is replaced by a full backup restore. */
-    suspend fun prepareForRestore() {
-        conversationCoordinator.resetAfterRestore()
-        synchronized(generationLock) {
-            generationObservers.values.forEach { it.cancel() }
-            generationObservers.clear()
-            generations.clear()
-        }
-        _generationStates.value = emptyMap()
-    }
+    /** Drains pending writes and stops chat work after the backup has been validated. */
+    suspend fun prepareForRestore() = conversationCoordinator.beginRestore()
 
-    /** Reloads the last conversation after a restore succeeds or fails. */
-    fun reloadAfterRestore() = restoreLastConversation()
+    /** Finalizes the in-memory chat state and releases the write boundary. */
+    suspend fun finishRestore(succeeded: Boolean) {
+        try {
+            if (succeeded) conversationCoordinator.resetAfterRestore()
+            synchronized(generationLock) {
+                generationObservers.values.forEach { it.cancel() }
+                generationObservers.clear()
+                generations.clear()
+            }
+            _generationStates.value = emptyMap()
+        } finally {
+            conversationCoordinator.endRestore()
+        }
+        if (succeeded) restoreLastConversation()
+    }
     fun deleteAllUserData(attachedFiles: Collection<String> = emptyList()) =
         conversationCoordinator.deleteAllUserData(attachedFiles)
 

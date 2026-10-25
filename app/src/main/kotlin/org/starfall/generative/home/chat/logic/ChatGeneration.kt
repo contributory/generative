@@ -43,6 +43,8 @@ internal class ChatGeneration(
     var snapshot: Conversation? = null
         private set
     private var job: Job? = null
+    private val pendingUpdateWrites = linkedSetOf<Job>()
+    private val pendingUpdateWritesLock = Any()
 
     fun start(
         conversation: Conversation,
@@ -342,11 +344,26 @@ internal class ChatGeneration(
         val updated = transform(current)
         snapshot = updated
         publish(updated)
-        scope.launch { save(updated) }
+        val writeJob = scope.launch(start = CoroutineStart.LAZY) { save(updated) }
+        synchronized(pendingUpdateWritesLock) { pendingUpdateWrites += writeJob }
+        writeJob.invokeOnCompletion {
+            synchronized(pendingUpdateWritesLock) { pendingUpdateWrites -= writeJob }
+        }
+        writeJob.start()
     }
 
     fun stop() { job?.cancel() }
-    suspend fun stopAndJoin() { job?.cancelAndJoin() }
+
+    suspend fun stopAndJoin() {
+        job?.cancelAndJoin()
+        // Tool activity can schedule persistence in the ViewModel scope independently of [job].
+        // Join every such write before a full restore replaces the conversation database.
+        while (true) {
+            val writes = synchronized(pendingUpdateWritesLock) { pendingUpdateWrites.toList() }
+            if (writes.isEmpty()) break
+            writes.joinAll()
+        }
+    }
 }
 private fun logToolActivity(activity: org.starfall.generative.shared.model.ToolActivity) {
     val failed = activity.status.contains("error", ignoreCase = true) || activity.status.contains("fail", ignoreCase = true)
