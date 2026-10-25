@@ -145,6 +145,8 @@ internal class ChatConversationCoordinator(
     }
 
     fun restoreLastConversation() {
+        // A restore must be able to invalidate a history load that was already in flight.
+        val requestToken = conversationSelectionToken
         scope.launch {
             val preferences = prefsRepo.appPreferencesFlow.first()
             if (!preferences.continueLastConversation || currentConversation.value != null) return@launch
@@ -160,9 +162,9 @@ internal class ChatConversationCoordinator(
                     .maxWithOrNull(compareBy<ConversationListItem> { it.updatedAt }.thenBy { it.createdAt })
             } ?: return@launch
 
-            // A selection made while Room was loading always wins over restoration.
-            if (currentConversation.value == null && !deletingAllConversations.value &&
-                lastConversation.id !in deletingConversations.value
+            // A selection or restore boundary made while Room was loading always wins.
+            if (requestToken == conversationSelectionToken && currentConversation.value == null &&
+                !deletingAllConversations.value && lastConversation.id !in deletingConversations.value
             ) selectConversation(lastConversation.id)
         }
     }
@@ -344,6 +346,8 @@ internal class ChatConversationCoordinator(
 
     suspend fun resetAfterRestore() {
         serializedWrites.withLock {
+            // Invalidate any selection load that began before the restore boundary.
+            conversationSelectionToken++
             cancelSummary()
             allGenerations().forEach { it.stopAndJoin() }
             currentConversation.value = null

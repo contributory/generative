@@ -10,6 +10,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.starfall.generative.features.appdata.model.AppDataBackup
@@ -71,8 +72,15 @@ class AppDataTransferService(
         }
         val identityFiles = remoteMachineService.exportIdentityFiles()
         val destination = File.createTempFile("generative-backup-", ".zip", context.cacheDir)
-        destination.outputStream().use { output -> writeZipBackup(output, backup, iconFiles, storedFiles, identityFiles) }
-        destination
+        try {
+            destination.outputStream().use { output ->
+                writeZipBackup(output, backup, iconFiles, storedFiles, identityFiles)
+            }
+            destination
+        } catch (error: Throwable) {
+            destination.delete()
+            throw error
+        }
     }
 
     suspend fun import(input: InputStream, fileNameHint: String? = null): AppDataImportResult = withContext(Dispatchers.IO) {
@@ -83,10 +91,7 @@ class AppDataTransferService(
         buffered.reset()
         val isZip = read == 4 && signature[0] == 'P'.code.toByte() && signature[1] == 'K'.code.toByte()
         if (isZip || fileNameHint.orEmpty().lowercase(Locale.ROOT).endsWith(".zip")) {
-            val staging = File.createTempFile("generative-import-", "", context.cacheDir).apply {
-                delete()
-                mkdirs()
-            }
+            val staging = createStagingDirectory("generative-import-")
             try {
                 val backup = readZipBackup(buffered, staging)
                 restoreFullBackup(backup)
@@ -113,15 +118,64 @@ class AppDataTransferService(
     }
 
     private suspend fun restoreFullBackup(imported: ZipAppDataBackup) {
+        validateBackupFiles(imported)
+
+        // Keep a private, short-lived snapshot so a failed multi-store restore can roll back.
+        // createZipBackup fails before any mutation if the existing state cannot be backed up.
+        val safetySnapshot = createZipBackup()
+        try {
+            try {
+                applyFullBackup(imported)
+            } catch (restoreError: Throwable) {
+                var rollbackError: Throwable? = null
+                try {
+                    withContext(NonCancellable) {
+                        val rollbackDirectory = createStagingDirectory("generative-rollback-")
+                        try {
+                            val previous = FileInputStream(safetySnapshot).use { input ->
+                                readZipBackup(input, rollbackDirectory)
+                            }
+                            validateBackupFiles(previous)
+                            applyFullBackup(previous)
+                        } finally {
+                            rollbackDirectory.deleteRecursively()
+                        }
+                    }
+                } catch (error: Throwable) {
+                    rollbackError = error
+                }
+
+                if (rollbackError != null) {
+                    throw IllegalStateException(
+                        "Restore failed and automatic rollback also failed; app data may be inconsistent.",
+                        restoreError
+                    ).also { it.addSuppressed(rollbackError) }
+                }
+                throw restoreError
+            }
+        } finally {
+            safetySnapshot.delete()
+        }
+    }
+
+    private fun validateBackupFiles(imported: ZipAppDataBackup) {
         val data = imported.data
-        require(data.icons.files.toSet() == imported.iconFiles.keys) { "The icon files in the backup do not match its manifest." }
+        require(data.icons.files.toSet() == imported.iconFiles.keys) {
+            "The icon files in the backup do not match its manifest."
+        }
         require(data.remoteMachines.identities.map { it.id }.toSet() == imported.remoteIdentityFiles.keys) {
             "The SSH identity files in the backup do not match its manifest."
         }
         require(data.storedFileNames.toSet() == imported.toolFiles.keys) {
             "The stored files in the backup do not match its manifest."
         }
+        require(data.remoteMachines.identities.map { it.id }.distinct().size == data.remoteMachines.identities.size) {
+            "The backup contains duplicate SSH identity IDs."
+        }
+    }
 
+    private suspend fun applyFullBackup(imported: ZipAppDataBackup) {
+        val data = imported.data
         modelRepository.replaceAll(data.providers, data.providerGroups)
         mcpRepository.replaceAll(data.mcpServers)
         speechRepository.replaceAll(data.speechServices)
@@ -140,6 +194,11 @@ class AppDataTransferService(
         }
         remoteMachineService.replaceState(data.remoteMachines, imported.remoteIdentityFiles)
     }
+
+    private fun createStagingDirectory(prefix: String): File =
+        File.createTempFile(prefix, "", context.cacheDir).apply {
+            check(delete() && mkdirs()) { "Could not create temporary restore directory." }
+        }
 
     private fun exportRemoteTerminalPreferences(): RemoteTerminalPreferencesState {
         val values = context.getSharedPreferences(REMOTE_TERMINAL_UI_PREFERENCES, Context.MODE_PRIVATE).all

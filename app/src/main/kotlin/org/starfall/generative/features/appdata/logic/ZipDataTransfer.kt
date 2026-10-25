@@ -36,18 +36,45 @@ fun writeZipBackup(
 ) {
     val names = mutableSetOf<String>()
     ZipOutputStream(BufferedOutputStream(output)).use { zip ->
+        var totalBytes = 0L
+
+        fun checkEntrySize(name: String, size: Long) {
+            check(size <= MAX_ENTRY_BYTES) { "Backup entry is too large: $name (maximum 256 MiB)." }
+            check(totalBytes + size <= MAX_ARCHIVE_BYTES) { "Backup archive is too large (maximum 1 GiB)." }
+        }
+
         fun addBytes(name: String, bytes: ByteArray) {
+            checkEntrySize(name, bytes.size.toLong())
             check(names.add(name)) { "Duplicate backup entry: $name" }
             zip.putNextEntry(ZipEntry(name))
             zip.write(bytes)
             zip.closeEntry()
+            totalBytes += bytes.size
         }
 
         fun addFile(name: String, file: File) {
             require(file.isFile) { "Backup source file is missing: ${file.name}" }
+            checkEntrySize(name, file.length())
             check(names.add(name)) { "Duplicate backup entry: $name" }
             zip.putNextEntry(ZipEntry(name))
-            file.inputStream().use { it.copyTo(zip) }
+            file.inputStream().use { input ->
+                val buffer = ByteArray(32768)
+                var entryBytes = 0L
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    val nextEntryBytes = entryBytes + count
+                    check(nextEntryBytes <= MAX_ENTRY_BYTES) {
+                        "Backup entry is too large: $name (maximum 256 MiB)."
+                    }
+                    check(totalBytes + count <= MAX_ARCHIVE_BYTES) {
+                        "Backup archive is too large (maximum 1 GiB)."
+                    }
+                    zip.write(buffer, 0, count)
+                    entryBytes = nextEntryBytes
+                    totalBytes += count
+                }
+            }
             zip.closeEntry()
         }
 

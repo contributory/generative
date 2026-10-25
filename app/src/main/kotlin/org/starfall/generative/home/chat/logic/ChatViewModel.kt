@@ -350,7 +350,8 @@ class ChatViewModel(
         conversationCoordinator.clearAllConversations(attachedFiles)
     suspend fun importConversations(items: List<Conversation>) = conversationCoordinator.importConversations(items)
     suspend fun conversationsForExport(): List<Conversation> = conversationCoordinator.conversationsForExport()
-    suspend fun reloadAfterRestore() {
+    /** Stops all chat work before application data is replaced by a full backup restore. */
+    suspend fun prepareForRestore() {
         conversationCoordinator.resetAfterRestore()
         synchronized(generationLock) {
             generationObservers.values.forEach { it.cancel() }
@@ -358,8 +359,10 @@ class ChatViewModel(
             generations.clear()
         }
         _generationStates.value = emptyMap()
-        restoreLastConversation()
     }
+
+    /** Reloads the last conversation after a restore succeeds or fails. */
+    fun reloadAfterRestore() = restoreLastConversation()
     fun deleteAllUserData(attachedFiles: Collection<String> = emptyList()) =
         conversationCoordinator.deleteAllUserData(attachedFiles)
 

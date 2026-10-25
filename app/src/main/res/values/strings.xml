@@ -705,6 +705,9 @@
     <string name="settings_reset_all_application_data">Reset All Application Data</string>
     <string name="settings_export_data">Export data</string>
     <string name="settings_export_data_description">Back up or restore all app data, settings, app state, conversations, uploaded files, and icons in one ZIP file.</string>
+    <string name="settings_backup_sensitive_warning_title">Backup contains sensitive data</string>
+    <string name="settings_backup_sensitive_warning_message">This ZIP includes API credentials, OAuth tokens, MCP secrets, and SSH private keys. The archive is not encrypted. Save it only in a trusted location and do not share it.</string>
+    <string name="settings_backup_sensitive_warning_continue">Continue to export</string>
     <string name="settings_export_all_data_zip">Export Complete Backup (ZIP)</string>
     <string name="settings_import_all_data_zip">Import Complete Backup (ZIP)</string>
     <string name="settings_clear_all_chats_title">Clear All Chats</string>

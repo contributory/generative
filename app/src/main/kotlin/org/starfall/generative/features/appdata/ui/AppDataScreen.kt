@@ -49,6 +49,7 @@ fun AppDataScreen(
 ) {
     var showClearConfirm by rememberSaveable { mutableStateOf(false) }
     var showResetConfirm by rememberSaveable { mutableStateOf(false) }
+    var showExportWarning by rememberSaveable { mutableStateOf(false) }
     BackHandler(onBack = onBack)
 
     Scaffold(
@@ -106,7 +107,7 @@ fun AppDataScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     DataActionButton(stringResource(R.string.settings_export_all_data_zip)) {
-                        onExportZip()
+                        showExportWarning = true
                     }
                     Spacer(Modifier.height(4.dp))
                     DataActionButton(stringResource(R.string.settings_import_all_data_zip)) {
@@ -115,6 +116,25 @@ fun AppDataScreen(
                 }
             }
         }
+    }
+
+    if (showExportWarning) {
+        AlertDialog(
+            onDismissRequest = { showExportWarning = false },
+            title = { Text(stringResource(R.string.settings_backup_sensitive_warning_title)) },
+            text = { Text(stringResource(R.string.settings_backup_sensitive_warning_message)) },
+            confirmButton = {
+                Button(onClick = {
+                    showExportWarning = false
+                    onExportZip()
+                }) { Text(stringResource(R.string.settings_backup_sensitive_warning_continue)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExportWarning = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
     }
 
     if (showClearConfirm) {

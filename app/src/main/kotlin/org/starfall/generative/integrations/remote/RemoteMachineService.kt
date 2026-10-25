@@ -67,11 +67,12 @@ class RemoteMachineService(
 
     val state = store.state
 
-    internal fun exportIdentityFiles(): Map<String, Pair<File, File?>> = state.value.identities.mapNotNull { identity ->
-        val privateKey = File(identity.path).takeIf { it.isFile } ?: return@mapNotNull null
+    internal fun exportIdentityFiles(): Map<String, Pair<File, File?>> = state.value.identities.associate { identity ->
+        val privateKey = File(identity.path).takeIf { it.isFile }
+            ?: error("The private key for SSH identity ${identity.name} is missing.")
         val publicKey = identity.publicKeyPath.takeIf(String::isNotBlank)?.let(::File)?.takeIf { it.isFile }
         identity.id to (privateKey to publicKey)
-    }.toMap()
+    }
 
     /**
      * Machines that currently hold a persistent SSH connection (opened by the connect tool or by

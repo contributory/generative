@@ -3,6 +3,7 @@ package org.starfall.generative
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
+import java.io.RandomAccessFile
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlinx.serialization.json.JsonObject
@@ -57,6 +58,23 @@ class ZipAppDataTransferTest {
         } finally {
             source.deleteRecursively()
             staging.deleteRecursively()
+        }
+    }
+
+    @Test(expected = IllegalStateException::class)
+    fun rejectsBackupEntriesLargerThanImportLimitDuringExport() {
+        val largeFile = Files.createTempFile("generative-oversized-backup", ".bin").toFile()
+        try {
+            RandomAccessFile(largeFile, "rw").use { it.setLength(256L * 1024 * 1024 + 1) }
+            writeZipBackup(
+                ByteArrayOutputStream(),
+                AppDataBackup(exportedAt = "2026-10-25T00:00:00Z"),
+                iconFiles = emptyMap(),
+                toolFiles = mapOf(largeFile.name to largeFile),
+                identityFiles = emptyMap()
+            )
+        } finally {
+            largeFile.delete()
         }
     }
 
