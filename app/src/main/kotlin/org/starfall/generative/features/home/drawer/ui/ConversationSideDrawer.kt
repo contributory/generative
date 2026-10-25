@@ -4,6 +4,7 @@ package org.starfall.generative.features.home.drawer.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -332,78 +333,59 @@ fun ConversationSideDrawer(
                             }
                     )
                 } else {
-                    OutlinedButton(
+                    OutlinedIconButton(
                         onClick = { searchExpanded = true },
-                        contentPadding = PaddingValues(horizontal = 12.dp),
                         shape = RoundedCornerShape(28.dp),
                         modifier = Modifier
-                            .width(136.dp)
-                            .heightIn(min = 52.dp)
+                            .size(40.dp)
                             .testTag("conversation_drawer_search_button")
                     ) {
-                        FluentIcon(Icons.Default.Search, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.sidebar_search), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-                // Secondary actions step aside while the search field is expanded.
-                AnimatedVisibility(
-                    visible = !searchExpanded,
-                    enter = fadeIn() + expandHorizontally(),
-                    exit = fadeOut() + shrinkHorizontally()
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Spacer(Modifier.width(4.dp))
-                        IconButton(onClick = { onNavigateToSettings(); onCloseDrawer() }, modifier = Modifier.size(40.dp)) {
-                            FeaturesLogoImage(featuresLogoImage, Modifier.size(36.dp).clip(CircleShape))
-                        }
+                        FluentIcon(Icons.Default.Search, stringResource(R.string.sidebar_search))
                     }
                 }
                 Spacer(Modifier.width(8.dp))
-                if (LocalAmoledMode.current) {
-                    if (searchExpanded) {
-                        OutlinedIconButton(
-                            onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
-                            modifier = Modifier.size(40.dp).testTag("conversation_drawer_new_chat"),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
-                            colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-                        ) { FluentIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
-                    } else {
+                // The Menu button takes the free width and steps aside while search is expanded.
+                AnimatedVisibility(
+                    visible = !searchExpanded,
+                    modifier = Modifier.weight(1f),
+                    enter = fadeIn() + expandHorizontally(),
+                    exit = fadeOut() + shrinkHorizontally()
+                ) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         OutlinedButton(
-                            onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
-                            modifier = Modifier.weight(1f).heightIn(min = 52.dp).testTag("conversation_drawer_new_chat"),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                            onClick = { onNavigateToSettings(); onCloseDrawer() },
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            shape = RoundedCornerShape(28.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 52.dp)
+                                .testTag("conversation_drawer_menu_button")
                         ) {
-                            FluentIcon(Icons.Outlined.Compose, contentDescription = null)
+                            FeaturesLogoImage(featuresLogoImage, Modifier.size(28.dp).clip(CircleShape))
                             Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.sidebar_new_chat))
+                            Text(stringResource(R.string.sidebar_menu), maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                         }
+                        Spacer(Modifier.width(8.dp))
                     }
+                }
+                // New chat is a large icon button that shrinks slightly while search is expanded.
+                val newChatSize by animateDpAsState(if (searchExpanded) 42.dp else 52.dp, label = "newChatSize")
+                if (LocalAmoledMode.current) {
+                    OutlinedIconButton(
+                        onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
+                        modifier = Modifier.size(newChatSize).testTag("conversation_drawer_new_chat"),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                        colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                    ) { FluentIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
                 } else {
-                    if (searchExpanded) {
-                        FilledIconButton(
-                            onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
-                            modifier = Modifier.size(40.dp).testTag("conversation_drawer_new_chat"),
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        ) { FluentIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
-                    } else {
-                        Button(
-                            onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
-                            modifier = Modifier.weight(1f).heightIn(min = 52.dp).testTag("conversation_drawer_new_chat"),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        ) {
-                            FluentIcon(Icons.Outlined.Compose, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.sidebar_new_chat))
-                        }
-                    }
+                    FilledIconButton(
+                        onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
+                        modifier = Modifier.size(newChatSize).testTag("conversation_drawer_new_chat"),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    ) { FluentIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
                 }
             }
         }
