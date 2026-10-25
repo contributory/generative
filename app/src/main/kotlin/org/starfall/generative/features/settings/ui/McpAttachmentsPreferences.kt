@@ -1,21 +1,30 @@
 package org.starfall.generative.features.settings.ui
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenu
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
@@ -30,111 +39,143 @@ import org.starfall.generative.shared.storage.preferences.McpAttachmentSettings
 import org.starfall.generative.shared.storage.preferences.McpDynamicStrategy
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 
-/** Content of the "MCP Attachments" preferences section. */
+/** MCP strategy controls embedded in the single General Settings "MCP & Tools" group. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ColumnScope.McpAttachmentsPreferences(
+fun McpAttachmentsPreferences(
     settings: McpAttachmentSettings,
     onChange: (McpAttachmentSettings) -> Unit
 ) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf(
-            McpAttachmentMode.DYNAMIC to R.string.mcp_attachments_mode_dynamic,
-            McpAttachmentMode.CLASSIC to R.string.mcp_attachments_mode_classic
-        ).forEach { (mode, label) ->
-            FilterChip(
-                selected = settings.mode == mode,
-                onClick = { onChange(settings.copy(mode = mode)) },
-                label = { Text(stringResource(label)) },
-                modifier = Modifier.weight(1f).testTag("mcp-attachment-mode-${mode.name.lowercase()}")
-            )
+    Text(stringResource(R.string.mcp_attachments_title), style = MaterialTheme.typography.titleMedium)
+
+    var modeExpanded by remember { mutableStateOf(false) }
+    val modeLabels = mapOf(
+        McpAttachmentMode.DYNAMIC to stringResource(R.string.mcp_attachments_mode_dynamic),
+        McpAttachmentMode.CLASSIC to stringResource(R.string.mcp_attachments_mode_classic)
+    )
+    ExposedDropdownMenuBox(expanded = modeExpanded, onExpandedChange = { modeExpanded = it }) {
+        SelectableOutlinedTextField(
+            value = modeLabels.getValue(settings.mode),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.mcp_attachments_mode_label)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(modeExpanded) },
+            modifier = Modifier.fillMaxWidth()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
+                .testTag("mcp-attachment-mode")
+        )
+        ExposedDropdownMenu(expanded = modeExpanded, onDismissRequest = { modeExpanded = false }) {
+            modeLabels.forEach { (mode, label) ->
+                DropdownMenuItem(text = { Text(label) }, onClick = {
+                    onChange(settings.copy(mode = mode))
+                    modeExpanded = false
+                })
+            }
         }
     }
+
     if (settings.mode == McpAttachmentMode.CLASSIC) {
-        Text(stringResource(R.string.mcp_attachments_classic_description), style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        PreferenceToggle(
-            stringResource(R.string.mcp_attachments_include_description),
-            stringResource(R.string.mcp_attachments_include_description_summary),
-            settings.includeToolDescription
-        ) { onChange(settings.copy(includeToolDescription = it)) }
+        Row(
+            Modifier.fillMaxWidth()
+                .toggleable(
+                    value = settings.includeToolDescription,
+                    role = Role.Switch,
+                    onValueChange = { onChange(settings.copy(includeToolDescription = it)) }
+                )
+                .padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(stringResource(R.string.mcp_attachments_include_description), style = MaterialTheme.typography.titleSmall)
+            Switch(checked = settings.includeToolDescription, onCheckedChange = null)
+        }
         return
     }
 
-    Text(stringResource(R.string.mcp_attachments_dynamic_description), style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant)
     McpNumberField(
-        value = settings.minMcps, range = 0..MAX_MCP_DYNAMIC_MIN, tag = "mcp-attachment-min-mcps",
-        label = stringResource(R.string.mcp_attachments_min_mcps),
-        hint = stringResource(R.string.mcp_attachments_min_mcps_hint, DEFAULT_MCP_DYNAMIC_MIN_MCPS)
+        value = settings.minMcps,
+        defaultValue = DEFAULT_MCP_DYNAMIC_MIN_MCPS,
+        range = 0..MAX_MCP_DYNAMIC_MIN,
+        tag = "mcp-attachment-min-mcps",
+        label = stringResource(R.string.mcp_attachments_min_mcps)
     ) { onChange(settings.copy(minMcps = it)) }
     McpNumberField(
-        value = settings.minTools, range = 0..MAX_MCP_DYNAMIC_MIN, tag = "mcp-attachment-min-tools",
-        label = stringResource(R.string.mcp_attachments_min_tools),
-        hint = stringResource(R.string.mcp_attachments_min_tools_hint, DEFAULT_MCP_DYNAMIC_MIN_TOOLS)
+        value = settings.minTools,
+        defaultValue = DEFAULT_MCP_DYNAMIC_MIN_TOOLS,
+        range = 0..MAX_MCP_DYNAMIC_MIN,
+        tag = "mcp-attachment-min-tools",
+        label = stringResource(R.string.mcp_attachments_min_tools)
     ) { onChange(settings.copy(minTools = it)) }
 
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf(
-            McpDynamicStrategy.OVERFLOW to R.string.mcp_attachments_strategy_overflow,
-            McpDynamicStrategy.ALL to R.string.mcp_attachments_strategy_all
-        ).forEach { (strategy, label) ->
-            FilterChip(
-                selected = settings.strategy == strategy,
-                onClick = { onChange(settings.copy(strategy = strategy)) },
-                label = { Text(stringResource(label)) },
-                modifier = Modifier.weight(1f).testTag("mcp-attachment-strategy-${strategy.name.lowercase()}")
-            )
+    var strategyExpanded by remember { mutableStateOf(false) }
+    val strategyLabels = mapOf(
+        McpDynamicStrategy.OVERFLOW to stringResource(R.string.mcp_attachments_strategy_overflow),
+        McpDynamicStrategy.ALL to stringResource(R.string.mcp_attachments_strategy_all)
+    )
+    ExposedDropdownMenuBox(expanded = strategyExpanded, onExpandedChange = { strategyExpanded = it }) {
+        SelectableOutlinedTextField(
+            value = strategyLabels.getValue(settings.strategy),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.mcp_attachments_dynamic_strategy_label)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(strategyExpanded) },
+            modifier = Modifier.fillMaxWidth()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
+                .testTag("mcp-attachment-strategy")
+        )
+        ExposedDropdownMenu(expanded = strategyExpanded, onDismissRequest = { strategyExpanded = false }) {
+            strategyLabels.forEach { (strategy, label) ->
+                DropdownMenuItem(text = { Text(label) }, onClick = {
+                    onChange(settings.copy(strategy = strategy))
+                    strategyExpanded = false
+                })
+            }
         }
     }
-    Text(
-        stringResource(
-            if (settings.strategy == McpDynamicStrategy.OVERFLOW) R.string.mcp_attachments_strategy_overflow_description
-            else R.string.mcp_attachments_strategy_all_description
-        ),
-        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
+
     McpNumberField(
-        value = settings.listLimit, range = 1..MAX_MCP_LIST_LIMIT, tag = "mcp-attachment-list-limit",
-        label = stringResource(R.string.mcp_attachments_list_limit),
-        hint = stringResource(R.string.common_number_range_default, DEFAULT_MCP_LIST_LIMIT)
+        value = settings.listLimit,
+        defaultValue = DEFAULT_MCP_LIST_LIMIT,
+        range = 1..MAX_MCP_LIST_LIMIT,
+        tag = "mcp-attachment-list-limit",
+        label = stringResource(R.string.mcp_attachments_list_limit)
     ) { onChange(settings.copy(listLimit = it)) }
     McpNumberField(
-        value = settings.loadLimit, range = 1..MAX_MCP_LOAD_LIMIT, tag = "mcp-attachment-load-limit",
-        label = stringResource(R.string.mcp_attachments_load_limit),
-        hint = stringResource(R.string.common_number_range_default, settings.defaultLoadLimit)
+        value = settings.loadLimit,
+        defaultValue = settings.defaultLoadLimit,
+        range = 1..MAX_MCP_LOAD_LIMIT,
+        tag = "mcp-attachment-load-limit",
+        label = stringResource(R.string.mcp_attachments_load_limit)
     ) { onChange(settings.withLoadLimit(it)) }
 }
 
-/** Numeric field that only saves values inside [range]; anything else is shown as an error. */
+/** Blank means use [defaultValue]; a custom value is shown only when it differs from the default. */
 @Composable
 private fun McpNumberField(
     value: Int,
+    defaultValue: Int,
     range: IntRange,
     tag: String,
     label: String,
-    hint: String,
     onValidValue: (Int) -> Unit
 ) {
-    var text by remember(value) { mutableStateOf(value.toString()) }
+    var text by remember(value) {
+        mutableStateOf(value.takeUnless { it == defaultValue }?.toString().orEmpty())
+    }
     val parsed = text.toIntOrNull()?.takeIf { it in range }
     SelectableOutlinedTextField(
         value = text,
         onValueChange = { input ->
             if (input.length <= range.last.toString().length && input.all(Char::isDigit)) {
                 text = input
-                input.toIntOrNull()?.takeIf { it in range }?.let(onValidValue)
+                if (input.isBlank()) onValidValue(defaultValue)
+                else input.toIntOrNull()?.takeIf { it in range }?.let(onValidValue)
             }
         },
         label = { Text(label) },
-        supportingText = {
-            Text(
-                if (parsed != null) hint else stringResource(
-                    if (range.first == 0) R.string.mcp_attachments_number_invalid_from_zero else R.string.common_number_range_invalid,
-                    range.last
-                )
-            )
-        },
-        isError = parsed == null, singleLine = true,
+        placeholder = { Text(stringResource(R.string.common_default_value_hint, defaultValue)) },
+        isError = text.isNotBlank() && parsed == null,
+        singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier.fillMaxWidth().testTag(tag)
     )

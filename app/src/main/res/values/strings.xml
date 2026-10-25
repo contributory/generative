@@ -665,13 +665,16 @@
         <string name="tool_call_strategy_description">Run tool calls one at a time or concurrently.</string>
     <string name="tool_call_concurrent_limit_description">Maximum number of tool calls that may run at the same time.</string>
 <string name="tool_call_options">Tool Call Options</string>
+    <string name="settings_mcp_tools">MCP &amp; Tools</string>
+    <string name="common_default_value_hint">Default: %1$d</string>
     <string name="tool_call_strategy">Tool Call Strategy</string>
     <string name="tool_call_strategy_sequential">Sequential</string>
     <string name="tool_call_strategy_parallel">Parallel</string>
     <string name="tool_call_concurrent_limit">Concurrent limit</string>
     <string name="settings_tool_calls">Tool calls</string>
-    <string name="mcp_attachments_title">MCP Attachments</string>
+    <string name="mcp_attachments_title">MCP Strategy</string>
     <string name="mcp_attachments_description">Choose how enabled MCP tools are sent to the model.</string>
+    <string name="mcp_attachments_mode_label">Attachment mode</string>
     <string name="mcp_attachments_mode_dynamic">Dynamic</string>
     <string name="mcp_attachments_mode_classic">Classic</string>
     <string name="mcp_attachments_classic_description">Sends every enabled MCP tool with each request.</string>
@@ -682,6 +685,7 @@
     <string name="mcp_attachments_min_mcps_hint">Default is %1$d. 0 applies Dynamic to any number of MCPs.</string>
     <string name="mcp_attachments_min_tools">Minimum MCP tools</string>
     <string name="mcp_attachments_min_tools_hint">Default is %1$d. 0 ignores the tool count.</string>
+    <string name="mcp_attachments_dynamic_strategy_label">Dynamic strategy</string>
     <string name="mcp_attachments_strategy_overflow">Overflow</string>
     <string name="mcp_attachments_strategy_all">All</string>
     <string name="mcp_attachments_strategy_overflow_description">Overflow keeps the few MCPs below the minimum attached classically; the rest are loaded on demand.</string>
