@@ -47,6 +47,9 @@ internal class ChatMessageActions(
     private val enqueueMessage: (String, StoredMessage) -> Unit,
     private val summaryJob: () -> Job?,
     private val pendingConversationWrites: () -> Int,
+    private val isRestoreInProgress: () -> Boolean = { false },
+    private val guardRestoreBoolean: (() -> Boolean) -> Boolean = { it() },
+    private val guardRestoreUnit: (() -> Unit) -> Unit = { it() },
     private val isReplacingGeneration: () -> Boolean,
     private val setReplacingGeneration: (Boolean) -> Unit,
     private val generationFor: (String) -> ChatGeneration,
@@ -56,8 +59,8 @@ internal class ChatMessageActions(
     private val providerWithReasoning: (ModelProvider, String, Conversation) -> ModelProvider,
     private val conversationTitleGenerator: ConversationTitleGenerator,
     private val toolEvents: (ModelProvider, String, List<StoredMessage>, String, String) -> Flow<GenerationEvent>,
-    private val writeConversation: (suspend () -> Unit) -> Unit,
-    private val saveEditedConversation: (Conversation, Conversation) -> Unit,
+    private val writeConversation: (() -> Unit, suspend () -> Unit) -> Boolean,
+    private val saveEditedConversation: (Conversation, Conversation) -> Boolean,
     private val drainQueuedMessages: () -> Unit,
     private val maybeStartAutomaticSummary: (StoredMessage?) -> Boolean,
 ) {
@@ -84,118 +87,131 @@ internal class ChatMessageActions(
     fun sendMessage(userText: String, fileAttachments: List<String> = emptyList()): Boolean {
         if (userText.isBlank() && fileAttachments.isEmpty()) return false
 
-        val existing = _currentConversation.value
-        if (isGenerating.value || summaryJob()?.isActive == true || pendingConversationWrites() > 0) {
-            val conversationId = existing?.id ?: return false
-            val queued = StoredMessage(
-                id = UUID.randomUUID().toString(),
-                role = ChatRole.USER,
-                versions = listOf(
+        return guardRestoreBoolean {
+            val existing = _currentConversation.value
+            if (isGenerating.value || summaryJob()?.isActive == true || pendingConversationWrites() > 0) {
+                val conversationId = existing?.id ?: return@guardRestoreBoolean false
+                val queued = StoredMessage(
+                    id = UUID.randomUUID().toString(),
+                    role = ChatRole.USER,
+                    versions = listOf(
+                        MessageVersion(
+                            content = userText,
+                            timestamp = System.currentTimeMillis().toString(),
+                            files = fileAttachments
+                        )
+                    ),
+                    isQueued = true
+                )
+                enqueueMessage(conversationId, queued)
+                return@guardRestoreBoolean true
+            }
+
+            val incoming = StoredMessage(UUID.randomUUID().toString(), ChatRole.USER,
+                listOf(MessageVersion(content = userText, files = fileAttachments, timestamp = System.currentTimeMillis().toString())),
+                isQueued = true)
+            if (maybeStartAutomaticSummary(incoming)) {
+                val conversationId = existing?.id ?: return@guardRestoreBoolean false
+                enqueueMessage(conversationId, incoming)
+                return@guardRestoreBoolean true
+            }
+            val prefs = appPreferences.value
+            val (baseProvider, modelId) = selectedChatModel(existing, prefs)
+            val canGenerate = baseProvider != null && modelId.isNotBlank()
+            val now = System.currentTimeMillis()
+            val user = StoredMessage(
+                UUID.randomUUID().toString(),
+                ChatRole.USER,
+                listOf(
                     MessageVersion(
                         content = userText,
-                        timestamp = System.currentTimeMillis().toString(),
+                        timestamp = now.toString(),
                         files = fileAttachments
                     )
-                ),
-                isQueued = true
-            )
-            enqueueMessage(conversationId, queued)
-            return true
-        }
-
-        val incoming = StoredMessage(UUID.randomUUID().toString(), ChatRole.USER,
-            listOf(MessageVersion(content = userText, files = fileAttachments, timestamp = System.currentTimeMillis().toString())),
-            isQueued = true)
-        if (maybeStartAutomaticSummary(incoming)) {
-            val conversationId = existing?.id ?: return false
-            enqueueMessage(conversationId, incoming)
-            return true
-        }
-        val prefs = appPreferences.value
-        val (baseProvider, modelId) = selectedChatModel(existing, prefs)
-        val canGenerate = baseProvider != null && modelId.isNotBlank()
-        val now = System.currentTimeMillis()
-        val user = StoredMessage(
-            UUID.randomUUID().toString(),
-            ChatRole.USER,
-            listOf(
-                MessageVersion(
-                    content = userText,
-                    timestamp = now.toString(),
-                    files = fileAttachments
                 )
             )
-        )
-        val assistant = StoredMessage(
-            UUID.randomUUID().toString(),
-            ChatRole.MODEL,
-            listOf(generatedVersion(baseProvider, modelId, now.toString()))
-        )
-        val firstMessage = existing == null || existing.messages.isEmpty()
-        val fallbackSource = userText.ifBlank { "Attachment" }
-        val fallbackTitle = fallbackSource.take(30) + if (fallbackSource.length > 30) "..." else ""
-        val conv = (existing ?: Conversation(
-            id = UUID.randomUUID().toString(),
-            title = fallbackTitle,
-            createdAt = now,
-            updatedAt = now
-        )).copy(
-            title = if (firstMessage) fallbackTitle else existing.title,
-            messages = (existing?.messages ?: emptyList()) + user +
-                if (canGenerate) listOf(assistant) else emptyList(),
-            updatedAt = now,
-            providerId = baseProvider?.id.orEmpty(),
-            modelId = modelId,
-            profileId = null,
-            selectedInstructionIds = existing?.selectedInstructionIds ?: prefs.instructionLibraryFor(null).selectedIds
-        )
-        _currentConversation.value = conv
-        viewModelScope.launch(LocalWriteErrors.handler) {
-            prefsRepo.setLastActiveConversationId(conv.id)
-        }
+            val assistant = StoredMessage(
+                UUID.randomUUID().toString(),
+                ChatRole.MODEL,
+                listOf(generatedVersion(baseProvider, modelId, now.toString()))
+            )
+            val firstMessage = existing == null || existing.messages.isEmpty()
+            val fallbackSource = userText.ifBlank { "Attachment" }
+            val fallbackTitle = fallbackSource.take(30) + if (fallbackSource.length > 30) "..." else ""
+            val conv = (existing ?: Conversation(
+                id = UUID.randomUUID().toString(),
+                title = fallbackTitle,
+                createdAt = now,
+                updatedAt = now
+            )).copy(
+                title = if (firstMessage) fallbackTitle else existing.title,
+                messages = (existing?.messages ?: emptyList()) + user +
+                    if (canGenerate) listOf(assistant) else emptyList(),
+                updatedAt = now,
+                providerId = baseProvider?.id.orEmpty(),
+                modelId = modelId,
+                profileId = null,
+                selectedInstructionIds = existing?.selectedInstructionIds ?: prefs.instructionLibraryFor(null).selectedIds
+            )
 
-        if (!canGenerate) {
-            writeConversation { conversationRepo.saveConversation(conv) }
-            return true
-        }
+            if (!canGenerate) {
+                return@guardRestoreBoolean writeConversation(
+                    {
+                        _currentConversation.value = conv
+                        viewModelScope.launch(LocalWriteErrors.handler) {
+                            if (!isRestoreInProgress()) prefsRepo.setLastActiveConversationId(conv.id)
+                        }
+                    }
+                ) {
+                    conversationRepo.saveConversation(conv)
+                }
+            }
 
-        val provider = providerWithReasoning(requireNotNull(baseProvider), modelId, conv)
-        val context = effectiveContext(
-            conv,
-            conv.messages.dropLast(1),
-            prefs.systemPromptFor(conv)
-        ).let { it.copy(messages = prefs.instructionRoleMessagesFor(conv) + it.messages) }
-        val started = generationFor(conv.id).startEvents(
-            conv,
-            assistant.id,
-            toolEvents(provider, modelId, context.messages, context.systemPrompt, conv.id),
-            usageContextKey = contextUsageKey(conv, prefs.systemPromptFor(conv),
-                baseProvider.config.modelConfigs[modelId] ?: ModelConfiguration(displayName = modelId),
-                prefs.instructionRoleMessagesFor(conv), toolSettings.value)
-        )
-        val titleSettings = toolSettings.value.system["title_generation"]
-        if (started && !conv.startedWithDirectMedia() && shouldGenerateConversationTitle(
-                userText = userText,
-                messageCount = conv.messages.count { it.role == ChatRole.USER || it.role == ChatRole.MODEL },
-                minimumWords = titleSettings?.titleGenerationMinWords ?: DEFAULT_TITLE_GENERATION_MIN_WORDS,
-                minimumMessages = titleSettings?.titleGenerationMinMessages ?: DEFAULT_TITLE_GENERATION_MIN_MESSAGES
-            )) {
-            val originalUserText = conv.messages.firstOrNull { it.role == ChatRole.USER }?.content
-                .orEmpty().ifBlank { "Attachment" }
-            val expectedFallbackTitle = originalUserText.take(30) +
-                if (originalUserText.length > 30) "..." else ""
-            conversationTitleGenerator.generate(conv, expectedFallbackTitle)
+            _currentConversation.value = conv
+            viewModelScope.launch(LocalWriteErrors.handler) {
+                if (!isRestoreInProgress()) prefsRepo.setLastActiveConversationId(conv.id)
+            }
+
+            val provider = providerWithReasoning(requireNotNull(baseProvider), modelId, conv)
+            val context = effectiveContext(
+                conv,
+                conv.messages.dropLast(1),
+                prefs.systemPromptFor(conv)
+            ).let { it.copy(messages = prefs.instructionRoleMessagesFor(conv) + it.messages) }
+            val started = generationFor(conv.id).startEvents(
+                conv,
+                assistant.id,
+                toolEvents(provider, modelId, context.messages, context.systemPrompt, conv.id),
+                usageContextKey = contextUsageKey(conv, prefs.systemPromptFor(conv),
+                    baseProvider.config.modelConfigs[modelId] ?: ModelConfiguration(displayName = modelId),
+                    prefs.instructionRoleMessagesFor(conv), toolSettings.value)
+            )
+            val titleSettings = toolSettings.value.system["title_generation"]
+            if (started && !conv.startedWithDirectMedia() && shouldGenerateConversationTitle(
+                    userText = userText,
+                    messageCount = conv.messages.count { it.role == ChatRole.USER || it.role == ChatRole.MODEL },
+                    minimumWords = titleSettings?.titleGenerationMinWords ?: DEFAULT_TITLE_GENERATION_MIN_WORDS,
+                    minimumMessages = titleSettings?.titleGenerationMinMessages ?: DEFAULT_TITLE_GENERATION_MIN_MESSAGES
+                )) {
+                val originalUserText = conv.messages.firstOrNull { it.role == ChatRole.USER }?.content
+                    .orEmpty().ifBlank { "Attachment" }
+                val expectedFallbackTitle = originalUserText.take(30) +
+                    if (originalUserText.length > 30) "..." else ""
+                conversationTitleGenerator.generate(conv, expectedFallbackTitle)
+            }
+            started
         }
-        return started
     }
 
-    fun sendMedia(request: DirectMediaRequest): Boolean {
+    fun sendMedia(request: DirectMediaRequest): Boolean = guardRestoreBoolean {
         if (isGenerating.value || summaryJob()?.isActive == true || pendingConversationWrites() > 0 ||
-            request.prompt.isBlank() || request.prompt.length > 32000) return false
-        if (request.kind !in listOf(ModelType.IMAGE_GENERATION, ModelType.VIDEO_GENERATION)) return false
-        val provider = providers.value.find { it.id == request.providerId } ?: return false
+            request.prompt.isBlank() || request.prompt.length > 32000) return@guardRestoreBoolean false
+        if (request.kind !in listOf(ModelType.IMAGE_GENERATION, ModelType.VIDEO_GENERATION)) {
+            return@guardRestoreBoolean false
+        }
+        val provider = providers.value.find { it.id == request.providerId } ?: return@guardRestoreBoolean false
         if (provider.config.modelConfigs[request.modelId]?.modelType != request.kind ||
-            provider.config.modelIds?.contains(request.modelId) == false) return false
+            provider.config.modelIds?.contains(request.modelId) == false) return@guardRestoreBoolean false
         val now = System.currentTimeMillis()
         val user = StoredMessage(UUID.randomUUID().toString(), ChatRole.USER,
             listOf(MessageVersion(content = request.prompt, timestamp = now.toString(), files = request.attachments)))
@@ -213,9 +229,9 @@ internal class ChatMessageActions(
         )
         _currentConversation.value = conversation
         viewModelScope.launch(LocalWriteErrors.handler) {
-            prefsRepo.setLastActiveConversationId(conversation.id)
+            if (!isRestoreInProgress()) prefsRepo.setLastActiveConversationId(conversation.id)
         }
-        return generationFor(conversation.id).startEvents(conversation, assistant.id,
+        generationFor(conversation.id).startEvents(conversation, assistant.id,
             mediaEvents(provider, request.modelId, request.kind, request.prompt, request.attachments))
     }
 
@@ -295,7 +311,9 @@ internal class ChatMessageActions(
     fun stopGeneration() { generationForCurrent()?.stop() }
 
     fun editMessage(messageId: String, newContent: String, files: List<String>): Boolean {
-        if (summaryJob()?.isActive == true || (newContent.isBlank() && files.isEmpty())) return false
+        if (isRestoreInProgress() || summaryJob()?.isActive == true || (newContent.isBlank() && files.isEmpty())) {
+            return false
+        }
         if (isGenerating.value) {
             val conversation = _currentConversation.value ?: return false
             val message = conversation.messages.firstOrNull { it.id == messageId } ?: return false
@@ -319,64 +337,65 @@ internal class ChatMessageActions(
         return editMessageNow(messageId, newContent, files)
     }
 
-    private fun editMessageNow(messageId: String, newContent: String, files: List<String>): Boolean {
-        if (summaryJob()?.isActive == true || (newContent.isBlank() && files.isEmpty())) return false
-        val conv = _currentConversation.value ?: return false
-        val currentMsgs = conv.messages.toMutableList()
-        val idx = currentMsgs.indexOfFirst { it.id == messageId }
-        if (idx == -1) return false
+    private fun editMessageNow(messageId: String, newContent: String, files: List<String>): Boolean =
+        guardRestoreBoolean {
+            if (summaryJob()?.isActive == true || (newContent.isBlank() && files.isEmpty())) {
+                return@guardRestoreBoolean false
+            }
+            val conv = _currentConversation.value ?: return@guardRestoreBoolean false
+            val currentMsgs = conv.messages.toMutableList()
+            val idx = currentMsgs.indexOfFirst { it.id == messageId }
+            if (idx == -1) return@guardRestoreBoolean false
 
-        val oldMsg = currentMsgs[idx]
-        val newVersions = oldMsg.versions.toMutableList()
-        val now = System.currentTimeMillis()
-        newVersions.add(
-            MessageVersion(
-                content = newContent,
-                timestamp = now.toString(),
-                files = files,
-                providerId = oldMsg.activeVersion.providerId,
-                modelId = oldMsg.activeVersion.modelId,
-                modelDisplayName = oldMsg.activeVersion.modelDisplayName
+            val oldMsg = currentMsgs[idx]
+            val newVersions = oldMsg.versions.toMutableList()
+            val now = System.currentTimeMillis()
+            newVersions.add(
+                MessageVersion(
+                    content = newContent,
+                    timestamp = now.toString(),
+                    files = files,
+                    providerId = oldMsg.activeVersion.providerId,
+                    modelId = oldMsg.activeVersion.modelId,
+                    modelDisplayName = oldMsg.activeVersion.modelDisplayName
+                )
             )
-        )
-        currentMsgs[idx] = oldMsg.copy(
-            versions = newVersions,
-            activeVersionIndex = newVersions.size - 1
-        )
+            currentMsgs[idx] = oldMsg.copy(
+                versions = newVersions,
+                activeVersionIndex = newVersions.size - 1
+            )
 
-        if (oldMsg.role == ChatRole.USER) {
-            val prefs = appPreferences.value
-            val (provider, modelId) = selectedChatModel(conv, prefs)
-            if (provider == null || modelId.isBlank()) return false
+            if (oldMsg.role == ChatRole.USER) {
+                val prefs = appPreferences.value
+                val (provider, modelId) = selectedChatModel(conv, prefs)
+                if (provider == null || modelId.isBlank()) return@guardRestoreBoolean false
 
-            val previousResponse = currentMsgs.getOrNull(idx + 1)?.takeIf { it.role == ChatRole.MODEL }
-            val responseId = previousResponse?.id ?: UUID.randomUUID().toString()
-            val responseVersion = generatedVersion(provider, modelId, now.toString())
-            val response = previousResponse?.copy(
-                versions = previousResponse.versions + responseVersion,
-                activeVersionIndex = previousResponse.versions.size
-            ) ?: StoredMessage(responseId, ChatRole.MODEL, listOf(responseVersion))
-            val updatedMessages = currentMsgs.take(idx + 1) + response
+                val previousResponse = currentMsgs.getOrNull(idx + 1)?.takeIf { it.role == ChatRole.MODEL }
+                val responseId = previousResponse?.id ?: UUID.randomUUID().toString()
+                val responseVersion = generatedVersion(provider, modelId, now.toString())
+                val response = previousResponse?.copy(
+                    versions = previousResponse.versions + responseVersion,
+                    activeVersionIndex = previousResponse.versions.size
+                ) ?: StoredMessage(responseId, ChatRole.MODEL, listOf(responseVersion))
+                val updatedMessages = currentMsgs.take(idx + 1) + response
+                val updated = conv.copy(
+                    messages = updatedMessages,
+                    summary = summaryAfterMessageMutation(conv, idx, updatedMessages),
+                    updatedAt = now,
+                    providerId = provider.id,
+                    modelId = modelId,
+                    profileId = null
+                )
+                return@guardRestoreBoolean startUserMessageResponse(updated, responseId, provider, modelId, prefs)
+            }
+
             val updated = conv.copy(
-                messages = updatedMessages,
-                summary = summaryAfterMessageMutation(conv, idx, updatedMessages),
-                updatedAt = now,
-                providerId = provider.id,
-                modelId = modelId,
-                profileId = null
+                messages = currentMsgs,
+                summary = summaryAfterMessageMutation(conv, idx, currentMsgs),
+                updatedAt = System.currentTimeMillis()
             )
-            return startUserMessageResponse(updated, responseId, provider, modelId, prefs)
+            saveEditedConversation(conv, updated)
         }
-
-        val updated = conv.copy(
-            messages = currentMsgs,
-            summary = summaryAfterMessageMutation(conv, idx, currentMsgs),
-            updatedAt = System.currentTimeMillis()
-        )
-        _currentConversation.value = updated
-        saveEditedConversation(conv, updated)
-        return true
-    }
 
     internal fun startUserMessageResponse(
         conversation: Conversation,
@@ -420,7 +439,7 @@ internal class ChatMessageActions(
     }
 
     fun deleteMessage(messageId: String) {
-        if (summaryJob()?.isActive == true) return
+        if (isRestoreInProgress() || summaryJob()?.isActive == true) return
         val current = _currentConversation.value ?: return
         if (isGenerating.value && existingGeneration(current.id)?.snapshot?.id == current.id) {
             viewModelScope.launch {
@@ -432,22 +451,21 @@ internal class ChatMessageActions(
         deleteMessageNow(messageId)
     }
 
-    private fun deleteMessageNow(messageId: String) {
-        val conv = _currentConversation.value ?: return
+    private fun deleteMessageNow(messageId: String) = guardRestoreUnit {
+        val conv = _currentConversation.value ?: return@guardRestoreUnit
         val messageIndex = conv.messages.indexOfFirst { it.id == messageId }
-        if (messageIndex == -1) return
+        if (messageIndex == -1) return@guardRestoreUnit
         val currentMsgs = conv.messages.filter { it.id != messageId }
         val updated = conv.copy(
             messages = currentMsgs,
             summary = summaryAfterMessageMutation(conv, messageIndex, currentMsgs),
             updatedAt = System.currentTimeMillis()
         )
-        _currentConversation.value = updated
         saveEditedConversation(conv, updated)
     }
 
     fun deleteMessageVersion(messageId: String) {
-        if (summaryJob()?.isActive == true) return
+        if (isRestoreInProgress() || summaryJob()?.isActive == true) return
         val current = _currentConversation.value ?: return
         if (isGenerating.value && existingGeneration(current.id)?.snapshot?.id == current.id) {
             viewModelScope.launch {
@@ -459,11 +477,11 @@ internal class ChatMessageActions(
         deleteMessageVersionNow(messageId)
     }
 
-    private fun deleteMessageVersionNow(messageId: String) {
-        val conv = _currentConversation.value ?: return
+    private fun deleteMessageVersionNow(messageId: String) = guardRestoreUnit {
+        val conv = _currentConversation.value ?: return@guardRestoreUnit
         val currentMsgs = conv.messages.toMutableList()
         val messageIndex = currentMsgs.indexOfFirst { it.id == messageId }
-        if (messageIndex == -1) return
+        if (messageIndex == -1) return@guardRestoreUnit
 
         val message = currentMsgs[messageIndex]
         if (message.versions.size <= 1) {
@@ -483,13 +501,12 @@ internal class ChatMessageActions(
             summary = summaryAfterMessageMutation(conv, messageIndex, currentMsgs),
             updatedAt = System.currentTimeMillis()
         )
-        _currentConversation.value = updated
         saveEditedConversation(conv, updated)
     }
 
-    fun switchMessageVersion(messageId: String, versionIndex: Int) {
-        if (isGenerating.value) return
-        val conv = _currentConversation.value ?: return
+    fun switchMessageVersion(messageId: String, versionIndex: Int) = guardRestoreUnit {
+        if (isGenerating.value) return@guardRestoreUnit
+        val conv = _currentConversation.value ?: return@guardRestoreUnit
         val currentMsgs = conv.messages.toMutableList()
         val idx = currentMsgs.indexOfFirst { it.id == messageId }
         if (idx != -1) {
@@ -501,7 +518,6 @@ internal class ChatMessageActions(
                     summary = summaryAfterMessageMutation(conv, idx, currentMsgs),
                     updatedAt = System.currentTimeMillis()
                 )
-                _currentConversation.value = updated
                 saveEditedConversation(conv, updated)
             }
         }

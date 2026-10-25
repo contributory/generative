@@ -233,6 +233,7 @@ class ChatViewModel(
         isGenerationReplacementActive = { replacingGeneration },
         isSummaryActive = { summaryJob?.isActive == true },
         pendingWrites = { pendingConversationWrites },
+        isRestoreInProgress = { isRestoreInProgress },
         currentConversation = _currentConversation,
         appPreferences = appPreferences,
         providers = providers,
@@ -262,6 +263,8 @@ class ChatViewModel(
         disconnectRemoteMachines = toolChat::disconnectRemoteMachines,
         summaryConversationId = { summaryProgress.value?.conversationId },
         cancelSummary = { summaryJob?.cancelAndJoin() },
+        cancelTitles = ::cancelAllTitleGenerations,
+        cancelTitlesFor = ::cancelTitleGenerationsFor,
         maybeStartAutomaticSummary = { automaticSummary.maybeStart() },
         isGenerationReplacementActive = { replacingGeneration },
         isSummaryActive = { summaryJob?.isActive == true },
@@ -276,6 +279,9 @@ class ChatViewModel(
         configuredTextModel = modelContext::configuredTextModel,
         existingGeneration = ::existingGeneration,
         generationFor = ::generationFor,
+        isRestoreInProgress = { isRestoreInProgress },
+        withRestoreGuard = { block -> conversationCoordinator.withRestoreGuard(onRejected = {}, block = block) },
+        writeConversation = { block -> conversationCoordinator.writeConversation(serialize = true, block = block) },
     )
 
     private val messageActions = ChatMessageActions(
@@ -291,6 +297,9 @@ class ChatViewModel(
         enqueueMessage = conversationCoordinator::enqueueMessage,
         summaryJob = { summaryJob },
         pendingConversationWrites = { pendingConversationWrites },
+        isRestoreInProgress = { isRestoreInProgress },
+        guardRestoreBoolean = { block -> conversationCoordinator.withRestoreGuard(onRejected = { false }, block = block) },
+        guardRestoreUnit = { block -> conversationCoordinator.withRestoreGuard(onRejected = {}, block = block) },
         isReplacingGeneration = { replacingGeneration },
         setReplacingGeneration = { replacingGeneration = it },
         generationFor = ::generationFor,
@@ -300,7 +309,9 @@ class ChatViewModel(
         providerWithReasoning = modelContext::providerWithReasoning,
         conversationTitleGenerator = conversationTitleGenerator,
         toolEvents = ::toolEvents,
-        writeConversation = { block -> conversationCoordinator.writeConversation(block = block) },
+        writeConversation = { beforeLaunch, block ->
+            conversationCoordinator.writeConversation(beforeLaunch = beforeLaunch, block = block)
+        },
         saveEditedConversation = ::saveEditedConversation,
         drainQueuedMessages = ::drainQueuedMessages,
         maybeStartAutomaticSummary = automaticSummary::maybeStart,
@@ -310,6 +321,8 @@ class ChatViewModel(
         isGenerating = isGenerating,
         summaryJob = { summaryJob },
         pendingConversationWrites = { pendingConversationWrites },
+        guardRestoreBoolean = { block -> conversationCoordinator.withRestoreGuard(onRejected = { false }, block = block) },
+        guardRestoreUnit = { block -> conversationCoordinator.withRestoreGuard(onRejected = {}, block = block) },
         currentConversation = _currentConversation,
         appPreferences = appPreferences,
         selectedChatModel = modelContext::selectedChatModel,
@@ -327,14 +340,21 @@ class ChatViewModel(
 
     val queuedMessages: StateFlow<List<StoredMessage>> get() = conversationCoordinator.queuedMessages
     private val pendingConversationWrites: Int get() = conversationCoordinator.pendingConversationWrites
+    private val isRestoreInProgress: Boolean get() = conversationCoordinator.isRestoreInProgress
 
+    private suspend fun cancelAllTitleGenerations() = conversationTitleGenerator.cancelAll()
+    private suspend fun cancelTitleGenerationsFor(conversationIds: Set<String>) =
+        conversationTitleGenerator.cancelFor(conversationIds)
     private fun restoreLastConversation() = conversationCoordinator.restoreLastConversation()
     private fun drainQueuedMessages() = conversationCoordinator.drainQueuedMessages()
     private fun takePendingMessage(conversationId: String): StoredMessage? =
         conversationCoordinator.takePendingMessage(conversationId)
-    private fun writeConversation(serialize: Boolean = false, block: suspend () -> Unit) =
-        conversationCoordinator.writeConversation(serialize, block)
-    private fun saveEditedConversation(previous: Conversation, updated: Conversation) =
+    private fun writeConversation(
+        serialize: Boolean = false,
+        beforeLaunch: () -> Unit = {},
+        block: suspend () -> Unit
+    ): Boolean = conversationCoordinator.writeConversation(serialize, beforeLaunch, block)
+    private fun saveEditedConversation(previous: Conversation, updated: Conversation): Boolean =
         conversationCoordinator.saveEditedConversation(previous, updated)
 
     fun editQueuedMessage(id: String, newContent: String, files: List<String>): Boolean =
@@ -347,8 +367,9 @@ class ChatViewModel(
     fun deleteConversations(ids: Set<String>, attachedFiles: Collection<String> = emptyList()) =
         conversationCoordinator.deleteConversations(ids, attachedFiles)
     fun renameConversation(id: String, newTitle: String) = conversationCoordinator.renameConversation(id, newTitle)
-    fun clearAllConversations(attachedFiles: Collection<String> = emptyList()) =
+    fun clearAllConversations(attachedFiles: Collection<String> = emptyList()) {
         conversationCoordinator.clearAllConversations(attachedFiles)
+    }
     suspend fun importConversations(items: List<Conversation>) = conversationCoordinator.importConversations(items)
     suspend fun conversationsForExport(): List<Conversation> = conversationCoordinator.conversationsForExport()
     /** Drains pending writes and stops chat work after the backup has been validated. */
@@ -384,27 +405,38 @@ class ChatViewModel(
     }
 
     fun setDefaultSystemPrompt(prompt: String) {
+        if (isRestoreInProgress) return
         viewModelScope.launch(LocalWriteErrors.handler) {
-            prefsRepo.setDefaultSystemPrompt(prompt)
+            if (!isRestoreInProgress) prefsRepo.setDefaultSystemPrompt(prompt)
         }
     }
     fun setInstructionEnabled(instructionId: String, enabled: Boolean) =
         conversationCoordinator.setInstructionEnabled(instructionId, enabled)
-    fun setInstructionLibrary(library: InstructionLibrary) { viewModelScope.launch(LocalWriteErrors.handler) { prefsRepo.setInstructionLibrary(library) } }
+    fun setInstructionLibrary(library: InstructionLibrary) {
+        if (isRestoreInProgress) return
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            if (!isRestoreInProgress) prefsRepo.setInstructionLibrary(library)
+        }
+    }
 
     fun selectModel(providerId: String, modelId: String) {
+        if (isRestoreInProgress) return
         viewModelScope.launch(LocalWriteErrors.handler) {
-            launch { prefsRepo.setSelectedModel(providerId, modelId) }
+            if (isRestoreInProgress) return@launch
+            launch {
+                if (!isRestoreInProgress) prefsRepo.setSelectedModel(providerId, modelId)
+            }
             val provider = modelRepo.getProviderById(providerId)
-            if (provider?.config?.modelIds != null && modelId !in provider.config.modelIds) {
+            if (!isRestoreInProgress && provider?.config?.modelIds != null && modelId !in provider.config.modelIds) {
                 modelRepo.saveProvider(provider.copy(config = provider.config.copy(
                     modelIds = provider.config.modelIds + modelId,
                     modelConfigs = provider.config.modelConfigs + (modelId to ModelConfiguration())
                 )))
             }
             // Keep the open conversation's selection separate from the new-chat default.
-            val current = _currentConversation.value
-            if (appPreferences.value.persistSelectedModel && current != null) {
+            conversationCoordinator.withRestoreGuard(onRejected = {}) {
+                val current = _currentConversation.value ?: return@withRestoreGuard
+                if (!appPreferences.value.persistSelectedModel) return@withRestoreGuard
                 val updated = current.copy(
                     providerId = providerId,
                     modelId = modelId,
@@ -414,20 +446,23 @@ class ChatViewModel(
                     generationFor(current.id).updateConversation {
                         it.copy(providerId = providerId, modelId = modelId, updatedAt = updated.updatedAt)
                     }
+                } else if (updated.messages.isNotEmpty()) {
+                    writeConversation(beforeLaunch = { _currentConversation.value = updated }) {
+                        conversationRepo.saveConversation(updated)
+                    }
                 } else {
                     _currentConversation.value = updated
-                }
-                if (updated.messages.isNotEmpty() && existingGeneration(current.id)?.snapshot?.id != current.id) {
-                    writeConversation { conversationRepo.saveConversation(updated) }
                 }
             }
         }
     }
 
     fun setPersistSelectedModel(enabled: Boolean) {
+        if (isRestoreInProgress) return
         viewModelScope.launch(LocalWriteErrors.handler) {
+            if (isRestoreInProgress) return@launch
             prefsRepo.setPersistSelectedModel(enabled)
-            if (enabled) {
+            if (enabled && !isRestoreInProgress) {
                 val current = _currentConversation.value ?: return@launch
                 val provider = modelContext.conversationModelProvider(current) ?: return@launch
                 prefsRepo.setSelectedModel(provider.id, current.modelId)
@@ -436,7 +471,10 @@ class ChatViewModel(
     }
 
     fun selectSpeechService(serviceId: String?) {
-        viewModelScope.launch(LocalWriteErrors.handler) { prefsRepo.setSelectedSpeechServiceId(serviceId) }
+        if (isRestoreInProgress) return
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            if (!isRestoreInProgress) prefsRepo.setSelectedSpeechServiceId(serviceId)
+        }
     }
 
     private val speech = ChatSpeechCoordinator(viewModelScope, appPreferences, providers, speechServices,
@@ -451,8 +489,15 @@ class ChatViewModel(
         val current = _currentConversation.value ?: return
         val normalized = effort?.takeIf { it.isNotBlank() }
         val updated = current.copy(reasoningEffort = normalized, updatedAt = System.currentTimeMillis())
-        _currentConversation.value = updated
-        if (updated.messages.isNotEmpty()) writeConversation { conversationRepo.saveConversation(updated) }
+        if (updated.messages.isNotEmpty()) {
+            writeConversation(beforeLaunch = { _currentConversation.value = updated }) {
+                conversationRepo.saveConversation(updated)
+            }
+        } else {
+            conversationCoordinator.withRestoreGuard(onRejected = {}) {
+                _currentConversation.value = updated
+            }
+        }
     }
 
     fun setSummaryRole(role: SummaryRole) {
@@ -462,16 +507,18 @@ class ChatViewModel(
             summary = summary.copy(role = role),
             updatedAt = System.currentTimeMillis()
         )
-        _currentConversation.value = updated
-        writeConversation { conversationRepo.saveConversation(updated) }
+        writeConversation(beforeLaunch = { _currentConversation.value = updated }) {
+            conversationRepo.saveConversation(updated)
+        }
     }
 
     fun deleteConversationSummary() {
         val current = _currentConversation.value ?: return
         if (current.summary == null) return
         val updated = current.copy(summary = null, updatedAt = System.currentTimeMillis())
-        _currentConversation.value = updated
-        writeConversation { conversationRepo.saveConversation(updated) }
+        writeConversation(beforeLaunch = { _currentConversation.value = updated }) {
+            conversationRepo.saveConversation(updated)
+        }
     }
 
     fun cancelConversationSummary() {
@@ -481,22 +528,25 @@ class ChatViewModel(
         summaryJob?.cancel()
     }
 
-    fun startConversationSummary(request: ConversationSummaryRequest): Boolean {
-        if (isGenerating.value || summaryJob?.isActive == true || pendingConversationWrites > 0) return false
-        val conversation = _currentConversation.value ?: return false
-        if (conversation.messages.isEmpty()) return false
-        val configured = modelContext.summaryTextModel() ?: return false
-        val (provider, config) = configured
-        summaryJob = viewModelScope.launch {
-            try {
-                summaries.summarize(conversation, provider, config, request)
-            } finally {
-                summaryJob = null
-                drainQueuedMessages()
+    fun startConversationSummary(request: ConversationSummaryRequest): Boolean =
+        conversationCoordinator.withRestoreGuard(onRejected = { false }) {
+            if (isGenerating.value || summaryJob?.isActive == true || pendingConversationWrites > 0) {
+                return@withRestoreGuard false
             }
+            val conversation = _currentConversation.value ?: return@withRestoreGuard false
+            if (conversation.messages.isEmpty()) return@withRestoreGuard false
+            val configured = modelContext.summaryTextModel() ?: return@withRestoreGuard false
+            val (provider, config) = configured
+            summaryJob = viewModelScope.launch {
+                try {
+                    summaries.summarize(conversation, provider, config, request)
+                } finally {
+                    summaryJob = null
+                    drainQueuedMessages()
+                }
+            }
+            true
         }
-        return true
-    }
 
 
     fun cleanCache() {

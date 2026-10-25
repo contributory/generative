@@ -1,7 +1,6 @@
 package org.starfall.generative.navigation
 
 import android.net.Uri
-import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -11,6 +10,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -27,9 +28,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import java.io.File
-import java.io.FileInputStream
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -87,6 +85,11 @@ import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 private data class MachineEditorPage(val machine: RemoteMachine, val isNew: Boolean)
 private data class ProviderEditorPage(val provider: ModelProvider, val isNew: Boolean)
 private enum class RemoteMachineSettingsPage { SETTINGS }
+
+internal val NullableFilePathSaver = Saver<File?, String>(
+    save = { it?.absolutePath },
+    restore = { path -> path.takeIf { it.isNotBlank() }?.let(::File) }
+)
 
 enum class AppDestination(val route: String) {
     CHAT("chat"),
@@ -192,56 +195,59 @@ fun AppNavigation(
     val importedProviderId by configurationViewModel.importedProviderId.collectAsStateWithLifecycle()
     val providerImportFailed by configurationViewModel.providerImportFailed.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var pendingExport by remember { mutableStateOf<File?>(null) }
-    var preparingExport by remember { mutableStateOf(false) }
-    var pendingImport by remember { mutableStateOf(false) }
-    var importInProgress by remember { mutableStateOf(false) }
+    var pendingExport by rememberSaveable(stateSaver = NullableFilePathSaver) { mutableStateOf<File?>(null) }
+    var exportPickerOpen by rememberSaveable { mutableStateOf(false) }
+    var pendingImport by rememberSaveable { mutableStateOf(false) }
+    val preparingExport by appDataTransfer.preparingExport.collectAsStateWithLifecycle()
+    val preparedExport by appDataTransfer.preparedExport.collectAsStateWithLifecycle()
+    val importInProgress by appDataTransfer.importInProgress.collectAsStateWithLifecycle()
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip")
     ) { uri ->
         val archive = pendingExport
-        pendingExport = null
-        if (uri == null || archive == null) {
+        val wasWaiting = exportPickerOpen
+        exportPickerOpen = false
+        if (uri == null || !wasWaiting) {
+            pendingExport = null
             archive?.delete()
             return@rememberLauncherForActivityResult
         }
-        coroutineScope.launch {
+        if (archive == null || !archive.isFile) {
+            pendingExport = null
+            Toast.makeText(context, R.string.export_write_failed, Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+        appDataTransfer.writeExportToUri(uri, archive)
+        pendingExport = null
+    }
+
+    LaunchedEffect(preparedExport, exportPickerOpen) {
+        if (preparedExport != null && !exportPickerOpen && pendingExport == null) {
+            val archive = appDataTransfer.consumePreparedExport() ?: return@LaunchedEffect
+            pendingExport = archive
+            exportPickerOpen = true
             try {
-                withContext(Dispatchers.IO) {
-                    context.contentResolver.openOutputStream(uri)?.use { output ->
-                        FileInputStream(archive).use { it.copyTo(output) }
-                    } ?: error(context.getString(R.string.export_open_file_failed))
-                }
-                Toast.makeText(context, R.string.export_zip_success, Toast.LENGTH_SHORT).show()
-            } catch (cancelled: CancellationException) {
-                throw cancelled
+                exportLauncher.launch(BackupExportKind.FULL_BACKUP.fileName)
             } catch (_: Exception) {
-                Toast.makeText(context, R.string.export_write_failed, Toast.LENGTH_LONG).show()
-            } finally {
+                exportPickerOpen = false
+                pendingExport = null
                 archive.delete()
+                Toast.makeText(context, R.string.export_write_failed, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    LaunchedEffect(exportPickerOpen, pendingExport?.absolutePath, preparedExport, preparingExport) {
+        if (!exportPickerOpen && pendingExport == null && preparedExport == null && !preparingExport) {
+            withContext(Dispatchers.IO) {
+                appDataTransfer.cleanupAbandonedExports()
             }
         }
     }
 
     fun exportData() {
-        if (preparingExport || pendingExport != null) return
-        preparingExport = true
-        coroutineScope.launch {
-            try {
-                pendingExport = appDataTransfer.createZipBackup()
-                exportLauncher.launch(BackupExportKind.FULL_BACKUP.fileName)
-            } catch (cancelled: CancellationException) {
-                pendingExport?.delete()
-                pendingExport = null
-                throw cancelled
-            } catch (_: Exception) {
-                pendingExport?.delete()
-                pendingExport = null
-                Toast.makeText(context, R.string.export_prepare_failed, Toast.LENGTH_LONG).show()
-            } finally {
-                preparingExport = false
-            }
-        }
+        if (preparingExport || exportPickerOpen || pendingExport != null || importInProgress) return
+        appDataTransfer.prepareExport()
     }
 
     val importLauncher = rememberLauncherForActivityResult(
@@ -250,48 +256,22 @@ fun AppNavigation(
         val shouldImport = pendingImport
         pendingImport = false
         if (uri == null || !shouldImport || importInProgress) return@rememberLauncherForActivityResult
-        importInProgress = true
-        coroutineScope.launch {
-            var chatPreparedForRestore = false
-            var restoreSucceeded = false
-            try {
-                val fileName = withContext(Dispatchers.IO) {
-                    context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
-                        ?.use { cursor ->
-                            if (cursor.moveToFirst()) cursor.getString(0) else null
-                        }
-                }
-                val result = withContext(Dispatchers.IO) {
-                    context.contentResolver.openInputStream(uri)?.use { input ->
-                        appDataTransfer.import(input, fileName) {
-                            // Invoked only after the ZIP manifest, entries and file sets validate.
-                            viewModel.prepareForRestore()
-                            chatPreparedForRestore = true
-                        }
-                    } ?: error(context.getString(R.string.export_open_file_failed))
-                }
-                restoreSucceeded = result.fullRestore
-                Toast.makeText(context, context.getString(R.string.import_success, result.itemCount), Toast.LENGTH_SHORT).show()
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                Toast.makeText(context, context.getString(R.string.import_failed, error.message.orEmpty()), Toast.LENGTH_LONG).show()
-            } finally {
-                try {
-                    if (chatPreparedForRestore) {
-                        withContext(NonCancellable) { viewModel.finishRestore(restoreSucceeded) }
-                    }
-                } finally {
-                    importInProgress = false
-                }
-            }
-        }
+        appDataTransfer.importFromUri(
+            uri = uri,
+            beforeFullRestore = viewModel::prepareForRestore,
+            afterFullRestore = viewModel::finishRestore
+        )
     }
 
     fun importData() {
-        if (pendingImport || importInProgress) return
+        if (pendingImport || importInProgress || preparingExport || exportPickerOpen) return
         pendingImport = true
-        importLauncher.launch(arrayOf("application/zip", "application/json", "text/*"))
+        try {
+            importLauncher.launch(arrayOf("application/zip", "application/json", "text/*"))
+        } catch (_: Exception) {
+            pendingImport = false
+            Toast.makeText(context, R.string.export_open_file_failed, Toast.LENGTH_LONG).show()
+        }
     }
     // The app preference is the default for new chats. Existing chats keep showing
     // the model they last used, independently of that default.
@@ -960,8 +940,10 @@ fun AppNavigation(
                             onResetAllData = {
                                 viewModel.deleteAllUserData(chatAttachments.attachments.value)
                             },
-                             onExportZip = ::exportData,
-                             onImportZip = ::importData,
+                            onExportZip = ::exportData,
+                            onImportZip = ::importData,
+                            exportInProgress = preparingExport,
+                            importInProgress = importInProgress,
                             onBack = { navController.popBackStack() }
                         )
                     }

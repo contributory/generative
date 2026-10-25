@@ -45,19 +45,24 @@ fun AppDataScreen(
     onResetAllData: () -> Unit,
     onExportZip: () -> Unit = {},
     onImportZip: () -> Unit = {},
+    exportInProgress: Boolean = false,
+    importInProgress: Boolean = false,
     onBack: () -> Unit
 ) {
     var showClearConfirm by rememberSaveable { mutableStateOf(false) }
     var showResetConfirm by rememberSaveable { mutableStateOf(false) }
     var showExportWarning by rememberSaveable { mutableStateOf(false) }
-    BackHandler(onBack = onBack)
+    val transferBusy = exportInProgress || importInProgress
+    BackHandler {
+        if (!importInProgress) onBack()
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_category_app_data)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = onBack, enabled = !importInProgress) {
                         FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                     }
                 }
@@ -89,11 +94,13 @@ fun AppDataScreen(
                     )
                     OutlinedButton(
                         onClick = { showClearConfirm = true },
+                        enabled = !transferBusy,
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) { Text(stringResource(R.string.settings_clear_all_chat_history)) }
                     OutlinedButton(
                         onClick = { showResetConfirm = true },
+                        enabled = !transferBusy,
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) { Text(stringResource(R.string.settings_reset_all_application_data)) }
@@ -106,11 +113,17 @@ fun AppDataScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    DataActionButton(stringResource(R.string.settings_export_all_data_zip)) {
+                    DataActionButton(
+                        title = stringResource(R.string.settings_export_all_data_zip),
+                        enabled = !transferBusy
+                    ) {
                         showExportWarning = true
                     }
                     Spacer(Modifier.height(4.dp))
-                    DataActionButton(stringResource(R.string.settings_import_all_data_zip)) {
+                    DataActionButton(
+                        title = stringResource(R.string.settings_import_all_data_zip),
+                        enabled = !transferBusy
+                    ) {
                         onImportZip()
                     }
                 }
@@ -118,7 +131,7 @@ fun AppDataScreen(
         }
     }
 
-    if (showExportWarning) {
+    if (showExportWarning && !transferBusy) {
         AlertDialog(
             onDismissRequest = { showExportWarning = false },
             title = { Text(stringResource(R.string.settings_backup_sensitive_warning_title)) },
@@ -137,7 +150,7 @@ fun AppDataScreen(
         )
     }
 
-    if (showClearConfirm) {
+    if (showClearConfirm && !transferBusy) {
         AlertDialog(
             onDismissRequest = { showClearConfirm = false },
             title = { Text(stringResource(R.string.settings_clear_all_chats_title)) },
@@ -156,7 +169,7 @@ fun AppDataScreen(
         )
     }
 
-    if (showResetConfirm) {
+    if (showResetConfirm && !transferBusy) {
         AlertDialog(
             onDismissRequest = { showResetConfirm = false },
             title = { Text(stringResource(R.string.settings_factory_reset_title)) },
@@ -197,9 +210,10 @@ private fun DataStatItem(label: String, count: String) {
 }
 
 @Composable
-private fun DataActionButton(title: String, onClick: () -> Unit) {
+private fun DataActionButton(title: String, enabled: Boolean = true, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
+        enabled = enabled,
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {

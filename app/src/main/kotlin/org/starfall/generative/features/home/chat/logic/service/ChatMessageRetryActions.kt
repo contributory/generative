@@ -17,6 +17,8 @@ internal class ChatMessageRetryActions(
     private val isGenerating: StateFlow<Boolean>,
     private val summaryJob: () -> Job?,
     private val pendingConversationWrites: () -> Int,
+    private val guardRestoreBoolean: (() -> Boolean) -> Boolean = { it() },
+    private val guardRestoreUnit: (() -> Unit) -> Unit = { it() },
     private val currentConversation: MutableStateFlow<Conversation?>,
     private val appPreferences: StateFlow<AppPreferences>,
     private val selectedChatModel: (Conversation?, AppPreferences) -> Pair<ModelProvider?, String>,
@@ -41,25 +43,27 @@ internal class ChatMessageRetryActions(
         conversation, responseId, provider, modelId, preferences, rollbackConversation, resume
     )
 
-    fun resendUserMessage(messageId: String): Boolean {
-        if (isGenerating.value || summaryJob()?.isActive == true || pendingConversationWrites() > 0) return false
-        val current = currentConversation.value ?: return false
+    fun resendUserMessage(messageId: String): Boolean = guardRestoreBoolean {
+        if (isGenerating.value || summaryJob()?.isActive == true || pendingConversationWrites() > 0) {
+            return@guardRestoreBoolean false
+        }
+        val current = currentConversation.value ?: return@guardRestoreBoolean false
         val prefs = appPreferences.value
         val mediaTarget = composerMediaTarget()
         val (baseProvider, model) = mediaTarget?.let { it.provider to it.modelId } ?: selectedChatModel(current, prefs)
-        if (baseProvider == null || model.isBlank()) return false
+        if (baseProvider == null || model.isBlank()) return@guardRestoreBoolean false
         val responseId = UUID.randomUUID().toString()
         val conv = prepareUserMessageRetry(current, messageId, responseId,
             generatedVersion(baseProvider, model, System.currentTimeMillis().toString()))?.copy(
             providerId = baseProvider.id,
             modelId = model,
             profileId = null
-        ) ?: return false
+        ) ?: return@guardRestoreBoolean false
         val userIndex = conv.messages.indexOfFirst { it.id == messageId }
         val responseMessageId = conv.messages.getOrNull(userIndex + 1)
-            ?.takeIf { it.role == ChatRole.MODEL }?.id ?: return false
-        if (mediaTarget != null) return startMediaResponseAction(conv, responseMessageId, mediaTarget, null)
-        return startUserMessageResponse(conv, responseMessageId, baseProvider, model, prefs)
+            ?.takeIf { it.role == ChatRole.MODEL }?.id ?: return@guardRestoreBoolean false
+        if (mediaTarget != null) return@guardRestoreBoolean startMediaResponseAction(conv, responseMessageId, mediaTarget, null)
+        startUserMessageResponse(conv, responseMessageId, baseProvider, model, prefs)
     }
 
     /**
@@ -67,16 +71,18 @@ internal class ChatMessageRetryActions(
      * tool results stay in the same message and generation continues into it, unlike resend or
      * regenerate which restart from the user message.
      */
-    fun retryFromError(messageId: String) {
-        if (isGenerating.value || summaryJob()?.isActive == true || pendingConversationWrites() > 0) return
-        val current = currentConversation.value ?: return
+    fun retryFromError(messageId: String) = guardRestoreUnit {
+        if (isGenerating.value || summaryJob()?.isActive == true || pendingConversationWrites() > 0) {
+            return@guardRestoreUnit
+        }
+        val current = currentConversation.value ?: return@guardRestoreUnit
         val failed = current.messages.lastOrNull()?.takeIf {
             it.id == messageId && it.role == ChatRole.MODEL && it.activeVersion.generationError != null
-        } ?: return
+        } ?: return@guardRestoreUnit
         val prefs = appPreferences.value
         val mediaTarget = composerMediaTarget()
         val (baseProvider, model) = mediaTarget?.let { it.provider to it.modelId } ?: selectedChatModel(current, prefs)
-        if (baseProvider == null || model.isBlank()) return
+        if (baseProvider == null || model.isBlank()) return@guardRestoreUnit
         val version = failed.activeVersion
         val hasPartial = version.content.isNotBlank() || !version.reasoningContent.isNullOrBlank() ||
             version.toolActivity.any { !it.name.endsWith(": connect") }
@@ -99,24 +105,26 @@ internal class ChatMessageRetryActions(
         // A media request has no partial answer to continue; it restarts from the user prompt.
         if (mediaTarget != null) {
             startMediaResponseAction(conv, messageId, mediaTarget, null)
-            return
+            return@guardRestoreUnit
         }
         startUserMessageResponse(conv, messageId, baseProvider, model, prefs, resume = hasPartial)
     }
 
-    fun regenerateMessage(messageId: String) {
-        if (isGenerating.value || summaryJob()?.isActive == true || pendingConversationWrites() > 0) return
-        val current = currentConversation.value ?: return
+    fun regenerateMessage(messageId: String) = guardRestoreUnit {
+        if (isGenerating.value || summaryJob()?.isActive == true || pendingConversationWrites() > 0) {
+            return@guardRestoreUnit
+        }
+        val current = currentConversation.value ?: return@guardRestoreUnit
         val prefs = appPreferences.value
         val mediaTarget = composerMediaTarget()
         val (baseProvider, model) = mediaTarget?.let { it.provider to it.modelId } ?: selectedChatModel(current, prefs)
-        if (baseProvider == null || model.isBlank()) return
+        if (baseProvider == null || model.isBlank()) return@guardRestoreUnit
         var conv = prepareRegeneration(current, messageId,
             generatedVersion(baseProvider, model, System.currentTimeMillis().toString()))?.copy(
             providerId = baseProvider.id,
             modelId = model,
             profileId = null
-        ) ?: return
+        ) ?: return@guardRestoreUnit
 
         val summaryBoundary = current.summary?.throughMessageId
         if (summaryBoundary != null && conv.messages.none { it.id == summaryBoundary }) {
@@ -124,7 +132,7 @@ internal class ChatMessageRetryActions(
         }
         if (mediaTarget != null) {
             startMediaResponseAction(conv, messageId, mediaTarget, current)
-            return
+            return@guardRestoreUnit
         }
         startUserMessageResponse(
             conv,

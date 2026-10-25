@@ -46,6 +46,8 @@ internal class ChatConversationCoordinator(
     private val disconnectRemoteMachines: () -> Unit,
     private val summaryConversationId: () -> String?,
     private val cancelSummary: suspend () -> Unit,
+    private val cancelTitles: suspend () -> Unit = {},
+    private val cancelTitlesFor: suspend (Set<String>) -> Unit = {},
     private val maybeStartAutomaticSummary: () -> Boolean,
     private val isGenerationReplacementActive: () -> Boolean,
     private val isSummaryActive: () -> Boolean,
@@ -53,12 +55,14 @@ internal class ChatConversationCoordinator(
 ) {
     private var conversationSelectionToken = 0L
     @Volatile private var pendingWrites = 0
+    @Volatile private var activeAdmissions = 0
     @Volatile private var restoreInProgress = false
     private val writeStateLock = Any()
-    private val pendingWritesFlow = MutableStateFlow(0)
+    private val activeOperationsFlow = MutableStateFlow(0)
     private val serializedWrites = Mutex()
 
     val pendingConversationWrites: Int get() = pendingWrites
+    val isRestoreInProgress: Boolean get() = restoreInProgress
 
     val queuedMessages: StateFlow<List<StoredMessage>> = combine(
         currentConversation,
@@ -67,9 +71,41 @@ internal class ChatConversationCoordinator(
         conversation?.id?.let { queued[it].orEmpty() }.orEmpty()
     }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
-    fun enqueueMessage(conversationId: String, message: StoredMessage) {
+    /**
+     * Atomically rejects synchronous chat mutations and generation starts once [beginRestore] has
+     * begun, and keeps [beginRestore] waiting until an admitted start registers its background work.
+     */
+    inline fun <T> withRestoreGuard(onRejected: () -> T, block: () -> T): T {
+        if (!tryAcquireAdmission()) return onRejected()
+        return try {
+            block()
+        } finally {
+            releaseAdmission()
+        }
+    }
+
+    @PublishedApi
+    internal fun tryAcquireAdmission(): Boolean = synchronized(writeStateLock) {
+        if (restoreInProgress) {
+            false
+        } else {
+            activeAdmissions++
+            activeOperationsFlow.value = pendingWrites + activeAdmissions
+            true
+        }
+    }
+
+    @PublishedApi
+    internal fun releaseAdmission() {
+        synchronized(writeStateLock) {
+            activeAdmissions--
+            activeOperationsFlow.value = pendingWrites + activeAdmissions
+        }
+    }
+
+    fun enqueueMessage(conversationId: String, message: StoredMessage) = withRestoreGuard(onRejected = {}) {
         queuedMessagesByConversation.update { queued ->
-            queued + (conversationId to (queued[conversationId].orEmpty() + message))
+            queued + (conversationId to queued[conversationId].orEmpty() + message)
         }
     }
 
@@ -84,25 +120,26 @@ internal class ChatConversationCoordinator(
         return next
     }
 
-    fun editQueuedMessage(id: String, newContent: String, files: List<String>): Boolean {
-        if ((newContent.isBlank() && files.isEmpty()) || queuedMessagesByConversation.value.values.none { queued ->
-                queued.any { it.id == id }
-            }) return false
-        queuedMessagesByConversation.update { queuedByConversation ->
-            queuedByConversation.mapValues { (_, queued) -> queued.map { message ->
-                if (message.id == id) {
-                    message.copy(versions = listOf(MessageVersion(
-                        content = newContent,
-                        timestamp = System.currentTimeMillis().toString(),
-                        files = files
-                    )))
-                } else message
-            } }
+    fun editQueuedMessage(id: String, newContent: String, files: List<String>): Boolean =
+        withRestoreGuard(onRejected = { false }) {
+            if ((newContent.isBlank() && files.isEmpty()) || queuedMessagesByConversation.value.values.none { queued ->
+                    queued.any { it.id == id }
+                }) return@withRestoreGuard false
+            queuedMessagesByConversation.update { queuedByConversation ->
+                queuedByConversation.mapValues { (_, queued) -> queued.map { message ->
+                    if (message.id == id) {
+                        message.copy(versions = listOf(MessageVersion(
+                            content = newContent,
+                            timestamp = System.currentTimeMillis().toString(),
+                            files = files
+                        )))
+                    } else message
+                } }
+            }
+            true
         }
-        return true
-    }
 
-    fun deleteQueuedMessage(id: String) {
+    fun deleteQueuedMessage(id: String) = withRestoreGuard(onRejected = {}) {
         queuedMessagesByConversation.update { queuedByConversation ->
             queuedByConversation.mapValues { (_, queued) -> queued.filterNot { it.id == id } }
         }
@@ -123,43 +160,62 @@ internal class ChatConversationCoordinator(
         next?.let { sendMessage(it.content, it.files) }
     }
 
-    fun writeConversation(serialize: Boolean = false, block: suspend () -> Unit) {
+    fun writeConversation(
+        serialize: Boolean = false,
+        beforeLaunch: () -> Unit = {},
+        block: suspend () -> Unit
+    ): Boolean {
         val accepted = synchronized(writeStateLock) {
             if (restoreInProgress) {
                 false
             } else {
                 pendingWrites++
-                pendingWritesFlow.value = pendingWrites
+                activeOperationsFlow.value = pendingWrites + activeAdmissions
                 true
             }
         }
-        if (!accepted) return
+        if (!accepted) return false
+
+        try {
+            beforeLaunch()
+        } catch (error: Throwable) {
+            completeWrite()
+            throw error
+        }
 
         scope.launch(LocalWriteErrors.handler) {
             try {
                 if (serialize) serializedWrites.withLock { block() } else block()
             } finally {
-                synchronized(writeStateLock) {
-                    pendingWrites--
-                    pendingWritesFlow.value = pendingWrites
-                }
+                completeWrite()
                 drainQueuedMessages()
             }
         }
+        return true
     }
 
-    /** Blocks new conversation writes and waits for all previously accepted writes to finish. */
+    private fun completeWrite() {
+        synchronized(writeStateLock) {
+            pendingWrites--
+            activeOperationsFlow.value = pendingWrites + activeAdmissions
+        }
+    }
+
+    /** Blocks new conversation actions/writes and waits for all admitted work to stop and drain. */
     suspend fun beginRestore() {
         synchronized(writeStateLock) {
             check(!restoreInProgress) { "A full restore is already in progress." }
             restoreInProgress = true
         }
         try {
-            pendingWritesFlow.first { it == 0 }
+            activeOperationsFlow.first { it == 0 }
             serializedWrites.withLock {
+                conversationSelectionToken++
+                cancelTitles()
                 cancelSummary()
                 allGenerations().forEach { it.stopAndJoin() }
             }
+            activeOperationsFlow.first { it == 0 }
         } catch (error: Throwable) {
             endRestore()
             throw error
@@ -172,8 +228,8 @@ internal class ChatConversationCoordinator(
         drainQueuedMessages()
     }
 
-    fun saveEditedConversation(previous: Conversation, updated: Conversation) {
-        writeConversation {
+    fun saveEditedConversation(previous: Conversation, updated: Conversation): Boolean {
+        val accepted = writeConversation(beforeLaunch = { currentConversation.value = updated }) {
             try {
                 conversationRepo.saveConversation(updated)
             } catch (error: Exception) {
@@ -183,14 +239,21 @@ internal class ChatConversationCoordinator(
                 throw error
             }
         }
+        if (!accepted && currentConversation.value == updated) {
+            currentConversation.value = previous
+        }
+        return accepted
     }
 
     fun restoreLastConversation() {
+        if (restoreInProgress) return
         // A restore must be able to invalidate a history load that was already in flight.
         val requestToken = conversationSelectionToken
         scope.launch {
             val preferences = prefsRepo.appPreferencesFlow.first()
-            if (!preferences.continueLastConversation || currentConversation.value != null) return@launch
+            if (restoreInProgress || !preferences.continueLastConversation || currentConversation.value != null) {
+                return@launch
+            }
 
             val storedId = preferences.lastActiveConversationId
             // An empty ID means the previous session was on a blank New Chat; null is a legacy install.
@@ -204,29 +267,32 @@ internal class ChatConversationCoordinator(
             } ?: return@launch
 
             // A selection or restore boundary made while Room was loading always wins.
-            if (requestToken == conversationSelectionToken && currentConversation.value == null &&
-                !deletingAllConversations.value && lastConversation.id !in deletingConversations.value
+            if (!restoreInProgress && requestToken == conversationSelectionToken &&
+                currentConversation.value == null && !deletingAllConversations.value &&
+                lastConversation.id !in deletingConversations.value
             ) selectConversation(lastConversation.id)
         }
     }
 
     /** Compatibility overload for callers that already have the complete in-memory conversation. */
-    fun selectConversation(conversation: Conversation) {
-        if (deletingAllConversations.value || conversation.id in deletingConversations.value) return
+    fun selectConversation(conversation: Conversation) = withRestoreGuard(onRejected = {}) {
+        if (deletingAllConversations.value || conversation.id in deletingConversations.value) return@withRestoreGuard
         conversationSelectionToken++
         applySelectedConversation(conversation)
     }
 
-    fun selectConversation(conversationId: String) {
-        if (deletingAllConversations.value || conversationId in deletingConversations.value) return
+    fun selectConversation(conversationId: String) = withRestoreGuard(onRejected = {}) {
+        if (deletingAllConversations.value || conversationId in deletingConversations.value) return@withRestoreGuard
         val request = ++conversationSelectionToken
         scope.launch(LocalWriteErrors.handler) {
             val conversation = conversationRepo.loadById(conversationId) ?: return@launch
-            // A slow history read must not replace a newer selection.
-            if (request != conversationSelectionToken || deletingAllConversations.value ||
-                conversationId in deletingConversations.value
-            ) return@launch
-            applySelectedConversation(conversation)
+            // A slow history read must not replace a newer selection or cross a restore boundary.
+            withRestoreGuard(onRejected = {}) {
+                if (request != conversationSelectionToken || deletingAllConversations.value ||
+                    conversationId in deletingConversations.value
+                ) return@withRestoreGuard
+                applySelectedConversation(conversation)
+            }
         }
     }
 
@@ -235,8 +301,9 @@ internal class ChatConversationCoordinator(
         if (selected.id != currentConversation.value?.id) disconnectRemoteMachines()
         currentConversation.value = selected
         scope.launch(LocalWriteErrors.handler) {
+            if (restoreInProgress) return@launch
             prefsRepo.setLastActiveConversationId(selected.id)
-            if (!appPreferences.value.persistSelectedModel) return@launch
+            if (restoreInProgress || !appPreferences.value.persistSelectedModel) return@launch
             providerForConversation(selected)?.let { provider ->
                 prefsRepo.setSelectedModel(provider.id, selected.modelId)
             }
@@ -244,7 +311,7 @@ internal class ChatConversationCoordinator(
         drainQueuedMessages()
     }
 
-    fun startNewChat() {
+    fun startNewChat() = withRestoreGuard(onRejected = {}) {
         // A selection read started earlier must not replace this blank draft when it completes.
         conversationSelectionToken++
         disconnectRemoteMachines()
@@ -255,17 +322,19 @@ internal class ChatConversationCoordinator(
             createdAt = now,
             updatedAt = now
         )
-        scope.launch(LocalWriteErrors.handler) { prefsRepo.setLastActiveConversationId(null) }
+        scope.launch(LocalWriteErrors.handler) {
+            if (!restoreInProgress) prefsRepo.setLastActiveConversationId(null)
+        }
     }
 
     /**
      * Switches one instruction on or off for the open chat. Like the selected model, the choice stays with
      * the chat and also becomes the default that new chats start from.
      */
-    fun setInstructionEnabled(instructionId: String, enabled: Boolean) {
+    fun setInstructionEnabled(instructionId: String, enabled: Boolean) = withRestoreGuard(onRejected = {}) {
         val current = currentConversation.value
         val library = appPreferences.value.instructionLibraryFor(current)
-        if (library.instructions.none { it.id == instructionId }) return
+        if (library.instructions.none { it.id == instructionId }) return@withRestoreGuard
         val selected = if (enabled) library.selectedIds + instructionId else library.selectedIds - instructionId
         val updated = current?.copy(selectedInstructionIds = selected, updatedAt = System.currentTimeMillis())
         // A chat that is generating keeps its live snapshot; edit that instead of the stale copy.
@@ -273,13 +342,17 @@ internal class ChatConversationCoordinator(
         if (updated != null) {
             if (generation != null) {
                 generation.updateConversation { it.copy(selectedInstructionIds = selected, updatedAt = updated.updatedAt) }
+            } else if (updated.messages.isNotEmpty()) {
+                if (!writeConversation(beforeLaunch = { currentConversation.value = updated }) {
+                        conversationRepo.saveConversation(updated)
+                    }
+                ) return@withRestoreGuard
             } else {
                 currentConversation.value = updated
             }
         }
-        scope.launch(LocalWriteErrors.handler) { prefsRepo.setInstructionLibrary(library.copy(selectedIds = selected)) }
-        if (updated != null && generation == null && updated.messages.isNotEmpty()) {
-            writeConversation { conversationRepo.saveConversation(updated) }
+        scope.launch(LocalWriteErrors.handler) {
+            if (!restoreInProgress) prefsRepo.setInstructionLibrary(library.copy(selectedIds = selected))
         }
     }
 
@@ -289,16 +362,24 @@ internal class ChatConversationCoordinator(
     fun deleteConversations(ids: Set<String>, attachedFiles: Collection<String> = emptyList()) {
         val targets = ids - deletingConversations.value
         if (targets.isEmpty()) return
-        val previous = currentConversation.value?.takeIf { it.id in targets }
-        deletingConversations.update { it + targets }
-        if (previous != null) {
-            currentConversation.value = null
-            queuedMessagesByConversation.update { it - targets }
-            scope.launch(LocalWriteErrors.handler) { prefsRepo.setLastActiveConversationId(null) }
-        }
-        writeConversation(serialize = true) {
+        var previous: Conversation? = null
+        writeConversation(
+            serialize = true,
+            beforeLaunch = {
+                previous = currentConversation.value?.takeIf { it.id in targets }
+                deletingConversations.update { it + targets }
+                if (previous != null) {
+                    currentConversation.value = null
+                    queuedMessagesByConversation.update { it - targets }
+                    scope.launch(LocalWriteErrors.handler) {
+                        if (!restoreInProgress) prefsRepo.setLastActiveConversationId(null)
+                    }
+                }
+            }
+        ) {
             var deleted = false
             try {
+                cancelTitlesFor(targets)
                 if (summaryConversationId() in targets) cancelSummary()
                 generationsFor(targets).forEach { it.stopAndJoin() }
                 // Relational file references remain readable when a quarantined chat cannot be decoded.
@@ -336,11 +417,17 @@ internal class ChatConversationCoordinator(
     }
 
     fun renameConversation(id: String, newTitle: String) {
-        val previous = currentConversation.value?.takeIf { it.id == id }
-        renamingConversations.update { it + (id to newTitle) }
-        previous?.let { currentConversation.value = it.copy(title = newTitle) }
-        writeConversation(serialize = true) {
+        var previous: Conversation? = null
+        writeConversation(
+            serialize = true,
+            beforeLaunch = {
+                previous = currentConversation.value?.takeIf { it.id == id }
+                renamingConversations.update { it + (id to newTitle) }
+                previous?.let { currentConversation.value = it.copy(title = newTitle) }
+            }
+        ) {
             try {
+                cancelTitlesFor(setOf(id))
                 existingGeneration(id)?.stopAndJoin()
                 conversationRepo.renameConversation(id, newTitle)
             } catch (error: Exception) {
@@ -354,16 +441,24 @@ internal class ChatConversationCoordinator(
         }
     }
 
-    fun clearAllConversations(attachedFiles: Collection<String> = emptyList()) {
-        if (deletingAllConversations.value) return
-        val previous = currentConversation.value
-        deletingAllConversations.value = true
-        currentConversation.value = null
-        queuedMessagesByConversation.value = emptyMap()
-        scope.launch(LocalWriteErrors.handler) { prefsRepo.setLastActiveConversationId(null) }
-        writeConversation(serialize = true) {
+    fun clearAllConversations(attachedFiles: Collection<String> = emptyList()): Boolean {
+        if (deletingAllConversations.value) return false
+        var previous: Conversation? = null
+        return writeConversation(
+            serialize = true,
+            beforeLaunch = {
+                previous = currentConversation.value
+                deletingAllConversations.value = true
+                currentConversation.value = null
+                queuedMessagesByConversation.value = emptyMap()
+                scope.launch(LocalWriteErrors.handler) {
+                    if (!restoreInProgress) prefsRepo.setLastActiveConversationId(null)
+                }
+            }
+        ) {
             var deleted = false
             try {
+                cancelTitles()
                 cancelSummary()
                 allGenerations().forEach { it.stopAndJoin() }
                 val uploads = conversationRepo.allFileReferences().mapNotNull(toolFiles::nameOf).toSet() +
@@ -389,6 +484,7 @@ internal class ChatConversationCoordinator(
         serializedWrites.withLock {
             // Invalidate any selection load that began before the restore boundary.
             conversationSelectionToken++
+            cancelTitles()
             cancelSummary()
             allGenerations().forEach { it.stopAndJoin() }
             currentConversation.value = null
@@ -404,7 +500,10 @@ internal class ChatConversationCoordinator(
         conversationRepo.conversationList.first().mapNotNull { conversationRepo.loadById(it.id) }
 
     fun deleteAllUserData(attachedFiles: Collection<String> = emptyList()) {
-        clearAllConversations(attachedFiles)
-        scope.launch(LocalWriteErrors.handler) { prefsRepo.setSelectedProfileId(null) }
+        if (clearAllConversations(attachedFiles)) {
+            scope.launch(LocalWriteErrors.handler) {
+                if (!restoreInProgress) prefsRepo.setSelectedProfileId(null)
+            }
+        }
     }
 }
