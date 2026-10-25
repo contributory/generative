@@ -198,6 +198,12 @@ fun ChatScreen(
         } else if (anchor.messageId?.let { id -> messages.none { it.id == id } } == true) {
             anchor.end()
         }
+        // "Open at the newest message" is for reopening a saved chat. A reply that starts streaming ends it,
+        // otherwise the very first exchange of a chat (no anchor, no previous messages) is pinned to the
+        // bottom by the opening effects below whatever the auto scroll setting is.
+        if (openingAtBottom && isGenerating && generatingConversationId == conversation?.id) {
+            openingAtBottom = false
+        }
     }
 
     var editDraft by remember(conversation?.id) { mutableStateOf<ChatInputEditDraft?>(null) }
