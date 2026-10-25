@@ -4,6 +4,16 @@ Before editing the project, inspect the current workspace and read this file. Fo
 
 Preserve existing behavior and unrelated user changes. Make focused source edits rather than rewriting whole files or removing code merely to reduce line count. Do work one item at a time from easy to hard. Do not commit, push, or build unless explicitly asked. Run lint and tests together after the implementation is complete rather than repeatedly invoking Gradle for lint during the work.
 
+## Isolated and offline agent environments
+
+Some agents run in sandboxes with no Internet access and may have no JDK, Android SDK, emulator, Gradle distribution, or cached dependencies. Follow these rules when working in such environments:
+
+- Do not install/download toolchains or dependencies, invoke `sdkmanager`, or try network workarounds. Do not repeatedly run Gradle after confirming a required toolchain/artifact is missing.
+- Diagnose available prerequisites first (`java -version`, whether `$ANDROID_HOME`/`$ANDROID_SDK_ROOT` exists, cached Gradle wrapper/distributions and dependencies, and repository scripts). Do not assume a path or environment variable exists.
+- If prerequisites are available, prefer offline Gradle mode when appropriate. If the JDK, Android SDK, wrapper distribution, or required dependencies are absent, stop build attempts and continue with source inspection and checks that can run offline, such as `git diff --check`, local scripts, and static review.
+- Report each verification precisely: distinguish passed, failed, and not run; state which missing prerequisite blocked a check. Never claim a build, lint, or test passed if it was not executed successfully. Add tests where appropriate even when they cannot run in the sandbox, and provide the exact command for a fully provisioned environment.
+- Environment limitations are not a reason to guess APIs or make broad speculative changes. Inspect existing source/tests, keep changes narrow, and document remaining verification gaps.
+
 ## Architecture rules
 
 Treat these as mandatory constraints; `docs/structure.md` contains the full package map and supporting details.
