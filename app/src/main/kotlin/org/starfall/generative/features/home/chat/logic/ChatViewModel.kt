@@ -243,7 +243,7 @@ class ChatViewModel(
     private val _queuedMessages = MutableStateFlow<Map<String, List<StoredMessage>>>(emptyMap())
     private var replacingGeneration = false
 
-    private val conversationCoordinator = ChatConversationCoordinator(
+    private val conversationCoordinator: ChatConversationCoordinator = ChatConversationCoordinator(
         scope = viewModelScope,
         conversationRepo = conversationRepo,
         prefsRepo = prefsRepo,
