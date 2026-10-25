@@ -23,7 +23,31 @@ internal class ChatToolSettingsActions(
     }
 
     fun setQuickMcp(id: String, enabled: Boolean) {
-        scope.launch(LocalWriteErrors.handler) { store.update { it.copy(quickMcp = it.quickMcp + (id to enabled)) } }
+        scope.launch(LocalWriteErrors.handler) {
+            store.update { settings ->
+                if (settings.webSearchProviderId == id) settings
+                else settings.copy(quickMcp = settings.quickMcp + (id to enabled))
+            }
+        }
+    }
+
+    fun setWebSearchProvider(id: String?) {
+        scope.launch(LocalWriteErrors.handler) {
+            store.update { settings ->
+                settings.copy(
+                    webSearchProviderId = id?.takeIf(String::isNotBlank),
+                    webSearchEnabled = settings.webSearchEnabled && id != null
+                )
+            }
+        }
+    }
+
+    fun setWebSearchEnabled(enabled: Boolean) {
+        scope.launch(LocalWriteErrors.handler) {
+            store.update { settings ->
+                settings.copy(webSearchEnabled = enabled && settings.webSearchProviderId != null)
+            }
+        }
     }
 
     fun setMcpToolEnabled(serverId: String, toolName: String, enabled: Boolean) {

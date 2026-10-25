@@ -40,6 +40,7 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.generation.hasToolCalls
 import org.starfall.generative.shared.model.globalMcpToolEnabled
+import org.starfall.generative.shared.model.mcpServerEnabled
 import org.starfall.generative.shared.model.configuredMcpTool
 import org.starfall.generative.shared.model.configuredMcpArguments
 import org.starfall.generative.shared.model.isContentApiPreset
@@ -152,7 +153,7 @@ class ToolChatViewModel internal constructor(
         val configuredMachines = toolExecution.configuredMachines()
         try {
             servers
-                .filter { settings().quickMcp[it.id] != false }
+                .filter { mcpServerEnabled(settings(), it.id) }
                 .forEach { server ->
                     val activity = ToolActivity(UUID.randomUUID().toString(), "${server.name}: connect")
                     send(GenerationEvent.Tool(activity))
@@ -327,7 +328,7 @@ class ToolChatViewModel internal constructor(
                         else if (tool.name in mcpDynamicToolNames) mcpAttachments.active
                         else settings().system[tool.name]?.enabled == true
                     } else {
-                        settings().quickMcp[tool.serverId] != false &&
+                        mcpServerEnabled(settings(), tool.serverId) &&
                             globalMcpToolEnabled(settings(), tool.serverId, tool.originalName) &&
                             mcpAttachments.includes(tool.serverId)
                     }
@@ -414,7 +415,7 @@ class ToolChatViewModel internal constructor(
                             toolExecution.executeRemoteTool(machine, tool.originalName, args)
                         } else if (tool.serverId != null) {
                             check(
-                                settings().quickMcp[tool.serverId] != false &&
+                                mcpServerEnabled(settings(), tool.serverId) &&
                                     globalMcpToolEnabled(settings(), tool.serverId, tool.originalName)
                             ) { "MCP tool disabled" }
                             mcpAttachments.markUsed(tool.serverId)

@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.ui.LocalToolControls
+import org.starfall.generative.shared.ui.WebSearchProviderSettings
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -133,5 +134,11 @@ internal fun FeatureToolsSheetContent(
                     )
                 }
             }
+            WebSearchProviderSettings(
+                servers = controls.servers,
+                settings = controls.settings,
+                onProviderChange = controls.setWebSearchProvider,
+                onEnabledChange = controls.setWebSearchEnabled
+            )
     }
 }

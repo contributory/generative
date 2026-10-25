@@ -74,6 +74,7 @@ class ToolsManagementSheetsTest {
         compose.onNodeWithText("Image Generation").assertIsDisplayed()
         compose.onNodeWithText("Video Generation").assertIsDisplayed()
         compose.onNodeWithText("Send File").assertIsDisplayed()
+        compose.onNodeWithText("Web Search Provider").assertIsDisplayed()
         compose.onNodeWithText("MCP Connectors").assertDoesNotExist()
         val toggleableNodes = compose.onAllNodes(
             SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState)

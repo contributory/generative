@@ -83,6 +83,8 @@ class ChatViewModel(
     fun setSystemTool(name: String, config: SystemToolConfig) = toolSettingsActions.setSystemTool(name, config)
     fun setSendFileEnabled(enabled: Boolean) = toolSettingsActions.setSendFileEnabled(enabled)
     fun setQuickMcp(id: String, enabled: Boolean) = toolSettingsActions.setQuickMcp(id, enabled)
+    fun setWebSearchProvider(id: String?) = toolSettingsActions.setWebSearchProvider(id)
+    fun setWebSearchEnabled(enabled: Boolean) = toolSettingsActions.setWebSearchEnabled(enabled)
     fun setMcpToolEnabled(serverId: String, toolName: String, enabled: Boolean) =
         toolSettingsActions.setMcpToolEnabled(serverId, toolName, enabled)
     fun setMcpToolParameter(

@@ -326,6 +326,8 @@ fun AppNavigation(
             providers = providers,
             setSystem = viewModel::setSystemTool,
             setMcp = viewModel::setQuickMcp,
+            setWebSearchProvider = viewModel::setWebSearchProvider,
+            setWebSearchEnabled = viewModel::setWebSearchEnabled,
             setMachines = viewModel::setMachinesEnabled,
             setMachine = { machineId, enabled ->
                 viewModel.setMachineEnabled(machineId, enabled, remoteMachineState.machines.map { it.id })
@@ -764,9 +766,12 @@ fun AppNavigation(
                     composable(AppDestination.TOOLS_EDITOR.route) {
                         ToolsEditor(
                             providers = providers,
+                            mcpServers = mcpServers,
                             settings = toolSettings,
                             onSave = viewModel::setSystemTool,
                             onSetSendFile = viewModel::setSendFileEnabled,
+                            onSetWebSearchProvider = viewModel::setWebSearchProvider,
+                            onSetWebSearchEnabled = viewModel::setWebSearchEnabled,
                             providerGroups = providerGroups,
                             collapsedGroupIds = appPrefs.modelPickerCollapsedGroups,
                             collapsedProviderIds = appPrefs.modelPickerCollapsedProviders,

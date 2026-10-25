@@ -31,6 +31,7 @@ import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.McpProtocol
 import org.starfall.generative.shared.model.ToolDefinition
 import org.starfall.generative.shared.model.ToolSettings
+import org.starfall.generative.shared.model.mcpServerEnabled
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import org.starfall.generative.shared.ui.icons.FluentIcon
@@ -91,8 +92,9 @@ fun ServerListScreen(
                                         onDragStopped = { onReorderMcpServers(orderedServers.map { it.id }) }
                                     ),
                                     toolCount = (toolsCache[server.id] ?: server.cachedTools)?.size, toolError = toolErrors[server.id], loading = server.id in toolsLoading,
-                                    isEnabled = toolSettings.quickMcp[server.id] != false,
-                                    onToggleEnabled = { onSetMcpEnabled(server.id, toolSettings.quickMcp[server.id] == false) },
+                                    isEnabled = mcpServerEnabled(toolSettings, server.id),
+                                    onToggleEnabled = { onSetMcpEnabled(server.id, !mcpServerEnabled(toolSettings, server.id)) },
+                                    managedSettings = toolSettings,
                                     onToolErrorClick = { selectedToolError = server.name to it },
                                     onEdit = { onOpenEditor(server, false) }, onDelete = { deletingServerId = server.id })
                             }

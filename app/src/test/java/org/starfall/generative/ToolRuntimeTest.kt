@@ -49,6 +49,20 @@ class ToolRuntimeTest {
         assertFalse(toolAllowed(McpAccess(true), false, true, "write"))
         assertTrue(toolAllowed(McpAccess(true), null, true, "read"))
     }
+
+    @Test fun pinnedWebSearchProviderUsesFeatureToolSwitchInsteadOfMcpSwitch() {
+        val settings = ToolSettings(
+            quickMcp = mapOf("search" to false),
+            webSearchProviderId = "search",
+            webSearchEnabled = true
+        )
+        assertTrue(mcpServerEnabled(settings, "search"))
+
+        val disabled = settings.copy(webSearchEnabled = false, quickMcp = mapOf("search" to true))
+        assertFalse(mcpServerEnabled(disabled, "search"))
+        assertTrue(mcpServerEnabled(disabled, "other"))
+    }
+
     @Test fun base64IsStoredAsFileAndMissingFileIsSafe() = runBlocking {
         val root=Files.createTempDirectory("tool-files-test").toFile()
         try {

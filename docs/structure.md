@@ -552,6 +552,7 @@ This document is the detailed package map and architecture reference. The mandat
 │       ├── 📄 LoadingIndicator.kt
 │       ├── 📄 InstructionControls.kt
 │       ├── 📄 ToolControls.kt
+│       ├── 📄 WebSearchProviderSettings.kt
 │       ├── 📄 ToolSwitch.kt
 │       └── 📁 terminal/
 │           ├── 📄 RemoteTerminalSheet.kt

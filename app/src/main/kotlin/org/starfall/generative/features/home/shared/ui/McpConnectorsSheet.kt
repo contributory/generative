@@ -21,6 +21,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.resolvedUrl
+import org.starfall.generative.shared.model.isWebSearchProvider
+import org.starfall.generative.shared.model.mcpServerEnabled
 import org.starfall.generative.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.layout.SettingsCard
@@ -93,10 +95,12 @@ internal fun McpConnectorsSheetContent(
                             color = MaterialTheme.colorScheme.outline
                         )
                     }
-                    Switch(
-                        checked = controls.settings.quickMcp[server.id] != false,
-                        onCheckedChange = { controls.setMcp(server.id, it) }
-                    )
+                    if (!isWebSearchProvider(controls.settings, server.id)) {
+                        Switch(
+                            checked = mcpServerEnabled(controls.settings, server.id),
+                            onCheckedChange = { controls.setMcp(server.id, it) }
+                        )
+                    }
                 }
             }
         }
