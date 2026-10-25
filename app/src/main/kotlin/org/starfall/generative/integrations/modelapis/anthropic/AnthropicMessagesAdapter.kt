@@ -1,7 +1,10 @@
 package org.starfall.generative.integrations.modelapis.anthropic
 
 import kotlinx.coroutines.flow.Flow
+import com.anthropic.models.messages.CacheControlEphemeral
+import com.anthropic.models.messages.ContentBlockParam
 import com.anthropic.models.messages.MessageCreateParams
+import com.anthropic.models.messages.TextBlockParam
 import com.anthropic.core.JsonField
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flow
@@ -51,7 +54,11 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
     ): Flow<GenerationEvent> = flow {
         sdk.anthropic(provider).useClient { client ->
             val params = MessageCreateParams.builder().model(modelName).maxTokens(maxTokens.toLong())
-            val nativeTools = requestToolsForAnthropic(enabledModelTools)
+            // Claude Code accounts keep their own wire shape; only plain Anthropic Messages providers cache.
+            val cache = provider.config.anthropicPromptCache.takeIf { provider.type == ModelApiType.ANTHROPIC && it.enabled }
+            val breakpoint = cache?.let { cacheBreakpoint(it.ttl) }
+            val conversationBreakpoint = breakpoint.takeIf { cache?.cacheConversation == true }
+            val nativeTools = requestToolsForAnthropic(enabledModelTools, cache?.takeIf { it.cacheTools })
             if (nativeTools.isNotEmpty()) params.putAdditionalBodyProperty("tools", com.anthropic.core.JsonValue.from(nativeTools))
             val modelConfig = provider.config.modelConfigs[modelName]
             modelConfig?.claudeThinkingParameters(modelName, maxTokens)?.forEach { (key, value) ->
@@ -62,8 +69,9 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
                     }))
             }
             if (systemPrompt.isNotBlank()) {
-                if (callerSystemPrompt == null) params.system(systemPrompt)
-                else params.systemOfTextBlockParams(listOf(com.anthropic.models.messages.TextBlockParam.of(systemPrompt)))
+                val systemBreakpoint = breakpoint.takeIf { cache?.cacheSystem == true }
+                if (callerSystemPrompt == null && systemBreakpoint == null) params.system(systemPrompt)
+                else params.systemOfTextBlockParams(listOf(textBlock(systemPrompt, systemBreakpoint)))
             }
             val firstUser = messages.indexOfFirst { it.role == ChatRole.USER }
             val useMidSystem = callerSystemPrompt != null && claudeCodeSupportsMidConversationSystem(modelName)
@@ -73,6 +81,8 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
                 while (systemInsertAt < messages.size && messages[systemInsertAt].role == ChatRole.USER) systemInsertAt++
             }
             messages.forEachIndexed { index, message ->
+                // The breakpoint sits on the last message so the next turn reads everything before it.
+                val messageBreakpoint = conversationBreakpoint.takeIf { index == messages.lastIndex }
                 if (index == systemInsertAt) {
                     params.addSystemMessageOfBlockParams(listOf(
                         com.anthropic.models.messages.ContentBlockParam.ofText(callerSystemPrompt.orEmpty())))
@@ -90,11 +100,19 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
                     params.addMessage(
                         com.anthropic.models.messages.MessageParam.builder()
                             .role(com.anthropic.models.messages.MessageParam.Role.ASSISTANT)
-                            .contentOfBlockParams(blocks)
+                            .contentOfBlockParams(blocks.withBreakpoint(messageBreakpoint))
                             .build()
                     )
                 } else if (message.role == ChatRole.MODEL) {
-                    params.addAssistantMessage(message.content)
+                    if (messageBreakpoint != null && message.content.isNotEmpty()) {
+                        params.addMessage(
+                            com.anthropic.models.messages.MessageParam.builder()
+                                .role(com.anthropic.models.messages.MessageParam.Role.ASSISTANT)
+                                .contentOfBlockParams(listOf(
+                                    com.anthropic.models.messages.ContentBlockParam.ofText(textBlock(message.content, messageBreakpoint))))
+                                .build()
+                        )
+                    } else params.addAssistantMessage(message.content)
                 } else if (message.files.isNotEmpty() || index == reminderUser) {
                     val content = sdk.anthropicContent(message).toMutableList()
                     if (index == reminderUser) content.add(0, com.anthropic.models.messages.ContentBlockParam.ofText(
@@ -102,7 +120,15 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
                     params.addMessage(
                         com.anthropic.models.messages.MessageParam.builder()
                             .role(com.anthropic.models.messages.MessageParam.Role.USER)
-                            .contentOfBlockParams(content)
+                            .contentOfBlockParams(content.withBreakpoint(messageBreakpoint))
+                            .build()
+                    )
+                } else if (messageBreakpoint != null && message.content.isNotEmpty()) {
+                    params.addMessage(
+                        com.anthropic.models.messages.MessageParam.builder()
+                            .role(com.anthropic.models.messages.MessageParam.Role.USER)
+                            .contentOfBlockParams(listOf(
+                                com.anthropic.models.messages.ContentBlockParam.ofText(textBlock(message.content, messageBreakpoint))))
                             .build()
                     )
                 } else {
@@ -198,8 +224,8 @@ private class AnthropicTokenUsage {
 }
 
 
-private fun requestToolsForAnthropic(enabled: List<String>): List<Map<String, Any>> =
-    enabled.distinct().mapNotNull { tool ->
+private fun requestToolsForAnthropic(enabled: List<String>, cache: AnthropicPromptCache? = null): List<Map<String, Any>> {
+    val tools = enabled.distinct().mapNotNull { tool ->
         when (tool) {
             "web_search" -> mapOf("type" to "web_search_20250305", "name" to "web_search")
             "web_fetch" -> mapOf("type" to "web_fetch_20250910", "name" to "web_fetch")
@@ -207,3 +233,35 @@ private fun requestToolsForAnthropic(enabled: List<String>): List<Map<String, An
             else -> null
         }
     }
+    if (cache == null || tools.isEmpty()) return tools
+    // A breakpoint on the last tool covers the whole tools block.
+    val marker = buildMap<String, String> {
+        put("type", "ephemeral")
+        if (cache.ttl == AnthropicCacheTtl.ONE_HOUR) put("ttl", cache.ttl.wireValue)
+    }
+    return tools.dropLast(1) + (tools.last() + ("cache_control" to marker))
+}
+
+/** The 5-minute lifetime is the API default, so it is left implicit for compatible gateways. */
+private fun cacheBreakpoint(lifetime: AnthropicCacheTtl): CacheControlEphemeral {
+    val builder = CacheControlEphemeral.builder()
+    if (lifetime == AnthropicCacheTtl.ONE_HOUR) builder.ttl(CacheControlEphemeral.Ttl.TTL_1H)
+    return builder.build()
+}
+
+private fun textBlock(text: String, breakpoint: CacheControlEphemeral?): TextBlockParam =
+    TextBlockParam.builder().text(text).apply { breakpoint?.let { cacheControl(it) } }.build()
+
+/** Marks the last text or image block; other block kinds are left untouched. */
+private fun List<ContentBlockParam>.withBreakpoint(breakpoint: CacheControlEphemeral?): List<ContentBlockParam> {
+    if (breakpoint == null || isEmpty()) return this
+    val block = last()
+    val text = block.text().orElse(null)
+    val image = block.image().orElse(null)
+    val marked = when {
+        text != null -> ContentBlockParam.ofText(text.toBuilder().cacheControl(breakpoint).build())
+        image != null -> ContentBlockParam.ofImage(image.toBuilder().cacheControl(breakpoint).build())
+        else -> block
+    }
+    return dropLast(1) + marked
+}

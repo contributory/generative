@@ -32,6 +32,7 @@ import org.starfall.generative.R
 import org.starfall.generative.features.providers.shared.ui.ModelConnectionDialog
 import org.starfall.generative.features.providers.shared.logic.ModelConnectionTests
 import org.starfall.generative.features.providers.shared.ui.OAuthAccountCard
+import org.starfall.generative.features.providers.shared.ui.AnthropicPromptCacheSettings
 import org.starfall.generative.features.providers.shared.ui.AntigravityVersionFields
 import org.starfall.generative.features.providers.shared.ui.AntigravityProjectIdField
 import org.starfall.generative.features.providers.shared.ui.CodexClientVersionField
@@ -138,6 +139,7 @@ fun ProviderEditor(
     LaunchedEffect(initialProvider.id) { initialProvider.config.modelConfigs.forEach { (id, config) -> memory.remember(id, config, onlyIfMissing = true) } }
     var typeExpanded by remember { mutableStateOf(false) }
     var supportStream by remember { mutableStateOf(initialProvider.config.supportStream) }
+    var anthropicPromptCache by remember(initialProvider.id) { mutableStateOf(initialProvider.config.anthropicPromptCache) }
     var codexClientVersion by remember(initialProvider.id) {
         mutableStateOf(initialProvider.config.codexClientVersion ?: DEFAULT_CODEX_CLIENT_VERSION)
     }
@@ -177,7 +179,7 @@ fun ProviderEditor(
     val antigravityChangelistValid = type != ModelApiType.ANTIGRAVITY || isValidAntigravityChangelist(antigravityChangelist)
     val valid = urlValid && authValid && headersValid && codexClientVersionValid &&
         antigravityVersionValid && antigravityChangelistValid
-    fun requestConfig() = initialProvider.config.copy(supportStream = supportStream, headers = parsedHeaders ?: initialProvider.config.headers,
+    fun requestConfig() = initialProvider.config.copy(supportStream = supportStream, anthropicPromptCache = anthropicPromptCache, headers = parsedHeaders ?: initialProvider.config.headers,
         multipleApiKeys = apiKeys.enabled, apiKeys = apiKeys.entries, oauthAccounts = oauthAccounts,
         codexClientVersion = if (type == ModelApiType.OPENAI_CODEX) codexClientVersion.trim().ifEmpty { null } else null,
         antigravityVersion = if (type == ModelApiType.ANTIGRAVITY) antigravityVersion.trim().ifEmpty { null } else null,
@@ -370,6 +372,10 @@ fun ProviderEditor(
                                 Switch(supportStream, onCheckedChange = { supportStream = it })
                             }
                             HorizontalDivider()
+                            if (type == ModelApiType.ANTHROPIC) {
+                                AnthropicPromptCacheSettings(anthropicPromptCache) { anthropicPromptCache = it }
+                                HorizontalDivider()
+                            }
                             OutlinedButton(onClick = { showHeaders = true }, modifier = Modifier.fillMaxWidth()) {
                                 Text(stringResource(R.string.headers))
                             }

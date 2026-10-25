@@ -19,6 +19,8 @@ import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
+import org.starfall.generative.shared.model.provider.AnthropicCacheTtl
+import org.starfall.generative.shared.model.provider.AnthropicPromptCache
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.language.SELECTABLE_REASONING_EFFORTS
 import org.starfall.generative.integrations.modelapis.anthropic.CLAUDE_CODE_IDENTITY
@@ -75,6 +77,47 @@ class ProviderAdaptersTest {
             assertEquals("/v1/messages", request.path)
             assertEquals("test-key", request.getHeader("x-api-key"))
         }
+    }
+
+    private suspend fun anthropicBody(cache: AnthropicPromptCache?, system: String,
+                                      tools: List<String> = emptyList()): JsonObject =
+        MockWebServer().use { server ->
+            server.enqueue(sse("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"))
+            val base = provider(server, ModelApiType.ANTHROPIC)
+            val configured = cache?.let { base.copy(config = base.config.copy(anthropicPromptCache = it)) } ?: base
+            adapters.streamAnthropic(configured, "claude-sonnet-4-5", cacheHistory, system, null, null, 50, enabledModelTools = tools).toList()
+            Json.parseToJsonElement(server.takeRequest(5, TimeUnit.SECONDS)!!.body.readUtf8()).jsonObject
+        }
+
+    private val cacheHistory = listOf(
+        StoredMessage(id = "1", role = ChatRole.USER, versions = listOf(MessageVersion(content = "Hello"))),
+        StoredMessage(id = "2", role = ChatRole.MODEL, versions = listOf(MessageVersion(content = "Hi"))),
+        StoredMessage(id = "3", role = ChatRole.USER, versions = listOf(MessageVersion(content = "Again"))))
+
+    @Test fun anthropicPromptCacheMarksSystemToolsAndLastMessageByDefault() = runBlocking {
+        val body = anthropicBody(null, "Be brief", listOf("web_search", "web_fetch"))
+        val system = body.getValue("system").jsonArray.single().jsonObject
+        assertEquals("ephemeral", system.getValue("cache_control").jsonObject.text("type"))
+        val tools = body.getValue("tools").jsonArray.map { it.jsonObject }
+        assertFalse(tools.first().containsKey("cache_control"))
+        assertEquals("ephemeral", tools.last().getValue("cache_control").jsonObject.text("type"))
+        val marked = body.getValue("messages").jsonArray.map { it.jsonObject["content"].toString().contains("cache_control") }
+        assertEquals(listOf(false, false, true), marked)
+        // The default lifetime is implicit so strict compatible gateways see a plain ephemeral marker.
+        assertFalse(body.toString().contains("\"ttl\""))
+    }
+
+    @Test fun anthropicPromptCacheHonoursLifetimeAndPartToggles() = runBlocking {
+        val body = anthropicBody(AnthropicPromptCache(ttl = AnthropicCacheTtl.ONE_HOUR, cacheSystem = false,
+            cacheTools = true, cacheConversation = false), "Be brief", listOf("web_search"))
+        assertEquals("Be brief", (body.getValue("system") as JsonPrimitive).content)
+        assertEquals("1h", body.getValue("tools").jsonArray.single().jsonObject.getValue("cache_control").jsonObject.text("ttl"))
+        assertFalse(body.getValue("messages").toString().contains("cache_control"))
+    }
+
+    @Test fun anthropicPromptCacheCanBeDisabled() = runBlocking {
+        val body = anthropicBody(AnthropicPromptCache(enabled = false), "Be brief", listOf("web_search"))
+        assertFalse(body.toString().contains("cache_control"))
     }
 
     @Test fun claudeCodeSdkRelocatesCallerSystemByModelCapability() = runBlocking {

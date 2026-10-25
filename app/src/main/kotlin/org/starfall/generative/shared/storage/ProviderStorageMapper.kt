@@ -6,6 +6,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.auth.Authorization
@@ -14,6 +16,7 @@ import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.language.ThinkingPassback
 import org.starfall.generative.shared.model.media.MediaGenerationMode
+import org.starfall.generative.shared.model.provider.AnthropicPromptCache
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
 import org.starfall.generative.shared.storage.database.AppDatabase
@@ -92,6 +95,8 @@ internal class ProviderStorageMapper(private val db: AppDatabase) {
                 codexClientVersion = (structured.readDocument("provider", entity.id, "codex_client_version") as? JsonPrimitive)?.content,
                 antigravityVersion = (structured.readDocument("provider", entity.id, "antigravity_version") as? JsonPrimitive)?.content,
                 antigravityChangelist = (structured.readDocument("provider", entity.id, "antigravity_changelist") as? JsonPrimitive)?.content,
+                anthropicPromptCache = (structured.readDocument("provider", entity.id, "anthropic_prompt_cache") as? JsonObject)
+                    ?.let { runCatching { json.decodeFromJsonElement<AnthropicPromptCache>(it) }.getOrNull() } ?: AnthropicPromptCache(),
                 antigravityProjectIds = (structured.readDocument("provider", entity.id, "antigravity_project_ids") as? JsonObject)
                     ?.mapNotNull { (id, value) -> (value as? JsonPrimitive)?.contentOrNull?.trim()
                         ?.takeIf(String::isNotEmpty)?.let { id to it } }?.toMap().orEmpty()
@@ -173,6 +178,9 @@ internal class ProviderStorageMapper(private val db: AppDatabase) {
         persistOptionalValue("codex_client_version", provider.config.codexClientVersion)
         persistOptionalValue("antigravity_version", provider.config.antigravityVersion)
         persistOptionalValue("antigravity_changelist", provider.config.antigravityChangelist)
+        if (provider.config.anthropicPromptCache == AnthropicPromptCache()) deleteDocument("provider", provider.id, "anthropic_prompt_cache")
+        else structured.replaceDocument(StructuredJsonDocument("provider", provider.id, "anthropic_prompt_cache",
+            json.encodeToJsonElement(provider.config.anthropicPromptCache)))
         val projectIds = provider.config.antigravityProjectIds.entries.mapNotNull { (id, projectId) ->
             projectId.trim().takeIf { it.isNotEmpty() && id.isNotBlank() }?.let { id to it }
         }.toMap()
@@ -209,6 +217,7 @@ internal class ProviderStorageMapper(private val db: AppDatabase) {
         deleteDocument("provider", providerId, "antigravity_version")
         deleteDocument("provider", providerId, "antigravity_changelist")
         deleteDocument("provider", providerId, "antigravity_project_ids")
+        deleteDocument("provider", providerId, "anthropic_prompt_cache")
         deleteDocument("provider_catalog", providerId, "cache_state")
     }
 

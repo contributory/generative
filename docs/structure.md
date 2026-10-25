@@ -101,6 +101,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       │   ├── 📄 ModelConnectionStatus.kt
 │   │       │   └── 📄 ProviderApiKeysState.kt
 │   │       └── 📁 ui/
+│   │           ├── 📄 AnthropicPromptCacheSettings.kt
 │   │           ├── 📄 ModelConfigDialog.kt
 │   │           ├── 📄 ModelConnectionDialog.kt
 │   │           ├── 📄 ModelConnectionStatusAppearance.kt
@@ -381,6 +382,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   ├── 📄 MediaRequestChain.kt
 │   │   │   └── 📄 VideoApi.kt
 │   │   ├── 📁 provider/
+│   │   │   ├── 📄 AnthropicPromptCache.kt
 │   │   │   ├── 📄 ModelProvider.kt
 │   │   │   ├── 📄 ModelProviderExtensions.kt
 │   │   │   ├── 📄 ProviderApiKey.kt

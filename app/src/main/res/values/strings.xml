@@ -533,6 +533,14 @@
     <string name="video_exit_fullscreen">Exit fullscreen video</string>
     <string name="provider_multiple_api_keys">Multiple API Keys</string>
     <string name="provider_manage_api_keys">Manage API Keys</string>
+    <string name="provider_prompt_cache">Prompt cache</string>
+    <string name="provider_prompt_cache_ttl">Cache duration</string>
+    <string name="provider_prompt_cache_ttl_5m">5 minutes</string>
+    <string name="provider_prompt_cache_ttl_1h">1 hour</string>
+    <string name="provider_prompt_cache_system">Cache system prompt</string>
+    <string name="provider_prompt_cache_tools">Cache tools</string>
+    <string name="provider_prompt_cache_conversation">Cache conversation history</string>
+    <string name="provider_prompt_cache_hint">Each hit refreshes the duration. Writing a 1-hour entry costs more than a 5-minute one, and prompts shorter than the model\'s minimum length are not cached.</string>
     <string name="provider_edit_api_key">Edit API Key</string>
     <string name="provider_save_api_key">Save API key</string>
     <string name="provider_api_key_required">Enter an API key.</string>
