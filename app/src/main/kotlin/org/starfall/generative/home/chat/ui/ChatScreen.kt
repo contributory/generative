@@ -330,6 +330,7 @@ fun ChatScreen(
     val messageIds = remember(conversationMessages) { conversationMessages.map { it.id } }
     LaunchedEffect(conversation?.id, messageIds, autoScroll) {
         val hasNewMessage = messageIds.any { it !in seenMessageIds }
+        val hasNewUserMessage = conversationMessages.any { it.id !in seenMessageIds && it.role == ChatRole.USER }
         val firstLoad = seenMessageIds.isEmpty()
         seenMessageIds.addAll(messageIds)
         if (hasNewMessage && !firstLoad) openingAtBottom = false
@@ -344,9 +345,9 @@ fun ChatScreen(
                 followBottom = true
                 scrollToBottom(includeQueued = true)
             }
-        } else if (hasNewMessage && !firstLoad && (!autoScroll || followBottom)) {
-            // A user message or a newly started response should be shown once, even when the
-            // preference is disabled; subsequent streamed text is handled by the smooth loop.
+        } else if (hasNewMessage && !firstLoad && (if (autoScroll) followBottom else hasNewUserMessage)) {
+            // With auto scroll on, a newly started response is followed once. With it off only a
+            // user message is shown; the AI reply (including its first message) never moves the list.
             scrollToBottom()
             followBottom = true
         }

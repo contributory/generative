@@ -11,14 +11,34 @@ class LatexDetectorTest {
     @Test fun pricesAreNotDetectedAsMath() {
         assertFalse(LatexDetector.containsLatex("giá \$10 và \$20"))
         assertFalse(LatexDetector.containsLatex("giá 10\$"))
-        assertFalse(LatexDetector.shouldRenderLatex("giá \$10 và \$20", "ON"))
+        assertFalse(LatexDetector.shouldRenderLatex("giá \$10 và \$20", "AUTO"))
     }
 
     @Test fun mathLookingSingleDollarExpressionsAreDetectedInEveryEnabledMode() {
         assertTrue(LatexDetector.containsLatex("\$x^2\$"))
         assertTrue(LatexDetector.containsLatex("\$snake_case\$"))
-        assertTrue(LatexDetector.shouldRenderLatex("\$x^2\$", "ON"))
+        assertTrue(LatexDetector.shouldRenderLatex("\$x^2\$", "AUTO"))
         assertFalse(LatexDetector.shouldRenderLatex("\$x^2\$", "OFF"))
+    }
+
+    @Test fun simpleArithmeticIsMath() {
+        assertTrue(LatexDetector.containsLatex("\$2 + 3 = 5\$"))
+        assertTrue(LatexDetector.containsLatex("\$2 / 3 = 5\$"))
+        assertTrue(LatexDetector.containsLatex("\$2 - 3 = 5\$"))
+        assertTrue(LatexDetector.containsLatex("\$2 * 3\$"))
+        assertTrue(LatexDetector.containsLatex("\$-8\$"))
+        assertTrue(LatexDetector.containsLatex("\$+9\$"))
+        assertTrue(LatexDetector.containsLatex("\$2 * -3\$"))
+    }
+
+    @Test fun dashesAndPricesAreNotArithmetic() {
+        assertFalse(LatexDetector.containsLatex("\$2-5"))
+        assertFalse(LatexDetector.containsLatex("\$2-5\$"))
+        assertFalse(LatexDetector.containsLatex("\$2-\$ 5"))
+        assertFalse(LatexDetector.containsLatex("\$2 - \$5"))
+        assertFalse(LatexDetector.containsLatex("\$10-\$ 15"))
+        assertFalse(LatexDetector.containsLatex("\$10 - \$ 15"))
+        assertFalse(LatexDetector.containsLatex("\$2 + \$ 3 and 4"))
     }
 
     @Test fun blockAndEscapedDelimitersNeedAClosingPair() {

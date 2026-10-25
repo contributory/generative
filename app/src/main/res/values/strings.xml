@@ -393,7 +393,6 @@
     <string name="model_reasoning_level_med">Med</string>
     <string name="model_reasoning_level_xhigh">XHigh</string>
     <string name="code_block_summary">%1$s | %2$d lines</string>
-    <string name="latex_equation">LaTeX Equation</string>
     <string name="latex_formula_clip_label">LaTeX formula</string>
     <string name="latex_formula_copied">Formula copied</string>
     <string name="latex_copy_formula">Copy Formula</string>
@@ -667,7 +666,6 @@
     <string name="settings_content">Content</string>
     <string name="settings_latex_equation_rendering">LaTeX Equation Rendering</string>
     <string name="settings_latex_description">Auto-detect renders formulas but leaves prices as plain text.</string>
-    <string name="settings_latex_always_on">Always On</string>
     <string name="settings_latex_disabled">Disabled</string>
     <string name="settings_latex_auto_detect">Auto Detect</string>
     <string name="settings_developer">Developer</string>

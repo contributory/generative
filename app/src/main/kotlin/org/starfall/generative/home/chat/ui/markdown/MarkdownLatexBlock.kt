@@ -42,8 +42,6 @@ internal fun RenderLatexBlock(source: String, formula: String) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                  Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("∑", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = labelColor))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.latex_equation), style = MaterialTheme.typography.labelMedium, color = labelColor)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(

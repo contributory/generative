@@ -106,7 +106,7 @@ data class AppPreferences(
     val modelPickerSelectedTab: String = "default",
     val mcpPresetsInitialized: Boolean = false,
     val contentApiPresetInitialized: Boolean = false,
-    val latexMode: String = "AUTO", // ON, OFF, AUTO
+    val latexMode: String = "AUTO", // OFF, AUTO
     val wordWrapMode: WordWrapMode = WordWrapMode.OFF,
     val wordWrapColumn: Int = DEFAULT_WORD_WRAP_COLUMN,
     val codePreviewEnabled: Boolean = true,
@@ -240,7 +240,7 @@ class AppPreferencesRepository(private val context: Context) {
                 modelPickerSelectedTab = preferences[PreferenceKeys.MODEL_PICKER_SELECTED_TAB] ?: "default",
                 mcpPresetsInitialized = preferences[PreferenceKeys.MCP_PRESETS_INITIALIZED] ?: false,
                 contentApiPresetInitialized = preferences[PreferenceKeys.CONTENT_API_PRESET_INITIALIZED] ?: false,
-                latexMode = preferences[PreferenceKeys.LATEX_MODE] ?: "AUTO",
+                latexMode = preferences[PreferenceKeys.LATEX_MODE]?.takeIf { it == "OFF" } ?: "AUTO", // legacy "ON" now means AUTO
                 wordWrapMode = WordWrapMode.fromValue(preferences[PreferenceKeys.WORD_WRAP_MODE]),
                 wordWrapColumn = preferences[PreferenceKeys.WORD_WRAP_COLUMN]?.takeIf { it > 0 } ?: DEFAULT_WORD_WRAP_COLUMN,
                 codePreviewEnabled = preferences[PreferenceKeys.CODE_PREVIEW_ENABLED] ?: true,

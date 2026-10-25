@@ -12,7 +12,7 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.text.TextLayoutResult
 
 internal val LocalStreamingTextFade = compositionLocalOf { false }
-internal const val STREAM_FADE_DURATION_MS = 240L
+internal const val STREAM_FADE_DURATION_MS = 480L
 
 internal data class StreamingFadeRange(val start: Int, val end: Int, val startedAt: Long)
 

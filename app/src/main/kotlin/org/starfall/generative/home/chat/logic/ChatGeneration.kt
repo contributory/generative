@@ -14,7 +14,7 @@ import org.starfall.generative.shared.model.isErrorOnly
 import org.starfall.generative.shared.model.pruningEmptyResponses
 import org.starfall.generative.shared.model.withAttempt
 
-private const val STREAM_RENDER_INTERVAL_MS = 48L
+private const val STREAM_RENDER_INTERVAL_MS = 120L
 private const val LARGE_STREAM_RENDER_INTERVAL_MS = 160L
 private const val LARGE_STREAM_THRESHOLD_CHARS = 32_000
 private const val VERY_LARGE_STREAM_THRESHOLD_CHARS = 128_000

@@ -43,10 +43,10 @@ class MathSplitterTest {
         )
     }
 
-    @Test fun onAndAutoSplitTheSame() {
+    @Test fun legacyOnSplitsLikeAuto() {
         val text = "The result is \$x^2\$ for every x."
         assertEquals(split(text, "AUTO"), split(text, "ON"))
-        assertEquals(3, split(text, "ON").size)
+        assertEquals(3, split(text, "AUTO").size)
     }
 
     @Test fun displayDelimitersAreDisplayMath() {

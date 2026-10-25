@@ -379,7 +379,6 @@ fun PreferencesSettingsView(
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(
-                        "ON" to R.string.settings_latex_always_on,
                         "OFF" to R.string.settings_latex_disabled,
                         "AUTO" to R.string.settings_latex_auto_detect
                     ).forEach { (mode, labelRes) ->

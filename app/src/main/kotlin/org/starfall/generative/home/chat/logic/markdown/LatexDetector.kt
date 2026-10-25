@@ -6,18 +6,16 @@ object LatexDetector {
     private val blockDollarExpression = Regex("""(?s)^\s*\$\$(.+?)\$\$\s*$""")
     private val bracketExpression = Regex("""(?s)^\s*\\\[(.+?)\\\]\s*$""")
     private val parenthesizedExpression = Regex("""(?s)^\s*\\\((.+?)\\\)\s*$""")
+    private val pureArithmetic = Regex("""[\d\s.,+\-−–*/×÷=<>≠≤≥±()]+""")
+    private val arithmeticToken = Regex("""\d+(?:[.,]\d+)?|[+\-−–*/×÷=<>≠≤≥±]|[()]|\S""")
     private val singleDollarExpression = Regex("""(?s)(?<!\$)\$([^\$\n]+?)\$(?!\$)""")
 
     /**
      * Determines whether to render LaTeX based on the user's preference mode
-     * ("ON", "OFF", or "AUTO").
+     * ("OFF" or "AUTO"; a legacy "ON" behaves like "AUTO").
      */
     fun shouldRenderLatex(text: String, mode: String): Boolean {
-        return when (mode.uppercase()) {
-            "OFF" -> false
-            "ON" -> containsLatex(text)
-            else -> containsLatex(text) // "AUTO" default
-        }
+        return !mode.equals("OFF", ignoreCase = true) && containsLatex(text)
     }
 
     /**
@@ -113,8 +111,72 @@ object LatexDetector {
             return true
         }
 
+        // Simple arithmetic on numbers (2 + 3 = 5, 2 / 3, 2 - 3 = 5) must be a well-formed expression.
+        arithmeticVerdict(inner)?.let { return it }
+
         // Single letter math variables such as $x$, $y$, or $N$.
         return inner.length == 1 && inner[0].isLetter()
+    }
+
+    /**
+     * null when [inner] is not made only of numbers and arithmetic symbols. Otherwise whether it is a valid
+     * expression: operands and operators alternate (so "10-" and "2 -" fail), parentheses balance, there is at
+     * least one operator or sign ("-8", "+9"), and a binary minus has spaces on both sides ("2-5" is a range, not a subtraction).
+     */
+    private fun arithmeticVerdict(inner: String): Boolean? {
+        if (!pureArithmetic.matches(inner) || inner.none { it.isDigit() }) return null
+        val parser = ArithmeticParser(inner, arithmeticToken.findAll(inner).toList())
+        return parser.expression() && parser.atEnd() && parser.operators + parser.signs > 0
+    }
+
+    private class ArithmeticParser(private val source: String, private val tokens: List<MatchResult>) {
+        private var pos = 0
+        var operators = 0
+            private set
+        var signs = 0
+            private set
+
+        fun atEnd() = pos == tokens.size
+
+        private fun peek() = tokens.getOrNull(pos)?.value
+
+        private fun isOperator(t: String?) = t != null && t.length == 1 && t[0] in "+-−–*/×÷=<>≠≤≥±"
+
+        private fun operand(): Boolean {
+            var t = peek() ?: return false
+            // A sign glued to its operand: "-8", "+9", "2 * -3", "-(1 + 2)".
+            if (t[0] in "-−–+") {
+                val minus = tokens[pos]
+                val next = tokens.getOrNull(pos + 1)
+                if (next == null || next.range.first != minus.range.last + 1) return false
+                if (!next.value[0].isDigit() && next.value != "(") return false
+                signs++
+                pos++
+                t = next.value
+            }
+            if (t[0].isDigit()) { pos++; return true }
+            if (t != "(") return false
+            pos++
+            if (!expression() || peek() != ")") return false
+            pos++
+            return true
+        }
+
+        fun expression(): Boolean {
+            if (!operand()) return false
+            while (isOperator(peek())) {
+                val token = tokens[pos]
+                if (token.value[0] in "-−–") {
+                    val before = source.getOrNull(token.range.first - 1)
+                    val after = source.getOrNull(token.range.last + 1)
+                    if (before?.isWhitespace() != true || after?.isWhitespace() != true) return false
+                }
+                operators++
+                pos++
+                if (!operand()) return false
+            }
+            return true
+        }
     }
 
     private fun isUsdPriceRange(fullText: String, match: MatchResult): Boolean =
