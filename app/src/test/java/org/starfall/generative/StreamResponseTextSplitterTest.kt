@@ -62,6 +62,17 @@ class StreamResponseTextSplitterTest {
         assertEquals("reason", appended.reasoning + final.reasoning)
     }
 
+    @Test
+    fun inlineReasoningOffsetMatchesTrimmedPersistedTextAcrossFragments() {
+        val splitter = StreamResponseTextSplitter()
+
+        splitter.append("<think>  reason \n")
+        assertEquals("reason".length, splitter.visibleReasoningLength)
+
+        splitter.append(" continued  ")
+        assertEquals("reason \n continued".length, splitter.visibleReasoningLength)
+    }
+
     private fun parse(input: String): StreamResponseText {
         val splitter = StreamResponseTextSplitter()
         val appended = splitter.append(input)

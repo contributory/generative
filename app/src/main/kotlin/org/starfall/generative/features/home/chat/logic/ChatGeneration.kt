@@ -224,11 +224,10 @@ internal class ChatGeneration(
                             // Commit a structural/tool boundary, but leave undersized display batches queued.
                             snapshot = responseSnapshot()
                             val contentOffset = streamDisplay.visibleContentLength
-                            val reasoningOffset = if (reasoningOutput.isNotEmpty()) {
-                                reasoningOutput.length
-                            } else {
-                                streamDisplay.visibleReasoningLength
-                            }
+                            val explicitReasoningLength = reasoningOutput.toString()
+                                .takeIf { it.isNotBlank() }
+                                ?.length
+                            val reasoningOffset = explicitReasoningLength ?: streamDisplay.visibleReasoningLength
                             snapshot = snapshot!!.copy(messages = snapshot!!.messages.map { message ->
                                 if (message.id != activeMessageId) message else message.copy(versions = message.versions.mapIndexed { index, version ->
                                     if (index != message.activeVersionIndex) version else {

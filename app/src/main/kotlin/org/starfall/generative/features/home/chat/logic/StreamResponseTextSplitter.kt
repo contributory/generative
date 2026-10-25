@@ -20,13 +20,16 @@ internal class StreamResponseTextSplitter(
     private val prefixProbe = StringBuilder()
     private val closingMarkerProbe = StringBuilder()
     private var contentLength = initialContentLength.toLong()
-    private var reasoningLength = 0L
+    private var hasNonWhitespaceReasoning = false
+    private var pendingReasoningWhitespace = 0L
+    private var visibleReasoningLengthValue = 0L
 
     val visibleContentLength: Int
         get() = contentLength.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 
+    /** Matches the length of the persisted inline reasoning after its existing trim semantics. */
     val visibleReasoningLength: Int
-        get() = reasoningLength.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        get() = visibleReasoningLengthValue.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 
     fun append(fragment: String): StreamResponseText {
         check(mode != Mode.FINISHED) { "Cannot append to a finalized response splitter" }
@@ -61,8 +64,7 @@ internal class StreamResponseTextSplitter(
                 prefixProbe.setLength(0)
             }
             Mode.THINKING -> {
-                reasoning.append(closingMarkerProbe)
-                reasoningLength += closingMarkerProbe.length.toLong()
+                closingMarkerProbe.forEach { emitReasoningCharacter(it, reasoning) }
                 closingMarkerProbe.setLength(0)
             }
             else -> Unit
@@ -92,8 +94,7 @@ internal class StreamResponseTextSplitter(
     private fun processThinkingCharacter(character: Char, reasoning: StringBuilder) {
         closingMarkerProbe.append(character)
         while (closingMarkerProbe.isNotEmpty() && !CLOSE_THINK_TAG.startsWith(closingMarkerProbe.toString())) {
-            reasoning.append(closingMarkerProbe[0])
-            reasoningLength += 1
+            emitReasoningCharacter(closingMarkerProbe[0], reasoning)
             closingMarkerProbe.deleteCharAt(0)
         }
         if (closingMarkerProbe.length == CLOSE_THINK_TAG.length) {
@@ -105,6 +106,21 @@ internal class StreamResponseTextSplitter(
     private fun emitContent(character: Char, content: StringBuilder) {
         content.append(character)
         contentLength += 1
+    }
+
+    private fun emitReasoningCharacter(character: Char, reasoning: StringBuilder) {
+        reasoning.append(character)
+        if (!hasNonWhitespaceReasoning) {
+            if (!character.isWhitespace()) {
+                hasNonWhitespaceReasoning = true
+                visibleReasoningLengthValue++
+            }
+        } else if (character.isWhitespace()) {
+            pendingReasoningWhitespace++
+        } else {
+            visibleReasoningLengthValue += pendingReasoningWhitespace + 1L
+            pendingReasoningWhitespace = 0L
+        }
     }
 
     private companion object {
