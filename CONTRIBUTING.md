@@ -47,7 +47,7 @@ Useful commands:
 
 The current implementation is under `app/src/main/kotlin/org/starfall/generative/`. Place changes according to responsibility and who uses the code:
 
-- `features/`: feature-oriented vertical slices for user/business capabilities. Each feature groups its presentation (`ui/`), workflow/use-case coordination and state holders (`logic/`), and feature-specific state/data types (`model/`); a feature may span multiple screens and is not defined by a `FeaturesScreen`/`AppMenuScreen` entry.
+- `features/`: feature-oriented vertical slices in the project’s UI-First Clean Architecture–inspired structure. Each capability groups presentation (`ui/`), application workflow/use-case coordination and state holders (`logic/`), and feature-specific state/data types (`model/`). A feature may span multiple screens and is not defined by a `FeaturesScreen`/`AppMenuScreen` entry. The project uses `logic/` and `model/` rather than a canonical `domain/`/`data/` split, so place code by responsibility and dependency direction.
 - `features/home/`: chat, conversation drawer, and chat-related shared UI and logic.
 - `integrations/`: code whose primary purpose is communicating with external services, including provider APIs, MCP, media-generation APIs, and remote-machine connections.
 - `shared/`: reusable UI, models, storage, networking primitives, and pure helpers used across layers.

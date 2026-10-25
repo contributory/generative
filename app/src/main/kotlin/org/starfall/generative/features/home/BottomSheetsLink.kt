@@ -169,7 +169,11 @@ internal fun BottomSheetsLink(
     attachments: List<String>,
     onAttachmentsChange: (List<String>) -> Unit,
     onOpenFeatureToolsSettings: () -> Unit = {},
-    onOpenMcpConnectorsSettings: () -> Unit = {}
+    onOpenMcpConnectorsSettings: () -> Unit = {},
+    /** Context window indicator shown above the model card; null hides it. */
+    contextWindowContent: (@Composable (onDarkBackground: Boolean) -> Unit)? = null,
+    /** Opens the conversation summarization sheet from the model sheet; null hides the Summarize button. */
+    onOpenSummary: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     fun retainReadPermission(uri: Uri) {
@@ -408,7 +412,16 @@ internal fun BottomSheetsLink(
                                     onEditModel(provider.id, modelId)
                                 }
                             },
-                            onOpenModelPicker = { if (pageActive) sheets.switchToModelPicker() }
+                            onOpenModelPicker = { if (pageActive) sheets.switchToModelPicker() },
+                            contextWindowContent = contextWindowContent,
+                            onSummarize = onOpenSummary?.let { openSummary ->
+                                {
+                                    if (pageActive) {
+                                        sheets.dismissModelSheet()
+                                        openSummary()
+                                    }
+                                }
+                            }
                         )
                     }
                 }

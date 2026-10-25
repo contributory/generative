@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.model.LocalThinkingScreenBurst
@@ -133,7 +134,11 @@ internal fun SelectedModelOverviewContent(
     onSetThinkingPassback: ((ThinkingPassback) -> Unit)? = null,
     onSetModelTools: ((List<String>) -> Unit)? = null,
     onEditModel: (() -> Unit)? = null,
-    onOpenModelPicker: () -> Unit
+    onOpenModelPicker: () -> Unit,
+    /** Horizontal context indicator shown above the model card; the host owns what it displays. */
+    contextWindowContent: (@Composable (onDarkBackground: Boolean) -> Unit)? = null,
+    /** Shows a Summarize button beside Change language model when set. */
+    onSummarize: (() -> Unit)? = null
 ) {
     var modelOptionsExpanded by remember(modelId) { mutableStateOf(false) }
     val visibleModelTools = remember(config.supportedModelTools, provider?.type) {
@@ -159,28 +164,23 @@ internal fun SelectedModelOverviewContent(
             .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                stringResource(R.string.current_model),
-                style = MaterialTheme.typography.titleSmall,
-                color = if (previewTier == 6 && config.supportsThinking) {
-                    Color.White.copy(alpha = 0.82f)
-                } else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f)
-            )
+        val maxEffortSheet = previewTier == 6 && config.supportsThinking
+        val headerColor = if (maxEffortSheet) Color.White.copy(alpha = 0.82f) else MaterialTheme.colorScheme.onSurfaceVariant
+        val changeModelButton: @Composable (Modifier) -> Unit = { buttonModifier ->
             FilledTonalButton(
                 onClick = {
                     screenBurst?.hide()
                     onOpenModelPicker()
                 },
                 contentPadding = PaddingValues(start = 16.dp, end = 12.dp),
-                modifier = Modifier.testTag("open-model-picker-button")
+                modifier = buttonModifier.testTag("open-model-picker-button")
             ) {
-                Text(stringResource(R.string.change_model), maxLines = 1)
+                Text(
+                    stringResource(R.string.change_model),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
                 Spacer(Modifier.width(6.dp))
                 FluentIcon(
                     Icons.Outlined.ArrowForward,
@@ -189,6 +189,46 @@ internal fun SelectedModelOverviewContent(
                 )
             }
         }
+        if (onSummarize == null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    stringResource(R.string.current_model),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = headerColor,
+                    modifier = Modifier.weight(1f)
+                )
+                changeModelButton(Modifier)
+            }
+        } else {
+            // Both labels are long, so the title gets its own line and the buttons share the next one.
+            Text(
+                stringResource(R.string.current_model),
+                style = MaterialTheme.typography.titleSmall,
+                color = headerColor
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+            ) {
+                FilledTonalButton(
+                    onClick = {
+                        screenBurst?.hide()
+                        onSummarize()
+                    },
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    modifier = Modifier.testTag("summarize-conversation-button")
+                ) {
+                    Text(stringResource(R.string.summarize_now), maxLines = 1)
+                }
+                changeModelButton(Modifier.weight(1f, fill = false))
+            }
+        }
+        contextWindowContent?.invoke(maxEffortSheet)
         ModelPickerCard(
             modelId = modelId,
             config = config,

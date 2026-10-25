@@ -49,9 +49,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.google.android.gms.auth.api.identity.AuthorizationRequest
-import com.google.android.gms.auth.api.identity.Identity
-import com.google.android.gms.common.api.Scope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -65,6 +62,8 @@ import org.starfall.generative.features.machines.shared.ui.RemoteSection
 import org.starfall.generative.features.machines.shared.ui.RemoteTextField
 import org.starfall.generative.features.machines.shared.ui.RemoteToggle
 import org.starfall.generative.features.machines.shared.ui.remoteLiteralKeyboardOptions
+import org.starfall.generative.integrations.remote.GCloudIdentityAuthorization
+import org.starfall.generative.integrations.remote.GCloudIdentityOAuth
 import org.starfall.generative.shared.model.GCloudOAuthClient
 import org.starfall.generative.shared.model.GoogleOAuthClientType
 import org.starfall.generative.shared.model.REMOTE_SFTP_HOME
@@ -72,7 +71,6 @@ import org.starfall.generative.shared.model.RemoteAuthentication
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineState
 import org.starfall.generative.shared.model.RemoteMachineType
-import org.starfall.generative.shared.model.remote.REMOTE_GOOGLE_CLOUD_SCOPE
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
@@ -121,26 +119,26 @@ internal fun MachineDetailsScreen(
     var authorizeJob by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val identityOAuth = remember(context) { GCloudIdentityOAuth(context) }
     var pendingAndroidOAuthClient by remember { mutableStateOf<GCloudOAuthClient?>(null) }
     val androidOAuthLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         val client = pendingAndroidOAuthClient
         pendingAndroidOAuthClient = null
         if (client != null && result.resultCode == Activity.RESULT_OK) {
-            runCatching {
-                Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(result.data)
-            }.onSuccess { authResult ->
-                val accessToken = authResult.accessToken
-                if (accessToken.isNullOrBlank()) {
-                    error = context.getString(R.string.remote_machine_google_no_access_token)
-                    authorizing = false
-                } else scope.launch {
-                    onStoreAndroidOAuthToken(client, accessToken).onFailure { error = it.message }
+            runCatching { identityOAuth.accessTokenFromIntent(result.data) }
+                .onSuccess { accessToken ->
+                    if (accessToken.isNullOrBlank()) {
+                        error = context.getString(R.string.remote_machine_google_no_access_token)
+                        authorizing = false
+                    } else scope.launch {
+                        onStoreAndroidOAuthToken(client, accessToken).onFailure { error = it.message }
+                        authorizing = false
+                    }
+                }
+                .onFailure {
+                    error = it.message
                     authorizing = false
                 }
-            }.onFailure {
-                error = it.message
-                authorizing = false
-            }
         } else {
             authorizing = false
         }
@@ -424,35 +422,37 @@ internal fun MachineDetailsScreen(
                                 val client = selectedOAuthClient ?: return@OutlinedButton
                                 authorizing = true
                                 if (client.type == GoogleOAuthClientType.ANDROID) {
-                                    val request = AuthorizationRequest.builder()
-                                        .setRequestedScopes(listOf(Scope(REMOTE_GOOGLE_CLOUD_SCOPE)))
-                                        .build()
-                                    Identity.getAuthorizationClient(context).authorize(request)
-                                        .addOnSuccessListener { result ->
-                                            if (result.hasResolution()) {
-                                                val pendingIntent = result.pendingIntent
-                                                if (pendingIntent == null) {
-                                                    error = context.getString(R.string.remote_machine_google_missing_resolution)
-                                                    authorizing = false
-                                                } else {
-                                                    pendingAndroidOAuthClient = client
-                                                    androidOAuthLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                                    identityOAuth.authorize { result ->
+                                        result.fold(
+                                            onSuccess = { authorization ->
+                                                when (authorization) {
+                                                    is GCloudIdentityAuthorization.NeedsResolution -> {
+                                                        pendingAndroidOAuthClient = client
+                                                        androidOAuthLauncher.launch(
+                                                            IntentSenderRequest.Builder(authorization.pendingIntent.intentSender).build()
+                                                        )
+                                                    }
+                                                    is GCloudIdentityAuthorization.AccessToken -> scope.launch {
+                                                        onStoreAndroidOAuthToken(client, authorization.value)
+                                                            .onFailure { error = it.message }
+                                                        authorizing = false
+                                                    }
+                                                    GCloudIdentityAuthorization.MissingResolution -> {
+                                                        error = context.getString(R.string.remote_machine_google_missing_resolution)
+                                                        authorizing = false
+                                                    }
+                                                    GCloudIdentityAuthorization.MissingAccessToken -> {
+                                                        error = context.getString(R.string.remote_machine_google_no_access_token)
+                                                        authorizing = false
+                                                    }
                                                 }
-                                            } else {
-                                                val accessToken = result.accessToken
-                                                if (accessToken.isNullOrBlank()) {
-                                                    error = context.getString(R.string.remote_machine_google_no_access_token)
-                                                    authorizing = false
-                                                } else scope.launch {
-                                                    onStoreAndroidOAuthToken(client, accessToken).onFailure { error = it.message }
-                                                    authorizing = false
-                                                }
+                                            },
+                                            onFailure = { exception ->
+                                                error = exception.message
+                                                authorizing = false
                                             }
-                                        }
-                                        .addOnFailureListener { exception ->
-                                            error = exception.message
-                                            authorizing = false
-                                        }
+                                        )
+                                    }
                                 } else {
                                     authorizeJob = scope.launch {
                                         try {

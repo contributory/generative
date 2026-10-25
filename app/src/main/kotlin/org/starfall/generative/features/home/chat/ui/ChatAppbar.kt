@@ -15,11 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,6 +38,7 @@ import org.starfall.generative.shared.model.language.sendsThinkingBack
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.FeaturesLogoImage
+import org.starfall.generative.shared.ui.GenerativeLinearWavyProgressIndicator
 import org.starfall.generative.features.home.chat.model.ContextWindowStatus
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -205,38 +207,67 @@ fun ChatAppBar(
     }
 }
 
+/** Severity color shared by the model button ring and the context bar in the model sheet. */
 @Composable
-internal fun ContextWindowDetails(status: ContextWindowStatus, onCompact: () -> Unit) {
+private fun contextWindowColor(status: ContextWindowStatus): Color = when {
+    status.percentage >= 90 -> MaterialTheme.colorScheme.error
+    status.percentage >= 75 -> MaterialTheme.colorScheme.tertiary
+    else -> MaterialTheme.colorScheme.primary
+}
+
+/** Thin progress ring drawn around the model icon; the exact usage is shown in the model sheet. */
+@Composable
+internal fun ContextWindowRing(status: ContextWindowStatus, modifier: Modifier = Modifier) {
+    val progress = (status.usedTokens.toFloat() / status.limit.coerceAtLeast(1)).coerceIn(0f, 1f)
+    val color = contextWindowColor(status)
+    CircularProgressIndicator(
+        progress = { progress },
+        modifier = modifier,
+        color = color,
+        trackColor = color.copy(alpha = 0.18f),
+        strokeWidth = 3.dp
+    )
+}
+
+/**
+ * Horizontal context window indicator shown above the model card in the model sheet.
+ * [onDarkBackground] is set while the sheet wears the dark maximum-effort treatment.
+ */
+@Composable
+internal fun ContextWindowBar(
+    status: ContextWindowStatus,
+    onDarkBackground: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val color = if (onDarkBackground) Color.White else contextWindowColor(status)
+    val titleColor = if (onDarkBackground) Color.White.copy(alpha = 0.82f) else MaterialTheme.colorScheme.onSurfaceVariant
+    val detailColor = if (onDarkBackground) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        modifier = modifier.fillMaxWidth().testTag("context-window-bar"),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(stringResource(R.string.chat_context_window), style = MaterialTheme.typography.titleSmall)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
-                text = stringResource(R.string.context_window_compact_hint),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                textAlign = TextAlign.Center
+                stringResource(R.string.chat_context_window),
+                style = MaterialTheme.typography.titleSmall,
+                color = titleColor,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = stringResource(
+                    R.string.chat_context_window_tokens,
+                    formatContextTokens(status.usedTokens),
+                    formatContextTokens(status.limit.toLong())
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = detailColor
             )
         }
-        Box(
-            modifier = Modifier
-                .clip(CircleShape)
-                .clickable(onClick = onCompact)
-        ) {
-            ContextWindowRing(status, 96.dp)
-        }
-        Text(
-            text = stringResource(R.string.chat_context_window_tokens, formatContextTokens(status.usedTokens), formatContextTokens(status.limit.toLong())),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+        GenerativeLinearWavyProgressIndicator(
+            progress = { (status.usedTokens.toFloat() / status.limit.coerceAtLeast(1)).coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth(),
+            color = color,
+            trackColor = color.copy(alpha = 0.18f)
         )
         Text(
             text = stringResource(when {
@@ -245,8 +276,7 @@ internal fun ContextWindowDetails(status: ContextWindowStatus, onCompact: () -> 
                 else -> R.string.context_window_source_api
             }),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            color = detailColor
         )
         status.apiUsage?.let { usage ->
             Text(
@@ -254,67 +284,8 @@ internal fun ContextWindowDetails(status: ContextWindowStatus, onCompact: () -> 
                     formatContextTokens(usage.inputTokens), formatContextTokens(usage.outputTokens))
                 else stringResource(R.string.context_window_api_input_only, formatContextTokens(usage.inputTokens)),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
+                color = detailColor
             )
-        }
-    }
-}
-@Composable
-internal fun ContextWindowRing(status: ContextWindowStatus, size: androidx.compose.ui.unit.Dp) {
-    val progress = (status.usedTokens.toFloat() / status.limit.coerceAtLeast(1)).coerceIn(0f, 1f)
-    val color = when {
-        status.percentage >= 90 -> MaterialTheme.colorScheme.error
-        status.percentage >= 75 -> MaterialTheme.colorScheme.tertiary
-        else -> MaterialTheme.colorScheme.primary
-    }
-    Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(
-            progress = { progress },
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(2.dp),
-            color = color,
-            trackColor = color.copy(alpha = 0.18f),
-            strokeWidth = if (size < 50.dp) 3.dp else 4.dp
-        )
-        if (size < 50.dp) {
-            // Fixed size in dp (ignores the system font scale) so "100%" always fits inside the ring.
-            val digitSize = with(androidx.compose.ui.platform.LocalDensity.current) {
-                (if (status.percentage >= 100) 7.dp else 8.dp).toSp()
-            }
-            Text(
-                text = "${status.percentage}%",
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = digitSize, lineHeight = digitSize),
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                softWrap = false
-            )
-        } else {
-            Text(
-                text = "${status.percentage}%",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-    }
-}
-@Composable
-internal fun ContextWindowIndicator(
-    status: ContextWindowStatus,
-    onClick: () -> Unit
-) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.size(42.dp),
-        shape = CircleShape,
-        color = prominentContainerColor(),
-        border = prominentContainerBorder()
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            ContextWindowRing(status, 32.dp)
         }
     }
 }

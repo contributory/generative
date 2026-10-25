@@ -2,9 +2,7 @@ package org.starfall.generative.integrations.remote
 
 import android.content.Context
 import android.os.SystemClock
-import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.Identity
-import com.google.android.gms.common.api.Scope
 import java.net.ServerSocket
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -229,9 +227,7 @@ internal class RemoteMachineCloudShellService(
         // token stored by this app. Calling authorize() again returns a fresh access token silently
         // while the user has already granted this scope. Only a result with a resolution needs UI.
         if (client.type == GoogleOAuthClientType.ANDROID) {
-            val request = AuthorizationRequest.builder()
-                .setRequestedScopes(listOf(Scope(REMOTE_GOOGLE_CLOUD_SCOPE)))
-                .build()
+            val request = GCloudIdentityOAuth.authorizationRequest()
             val result = suspendCancellableCoroutine { continuation ->
                 Identity.getAuthorizationClient(appContext).authorize(request)
                     .addOnSuccessListener { value ->

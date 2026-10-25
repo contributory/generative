@@ -16,12 +16,21 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import android.content.pm.ServiceInfo
+import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import org.starfall.generative.MainActivity
+import org.starfall.generative.shared.model.ConversationSummaryProgress
 
 /**
  * Foreground service that keeps the process, CPU and Wi-Fi radio alive while a response is
  * generating, so streaming/tool connections are not cut ("Software caused connection abort")
- * when the app is sent to the background or the screen turns off.
+ * when the app is sent to the background or the screen turns off. While a conversation summary
+ * runs, the same notification shows its progress.
  */
 class ChatBackgroundService : Service() {
 
@@ -30,14 +39,35 @@ class ChatBackgroundService : Service() {
         private const val NOTIFICATION_ID = 4556
         // Safety net only; the service is stopped (and locks released) when generation ends.
         private const val LOCK_TIMEOUT_MS = 6 * 60 * 60_000L
+
+        private val summaryState = MutableStateFlow<ConversationSummaryProgress?>(null)
+
+        /** Progress of the running conversation summary, or null when none is running. */
+        fun showSummaryProgress(progress: ConversationSummaryProgress?) {
+            summaryState.value = progress
+        }
     }
 
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var inForeground = false
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        serviceScope.launch {
+            summaryState.collect { progress ->
+                // Only a running summary needs updates; when it ends the notification is rebuilt by the
+                // next start command, or the service stops. Posting before startForeground would also
+                // create an ordinary notification instead of the foreground one.
+                if (progress != null && inForeground) {
+                    runCatching {
+                        getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID, createNotification())
+                    }
+                }
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -59,6 +89,7 @@ class ChatBackgroundService : Service() {
             stopSelfResult(startId)
             return START_NOT_STICKY
         }
+        inForeground = true
         acquireLocks()
         // Generation belongs to the current process. Restarting an empty service
         // after process death would show "AI is thinking" with no live generation.
@@ -66,6 +97,8 @@ class ChatBackgroundService : Service() {
     }
 
     override fun onDestroy() {
+        inForeground = false
+        serviceScope.cancel()
         releaseLocks()
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
@@ -120,9 +153,13 @@ class ChatBackgroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
         )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(org.starfall.generative.R.string.notification_generation_title))
-            .setContentText(getString(org.starfall.generative.R.string.notification_generation_text))
+        val summary = summaryState.value
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(getString(
+                if (summary != null) org.starfall.generative.R.string.notification_summary_title
+                else org.starfall.generative.R.string.notification_generation_title
+            ))
+            .setContentText(summary?.label ?: getString(org.starfall.generative.R.string.notification_generation_text))
             .setSmallIcon(R.drawable.ic_menu_info_details)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
@@ -131,7 +168,10 @@ class ChatBackgroundService : Service() {
             .setOnlyAlertOnce(true)
             .setShowWhen(false)
             .setContentIntent(pendingIntent)
-            .build()
+        if (summary != null) {
+            builder.setProgress(100, (summary.progress.coerceIn(0f, 1f) * 100).roundToInt(), false)
+        }
+        return builder.build()
     }
 
     private fun createNotificationChannel() {

@@ -17,15 +17,19 @@ import org.starfall.generative.shared.model.ConversationSummaryRequest
 import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 
+/** Slider default; a custom target can still go above [MAX_SLIDER_TARGET_TOKENS]. */
+private const val DEFAULT_TARGET_TOKENS = 6_000
+private const val MAX_SLIDER_TARGET_TOKENS = 32_000
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationSummarySheet(
     onStart: (ConversationSummaryRequest) -> Boolean,
     onDismiss: () -> Unit
 ) {
-    var targetSlider by remember { mutableFloatStateOf(1200f) }
+    var targetSlider by remember { mutableFloatStateOf(DEFAULT_TARGET_TOKENS.toFloat()) }
     var customTarget by remember { mutableStateOf(false) }
-    var customTargetText by remember { mutableStateOf("1200") }
+    var customTargetText by remember { mutableStateOf(DEFAULT_TARGET_TOKENS.toString()) }
     var chunked by remember { mutableStateOf(false) }
     var chunkSlider by remember { mutableFloatStateOf(20_000f) }
     var customChunk by remember { mutableStateOf(false) }
@@ -54,21 +58,11 @@ fun ConversationSummarySheet(
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(stringResource(R.string.conversation_summary_title), style = MaterialTheme.typography.titleLarge)
-            Text(
-                stringResource(R.string.conversation_summary_description),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                stringResource(R.string.conversation_summary_tokens_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text(stringResource(R.string.conversation_summarization_title), style = MaterialTheme.typography.titleLarge)
 
             Text(stringResource(R.string.conversation_summary_target_size, targetTokens ?: 0), style = MaterialTheme.typography.titleMedium)
             val targetSliderState = remember {
-                SliderState(value = targetSlider, trackRange = 1f..6000f)
+                SliderState(value = targetSlider, trackRange = 1f..MAX_SLIDER_TARGET_TOKENS.toFloat())
             }
             targetSliderState.value = targetSlider
             Slider(

@@ -5,7 +5,6 @@ package org.starfall.generative.features.home.chat.ui.input
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -13,12 +12,6 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -48,13 +41,6 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
@@ -65,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -90,17 +77,15 @@ import org.starfall.generative.features.home.chat.logic.input.ChatInputEditDraft
 import org.starfall.generative.features.home.chat.logic.input.DirectMediaRequest
 import org.starfall.generative.features.home.chat.logic.input.MAX_CLIPBOARD_IMAGE_BYTES
 import org.starfall.generative.features.home.chat.model.ContextWindowStatus
-import org.starfall.generative.features.home.chat.ui.ContextWindowDetails
-import org.starfall.generative.features.home.chat.ui.ContextWindowIndicator
 import org.starfall.generative.features.home.chat.logic.input.canSendChatInput
 import org.starfall.generative.features.home.chat.logic.input.directMediaHint
 import org.starfall.generative.features.home.chat.logic.input.filterMediaProvidersForKind
 import org.starfall.generative.features.home.chat.ui.AttachmentStrip
+import org.starfall.generative.features.home.chat.ui.ContextWindowBar
+import org.starfall.generative.features.home.chat.ui.ContextWindowRing
 import org.starfall.generative.features.home.BottomSheetsLink
 import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.shared.ui.model.modelInitial
-import org.starfall.generative.shared.ui.layout.prominentContainerBorder
-import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @Composable
 fun UserInputArea(
@@ -143,13 +128,10 @@ fun UserInputArea(
     modifier: Modifier = Modifier
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue()) }
-    var inputFocused by remember { mutableStateOf(false) }
     // The field may only take focus after the user touches it. Returning from another page (for example the
     // terminal, whose Android view held the window focus) hands the focus back to Compose, which would otherwise
     // move it into the only focusable item here and pop the keyboard up.
     var inputFocusAllowed by remember { mutableStateOf(false) }
-    var contextWindowMenuVisible by remember { mutableStateOf(false) }
-    BackHandler(enabled = contextWindowMenuVisible) { contextWindowMenuVisible = false }
     val textState = textFieldValue.text
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -209,7 +191,6 @@ fun UserInputArea(
     val stackInputActions = attachments.isNotEmpty() || inputLineCount >= 3
     // From five lines on, the buttons drop below the text so it can use the full width.
     val buttonsBelow = inputLineCount >= 5
-    val contextWindowAboveInput = inputFocused && inputLineCount < 5
     // The whole input grows to half the screen for text only, 60% when attachments are shown.
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
     val maxInputHeight = (screenHeightDp * if (attachments.isNotEmpty()) 0.6f else 0.5f).dp
@@ -313,32 +294,6 @@ fun UserInputArea(
             modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-        if (contextWindowStatus != null) {
-            AnimatedVisibility(
-                visible = contextWindowAboveInput,
-                enter = fadeIn(tween(160)) + expandVertically(expandFrom = Alignment.Bottom) +
-                    slideInVertically(tween(180)) { it / 2 },
-                exit = fadeOut(tween(100)) + shrinkVertically(shrinkTowards = Alignment.Bottom) +
-                    slideOutVertically(tween(160)) { -it / 2 }
-            ) {
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                    ContextWindowIndicator(
-                        status = contextWindowStatus,
-                        onClick = { contextWindowMenuVisible = true }
-                    )
-                    if (contextWindowMenuVisible) {
-                        ContextWindowDetailsPopup(
-                            status = contextWindowStatus,
-                            onDismissRequest = { contextWindowMenuVisible = false },
-                            onCompact = {
-                                contextWindowMenuVisible = false
-                                onOpenSummary()
-                            }
-                        )
-                    }
-                }
-            }
-        }
         Surface(
             modifier = Modifier
                 .widthIn(max = 720.dp)
@@ -450,63 +405,55 @@ fun UserInputArea(
                     }
                 }
                     val actionButtons: @Composable () -> Unit = {
-                    if (contextWindowStatus != null) {
-                        AnimatedVisibility(
-                            visible = !contextWindowAboveInput,
-                            enter = fadeIn(tween(160)) + slideInHorizontally(tween(180)) { -it / 2 },
-                            exit = fadeOut(tween(100)) + slideOutHorizontally(tween(160)) { -it / 2 }
-                        ) {
-                            Box {
-                                ContextWindowIndicator(
-                                    status = contextWindowStatus,
-                                    onClick = { contextWindowMenuVisible = true }
-                                )
-                                if (contextWindowMenuVisible) {
-                                    ContextWindowDetailsPopup(
-                                        status = contextWindowStatus,
-                                        onDismissRequest = { contextWindowMenuVisible = false },
-                                        onCompact = {
-                                            contextWindowMenuVisible = false
-                                            onOpenSummary()
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    // The context window ring only describes the chat model, so media mode keeps a plain button.
+                    val contextRingStatus = contextWindowStatus.takeIf { mediaKind == null }
+                    val contextUsedLabel = contextRingStatus?.let { stringResource(R.string.context_window_percent_used, it.percentage) }
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(50.dp)
                             .clip(CircleShape)
-                            .background(if (mediaKind != null) MaterialTheme.colorScheme.primaryContainer
-                                else MaterialTheme.colorScheme.surfaceContainerHighest)
-                            .semantics { contentDescription = if (mediaKind != null) selectMediaModelLabel else selectModelLabel }
+                            .semantics {
+                                contentDescription = if (mediaKind != null) selectMediaModelLabel else selectModelLabel
+                                contextUsedLabel?.let { stateDescription = it }
+                            }
                             .clickable {
                                 if (mediaKind != null) bottomSheets.openModelPicker()
                                 else bottomSheets.openSelectedModelOverview()
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        if (mediaKind != null) {
-                            EntityIcon(
-                                mediaModel?.icon, Modifier.fillMaxSize(),
-                                text = modelInitial(mediaModelId),
-                                fallback = if (mediaModel == null) {
-                                    if (mediaKind == ModelType.IMAGE_GENERATION) Icons.Outlined.Image else Icons.Outlined.Videocam
-                                } else null,
-                                matchName = mediaModel?.displayName?.ifBlank { mediaModelId }, fallbackMatchName = mediaModelId, model = true,
-                                shape = CircleShape
-                            )
-                        } else {
-                        val selectedProvider = providers.firstOrNull { it.id == selectedProviderId }
-                        val selectedConfig = selectedProvider?.config?.modelConfigs?.get(selectedModelName)
-                            ?: selectedProvider?.config?.modelConfigs?.values?.firstOrNull {
-                                it.displayName.isNotBlank() && it.displayName == selectedModelName
+                        if (contextRingStatus != null) {
+                            ContextWindowRing(contextRingStatus, Modifier.fillMaxSize().padding(1.dp))
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(if (contextRingStatus != null) 40.dp else 44.dp)
+                                .clip(CircleShape)
+                                .background(if (mediaKind != null) MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surfaceContainerHighest),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (mediaKind != null) {
+                                EntityIcon(
+                                    mediaModel?.icon, Modifier.fillMaxSize(),
+                                    text = modelInitial(mediaModelId),
+                                    fallback = if (mediaModel == null) {
+                                        if (mediaKind == ModelType.IMAGE_GENERATION) Icons.Outlined.Image else Icons.Outlined.Videocam
+                                    } else null,
+                                    matchName = mediaModel?.displayName?.ifBlank { mediaModelId }, fallbackMatchName = mediaModelId, model = true,
+                                    shape = CircleShape
+                                )
+                            } else {
+                                val selectedProvider = providers.firstOrNull { it.id == selectedProviderId }
+                                val selectedConfig = selectedProvider?.config?.modelConfigs?.get(selectedModelName)
+                                    ?: selectedProvider?.config?.modelConfigs?.values?.firstOrNull {
+                                        it.displayName.isNotBlank() && it.displayName == selectedModelName
+                                    }
+                                EntityIcon(selectedConfig?.icon, Modifier.fillMaxSize(),
+                                    text = modelInitial(selectedModelName),
+                                    matchName = selectedConfig?.displayName?.ifBlank { selectedModelName } ?: selectedModelName, fallbackMatchName = selectedModelName, model = true,
+                                    shape = CircleShape)
                             }
-                        EntityIcon(selectedConfig?.icon, Modifier.fillMaxSize(),
-                            text = modelInitial(selectedModelName),
-                             matchName = selectedConfig?.displayName?.ifBlank { selectedModelName } ?: selectedModelName, fallbackMatchName = selectedModelName, model = true,
-                             shape = CircleShape)
                         }
                     }
 
@@ -607,7 +554,6 @@ fun UserInputArea(
                             }
                             .focusProperties { canFocus = inputFocusAllowed }
                             .onFocusChanged {
-                                inputFocused = it.isFocused
                                 if (!it.isFocused) inputFocusAllowed = false
                             }
                             .selectAllOnTripleClick {
@@ -659,6 +605,11 @@ fun UserInputArea(
     }
 
 
+    // Shown above the model card in the model sheet, where the exact usage and Summarize live.
+    val modelSheetContextWindow: (@Composable (Boolean) -> Unit)? = contextWindowStatus?.let { status ->
+        val content: @Composable (Boolean) -> Unit = { onDarkBackground -> ContextWindowBar(status, onDarkBackground) }
+        content
+    }
     BottomSheetsLink(
         sheets = bottomSheets,
         mediaKind = mediaKind,
@@ -691,48 +642,8 @@ fun UserInputArea(
         attachments = attachments,
         onAttachmentsChange = onAttachmentsChange,
         onOpenFeatureToolsSettings = onOpenFeatureToolsSettings,
-        onOpenMcpConnectorsSettings = onOpenMcpConnectorsSettings
-
+        onOpenMcpConnectorsSettings = onOpenMcpConnectorsSettings,
+        contextWindowContent = modelSheetContextWindow,
+        onOpenSummary = onOpenSummary.takeIf { contextWindowStatus != null }
     )
-}
-
-@Composable
-private fun ContextWindowDetailsPopup(
-    status: ContextWindowStatus,
-    onDismissRequest: () -> Unit,
-    onCompact: () -> Unit
-) {
-    Popup(
-        popupPositionProvider = ContextWindowPopupPositionProvider,
-        onDismissRequest = onDismissRequest,
-        properties = PopupProperties(
-            focusable = false,
-            dismissOnBackPress = false,
-            dismissOnClickOutside = true
-        )
-    ) {
-        Surface(
-            modifier = Modifier.width(228.dp),
-            shape = MaterialTheme.shapes.extraSmall,
-            color = prominentContainerColor(),
-            border = prominentContainerBorder(),
-            tonalElevation = if (LocalAmoledMode.current) 0.dp else 3.dp,
-            shadowElevation = if (LocalAmoledMode.current) 0.dp else 8.dp
-        ) {
-            ContextWindowDetails(status = status, onCompact = onCompact)
-        }
-    }
-}
-
-private object ContextWindowPopupPositionProvider : PopupPositionProvider {
-    override fun calculatePosition(
-        anchorBounds: IntRect,
-        windowSize: IntSize,
-        layoutDirection: LayoutDirection,
-        popupContentSize: IntSize
-    ): IntOffset {
-        val x = ((windowSize.width - popupContentSize.width) / 2).coerceAtLeast(0)
-        val y = (anchorBounds.top - popupContentSize.height).coerceAtLeast(0)
-        return IntOffset(x, y)
-    }
 }

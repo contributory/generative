@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.starfall.generative.shared.storage.preferences.AppLocale
 import org.starfall.generative.shared.storage.preferences.ScreenWakelockMode
@@ -80,8 +81,13 @@ class MainActivity : ComponentActivity() {
         enableTransparentSystemBars()
 
         lifecycleScope.launch {
-            viewModel.isAnyGenerating.collect { busy ->
-                updateGenerationService(busy)
+            // A running conversation summary keeps the process alive like a response does, and its
+            // progress is what the service notification shows meanwhile.
+            combine(viewModel.isAnyGenerating, viewModel.summaryProgress) { generating, summary ->
+                generating to summary
+            }.collect { (generating, summary) ->
+                ChatBackgroundService.showSummaryProgress(summary)
+                updateGenerationService(generating || summary != null)
             }
         }
 
@@ -89,7 +95,7 @@ class MainActivity : ComponentActivity() {
         // first. At the root, retain the generation's ViewModel instead of finishing
         // the activity (Android versions before 12 finish root activities on Back).
         onBackPressedDispatcher.addCallback(this) {
-            if (viewModel.isAnyGenerating.value) {
+            if (isGenerationOrSummaryActive()) {
                 moveTaskToBack(true)
             } else {
                 isEnabled = false
@@ -189,7 +195,7 @@ class MainActivity : ComponentActivity() {
         // Flush the current generation state before leaving the visible activity.
         // This includes Home, switching apps, and turning the screen off, even if
         // the StateFlow collector has not yet processed a newly started response.
-        updateGenerationService(viewModel.isAnyGenerating.value)
+        updateGenerationService(isGenerationOrSummaryActive())
         super.onPause()
     }
 
@@ -201,6 +207,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private var stopServiceJob: Job? = null
+
+    private fun isGenerationOrSummaryActive() =
+        viewModel.isAnyGenerating.value || viewModel.summaryProgress.value != null
 
     private fun updateGenerationService(busy: Boolean, immediate: Boolean = false) {
         val serviceIntent = Intent(this, ChatBackgroundService::class.java)

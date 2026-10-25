@@ -208,6 +208,7 @@
     <string name="notification_generation_channel_description">Keeps AI generation alive in the background</string>
     <string name="notification_generation_title">AI is thinking…</string>
     <string name="notification_generation_text">The language model is generating a response in the background.</string>
+    <string name="notification_summary_title">Summarizing conversation…</string>
     <string name="notification_oauth_channel_name">Account sign-in</string>
     <string name="notification_oauth_channel_description">Keeps account sign-in active while you use the browser.</string>
     <string name="notification_oauth_title">Account sign-in in progress</string>
@@ -233,19 +234,20 @@
     <string name="markdown_error_clip_label">Error Message</string>
     <string name="latex_rendered_formula">Rendered LaTeX formula</string>
     <string name="conversation_summary_title">Conversation Summary</string>
+    <string name="conversation_summarization_title">Conversation Summarization</string>
     <string name="conversation_summary_description">Older messages stay visible, but only the summary and later messages are sent to the language model.</string>
     <string name="conversation_summary_tokens_note">Token counts are estimated from text length, not each language model’s exact tokenizer.</string>
     <string name="conversation_summary_target_size">Target summary size: %1$d tokens</string>
-    <string name="conversation_summary_custom_target">Custom target</string>
-    <string name="conversation_summary_target_tokens">Target tokens</string>
+    <string name="conversation_summary_custom_target">Custom target size</string>
+    <string name="conversation_summary_target_tokens">Target size (tokens)</string>
     <string name="conversation_summary_mode">Summarization mode</string>
     <string name="conversation_summary_mode_all">All at once</string>
     <string name="conversation_summary_mode_passes">Multiple passes</string>
-    <string name="conversation_summary_token_limit">Token limit / pass: %1$d</string>
-    <string name="conversation_summary_custom_pass">Custom per-pass limit</string>
-    <string name="conversation_summary_tokens_per_pass">Tokens / pass</string>
-    <string name="conversation_summary_model_missing">Configure a Chat Summary language model in Chat Options, or stop the current generation first.</string>
-    <string name="conversation_summary_start">Start summary</string>
+    <string name="conversation_summary_token_limit">Token limit per pass: %1$d</string>
+    <string name="conversation_summary_custom_pass">Custom limit per pass</string>
+    <string name="conversation_summary_tokens_per_pass">Tokens per pass</string>
+    <string name="conversation_summary_model_missing">Summarization can’t start. Set a Chat Summary language model in Chat Options, and make sure no response or summarization is already running.</string>
+    <string name="conversation_summary_start">Start summarization</string>
     <string name="tool_details_args">Args</string>
     <string name="tool_details_pretty">Pretty</string>
     <string name="tool_details_response">Response</string>
@@ -1071,10 +1073,11 @@
     <string name="context_window_source_mixed">API usage + estimated new messages</string>
     <string name="context_window_api_breakdown">Input: %1$s · Output: %2$s tokens</string>
     <string name="context_window_api_input_only">Input: %1$s tokens · Output usage unavailable</string>
+    <string name="context_window_percent_used">Context window %1$d%% used</string>
     <string name="headers" translatable="false">Headers</string>
     <string name="mcp_enable">Enable</string>
     <string name="mcp_enabled">Enabled</string>
     <string name="drag_to_exit_folder_hint">Drag up to the app bar or down to the navigation bar to leave the folder</string>
-    <string name="conversation_summary_invalid_target">Enter a whole number of target tokens from 1 to 2147483647. The summary must also fit the selected summary language model’s context and output limits.</string>
-    <string name="conversation_summary_invalid_chunk">Enter a whole number from 1 to 100000 tokens per pass.</string>
+    <string name="conversation_summary_invalid_target">Enter a whole number from 1 to 2,147,483,647. The target size must also fit within the summary language model’s context window and output limit.</string>
+    <string name="conversation_summary_invalid_chunk">Enter a whole number of tokens per pass from 1 to 100,000.</string>
 </resources>
