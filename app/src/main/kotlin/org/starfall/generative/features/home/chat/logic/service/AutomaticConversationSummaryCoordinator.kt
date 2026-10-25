@@ -16,6 +16,7 @@ internal class AutomaticConversationSummaryCoordinator(
     private val isGenerationReplacementActive: () -> Boolean,
     private val isSummaryActive: () -> Boolean,
     private val pendingWrites: () -> Int,
+    private val isRestoreInProgress: () -> Boolean = { false },
     private val currentConversation: StateFlow<Conversation?>,
     private val appPreferences: StateFlow<AppPreferences>,
     private val providers: StateFlow<List<ModelProvider>>,
@@ -25,7 +26,9 @@ internal class AutomaticConversationSummaryCoordinator(
     private var lastAttempt: String? = null
 
     fun maybeStart(incoming: StoredMessage? = null): Boolean {
-        if (isGenerating.value || isGenerationReplacementActive() || isSummaryActive() || pendingWrites() > 0) {
+        if (isRestoreInProgress() || isGenerating.value || isGenerationReplacementActive() ||
+            isSummaryActive() || pendingWrites() > 0
+        ) {
             return false
         }
         val current = currentConversation.value ?: return false
