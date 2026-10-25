@@ -1,20 +1,24 @@
 package org.starfall.generative.appwiring
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.starfall.generative.shared.icons.IconStore
+import org.starfall.generative.shared.logging.DebugLog
+import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.McpProtocol
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.isContentApiName
+import org.starfall.generative.shared.model.isContentApiPreset
 import org.starfall.generative.shared.storage.McpRepository
 import org.starfall.generative.shared.storage.ModelRepository
 import org.starfall.generative.shared.storage.SpeechRepository
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 
-/** Runs once per process using provider/MCP metadata only; auth repairs belong in migrations. */
+/** Runs startup defaults and initial MCP tool caching; auth repairs belong in migrations. */
 class DefaultDataInitializer(
     private val modelRepo: ModelRepository,
     private val mcpRepo: McpRepository,
@@ -63,6 +67,9 @@ class DefaultDataInitializer(
             }
             prefsRepo.setContentApiPresetInitialized(true)
         }
+        // Populate the bundled server's persistent tool cache before users open MCP settings or chat.
+        // A null cache means discovery has not succeeded yet; successful empty lists are cached too.
+        preloadContentApiTools()
 
         speechRepo.allServices.first().let { currentServices ->
             if (currentServices.isEmpty()) {
@@ -71,6 +78,26 @@ class DefaultDataInitializer(
         }
 
         pruneUnusedIcons(prefs.featuresLogoImage)
+    }
+
+    private suspend fun preloadContentApiTools() {
+        val contentApi = mcpRepo.allServers.first().firstOrNull { it.isContentApiPreset() } ?: return
+        if (contentApi.cachedTools != null) return
+
+        try {
+            mcpRepo.saveCachedTools(contentApi.id, mcpRepo.discoverTools(contentApi))
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            // Do not block the rest of startup. Since failed discovery leaves the cache null,
+            // the app retries automatically the next time it starts.
+            DebugLog.error(
+                DebugLogCategory.ERRORS,
+                "DefaultDataInitializer",
+                "Could not preload bundled Content API tools; will retry on a future startup",
+                error
+            )
+        }
     }
 
     private suspend fun pruneUnusedIcons(featuresLogoImage: String?) {
