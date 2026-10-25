@@ -45,6 +45,7 @@ internal class ChatGeneration(
     val conversationId = _conversationId.asStateFlow()
     var snapshot: Conversation? = null
         private set
+    private var snapshotMutationRevision = 0L
     private var job: Job? = null
     private var nextGenerationId = 0L
     private val pendingUpdateWrites = linkedSetOf<Job>()
@@ -102,7 +103,7 @@ internal class ChatGeneration(
                 generationId = generationId,
                 initialContent = initialContent,
                 initialReasoning = initialReasoning,
-                alreadyInsideVisibleContent = resume,
+                alreadyInsideVisibleContent = resume && initialContent.isNotEmpty(),
                 scope = scope,
                 linesPerBatch = linesPerBatch,
                 commitIntervalMillis = streamCommitIntervalMs,
@@ -133,28 +134,39 @@ internal class ChatGeneration(
                 streamDisplay.resetForMessage(message.id)
             }
 
+            suspend fun buildResponseSnapshot(
+                current: Conversation,
+                errorMessage: String?
+            ): Conversation = withContext(Dispatchers.Default) {
+                var updated = updateResponse(
+                    current,
+                    activeMessageId,
+                    output.toString(),
+                    reasoningOutput.toString().takeIf { it.isNotBlank() },
+                    reasoningSignatureOutput.toString().takeIf { it.isNotBlank() }
+                )
+                if (errorMessage != null) {
+                    updated = updated.copy(messages = updated.messages.map { message ->
+                        if (message.id != activeMessageId) message else message.copy(
+                            versions = message.versions.mapIndexed { index, version ->
+                                if (index == message.activeVersionIndex) {
+                                    version.copy(generationError = errorMessage)
+                                } else version
+                            }
+                        )
+                    })
+                }
+                updated
+            }
+
             suspend fun responseSnapshot(errorMessage: String? = null): Conversation {
-                val current = snapshot ?: error("Missing conversation snapshot for active generation")
-                return withContext(Dispatchers.Default) {
-                    var updated = updateResponse(
-                        current,
-                        activeMessageId,
-                        output.toString(),
-                        reasoningOutput.toString().takeIf { it.isNotBlank() },
-                        reasoningSignatureOutput.toString().takeIf { it.isNotBlank() }
-                    )
-                    if (errorMessage != null) {
-                        updated = updated.copy(messages = updated.messages.map { message ->
-                            if (message.id != activeMessageId) message else message.copy(
-                                versions = message.versions.mapIndexed { index, version ->
-                                    if (index == message.activeVersionIndex) {
-                                        version.copy(generationError = errorMessage)
-                                    } else version
-                                }
-                            )
-                        })
-                    }
-                    updated
+                while (true) {
+                    val current = snapshot ?: error("Missing conversation snapshot for active generation")
+                    val mutationRevision = snapshotMutationRevision
+                    val updated = buildResponseSnapshot(current, errorMessage)
+                    // updateConversation may run while the response is assembled on Dispatchers.Default.
+                    // Retry so assigning this result cannot roll back its title/model/instruction change.
+                    if (snapshot === current && snapshotMutationRevision == mutationRevision) return updated
                 }
             }
 
@@ -365,6 +377,7 @@ internal class ChatGeneration(
         val current = snapshot ?: return
         val updated = transform(current)
         snapshot = updated
+        snapshotMutationRevision++
         publish(updated)
         val writeJob = scope.launch(start = CoroutineStart.LAZY) { save(updated) }
         synchronized(pendingUpdateWritesLock) { pendingUpdateWrites += writeJob }

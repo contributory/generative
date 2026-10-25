@@ -52,6 +52,16 @@ class StreamResponseTextSplitterTest {
         assertEquals("Existing".length + " <think>literal".length, splitter.visibleContentLength)
     }
 
+    @Test
+    fun noExistingVisibleContentStillAllowsTheThinkPrefixProbeOnResume() {
+        val splitter = StreamResponseTextSplitter(alreadyInsideVisibleContent = false)
+        val appended = splitter.append("<think>reason</think>Answer")
+        val final = splitter.finish()
+
+        assertEquals("Answer", appended.content + final.content)
+        assertEquals("reason", appended.reasoning + final.reasoning)
+    }
+
     private fun parse(input: String): StreamResponseText {
         val splitter = StreamResponseTextSplitter()
         val appended = splitter.append(input)
