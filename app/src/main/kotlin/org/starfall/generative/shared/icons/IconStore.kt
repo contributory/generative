@@ -2,6 +2,7 @@ package org.starfall.generative.shared.icons
 
 import android.content.Context
 import org.starfall.generative.shared.icons.model.IconRule
+import org.starfall.generative.shared.icons.model.IconStoreState
 import org.starfall.generative.shared.icons.model.StoredIcon
 import android.graphics.Bitmap
 import android.net.Uri
@@ -164,6 +165,58 @@ class IconStore(private val context: Context) {
                 lightImage = themedImage(file.name, false),
                 darkImage = variants.getString("dark:${file.name}", null)?.takeIf { File(directory, it).isFile })
         }.sortedBy { it.filename.lowercase(java.util.Locale.ROOT) }
+    }
+
+    /** Captures icon metadata and the names of all app-owned icon files for backup. */
+    fun exportState(): IconStoreState = synchronized(mutationLock) {
+        IconStoreState(
+            rules = rules(),
+            assetLabels = assets.all.mapNotNull { (key, value) -> (value as? String)?.let { key to it } }.toMap(),
+            automatic = automatic.all.mapNotNull { (key, value) -> (value as? String)?.let { key to it } }.toMap(),
+            variants = variants.all.mapNotNull { (key, value) -> (value as? String)?.let { key to it } }.toMap(),
+            fileNames = names.all.mapNotNull { (key, value) -> (value as? String)?.let { key to it } }.toMap(),
+            files = directory.listFiles().orEmpty()
+                .filter { storedIconName.matches(it.name) && it.isFile }
+                .map { it.name }
+                .sorted()
+        )
+    }
+
+    /** Returns an app-owned icon file for streaming into a backup archive. */
+    fun exportFile(name: String): File? = synchronized(mutationLock) {
+        require(storedIconName.matches(name)) { "Invalid icon file name." }
+        File(directory, name).takeIf { it.isFile }
+    }
+
+    /** Restores icon metadata and files, removing stale icon files from the current installation. */
+    fun restore(state: IconStoreState, files: Map<String, File>) = synchronized(mutationLock) {
+        require(state.files.distinct().size == state.files.size) { "The icon backup contains duplicate files." }
+        state.files.forEach { name -> require(storedIconName.matches(name)) { "Invalid icon file name." } }
+        files.keys.forEach { name -> require(name in state.files) { "Unexpected icon file in backup." } }
+        state.files.forEach { name ->
+            val source = files[name] ?: error("The icon file $name is missing from the backup.")
+            require(source.isFile) { "The icon file $name is unreadable." }
+        }
+
+        directory.listFiles().orEmpty().filter { storedIconName.matches(it.name) }.forEach { it.delete() }
+        state.files.forEach { name ->
+            val destination = File(directory, name)
+            files.getValue(name).inputStream().use { input -> destination.outputStream().use { input.copyTo(it) } }
+        }
+        check(preferences.edit().clear().putString("rules", Json.encodeToString(state.rules)).commit())
+        fun restorePreferences(preferences: android.content.SharedPreferences, values: Map<String, String>) {
+            val editor = preferences.edit().clear()
+            values.forEach { (key, value) -> editor.putString(key, value) }
+            check(editor.commit())
+        }
+        restorePreferences(assets, state.assetLabels)
+        restorePreferences(automatic, state.automatic)
+        restorePreferences(variants, state.variants)
+        restorePreferences(names, state.fileNames)
+        rulesSnapshot = null
+        lookupCache.clear()
+        changes.value += 1
+        lookupChanges.value += 1
     }
 
     fun editMatches(image: String, patterns: List<String>) = synchronized(mutationLock) {

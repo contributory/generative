@@ -72,6 +72,39 @@ class ToolFiles(val directory: File) {
         }
         revision.update { it + 1 }
     }
+
+    fun clearAll() = delete(list().map { it.name })
+
+    /** Restores a previously exported app-private file under its original reference name. */
+    suspend fun restore(name: String, input: InputStream, maxBytes: Long = limit) = withContext(Dispatchers.IO) {
+        require(name.matches(Regex("[a-zA-Z0-9._-]+")) && !name.endsWith(".part") && !name.endsWith(".spill")) {
+            "Invalid stored file name."
+        }
+        checkSpace()
+        val destination = File(directory, name)
+        val temporary = File(directory, "$name.restore.part")
+        try {
+            input.use { source ->
+                temporary.outputStream().use { output ->
+                    var total = 0L
+                    val buffer = ByteArray(32768)
+                    while (true) {
+                        coroutineContext.ensureActive()
+                        val count = source.read(buffer)
+                        if (count < 0) break
+                        total += count
+                        require(total <= maxBytes) { "File exceeds the backup file size limit." }
+                        output.write(buffer, 0, count)
+                    }
+                }
+            }
+            check(temporary.renameTo(destination)) { "Could not restore stored file $name." }
+            synchronized(index) { index.hashes.remove(name) }
+            revision.update { it + 1 }
+        } finally {
+            temporary.delete()
+        }
+    }
     private fun checkSpace() { check(directory.usableSpace > 64L * 1024 * 1024) { "Not enough storage. Free space in Storage." } }
     suspend fun save(input: InputStream, mime: String? = null, maxBytes: Long = limit): String =
         saveInternal(input, mime, maxBytes)

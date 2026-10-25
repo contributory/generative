@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import org.starfall.generative.shared.model.AiChatConfig
@@ -28,6 +29,12 @@ class ProfileRepository(private val db: AppDatabase) {
 
     suspend fun getById(id: String): ChatProfile? = withContext(Dispatchers.IO) {
         db.withTransaction { dao.getProfileById(id)?.let { entityToModel(it) } }
+    }
+
+    /** Replaces every chat profile during a full application restore. */
+    suspend fun replaceAll(profiles: List<ChatProfile>) {
+        dao.getAllProfiles().first().map { it.id }.forEach { dao.deleteById(it) }
+        profiles.forEach { saveProfile(it) }
     }
 
     suspend fun saveProfile(profile: ChatProfile) = withContext(Dispatchers.IO) {

@@ -155,7 +155,8 @@ class MainActivity : ComponentActivity() {
                 ) {
                     // Keep Surface's behaviour of forcing its content to fill the window.
                     Box(Modifier.fillMaxSize(), propagateMinConstraints = true) {
-                        AppNavigation(viewModel, configurationViewModel, settingsViewModel, remoteMachinesViewModel, container.toolFiles)
+                        AppNavigation(viewModel, configurationViewModel, settingsViewModel, remoteMachinesViewModel,
+                            container.toolFiles, container.appDataTransfer)
                         // Drawn last so the draggable debug button and log panel float above every screen.
                         if (appPrefs.debugMode) DebugLogOverlay()
                     }

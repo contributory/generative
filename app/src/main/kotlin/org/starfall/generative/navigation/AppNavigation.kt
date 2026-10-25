@@ -26,16 +26,16 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import java.io.OutputStreamWriter
+import java.io.File
+import java.io.FileInputStream
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.features.about.ui.AboutScreen
-import org.starfall.generative.features.appdata.logic.buildJsonExport
-import org.starfall.generative.features.appdata.logic.parseFullAppDataExport
-import org.starfall.generative.shared.model.JsonExportKind
+import org.starfall.generative.features.appdata.logic.AppDataTransferService
+import org.starfall.generative.shared.model.BackupExportKind
 import org.starfall.generative.features.appdata.ui.AppDataScreen
 import org.starfall.generative.features.chatoptions.ui.ChatOptionsScreen
 import org.starfall.generative.features.icons.ui.IconsScreen
@@ -111,6 +111,7 @@ fun AppNavigation(
     settingsViewModel: SettingsViewModel,
     remoteMachinesViewModel: RemoteMachinesViewModel,
     toolFiles: ToolFiles,
+    appDataTransfer: AppDataTransferService,
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val drawerFocusManager = LocalFocusManager.current
@@ -189,50 +190,49 @@ fun AppNavigation(
     val importedProviderId by configurationViewModel.importedProviderId.collectAsStateWithLifecycle()
     val providerImportFailed by configurationViewModel.providerImportFailed.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var pendingExport by remember { mutableStateOf<String?>(null) }
+    var pendingExport by remember { mutableStateOf<File?>(null) }
     var preparingExport by remember { mutableStateOf(false) }
     var pendingImport by remember { mutableStateOf(false) }
     val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
+        ActivityResultContracts.CreateDocument("application/zip")
     ) { uri ->
-        val payload = pendingExport
+        val archive = pendingExport
         pendingExport = null
-        if (uri == null || payload == null) return@rememberLauncherForActivityResult
+        if (uri == null || archive == null) {
+            archive?.delete()
+            return@rememberLauncherForActivityResult
+        }
         coroutineScope.launch {
             try {
                 withContext(Dispatchers.IO) {
                     context.contentResolver.openOutputStream(uri)?.use { output ->
-                        OutputStreamWriter(output, Charsets.UTF_8).use { it.write(payload) }
+                        FileInputStream(archive).use { it.copyTo(output) }
                     } ?: error(context.getString(R.string.export_open_file_failed))
                 }
-                Toast.makeText(context, R.string.export_json_success, Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.export_zip_success, Toast.LENGTH_SHORT).show()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
                 Toast.makeText(context, R.string.export_write_failed, Toast.LENGTH_LONG).show()
+            } finally {
+                archive.delete()
             }
         }
     }
 
-    fun exportJson() {
+    fun exportData() {
         if (preparingExport || pendingExport != null) return
         preparingExport = true
         coroutineScope.launch {
             try {
-                val fullProviders = configurationViewModel.loadProvidersForExport()
-                val fullServers = configurationViewModel.loadServersForExport()
-                val fullConversations = withContext(Dispatchers.IO) {
-                    viewModel.conversationsForExport()
-                }
-                val payload = withContext(Dispatchers.Default) {
-                    buildJsonExport(fullProviders, fullServers, speechServices, fullConversations, providerGroups)
-                }
-                pendingExport = payload
-                exportLauncher.launch(JsonExportKind.FULL_BACKUP.fileName)
+                pendingExport = appDataTransfer.createZipBackup()
+                exportLauncher.launch(BackupExportKind.FULL_BACKUP.fileName)
             } catch (cancelled: CancellationException) {
+                pendingExport?.delete()
                 pendingExport = null
                 throw cancelled
             } catch (_: Exception) {
+                pendingExport?.delete()
                 pendingExport = null
                 Toast.makeText(context, R.string.export_prepare_failed, Toast.LENGTH_LONG).show()
             } finally {
@@ -249,37 +249,29 @@ fun AppNavigation(
         if (uri == null || !shouldImport) return@rememberLauncherForActivityResult
         coroutineScope.launch {
             try {
-                val raw = withContext(Dispatchers.IO) {
-                    context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-                        ?: error(context.getString(R.string.export_open_file_failed))
-                }
                 val fileName = withContext(Dispatchers.IO) {
                     context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
                         ?.use { cursor ->
                             if (cursor.moveToFirst()) cursor.getString(0) else null
                         }
                 }
-                val backup = withContext(Dispatchers.Default) { parseFullAppDataExport(raw, fileName) }
-                withContext(Dispatchers.IO) {
-                    // Imports are additive/upserts: categories absent from legacy exports are untouched.
-                    backup.providers?.let { configurationViewModel.importProviders(it, backup.providerGroups) }
-                    backup.mcpServers?.let { configurationViewModel.importMcpServers(it) }
-                    backup.speechServices?.let { configurationViewModel.importSpeechServices(it) }
-                    backup.conversations?.let { viewModel.importConversations(it) }
+                val result = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        appDataTransfer.import(input, fileName)
+                    }
+                        ?: error(context.getString(R.string.export_open_file_failed))
                 }
-                val count = backup.providers.orEmpty().size + backup.providerGroups.orEmpty().size +
-                    backup.mcpServers.orEmpty().size + backup.speechServices.orEmpty().size +
-                    backup.conversations.orEmpty().size
-                Toast.makeText(context, context.getString(R.string.import_success, count), Toast.LENGTH_SHORT).show()
+                if (result.fullRestore) viewModel.reloadAfterRestore()
+                Toast.makeText(context, context.getString(R.string.import_success, result.itemCount), Toast.LENGTH_SHORT).show()
             } catch (error: Exception) {
                 Toast.makeText(context, context.getString(R.string.import_failed, error.message.orEmpty()), Toast.LENGTH_LONG).show()
             }
         }
     }
 
-    fun importJson() {
+    fun importData() {
         pendingImport = true
-        importLauncher.launch(arrayOf("application/json", "text/*"))
+        importLauncher.launch(arrayOf("application/zip", "application/json", "text/*"))
     }
     // The app preference is the default for new chats. Existing chats keep showing
     // the model they last used, independently of that default.
@@ -947,8 +939,8 @@ fun AppNavigation(
                             onResetAllData = {
                                 viewModel.deleteAllUserData(chatAttachments.attachments.value)
                             },
-                            onExportJson = ::exportJson,
-                            onImportJson = ::importJson,
+                             onExportZip = ::exportData,
+                             onImportZip = ::importData,
                             onBack = { navController.popBackStack() }
                         )
                     }

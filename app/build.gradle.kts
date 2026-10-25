@@ -130,6 +130,10 @@ dependencies {
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
+    // Compose BOM 2026.09.00 still pins Material 3 to stable 1.4.0. The explicit version
+    // selects the newest beta; remove it once a BOM ships Material 3 1.5.0 or newer.
+    val material3Version = "1.5.0-beta02"
+
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
@@ -141,7 +145,7 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material3:material3:$material3Version")
 
     implementation("androidx.navigation:navigation-compose:2.8.4")
 

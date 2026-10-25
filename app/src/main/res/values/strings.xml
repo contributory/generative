@@ -310,6 +310,7 @@
     <string name="favicon_image_error">Could not retrieve the image.</string>
     <string name="export_open_file_failed">Could not open the selected file.</string>
     <string name="export_json_success">JSON file exported</string>
+    <string name="export_zip_success">Complete backup ZIP exported</string>
     <string name="export_write_failed">Export failed: could not write the selected file. Choose a writable location and retry.</string>
     <string name="export_prepare_failed">Export failed: could not prepare a complete backup. Check model provider and MCP credentials and try again.</string>
     <string name="import_success">%1$d item(s) imported</string>
@@ -703,9 +704,9 @@
     <string name="settings_clear_all_chat_history">Clear All Chat History</string>
     <string name="settings_reset_all_application_data">Reset All Application Data</string>
     <string name="settings_export_data">Export data</string>
-    <string name="settings_export_data_description">Back up or restore model providers, groups, MCP servers, speech services, and chats in one JSON file.</string>
-    <string name="settings_export_all_data_json">Export All Data (JSON)</string>
-    <string name="settings_import_all_data_json">Import All Data (JSON)</string>
+    <string name="settings_export_data_description">Back up or restore all app data, settings, app state, conversations, uploaded files, and icons in one ZIP file.</string>
+    <string name="settings_export_all_data_zip">Export Complete Backup (ZIP)</string>
+    <string name="settings_import_all_data_zip">Import Complete Backup (ZIP)</string>
     <string name="settings_clear_all_chats_title">Clear All Chats</string>
     <string name="settings_clear_all_chats_message">Are you sure you want to delete all conversations? This action cannot be undone.</string>
     <string name="settings_clear_all">Clear All</string>

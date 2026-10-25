@@ -43,8 +43,8 @@ fun AppDataScreen(
     providerCount: Int,
     onClearAllConversations: () -> Unit,
     onResetAllData: () -> Unit,
-    onExportJson: () -> Unit = {},
-    onImportJson: () -> Unit = {},
+    onExportZip: () -> Unit = {},
+    onImportZip: () -> Unit = {},
     onBack: () -> Unit
 ) {
     var showClearConfirm by rememberSaveable { mutableStateOf(false) }
@@ -105,12 +105,12 @@ fun AppDataScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    DataActionButton(stringResource(R.string.settings_export_all_data_json)) {
-                        onExportJson()
+                    DataActionButton(stringResource(R.string.settings_export_all_data_zip)) {
+                        onExportZip()
                     }
                     Spacer(Modifier.height(4.dp))
-                    DataActionButton(stringResource(R.string.settings_import_all_data_json)) {
-                        onImportJson()
+                    DataActionButton(stringResource(R.string.settings_import_all_data_zip)) {
+                        onImportZip()
                     }
                 }
             }

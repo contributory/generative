@@ -145,6 +145,10 @@ class McpOAuthService(
 
     fun clear(serverId: String) = store.delete(serverId)
 
+    internal fun exportTokens(): Map<String, JsonObject> = store.exportAll()
+
+    internal fun importTokens(tokens: Map<String, JsonObject>) = store.importAll(tokens)
+
     private suspend fun discover(endpointValue: String, requestedResource: String): OAuthDiscovery {
         val endpoint = endpointValue.toHttpUrl()
         var challengedMetadataUrl: String? = null

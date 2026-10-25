@@ -67,10 +67,13 @@ fun ConversationSummarySheet(
             )
 
             Text(stringResource(R.string.conversation_summary_target_size, targetTokens ?: 0), style = MaterialTheme.typography.titleMedium)
+            val targetSliderState = remember {
+                SliderState(value = targetSlider, trackRange = 1f..6000f)
+            }
+            targetSliderState.value = targetSlider
             Slider(
-                value = targetSlider,
+                state = targetSliderState,
                 onValueChange = { targetSlider = it },
-                valueRange = 1f..6000f,
                 enabled = !customTarget
             )
             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
@@ -107,10 +110,13 @@ fun ConversationSummarySheet(
 
             if (chunked) {
                 Text(stringResource(R.string.conversation_summary_token_limit, chunkTokens ?: 0), style = MaterialTheme.typography.titleMedium)
+                val chunkSliderState = remember {
+                    SliderState(value = chunkSlider, trackRange = 1f..100_000f)
+                }
+                chunkSliderState.value = chunkSlider
                 Slider(
-                    value = chunkSlider,
+                    state = chunkSliderState,
                     onValueChange = { chunkSlider = it },
-                    valueRange = 1f..100_000f,
                     enabled = !customChunk
                 )
                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {

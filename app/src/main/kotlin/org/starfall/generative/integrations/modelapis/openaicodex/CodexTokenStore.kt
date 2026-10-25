@@ -13,6 +13,10 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 
 @Serializable
 internal data class CodexTokenState(
@@ -46,6 +50,22 @@ internal class CodexTokenStore(context: Context) {
 
     fun delete(providerId: String) {
         preferences.edit().remove(providerId).apply()
+    }
+
+    fun exportAll(): Map<String, JsonObject> = preferences.all.mapNotNull { (providerId, value) ->
+        val encrypted = value as? String ?: return@mapNotNull null
+        runCatching {
+            providerId to json.encodeToJsonElement<CodexTokenState>(json.decodeFromString(decrypt(encrypted))).jsonObject
+        }.getOrNull()
+    }.toMap()
+
+    fun importAll(credentials: Map<String, JsonObject>) {
+        val editor = preferences.edit()
+        credentials.forEach { (providerId, value) ->
+            val token = json.decodeFromJsonElement<CodexTokenState>(value)
+            editor.putString(providerId, encrypt(json.encodeToString(token)))
+        }
+        check(editor.commit()) { "Could not restore OAuth credentials." }
     }
 
     private fun key(create: Boolean): SecretKey = synchronized(KEY_LOCK) {

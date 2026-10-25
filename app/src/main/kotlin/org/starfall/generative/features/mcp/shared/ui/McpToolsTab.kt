@@ -97,7 +97,7 @@ private fun McpToolItem(
     ) {
         Column {
             ListItem(colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                headlineContent = { Text(tool.originalName, fontWeight = FontWeight.Medium) },
+                content = { Text(tool.originalName, fontWeight = FontWeight.Medium) },
                 supportingContent = {
                     if (tool.description.isNotBlank()) Text(tool.description, maxLines = if (expanded) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
                 },

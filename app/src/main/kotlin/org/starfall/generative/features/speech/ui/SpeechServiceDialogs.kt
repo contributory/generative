@@ -15,6 +15,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -280,12 +281,16 @@ internal fun AddOrEditSpeechDialog(
                 )
 
                 if (!google) {
-                Text(stringResource(R.string.speech_speed_value, String.format("%.1f", speed)))
-                Slider(
-                    value = speed,
-                    onValueChange = { speed = it },
-                    valueRange = if (system) 0.5f..2.0f else 0.25f..4f
-                )
+                    val speedRange = if (system) 0.5f..2.0f else 0.25f..4f
+                    val speedSliderState = remember(speedRange) {
+                        SliderState(value = speed, trackRange = speedRange)
+                    }
+                    speedSliderState.value = speed
+                    Text(stringResource(R.string.speech_speed_value, String.format("%.1f", speed)))
+                    Slider(
+                        state = speedSliderState,
+                        onValueChange = { speed = it }
+                    )
                 }
 
                 if (!system) {
@@ -337,11 +342,14 @@ internal fun AddOrEditSpeechDialog(
                 }
 
                 if (providerId.equals("system", true)) {
+                    val pitchSliderState = remember {
+                        SliderState(value = pitch, trackRange = 0.5f..2.0f)
+                    }
+                    pitchSliderState.value = pitch
                     Text(stringResource(R.string.speech_pitch_value, String.format("%.1f", pitch)))
                     Slider(
-                        value = pitch,
-                        onValueChange = { pitch = it },
-                        valueRange = 0.5f..2.0f
+                        state = pitchSliderState,
+                        onValueChange = { pitch = it }
                     )
                 }
 

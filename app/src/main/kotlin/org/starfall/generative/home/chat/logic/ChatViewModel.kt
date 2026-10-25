@@ -350,6 +350,16 @@ class ChatViewModel(
         conversationCoordinator.clearAllConversations(attachedFiles)
     suspend fun importConversations(items: List<Conversation>) = conversationCoordinator.importConversations(items)
     suspend fun conversationsForExport(): List<Conversation> = conversationCoordinator.conversationsForExport()
+    suspend fun reloadAfterRestore() {
+        conversationCoordinator.resetAfterRestore()
+        synchronized(generationLock) {
+            generationObservers.values.forEach { it.cancel() }
+            generationObservers.clear()
+            generations.clear()
+        }
+        _generationStates.value = emptyMap()
+        restoreLastConversation()
+    }
     fun deleteAllUserData(attachedFiles: Collection<String> = emptyList()) =
         conversationCoordinator.deleteAllUserData(attachedFiles)
 

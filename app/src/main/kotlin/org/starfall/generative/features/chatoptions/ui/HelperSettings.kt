@@ -15,12 +15,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -205,11 +207,18 @@ internal fun HelperSettingsSheet(
                                     ),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
+                                val summaryPercent = appPreferences.autoSummaryPercent.toFloat()
+                                val summarySliderState = remember {
+                                    SliderState(
+                                        value = summaryPercent,
+                                        steps = MAX_AUTO_SUMMARY_PERCENT - MIN_AUTO_SUMMARY_PERCENT - 1,
+                                        trackRange = MIN_AUTO_SUMMARY_PERCENT.toFloat()..MAX_AUTO_SUMMARY_PERCENT.toFloat()
+                                    )
+                                }
+                                summarySliderState.value = summaryPercent
                                 Slider(
-                                    value = appPreferences.autoSummaryPercent.toFloat(),
+                                    state = summarySliderState,
                                     onValueChange = { onAutoSummaryPercentChange(kotlin.math.round(it).toInt()) },
-                                    valueRange = MIN_AUTO_SUMMARY_PERCENT.toFloat()..MAX_AUTO_SUMMARY_PERCENT.toFloat(),
-                                    steps = MAX_AUTO_SUMMARY_PERCENT - MIN_AUTO_SUMMARY_PERCENT - 1,
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }

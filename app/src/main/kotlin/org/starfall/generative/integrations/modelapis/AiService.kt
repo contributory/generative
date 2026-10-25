@@ -48,6 +48,18 @@ class AiService(
     private val sdk = OfficialProviderSdk(attachments)
     private val accountAdapters = AccountProviderAdapterRegistry(context, attachments)
 
+    internal fun exportAccountCredentials(): Map<String, Map<String, JsonObject>> = accountAdapters.exportCredentials()
+
+    internal fun importAccountCredentials(credentials: Map<String, Map<String, JsonObject>>) {
+        accountAdapters.importCredentials(credentials)
+    }
+
+    internal fun exportModelConfigurationMemory(): Map<String, JsonObject> = modelConfigurationMemory.exportAll()
+
+    internal fun importModelConfigurationMemory(values: Map<String, JsonObject>) {
+        modelConfigurationMemory.importAll(values)
+    }
+
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true

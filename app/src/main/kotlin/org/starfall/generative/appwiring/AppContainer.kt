@@ -12,6 +12,7 @@ import org.starfall.generative.integrations.mcp.McpOAuthService
 import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.features.providers.shared.logic.ConfigurationViewModel
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
+import org.starfall.generative.features.appdata.logic.AppDataTransferService
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.features.settings.logic.SettingsViewModel
 import org.starfall.generative.integrations.modelapis.AiService
@@ -53,6 +54,10 @@ class AppContainer(context: Context) {
     private val preferences = AppPreferencesRepository(appContext)
     private val toolSettings = ToolSettingsStore(appContext)
     val remoteMachineService = RemoteMachineService(appContext)
+    val appDataTransfer = AppDataTransferService(
+        appContext, providers, mcp, speech, profiles, conversations, preferences, toolSettings,
+        icons, toolFiles, remoteMachineService
+    )
     val defaultDataInitializer = DefaultDataInitializer(providers, mcp, speech, preferences, icons)
 
     init {

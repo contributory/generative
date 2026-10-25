@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.starfall.generative.integrations.mcp.McpOAuthService
 import org.starfall.generative.integrations.mcp.McpService
@@ -24,6 +23,7 @@ import org.starfall.generative.shared.storage.database.entities.McpAuthEntity
 import org.starfall.generative.shared.storage.database.entities.McpCachedToolEntity
 import org.starfall.generative.shared.storage.database.entities.McpServerEntity
 import org.starfall.generative.shared.storage.database.entities.McpToolCacheEntity
+import kotlinx.serialization.json.JsonObject
 
 class McpRepository(
     private val db: AppDatabase,
@@ -75,6 +75,18 @@ class McpRepository(
 
     suspend fun loadServersForExport(): List<McpInfo> = withContext(Dispatchers.IO) {
         db.withTransaction { dao.getAllServers().first().map { selected(it) } }
+    }
+
+    internal fun exportOAuthTokens(): Map<String, JsonObject> = oauth?.exportTokens().orEmpty()
+
+    internal fun importOAuthTokens(tokens: Map<String, JsonObject>) {
+        oauth?.importTokens(tokens)
+    }
+
+    /** Replaces every MCP server during a full application restore. */
+    suspend fun replaceAll(servers: List<McpInfo>) {
+        dao.getAllServers().first().map { it.id }.forEach { deleteServer(it) }
+        servers.forEach { saveServer(it) }
     }
 
     suspend fun saveServer(server: McpInfo) {

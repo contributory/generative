@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
@@ -25,6 +26,12 @@ class SpeechRepository(private val db: AppDatabase) {
 
     suspend fun getById(id: String): SpeechService? = withContext(Dispatchers.IO) {
         db.withTransaction { dao.getServiceById(id)?.let { entityToModel(it) } }
+    }
+
+    /** Replaces every speech service during a full application restore. */
+    suspend fun replaceAll(services: List<SpeechService>) {
+        dao.getAllSpeechServices().first().map { it.id }.forEach { deleteService(it) }
+        services.forEach { saveService(it) }
     }
 
     suspend fun saveService(service: SpeechService) = withContext(Dispatchers.IO) {

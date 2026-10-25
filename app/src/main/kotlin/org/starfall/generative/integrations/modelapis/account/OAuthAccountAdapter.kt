@@ -137,6 +137,10 @@ internal abstract class OAuthAccountAdapter(
     }
     override fun clearCredentials(providerId: String) = store.delete(providerId)
 
+    override fun exportCredentials(): Map<String, JsonObject> = store.exportAll()
+
+    override fun importCredentials(credentials: Map<String, JsonObject>) = store.importAll(credentials)
+
     protected open fun sdkSystemPrompt(systemPrompt: String): String = systemPrompt
 
     /** Original caller instructions for account protocols with a separate conversation system slot. */

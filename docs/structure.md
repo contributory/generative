@@ -15,10 +15,15 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       └── 📄 AboutScreen.kt
 │   ├── 📁 appdata/
 │   │   ├── 📁 logic/
-│   │   │   └── 📄 JsonDataTransfer.kt
+│   │   │   ├── 📄 AppDataTransferService.kt
+│   │   │   ├── 📄 JsonDataTransfer.kt
+│   │   │   └── 📄 ZipDataTransfer.kt
 │   │   ├── 📁 model/
+│   │   │   ├── 📄 AppDataBackup.kt
 │   │   │   ├── 📄 FullAppDataExport.kt
-│   │   │   └── 📄 ProvidersExport.kt
+│   │   │   ├── 📄 ProvidersExport.kt
+│   │   │   ├── 📄 RemoteTerminalPreferencesState.kt
+│   │   │   └── 📄 ZipAppDataBackup.kt
 │   │   └── 📁 ui/
 │   │       └── 📄 AppDataScreen.kt
 │   ├── 📁 chatoptions/
@@ -331,6 +336,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   ├── 📁 icons/
 │   │   ├── 📁 model/
 │   │   │   ├── 📄 IconRule.kt
+│   │   │   ├── 📄 IconStoreState.kt
 │   │   │   └── 📄 StoredIcon.kt
 │   │   ├── 📄 AppImages.kt
 │   │   ├── 📄 FaviconService.kt
@@ -398,7 +404,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   ├── 📄 ClaudeThinking.kt
 │   │   ├── 📄 ConversationListItem.kt
 │   │   ├── 📄 DefaultOptions.kt
-│   │   ├── 📄 JsonExportKind.kt
+│   │   ├── 📄 BackupExportKind.kt
 │   │   ├── 📄 McpInfo.kt
 │   │   ├── 📄 InstructionLibrary.kt
 │   │   ├── 📄 ProviderLink.kt

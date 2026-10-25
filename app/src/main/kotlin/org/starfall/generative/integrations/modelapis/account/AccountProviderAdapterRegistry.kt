@@ -7,6 +7,7 @@ import org.starfall.generative.integrations.modelapis.antigravity.AntigravityAda
 import org.starfall.generative.integrations.modelapis.githubcopilot.GitHubCopilotAdapter
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.files.AttachmentResolver
+import kotlinx.serialization.json.JsonObject
 
 /** Single integration point between core services and removable account adapters. */
 internal class AccountProviderAdapterRegistry(
@@ -24,5 +25,14 @@ internal class AccountProviderAdapterRegistry(
 
     fun clearCredentials(type: ModelApiType, providerId: String) {
         adapters[type]?.clearCredentials(providerId)
+    }
+
+    fun exportCredentials(): Map<String, Map<String, JsonObject>> =
+        adapters.mapKeys { (type, _) -> type.name }.mapValues { (_, adapter) -> adapter.exportCredentials() }
+
+    fun importCredentials(credentials: Map<String, Map<String, JsonObject>>) {
+        credentials.forEach { (typeName, values) ->
+            runCatching { ModelApiType.valueOf(typeName) }.getOrNull()?.let { adapters[it]?.importCredentials(values) }
+        }
     }
 }

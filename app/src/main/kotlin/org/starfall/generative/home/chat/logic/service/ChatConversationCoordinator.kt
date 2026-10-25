@@ -342,6 +342,18 @@ internal class ChatConversationCoordinator(
         items.forEach { conversationRepo.saveConversation(it) }
     }
 
+    suspend fun resetAfterRestore() {
+        serializedWrites.withLock {
+            cancelSummary()
+            allGenerations().forEach { it.stopAndJoin() }
+            currentConversation.value = null
+            queuedMessagesByConversation.value = emptyMap()
+            deletingConversations.value = emptySet()
+            renamingConversations.value = emptyMap()
+            deletingAllConversations.value = false
+        }
+    }
+
     /** Full-history reads happen only at the explicit export boundary, not in sidebar state. */
     suspend fun conversationsForExport(): List<Conversation> =
         conversationRepo.conversationList.first().mapNotNull { conversationRepo.loadById(it.id) }

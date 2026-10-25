@@ -105,6 +105,12 @@ class ConversationRepository(private val db: AppDatabase) {
         }
     }
 
+    /** Replaces every conversation during a full application restore. */
+    suspend fun replaceAll(conversations: List<Conversation>) {
+        deleteAll()
+        conversations.forEach { saveConversation(it) }
+    }
+
     /** The subset of [names] that no stored conversation still refers to. */
     suspend fun unreferencedFiles(names: Collection<String>): Set<String> =
         names.filterNot { dao.mentionsFile(it) }.toSet()
