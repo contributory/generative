@@ -1,11 +1,11 @@
-package org.starfall.generative.home.chat.logic.service
+package org.starfall.generative.features.home.chat.logic.service
 
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.UUID
-import org.starfall.generative.home.chat.logic.prepareRegeneration
-import org.starfall.generative.home.chat.logic.prepareUserMessageRetry
+import org.starfall.generative.features.home.chat.logic.prepareRegeneration
+import org.starfall.generative.features.home.chat.logic.prepareUserMessageRetry
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.MessageVersion

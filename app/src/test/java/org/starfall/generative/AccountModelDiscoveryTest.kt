@@ -26,7 +26,7 @@ import org.starfall.generative.shared.files.AttachmentResolver
 import org.starfall.generative.features.mcp.shared.ui.*
 import org.starfall.generative.features.machines.shared.ui.*
 import org.starfall.generative.integrations.remote.*
-import org.starfall.generative.home.chat.*
+import org.starfall.generative.features.home.chat.*
 import org.starfall.generative.integrations.modelapis.*
 import org.starfall.generative.shared.files.*
 import org.starfall.generative.shared.icons.*

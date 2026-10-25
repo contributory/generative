@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui.markdown
+package org.starfall.generative.features.home.chat.ui.markdown
 
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
@@ -39,19 +39,19 @@ import org.intellij.markdown.MarkdownTokenTypes
 import org.intellij.markdown.ast.getTextInNode
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.home.chat.logic.markdown.MathPiece
-import org.starfall.generative.home.chat.logic.markdown.MathSplitter
-import org.starfall.generative.home.chat.logic.markdown.markdownFence
-import org.starfall.generative.home.chat.logic.markdown.parseLibraryMarkdown
-import org.starfall.generative.home.chat.ui.AssetKey
+import org.starfall.generative.features.home.chat.logic.markdown.MathPiece
+import org.starfall.generative.features.home.chat.logic.markdown.MathSplitter
+import org.starfall.generative.features.home.chat.logic.markdown.markdownFence
+import org.starfall.generative.features.home.chat.logic.markdown.parseLibraryMarkdown
+import org.starfall.generative.features.home.chat.ui.AssetKey
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 import org.starfall.generative.shared.ui.text.messageMarkdownTypography
 import org.starfall.generative.shared.ui.text.toComposeFontFamily
 import org.starfall.generative.shared.ui.text.LocalStreamingTextFade
-import org.starfall.generative.home.chat.ui.MarkdownParseCache
+import org.starfall.generative.features.home.chat.ui.MarkdownParseCache
 import org.starfall.generative.shared.ui.text.STREAM_FADE_DURATION_MS
-import org.starfall.generative.home.chat.ui.TrackPendingWork
-import org.starfall.generative.home.chat.ui.TrackReadyAssets
+import org.starfall.generative.features.home.chat.ui.TrackPendingWork
+import org.starfall.generative.features.home.chat.ui.TrackReadyAssets
 import org.starfall.generative.shared.ui.text.rememberStreamingTextPresentation
 
 /** Library primitives with app-owned code toolbar, error/LaTeX UI and streaming fades. */

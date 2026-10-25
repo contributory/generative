@@ -50,8 +50,8 @@ import org.starfall.generative.shared.ui.dialogs.CrashReportDialog
 import org.starfall.generative.shared.ui.logging.DebugLogOverlay
 import org.starfall.generative.shared.ui.layout.enableTransparentSystemBars
 import org.starfall.generative.navigation.AppNavigation
-import org.starfall.generative.home.chat.logic.ChatViewModel
-import org.starfall.generative.home.shared.logic.ChatBackgroundService
+import org.starfall.generative.features.home.chat.logic.ChatViewModel
+import org.starfall.generative.features.home.shared.logic.ChatBackgroundService
 
 private const val SERVICE_STOP_GRACE_MS = 5_000L
 

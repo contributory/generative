@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui
+package org.starfall.generative.features.home.chat.ui
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ScrollState

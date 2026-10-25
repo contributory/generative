@@ -14,7 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.home.shared.logic.ToolRequestService
+import org.starfall.generative.features.home.shared.logic.ToolRequestService
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.integrations.modelapis.account.AccountTokenState
 import org.starfall.generative.integrations.modelapis.account.AccountTokenStore

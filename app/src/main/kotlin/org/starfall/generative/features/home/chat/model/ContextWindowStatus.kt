@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.model
+package org.starfall.generative.features.home.chat.model
 
 import org.starfall.generative.shared.model.generation.TokenUsage
 

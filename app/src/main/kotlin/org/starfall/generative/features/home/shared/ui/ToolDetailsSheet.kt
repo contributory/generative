@@ -1,4 +1,4 @@
-package org.starfall.generative.home.shared.ui
+package org.starfall.generative.features.home.shared.ui
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -41,7 +41,7 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.code.CodeBlockSurface
 import org.starfall.generative.shared.ui.code.LazyCodeBlock
-import org.starfall.generative.home.shared.ui.ToolSheetState
+import org.starfall.generative.features.home.shared.ui.ToolSheetState
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 

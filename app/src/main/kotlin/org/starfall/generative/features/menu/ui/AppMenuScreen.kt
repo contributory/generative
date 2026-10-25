@@ -1,4 +1,4 @@
-package org.starfall.generative.features.main.ui
+package org.starfall.generative.features.menu.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -82,10 +82,10 @@ internal val GroupBottomShape = RoundedCornerShape(
     bottomEnd = GroupOuterCorner
 )
 
-/** Main feature directory. Deliberately has no page title; the themed app logo is its header. */
+/** App menu screen. Deliberately has no page title; the themed app logo is its header. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun FeaturesScreen(
+fun AppMenuScreen(
     modifier: Modifier = Modifier,
     logoImage: String? = null,
     onLogoImageChange: (String?) -> Unit = {},

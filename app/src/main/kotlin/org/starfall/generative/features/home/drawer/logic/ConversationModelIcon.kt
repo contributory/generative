@@ -1,4 +1,4 @@
-package org.starfall.generative.home.drawer.logic
+package org.starfall.generative.features.home.drawer.logic
 
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation

@@ -32,9 +32,9 @@ import org.starfall.generative.shared.storage.database.AppDatabase
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.storage.preferences.ToolSettingsStore
 import org.starfall.generative.R
-import org.starfall.generative.home.chat.logic.tool.ToolChatLabels
-import org.starfall.generative.home.chat.logic.tool.ToolChatViewModel
-import org.starfall.generative.home.chat.logic.ChatViewModel
+import org.starfall.generative.features.home.chat.logic.tool.ToolChatLabels
+import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
+import org.starfall.generative.features.home.chat.logic.ChatViewModel
 
 /** Application-scoped dependencies. ViewModels receive only their required dependencies. */
 class AppContainer(context: Context) {

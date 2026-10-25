@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.logic.service
+package org.starfall.generative.features.home.chat.logic.service
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.starfall.generative.home.chat.logic.ChatGeneration
+import org.starfall.generative.features.home.chat.logic.ChatGeneration
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.files.uploadedFileNames
 import org.starfall.generative.shared.model.Conversation

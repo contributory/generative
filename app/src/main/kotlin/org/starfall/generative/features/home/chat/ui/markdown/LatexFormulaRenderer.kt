@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui.markdown
+package org.starfall.generative.features.home.chat.ui.markdown
 
 import android.graphics.drawable.Drawable
 import android.util.LruCache
@@ -34,11 +34,11 @@ import kotlinx.coroutines.withContext
 import ru.noties.jlatexmath.JLatexMathDrawable
 import kotlin.math.roundToInt
 import org.starfall.generative.R
-import org.starfall.generative.home.chat.ui.AssetKey
-import org.starfall.generative.home.chat.ui.ChatRenderCaches
-import org.starfall.generative.home.chat.ui.EvictableCache
-import org.starfall.generative.home.chat.ui.TrackPendingWork
-import org.starfall.generative.home.chat.ui.TrackReadyAssets
+import org.starfall.generative.features.home.chat.ui.AssetKey
+import org.starfall.generative.features.home.chat.ui.ChatRenderCaches
+import org.starfall.generative.features.home.chat.ui.EvictableCache
+import org.starfall.generative.features.home.chat.ui.TrackPendingWork
+import org.starfall.generative.features.home.chat.ui.TrackReadyAssets
 
 internal enum class LatexDisplayMode {
     Overflow,

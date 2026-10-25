@@ -10,7 +10,7 @@ import org.starfall.generative.shared.networking.*
 import org.starfall.generative.shared.storage.preferences.*
 import java.nio.file.Files
 import org.starfall.generative.shared.model.auth.Authorization
-import org.starfall.generative.home.chat.logic.SendFileTool
+import org.starfall.generative.features.home.chat.logic.SendFileTool
 
 class SendFileToolTest {
     @Test fun sendsExistingOtherFileWithoutCopyingAndRejectsMissingFiles() = runBlocking {

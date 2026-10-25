@@ -1,6 +1,6 @@
 @file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 
-package org.starfall.generative.home.chat.ui.input
+package org.starfall.generative.features.home.chat.ui.input
 
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
@@ -86,18 +86,18 @@ import org.starfall.generative.shared.ui.model.reasoningEffortOptions
 import org.starfall.generative.shared.ui.model.reasoningEffortTier
 import org.starfall.generative.shared.model.language.ThinkingPassback
 import org.starfall.generative.shared.model.language.supportedReasoningEfforts
-import org.starfall.generative.home.chat.logic.input.ChatInputEditDraft
-import org.starfall.generative.home.chat.logic.input.DirectMediaRequest
-import org.starfall.generative.home.chat.logic.input.MAX_CLIPBOARD_IMAGE_BYTES
-import org.starfall.generative.home.chat.model.ContextWindowStatus
-import org.starfall.generative.home.chat.ui.ContextWindowDetails
-import org.starfall.generative.home.chat.ui.ContextWindowIndicator
-import org.starfall.generative.home.chat.logic.input.canSendChatInput
-import org.starfall.generative.home.chat.logic.input.directMediaHint
-import org.starfall.generative.home.chat.logic.input.filterMediaProvidersForKind
-import org.starfall.generative.home.chat.ui.AttachmentStrip
-import org.starfall.generative.home.BottomSheetsLink
-import org.starfall.generative.home.BottomSheetsLinkState
+import org.starfall.generative.features.home.chat.logic.input.ChatInputEditDraft
+import org.starfall.generative.features.home.chat.logic.input.DirectMediaRequest
+import org.starfall.generative.features.home.chat.logic.input.MAX_CLIPBOARD_IMAGE_BYTES
+import org.starfall.generative.features.home.chat.model.ContextWindowStatus
+import org.starfall.generative.features.home.chat.ui.ContextWindowDetails
+import org.starfall.generative.features.home.chat.ui.ContextWindowIndicator
+import org.starfall.generative.features.home.chat.logic.input.canSendChatInput
+import org.starfall.generative.features.home.chat.logic.input.directMediaHint
+import org.starfall.generative.features.home.chat.logic.input.filterMediaProvidersForKind
+import org.starfall.generative.features.home.chat.ui.AttachmentStrip
+import org.starfall.generative.features.home.BottomSheetsLink
+import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.shared.ui.model.modelInitial
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor

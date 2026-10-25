@@ -3,8 +3,8 @@ package org.starfall.generative
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
-import org.starfall.generative.home.chat.logic.SentMessageDetector
-import org.starfall.generative.home.chat.logic.anchorTailSpacer
+import org.starfall.generative.features.home.chat.logic.SentMessageDetector
+import org.starfall.generative.features.home.chat.logic.anchorTailSpacer
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage

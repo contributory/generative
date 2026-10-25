@@ -1,4 +1,4 @@
-package org.starfall.generative.home.shared.logic
+package org.starfall.generative.features.home.shared.logic
 
 import kotlinx.serialization.json.JsonObject
 import org.starfall.generative.integrations.mcp.McpService

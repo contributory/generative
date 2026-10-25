@@ -13,7 +13,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.features.chatoptions.ui.ChatOptionsScreen
 import org.starfall.generative.features.tools.ui.ToolsEditor
-import org.starfall.generative.home.shared.ui.InstructionsSheetContent
+import org.starfall.generative.features.home.shared.ui.InstructionsSheetContent
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SavedInstruction

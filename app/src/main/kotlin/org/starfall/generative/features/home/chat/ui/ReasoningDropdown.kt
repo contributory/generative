@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui
+package org.starfall.generative.features.home.chat.ui
 
 
 import androidx.compose.animation.AnimatedVisibility
@@ -31,7 +31,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
-import org.starfall.generative.home.chat.ui.tool.ToolActivityCards
+import org.starfall.generative.features.home.chat.ui.tool.ToolActivityCards
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor

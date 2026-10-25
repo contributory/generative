@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.logic.markdown
+package org.starfall.generative.features.home.chat.logic.markdown
 
 /**
  * Offset in [text] where the LAST top-level block starts; text[0 until offset] is safe to freeze.

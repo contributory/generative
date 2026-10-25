@@ -1,8 +1,8 @@
-package org.starfall.generative.home.chat.ui
+package org.starfall.generative.features.home.chat.ui
 
 import org.starfall.generative.R
-import org.starfall.generative.home.BottomSheetsLink
-import org.starfall.generative.home.BottomSheetsLinkState
+import org.starfall.generative.features.home.BottomSheetsLink
+import org.starfall.generative.features.home.BottomSheetsLinkState
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -51,7 +51,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
-import org.starfall.generative.home.chat.logic.SAVE_CONVERSATION_ERROR_PREFIX
+import org.starfall.generative.features.home.chat.logic.SAVE_CONVERSATION_ERROR_PREFIX
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationSummaryProgress
@@ -68,14 +68,14 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.text.PlatformTextSelection
-import org.starfall.generative.home.chat.logic.input.ChatInputEditDraft
-import org.starfall.generative.home.chat.logic.input.DirectMediaRequest
+import org.starfall.generative.features.home.chat.logic.input.ChatInputEditDraft
+import org.starfall.generative.features.home.chat.logic.input.DirectMediaRequest
 import org.starfall.generative.shared.model.language.ModelType
-import org.starfall.generative.home.chat.logic.unansweredUserMessageIds
-import org.starfall.generative.home.chat.ui.input.UserInputArea
+import org.starfall.generative.features.home.chat.logic.unansweredUserMessageIds
+import org.starfall.generative.features.home.chat.ui.input.UserInputArea
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.home.shared.ui.ConversationSummarySheet
-import org.starfall.generative.home.chat.model.ContextWindowStatus
+import org.starfall.generative.features.home.shared.ui.ConversationSummarySheet
+import org.starfall.generative.features.home.chat.model.ContextWindowStatus
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 

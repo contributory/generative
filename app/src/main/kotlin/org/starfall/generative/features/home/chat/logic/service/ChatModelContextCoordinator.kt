@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.logic.service
+package org.starfall.generative.features.home.chat.logic.service
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -8,8 +8,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import org.starfall.generative.home.chat.model.ContextWindowStatus
-import org.starfall.generative.home.chat.logic.contextWindowStatus as calculateContextWindowStatus
+import org.starfall.generative.features.home.chat.model.ContextWindowStatus
+import org.starfall.generative.features.home.chat.logic.contextWindowStatus as calculateContextWindowStatus
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.SystemToolConfig

@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui
+package org.starfall.generative.features.home.chat.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.ButtonDefaults

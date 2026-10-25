@@ -1,4 +1,4 @@
-package org.starfall.generative.home
+package org.starfall.generative.features.home
 
 import android.content.Intent
 import android.net.Uri
@@ -36,13 +36,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.unit.dp
-import org.starfall.generative.home.shared.ui.FeatureToolsSheetContent
-import org.starfall.generative.home.shared.ui.InstructionsSheetContent
-import org.starfall.generative.home.shared.ui.McpConnectorsSheetContent
-import org.starfall.generative.home.shared.ui.QuickActionsSheetContent
-import org.starfall.generative.home.shared.ui.SelectedModelOverviewContent
-import org.starfall.generative.home.shared.ui.rememberPreviewTier
-import org.starfall.generative.home.shared.ui.selectedModelSheetStyle
+import org.starfall.generative.features.home.shared.ui.FeatureToolsSheetContent
+import org.starfall.generative.features.home.shared.ui.InstructionsSheetContent
+import org.starfall.generative.features.home.shared.ui.McpConnectorsSheetContent
+import org.starfall.generative.features.home.shared.ui.QuickActionsSheetContent
+import org.starfall.generative.features.home.shared.ui.SelectedModelOverviewContent
+import org.starfall.generative.features.home.shared.ui.rememberPreviewTier
+import org.starfall.generative.features.home.shared.ui.selectedModelSheetStyle
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.model.ModelPickerSheetContent
 import org.starfall.generative.shared.ui.model.chatModelPickerFilter

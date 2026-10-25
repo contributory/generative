@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui
+package org.starfall.generative.features.home.chat.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,12 +33,11 @@ import org.starfall.generative.shared.model.SummaryRole
 import org.starfall.generative.shared.model.generation.hasToolCalls
 import org.starfall.generative.shared.model.language.DEFAULT_CONTEXT_WINDOW_TOKENS
 import org.starfall.generative.shared.model.language.ModelConfiguration
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 import org.starfall.generative.shared.model.language.sendsThinkingBack
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.FeaturesLogoImage
-import org.starfall.generative.home.chat.model.ContextWindowStatus
+import org.starfall.generative.features.home.chat.model.ContextWindowStatus
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
@@ -270,12 +269,14 @@ internal fun ContextWindowRing(status: ContextWindowStatus, size: androidx.compo
         else -> MaterialTheme.colorScheme.primary
     }
     Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
-        GenerativeLoadingIndicator(
+        CircularProgressIndicator(
             progress = { progress },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(2.dp),
-            color = color
+            color = color,
+            trackColor = color.copy(alpha = 0.18f),
+            strokeWidth = if (size < 50.dp) 3.dp else 4.dp
         )
         if (size < 50.dp) {
             // Fixed size in dp (ignores the system font scale) so "100%" always fits inside the ring.

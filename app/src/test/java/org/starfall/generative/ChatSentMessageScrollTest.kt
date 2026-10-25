@@ -12,9 +12,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.home.chat.ui.ChatRenderCaches
-import org.starfall.generative.home.chat.ui.ChatScreen
-import org.starfall.generative.home.chat.ui.OPENING_VEIL_TAG
+import org.starfall.generative.features.home.chat.ui.ChatRenderCaches
+import org.starfall.generative.features.home.chat.ui.ChatScreen
+import org.starfall.generative.features.home.chat.ui.OPENING_VEIL_TAG
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.MessageVersion

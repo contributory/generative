@@ -20,14 +20,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.features.about.ui.AboutScreen
-import org.starfall.generative.features.main.ui.FeaturesScreen
+import org.starfall.generative.features.menu.ui.AppMenuScreen
 import org.starfall.generative.features.settings.ui.AppSettings
 import org.starfall.generative.features.settings.ui.MainAppbar
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.navigation.AppNavigation
-import org.starfall.generative.home.chat.ui.ChatAppBar
+import org.starfall.generative.features.home.chat.ui.ChatAppBar
 
-class FeaturesScreenTest {
+class AppMenuScreenTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     /** Mirrors the AppNavigation settings destinations while allowing tests to capture navigation. */
@@ -83,7 +83,7 @@ class FeaturesScreenTest {
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
-                    else -> FeaturesScreen(
+                    else -> AppMenuScreen(
                         onNavigateToChatOptions = { destinations.add("Chat Options") },
                         onNavigateToToolsEditor = { destinations.add("Feature Tools") },
                         onNavigateToProviders = { destinations.add("Model Providers") },

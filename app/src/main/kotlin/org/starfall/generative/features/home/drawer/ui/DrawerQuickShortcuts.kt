@@ -1,4 +1,4 @@
-package org.starfall.generative.home.drawer.ui
+package org.starfall.generative.features.home.drawer.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically

@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.logic.tool
+package org.starfall.generative.features.home.chat.logic.tool
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject

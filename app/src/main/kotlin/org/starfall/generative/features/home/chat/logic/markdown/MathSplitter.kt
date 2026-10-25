@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.logic.markdown
+package org.starfall.generative.features.home.chat.logic.markdown
 
 
 /** A paragraph is cut into Markdown text and math so each part is laid out by the renderer that suits it. */

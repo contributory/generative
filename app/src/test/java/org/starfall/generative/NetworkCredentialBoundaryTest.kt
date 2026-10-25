@@ -18,7 +18,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.home.chat.logic.tool.ToolChatViewModel
+import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 import org.starfall.generative.integrations.mcp.McpOAuthService
 import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.integrations.mcp.McpSession

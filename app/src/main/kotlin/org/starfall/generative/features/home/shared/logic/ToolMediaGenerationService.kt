@@ -1,4 +1,4 @@
-package org.starfall.generative.home.shared.logic
+package org.starfall.generative.features.home.shared.logic
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -23,7 +23,7 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.networking.ToolHttp
 import org.starfall.generative.shared.networking.obj
 import org.starfall.generative.shared.networking.str
-import org.starfall.generative.home.shared.logic.prepareToolResult
+import org.starfall.generative.features.home.shared.logic.prepareToolResult
 
 /** Handles direct image/video generation and emits its progress as tool events. */
 internal class ToolMediaGenerationService(

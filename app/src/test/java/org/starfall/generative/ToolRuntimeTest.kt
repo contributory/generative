@@ -15,7 +15,7 @@ import org.starfall.generative.shared.storage.preferences.*
 import java.io.StringReader
 import java.nio.file.Files
 import org.starfall.generative.shared.model.generation.GenerationEvent
-import org.starfall.generative.home.chat.logic.ChatGeneration
+import org.starfall.generative.features.home.chat.logic.ChatGeneration
 
 class ToolRuntimeTest {
     @Test fun audioResultsKeepPlayableExtensionsAndDataUrlsAreStored() = runBlocking {

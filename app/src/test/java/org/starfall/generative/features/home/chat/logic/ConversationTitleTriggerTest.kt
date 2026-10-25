@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.logic
+package org.starfall.generative.features.home.chat.logic
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

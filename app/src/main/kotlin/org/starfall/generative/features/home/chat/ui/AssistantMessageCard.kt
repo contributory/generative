@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui
+package org.starfall.generative.features.home.chat.ui
 
 
 import androidx.compose.ui.res.stringResource
@@ -44,11 +44,11 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import org.starfall.generative.shared.ui.media.mediaMimeType
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.home.chat.ui.markdown.MarkdownRenderer
-import org.starfall.generative.home.chat.ui.markdown.StreamingMarkdownRenderer
-import org.starfall.generative.home.shared.ui.LocalToolSheetState
-import org.starfall.generative.home.shared.ui.ToolSheetState
-import org.starfall.generative.home.shared.ui.ToolDetailsSheetHost
+import org.starfall.generative.features.home.chat.ui.markdown.MarkdownRenderer
+import org.starfall.generative.features.home.chat.ui.markdown.StreamingMarkdownRenderer
+import org.starfall.generative.features.home.shared.ui.LocalToolSheetState
+import org.starfall.generative.features.home.shared.ui.ToolSheetState
+import org.starfall.generative.features.home.shared.ui.ToolDetailsSheetHost
 
 @Composable
 fun AssistantMessageCard(

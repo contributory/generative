@@ -56,9 +56,9 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       │   └── 📄 BinaryTestNotice.kt
 │   │       └── 📁 ui/
 │   │           └── 📄 RemoteMachineComponents.kt
-│   ├── 📁 main/
+│   ├── 📁 menu/
 │   │   └── 📁 ui/
-│   │       └── 📄 FeaturesScreen.kt
+│   │       └── 📄 AppMenuScreen.kt
 │   ├── 📁 mcp/
 │   │   ├── 📁 editor/
 │   │   │   └── 📁 ui/
@@ -141,99 +141,99 @@ This document is the detailed package map and architecture reference. The mandat
 │           ├── 📄 MediaRequestProfileEditor.kt
 │           ├── 📄 MediaTemplateAutocompleteField.kt
 │           └── 📄 ToolsEditor.kt
-├── 📁 home/
-│   ├── 📁 chat/
-│   │   ├── 📁 logic/
-│   │   │   ├── 📁 input/
-│   │   │   │   └── 📄 ChatInputAreaViewModel.kt
-│   │   │   ├── 📁 markdown/
-│   │   │   │   ├── 📄 LatexDetector.kt
-│   │   │   │   ├── 📄 MarkdownHeading.kt
-│   │   │   │   ├── 📄 MarkdownLibrary.kt
-│   │   │   │   ├── 📄 MathSplitter.kt
-│   │   │   │   └── 📄 StableMarkdownPrefix.kt
-│   │   │   ├── 📁 service/
-│   │   │   │   ├── 📄 AutomaticConversationSummaryCoordinator.kt
-│   │   │   │   ├── 📄 ChatConversationCoordinator.kt
-│   │   │   │   ├── 📄 ChatMessageActions.kt
-│   │   │   │   ├── 📄 ChatMessageRetryActions.kt
-│   │   │   │   ├── 📄 ChatModelContextCoordinator.kt
-│   │   │   │   ├── 📄 ChatToolSettingsActions.kt
-│   │   │   │   └── 📄 ConversationTitleGenerator.kt
-│   │   │   ├── 📁 tool/
-│   │   │   │   ├── 📄 ContentApiMediaDownloader.kt
-│   │   │   │   ├── 📄 ToolChatViewModel.kt
-│   │   │   │   ├── 📄 ToolHistoryReplay.kt
-│   │   │   │   └── 📄 ToolResultsViewModel.kt
-│   │   │   ├── 📄 ChatGeneration.kt
-│   │   │   ├── 📄 ChatScrollAnchor.kt
-│   │   │   ├── 📄 ChatSpeechCoordinator.kt
-│   │   │   ├── 📄 ChatViewModel.kt
-│   │   │   ├── 📄 ContextWindowLogic.kt
-│   │   │   ├── 📄 ContextUsageLogic.kt
-│   │   │   ├── 📄 ConversationSummaryGeneration.kt
-│   │   │   ├── 📄 ConversationSummaryCoordinator.kt
-│   │   │   ├── 📄 SendFileTool.kt
-│   │   │   └── 📄 UserMessageRetry.kt
-│   │   ├── 📁 model/
-│   │   │   └── 📄 ContextWindowStatus.kt
-│   │   └── 📁 ui/
-│   │       ├── 📁 input/
-│   │       │   └── 📄 ChatInputAreaUi.kt
-│       │   ├── 📁 markdown/
-│       │   │   ├── 📄 ChunkedStreamingMarkdown.kt
-│       │   │   ├── 📄 LatexFormulaRenderer.kt
-│       │   │   ├── 📄 MarkdownCodeBlock.kt
-│       │   │   ├── 📄 MarkdownHeading.kt
-│       │   │   ├── 📄 MarkdownInlineText.kt
-│   │       │   ├── 📄 MarkdownLatexBlock.kt
-│   │       │   ├── 📄 MarkdownMathParagraph.kt
-│   │       │   ├── 📄 MarkdownRenderer.kt
-│   │       │   └── 📄 MarkdownTable.kt
-│   │       ├── 📁 tool/
-│   │       │   └── 📄 ToolActivityCards.kt
-│   │       ├── 📄 AssistantMessageCard.kt
-│   │       ├── 📄 AttachmentPreview.kt
-│   │       ├── 📄 ChatAppbar.kt
-│   │       ├── 📄 ChatMessageDialogs.kt
-│   │       ├── 📄 ChatOpeningVeil.kt
-│   │       ├── 📄 ChatRenderCaches.kt
-│   │       ├── 📄 ChatScreen.kt
-│   │       ├── 📄 ChatScrollAnchor.kt
-│   │       ├── 📄 ConversationSummaryUi.kt
-│   │       ├── 📄 GenerationLoadingIndicator.kt
-│   │       ├── 📄 LiveThinkingBlock.kt
-│   │       ├── 📄 MessageBubble.kt
-│       │   ├── 📄 ReasoningDropdown.kt
-│       │   ├── 📄 ThinkingMarkdown.kt
-│       │   └── 📄 UserMessageCard.kt
-│   ├── 📁 drawer/
-│   │   ├── 📁 logic/
-│   │   │   └── 📄 ConversationModelIcon.kt
-│   │   └── 📁 ui/
-│   │       ├── 📄 ConversationItem.kt
-│   │       ├── 📄 ConversationSideDrawer.kt
-│   │       ├── 📄 DrawerBackdrop.kt
-│   │       └── 📄 DrawerQuickShortcuts.kt
-│   ├── 📁 shared/
-│   │   ├── 📁 logic/
-│   │   │   ├── 📄 ChatBackgroundService.kt
-│   │   │   ├── 📄 ToolAttachments.kt
-│   │   │   ├── 📄 ToolExecutionService.kt
-│   │   │   ├── 📄 ToolMediaGenerationService.kt
-│   │   │   ├── 📄 ToolRequestService.kt
-│   │   │   └── 📄 ToolResultSummaries.kt
-│   │   └── 📁 ui/
-│   │       ├── 📄 ConversationSummarySheet.kt
-│   │       ├── 📄 FeatureToolsSheet.kt
-│   │       ├── 📄 InstructionsSheet.kt
-│   │       ├── 📄 McpConnectorsSheet.kt
-│   │       ├── 📄 QuickActionsSheet.kt
-│   │       ├── 📄 ReasoningEffortSheet.kt
-│   │       ├── 📄 SelectedModelOverviewSheet.kt
-│   │       ├── 📄 ToolDetailsSheet.kt
-│   │       └── 📄 ToolSheetState.kt
-│   └── 📄 BottomSheetsLink.kt
+│   └── 📁 home/
+│   │   ├── 📁 chat/
+│   │   │   ├── 📁 logic/
+│   │   │   │   ├── 📁 input/
+│   │   │   │   │   └── 📄 ChatInputAreaViewModel.kt
+│   │   │   │   ├── 📁 markdown/
+│   │   │   │   │   ├── 📄 LatexDetector.kt
+│   │   │   │   │   ├── 📄 MarkdownHeading.kt
+│   │   │   │   │   ├── 📄 MarkdownLibrary.kt
+│   │   │   │   │   ├── 📄 MathSplitter.kt
+│   │   │   │   │   └── 📄 StableMarkdownPrefix.kt
+│   │   │   │   ├── 📁 service/
+│   │   │   │   │   ├── 📄 AutomaticConversationSummaryCoordinator.kt
+│   │   │   │   │   ├── 📄 ChatConversationCoordinator.kt
+│   │   │   │   │   ├── 📄 ChatMessageActions.kt
+│   │   │   │   │   ├── 📄 ChatMessageRetryActions.kt
+│   │   │   │   │   ├── 📄 ChatModelContextCoordinator.kt
+│   │   │   │   │   ├── 📄 ChatToolSettingsActions.kt
+│   │   │   │   │   └── 📄 ConversationTitleGenerator.kt
+│   │   │   │   ├── 📁 tool/
+│   │   │   │   │   ├── 📄 ContentApiMediaDownloader.kt
+│   │   │   │   │   ├── 📄 ToolChatViewModel.kt
+│   │   │   │   │   ├── 📄 ToolHistoryReplay.kt
+│   │   │   │   │   └── 📄 ToolResultsViewModel.kt
+│   │   │   │   ├── 📄 ChatGeneration.kt
+│   │   │   │   ├── 📄 ChatScrollAnchor.kt
+│   │   │   │   ├── 📄 ChatSpeechCoordinator.kt
+│   │   │   │   ├── 📄 ChatViewModel.kt
+│   │   │   │   ├── 📄 ContextWindowLogic.kt
+│   │   │   │   ├── 📄 ContextUsageLogic.kt
+│   │   │   │   ├── 📄 ConversationSummaryGeneration.kt
+│   │   │   │   ├── 📄 ConversationSummaryCoordinator.kt
+│   │   │   │   ├── 📄 SendFileTool.kt
+│   │   │   │   └── 📄 UserMessageRetry.kt
+│   │   │   ├── 📁 model/
+│   │   │   │   └── 📄 ContextWindowStatus.kt
+│   │   │   └── 📁 ui/
+│   │   │       ├── 📁 input/
+│   │   │       │   └── 📄 ChatInputAreaUi.kt
+│   │       │   ├── 📁 markdown/
+│   │       │   │   ├── 📄 ChunkedStreamingMarkdown.kt
+│   │       │   │   ├── 📄 LatexFormulaRenderer.kt
+│   │       │   │   ├── 📄 MarkdownCodeBlock.kt
+│   │       │   │   ├── 📄 MarkdownHeading.kt
+│   │       │   │   ├── 📄 MarkdownInlineText.kt
+│   │   │       │   ├── 📄 MarkdownLatexBlock.kt
+│   │   │       │   ├── 📄 MarkdownMathParagraph.kt
+│   │   │       │   ├── 📄 MarkdownRenderer.kt
+│   │   │       │   └── 📄 MarkdownTable.kt
+│   │   │       ├── 📁 tool/
+│   │   │       │   └── 📄 ToolActivityCards.kt
+│   │   │       ├── 📄 AssistantMessageCard.kt
+│   │   │       ├── 📄 AttachmentPreview.kt
+│   │   │       ├── 📄 ChatAppbar.kt
+│   │   │       ├── 📄 ChatMessageDialogs.kt
+│   │   │       ├── 📄 ChatOpeningVeil.kt
+│   │   │       ├── 📄 ChatRenderCaches.kt
+│   │   │       ├── 📄 ChatScreen.kt
+│   │   │       ├── 📄 ChatScrollAnchor.kt
+│   │   │       ├── 📄 ConversationSummaryUi.kt
+│   │   │       ├── 📄 GenerationLoadingIndicator.kt
+│   │   │       ├── 📄 LiveThinkingBlock.kt
+│   │   │       ├── 📄 MessageBubble.kt
+│   │       │   ├── 📄 ReasoningDropdown.kt
+│   │       │   ├── 📄 ThinkingMarkdown.kt
+│   │       │   └── 📄 UserMessageCard.kt
+│   │   ├── 📁 drawer/
+│   │   │   ├── 📁 logic/
+│   │   │   │   └── 📄 ConversationModelIcon.kt
+│   │   │   └── 📁 ui/
+│   │   │       ├── 📄 ConversationItem.kt
+│   │   │       ├── 📄 ConversationSideDrawer.kt
+│   │   │       ├── 📄 DrawerBackdrop.kt
+│   │   │       └── 📄 DrawerQuickShortcuts.kt
+│   │   ├── 📁 shared/
+│   │   │   ├── 📁 logic/
+│   │   │   │   ├── 📄 ChatBackgroundService.kt
+│   │   │   │   ├── 📄 ToolAttachments.kt
+│   │   │   │   ├── 📄 ToolExecutionService.kt
+│   │   │   │   ├── 📄 ToolMediaGenerationService.kt
+│   │   │   │   ├── 📄 ToolRequestService.kt
+│   │   │   │   └── 📄 ToolResultSummaries.kt
+│   │   │   └── 📁 ui/
+│   │   │       ├── 📄 ConversationSummarySheet.kt
+│   │   │       ├── 📄 FeatureToolsSheet.kt
+│   │   │       ├── 📄 InstructionsSheet.kt
+│   │   │       ├── 📄 McpConnectorsSheet.kt
+│   │   │       ├── 📄 QuickActionsSheet.kt
+│   │   │       ├── 📄 ReasoningEffortSheet.kt
+│   │   │       ├── 📄 SelectedModelOverviewSheet.kt
+│   │   │       ├── 📄 ToolDetailsSheet.kt
+│   │   │       └── 📄 ToolSheetState.kt
+│   │   └── 📄 BottomSheetsLink.kt
 ├── 📁 integrations/
 │   ├── 📁 mcp/
 │   │   ├── 📄 McpOAuthService.kt
@@ -569,7 +569,7 @@ The following sections give the package map's supporting conventions and feature
 
 ### Layer placement and boundaries
 
-- Keep code close to the layer and users that need it. Code used in only one layer stays there; move code to global `shared/` only when it is genuinely used across layers. For example, a media request builder used only by `integrations/media/` stays there, while chat-tool-specific code stays in `home/chat/logic/tool/`.
+- Keep code close to the layer and users that need it. Code used in only one layer stays there; move code to global `shared/` only when it is genuinely used across layers. For example, a media request builder used only by `integrations/media/` stays there, while chat-tool-specific code stays in `features/home/chat/logic/tool/`.
 - `integrations/` owns external communication, including HTTP clients, streaming/SSE readers, polling loops, OAuth flows, and remote connections. Keep each integration's request builders, response parsers, and small data types beside the code that uses them; these are integration-specific, not shared helpers.
 - `shared/helpers/<topic>/` contains cross-layer helpers for preparing inputs or interpreting outputs, such as option validation, field descriptors, provider detection, tool schemas, argument parsers, and input-file resolution. Helpers must not import `integrations/`. Small incidental I/O may be tolerated as a stopgap—for example, fetching a URL returned by a response through injected `ToolHttp` from `shared/networking`, or reading a file through `shared/files`. Move the I/O into `integrations/` when it becomes the file's main purpose or grows its own endpoint, authentication, streaming, or polling protocol.
 - Put plain data types (data classes and enums) alongside their consumers by default. Use global `shared/model/<topic>/` for types shared across layers. Helpers may import models; models must not import helpers or integrations.
@@ -599,9 +599,13 @@ Replace `Awesome` with the relevant feature/entity name (for example, `ChatScree
 
 ### Feature organization
 
-- Every folder directly under `features/` except `main/` matches exactly one entry in `FeaturesScreen`; `main/` is that screen itself. Folder names are short, lowercase, a single word, with no underscores.
+`features/` is organized around user/business capabilities (vertical feature slices), not around the screens listed in `FeaturesScreen` or `AppMenuScreen`. A feature owns the UI that presents its capability, the feature-level workflows/use-case coordination and state holders that implement it, and the models/state types specific to that capability. A feature may contain several screens and supporting logic that is not rendered by any one screen; conversely, a screen is only one presentation entry point into a feature, not the feature boundary itself.
 
-| Group | FeaturesScreen entry | Folder |
+- Keep feature-specific code together under `features/<name>/`: `ui/` for Compose presentation and user interaction, `logic/` for ViewModels/coordinators/workflows, and `model/` for feature-specific data and state types. UI may depend on logic and model; logic may depend on model; model must not depend on UI or logic. Use only the folders a feature needs.
+- Put external service/protocol communication in `integrations/`, broadly reused primitives in root `shared/`, and code reused only by sub-features in that feature's own `shared/`. A feature must not import another feature; shared needs should be moved to an appropriate shared layer rather than creating cross-feature dependencies.
+- Menu exposure is a UI/navigation convention, not the definition of a feature. Most settings/configuration features below have an `AppMenuScreen` entry; `menu/` implements that menu surface, while `home/` owns the primary chat experience and is not a menu entry. Feature directory names are short, lowercase, a single word, with no underscores.
+
+| Group | AppMenuScreen entry | Feature folder |
 | --- | --- | --- |
 | Configuration | Chat Options | `chatoptions/` |
 | Configuration | Feature Tools | `tools/` |
@@ -618,10 +622,10 @@ Replace `Awesome` with the relevant feature/entity name (for example, `ChatScree
 - A feature can use flat `ui/`, `logic/`, and `model/` folders, or be split into sub-features such as `list/`, `editor/`, and `details/`, each with its own applicable folders. Put code shared by multiple sub-features in the feature-local `shared/`, including `shared/model/` for data types that do not need to be shared across layers.
 - Do not repeat the feature name as a nested folder (for example, avoid `storage/storage/`).
 
-### Home organization
+### Home feature organization
 
-- `home/` contains the chat experience and its drawer: `chat/` holds messages, input, markdown, and tool UI; `drawer/` holds the conversation drawer; `shared/` holds code needed by both. Keep `chat/` and `drawer/` independent.
-- Chat bottom sheets currently live in `home/shared/ui/`; `home/BottomSheetsLink.kt` is a top-level home component.
+- `features/home/` contains the chat experience and its drawer: `chat/` holds messages, input, markdown, and tool UI; `drawer/` holds the conversation drawer; `shared/` holds code needed by both. Keep `chat/` and `drawer/` independent.
+- Chat bottom sheets currently live in `features/home/shared/ui/`; `features/home/BottomSheetsLink.kt` is a top-level home component.
 
 ### Source-folder conventions
 
@@ -631,9 +635,9 @@ Replace `Awesome` with the relevant feature/entity name (for example, `ChatScree
 - If a `logic/` folder grows beyond about 10 files, consider splitting it into `viewmodel/` and `service/`.
 - `shared/ui/` holds reusable UI. Other `shared/` and `integrations/` folders are organized by responsibility (for example, `storage/`, `networking/`, `helpers/`, and `modelapis/`) rather than a universal `ui/`/`logic/` split.
 
-### Main feature
+### App menu feature
 
-- `features/main/ui/FeaturesScreen.kt` is the untitled feature directory; its header displays the light-background app logo (`drawable-nodpi/generative_logo_light.png`) in every theme.
+- `features/menu/ui/AppMenuScreen.kt` is the untitled menu feature; its header displays the light-background app logo (`drawable-nodpi/generative_logo_light.png`) in every theme.
 
 ### Context and summary accounting
 

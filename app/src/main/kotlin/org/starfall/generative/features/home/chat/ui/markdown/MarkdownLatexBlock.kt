@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui.markdown
+package org.starfall.generative.features.home.chat.ui.markdown
 
 import android.content.ClipData
 import android.content.ClipboardManager

@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui.markdown
+package org.starfall.generative.features.home.chat.ui.markdown
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -10,9 +10,9 @@ import com.mikepenz.markdown.compose.components.MarkdownComponentModel
 import com.mikepenz.markdown.compose.elements.MarkdownHeader
 import org.intellij.markdown.IElementType
 import org.intellij.markdown.MarkdownTokenTypes
-import org.starfall.generative.home.chat.logic.markdown.MathPiece
-import org.starfall.generative.home.chat.logic.markdown.MathSplitter
-import org.starfall.generative.home.chat.logic.markdown.markdownHeadingContent
+import org.starfall.generative.features.home.chat.logic.markdown.MathPiece
+import org.starfall.generative.features.home.chat.logic.markdown.MathSplitter
+import org.starfall.generative.features.home.chat.logic.markdown.markdownHeadingContent
 
 /** Keeps the library heading renderer for plain text and routes math headings through inline LaTeX. */
 @Composable

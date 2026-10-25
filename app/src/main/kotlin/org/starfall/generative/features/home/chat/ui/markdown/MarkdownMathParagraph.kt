@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui.markdown
+package org.starfall.generative.features.home.chat.ui.markdown
 
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.Image
@@ -32,17 +32,17 @@ import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.starfall.generative.home.chat.logic.markdown.MATH_PLACEHOLDER_BASE
-import org.starfall.generative.home.chat.logic.markdown.MAX_INLINE_FORMULAS
-import org.starfall.generative.home.chat.logic.markdown.MathBlock
-import org.starfall.generative.home.chat.logic.markdown.MathPiece
-import org.starfall.generative.home.chat.logic.markdown.groupMathBlocks
-import org.starfall.generative.home.chat.logic.markdown.mathPlaceholder
-import org.starfall.generative.home.chat.logic.markdown.placeholderMarkdown
-import org.starfall.generative.home.chat.ui.AssetKey
+import org.starfall.generative.features.home.chat.logic.markdown.MATH_PLACEHOLDER_BASE
+import org.starfall.generative.features.home.chat.logic.markdown.MAX_INLINE_FORMULAS
+import org.starfall.generative.features.home.chat.logic.markdown.MathBlock
+import org.starfall.generative.features.home.chat.logic.markdown.MathPiece
+import org.starfall.generative.features.home.chat.logic.markdown.groupMathBlocks
+import org.starfall.generative.features.home.chat.logic.markdown.mathPlaceholder
+import org.starfall.generative.features.home.chat.logic.markdown.placeholderMarkdown
+import org.starfall.generative.features.home.chat.ui.AssetKey
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
-import org.starfall.generative.home.chat.ui.TrackPendingWork
-import org.starfall.generative.home.chat.ui.TrackReadyAssets
+import org.starfall.generative.features.home.chat.ui.TrackPendingWork
+import org.starfall.generative.features.home.chat.ui.TrackReadyAssets
 
 /**
  * A paragraph that contains math. Inline formulas are laid out inside the running text, so they wrap and

@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui.markdown
+package org.starfall.generative.features.home.chat.ui.markdown
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,9 +18,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.withContext
-import org.starfall.generative.home.chat.logic.markdown.parseLibraryMarkdown
-import org.starfall.generative.home.chat.logic.markdown.stableMarkdownPrefixLength
-import org.starfall.generative.home.chat.ui.MarkdownParseCache
+import org.starfall.generative.features.home.chat.logic.markdown.parseLibraryMarkdown
+import org.starfall.generative.features.home.chat.logic.markdown.stableMarkdownPrefixLength
+import org.starfall.generative.features.home.chat.ui.MarkdownParseCache
 import org.starfall.generative.shared.ui.text.LocalStreamingTextFade
 
 /** One finished top-level block. [parsed] is kept here so the chunk never waits for [MarkdownParseCache]. */

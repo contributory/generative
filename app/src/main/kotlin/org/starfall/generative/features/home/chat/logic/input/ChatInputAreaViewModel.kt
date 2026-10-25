@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.logic.input
+package org.starfall.generative.features.home.chat.logic.input
 
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration

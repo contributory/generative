@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui
+package org.starfall.generative.features.home.chat.ui
 
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.text.GlyphHitRegistry
@@ -28,7 +28,7 @@ import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
-import org.starfall.generative.home.chat.ui.markdown.MarkdownRenderer
+import org.starfall.generative.features.home.chat.ui.markdown.MarkdownRenderer
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 

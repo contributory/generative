@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui
+package org.starfall.generative.features.home.chat.ui
 
 import android.graphics.RenderEffect
 import android.graphics.RuntimeShader

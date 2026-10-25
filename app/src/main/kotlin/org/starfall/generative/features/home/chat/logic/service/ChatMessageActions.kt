@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.logic.service
+package org.starfall.generative.features.home.chat.logic.service
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -7,11 +7,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
-import org.starfall.generative.home.chat.logic.ChatGeneration
-import org.starfall.generative.home.chat.logic.input.DirectMediaRequest
-import org.starfall.generative.home.chat.logic.shouldGenerateConversationTitle
-import org.starfall.generative.home.chat.logic.startedWithDirectMedia
-import org.starfall.generative.home.chat.logic.tool.ToolChatViewModel
+import org.starfall.generative.features.home.chat.logic.ChatGeneration
+import org.starfall.generative.features.home.chat.logic.input.DirectMediaRequest
+import org.starfall.generative.features.home.chat.logic.shouldGenerateConversationTitle
+import org.starfall.generative.features.home.chat.logic.startedWithDirectMedia
+import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationSummary
@@ -23,8 +23,8 @@ import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.language.ModelType
-import org.starfall.generative.home.chat.logic.effectiveContext
-import org.starfall.generative.home.chat.logic.contextUsageKey
+import org.starfall.generative.features.home.chat.logic.effectiveContext
+import org.starfall.generative.features.home.chat.logic.contextUsageKey
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.networking.obj

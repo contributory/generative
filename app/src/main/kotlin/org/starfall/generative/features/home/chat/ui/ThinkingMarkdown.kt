@@ -1,9 +1,9 @@
-package org.starfall.generative.home.chat.ui
+package org.starfall.generative.features.home.chat.ui
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import org.starfall.generative.home.chat.ui.markdown.MarkdownRenderer
+import org.starfall.generative.features.home.chat.ui.markdown.MarkdownRenderer
 
 /** Thinking uses the full message Markdown pipeline while retaining its quieter text color. */
 @Composable

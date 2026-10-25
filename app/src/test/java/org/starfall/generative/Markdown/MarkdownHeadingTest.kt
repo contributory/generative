@@ -7,10 +7,10 @@ import org.intellij.markdown.ast.ASTNode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.generative.home.chat.logic.markdown.MathPiece
-import org.starfall.generative.home.chat.logic.markdown.MathSplitter
-import org.starfall.generative.home.chat.logic.markdown.markdownHeadingContent
-import org.starfall.generative.home.chat.logic.markdown.parseLibraryMarkdown
+import org.starfall.generative.features.home.chat.logic.markdown.MathPiece
+import org.starfall.generative.features.home.chat.logic.markdown.MathSplitter
+import org.starfall.generative.features.home.chat.logic.markdown.markdownHeadingContent
+import org.starfall.generative.features.home.chat.logic.markdown.parseLibraryMarkdown
 
 class MarkdownHeadingTest {
     private fun ASTNode.descendants(): List<ASTNode> = listOf(this) + children.flatMap { it.descendants() }

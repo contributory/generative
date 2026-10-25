@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.logic.service
+package org.starfall.generative.features.home.chat.logic.service
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch

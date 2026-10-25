@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui.markdown
+package org.starfall.generative.features.home.chat.ui.markdown
 
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import androidx.compose.foundation.background
@@ -27,8 +27,8 @@ import org.intellij.markdown.ast.ASTNode
 import org.intellij.markdown.ast.getTextInNode
 import org.intellij.markdown.flavours.gfm.GFMElementTypes
 import org.intellij.markdown.flavours.gfm.GFMTokenTypes
-import org.starfall.generative.home.chat.logic.markdown.MathPiece
-import org.starfall.generative.home.chat.logic.markdown.MathSplitter
+import org.starfall.generative.features.home.chat.logic.markdown.MathPiece
+import org.starfall.generative.features.home.chat.logic.markdown.MathSplitter
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 import org.starfall.generative.shared.ui.text.toComposeFontFamily
 

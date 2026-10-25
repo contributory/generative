@@ -3,10 +3,10 @@ package org.starfall.generative
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
-import org.starfall.generative.home.chat.ui.markdown.LatexCacheKey
-import org.starfall.generative.home.chat.ui.markdown.LatexDisplayMode
-import org.starfall.generative.home.chat.ui.markdown.latexCacheKey
-import org.starfall.generative.home.chat.ui.markdown.latexFallbackSource
+import org.starfall.generative.features.home.chat.ui.markdown.LatexCacheKey
+import org.starfall.generative.features.home.chat.ui.markdown.LatexDisplayMode
+import org.starfall.generative.features.home.chat.ui.markdown.latexCacheKey
+import org.starfall.generative.features.home.chat.ui.markdown.latexFallbackSource
 
 class LatexFormulaRendererTest {
     @Test fun cacheKeyRoundsPixelSizeAndIncludesThemeInputs() {

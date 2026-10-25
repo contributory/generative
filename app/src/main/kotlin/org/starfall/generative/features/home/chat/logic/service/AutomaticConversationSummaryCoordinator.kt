@@ -1,7 +1,7 @@
-package org.starfall.generative.home.chat.logic.service
+package org.starfall.generative.features.home.chat.logic.service
 
 import kotlinx.coroutines.flow.StateFlow
-import org.starfall.generative.home.chat.logic.estimateMessageTokens
+import org.starfall.generative.features.home.chat.logic.estimateMessageTokens
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationSummaryProgress
 import org.starfall.generative.shared.model.ConversationSummaryRequest

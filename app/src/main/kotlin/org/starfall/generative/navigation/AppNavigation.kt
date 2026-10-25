@@ -45,7 +45,7 @@ import org.starfall.generative.features.machines.details.ui.RemoteMachineSetting
 import org.starfall.generative.features.machines.list.ui.RemoteMachinesScreen
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
 import org.starfall.generative.shared.ui.terminal.RemoteTerminalSheet
-import org.starfall.generative.features.main.ui.FeaturesScreen
+import org.starfall.generative.features.menu.ui.AppMenuScreen
 import org.starfall.generative.features.mcp.editor.ui.ServerEditor
 import org.starfall.generative.features.mcp.list.ui.ServerListScreen
 import org.starfall.generative.features.providers.editor.ui.ProviderEditor
@@ -57,13 +57,13 @@ import org.starfall.generative.features.settings.ui.MainAppbar
 import org.starfall.generative.features.speech.ui.SpeechServicesScreen
 import org.starfall.generative.features.storage.ui.StorageScreen
 import org.starfall.generative.features.tools.ui.ToolsEditor
-import org.starfall.generative.home.chat.logic.ChatViewModel
-import org.starfall.generative.home.chat.logic.contextWindowStatus
-import org.starfall.generative.home.chat.ui.ChatScreen
+import org.starfall.generative.features.home.chat.logic.ChatViewModel
+import org.starfall.generative.features.home.chat.logic.contextWindowStatus
+import org.starfall.generative.features.home.chat.ui.ChatScreen
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.home.drawer.ui.ConversationSideDrawer
-import org.starfall.generative.home.drawer.ui.recordDrawerBackdrop
-import org.starfall.generative.home.drawer.ui.rememberDrawerBackdrop
+import org.starfall.generative.features.home.drawer.ui.ConversationSideDrawer
+import org.starfall.generative.features.home.drawer.ui.recordDrawerBackdrop
+import org.starfall.generative.features.home.drawer.ui.rememberDrawerBackdrop
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.model.McpInfo
@@ -856,7 +856,7 @@ fun AppNavigation(
                         }
                     }
                     composable(AppDestination.FEATURES.route) {
-                        FeaturesScreen(
+                        AppMenuScreen(
                             modifier = Modifier.fillMaxSize(),
                             logoImage = appPrefs.featuresLogoImage,
                             onLogoImageChange = settingsViewModel::setFeaturesLogoImage,

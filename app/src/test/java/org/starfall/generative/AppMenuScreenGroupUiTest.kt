@@ -35,21 +35,21 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import org.starfall.generative.features.main.ui.FeaturesScreen
-import org.starfall.generative.features.main.ui.GroupBottomShape
-import org.starfall.generative.features.main.ui.GroupInnerCorner
-import org.starfall.generative.features.main.ui.GroupMiddleShape
-import org.starfall.generative.features.main.ui.GroupOuterCorner
-import org.starfall.generative.features.main.ui.GroupTopShape
-import org.starfall.generative.features.main.ui.featureButtonBorder
-import org.starfall.generative.features.main.ui.featureButtonContainerColor
+import org.starfall.generative.features.menu.ui.AppMenuScreen
+import org.starfall.generative.features.menu.ui.GroupBottomShape
+import org.starfall.generative.features.menu.ui.GroupInnerCorner
+import org.starfall.generative.features.menu.ui.GroupMiddleShape
+import org.starfall.generative.features.menu.ui.GroupOuterCorner
+import org.starfall.generative.features.menu.ui.GroupTopShape
+import org.starfall.generative.features.menu.ui.featureButtonBorder
+import org.starfall.generative.features.menu.ui.featureButtonContainerColor
 import org.starfall.generative.shared.theme.GenerativeTheme
 import org.starfall.generative.shared.theme.ThemePresets
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h1600dp-xhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class FeaturesScreenGroupUiTest {
+class AppMenuScreenGroupUiTest {
     @get:Rule val compose = createComposeRule()
 
     private fun maxChannelDelta(a: Int, b: Int): Int = max(
@@ -94,7 +94,7 @@ class FeaturesScreenGroupUiTest {
         val clicked = mutableListOf<String>()
         compose.setContent {
             GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
-                FeaturesScreen(
+                AppMenuScreen(
                     onNavigateToProviders = { clicked += "Providers" },
                     onNavigateToMcp = { clicked += "MCP" },
                     onNavigateToRemoteMachines = { clicked += "Machines" }
@@ -155,7 +155,7 @@ class FeaturesScreenGroupUiTest {
                 buttonColor = featureButtonContainerColor()
                 buttonBorder = featureButtonBorder()
                 expectedOutlineVariant = MaterialTheme.colorScheme.outlineVariant
-                FeaturesScreen()
+                AppMenuScreen()
             }
         }
         compose.waitForIdle()

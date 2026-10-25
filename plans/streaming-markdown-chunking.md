@@ -15,7 +15,7 @@ This file is the progress tracker. Resume at the first unchecked item. Work one 
 Data flow today, per streaming update (about every 48 ms from `ChatGeneration`):
 
 1. `ChatGeneration.scheduleUpdate()` publishes a new `Conversation` → `ChatScreen` gets a new message list.
-2. `AssistantMessageCard` → `SmoothStreamingMarkdownMessage` → `StreamingMarkdownRenderer` (`home/chat/ui/markdown/MarkdownRenderer.kt`) copies the text into `displayContent` at most every 64 ms.
+2. `AssistantMessageCard` → `SmoothStreamingMarkdownMessage` → `StreamingMarkdownRenderer` (`features/home/chat/ui/markdown/MarkdownRenderer.kt`) copies the text into `displayContent` at most every 64 ms.
 3. `MarkdownRenderer(content = displayContent)` runs `parseLibraryMarkdown(input)` on **the entire text** (off the main thread), assigns the new `State.Success`, and `Markdown(state = parsed, …)` then re-composes **every** block: each paragraph calls `buildMarkdownAnnotatedString`, `MathSplitter.split`, text layout, etc.
 
 Cost grows with the answer length. A 10 000-character answer pays for 10 000 characters on every update although only the last few characters changed.
@@ -38,10 +38,10 @@ Rules that keep the result visually identical to the single-renderer version:
 
 ## Step 1 — Pure splitter (logic layer)
 
-New file `app/src/main/kotlin/org/starfall/generative/home/chat/logic/markdown/StableMarkdownPrefix.kt`. No Compose imports (`docs/structure.md`: logic must not depend on UI).
+New file `app/src/main/kotlin/org/starfall/generative/features/home/chat/logic/markdown/StableMarkdownPrefix.kt`. No Compose imports (`docs/structure.md`: logic must not depend on UI).
 
 ```kotlin
-package org.starfall.generative.home.chat.logic.markdown
+package org.starfall.generative.features.home.chat.logic.markdown
 
 /**
  * Offset in [text] where the LAST top-level block starts; text[0 until offset] is safe to freeze.
@@ -142,7 +142,7 @@ Also add one **property-style test**: for several sample documents, for every pr
 
 ## Step 3 — Chunked renderer (UI layer)
 
-New file `app/src/main/kotlin/org/starfall/generative/home/chat/ui/markdown/ChunkedStreamingMarkdown.kt` (file name matches its primary composable). It reuses `MarkdownRenderer` unchanged.
+New file `app/src/main/kotlin/org/starfall/generative/features/home/chat/ui/markdown/ChunkedStreamingMarkdown.kt` (file name matches its primary composable). It reuses `MarkdownRenderer` unchanged.
 
 ```kotlin
 private data class FrozenMarkdown(val prefix: String, val chunks: List<String>) {

@@ -114,7 +114,7 @@
         </service>
 
         <service
-            android:name="org.starfall.generative.home.shared.logic.ChatBackgroundService"
+            android:name="org.starfall.generative.features.home.shared.logic.ChatBackgroundService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse">

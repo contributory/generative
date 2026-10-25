@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.logic.markdown
+package org.starfall.generative.features.home.chat.logic.markdown
 
 import com.mikepenz.markdown.model.State
 import com.mikepenz.markdown.model.parseMarkdown

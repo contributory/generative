@@ -14,9 +14,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.generative.home.shared.ui.FeatureToolsSheet
-import org.starfall.generative.home.shared.ui.McpConnectorsSheet
-import org.starfall.generative.home.shared.ui.QuickActionsSheet
+import org.starfall.generative.features.home.shared.ui.FeatureToolsSheet
+import org.starfall.generative.features.home.shared.ui.McpConnectorsSheet
+import org.starfall.generative.features.home.shared.ui.QuickActionsSheet
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.ToolControls

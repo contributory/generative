@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.logic
+package org.starfall.generative.features.home.chat.logic
 
 
 import kotlinx.coroutines.CancellationException
@@ -15,7 +15,7 @@ import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.storage.ConversationRepository
-import org.starfall.generative.home.chat.logic.tool.ToolChatViewModel
+import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 
 internal class ConversationSummaryCoordinator(
     private val repository: ConversationRepository,

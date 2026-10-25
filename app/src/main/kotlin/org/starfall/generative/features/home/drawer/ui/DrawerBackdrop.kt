@@ -1,4 +1,4 @@
-package org.starfall.generative.home.drawer.ui
+package org.starfall.generative.features.home.drawer.ui
 
 import android.os.Build
 import androidx.compose.material3.DrawerState

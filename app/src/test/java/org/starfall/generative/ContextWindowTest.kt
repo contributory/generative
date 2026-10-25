@@ -10,10 +10,10 @@ import org.starfall.generative.features.providers.shared.ui.*
 import org.starfall.generative.shared.model.language.DEFAULT_CONTEXT_WINDOW_TOKENS
 import org.starfall.generative.shared.model.language.DiscoveredModel
 import org.starfall.generative.shared.model.language.ModelConfiguration
-import org.starfall.generative.home.chat.logic.chunkSummaryMessages
-import org.starfall.generative.home.chat.logic.contextWindowStatus
-import org.starfall.generative.home.chat.logic.estimateMessageTokens
-import org.starfall.generative.home.chat.model.ContextWindowStatus
+import org.starfall.generative.features.home.chat.logic.chunkSummaryMessages
+import org.starfall.generative.features.home.chat.logic.contextWindowStatus
+import org.starfall.generative.features.home.chat.logic.estimateMessageTokens
+import org.starfall.generative.features.home.chat.model.ContextWindowStatus
 import org.starfall.generative.shared.model.language.normalizedForTemplate
 
 class ContextWindowTest {

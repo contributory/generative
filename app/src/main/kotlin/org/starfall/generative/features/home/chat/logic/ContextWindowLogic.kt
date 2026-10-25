@@ -1,6 +1,6 @@
-package org.starfall.generative.home.chat.logic
+package org.starfall.generative.features.home.chat.logic
 
-import org.starfall.generative.home.chat.model.ContextWindowStatus
+import org.starfall.generative.features.home.chat.model.ContextWindowStatus
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.MessageVersion

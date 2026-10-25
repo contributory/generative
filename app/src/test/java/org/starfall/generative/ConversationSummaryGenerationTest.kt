@@ -5,9 +5,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.home.chat.logic.estimateMessageTokens
-import org.starfall.generative.home.chat.logic.estimateTextTokens
-import org.starfall.generative.home.chat.logic.generateConversationSummary
+import org.starfall.generative.features.home.chat.logic.estimateMessageTokens
+import org.starfall.generative.features.home.chat.logic.estimateTextTokens
+import org.starfall.generative.features.home.chat.logic.generateConversationSummary
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationSummary

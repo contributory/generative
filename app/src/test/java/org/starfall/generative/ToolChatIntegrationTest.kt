@@ -20,7 +20,7 @@ import org.starfall.generative.features.mcp.shared.ui.*
 import org.starfall.generative.integrations.mcp.*
 import org.starfall.generative.features.machines.shared.ui.*
 import org.starfall.generative.integrations.remote.*
-import org.starfall.generative.home.chat.*
+import org.starfall.generative.features.home.chat.*
 import org.starfall.generative.integrations.modelapis.*
 import org.starfall.generative.shared.icons.*
 import org.starfall.generative.shared.media.*
@@ -32,7 +32,7 @@ import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.home.chat.logic.tool.ToolChatViewModel
+import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)

@@ -11,7 +11,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.home.chat.logic.ChatViewModel
+import org.starfall.generative.features.home.chat.logic.ChatViewModel
 
 class ChatBackgroundLifecycleTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()

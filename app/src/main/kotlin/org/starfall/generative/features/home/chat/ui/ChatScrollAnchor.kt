@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui
+package org.starfall.generative.features.home.chat.ui
 
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
@@ -14,8 +14,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import kotlin.math.abs
-import org.starfall.generative.home.chat.logic.SentMessageDetector
-import org.starfall.generative.home.chat.logic.anchorTailSpacer
+import org.starfall.generative.features.home.chat.logic.SentMessageDetector
+import org.starfall.generative.features.home.chat.logic.anchorTailSpacer
 
 private const val MAX_WAIT_FRAMES = 90
 private const val MAX_SETTLE_PASSES = 3

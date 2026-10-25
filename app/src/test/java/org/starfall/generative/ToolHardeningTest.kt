@@ -17,9 +17,9 @@ import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.home.chat.logic.tool.ToolBudget
-import org.starfall.generative.home.chat.logic.tool.prepareGenericToolResult
-import org.starfall.generative.home.shared.logic.prepareToolResult
+import org.starfall.generative.features.home.chat.logic.tool.ToolBudget
+import org.starfall.generative.features.home.chat.logic.tool.prepareGenericToolResult
+import org.starfall.generative.features.home.shared.logic.prepareToolResult
 
 class ToolHardeningTest {
     private fun json(text: String) = Json.parseToJsonElement(text).jsonObject

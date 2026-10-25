@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui.markdown
+package org.starfall.generative.features.home.chat.ui.markdown
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState

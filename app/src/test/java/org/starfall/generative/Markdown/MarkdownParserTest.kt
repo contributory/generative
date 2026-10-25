@@ -7,8 +7,8 @@ import org.intellij.markdown.flavours.gfm.GFMElementTypes
 import org.intellij.markdown.ast.ASTNode
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.home.chat.logic.markdown.markdownFence
-import org.starfall.generative.home.chat.logic.markdown.parseLibraryMarkdown
+import org.starfall.generative.features.home.chat.logic.markdown.markdownFence
+import org.starfall.generative.features.home.chat.logic.markdown.parseLibraryMarkdown
 
 class MarkdownParserTest {
     private fun ASTNode.descendants(): List<ASTNode> = listOf(this) + children.flatMap { it.descendants() }

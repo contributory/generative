@@ -18,8 +18,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.home.BottomSheetsLink
-import org.starfall.generative.home.BottomSheetsLinkState
+import org.starfall.generative.features.home.BottomSheetsLink
+import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.LocalToolControls

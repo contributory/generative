@@ -1,4 +1,4 @@
-package org.starfall.generative.home.shared.logic
+package org.starfall.generative.features.home.shared.logic
 
 import android.R
 import android.app.Notification

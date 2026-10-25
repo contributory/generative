@@ -47,19 +47,19 @@ Useful commands:
 
 The current implementation is under `app/src/main/kotlin/org/starfall/generative/`. Place changes according to responsibility and who uses the code:
 
-- `features/`: independent feature screens and their feature-specific state/logic.
-- `home/`: chat, conversation drawer, and chat-related shared UI and logic.
+- `features/`: feature-oriented vertical slices for user/business capabilities. Each feature groups its presentation (`ui/`), workflow/use-case coordination and state holders (`logic/`), and feature-specific state/data types (`model/`); a feature may span multiple screens and is not defined by a `FeaturesScreen`/`AppMenuScreen` entry.
+- `features/home/`: chat, conversation drawer, and chat-related shared UI and logic.
 - `integrations/`: code whose primary purpose is communicating with external services, including provider APIs, MCP, media-generation APIs, and remote-machine connections.
 - `shared/`: reusable UI, models, storage, networking primitives, and pure helpers used across layers.
 - `navigation/`: app navigation destinations and routing.
 - `appwiring/`: application-level dependency construction and initialization.
 
-Follow this dependency direction: `shared` ← `integrations` ← `features` and `home` ← `navigation` ← `appwiring`. In particular:
+Follow this dependency direction: `shared` ← `integrations` ← `features` ← `navigation` ← `appwiring`. In particular:
 
-- `shared/` and `integrations/` must not import from `features/` or `home/`.
-- `features/` and `home/` must not import from each other, and one feature must not import another feature.
+- `shared/` and `integrations/` must not import from `features/`.
+- Feature packages must not import from each other, and one feature must never import another feature.
 - Code used by only one layer should normally stay with that layer. Move code to `shared/` when it is genuinely used by multiple layers; external API calls and protocol handling belong in `integrations/`.
-- Keep UI rendering in Compose and screen state/actions in the appropriate ViewModel or state holder. Inject dependencies rather than constructing unrelated services inside UI composables.
+- Keep UI rendering in Compose and screen state/actions in the appropriate ViewModel or state holder. Within a feature, UI may depend on logic/model, logic may depend on model, and model must not depend on UI or logic. Inject dependencies rather than constructing unrelated services inside UI composables.
 - Use lifecycle-aware collection for UI flows and propagate coroutine cancellation.
 - Keep files focused and preferably at or below 500 lines; split only when it improves clarity and ownership.
 

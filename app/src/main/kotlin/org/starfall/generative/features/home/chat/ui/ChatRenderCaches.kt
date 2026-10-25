@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui
+package org.starfall.generative.features.home.chat.ui
 
 import android.content.ComponentCallbacks2
 import android.util.LruCache
@@ -12,8 +12,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import com.mikepenz.markdown.model.State
 import java.lang.ref.SoftReference
 import java.util.concurrent.CopyOnWriteArrayList
-import org.starfall.generative.home.chat.ui.markdown.LatexCacheKey
-import org.starfall.generative.home.chat.ui.markdown.LatexDrawables
+import org.starfall.generative.features.home.chat.ui.markdown.LatexCacheKey
+import org.starfall.generative.features.home.chat.ui.markdown.LatexDrawables
 
 /**
  * RAM that only exists to make reopening a chat faster. Everything registered here is low priority:

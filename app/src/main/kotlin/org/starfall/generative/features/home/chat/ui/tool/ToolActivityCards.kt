@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui.tool
+package org.starfall.generative.features.home.chat.ui.tool
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -55,9 +55,9 @@ import org.starfall.generative.shared.model.ToolActivity
 import org.starfall.generative.shared.storage.preferences.WordWrapMode
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.home.shared.ui.LocalToolSheetState
-import org.starfall.generative.home.shared.ui.ToolSheetState
-import org.starfall.generative.home.shared.ui.ToolDetailsSheetHost
+import org.starfall.generative.features.home.shared.ui.LocalToolSheetState
+import org.starfall.generative.features.home.shared.ui.ToolSheetState
+import org.starfall.generative.features.home.shared.ui.ToolDetailsSheetHost
 
 @Composable
 fun ToolActivityCards(activities: List<ToolActivity>) {

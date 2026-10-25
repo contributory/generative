@@ -1,9 +1,9 @@
-package org.starfall.generative.home.chat.logic.service
+package org.starfall.generative.features.home.chat.logic.service
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import org.starfall.generative.home.chat.logic.ChatGeneration
-import org.starfall.generative.home.chat.logic.tool.ToolChatViewModel
+import org.starfall.generative.features.home.chat.logic.ChatGeneration
+import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.DEFAULT_TITLE_GENERATION_PROMPT

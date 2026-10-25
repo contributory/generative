@@ -1,9 +1,9 @@
-package org.starfall.generative.home.chat.logic.tool
+package org.starfall.generative.features.home.chat.logic.tool
 
 import org.starfall.generative.shared.model.media.ContentApiMediaResult
 import org.starfall.generative.shared.model.media.MediaGenerationMode
-import org.starfall.generative.home.shared.logic.prepareToolResult
-import org.starfall.generative.home.shared.logic.ToolSummary
+import org.starfall.generative.features.home.shared.logic.prepareToolResult
+import org.starfall.generative.features.home.shared.logic.ToolSummary
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -56,13 +56,13 @@ import org.starfall.generative.shared.networking.requireObject
 import org.starfall.generative.shared.networking.str
 import org.starfall.generative.shared.networking.text
 import org.starfall.generative.shared.networking.toolArguments
-import org.starfall.generative.home.chat.logic.SEND_FILE_TOOL_NAME
-import org.starfall.generative.home.chat.logic.SendFileTool
-import org.starfall.generative.home.chat.logic.fileDeliveryResult
-import org.starfall.generative.home.chat.logic.sendFileDefinition
-import org.starfall.generative.home.shared.logic.ToolExecutionService
-import org.starfall.generative.home.shared.logic.ToolMediaGenerationService
-import org.starfall.generative.home.shared.logic.ToolRequestService
+import org.starfall.generative.features.home.chat.logic.SEND_FILE_TOOL_NAME
+import org.starfall.generative.features.home.chat.logic.SendFileTool
+import org.starfall.generative.features.home.chat.logic.fileDeliveryResult
+import org.starfall.generative.features.home.chat.logic.sendFileDefinition
+import org.starfall.generative.features.home.shared.logic.ToolExecutionService
+import org.starfall.generative.features.home.shared.logic.ToolMediaGenerationService
+import org.starfall.generative.features.home.shared.logic.ToolRequestService
 
 private fun sentFileNames(result: JsonObject): List<String> {
     val listed = (result["files"] as? JsonArray).orEmpty().mapNotNull { value ->

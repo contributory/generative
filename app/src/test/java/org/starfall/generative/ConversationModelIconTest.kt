@@ -7,7 +7,7 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.home.drawer.logic.lastModelIcon
+import org.starfall.generative.features.home.drawer.logic.lastModelIcon
 
 class ConversationModelIconTest {
     private val providers = listOf(

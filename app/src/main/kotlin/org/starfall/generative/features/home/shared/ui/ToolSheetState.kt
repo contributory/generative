@@ -1,4 +1,4 @@
-package org.starfall.generative.home.shared.ui
+package org.starfall.generative.features.home.shared.ui
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

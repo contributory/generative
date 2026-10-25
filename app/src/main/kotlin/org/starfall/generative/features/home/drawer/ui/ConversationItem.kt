@@ -1,6 +1,6 @@
 @file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
-package org.starfall.generative.home.drawer.ui
+package org.starfall.generative.features.home.drawer.ui
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -33,7 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.home.drawer.logic.ConversationModelIcon
+import org.starfall.generative.features.home.drawer.logic.ConversationModelIcon
 import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.icons.EntityIcon

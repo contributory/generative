@@ -14,7 +14,7 @@ import org.starfall.generative.features.settings.logic.SettingsViewModel
 import java.util.UUID
 import android.os.ParcelFileDescriptor
 import kotlinx.serialization.json.*
-import org.starfall.generative.home.chat.logic.ChatViewModel
+import org.starfall.generative.features.home.chat.logic.ChatViewModel
 
 /** Explicit ADB-only smoke test; uses the provider already entered on the device, never embeds a credential. */
 class HelixLiveTest {

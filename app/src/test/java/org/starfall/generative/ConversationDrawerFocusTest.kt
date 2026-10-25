@@ -8,13 +8,15 @@ import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.unit.dp
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.home.drawer.ui.ConversationSideDrawer
+import org.starfall.generative.features.home.drawer.ui.ConversationSideDrawer
 import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.theme.GenerativeTheme
 
@@ -51,10 +53,16 @@ class ConversationDrawerFocusTest {
         compose.waitForIdle()
         compose.onNodeWithTag("conversation_drawer_search_button")
             .assertIsDisplayed()
+            .assertWidthIsEqualTo(136.dp)
+        compose.onNodeWithTag("conversation_drawer_new_chat")
+            .assertIsDisplayed()
         compose.onNodeWithTag("conversation_drawer_search").assertDoesNotExist()
 
         compose.onNodeWithTag("conversation_drawer_search_button").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("conversation_drawer_search").assertIsFocused()
+        compose.onNodeWithTag("conversation_drawer_new_chat")
+            .assertIsDisplayed()
+            .assertWidthIsEqualTo(40.dp)
     }
 }

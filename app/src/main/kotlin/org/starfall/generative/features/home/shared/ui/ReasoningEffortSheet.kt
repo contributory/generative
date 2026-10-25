@@ -1,4 +1,4 @@
-package org.starfall.generative.home.shared.ui
+package org.starfall.generative.features.home.shared.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState

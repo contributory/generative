@@ -1,10 +1,9 @@
 @file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
-package org.starfall.generative.home.drawer.ui
+package org.starfall.generative.features.home.drawer.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -56,7 +55,7 @@ import org.starfall.generative.shared.ui.FeaturesLogoImage
 import org.starfall.generative.shared.ui.layout.amoledEdgeBorder
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 import org.starfall.generative.shared.ui.layout.windowWidth
-import org.starfall.generative.home.drawer.logic.lastModelIcon
+import org.starfall.generative.features.home.drawer.logic.lastModelIcon
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
@@ -173,11 +172,6 @@ fun ConversationSideDrawer(
         }
     }
     BackHandler(enabled = selecting && isOpen) { stopSelecting() }
-    val newChatButtonSize by animateDpAsState(
-        targetValue = if (searchExpanded) 40.dp else 52.dp,
-        label = "new chat button size"
-    )
-
     val drawerShape = RoundedCornerShape(topEnd = 32.dp, bottomEnd = 32.dp)
     val drawerModifier = modifier.windowWidth(0.85f).onSizeChanged { backdrop?.sheetWidthPx = it.width.toFloat() }.let {
         if (LocalAmoledMode.current) {
@@ -340,15 +334,16 @@ fun ConversationSideDrawer(
                 } else {
                     OutlinedButton(
                         onClick = { searchExpanded = true },
+                        contentPadding = PaddingValues(horizontal = 12.dp),
                         shape = RoundedCornerShape(28.dp),
                         modifier = Modifier
-                            .weight(1f)
+                            .width(136.dp)
                             .heightIn(min = 52.dp)
                             .testTag("conversation_drawer_search_button")
                     ) {
                         FluentIcon(Icons.Default.Search, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.search_history), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(stringResource(R.string.sidebar_search), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
                 // Secondary actions step aside while the search field is expanded.
@@ -366,21 +361,49 @@ fun ConversationSideDrawer(
                 }
                 Spacer(Modifier.width(8.dp))
                 if (LocalAmoledMode.current) {
-                    OutlinedIconButton(
-                        onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
-                        modifier = Modifier.size(newChatButtonSize),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
-                        colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-                    ) { FluentIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
+                    if (searchExpanded) {
+                        OutlinedIconButton(
+                            onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
+                            modifier = Modifier.size(40.dp).testTag("conversation_drawer_new_chat"),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                            colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                        ) { FluentIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
+                    } else {
+                        OutlinedButton(
+                            onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
+                            modifier = Modifier.weight(1f).heightIn(min = 52.dp).testTag("conversation_drawer_new_chat"),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            FluentIcon(Icons.Outlined.Compose, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.sidebar_new_chat))
+                        }
+                    }
                 } else {
-                    FilledIconButton(
-                        onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
-                        modifier = Modifier.size(newChatButtonSize),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    ) { FluentIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
+                    if (searchExpanded) {
+                        FilledIconButton(
+                            onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
+                            modifier = Modifier.size(40.dp).testTag("conversation_drawer_new_chat"),
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        ) { FluentIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
+                    } else {
+                        Button(
+                            onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
+                            modifier = Modifier.weight(1f).heightIn(min = 52.dp).testTag("conversation_drawer_new_chat"),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        ) {
+                            FluentIcon(Icons.Outlined.Compose, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.sidebar_new_chat))
+                        }
+                    }
                 }
             }
         }

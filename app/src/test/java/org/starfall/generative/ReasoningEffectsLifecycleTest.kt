@@ -19,7 +19,7 @@ import org.starfall.generative.shared.ui.model.*
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.home.shared.ui.SelectedModelOverviewSheet
+import org.starfall.generative.features.home.shared.ui.SelectedModelOverviewSheet
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi")

@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.logic
+package org.starfall.generative.features.home.chat.logic
 
 
 import androidx.lifecycle.ViewModel
@@ -34,17 +34,17 @@ import org.starfall.generative.shared.storage.SpeechRepository
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.storage.preferences.ToolSettingsStore
-import org.starfall.generative.home.chat.logic.service.AutomaticConversationSummaryCoordinator
-import org.starfall.generative.home.chat.logic.service.ChatConversationCoordinator
-import org.starfall.generative.home.chat.logic.service.ChatMessageActions
-import org.starfall.generative.home.chat.logic.service.ChatMessageRetryActions
-import org.starfall.generative.home.chat.logic.service.ChatModelContextCoordinator
-import org.starfall.generative.home.chat.logic.service.ChatToolSettingsActions
-import org.starfall.generative.home.chat.logic.service.ConversationTitleGenerator
-import org.starfall.generative.home.chat.logic.tool.ToolChatViewModel
-import org.starfall.generative.home.chat.logic.input.DirectMediaRequest
+import org.starfall.generative.features.home.chat.logic.service.AutomaticConversationSummaryCoordinator
+import org.starfall.generative.features.home.chat.logic.service.ChatConversationCoordinator
+import org.starfall.generative.features.home.chat.logic.service.ChatMessageActions
+import org.starfall.generative.features.home.chat.logic.service.ChatMessageRetryActions
+import org.starfall.generative.features.home.chat.logic.service.ChatModelContextCoordinator
+import org.starfall.generative.features.home.chat.logic.service.ChatToolSettingsActions
+import org.starfall.generative.features.home.chat.logic.service.ConversationTitleGenerator
+import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
+import org.starfall.generative.features.home.chat.logic.input.DirectMediaRequest
 import org.starfall.generative.shared.model.language.ModelType
-import org.starfall.generative.home.chat.model.ContextWindowStatus
+import org.starfall.generative.features.home.chat.model.ContextWindowStatus
 
 internal fun shouldGenerateConversationTitle(
     userText: String,

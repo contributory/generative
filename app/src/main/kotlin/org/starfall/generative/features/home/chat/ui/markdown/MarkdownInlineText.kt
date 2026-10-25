@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.ui.markdown
+package org.starfall.generative.features.home.chat.ui.markdown
 
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material3.Text

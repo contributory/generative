@@ -1,9 +1,9 @@
-package org.starfall.generative.home.chat.logic.tool
+package org.starfall.generative.features.home.chat.logic.tool
 
 import kotlinx.serialization.json.*
 import org.starfall.generative.shared.networking.obj
 import org.starfall.generative.shared.networking.str
-import org.starfall.generative.home.shared.logic.ToolSummary
+import org.starfall.generative.features.home.shared.logic.ToolSummary
 
 internal class ToolBudget {
     private var total = 0

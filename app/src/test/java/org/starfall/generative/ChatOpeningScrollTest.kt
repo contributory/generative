@@ -17,9 +17,9 @@ import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
-import org.starfall.generative.home.chat.ui.ChatRenderCaches
-import org.starfall.generative.home.chat.ui.ChatScreen
-import org.starfall.generative.home.chat.ui.OPENING_VEIL_TAG
+import org.starfall.generative.features.home.chat.ui.ChatRenderCaches
+import org.starfall.generative.features.home.chat.ui.ChatScreen
+import org.starfall.generative.features.home.chat.ui.OPENING_VEIL_TAG
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi")

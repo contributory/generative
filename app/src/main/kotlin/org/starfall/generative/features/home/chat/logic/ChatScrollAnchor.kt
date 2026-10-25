@@ -1,4 +1,4 @@
-package org.starfall.generative.home.chat.logic
+package org.starfall.generative.features.home.chat.logic
 
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.StoredMessage
