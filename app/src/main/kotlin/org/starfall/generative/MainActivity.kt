@@ -25,6 +25,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.activity.compose.rememberLauncherForActivityResult
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,6 +44,8 @@ import org.starfall.generative.features.providers.shared.logic.ConfigurationView
 import org.starfall.generative.features.settings.logic.SettingsViewModel
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
 import org.starfall.generative.shared.model.parseProviderLink
+import org.starfall.generative.shared.files.CrashLogExporter
+import org.starfall.generative.shared.files.CrashReport
 import org.starfall.generative.shared.ui.dialogs.CrashReportDialog
 import org.starfall.generative.shared.ui.logging.DebugLogOverlay
 import org.starfall.generative.shared.ui.layout.enableTransparentSystemBars
@@ -94,6 +101,25 @@ class MainActivity : ComponentActivity() {
         setContent {
             val crashReports = (application as GenerativeApplication).crashReports
             var pendingCrash by remember { mutableStateOf(crashReports.pending()) }
+            val crashScope = rememberCoroutineScope()
+            fun saveCrashLog(report: CrashReport) {
+                crashScope.launch {
+                    val result = withContext(Dispatchers.IO) { CrashLogExporter.save(this@MainActivity, report) }
+                    result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+                    Toast.makeText(this@MainActivity,
+                        result.fold({ getString(R.string.crash_log_saved, it) },
+                            { getString(R.string.crash_log_save_failed) }),
+                        Toast.LENGTH_LONG).show()
+                }
+            }
+            val storagePermission = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { granted ->
+                val report = pendingCrash
+                if (report == null) return@rememberLauncherForActivityResult
+                if (granted) saveCrashLog(report)
+                else Toast.makeText(this@MainActivity, R.string.crash_log_permission_denied, Toast.LENGTH_LONG).show()
+            }
             val appPrefs by settingsViewModel.preferences.collectAsStateWithLifecycle()
             val isAnyGenerating by viewModel.isAnyGenerating.collectAsStateWithLifecycle()
             val isAnyResponseActive by viewModel.isAnyResponseActive.collectAsStateWithLifecycle()
@@ -141,6 +167,12 @@ class MainActivity : ComponentActivity() {
                                 .onFailure {
                                     Toast.makeText(this, R.string.crash_issue_open_failed, Toast.LENGTH_LONG).show()
                                 }
+                        },
+                        onSaveLog = {
+                            if (CrashLogExporter.needsLegacyStoragePermission && ContextCompat.checkSelfPermission(
+                                    this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
+                                storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            else saveCrashLog(report)
                         },
                         onDismiss = {
                             crashReports.dismiss(report.id)

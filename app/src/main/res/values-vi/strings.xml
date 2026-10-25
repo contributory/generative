@@ -65,6 +65,10 @@
     <string name="message_text_size_hint">%1$d sp</string>
     <string name="message_text_size_custom_hint">Tắt: dùng cỡ chữ của hệ thống Android</string>
     <string name="crash_report_description">Phiên trước đã kết thúc bất ngờ. Lỗi được ghi lại bên dưới. Bạn có thể tạo issue trên GitHub kèm thông tin này để giúp khắc phục sự cố.</string>
+    <string name="crash_save_log">Lưu thành file .log</string>
+    <string name="crash_log_saved">Đã lưu log lỗi vào %1$s</string>
+    <string name="crash_log_save_failed">Không thể lưu log lỗi. Hãy chọn vị trí có thể ghi và thử lại.</string>
+    <string name="crash_log_permission_denied">Cần quyền truy cập bộ nhớ để lưu log lỗi.</string>
     <string name="oauth_browser_hint">Đăng nhập tài khoản qua trình duyệt.</string>
     <string name="icon_settings_description">Quản lý biểu tượng chung và quy tắc khớp</string>
     <string name="icon_settings_title">Biểu tượng &amp; thương hiệu</string>

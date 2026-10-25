@@ -16,6 +16,10 @@
     <string name="crash_report_description">The previous session ended unexpectedly. Create a GitHub issue with the details below to help fix it.</string>
     <string name="crash_create_issue">Create GitHub issue</string>
     <string name="crash_issue_open_failed">Could not open GitHub. Please check that a browser is installed.</string>
+    <string name="crash_save_log">Save as .log file</string>
+    <string name="crash_log_saved">Crash log saved to %1$s</string>
+    <string name="crash_log_save_failed">Could not save the crash log. Choose a writable location and try again.</string>
+    <string name="crash_log_permission_denied">Storage permission is required to save the crash log.</string>
     <string name="thinking">Thinking</string>
     <string name="thinking_streaming">Thinking...</string>
     <string name="generating">Generating...</string>

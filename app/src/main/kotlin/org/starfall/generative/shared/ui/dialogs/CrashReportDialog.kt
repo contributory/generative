@@ -18,7 +18,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.files.CrashReport
 
 @Composable
-internal fun CrashReportDialog(report: CrashReport, onCreateIssue: () -> Unit, onDismiss: () -> Unit) {
+internal fun CrashReportDialog(report: CrashReport, onCreateIssue: () -> Unit, onSaveLog: () -> Unit, onDismiss: () -> Unit) {
     AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.crash_report_title)) },
@@ -27,6 +27,7 @@ internal fun CrashReportDialog(report: CrashReport, onCreateIssue: () -> Unit, o
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.crash_report_description))
                 Text("${report.appVersion} · ${report.androidVersion}", style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = onSaveLog) { Text(stringResource(R.string.crash_save_log)) }
                 SelectionContainer {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(report.cause, style = MaterialTheme.typography.bodyMedium)
