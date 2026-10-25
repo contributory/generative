@@ -540,7 +540,7 @@
     <string name="provider_prompt_cache_system">Cache system prompt</string>
     <string name="provider_prompt_cache_tools">Cache tools</string>
     <string name="provider_prompt_cache_conversation">Cache conversation history</string>
-    <string name="provider_prompt_cache_hint">Each hit refreshes the duration. Writing a 1-hour entry costs more than a 5-minute one, and prompts shorter than the model\'s minimum length are not cached.</string>
+    <string name="provider_prompt_cache_hint">Caching for 1 hour costs more than for 5 minutes.</string>
     <string name="provider_edit_api_key">Edit API Key</string>
     <string name="provider_save_api_key">Save API key</string>
     <string name="provider_api_key_required">Enter an API key.</string>
