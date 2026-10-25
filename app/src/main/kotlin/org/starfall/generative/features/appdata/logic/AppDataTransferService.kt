@@ -1,6 +1,7 @@
 package org.starfall.generative.features.appdata.logic
 
 import android.content.Context
+import androidx.core.content.edit
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
@@ -150,10 +151,11 @@ class AppDataTransferService(
     }
 
     private fun restoreRemoteTerminalPreferences(state: RemoteTerminalPreferencesState) {
-        val editor = context.getSharedPreferences(REMOTE_TERMINAL_UI_PREFERENCES, Context.MODE_PRIVATE).edit().clear()
-        state.ints.forEach { (key, value) -> editor.putInt(key, value) }
-        state.booleans.forEach { (key, value) -> editor.putBoolean(key, value) }
-        state.strings.forEach { (key, value) -> editor.putString(key, value) }
-        check(editor.commit()) { "Could not restore remote terminal preferences." }
+        context.getSharedPreferences(REMOTE_TERMINAL_UI_PREFERENCES, Context.MODE_PRIVATE).edit(commit = true) {
+            clear()
+            state.ints.forEach { (key, value) -> putInt(key, value) }
+            state.booleans.forEach { (key, value) -> putBoolean(key, value) }
+            state.strings.forEach { (key, value) -> putString(key, value) }
+        }
     }
 }

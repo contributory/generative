@@ -54,7 +54,7 @@ internal class McpOAuthTokenStore(context: Context) {
     }.toMap()
 
     fun importAll(tokens: Map<String, JsonObject>) {
-        val editor = preferences.edit()
+        val editor = preferences.edit().clear()
         tokens.forEach { (serverId, value) ->
             val token = json.decodeFromJsonElement<McpOAuthTokenState>(value)
             editor.putString(serverId, SecretCipher.encrypt(json.encodeToString(token)))

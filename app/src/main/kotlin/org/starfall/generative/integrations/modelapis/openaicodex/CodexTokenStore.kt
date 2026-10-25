@@ -60,7 +60,7 @@ internal class CodexTokenStore(context: Context) {
     }.toMap()
 
     fun importAll(credentials: Map<String, JsonObject>) {
-        val editor = preferences.edit()
+        val editor = preferences.edit().clear()
         credentials.forEach { (providerId, value) ->
             val token = json.decodeFromJsonElement<CodexTokenState>(value)
             editor.putString(providerId, encrypt(json.encodeToString(token)))

@@ -31,8 +31,8 @@ internal class AccountProviderAdapterRegistry(
         adapters.mapKeys { (type, _) -> type.name }.mapValues { (_, adapter) -> adapter.exportCredentials() }
 
     fun importCredentials(credentials: Map<String, Map<String, JsonObject>>) {
-        credentials.forEach { (typeName, values) ->
-            runCatching { ModelApiType.valueOf(typeName) }.getOrNull()?.let { adapters[it]?.importCredentials(values) }
+        adapters.forEach { (type, adapter) ->
+            adapter.importCredentials(credentials[type.name].orEmpty())
         }
     }
 }

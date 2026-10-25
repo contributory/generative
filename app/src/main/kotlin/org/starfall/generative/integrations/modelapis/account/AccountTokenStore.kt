@@ -62,7 +62,7 @@ internal class AccountTokenStore(context: Context, namespace: String) {
     }.toMap()
 
     fun importAll(credentials: Map<String, JsonObject>) {
-        val editor = preferences.edit()
+        val editor = preferences.edit().clear()
         credentials.forEach { (providerId, value) ->
             val token = json.decodeFromJsonElement<AccountTokenState>(value)
             editor.putString(providerId, encrypt(json.encodeToString(token)))

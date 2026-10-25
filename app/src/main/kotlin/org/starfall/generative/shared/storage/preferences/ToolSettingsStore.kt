@@ -33,7 +33,10 @@ class ToolSettingsStore(context: Context) {
 
     suspend fun replace(settings: ToolSettings) {
         state.mutate({ settings }) {
-            store.edit { preferences -> preferences[key] = json.encodeToString(settings) }
+            store.edit { preferences ->
+                preferences.clear()
+                preferences[key] = json.encodeToString(settings)
+            }
         }
     }
 }

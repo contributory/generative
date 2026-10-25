@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.storage.preferences
 
+import androidx.core.content.edit
 import android.content.Context
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
@@ -43,11 +44,12 @@ class ModelConfigurationMemory(context: Context) {
     }.toMap()
 
     internal fun importAll(values: Map<String, JsonObject>) {
-        val editor = preferences.edit().clear()
-        values.forEach { (key, value) ->
-            val config = json.decodeFromJsonElement<ModelConfiguration>(value)
-            editor.putString(key, json.encodeToString(config))
+        preferences.edit(commit = true) {
+            clear()
+            values.forEach { (key, value) ->
+                val config = json.decodeFromJsonElement<ModelConfiguration>(value)
+                putString(key, json.encodeToString(config))
+            }
         }
-        check(editor.commit()) { "Could not restore model configuration memory." }
     }
 }
