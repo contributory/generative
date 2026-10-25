@@ -13,11 +13,9 @@ import org.starfall.generative.shared.model.logging.DebugLogLevel
 import org.starfall.generative.shared.model.isErrorOnly
 import org.starfall.generative.shared.model.pruningEmptyResponses
 import org.starfall.generative.shared.model.withAttempt
+import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
+import org.starfall.generative.features.home.chat.model.ChatStreamStatus
 
-private const val STREAM_RENDER_INTERVAL_MS = 120L
-private const val LARGE_STREAM_RENDER_INTERVAL_MS = 160L
-private const val LARGE_STREAM_THRESHOLD_CHARS = 32_000
-private const val VERY_LARGE_STREAM_THRESHOLD_CHARS = 128_000
 private const val MAX_GENERATION_TEXT_CHARS = 512_000
 private const val MAX_GENERATION_SIGNATURE_CHARS = 64_000
 // While streaming, the partial answer is checkpointed this often so a crash or process kill keeps it.
@@ -30,7 +28,12 @@ internal const val SAVE_CONVERSATION_ERROR_PREFIX = "Could not save conversation
 internal class ChatGeneration(
     private val scope: CoroutineScope,
     private val save: suspend (Conversation) -> Unit,
-    private val publish: (Conversation) -> Unit
+    private val publish: (Conversation) -> Unit,
+    private val publishStream: (String, ActiveChatStreamState?) -> Unit = { _, _ -> },
+    private val linesPerBatch: Int = STREAM_LINES_PER_BATCH,
+    private val streamCommitIntervalMs: Long = STREAM_COMMIT_INTERVAL_MS,
+    private val monotonicTimeMillis: () -> Long = { System.nanoTime() / 1_000_000L },
+    private val waitForStreamInterval: suspend (Long) -> Unit = { delay(it) }
 ) {
     private val _busy = MutableStateFlow(false)
     val busy = _busy.asStateFlow()
@@ -43,8 +46,14 @@ internal class ChatGeneration(
     var snapshot: Conversation? = null
         private set
     private var job: Job? = null
+    private var nextGenerationId = 0L
     private val pendingUpdateWrites = linkedSetOf<Job>()
     private val pendingUpdateWritesLock = Any()
+
+    init {
+        require(linesPerBatch > 0) { "linesPerBatch must be positive" }
+        require(streamCommitIntervalMs >= 0L) { "streamCommitIntervalMs cannot be negative" }
+    }
 
     fun start(
         conversation: Conversation,
@@ -64,6 +73,7 @@ internal class ChatGeneration(
         usageContextKey: String? = null
     ): Boolean {
         if (_busy.value) return false
+        val generationId = ++nextGenerationId
         _busy.value = true
         _waitingForTool.value = false
         _error.value = null
@@ -77,15 +87,31 @@ internal class ChatGeneration(
                 save(conversation.pruningEmptyResponses())
             }
 
+            val initialVersion = snapshot?.messages?.firstOrNull { it.id == messageId }?.activeVersion
+            val initialContent = if (resume) initialVersion?.content.orEmpty() else ""
+            val initialReasoning = if (resume) initialVersion?.reasoningContent.orEmpty() else ""
             val output = StringBuilder()
             val reasoningOutput = StringBuilder()
             val reasoningSignatureOutput = StringBuilder()
             var activeMessageId = messageId
-            var renderJob: Job? = null
-            var lastRenderAt = 0L
             var generationInterrupted = false
+            var generationErrorMessage: String? = null
+            val streamDisplay = ChatStreamDisplay(
+                conversationId = conversation.id,
+                initialMessageId = messageId,
+                generationId = generationId,
+                initialContent = initialContent,
+                initialReasoning = initialReasoning,
+                alreadyInsideVisibleContent = resume,
+                scope = scope,
+                linesPerBatch = linesPerBatch,
+                commitIntervalMillis = streamCommitIntervalMs,
+                monotonicTimeMillis = monotonicTimeMillis,
+                waitForInterval = waitForStreamInterval,
+                publish = { id, state -> publishStream(id, state) }
+            )
             if (resume) {
-                snapshot?.messages?.firstOrNull { it.id == messageId }?.activeVersion?.let { version ->
+                initialVersion?.let { version ->
                     output.append(version.content)
                     version.reasoningContent?.let { reasoningOutput.append(it) }
                     version.reasoningSignature?.let { reasoningSignatureOutput.append(it) }
@@ -99,46 +125,36 @@ internal class ChatGeneration(
                 target.append(text)
             }
 
-            fun update(generationErrorMessage: String? = null) {
-                snapshot = updateResponse(
-                    snapshot!!,
-                    activeMessageId,
-                    output.toString(),
-                    reasoningOutput.toString().takeIf { it.isNotBlank() },
-                    reasoningSignatureOutput.toString().takeIf { it.isNotBlank() }
-                )
-                if (generationErrorMessage != null) {
-                    snapshot = snapshot!!.copy(messages = snapshot!!.messages.map { message ->
-                        if (message.id != activeMessageId) message else message.copy(
-                            versions = message.versions.mapIndexed { index, version ->
-                                if (index == message.activeVersionIndex) {
-                                    version.copy(generationError = generationErrorMessage)
-                                } else version
-                            }
-                        )
-                    })
-                }
-                publish(snapshot!!)
-                lastRenderAt = System.currentTimeMillis()
+            fun resetDisplayFor(message: StoredMessage) {
+                activeMessageId = message.id
+                output.setLength(0)
+                reasoningOutput.setLength(0)
+                reasoningSignatureOutput.setLength(0)
+                streamDisplay.resetForMessage(message.id)
             }
 
-            fun scheduleUpdate() {
-                if (renderJob?.isActive == true) return
-                val elapsed = System.currentTimeMillis() - lastRenderAt
-                val responseSize = maxOf(output.length, reasoningOutput.length)
-                val interval = when {
-                    responseSize >= VERY_LARGE_STREAM_THRESHOLD_CHARS -> LARGE_STREAM_RENDER_INTERVAL_MS * 2
-                    responseSize >= LARGE_STREAM_THRESHOLD_CHARS -> LARGE_STREAM_RENDER_INTERVAL_MS
-                    else -> STREAM_RENDER_INTERVAL_MS
-                }
-                val waitMs = (interval - elapsed).coerceAtLeast(0L)
-                if (waitMs == 0L) {
-                    update()
-                } else {
-                    renderJob = launch {
-                        delay(waitMs)
-                        update()
+            suspend fun responseSnapshot(errorMessage: String? = null): Conversation {
+                val current = snapshot ?: error("Missing conversation snapshot for active generation")
+                return withContext(Dispatchers.Default) {
+                    var updated = updateResponse(
+                        current,
+                        activeMessageId,
+                        output.toString(),
+                        reasoningOutput.toString().takeIf { it.isNotBlank() },
+                        reasoningSignatureOutput.toString().takeIf { it.isNotBlank() }
+                    )
+                    if (errorMessage != null) {
+                        updated = updated.copy(messages = updated.messages.map { message ->
+                            if (message.id != activeMessageId) message else message.copy(
+                                versions = message.versions.mapIndexed { index, version ->
+                                    if (index == message.activeVersionIndex) {
+                                        version.copy(generationError = errorMessage)
+                                    } else version
+                                }
+                            )
+                        })
                     }
+                    updated
                 }
             }
 
@@ -146,12 +162,10 @@ internal class ChatGeneration(
             suspend fun checkpointPartialResponse() {
                 val now = System.currentTimeMillis()
                 if (now - lastCheckpointAt < PARTIAL_SAVE_INTERVAL_MS) return
-                if (output.isBlank() && reasoningOutput.isBlank()) return
+                if (output.isEmpty() && reasoningOutput.isEmpty()) return
                 lastCheckpointAt = now
-                renderJob?.cancel()
-                renderJob = null
-                update()
                 try {
+                    snapshot = responseSnapshot()
                     persist(snapshot!!)
                 } catch (e: CancellationException) {
                     throw e
@@ -167,12 +181,13 @@ internal class ChatGeneration(
                 "Context ≈ ${history.sumOf { estimateMessageTokens(it, true) }} tokens in ${history.size} messages (estimate)"
             }
             try {
+                streamDisplay.publishInitialState()
                 persist(snapshot!!)
                 chunks.collect { chunk ->
                     when (chunk) {
                         is GenerationEvent.Text -> {
                             appendLimited(output, chunk.text, MAX_GENERATION_TEXT_CHARS, "Answer")
-                            scheduleUpdate()
+                            streamDisplay.appendText(chunk.text)
                             checkpointPartialResponse()
                         }
                         is GenerationEvent.Reasoning -> {
@@ -180,14 +195,12 @@ internal class ChatGeneration(
                             chunk.signature?.let {
                                 appendLimited(reasoningSignatureOutput, it, MAX_GENERATION_SIGNATURE_CHARS, "Reasoning signature")
                             }
-                            scheduleUpdate()
+                            streamDisplay.appendExplicitReasoning(chunk.text)
                             checkpointPartialResponse()
                         }
                         is GenerationEvent.Usage -> {
                             if (usageContextKey != null && chunk.usage.isValid) {
-                                renderJob?.cancel()
-                                renderJob = null
-                                update()
+                                snapshot = responseSnapshot()
                                 snapshot = recordContextUsage(snapshot!!, activeMessageId, chunk.usage, usageContextKey)
                                 publish(snapshot!!)
                                 persist(snapshot!!)
@@ -196,12 +209,14 @@ internal class ChatGeneration(
                         is GenerationEvent.Tool -> {
                             _waitingForTool.value = chunk.activity.status == "running"
                             logToolActivity(chunk.activity)
-                            // Flush pending text before inserting a tool block so its visual anchor is stable.
-                            renderJob?.cancel()
-                            renderJob = null
-                            update()
-
-                            val contentOffset = visibleResponseContent(output.toString()).length
+                            // Commit a structural/tool boundary, but leave undersized display batches queued.
+                            snapshot = responseSnapshot()
+                            val contentOffset = streamDisplay.visibleContentLength
+                            val reasoningOffset = if (reasoningOutput.isNotEmpty()) {
+                                reasoningOutput.length
+                            } else {
+                                streamDisplay.visibleReasoningLength
+                            }
                             snapshot = snapshot!!.copy(messages = snapshot!!.messages.map { message ->
                                 if (message.id != activeMessageId) message else message.copy(versions = message.versions.mapIndexed { index, version ->
                                     if (index != message.activeVersionIndex) version else {
@@ -215,7 +230,7 @@ internal class ChatGeneration(
                                         } else {
                                             chunk.activity.copy(
                                                 contentOffset = contentOffset,
-                                                 reasoningOffset = reasoningOutput.length
+                                                reasoningOffset = reasoningOffset
                                             )
                                         }
                                         val updatedActivities = version.toolActivity.toMutableList().apply {
@@ -230,9 +245,8 @@ internal class ChatGeneration(
                         }
                         is GenerationEvent.UserMessage -> {
                             _waitingForTool.value = false
-                            renderJob?.cancel()
-                            renderJob = null
-                            update()
+                            streamDisplay.finish(ChatStreamStatus.STREAMING)
+                            snapshot = responseSnapshot()
 
                             val previousId = activeMessageId
                             val now = System.currentTimeMillis()
@@ -250,10 +264,6 @@ internal class ChatGeneration(
                                 role = ChatRole.MODEL,
                                 versions = listOf(responseVersion)
                             )
-                            activeMessageId = response.id
-                            output.setLength(0)
-                            reasoningOutput.setLength(0)
-                            reasoningSignatureOutput.setLength(0)
                             snapshot = snapshot!!.copy(
                                 updatedAt = now,
                                 messages = snapshot!!.messages.map { message ->
@@ -266,34 +276,50 @@ internal class ChatGeneration(
                                     )
                                 } + chunk.message.copy(isQueued = false) + response
                             )
+                            resetDisplayFor(response)
                             publish(snapshot!!)
                             persist(snapshot!!)
                         }
                     }
                 }
-                renderJob?.cancel()
-                renderJob = null
-                update()
+                streamDisplay.finish(ChatStreamStatus.COMPLETED)
                 DebugLog.log(DebugLogCategory.TOKENS, "Generation") {
                     val ms = System.currentTimeMillis() - startedAtMs
                     val answer = estimateTextTokens(output.toString())
                     val reasoning = estimateTextTokens(reasoningOutput.toString())
-                    "Output ≈ $answer tokens, reasoning ≈ $reasoning tokens in $ms ms (estimate)"
+                    val metrics = streamDisplay.cumulativeStreamMetrics
+                    val batches = metrics.batchCount
+                    val averageLatency = if (batches == 0L) 0L else {
+                        metrics.totalInputToVisibleLatencyMillis / batches
+                    }
+                    val averageLineWait = if (batches == 0L) 0L else {
+                        metrics.totalLineWaitMillis / batches
+                    }
+                    "Output ≈ $answer tokens, reasoning ≈ $reasoning tokens in $ms ms (estimate); " +
+                        "stream batches=$batches, lines=${metrics.committedLines}, " +
+                        "max queued lines=${metrics.maxQueuedLines}, " +
+                        "average line wait=${averageLineWait}ms, " +
+                        "average input-to-visible=${averageLatency}ms"
                 }
             } catch (e: CancellationException) {
                 generationInterrupted = true
+                streamDisplay.finish(ChatStreamStatus.CANCELLED)
                 throw e
             } catch (e: Exception) {
                 DebugLog.error(DebugLogCategory.ERRORS, "Generation", "Generation failed", e)
-                renderJob?.cancel()
-                renderJob = null
-                _error.value = e.localizedMessage ?: "Generation failed"
-                update(generationErrorMessage = _error.value)
+                generationErrorMessage = e.localizedMessage ?: "Generation failed"
+                _error.value = generationErrorMessage
+                streamDisplay.finish(ChatStreamStatus.FAILED)
             } finally {
-                renderJob?.cancel()
                 try {
                     // A stopped stream must retain its partial response before allowing another send.
                     withContext(NonCancellable) {
+                        val terminalStatus = when {
+                            generationInterrupted -> ChatStreamStatus.CANCELLED
+                            generationErrorMessage != null -> ChatStreamStatus.FAILED
+                            else -> ChatStreamStatus.COMPLETED
+                        }
+                        streamDisplay.finish(terminalStatus)
                         val hasGeneratedResponse = output.isNotBlank() || reasoningOutput.isNotBlank() ||
                             snapshot!!.messages.firstOrNull { it.id == activeMessageId }
                                 ?.activeVersion?.toolActivity
@@ -304,13 +330,8 @@ internal class ChatGeneration(
                             // persisting an empty extra version.
                             rollbackConversation
                         } else {
-                            updateResponse(
-                                snapshot!!,
-                                activeMessageId,
-                                output.toString(),
-                                reasoningOutput.toString().takeIf { it.isNotBlank() },
-                                reasoningSignatureOutput.toString().takeIf { it.isNotBlank() }
-                            ).copy(messages = snapshot!!.messages.map { message ->
+                            val completed = responseSnapshot(generationErrorMessage)
+                            completed.copy(messages = completed.messages.map { message ->
                                 if (message.id != activeMessageId) message else message.copy(versions = message.versions.mapIndexed { index, version ->
                                     if (index != message.activeVersionIndex) version else version.copy(
                                         generationInterrupted = generationInterrupted,
@@ -328,6 +349,7 @@ internal class ChatGeneration(
                 } catch (e: Exception) {
                     _error.value = "$SAVE_CONVERSATION_ERROR_PREFIX ${e.localizedMessage}"
                 } finally {
+                    publishStream(conversation.id, null)
                     snapshot = null
                     _conversationId.value = null
                     _waitingForTool.value = false

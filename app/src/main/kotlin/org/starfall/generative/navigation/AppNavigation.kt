@@ -411,6 +411,7 @@ fun AppNavigation(
                 ) {
                     ChatScreen(
                         conversation = currentConvState.value,
+                        activeStream = viewModel.activeStreamForCurrentConversation,
                         isGenerating = isGenerating,
                         generatingConversationId = generatingConversationId,
                         chatError = chatError,

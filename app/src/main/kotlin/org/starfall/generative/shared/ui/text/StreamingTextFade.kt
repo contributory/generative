@@ -73,12 +73,23 @@ internal fun rememberStreamingTextPresentation(text: String): StreamingTextPrese
                 val fadingPath = Path().apply { active.forEach { (_, path) -> addPath(path) } }
                 clipPath(fadingPath, ClipOp.Difference) { this@onDrawWithContent.drawContent() }
                 active.forEach { (range, path) ->
-                    val progress = ((now - range.startedAt).toFloat() / STREAM_FADE_DURATION_MS).coerceIn(0f, 1f)
-                    paint.alpha = FastOutSlowInEasing.transform(progress)
+                    val progress = FastOutSlowInEasing.transform(
+                        ((now - range.startedAt).toFloat() / STREAM_FADE_DURATION_MS).coerceIn(0f, 1f)
+                    )
+                    paint.alpha = progress
+                    val bounds = path.getBounds()
+                    val revealRight = bounds.left + bounds.width * progress
                     clipPath(path) {
-                        drawContext.canvas.saveLayer(path.getBounds(), paint)
-                        this@onDrawWithContent.drawContent()
-                        drawContext.canvas.restore()
+                        clipRect(
+                            left = bounds.left,
+                            top = bounds.top,
+                            right = revealRight.coerceIn(bounds.left, bounds.right),
+                            bottom = bounds.bottom
+                        ) {
+                            drawContext.canvas.saveLayer(bounds, paint)
+                            this@onDrawWithContent.drawContent()
+                            drawContext.canvas.restore()
+                        }
                     }
                 }
             }

@@ -4,6 +4,10 @@
 
 Make whole-app frame pacing remain stable while an assistant streams, including long answers and very large individual Markdown blocks. A stream update must not rebuild or republish the full conversation, rescan unchanged history, reparse the entire accumulated tail, or compose every Markdown block.
 
+## Current implementation status (2026-10-25)
+
+This is a partial implementation. Ordinary text/reasoning deltas now use message-scoped state with line-batched publication and pacing, terminal flushes, stream metrics, incremental `<think>` marker handling, and a left-to-right reveal. Tool/usage and lifecycle boundaries still publish conversation snapshots. These source changes and focused tests have **not** been compiled or run. The active card still materializes each committed snapshot to a `String`, and the existing renderer reparses growing Markdown text; structural revisions, incremental Markdown rendering, block virtualization, weighted/persistent per-message caching, deletion safety, and profiling remain outstanding. Do not treat this status as completion of the plan or as evidence of a measured FPS improvement. The checked phase items below record source implementation only; their validation items remain open.
+
 This plan extends `plans/streaming-markdown-chunking.md`. Reuse the completed splitter/chunked-renderer work where it passes the stronger invariants below; do not redo it mechanically. This plan's progress checklist is the source of truth for the broader streaming-FPS work. Cache identity and persistence are **message-scoped**, never a serialized whole-conversation render snapshot.
 
 ## Important performance contract
@@ -211,16 +215,16 @@ Do the phases in order, one focused change at a time. Keep this file updated as 
 
 ### Phase 1 — Isolate stream state from Conversation
 
-- [ ] Introduce a separate active-stream state/buffer with a generation ID and independent revision.
-- [ ] Remove whole-`Conversation` publication and full message-list mapping from the ordinary stream-delta path.
-- [ ] Add a single completion/checkpoint commit path that preserves saved conversations and message versions.
-- [ ] Ensure stream-only state is collected only by the active chat/message scopes.
+- [x] Introduce a separate active-stream state/buffer with a generation ID and independent revision.
+- [x] Remove whole-`Conversation` publication and full message-list mapping from the ordinary stream-delta path.
+- [x] Add a single completion/checkpoint commit path that preserves saved conversations and message versions.
+- [x] Ensure stream-only state is collected only by the active chat/message scopes.
 - [ ] Test completion, interruption, error, regeneration, conversation switching, and title updates while streaming.
 
 ### Phase 2 — Structural revisions and measured stream commit cadence
 
 - [ ] Add structural revisions and change message-ID/unanswered-message/sent-message detection to run only on structural changes.
-- [ ] Buffer incoming token fragments and split only on complete logical line delimiters (`\n`, treating `\r\n` as one delimiter and a trailing `\r` as pending). Gate normal commits on `STREAM_LINES_PER_BATCH` complete lines (initial baseline 3) and pace eligible batches separately (initial baseline 300 ms). An undersized batch waits even after the timer; an oversized buffer emits exactly one batch and retains surplus lines for the next turn. Terminal events flush all remaining lines plus any final unterminated line immediately.
+- [x] Buffer incoming token fragments and split only on complete logical line delimiters (`\n`, treating `\r\n` as one delimiter and a trailing `\r` as pending). Gate normal commits on `STREAM_LINES_PER_BATCH` complete lines (initial baseline 3) and pace eligible batches separately (initial baseline 300 ms). An undersized batch waits even after the timer; an oversized buffer emits exactly one batch and retains surplus lines for the next turn. Terminal events flush all remaining lines plus any final unterminated line immediately.
 - [ ] Ensure obsolete generation jobs are cancelled/conflated and cannot publish stale content.
 - [ ] Add tests with a fake clock and fragmented input for line-batch eligibility, pacing, exact-N-line commits, surplus queue retention, CRLF split across tokens, no-newline waits, final unterminated-line flush, cancellation/error, and rapid-delta coalescing.
 - [ ] Add the left-to-right deep fade reveal once per committed chunk; verify it does not restart across later chunks and does not affect text selection/accessibility.

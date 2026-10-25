@@ -45,6 +45,7 @@ import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 import org.starfall.generative.features.home.chat.logic.input.DirectMediaRequest
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.features.home.chat.model.ContextWindowStatus
+import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
 
 internal fun shouldGenerateConversationTitle(
     userText: String,
@@ -138,6 +139,11 @@ class ChatViewModel(
 
     private val _currentConversation = MutableStateFlow<Conversation?>(null)
     val currentConversation: StateFlow<Conversation?> = _currentConversation.asStateFlow()
+    private val _activeStreams = MutableStateFlow<Map<String, ActiveChatStreamState>>(emptyMap())
+    val activeStreamForCurrentConversation: StateFlow<ActiveChatStreamState?> = combine(
+        _currentConversation, _activeStreams
+    ) { conversation, streams -> conversation?.id?.let(streams::get) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private data class GenerationUiState(
         val busy: Boolean = false,
@@ -153,13 +159,22 @@ class ChatViewModel(
 
     private fun generationFor(conversationId: String): ChatGeneration = synchronized(generationLock) {
         generations.getOrPut(conversationId) {
-            ChatGeneration(viewModelScope, conversationRepo::saveConversation) { updated ->
-                if (_currentConversation.value?.id == updated.id) {
-                    _currentConversation.value = renamingConversations.value[updated.id]?.let {
-                        updated.copy(title = it)
-                    } ?: updated
+            ChatGeneration(
+                scope = viewModelScope,
+                save = conversationRepo::saveConversation,
+                publish = { updated ->
+                    if (_currentConversation.value?.id == updated.id) {
+                        _currentConversation.value = renamingConversations.value[updated.id]?.let {
+                            updated.copy(title = it)
+                        } ?: updated
+                    }
+                },
+                publishStream = { id, stream ->
+                    _activeStreams.update { current ->
+                        if (stream == null) current - id else current + (id to stream)
+                    }
                 }
-            }.also { generation ->
+            ).also { generation ->
                 generationObservers[conversationId] = viewModelScope.launch {
                     combine(generation.busy, generation.error, generation.waitingForTool) { busy, error, waitingForTool ->
                         GenerationUiState(busy, error, waitingForTool)

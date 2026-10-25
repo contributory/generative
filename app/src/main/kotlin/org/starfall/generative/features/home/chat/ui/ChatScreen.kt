@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.StateFlow
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.ui.unit.Velocity
 import kotlin.math.exp
@@ -76,6 +77,7 @@ import org.starfall.generative.features.home.chat.ui.input.UserInputArea
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.features.home.shared.ui.ConversationSummarySheet
 import org.starfall.generative.features.home.chat.model.ContextWindowStatus
+import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
@@ -146,7 +148,8 @@ fun ChatScreen(
     onOpenTerminal: (RemoteMachine) -> Unit = {},
     onOpenFeatureToolsSettings: () -> Unit = {},
     onOpenMcpConnectorsSettings: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    activeStream: StateFlow<ActiveChatStreamState?>? = null
 ) {
     val conversationKey = conversation?.id ?: "__empty_conversation__"
     // Start at the newest item so opening a conversation does not flash its oldest messages.
@@ -639,6 +642,8 @@ fun ChatScreen(
                             selectedImageAttachments = inputAttachments,
                             onToggleChatImage = toggleChatImage,
                             isStreaming = streamingHere && msg.id == streamingMessage?.id,
+                            conversationId = conversation?.id,
+                            streamStateFlow = activeStream,
                             onCopy = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.common_copy), msg.content))

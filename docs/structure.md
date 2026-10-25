@@ -169,6 +169,9 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   │   │   └── 📄 ToolResultsViewModel.kt
 │   │   │   │   ├── 📄 ChatGeneration.kt
 │   │   │   │   ├── 📄 ChatScrollAnchor.kt
+│   │   │   │   ├── 📄 ChatStreamDisplay.kt
+│   │   │   │   ├── 📄 StreamLineBatcher.kt
+│   │   │   │   ├── 📄 StreamResponseTextSplitter.kt
 │   │   │   │   ├── 📄 ChatSpeechCoordinator.kt
 │   │   │   │   ├── 📄 ChatViewModel.kt
 │   │   │   │   ├── 📄 ContextWindowLogic.kt
@@ -178,6 +181,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   │   ├── 📄 SendFileTool.kt
 │   │   │   │   └── 📄 UserMessageRetry.kt
 │   │   │   ├── 📁 model/
+│   │   │   │   ├── 📄 ActiveChatStreamState.kt
 │   │   │   │   └── 📄 ContextWindowStatus.kt
 │   │   │   └── 📁 ui/
 │   │   │       ├── 📁 input/

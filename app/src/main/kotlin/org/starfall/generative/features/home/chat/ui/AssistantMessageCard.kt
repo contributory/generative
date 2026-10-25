@@ -38,6 +38,8 @@ import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.ToolActivity
+import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
+import kotlinx.coroutines.flow.StateFlow
 import org.starfall.generative.shared.model.countedVersionIndices
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -66,11 +68,27 @@ fun AssistantMessageCard(
     isReading: Boolean = false,
     fallbackModelName: String = "",
     modelIcon: String? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    conversationId: String? = null,
+    streamStateFlow: StateFlow<ActiveChatStreamState?>? = null
 ) {
     val context = LocalContext.current
     var showMoreMenu by remember { mutableStateOf(false) }
-    val activeVersion = message.activeVersion
+    val storedVersion = message.activeVersion
+    val observedStream = if (isStreaming) streamStateFlow?.collectAsState()?.value else null
+    val activeStream = observedStream?.takeIf {
+        it.conversationId == conversationId && it.messageId == message.id
+    }
+    val streamedContent = remember(activeStream?.content) { activeStream?.content?.materialize() }
+    val streamedReasoning = remember(activeStream?.reasoning) {
+        activeStream?.reasoning?.materialize()?.trim()?.takeIf { it.isNotBlank() }
+    }
+    val activeVersion = remember(storedVersion, streamedContent, streamedReasoning) {
+        if (activeStream == null) storedVersion else storedVersion.copy(
+            content = streamedContent.orEmpty(),
+            reasoningContent = streamedReasoning
+        )
+    }
     val generatedModelName = activeVersion.modelDisplayName.ifBlank { activeVersion.modelId.ifBlank { fallbackModelName } }
     val generationError = activeVersion.generationError.orEmpty()
     val toolbarText = message.content.ifBlank { generationError }
