@@ -163,6 +163,7 @@ private fun RenderVirtualizedMarkdownTableFrame(
                     val context = prepareMarkdownTableLayout(
                         constraints = constraints,
                         bodyRows = bodyRows,
+                        content = content,
                         columnWidths = columnWidths,
                         identity = identity,
                         contentFingerprint = contentFingerprint,
@@ -213,6 +214,7 @@ private data class MarkdownTableViewportLayout(
 private fun prepareMarkdownTableLayout(
     constraints: Constraints,
     bodyRows: List<TableRow>,
+    content: String,
     columnWidths: List<Dp>,
     identity: MarkdownRenderCacheIdentity?,
     contentFingerprint: String,
@@ -237,7 +239,7 @@ private fun prepareMarkdownTableLayout(
         preferencesKey = preferencesKey
     )
     val heightIndex = indexes.getOrPut(profile) {
-        createMarkdownTableHeightIndex(bodyRows, columnWidths, identity, contentFingerprint, profile, density)
+        createMarkdownTableHeightIndex(bodyRows, content, columnWidths, identity, contentFingerprint, profile, density)
             .also { if (indexes.size >= MAX_TABLE_LAYOUT_PROFILES) indexes.clear() }
     }
     val totalHeight = heightIndex.totalHeight.coerceAtMost(MAX_TABLE_LAYOUT_HEIGHT_PX)
@@ -251,6 +253,7 @@ private fun prepareMarkdownTableLayout(
 
 private fun createMarkdownTableHeightIndex(
     bodyRows: List<TableRow>,
+    content: String,
     columnWidths: List<Dp>,
     identity: MarkdownRenderCacheIdentity?,
     contentFingerprint: String,
@@ -263,6 +266,7 @@ private fun createMarkdownTableHeightIndex(
         val key = tableRowCacheKey(identity, contentFingerprint, profile, index, row)
         MarkdownBlockHeightCache.get(key) ?: estimateTableRowHeight(
             row = row,
+            content = content,
             columnWidths = columnWidths,
             density = density.density,
             cellVerticalPaddingPx = cellVerticalPaddingPx
@@ -465,6 +469,7 @@ private fun estimateTableColumnWidths(
 
 private fun estimateTableRowHeight(
     row: TableRow,
+    content: String,
     columnWidths: List<Dp>,
     density: Float,
     cellVerticalPaddingPx: Int
@@ -475,8 +480,9 @@ private fun estimateTableRowHeight(
             .times(density).toInt()
         val textWidthPx = (widthPx - (TABLE_CELL_HORIZONTAL_PADDING.value * 2 * density).toInt()).coerceAtLeast(1)
         val charsPerLine = (textWidthPx / (TABLE_ESTIMATED_CHAR_WIDTH_DP * density).coerceAtLeast(1f)).toInt().coerceAtLeast(1)
-        val length = (cell.endOffset - cell.startOffset).coerceAtLeast(0)
-        ((length + charsPerLine - 1) / charsPerLine).coerceAtLeast(1)
+        val start = cell.startOffset.coerceIn(0, content.length)
+        val end = cell.endOffset.coerceIn(start, content.length)
+        estimateWrappedMarkdownLineCount(content.substring(start, end), charsPerLine)
     }.maxOrNull() ?: 1
     return (maxLines * lineHeightPx + cellVerticalPaddingPx + 1).coerceAtLeast(1)
 }
@@ -517,7 +523,7 @@ private fun tableRowSlot(index: Int, row: TableRow): String =
 private const val MAX_TABLE_LAYOUT_HEIGHT_PX = 16_000_000
 private const val MAX_TABLE_LAYOUT_PROFILES = 2
 private const val INITIAL_TABLE_VIEWPORT_PX = 1_200
-private const val TABLE_OVERSCAN_FRACTION = 0.5f
+private const val TABLE_OVERSCAN_FRACTION = 1f
 private const val TABLE_WIDTH_SAMPLE_ROWS = 24
 private const val TABLE_ESTIMATED_CHAR_WIDTH_DP = 7.5f
 private const val TABLE_ESTIMATED_LINE_HEIGHT_DP = 24f

@@ -44,6 +44,34 @@ class MarkdownBlockHeightIndexTest {
     }
 
     @Test
+    fun heightEstimateCountsHardLineBreaksInsteadOfTreatingThemAsOrdinaryCharacters() {
+        val oneLine = estimateMarkdownBlockHeight(
+            sourceLength = 5,
+            typeName = "PARAGRAPH",
+            widthPx = 400,
+            density = 1f,
+            spacingPx = 8
+        )
+        val threeShortLines = estimateMarkdownBlockHeight(
+            sourceLength = 5,
+            typeName = "PARAGRAPH",
+            widthPx = 400,
+            density = 1f,
+            spacingPx = 8,
+            sourceText = "a\nb\nc"
+        )
+
+        assertTrue("hard line breaks must contribute to the estimated height", threeShortLines > oneLine)
+        assertEquals(3, estimateWrappedMarkdownLineCount("a\nb\nc", charsPerLine = 53))
+    }
+
+    @Test
+    fun heightEstimateCountsWrappingSeparatelyForEachPhysicalLine() {
+        val source = "abcdefghij\nxy"
+        assertEquals(4, estimateWrappedMarkdownLineCount(source, charsPerLine = 4))
+    }
+
+    @Test
     fun appendGrowsGeometricallyAndKeepsPrefixQueriesCorrect() {
         val index = MarkdownBlockHeightIndex(intArrayOf())
         val heights = ArrayList<Int>()

@@ -421,12 +421,14 @@ internal class MarkdownBlockHeightIndex(initialHeights: IntArray) {
 private fun estimateBlockHeight(node: ASTNode, content: String, widthPx: Int, density: Float, spacingPx: Int): Int {
     val start = node.startOffset.coerceIn(0, content.length)
     val end = node.endOffset.coerceIn(start, content.length)
+    val sourceText = content.substring(start, end)
     return estimateMarkdownBlockHeight(
         sourceLength = end - start,
         typeName = node.type.name,
         widthPx = widthPx,
         density = density,
-        spacingPx = spacingPx
+        spacingPx = spacingPx,
+        sourceText = sourceText
     )
 }
 
@@ -435,7 +437,8 @@ internal fun estimateMarkdownBlockHeight(
     typeName: String,
     widthPx: Int,
     density: Float,
-    spacingPx: Int
+    spacingPx: Int,
+    sourceText: String? = null
 ): Int {
     val codeFence = typeName == "CODE_FENCE" || typeName == "CODE_BLOCK"
     if (codeFence && sourceLength > LARGE_CODE_BLOCK_CHARS) return (LARGE_CODE_BLOCK_HEIGHT_DP * density).toInt()
@@ -443,9 +446,37 @@ internal fun estimateMarkdownBlockHeight(
     val averageCharacterWidth = (if (codeFence) CODE_CHARACTER_WIDTH_DP else BODY_CHARACTER_WIDTH_DP) * density
     val charsPerLine = (widthPx / averageCharacterWidth.coerceAtLeast(1f)).toInt().coerceAtLeast(1)
     val safeLength = sourceLength.coerceAtLeast(0)
-    val lineCount = (safeLength + charsPerLine - 1) / charsPerLine
+    val lineCount = sourceText?.let { estimateWrappedMarkdownLineCount(it, charsPerLine) }
+        ?: ((safeLength + charsPerLine - 1) / charsPerLine).coerceAtLeast(1)
     val lineHeightPx = (BODY_LINE_HEIGHT_DP * density).toInt().coerceAtLeast(1)
-    return (lineCount.coerceAtLeast(1) * lineHeightPx + spacingPx).coerceAtLeast(spacingPx + lineHeightPx)
+    return (lineCount * lineHeightPx + spacingPx).coerceAtLeast(spacingPx + lineHeightPx)
+}
+
+/** Counts explicit line breaks and estimates wrapping within each line. */
+internal fun estimateWrappedMarkdownLineCount(text: String, charsPerLine: Int): Int {
+    val width = charsPerLine.coerceAtLeast(1)
+    if (text.isEmpty()) return 1
+
+    var visualLines = 0
+    var lineLength = 0
+    var index = 0
+    while (index < text.length) {
+        when (text[index]) {
+            '\n' -> {
+                visualLines += ((lineLength + width - 1) / width).coerceAtLeast(1)
+                lineLength = 0
+            }
+            '\r' -> {
+                visualLines += ((lineLength + width - 1) / width).coerceAtLeast(1)
+                lineLength = 0
+                if (index + 1 < text.length && text[index + 1] == '\n') index++
+            }
+            else -> lineLength++
+        }
+        index++
+    }
+    visualLines += ((lineLength + width - 1) / width).coerceAtLeast(1)
+    return visualLines.coerceAtLeast(1)
 }
 
 private fun blockHeightCacheKey(
@@ -485,7 +516,8 @@ internal fun markdownContentFingerprint(content: String): String {
 
 private const val SMALL_DOCUMENT_BLOCK_LIMIT = 12
 private const val MAX_LAYOUT_PROFILES_PER_MESSAGE = 2
-private const val OVERSCAN_FRACTION = 0.5f
+// Mount a wider buffer so nearby rows can replace approximate heights before they enter view.
+private const val OVERSCAN_FRACTION = 1f
 private const val INITIAL_VIEWPORT_ESTIMATE_PX = 1_200
 private const val MAX_LAYOUT_HEIGHT_PX = 16_000_000
 private const val BODY_CHARACTER_WIDTH_DP = 7.5f

@@ -373,12 +373,15 @@ private fun frozenChunkHeight(
     val nodes = (chunk.parsed as? State.Success)?.node?.children.orEmpty()
     if (nodes.isEmpty()) return estimatedTailHeight(chunk.text.length, widthPx, density, spacingPx)
     return nodes.sumOf { node ->
+        val start = node.startOffset.coerceIn(0, chunk.text.length)
+        val end = node.endOffset.coerceIn(start, chunk.text.length)
         estimateMarkdownBlockHeight(
-            sourceLength = (node.endOffset - node.startOffset).coerceAtLeast(0),
+            sourceLength = end - start,
             typeName = node.type.name,
             widthPx = widthPx,
             density = density,
-            spacingPx = spacingPx
+            spacingPx = spacingPx,
+            sourceText = chunk.text.substring(start, end)
         )
     }.coerceAtLeast(1)
 }
@@ -421,7 +424,7 @@ private fun frozenChunkHeightCacheKey(
 
 private const val SMALL_FROZEN_CHUNK_LIMIT = 12
 private const val MAX_FROZEN_LAYOUT_PROFILES = 2
-private const val FROZEN_OVERSCAN_FRACTION = 0.5f
+private const val FROZEN_OVERSCAN_FRACTION = 1f
 private const val INITIAL_FROZEN_VIEWPORT_PX = 1_200
 private const val MAX_FROZEN_LAYOUT_HEIGHT_PX = 16_000_000
 private val FROZEN_CHUNK_SPACING = 8.dp

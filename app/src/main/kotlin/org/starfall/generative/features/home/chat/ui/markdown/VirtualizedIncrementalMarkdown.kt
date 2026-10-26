@@ -216,7 +216,7 @@ private fun prepareIncrementalMarkdownLayout(
     val width = constraints.maxWidth.takeIf { it != Constraints.Infinity } ?: constraints.minWidth
     val profile = streamingLayoutProfile(constraints, width, density, direction, typographyKey, optionsKey)
     val heightIndex = streamingHeightIndex(heightIndexes, profile)
-    appendStableHeightEstimates(heightIndex, stableNodes, width, density)
+    appendStableHeightEstimates(heightIndex, stableNodes, source, width, density)
     val tailEstimate = estimateIncrementalTail(
         heightIndex, stableNodes, unstableNodes, source, overflowStart, profile, measuredTailHeights, width, density
     )
@@ -272,19 +272,23 @@ private fun streamingHeightIndex(
 private fun appendStableHeightEstimates(
     heightIndex: MarkdownBlockHeightIndex,
     stableNodes: List<ASTNode>,
+    source: StreamTextSnapshot,
     width: Int,
     density: androidx.compose.ui.unit.Density
 ) {
     val spacingPx = with(density) { STREAMING_BLOCK_SPACING.roundToPx() }
     while (heightIndex.size < stableNodes.size) {
         val node = stableNodes[heightIndex.size]
+        val start = node.startOffset.coerceIn(0, source.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+        val end = node.endOffset.coerceIn(start, source.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
         heightIndex.append(
             estimateMarkdownBlockHeight(
-                sourceLength = (node.endOffset - node.startOffset).coerceAtLeast(0),
+                sourceLength = end - start,
                 typeName = node.type.name,
                 widthPx = width,
                 density = density.density,
-                spacingPx = spacingPx
+                spacingPx = spacingPx,
+                sourceText = source.slice(start, end)
             )
         )
     }
@@ -305,13 +309,19 @@ private fun estimateIncrementalTail(
     val tailCount = if (overflowStart == null) unstableNodes.size else 0
     val tailHeights = IntArray(tailCount) { index ->
         val node = unstableNodes[index]
-        measuredTailHeights[TailHeightKey(profile, node)] ?: estimateMarkdownBlockHeight(
-            sourceLength = (node.endOffset - node.startOffset).coerceAtLeast(0),
-            typeName = node.type.name,
-            widthPx = width,
-            density = density.density,
-            spacingPx = spacingPx
-        )
+        measuredTailHeights[TailHeightKey(profile, node)] ?: run {
+            val length = source.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            val start = node.startOffset.coerceIn(0, length)
+            val end = node.endOffset.coerceIn(start, length)
+            estimateMarkdownBlockHeight(
+                sourceLength = end - start,
+                typeName = node.type.name,
+                widthPx = width,
+                density = density.density,
+                spacingPx = spacingPx,
+                sourceText = source.slice(start, end)
+            )
+        }
     }
     val previewLength = overflowStart?.let {
         (source.length - it).coerceIn(0L, MAX_MARKDOWN_RENDER_CHARS.toLong()).toInt()
@@ -586,13 +596,15 @@ private data class StreamingLayoutProfile(
 
 private data class TailHeightKey(val profile: StreamingLayoutProfile, val node: ASTNode)
 
-private fun incrementalBlockSlot(kind: String, index: Int, node: ASTNode): String =
-    "incremental-$kind:$index:${node.type.name}:${node.startOffset}:${node.endOffset}"
+internal fun incrementalBlockSlot(kind: String, index: Int, node: ASTNode): String =
+    // The unstable tail grows on every stream update. Do not include endOffset here: doing so
+    // recreates its composition subtree for every token and restarts the text fade for the whole block.
+    "incremental-$kind:$index:${node.type.name}:${node.startOffset}"
 
 private const val SMALL_INCREMENTAL_DOCUMENT_BLOCK_LIMIT = 12
 private const val MAX_STREAMING_LAYOUT_PROFILES = 2
 private const val MAX_REMEMBERED_TAIL_HEIGHTS = 32
-private const val STREAMING_OVERSCAN_FRACTION = 0.5f
+private const val STREAMING_OVERSCAN_FRACTION = 1f
 private const val INITIAL_INCREMENTAL_VIEWPORT_PX = 1_200
 private const val MAX_INCREMENTAL_LAYOUT_HEIGHT_PX = 16_000_000
 private val STREAMING_BLOCK_SPACING = 8.dp

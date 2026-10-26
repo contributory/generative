@@ -12,6 +12,26 @@ import org.starfall.generative.features.home.chat.model.StreamTextSnapshot
 import kotlin.random.Random
 
 class IncrementalMarkdownParserTest {
+
+    @Test
+    fun growingStreamingBlockKeepsItsCompositionSlot() {
+        val parser = IncrementalMarkdownParser(MarkdownParserCancellationToken())
+        val firstText = "A response"
+        val firstSource = StreamTextSnapshot.of(firstText)
+        val first = parser.append(firstText, firstSource, maxUnstableTailChars = 128, maxParserAppendChars = 16)
+        val secondText = " that keeps growing"
+        val secondSource = firstSource.append(secondText, sequence = 1)
+        val second = parser.append(secondText, secondSource, maxUnstableTailChars = 128, maxParserAppendChars = 16)
+        val firstNode = first.snapshot.unstableNodes.first()
+        val secondNode = second.snapshot.unstableNodes.first()
+
+        assertEquals(
+            incrementalBlockSlot("tail", 0, firstNode),
+            incrementalBlockSlot("tail", 0, secondNode)
+        )
+        assertTrue(firstNode.endOffset < secondNode.endOffset)
+    }
+
     @Test
     fun stableAstNodesAreSharedAcrossLaterAppends() {
         val parser = IncrementalMarkdownParser(MarkdownParserCancellationToken())

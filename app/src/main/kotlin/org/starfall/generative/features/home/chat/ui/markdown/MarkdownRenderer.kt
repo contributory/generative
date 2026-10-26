@@ -84,7 +84,9 @@ fun MarkdownRenderer(
     RegisterMarkdownCacheInvalidators(persistentCache)
     if (content.isBlank()) return
     if (content.length > MAX_MARKDOWN_RENDER_CHARS) {
-        TruncatedMarkdown(content, modifier, fillMaxWidth)
+        // Do not discard the tail of a completed AI response. Markdown parsing is bounded for
+        // responsiveness, but the plain-text fallback must preserve the complete source.
+        CompletePlainTextMarkdown(content, modifier, fillMaxWidth)
         return
     }
     RenderMarkdownDocument(
@@ -121,12 +123,13 @@ private fun RegisterMarkdownCacheInvalidators(persistentCache: PersistentMarkdow
 }
 
 @Composable
-private fun TruncatedMarkdown(content: String, modifier: Modifier, fillMaxWidth: Boolean) {
+private fun CompletePlainTextMarkdown(content: String, modifier: Modifier, fillMaxWidth: Boolean) {
     SelectionContainer {
-        Text(
-            text = content.take(MAX_MARKDOWN_RENDER_CHARS) + "\n\n" + stringResource(R.string.chat_response_truncated),
+        OverflowPlainText(
+            text = content,
+            modifier = modifier,
             style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp),
-            modifier = modifier.then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)
+            expandToWidth = fillMaxWidth
         )
     }
 }
@@ -182,11 +185,7 @@ private fun RenderMarkdownDocument(
                 state = state,
                 components = components,
                 modifier = successModifier,
-                isStreaming = isStreaming,
-                cacheIdentity = cacheIdentity,
-                parsedFingerprint = parsed.fingerprint,
-                typographyKey = markdownTypography.hashCode(),
-                optionsKey = renderOptionsKey
+                isStreaming = isStreaming
             )
         },
         error = { Text(content, style = type.bodyLarge.copy(fontFamily = messageFont, fontSize = bodySize)) }
@@ -332,49 +331,18 @@ private fun RenderMarkdownSuccess(
     state: State.Success,
     components: MarkdownComponents,
     modifier: Modifier,
-    isStreaming: Boolean,
-    cacheIdentity: MarkdownRenderCacheIdentity?,
-    parsedFingerprint: String?,
-    typographyKey: Int,
-    optionsKey: Int
+    isStreaming: Boolean
 ) {
     if (isStreaming || LocalMarkdownViewportState.current == null) {
         MarkdownSuccessWithBoundedHtml(state, components, modifier)
         return
     }
-    val fingerprint = LocalMarkdownContentFingerprint.current ?: parsedFingerprint
-    if (fingerprint == null) {
-        CompositionLocalProvider(LocalMarkdownViewportState provides null) {
-            MarkdownSuccessWithBoundedHtml(state, components, modifier)
-        }
-        return
-    }
-    CompositionLocalProvider(LocalMarkdownContentFingerprint provides fingerprint) {
-        RenderMarkdownBlocksBySize(state, components, modifier, cacheIdentity, fingerprint, typographyKey, optionsKey)
-    }
-}
 
-@Composable
-private fun RenderMarkdownBlocksBySize(
-    state: State.Success,
-    components: MarkdownComponents,
-    modifier: Modifier,
-    cacheIdentity: MarkdownRenderCacheIdentity?,
-    fingerprint: String,
-    typographyKey: Int,
-    optionsKey: Int
-) {
-    if (state.node.children.size > VIRTUALIZED_TOP_LEVEL_BLOCKS) {
-        VirtualizedMarkdownBlocks(
-            state = state,
-            components = components,
-            modifier = modifier,
-            identity = cacheIdentity,
-            contentFingerprint = fingerprint,
-            typographyKey = typographyKey,
-            optionsKey = optionsKey
-        )
-    } else {
+    // A completed message must use measured, real layout heights. The old virtualized path reserved
+    // estimated space for unrendered blocks, so small estimation errors accumulated into large blank
+    // regions and could push the final text out of practical reach. Render the settled document and
+    // its lists/tables eagerly; keep viewport virtualization for the active streaming pipeline only.
+    CompositionLocalProvider(LocalMarkdownViewportState provides null) {
         MarkdownSuccessWithBoundedHtml(state, components, modifier)
     }
 }
@@ -382,7 +350,6 @@ private fun RenderMarkdownBlocksBySize(
 internal const val MAX_MARKDOWN_RENDER_CHARS = 128_000
 internal const val MAX_INCREMENTAL_UNSTABLE_TAIL_CHARS = 8_000
 internal const val MAX_INCREMENTAL_PARSER_APPEND_CHARS = 4_096
-private const val VIRTUALIZED_TOP_LEVEL_BLOCKS = 12
 private const val VIRTUALIZED_LIST_ITEMS = 12
 internal val MARKDOWN_BLOCK_PADDING = 8.dp
 

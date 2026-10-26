@@ -2,17 +2,24 @@ package org.starfall.generative.features.home.chat.ui.markdown
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 
 /** Renders oversized plain-text overflow in bounded text nodes instead of one huge text layout. */
 @Composable
-internal fun OverflowPlainText(text: String) {
+internal fun OverflowPlainText(
+    text: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = LocalTextStyle.current,
+    expandToWidth: Boolean = true
+) {
     val chunks = remember(text) { splitOverflowText(text) }
-    Column(Modifier.fillMaxWidth()) {
+    Column(if (expandToWidth) modifier.fillMaxWidth() else modifier) {
         chunks.forEachIndexed { index, chunk ->
             key(index) {
                 // The next Text node naturally starts on the following line. Remove one trailing
@@ -22,7 +29,11 @@ internal fun OverflowPlainText(text: String) {
                 } else {
                     chunk
                 }
-                Text(text = displayedChunk, modifier = Modifier.fillMaxWidth())
+                Text(
+                    text = displayedChunk,
+                    style = style,
+                    modifier = if (expandToWidth) Modifier.fillMaxWidth() else Modifier
+                )
             }
         }
     }

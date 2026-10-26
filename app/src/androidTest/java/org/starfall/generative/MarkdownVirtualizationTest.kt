@@ -201,6 +201,53 @@ class MarkdownVirtualizationTest {
     }
 
     @Test
+    fun completedResponseBeyondMarkdownParserLimitStillShowsItsTail() {
+        val markdown = buildString {
+            append("FULL_RESPONSE_HEAD_MARKER\n\n")
+            append("x".repeat(128_100))
+            append("\n\nFULL_RESPONSE_TAIL_MARKER")
+        }
+
+        compose.setContent {
+            MaterialTheme {
+                LazyColumn(Modifier.fillMaxWidth().height(640.dp)) {
+                    item(key = "oversized-completed-response") { MarkdownRenderer(markdown) }
+                }
+            }
+        }
+
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("FULL_RESPONSE_TAIL_MARKER", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("FULL_RESPONSE_HEAD_MARKER", substring = true).assertExists()
+        compose.onNodeWithText("FULL_RESPONSE_TAIL_MARKER", substring = true).assertExists()
+    }
+
+    @Test
+    fun oversizedCompletedStreamStopsUsingItsTemporaryPreview() {
+        val response = "COMPLETED_STREAM_HEAD " + "x".repeat(128_100) + " COMPLETED_STREAM_TAIL_MARKER"
+
+        compose.setContent {
+            MaterialTheme {
+                StreamingMarkdownRenderer(
+                    content = response,
+                    isStreaming = false,
+                    streamGenerationId = 5L,
+                    streamMessageId = "completed-oversized-stream"
+                )
+            }
+        }
+
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("COMPLETED_STREAM_TAIL_MARKER", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("COMPLETED_STREAM_HEAD", substring = true).assertExists()
+        compose.onNodeWithText("COMPLETED_STREAM_TAIL_MARKER", substring = true).assertExists()
+    }
+
+    @Test
     fun hugeParagraphAndCodeFenceOnlyExposeBoundedPreviewsInTheMessage() {
         val paragraph = "PARAGRAPH_PREVIEW_MARKER " + "p".repeat(22_000) + " PARAGRAPH_TAIL_MARKER"
         val code = "CODE_PREVIEW_MARKER\n" + "x".repeat(20_000) + "\nCODE_TAIL_MARKER"

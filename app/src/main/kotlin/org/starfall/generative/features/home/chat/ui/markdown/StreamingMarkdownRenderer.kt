@@ -184,8 +184,13 @@ private fun RenderStreamingMarkdown(
 ) {
     CompositionLocalProvider(LocalStreamingTextFade provides (isStreaming || finishingFade)) {
         when {
-            oversizedPreview != null -> StreamingMarkdownPreview(oversizedPreview, modifier)
-            displayContent.length > MAX_MARKDOWN_RENDER_CHARS -> StreamingMarkdownPreview(truncationLabel, modifier)
+            // This is only a live-stream safety preview. Once generation stops, let the complete
+            // source reach MarkdownRenderer, which falls back to bounded plain-text nodes if needed.
+            isStreaming && oversizedPreview != null -> StreamingMarkdownPreview(oversizedPreview, modifier)
+            isStreaming && displayContent.length > MAX_MARKDOWN_RENDER_CHARS -> StreamingMarkdownPreview(
+                displayContent.take(MAX_MARKDOWN_RENDER_CHARS) + "\n\n" + truncationLabel,
+                modifier
+            )
             else -> RenderStreamingMarkdownDocument(
                 displayContent = displayContent,
                 modifier = modifier,

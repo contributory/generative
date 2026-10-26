@@ -90,6 +90,7 @@ internal fun VirtualizedMarkdownList(
             val context = prepareMarkdownListLayout(
                 constraints = constraints,
                 items = items,
+                content = content,
                 identity = identity,
                 contentFingerprint = contentFingerprint,
                 viewportBounds = viewport?.bounds,
@@ -147,6 +148,7 @@ private data class MarkdownListViewportLayout(
 private fun prepareMarkdownListLayout(
     constraints: Constraints,
     items: List<ASTNode>,
+    content: String,
     identity: MarkdownRenderCacheIdentity?,
     contentFingerprint: String,
     viewportBounds: androidx.compose.ui.geometry.Rect?,
@@ -174,7 +176,7 @@ private fun prepareMarkdownListLayout(
         depth = depth
     )
     val heightIndex = indexes.getOrPut(profile) {
-        createMarkdownListHeightIndex(items, identity, contentFingerprint, profile, density, itemPadding)
+        createMarkdownListHeightIndex(items, content, identity, contentFingerprint, profile, density, itemPadding)
             .also { if (indexes.size >= MAX_LAYOUT_PROFILES_PER_MESSAGE) indexes.clear() }
     }
     val totalHeight = heightIndex.totalHeight.coerceAtMost(MAX_LAYOUT_HEIGHT_PX)
@@ -188,6 +190,7 @@ private fun prepareMarkdownListLayout(
 
 private fun createMarkdownListHeightIndex(
     items: List<ASTNode>,
+    content: String,
     identity: MarkdownRenderCacheIdentity?,
     contentFingerprint: String,
     profile: ListLayoutProfile,
@@ -201,6 +204,10 @@ private fun createMarkdownListHeightIndex(
         val key = listItemCacheKey(identity, contentFingerprint, profile, index, child)
         MarkdownBlockHeightCache.get(key) ?: estimateListItemHeight(
             child = child,
+            sourceText = content.substring(
+                child.startOffset.coerceIn(0, content.length),
+                child.endOffset.coerceIn(child.startOffset.coerceIn(0, content.length), content.length)
+            ),
             widthPx = profile.widthPx,
             density = density.density,
             topPaddingPx = topPaddingPx,
@@ -452,6 +459,7 @@ private data class ListLayoutProfile(
 
 private fun estimateListItemHeight(
     child: ASTNode,
+    sourceText: String,
     widthPx: Int,
     density: Float,
     topPaddingPx: Int,
@@ -461,7 +469,7 @@ private fun estimateListItemHeight(
     val markerWidth = (LIST_MARKER_WIDTH_DP * density).toInt()
     val characterWidth = (BODY_CHARACTER_WIDTH_DP * density).coerceAtLeast(1f)
     val charsPerLine = ((widthPx - markerWidth).coerceAtLeast(1) / characterWidth).toInt().coerceAtLeast(1)
-    val lineCount = ((sourceLength + charsPerLine - 1) / charsPerLine).coerceAtLeast(1)
+    val lineCount = estimateWrappedMarkdownLineCount(sourceText, charsPerLine)
     return (lineCount * (BODY_LINE_HEIGHT_DP * density).toInt() + topPaddingPx + bottomPaddingPx).coerceAtLeast(1)
 }
 
@@ -485,7 +493,7 @@ private fun listItemCacheKey(
 private fun itemSlot(index: Int, node: ASTNode): String = "${node.type.name}:$index:${node.startOffset}:${node.endOffset}"
 
 private const val INITIAL_VIEWPORT_ESTIMATE_PX = 1_200
-private const val OVERSCAN_FRACTION = 0.5f
+private const val OVERSCAN_FRACTION = 1f
 private const val MAX_LAYOUT_PROFILES_PER_MESSAGE = 2
 private const val MAX_LAYOUT_HEIGHT_PX = 16_000_000
 private const val BODY_CHARACTER_WIDTH_DP = 7.5f
