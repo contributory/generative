@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
@@ -51,18 +52,27 @@ class ConversationDrawerFocusTest {
 
         isOpen = true
         compose.waitForIdle()
+        // At rest, Search, Menu and New chat share the same 52dp height; Search and New chat are 52dp squares.
         compose.onNodeWithTag("conversation_drawer_search_button")
             .assertIsDisplayed()
-            .assertWidthIsEqualTo(136.dp)
+            .assertWidthIsEqualTo(52.dp)
+            .assertHeightIsEqualTo(52.dp)
+        compose.onNodeWithTag("conversation_drawer_menu_button")
+            .assertIsDisplayed()
+            .assertHeightIsEqualTo(52.dp)
         compose.onNodeWithTag("conversation_drawer_new_chat")
             .assertIsDisplayed()
+            .assertWidthIsEqualTo(52.dp)
+            .assertHeightIsEqualTo(52.dp)
         compose.onNodeWithTag("conversation_drawer_search").assertDoesNotExist()
 
         compose.onNodeWithTag("conversation_drawer_search_button").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("conversation_drawer_search").assertIsFocused()
+        compose.onNodeWithTag("conversation_drawer_search_button").assertDoesNotExist()
+        compose.onNodeWithTag("conversation_drawer_menu_button").assertDoesNotExist()
         compose.onNodeWithTag("conversation_drawer_new_chat")
             .assertIsDisplayed()
-            .assertWidthIsEqualTo(40.dp)
+            .assertWidthIsEqualTo(42.dp)
     }
 }

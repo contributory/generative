@@ -3,12 +3,9 @@
 package org.starfall.generative.features.home.drawer.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.focus.onFocusChanged
@@ -29,6 +26,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.lerp
+import androidx.compose.ui.util.lerp
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -59,6 +63,10 @@ import org.starfall.generative.shared.ui.layout.windowWidth
 import org.starfall.generative.features.home.drawer.logic.lastModelIcon
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
+
+private val DrawerActionSize = 52.dp
+private val DrawerNewChatSearchSize = 42.dp
+private val DrawerSearchFieldHeight = 56.dp
 
 @Composable
 private fun SidebarLabel(text: String) { Text(text, Modifier.padding(start = 8.dp, top = 10.dp, bottom = 6.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -306,81 +314,127 @@ fun ConversationSideDrawer(
                 }
                 if (matches.isEmpty()) item { Text(if (search.isBlank()) stringResource(R.string.no_conversations_yet) else stringResource(R.string.sidebar_no_matching_conversations), Modifier.padding(12.dp), color = MaterialTheme.colorScheme.outline) }
             }
+            // A single progress value drives the whole bottom row (Search width, Menu fade, New chat size),
+            // so opening Search is one continuous motion instead of several independently-timed steps.
+            val searchProgress = animateFloatAsState(
+                targetValue = if (searchExpanded) 1f else 0f,
+                animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+                label = "searchProgress"
+            )
+            val showSearchField by remember { derivedStateOf { searchExpanded || searchProgress.value > 0.01f } }
+            val showSearchButton by remember { derivedStateOf { searchProgress.value < 0.35f } }
+            val showMenuButton by remember { derivedStateOf { searchProgress.value < 0.99f } }
+            // Width the Menu button had while idle; kept while it is covered so its label never re-wraps mid-animation.
+            var menuFullWidthPx by remember { mutableIntStateOf(0) }
+            // Same outline the Menu (OutlinedButton) uses; OutlinedIconButton would otherwise draw it in the full content color.
+            val searchButtonBorder = ButtonDefaults.outlinedButtonBorder(true)
+            val newChatModifier = Modifier
+                .layout { measurable, _ ->
+                    val side = lerp(DrawerActionSize, DrawerNewChatSearchSize, searchProgress.value).roundToPx()
+                    val placeable = measurable.measure(Constraints.fixed(side, side))
+                    layout(side, side) { placeable.placeRelative(0, 0) }
+                }
+                .testTag("conversation_drawer_new_chat")
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (searchExpanded) {
-                    SelectableOutlinedTextField(
-                        value = search, onValueChange = { search = it }, singleLine = true,
-                        placeholder = { Text(stringResource(R.string.search_history), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        leadingIcon = { FluentIcon(Icons.Default.Search, stringResource(R.string.sidebar_search)) },
-                        trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { FluentIcon(Icons.Default.Close, stringResource(R.string.sidebar_clear_search)) } },
-                        shape = RoundedCornerShape(28.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            // Soft outline: muted when idle, only a gentle accent when focused.
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .widthIn(max = 220.dp)
-                            .focusRequester(searchFocusRequester)
-                            .testTag("conversation_drawer_search")
-                            .onFocusChanged {
-                                if (!it.isFocused && searchFocused && searchExpanded) unfocusSearch()
-                                searchFocused = it.isFocused
-                            }
-                    )
-                } else {
-                    OutlinedIconButton(
-                        onClick = { searchExpanded = true },
-                        shape = RoundedCornerShape(28.dp),
-                        modifier = Modifier
-                            .size(40.dp)
-                            .testTag("conversation_drawer_search_button")
-                    ) {
-                        FluentIcon(Icons.Default.Search, stringResource(R.string.sidebar_search))
+                // Search grows from a round button into the field inside one container.
+                Box(
+                    Modifier.layout { measurable, constraints ->
+                        val p = searchProgress.value
+                        val collapsedWidth = DrawerActionSize.roundToPx()
+                        val reserved = 8.dp.roundToPx() + lerp(DrawerActionSize, DrawerNewChatSearchSize, p).roundToPx()
+                        val expandedWidth = (constraints.maxWidth - reserved).coerceAtLeast(collapsedWidth)
+                        val width = lerp(collapsedWidth, expandedWidth, p)
+                        val height = lerp(DrawerActionSize.roundToPx(), DrawerSearchFieldHeight.roundToPx(), p)
+                        val placeable = measurable.measure(Constraints(minWidth = width, maxWidth = width))
+                        layout(width, height) { placeable.placeRelative(0, (height - placeable.height) / 2) }
+                    },
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (showSearchField) {
+                        SelectableOutlinedTextField(
+                            value = search, onValueChange = { search = it }, singleLine = true,
+                            placeholder = { Text(stringResource(R.string.search_history), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            leadingIcon = { FluentIcon(Icons.Default.Search, stringResource(R.string.sidebar_search)) },
+                            trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { FluentIcon(Icons.Default.Close, stringResource(R.string.sidebar_clear_search)) } },
+                            shape = RoundedCornerShape(28.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                // Soft outline: muted when idle, only a gentle accent when focused.
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .graphicsLayer { alpha = ((searchProgress.value - 0.2f) / 0.5f).coerceIn(0f, 1f) }
+                                .focusRequester(searchFocusRequester)
+                                .testTag("conversation_drawer_search")
+                                .onFocusChanged {
+                                    if (!it.isFocused && searchFocused && searchExpanded) unfocusSearch()
+                                    searchFocused = it.isFocused
+                                }
+                        )
+                    }
+                    if (showSearchButton) {
+                        OutlinedIconButton(
+                            onClick = { searchExpanded = true },
+                            shape = RoundedCornerShape(28.dp),
+                            border = searchButtonBorder,
+                            modifier = Modifier
+                                .size(DrawerActionSize)
+                                .graphicsLayer { alpha = (1f - searchProgress.value / 0.35f).coerceIn(0f, 1f) }
+                                .testTag("conversation_drawer_search_button")
+                        ) {
+                            FluentIcon(Icons.Default.Search, stringResource(R.string.sidebar_search))
+                        }
                     }
                 }
                 Spacer(Modifier.width(8.dp))
-                // The Menu button takes the free width and steps aside while search is expanded.
-                AnimatedVisibility(
-                    visible = !searchExpanded,
-                    modifier = Modifier.weight(1f),
-                    enter = fadeIn() + expandHorizontally(),
-                    exit = fadeOut() + shrinkHorizontally()
-                ) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedButton(
-                            onClick = { onNavigateToSettings(); onCloseDrawer() },
-                            contentPadding = PaddingValues(horizontal = 12.dp),
-                            shape = RoundedCornerShape(28.dp),
-                            modifier = Modifier
-                                .weight(1f)
-                                .heightIn(min = 52.dp)
-                                .testTag("conversation_drawer_menu_button")
-                        ) {
-                            FeaturesLogoImage(featuresLogoImage, Modifier.size(28.dp).clip(CircleShape))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.sidebar_menu), maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                // The Menu button takes the free width; the growing search field slides over it while it fades out.
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .clipToBounds()
+                        .onSizeChanged { if (searchProgress.value == 0f) menuFullWidthPx = it.width }
+                        .layout { measurable, constraints ->
+                            val fullWidth = if (menuFullWidthPx > 0) menuFullWidthPx else constraints.maxWidth
+                            val placeable = measurable.measure(Constraints(minWidth = fullWidth, maxWidth = fullWidth))
+                            layout(constraints.maxWidth, placeable.height) { placeable.placeRelative(0, 0) }
                         }
-                        Spacer(Modifier.width(8.dp))
+                        .graphicsLayer { alpha = (1f - searchProgress.value * 2f).coerceIn(0f, 1f) }
+                ) {
+                    if (showMenuButton) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedButton(
+                                onClick = { onNavigateToSettings(); onCloseDrawer() },
+                                contentPadding = PaddingValues(horizontal = 12.dp),
+                                shape = RoundedCornerShape(28.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = DrawerActionSize)
+                                    .testTag("conversation_drawer_menu_button")
+                            ) {
+                                FeaturesLogoImage(featuresLogoImage, Modifier.size(28.dp).clip(CircleShape))
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.sidebar_menu), maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                        }
                     }
                 }
                 // New chat is a large icon button that shrinks slightly while search is expanded.
-                val newChatSize by animateDpAsState(if (searchExpanded) 42.dp else 52.dp, label = "newChatSize")
                 if (LocalAmoledMode.current) {
                     OutlinedIconButton(
                         onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
-                        modifier = Modifier.size(newChatSize).testTag("conversation_drawer_new_chat"),
+                        modifier = newChatModifier,
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
                         colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
                     ) { FluentIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
                 } else {
                     FilledIconButton(
                         onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
-                        modifier = Modifier.size(newChatSize).testTag("conversation_drawer_new_chat"),
+                        modifier = newChatModifier,
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
