@@ -155,7 +155,7 @@ private suspend fun freezeStableMarkdownChunk(
     return FrozenMarkdown(
         prefixLength = prefixLength,
         prefixText = prefixText,
-        chunks = base.chunks.add(FrozenMarkdownChunk(chunk, chunkState, chunkIdentity, fingerprint)),
+        chunks = base.chunks.adding(FrozenMarkdownChunk(chunk, chunkState, chunkIdentity, fingerprint)),
         tailSeed = tailSeed?.takeIf { it is State.Success }
     )
 }

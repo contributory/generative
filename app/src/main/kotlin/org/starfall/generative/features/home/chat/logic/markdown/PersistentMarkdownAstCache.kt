@@ -43,6 +43,7 @@ data class MarkdownRenderCacheIdentity(
 }
 
 /** Cache counters deliberately contain no message text or identifiers. */
+@ConsistentCopyVisibility
 internal data class MarkdownAstCacheEpoch internal constructor(
     val global: Long,
     val conversation: Long,

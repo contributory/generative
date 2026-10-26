@@ -143,7 +143,7 @@ internal class IncrementalMarkdownParser(
                 stableNodeCount++
             }
             if (newStable.isNotEmpty()) {
-                stableNodes = stableNodes.addAll(newStable)
+                stableNodes = stableNodes.addingAll(newStable)
                 newStable.forEach { collectLinkUpdates(it, source, linkUpdates) }
             }
             unstableNodes = file.unstableTail.toList()
