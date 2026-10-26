@@ -8,6 +8,7 @@ import org.intellij.markdown.ast.ASTNode
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.generative.features.home.chat.logic.markdown.markdownFence
+import org.starfall.generative.features.home.chat.logic.markdown.markdownFenceSource
 import org.starfall.generative.features.home.chat.logic.markdown.parseLibraryMarkdown
 
 class MarkdownParserTest {
@@ -26,8 +27,19 @@ class MarkdownParserTest {
             val fence = markdownFence(text, node)
             assertEquals("kotlin", fence.language)
             assertEquals("  val x = 1\n    println(x)", fence.code)
+            val source = markdownFenceSource(text, node)
+            assertEquals(fence.code, text.substring(source.codeStartOffset, source.codeEndOffset))
+            assertEquals(fence.language, source.language)
             assertEquals(ending.isNotEmpty(), fence.closed)
         }
+    }
+
+    @Test fun oversizedHtmlBlockRetainsItsExactSourceRange() = runBlocking {
+        val text = "<section>\n" + "x".repeat(22_000) + "\n</section>"
+        val state = parseLibraryMarkdown(text) as State.Success
+        val htmlBlock = state.node.descendants().first { it.type.name == "HTML_BLOCK" }
+
+        assertEquals(text, text.substring(htmlBlock.startOffset, htmlBlock.endOffset))
     }
 
     @Test fun nestedListsTablesAndReferenceLinksAreRecognized() = runBlocking {

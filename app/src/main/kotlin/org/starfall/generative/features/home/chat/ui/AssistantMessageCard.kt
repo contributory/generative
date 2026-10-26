@@ -38,6 +38,10 @@ import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.ToolActivity
+import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
+import org.starfall.generative.features.home.chat.model.StreamTextSnapshot
+import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
+import kotlinx.coroutines.flow.StateFlow
 import org.starfall.generative.shared.model.countedVersionIndices
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -66,11 +70,38 @@ fun AssistantMessageCard(
     isReading: Boolean = false,
     fallbackModelName: String = "",
     modelIcon: String? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    conversationId: String? = null,
+    streamStateFlow: StateFlow<ActiveChatStreamState?>? = null
 ) {
     val context = LocalContext.current
+    SideEffect { ChatRenderMetrics.recordMessageCardRecomposition() }
     var showMoreMenu by remember { mutableStateOf(false) }
-    val activeVersion = message.activeVersion
+    val storedVersion = message.activeVersion
+    val observedStream = if (isStreaming) streamStateFlow?.collectAsState()?.value else null
+    val activeStream = observedStream?.takeIf {
+        it.conversationId == conversationId && it.messageId == message.id
+    }
+    val renderCacheIdentity = remember(conversationId, message.id) {
+        conversationId?.let { MarkdownRenderCacheIdentity(it, message.id) }
+    }
+    val hasToolTimeline = storedVersion.toolActivity.isNotEmpty()
+    val streamedContent = if (activeStream != null && hasToolTimeline) {
+        remember(activeStream.generationId, activeStream.content, storedVersion.toolActivity) {
+            activeStream.content.materialize()
+        }
+    } else null
+    val streamedReasoning = if (activeStream != null && hasToolTimeline) {
+        remember(activeStream.generationId, activeStream.reasoning, storedVersion.toolActivity) {
+            activeStream.reasoning.materialize().trim().takeIf { it.isNotBlank() }
+        }
+    } else null
+    val activeVersion = remember(storedVersion, streamedContent, streamedReasoning) {
+        if (activeStream == null) storedVersion else storedVersion.copy(
+            content = streamedContent ?: storedVersion.content,
+            reasoningContent = streamedReasoning ?: storedVersion.reasoningContent
+        )
+    }
     val generatedModelName = activeVersion.modelDisplayName.ifBlank { activeVersion.modelId.ifBlank { fallbackModelName } }
     val generationError = activeVersion.generationError.orEmpty()
     val toolbarText = message.content.ifBlank { generationError }
@@ -101,7 +132,11 @@ fun AssistantMessageCard(
             processingDurationMillis = processingDurationMillis.takeUnless { isStreaming },
             animateStreamingContent = isStreaming,
             selectedImageAttachments = selectedImageAttachments,
-            onToggleChatImage = onToggleChatImage
+            onToggleChatImage = onToggleChatImage,
+            renderCacheIdentity = renderCacheIdentity,
+            streamSnapshot = activeStream?.content?.takeIf { isStreaming && !hasToolTimeline },
+            streamGenerationId = activeStream?.generationId,
+            streamMessageId = activeStream?.messageId
         )
         if (isStreaming) {
             GenerationLoadingIndicator(
@@ -435,8 +470,12 @@ private fun longJsonStrings(element: JsonElement): Sequence<String> = sequence {
 }
 
 @Composable
-private fun SmoothStreamingMarkdownMessage(content: String, isStreaming: Boolean) {
-    StreamingMarkdownRenderer(content = content, isStreaming = isStreaming)
+private fun SmoothStreamingMarkdownMessage(
+    content: String,
+    isStreaming: Boolean,
+    cacheIdentity: MarkdownRenderCacheIdentity? = null
+) {
+    StreamingMarkdownRenderer(content = content, isStreaming = isStreaming, cacheIdentity = cacheIdentity)
 }
 
 private data class ProcessingBlock(
@@ -450,7 +489,11 @@ private fun CompletedAssistantContent(
     processingDurationMillis: Long?,
     animateStreamingContent: Boolean,
     selectedImageAttachments: List<String>,
-    onToggleChatImage: ((String) -> Unit)?
+    onToggleChatImage: ((String) -> Unit)?,
+    renderCacheIdentity: MarkdownRenderCacheIdentity? = null,
+    streamSnapshot: StreamTextSnapshot? = null,
+    streamGenerationId: Long? = null,
+    streamMessageId: String? = null
 ) {
     val context = LocalContext.current
     val store = remember(context) { ToolFiles(context) }
@@ -464,9 +507,24 @@ private fun CompletedAssistantContent(
 
     SelectionContainer {
         Column {
-            if (blocks.isEmpty()) {
+            if (animateStreamingContent && streamSnapshot != null && streamGenerationId != null &&
+                streamMessageId != null
+            ) {
+                StreamingMarkdownRenderer(
+                    content = "",
+                    isStreaming = true,
+                    streamSnapshot = streamSnapshot,
+                    streamGenerationId = streamGenerationId,
+                    streamMessageId = streamMessageId,
+                    cacheIdentity = renderCacheIdentity
+                )
+            } else if (blocks.isEmpty()) {
                 if (content.isNotBlank()) {
-                    SmoothStreamingMarkdownMessage(content.trimEnd(), isStreaming = animateStreamingContent)
+                    SmoothStreamingMarkdownMessage(
+                        content.trimEnd(),
+                        isStreaming = animateStreamingContent,
+                        cacheIdentity = renderCacheIdentity
+                    )
                 }
             } else {
                 var cursor = 0
@@ -478,7 +536,10 @@ private fun CompletedAssistantContent(
                     if (offset > cursor) {
                         val textBefore = content.substring(cursor, offset).trimEnd()
                         if (textBefore.isNotBlank()) {
-                            FormattedMarkdownMessage(content = textBefore)
+                            FormattedMarkdownMessage(
+                                content = textBefore,
+                                cacheIdentity = renderCacheIdentity?.forBlock("before-${block.offset}")
+                            )
                             Spacer(Modifier.height(4.dp))
                         }
                     }
@@ -557,7 +618,11 @@ private fun CompletedAssistantContent(
                 if (cursor < content.length) {
                     val remaining = content.substring(cursor)
                     if (remaining.isNotBlank()) {
-                        SmoothStreamingMarkdownMessage(remaining.trimEnd(), isStreaming = animateStreamingContent)
+                        SmoothStreamingMarkdownMessage(
+                            remaining.trimEnd(),
+                            isStreaming = animateStreamingContent,
+                            cacheIdentity = renderCacheIdentity?.forBlock("tail-$cursor")
+                        )
                     }
                 }
             }
@@ -623,6 +688,9 @@ private fun MessageActionButton(
 }
 
 @Composable
-fun FormattedMarkdownMessage(content: String) {
-    MarkdownRenderer(content = content)
+fun FormattedMarkdownMessage(
+    content: String,
+    cacheIdentity: MarkdownRenderCacheIdentity? = null
+) {
+    MarkdownRenderer(content = content, cacheIdentity = cacheIdentity)
 }

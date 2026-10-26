@@ -8,6 +8,7 @@ import org.starfall.generative.shared.model.*
 import org.starfall.generative.features.providers.shared.ui.*
 import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.features.home.chat.logic.ChatGeneration
+import org.starfall.generative.features.home.chat.model.ChatStreamStatus
 import org.starfall.generative.features.home.chat.logic.prepareRegeneration
 import org.starfall.generative.features.home.chat.logic.updateResponse
 
@@ -39,7 +40,8 @@ class ChatGenerationTest {
         val runner = ChatGeneration(CoroutineScope(coroutineContext + Dispatchers.Unconfined),
             { saved[it.id] = it }, { if (selected.id == it.id) selected = it })
         runner.start(selected, "a1", flow { emit("first"); next.await(); emit(" second") })
-        assertEquals("first", selected.messages.last().content)
+        assertEquals("a", selected.id)
+        assertEquals("", selected.messages.last().content)
         selected = conversation().copy(id = "b", title = "Chat B")
         next.complete(Unit)
         yield()
@@ -47,6 +49,93 @@ class ChatGenerationTest {
         assertEquals("", selected.messages.last().content)
         assertEquals("first second", saved["a"]!!.messages.last().content)
         assertFalse(runner.busy.value)
+    }
+
+    @Test fun titleChangesDuringGenerationSurviveTheFinalResponseCommit() = runBlocking {
+        val requestStarted = CompletableDeferred<Unit>()
+        val continueResponse = CompletableDeferred<Unit>()
+        var saved: Conversation? = null
+        val runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = { saved = it },
+            publish = {}
+        )
+
+        runner.start(conversation(), "a1", flow {
+            emit("partial")
+            requestStarted.complete(Unit)
+            continueResponse.await()
+            emit("\nanswer")
+        })
+        requestStarted.await()
+        runner.updateConversation { it.copy(title = "Renamed while streaming") }
+        continueResponse.complete(Unit)
+        runner.stopAndJoin()
+
+        assertEquals("Renamed while streaming", saved!!.title)
+        assertEquals("partial\nanswer", saved!!.messages.last().content)
+    }
+
+    @Test fun streamCommitsAreMessageScopedExactlyThreeLinesAndPacedIndependently() = runBlocking {
+        val publishedConversations = mutableListOf<Conversation>()
+        val streamStates = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
+        val waits = mutableListOf<Long>()
+        var now = 0L
+        val runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = {},
+            publish = { publishedConversations += it },
+            publishStream = { _, state -> state?.let(streamStates::add) },
+            linesPerBatch = 3,
+            streamCommitIntervalMs = 300L,
+            monotonicTimeMillis = { now },
+            waitForStreamInterval = { duration ->
+                waits += duration
+                now += duration
+            }
+        )
+
+        runner.start(conversation(), "a1", flowOf("one\ntwo\nthree\nfour\nfive\nsix\n"))
+
+        assertEquals("ordinary stream batches do not publish Conversation", 2, publishedConversations.size)
+        assertEquals("initial state, two render commits, and terminal lifecycle state", 4, streamStates.size)
+        assertEquals("one\ntwo\nthree\n", streamStates[1].content.materialize())
+        assertEquals("four\nfive\nsix\n", streamStates[2].content.materialize().removePrefix("one\ntwo\nthree\n"))
+        assertEquals(3, streamStates[1].lastCommitMetrics?.lineCount)
+        assertEquals(3, streamStates[1].lastCommitMetrics?.queuedLines)
+        assertEquals(0, streamStates[2].lastCommitMetrics?.queuedLines)
+        assertEquals(2L, streamStates[2].cumulativeMetrics.batchCount)
+        assertEquals(6L, streamStates[2].cumulativeMetrics.committedLines)
+        assertEquals(ChatStreamStatus.COMPLETED, streamStates.last().status)
+        assertEquals(streamStates[2].content.materialize(), streamStates.last().content.materialize())
+        assertEquals(listOf(300L), waits)
+        assertTrue(streamStates[1].generationId > 0L)
+        assertTrue(streamStates[2].revision > streamStates[1].revision)
+    }
+
+    @Test fun terminalFlushPublishesAnUndersizedBatchAndFinalPartialLineOnce() = runBlocking {
+        val streamStates = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
+        val runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = {},
+            publish = {},
+            publishStream = { _, state -> state?.let(streamStates::add) },
+            streamCommitIntervalMs = 300L
+        )
+
+        runner.start(conversation(), "a1", flow {
+            emit("first\nsecond partial")
+            awaitCancellation()
+        })
+        assertEquals("only the initial stream state; fewer than three complete lines", 1, streamStates.size)
+
+        runner.stopAndJoin()
+
+        assertEquals(2, streamStates.size)
+        assertEquals("first\nsecond partial", streamStates.last().content.materialize())
+        assertEquals(2, streamStates.last().lastCommitMetrics?.lineCount)
+        assertTrue(streamStates.last().lastCommitMetrics?.terminal == true)
+        assertEquals(ChatStreamStatus.CANCELLED, streamStates.last().status)
     }
 
     @Test fun busyRemainsSetWhileWaitingForTheFirstResponseEvent() = runBlocking {
@@ -116,6 +205,7 @@ class ChatGenerationTest {
         ))
         val regenerated = prepareRegeneration(original, "a1")!!
         assertEquals(listOf("u1", "a1"), regenerated.messages.map { it.id })
+        assertEquals("tail truncation advances the structure epoch", 1L, regenerated.structuralRevision)
         assertEquals("First question", regenerated.messages.dropLast(1).single().content)
         val updated = updateResponse(regenerated, "a1", "New answer")
         assertEquals("Old answer", updated.messages.last().versions.first().content)
@@ -164,6 +254,58 @@ class ChatGenerationTest {
         assertEquals("Answer", complete.messages.last().content)
     }
 
+    @Test fun consecutiveGenerationsUseFreshIdsAndDoNotReuseThePreviousDisplaySnapshot() = runBlocking {
+        val states = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
+        val runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = {},
+            publish = {},
+            publishStream = { _, state -> state?.let(states::add) }
+        )
+
+        runner.start(conversation(), "a1", flowOf("first response"))
+        val firstGenerationId = states.last().generationId
+        runner.start(conversation(), "a1", flowOf("second response"))
+
+        val secondGenerationStates = states.filter { it.generationId != firstGenerationId }
+        assertTrue(secondGenerationStates.isNotEmpty())
+        assertTrue(secondGenerationStates.first().generationId > firstGenerationId)
+        assertEquals("new generation begins empty", "", secondGenerationStates.first().content.materialize())
+        assertEquals("second response", secondGenerationStates.last().content.materialize())
+        assertFalse(secondGenerationStates.any { it.content.materialize().contains("first response") })
+    }
+
+    @Test fun toolTurnResetsTheActiveStreamIdentityAndPublishesTerminalLifecycle() = runBlocking {
+        val states = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
+        val clearedConversationIds = mutableListOf<String>()
+        val runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = {},
+            publish = {},
+            publishStream = { id, state ->
+                if (state == null) clearedConversationIds += id else states += state
+            }
+        )
+        val nextUser = message("u2", ChatRole.USER, "Continue")
+
+        runner.startEvents(conversation(), "a1", flow {
+            emit(GenerationEvent.Text("First answer\n"))
+            emit(GenerationEvent.UserMessage(nextUser))
+            emit(GenerationEvent.Text("Second answer"))
+        })
+
+        val generationIds = states.map { it.generationId }.distinct()
+        val secondMessageId = states.first { it.messageId != "a1" }.messageId
+        val newMessageInitialState = states.first { it.messageId == secondMessageId }
+        assertEquals(1, generationIds.size)
+        assertTrue(generationIds.single() > 0L)
+        assertEquals("First answer\n", states.last { it.messageId == "a1" }.content.materialize())
+        assertEquals("a new assistant message starts with an empty display", "", newMessageInitialState.content.materialize())
+        assertEquals("Second answer", states.last { it.messageId == secondMessageId }.content.materialize())
+        assertEquals(ChatStreamStatus.COMPLETED, states.last().status)
+        assertEquals(listOf("a"), clearedConversationIds)
+    }
+
     @Test fun pendingUserMessageSplitsTheToolTurnBeforeTheNextAnswer() = runBlocking {
         var saved: Conversation? = null
         val runner = ChatGeneration(
@@ -181,6 +323,7 @@ class ChatGenerationTest {
         assertEquals(listOf("u1", "a1", "u2"), saved!!.messages.dropLast(1).map { it.id })
         assertEquals(ChatRole.USER, saved!!.messages[2].role)
         assertEquals("New answer", saved!!.messages.last().content)
+        assertEquals(1L, saved!!.structuralRevision)
         assertTrue(saved!!.messages[1].activeVersion.processingFinishedAt != null)
     }
 
@@ -193,6 +336,42 @@ class ChatGenerationTest {
         assertEquals("offline", runner.error.value)
         assertFalse(runner.busy.value)
     }
+
+    @Test fun failurePublishesTerminalStreamStatusEvenWhenNoTextWasCommitted() = runBlocking {
+        val states = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
+        val runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = {},
+            publish = {},
+            publishStream = { _, state -> state?.let(states::add) }
+        )
+
+        runner.start(conversation(), "a1", flow { error("offline") })
+
+        assertEquals(2, states.size)
+        assertEquals(ChatStreamStatus.FAILED, states.last().status)
+        assertEquals(0L, states.last().cumulativeMetrics.batchCount)
+    }
+
+    @Test fun failureFlushesTheFinalPartialLineIntoStreamState() = runBlocking {
+        val states = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
+        val runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = {},
+            publish = {},
+            publishStream = { _, state -> state?.let(states::add) }
+        )
+
+        runner.start(conversation(), "a1", flow {
+            emit("partial line before failure")
+            error("offline")
+        })
+
+        assertEquals("partial line before failure", states.last().content.materialize())
+        assertEquals(ChatStreamStatus.FAILED, states.last().status)
+        assertTrue(states.last().lastCommitMetrics?.terminal == true)
+    }
+
     @Test fun clearingOwnerScopePersistsPartialResponseAndReleasesGeneration() = runBlocking {
         val owner = Job(coroutineContext[Job])
         var saved: Conversation? = null

@@ -18,11 +18,19 @@ import org.starfall.generative.features.home.chat.ui.ChatOpenCache
 import org.starfall.generative.features.home.chat.ui.ChatRenderCaches
 import org.starfall.generative.features.home.chat.ui.ChatSettleTracker
 import org.starfall.generative.features.home.chat.ui.MarkdownParseCache
+import org.starfall.generative.features.home.chat.ui.MarkdownBlockHeightCache
+import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
+import org.starfall.generative.features.home.chat.logic.markdown.PersistentMarkdownAstCache
+import java.nio.file.Files
 import org.starfall.generative.features.home.chat.ui.SoftLruCache
 
 @RunWith(RobolectricTestRunner::class)
 class ChatRenderCachesTest {
-    @Before fun cold() = ChatRenderCaches.clearAll()
+    @Before fun cold() {
+        ChatRenderCaches.clearAll()
+        MarkdownParseCache.resetMetricsForTests()
+        MarkdownBlockHeightCache.resetForTests()
+    }
 
     private fun parse(text: String): State = runBlocking { parseMarkdown(text) }
 
@@ -58,9 +66,37 @@ class ChatRenderCachesTest {
         assertFalse(MarkdownParseCache.contains(text))
     }
 
+    @Test fun parseMetricsSeparateMemoryReuseFromFullParseFallbacks() {
+        val text = "# Metrics"
+        MarkdownParseCache.put(text, parse(text))
+        assertNotNull(MarkdownParseCache.get(text))
+        assertNull(MarkdownParseCache.get("missing"))
+        MarkdownParseCache.recordFullParse(chars = 123, durationNanos = 456L)
+
+        val metrics = MarkdownParseCache.metrics()
+        assertEquals(1L, metrics.hits)
+        assertEquals(1L, metrics.misses)
+        assertEquals(1L, metrics.writes)
+        assertEquals(1L, metrics.fullParseCount)
+        assertEquals(123L, metrics.fullParseChars)
+        assertEquals(456L, metrics.fullParseNanos)
+    }
+
     @Test fun aParseOfDifferentTextIsNeverStoredUnderTheWrongKey() {
         MarkdownParseCache.put("other", parse("text"))
         assertNull(MarkdownParseCache.get("other"))
+    }
+
+    @Test fun contentFingerprintLivesAndEvictsWithItsParsedTree() {
+        val identity = MarkdownRenderCacheIdentity("conversation", "fingerprinted")
+        val text = "# Fingerprinted"
+        MarkdownParseCache.put(text, parse(text), identity, contentFingerprint = "sha256:fixture")
+
+        assertEquals("sha256:fixture", MarkdownParseCache.getFingerprint(text, identity))
+        assertNull(MarkdownParseCache.getFingerprint(text))
+
+        MarkdownParseCache.invalidateMessage(identity.conversationId, identity.messageId)
+        assertNull(MarkdownParseCache.getFingerprint(text, identity))
     }
 
     @Test fun aChatIsWarmOnlyWhileItsAssetsSignatureAndEnvironmentMatch() {
@@ -80,6 +116,57 @@ class ChatRenderCachesTest {
         val text = "Answer"
         ChatOpenCache.remember("chat", 1, 1, listOf(AssetKey.Markdown(text)))
         assertFalse(ChatOpenCache.isWarm("chat", 1, 1))
+    }
+
+    @Test fun messageDeletionInvalidatesOnlyThatMessageInTheMemoryAstCache() {
+        val root = Files.createTempDirectory("markdown-memory-invalidation").toFile()
+        try {
+            val cache = PersistentMarkdownAstCache(root)
+            val firstIdentity = MarkdownRenderCacheIdentity("conversation", "first")
+            val secondIdentity = MarkdownRenderCacheIdentity("conversation", "second")
+            val firstContent = "First message"
+            val secondContent = "Second message"
+            MarkdownParseCache.put(firstContent, parse(firstContent), firstIdentity)
+            MarkdownParseCache.put(secondContent, parse(secondContent), secondIdentity)
+            MarkdownBlockHeightCache.put("${firstIdentity.conversationId}|${firstIdentity.messageId}|block|width-320", 42)
+            MarkdownBlockHeightCache.put("${secondIdentity.conversationId}|${secondIdentity.messageId}|block|width-320", 58)
+            cache.registerMemoryInvalidator(MarkdownParseCache) { conversationId, messageId ->
+                when {
+                    conversationId == null -> MarkdownParseCache.clearAll()
+                    messageId == null -> MarkdownParseCache.invalidateConversation(conversationId)
+                    else -> MarkdownParseCache.invalidateMessage(conversationId, messageId)
+                }
+            }
+            cache.registerMemoryInvalidator(MarkdownBlockHeightCache) { conversationId, messageId ->
+                when {
+                    conversationId == null -> MarkdownBlockHeightCache.clearAll()
+                    messageId == null -> MarkdownBlockHeightCache.invalidateConversation(conversationId)
+                    else -> MarkdownBlockHeightCache.invalidateMessage(conversationId, messageId)
+                }
+            }
+
+            cache.invalidateMessage(firstIdentity.conversationId, firstIdentity.messageId)
+
+            assertNull(MarkdownParseCache.get(firstContent, firstIdentity))
+            assertNotNull(MarkdownParseCache.get(secondContent, secondIdentity))
+            assertNull(MarkdownBlockHeightCache.get("${firstIdentity.conversationId}|${firstIdentity.messageId}|block|width-320"))
+            assertEquals(58, MarkdownBlockHeightCache.get("${secondIdentity.conversationId}|${secondIdentity.messageId}|block|width-320") ?: -1)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun markdownBlockHeightsAreCachedSeparatelyForDifferentLayoutProfiles() {
+        MarkdownBlockHeightCache.resetForTests()
+
+        MarkdownBlockHeightCache.put("message/block/content/width-320/font-1000", 42)
+        MarkdownBlockHeightCache.put("message/block/content/width-400/font-1000", 58)
+
+        assertEquals(42, MarkdownBlockHeightCache.get("message/block/content/width-320/font-1000") ?: -1)
+        assertEquals(58, MarkdownBlockHeightCache.get("message/block/content/width-400/font-1000") ?: -1)
+        assertNull(MarkdownBlockHeightCache.get("message/block/content/width-320/font-1250"))
+        assertEquals(2L, MarkdownBlockHeightCache.metrics().hits)
+        assertEquals(1L, MarkdownBlockHeightCache.metrics().misses)
     }
 
     @Test fun trackerCountsPendingWorkAndRetainsAssetsOnce() {

@@ -8,6 +8,8 @@ import org.starfall.generative.features.home.chat.logic.anchorTailSpacer
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
+import org.starfall.generative.shared.model.Conversation
+import org.starfall.generative.features.home.chat.logic.withUpdatedMessageStructure
 
 class ChatScrollAnchorTest {
     private fun user(id: String, text: String = id) =
@@ -66,6 +68,30 @@ class ChatScrollAnchorTest {
     @Test fun firstMessageOfAnEmptyChatHasNothingToScrollAgainst() {
         val detector = SentMessageDetector().also { it.observe(emptyList()) }
         assertNull(detector.observe(chat))
+    }
+
+    @Test fun explicitStructuralRevisionSkipsContentOnlyHistoryScans() {
+        val detector = SentMessageDetector()
+        assertNull(detector.observe(chat, structuralRevision = 4L))
+
+        val contentOnlyUpdate = listOf(user("u1", "edited"), model("m1", "longer answer"))
+        assertNull(detector.observe(contentOnlyUpdate, structuralRevision = 4L))
+        assertEquals("no repeated whole-history ID scan", 1L, detector.idScanCount)
+
+        val sent = chat + user("u2") + model("m2")
+        assertEquals("u2", detector.observe(sent, structuralRevision = 5L))
+        assertEquals(2L, detector.idScanCount)
+    }
+
+    @Test fun messageContentChangesDoNotAdvanceStructureRevisionButIdentityChangesDo() {
+        val conversation = Conversation("chat", "Chat", 1L, 1L, messages = chat)
+        val edited = conversation.withUpdatedMessageStructure(
+            listOf(user("u1", "edited"), model("m1", "answer"))
+        )
+        assertEquals(0L, edited.structuralRevision)
+
+        val deleted = edited.withUpdatedMessageStructure(listOf(user("u1", "edited")))
+        assertEquals(1L, deleted.structuralRevision)
     }
 
     @Test fun spacerFillsTheGapToOneVisibleAreaAndShrinksAsTheReplyGrows() {

@@ -35,6 +35,7 @@ import org.starfall.generative.R
 import org.starfall.generative.features.home.chat.logic.tool.ToolChatLabels
 import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 import org.starfall.generative.features.home.chat.logic.ChatViewModel
+import org.starfall.generative.features.home.chat.logic.markdown.PersistentMarkdownAstCache
 
 /** Application-scoped dependencies. ViewModels receive only their required dependencies. */
 class AppContainer(context: Context) {
@@ -61,6 +62,7 @@ class AppContainer(context: Context) {
     val defaultDataInitializer = DefaultDataInitializer(providers, mcp, speech, preferences, icons)
 
     init {
+        PersistentMarkdownAstCache.get(appContext)
         // Keep the debug log's on/off state and scopes in step with App settings, from process start.
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
             preferences.appPreferencesFlow.collect { DebugLog.configure(it.debugMode, it.debugLogCategories) }

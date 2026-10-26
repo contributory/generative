@@ -7,7 +7,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -29,15 +28,17 @@ import org.intellij.markdown.flavours.gfm.GFMElementTypes
 import org.intellij.markdown.flavours.gfm.GFMTokenTypes
 import org.starfall.generative.features.home.chat.logic.markdown.MathPiece
 import org.starfall.generative.features.home.chat.logic.markdown.MathSplitter
+import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 import org.starfall.generative.shared.ui.text.toComposeFontFamily
 
 private val MaxTableColumnWidth = 260.dp
 private val TableCellHorizontalPadding = 10.dp
+private const val MAX_EAGER_TABLE_ROWS = 48
 
-private class TableRow(val header: Boolean, val cells: List<ASTNode>)
+internal class TableRow(val header: Boolean, val cells: List<ASTNode>)
 
-private data class TableCellContent(
+internal data class TableCellContent(
     val annotated: AnnotatedString?,
     val mathPieces: List<MathPiece>?
 )
@@ -46,7 +47,7 @@ private fun tableRows(node: ASTNode): List<TableRow> = node.children
     .filter { it.type == GFMElementTypes.HEADER || it.type == GFMElementTypes.ROW }
     .map { row -> TableRow(row.type == GFMElementTypes.HEADER, row.children.filter { it.type == GFMTokenTypes.CELL }) }
 
-private fun AnnotatedString.trimmed(): AnnotatedString {
+internal fun AnnotatedString.trimmed(): AnnotatedString {
     val start = text.indexOfFirst { !it.isWhitespace() }
     if (start < 0) return AnnotatedString("")
     return subSequence(start, text.indexOfLast { !it.isWhitespace() } + 1)
@@ -57,7 +58,13 @@ private fun AnnotatedString.trimmed(): AnnotatedString {
  * and a table wider than the message scrolls horizontally.
  */
 @Composable
-internal fun RenderMarkdownTable(model: MarkdownComponentModel) {
+internal fun RenderMarkdownTable(
+    model: MarkdownComponentModel,
+    identity: MarkdownRenderCacheIdentity? = null,
+    allowVirtualization: Boolean = false,
+    typographyKey: Int = model.typography.hashCode(),
+    optionsKey: Int = 0
+) {
     val content = model.content
     val rows = remember(model.node) { tableRows(model.node) }
     if (rows.isEmpty()) return
@@ -71,26 +78,86 @@ internal fun RenderMarkdownTable(model: MarkdownComponentModel) {
         color = MaterialTheme.colorScheme.onSurface
     )
     val headerStyle = baseStyle.copy(fontWeight = FontWeight.SemiBold)
-    val cells = rows.map { row ->
-        row.cells.map { cell ->
-            val source = cell.getTextInNode(content).toString().trim()
-            val mathPieces = MathSplitter.split(source, preferences.latexMode)
-                .takeIf { pieces -> pieces.any { it is MathPiece.Math } }
-            TableCellContent(
-                annotated = if (mathPieces == null) {
-                    buildAnnotatedString { buildMarkdownAnnotatedString(content, cell, settings) }.trimmed()
-                } else {
-                    null
-                },
-                mathPieces = mathPieces
-            )
-        }
+    if (allowVirtualization && rows.size > MAX_EAGER_TABLE_ROWS) {
+        RenderVirtualizedMarkdownTable(
+            content = content,
+            rows = rows,
+            identity = identity,
+            preferencesKey = optionsKey,
+            typographyKey = typographyKey,
+            settings = settings,
+            baseStyle = baseStyle,
+            headerStyle = headerStyle
+        )
+        return
+    }
+    RenderEagerMarkdownTable(content, rows, preferences.latexMode, settings, baseStyle, headerStyle)
+}
+
+@Composable
+private fun RenderEagerMarkdownTable(
+    content: String,
+    rows: List<TableRow>,
+    latexMode: String,
+    settings: com.mikepenz.markdown.annotator.AnnotatorSettings,
+    baseStyle: androidx.compose.ui.text.TextStyle,
+    headerStyle: androidx.compose.ui.text.TextStyle
+) {
+    val cells = remember(content, rows, latexMode, settings) {
+        buildTableCellContents(content, rows, latexMode, settings)
     }
     val columnCount = cells.maxOf { it.size }
-    val density = LocalDensity.current
-    val measurer = rememberTextMeasurer()
+    val columnWidths = calculateTableColumnWidths(
+        rows = rows,
+        cells = cells,
+        columnCount = columnCount,
+        density = LocalDensity.current,
+        measurer = rememberTextMeasurer(),
+        baseStyle = baseStyle,
+        headerStyle = headerStyle
+    )
+    EagerMarkdownTableContent(
+        rows = rows,
+        cells = cells,
+        columnWidths = columnWidths,
+        baseStyle = baseStyle,
+        headerStyle = headerStyle,
+        border = MaterialTheme.colorScheme.outlineVariant,
+        headerBackground = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = RoundedCornerShape(8.dp)
+    )
+}
+
+private fun buildTableCellContents(
+    content: String,
+    rows: List<TableRow>,
+    latexMode: String,
+    settings: com.mikepenz.markdown.annotator.AnnotatorSettings
+): List<List<TableCellContent>> = rows.map { row ->
+    row.cells.map { cell ->
+        val source = cell.getTextInNode(content).toString().trim()
+        val mathPieces = MathSplitter.split(source, latexMode)
+            .takeIf { pieces -> pieces.any { it is MathPiece.Math } }
+        TableCellContent(
+            annotated = if (mathPieces == null) {
+                buildAnnotatedString { buildMarkdownAnnotatedString(content, cell, settings) }.trimmed()
+            } else null,
+            mathPieces = mathPieces
+        )
+    }
+}
+
+private fun calculateTableColumnWidths(
+    rows: List<TableRow>,
+    cells: List<List<TableCellContent>>,
+    columnCount: Int,
+    density: androidx.compose.ui.unit.Density,
+    measurer: androidx.compose.ui.text.TextMeasurer,
+    baseStyle: androidx.compose.ui.text.TextStyle,
+    headerStyle: androidx.compose.ui.text.TextStyle
+): List<androidx.compose.ui.unit.Dp> {
     val maxColumnPx = with(density) { (MaxTableColumnWidth - TableCellHorizontalPadding * 2).toPx() }
-    val columnWidths = (0 until columnCount).map { column ->
+    return (0 until columnCount).map { column ->
         val natural = cells.indices.maxOf { rowIndex ->
             val cell = cells[rowIndex].getOrNull(column) ?: return@maxOf 0f
             val style = if (rows[rowIndex].header) headerStyle else baseStyle
@@ -104,44 +171,81 @@ internal fun RenderMarkdownTable(model: MarkdownComponentModel) {
         }
         with(density) { natural.coerceIn(24f, maxColumnPx).toDp() } + TableCellHorizontalPadding * 2 + 1.dp
     }
-    val border = MaterialTheme.colorScheme.outlineVariant
-    val headerBackground = MaterialTheme.colorScheme.surfaceContainerHigh
-    val shape = RoundedCornerShape(8.dp)
+}
 
+@Composable
+private fun EagerMarkdownTableContent(
+    rows: List<TableRow>,
+    cells: List<List<TableCellContent>>,
+    columnWidths: List<androidx.compose.ui.unit.Dp>,
+    baseStyle: androidx.compose.ui.text.TextStyle,
+    headerStyle: androidx.compose.ui.text.TextStyle,
+    border: androidx.compose.ui.graphics.Color,
+    headerBackground: androidx.compose.ui.graphics.Color,
+    shape: RoundedCornerShape
+) {
     GatedSelectionContainer {
         Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).horizontalScroll(rememberScrollState())) {
             Column(Modifier.clip(shape).border(1.dp, border, shape)) {
                 rows.forEachIndexed { rowIndex, row ->
-                    Row(Modifier.height(IntrinsicSize.Min)) {
-                        for (column in 0 until columnCount) {
-                            Box(
-                                Modifier.width(columnWidths[column]).fillMaxHeight()
-                                    .then(if (row.header) Modifier.background(headerBackground) else Modifier)
-                                    .border(0.5.dp, border)
-                                    .padding(horizontal = TableCellHorizontalPadding, vertical = 8.dp)
-                            ) {
-                                val cell = cells[rowIndex].getOrNull(column)
-                                if (cell != null) {
-                                    val style = if (row.header) headerStyle else baseStyle
-                                    if (cell.mathPieces != null) {
-                                        RenderMathParagraph(
-                                            pieces = cell.mathPieces,
-                                            style = style,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    } else {
-                                        cell.annotated?.let { text ->
-                                            MarkdownClickableText(
-                                                text = text,
-                                                style = style,
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    EagerMarkdownTableRow(
+                        row = row,
+                        cells = cells[rowIndex],
+                        columnWidths = columnWidths,
+                        baseStyle = baseStyle,
+                        headerStyle = headerStyle,
+                        border = border,
+                        headerBackground = headerBackground
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EagerMarkdownTableRow(
+    row: TableRow,
+    cells: List<TableCellContent>,
+    columnWidths: List<androidx.compose.ui.unit.Dp>,
+    baseStyle: androidx.compose.ui.text.TextStyle,
+    headerStyle: androidx.compose.ui.text.TextStyle,
+    border: androidx.compose.ui.graphics.Color,
+    headerBackground: androidx.compose.ui.graphics.Color
+) {
+    Row(Modifier.height(IntrinsicSize.Min)) {
+        columnWidths.forEachIndexed { column, width ->
+            EagerMarkdownTableCell(
+                cell = cells.getOrNull(column),
+                width = width,
+                style = if (row.header) headerStyle else baseStyle,
+                border = border,
+                headerBackground = headerBackground.takeIf { row.header }
+            )
+        }
+    }
+}
+
+@Composable
+private fun EagerMarkdownTableCell(
+    cell: TableCellContent?,
+    width: androidx.compose.ui.unit.Dp,
+    style: androidx.compose.ui.text.TextStyle,
+    border: androidx.compose.ui.graphics.Color,
+    headerBackground: androidx.compose.ui.graphics.Color?
+) {
+    Box(
+        Modifier.width(width).fillMaxHeight()
+            .then(if (headerBackground != null) Modifier.background(headerBackground) else Modifier)
+            .border(0.5.dp, border)
+            .padding(horizontal = TableCellHorizontalPadding, vertical = 8.dp)
+    ) {
+        if (cell != null) {
+            if (cell.mathPieces != null) {
+                RenderMathParagraph(pieces = cell.mathPieces, style = style, modifier = Modifier.fillMaxWidth())
+            } else {
+                cell.annotated?.let { text ->
+                    MarkdownClickableText(text = text, style = style, modifier = Modifier.fillMaxWidth())
                 }
             }
         }

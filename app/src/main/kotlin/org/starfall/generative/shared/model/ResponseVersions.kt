@@ -87,11 +87,16 @@ internal fun List<StoredMessage>.withoutEmptyModelMessages(): List<StoredMessage
 /** Removes responses that hold nothing, so they are never saved. */
 internal fun Conversation.pruningEmptyResponses(): Conversation {
     var changed = false
+    var structureChanged = false
     val cleaned = messages.mapNotNull { message ->
         if (message.role != ChatRole.MODEL) return@mapNotNull message
         val pruned = message.keeping { _, version -> !version.isEmptyResponse() }
         if (pruned !== message) changed = true
+        if (pruned == null) structureChanged = true
         pruned
     }
-    return if (changed) copy(messages = cleaned) else this
+    return if (changed) copy(
+        messages = cleaned,
+        structuralRevision = structuralRevision + if (structureChanged) 1L else 0L
+    ) else this
 }

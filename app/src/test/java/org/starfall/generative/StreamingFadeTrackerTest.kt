@@ -5,6 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.starfall.generative.shared.ui.text.StreamingFadeRange
 import org.starfall.generative.shared.ui.text.StreamingFadeTracker
+import org.starfall.generative.shared.ui.text.shouldRevealStreamingText
 
 class StreamingFadeTrackerTest {
     @Test
@@ -34,6 +35,13 @@ class StreamingFadeTrackerTest {
         tracker.update("Hello world", 0)
         assertEquals(listOf(StreamingFadeRange(0, 5, 0)), tracker.update("Hello", 64))
         assertTrue(tracker.update("", 128).isEmpty())
+    }
+
+    @Test
+    fun reducedMotionSettingDisablesOnlyTheVisualReveal() {
+        assertTrue(shouldRevealStreamingText(localEnabled = true, systemAnimationsEnabled = true))
+        assertTrue(!shouldRevealStreamingText(localEnabled = false, systemAnimationsEnabled = true))
+        assertTrue(!shouldRevealStreamingText(localEnabled = true, systemAnimationsEnabled = false))
     }
 
     @Test

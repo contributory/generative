@@ -46,8 +46,9 @@ internal fun prepareUserMessageRetry(
         isQueued = false
     )
     val response = StoredMessage(responseId, ChatRole.MODEL, listOf(version))
-    return conversation.copy(
-        messages = conversation.messages.take(index) + resetUser + response,
+    return conversation.withUpdatedMessageStructure(
+        conversation.messages.take(index) + resetUser + response
+    ).copy(
         summary = conversation.summary?.takeUnless { summary ->
             conversation.messages.indexOfFirst { it.id == summary.throughMessageId } >= index
         },

@@ -4,7 +4,17 @@
 
 Make whole-app frame pacing remain stable while an assistant streams, including long answers and very large individual Markdown blocks. A stream update must not rebuild or republish the full conversation, rescan unchanged history, reparse the entire accumulated tail, or compose every Markdown block.
 
-This plan extends `plans/streaming-markdown-chunking.md`. Reuse the completed splitter/chunked-renderer work where it passes the stronger invariants below; do not redo it mechanically. This plan's progress checklist is the source of truth for the broader streaming-FPS work. Cache identity and persistence are **message-scoped**, never a serialized whole-conversation render snapshot.
+## Current implementation status (2026-10-26)
+
+The source implementation now covers the main stream-state, parser, virtualization, and cache paths, but the plan is **not fully verified or complete**. Ordinary token deltas use a separate message-scoped stream state, immutable segmented text, complete-line batching/pacing, terminal flushes, stream metrics, incremental `<think>` splitting, and a left-to-right reveal. Structural revisions prevent content-only response changes from rebuilding message-ID/unanswered lists. Lifecycle boundaries and explicit checkpoints still create/persist conversation snapshots; the existing product caps remain 512,000 answer characters, 64,000 reasoning-signature characters, and 128,000 rendered Markdown characters.
+
+The active Markdown path consumes append-only segments through JetBrains' streaming parser, shares stable AST nodes, caps the unstable tail at 8,000 characters, and presents a bounded 4,000-character preview after overflow. The preview can open a dialog that extracts the captured source off Main and lazily composes fixed-size rows; it does not progressively parse/render the overflow block as Markdown. It renders source slices only for mounted blocks. The compatibility chunk path now avoids copying the whole stable prefix for generation-scoped append-only input, parses only a bounded tail, and previews an oversized active tail. Static top-level blocks, long list items, table rows, and frozen chunks use viewport-based `SubcomposeLayout` virtualizers rather than nested vertical lazy lists inside chat. Very large paragraphs, code blocks, and raw HTML blocks use bounded previews and lazy dialog rows; exact full source extraction is delayed until the dialog/copy action. Oversized static raw HTML blocks use the same bounded preview/expand path, including when nested in virtualized list items. The fade skips its draw animation when Android reports system animator animations disabled; its Compose draw-only implementation leaves text semantics/selection paths intact, but device accessibility behavior is not yet exercised.
+
+The in-memory Markdown AST cache is a soft weighted LRU capped by 600,000 source characters and keeps a precomputed fingerprint with its AST. The persistent cache stores versioned, plaintext per-message AST/reference-link records outside `cacheDir`, with a disk budget, atomic writes, deletion epochs, and stale-writer tests. Layout-height variants are bounded and profile-keyed in memory, but they are not persisted. Instrumentation counters and unit/Compose tests have been added, including parser differential fixtures at every split point and randomized chunk boundaries.
+
+**Verification remains blocked:** this sandbox has no Java, Android SDK, Gradle distribution, or cached dependencies. No build, lint, unit test, or instrumentation test has been run; the latest source changes remain uncompiled. No device baseline, warm/cold profile, FPS, frame-time, or latency result is available. Progressive rich Markdown parsing/rendering for oversized active HTML (the expanded source is currently plain text), persistent layout-variant/scroll-anchor metadata, runtime accessibility/reduced-motion validation, and device validation of the current message-row/Subcompose integration remain open. Do not treat source checkmarks or test additions as passed checks, and do not claim an FPS improvement.
+
+This plan extends `plans/streaming-markdown-chunking.md`. Reuse the completed splitter/chunked-renderer work where it passes the stronger invariants below; do not redo it mechanically. This plan's progress checklist is the source of truth for the broader streaming-FPS work. Cache identity and persistence are **message-scoped**, never a serialized whole-conversation render snapshot. A checked item means source implementation/tests were added; it does not imply they compiled or ran. `[~]` means partially implemented with an explicit gap described below.
 
 ## Important performance contract
 
@@ -205,61 +215,61 @@ Do the phases in order, one focused change at a time. Keep this file updated as 
 ### Phase 0 — Baseline and invariants
 
 - [ ] Capture a reproducible baseline using the same generated Markdown fixture and device/build configuration before and after changes.
-- [ ] Add temporary/debug recomposition and structural-scan counters for navigation, message cards, stable Markdown blocks, history-ID scans, parser input length, and stream commits. Remove or appropriately gate noisy debug instrumentation once verified.
+- [x] Add temporary/debug recomposition and structural-scan counters for navigation, message cards, stable Markdown blocks, history-ID scans, parser input length, and stream commits. Remove or appropriately gate noisy debug instrumentation once verified.
 - [ ] Record frame-time/janky-frame stats for a short answer, a long multi-block answer, a very long code block, and a long list; test with follow-bottom on/off.
-- [ ] Confirm the current hard generation text cap and document the product decision for very large retained responses before changing/removing it.
+- [x] Confirm the current hard generation text cap and document the product decision for very large retained responses before changing/removing it.
 
 ### Phase 1 — Isolate stream state from Conversation
 
-- [ ] Introduce a separate active-stream state/buffer with a generation ID and independent revision.
-- [ ] Remove whole-`Conversation` publication and full message-list mapping from the ordinary stream-delta path.
-- [ ] Add a single completion/checkpoint commit path that preserves saved conversations and message versions.
-- [ ] Ensure stream-only state is collected only by the active chat/message scopes.
-- [ ] Test completion, interruption, error, regeneration, conversation switching, and title updates while streaming.
+- [x] Introduce a separate active-stream state/buffer with a generation ID and independent revision.
+- [x] Remove whole-`Conversation` publication and full message-list mapping from the ordinary stream-delta path.
+- [x] Add a single completion/checkpoint commit path that preserves saved conversations and message versions.
+- [x] Ensure stream-only state is collected only by the active chat/message scopes.
+- [x] Test completion, interruption, error, regeneration, conversation switching, and title updates while streaming.
 
 ### Phase 2 — Structural revisions and measured stream commit cadence
 
-- [ ] Add structural revisions and change message-ID/unanswered-message/sent-message detection to run only on structural changes.
-- [ ] Buffer incoming token fragments and split only on complete logical line delimiters (`\n`, treating `\r\n` as one delimiter and a trailing `\r` as pending). Gate normal commits on `STREAM_LINES_PER_BATCH` complete lines (initial baseline 3) and pace eligible batches separately (initial baseline 300 ms). An undersized batch waits even after the timer; an oversized buffer emits exactly one batch and retains surplus lines for the next turn. Terminal events flush all remaining lines plus any final unterminated line immediately.
-- [ ] Ensure obsolete generation jobs are cancelled/conflated and cannot publish stale content.
-- [ ] Add tests with a fake clock and fragmented input for line-batch eligibility, pacing, exact-N-line commits, surplus queue retention, CRLF split across tokens, no-newline waits, final unterminated-line flush, cancellation/error, and rapid-delta coalescing.
-- [ ] Add the left-to-right deep fade reveal once per committed chunk; verify it does not restart across later chunks and does not affect text selection/accessibility.
+- [x] Add structural revisions and change message-ID/unanswered-message/sent-message detection to run only on structural changes.
+- [x] Buffer incoming token fragments and split only on complete logical line delimiters (`\n`, treating `\r\n` as one delimiter and a trailing `\r` as pending). Gate normal commits on `STREAM_LINES_PER_BATCH` complete lines (initial baseline 3) and pace eligible batches separately (initial baseline 300 ms). An undersized batch waits even after the timer; an oversized buffer emits exactly one batch and retains surplus lines for the next turn. Terminal events flush all remaining lines plus any final unterminated line immediately.
+- [x] Ensure obsolete generation jobs are cancelled/conflated and cannot publish stale content.
+- [x] Add tests with a fake clock and fragmented input for line-batch eligibility, pacing, exact-N-line commits, surplus queue retention, CRLF split across tokens, no-newline waits, final unterminated-line flush, cancellation/error, and rapid-delta coalescing.
+- [~] Add the left-to-right deep fade reveal once per committed chunk; skip the draw animation when Android system animator animations are disabled. A tracker/policy test is added; verify it does not restart across later chunks or affect selection/accessibility on device.
 
 ### Phase 3 — Incremental parser for both block boundaries and huge blocks
 
-- [ ] Audit the existing splitter/chunking implementation and preserve its tested Markdown boundary rules.
-- [ ] Add parser checkpoints and append-only delta processing with bounded look-behind; eliminate full-tail scans/copies from the normal update path.
-- [ ] Incrementally represent very long paragraphs, lists, HTML blocks, and code fences; virtualize long code lines/paragraph segments within a single block.
-- [ ] Add differential tests comparing incremental output with a full parse over every split point of representative fixtures and randomized delta boundaries.
-- [ ] Verify Unicode, CRLF, open/closed fences, list continuations, math, tables, HTML, reference links, regeneration, and finalization.
+- [x] Audit the existing splitter/chunking implementation and preserve its tested Markdown boundary rules.
+- [x] Add parser checkpoints and append-only delta processing with bounded look-behind; eliminate full-tail scans/copies from the normal update path.
+- [~] Incrementally represent very long paragraphs, lists, HTML blocks, and code fences; virtualize long code lines/paragraph segments within a single block. Static paragraphs/code/HTML use bounded previews with lazy expanded rows; active overflow exposes a bounded preview plus an on-demand, plain-text lazy source dialog, but does not progressively parse/render the overflow block as Markdown.
+- [x] Add differential tests comparing incremental output with a full parse over every split point of representative fixtures and randomized delta boundaries.
+- [x] Verify Unicode, CRLF, open/closed fences, list continuations, math, tables, HTML, reference links, regeneration, and finalization.
 
 ### Phase 4 — Virtualized Markdown blocks and render window
 
-- [ ] Prototype the flattened stable-row model in the existing top-level `LazyColumn` (message rows + Markdown block rows) and validate message actions, selection, accessibility, and scroll anchoring before migration.
-- [ ] Replace eager frozen-chunk `Column` composition with the approved lazy row model; do not introduce nested same-direction lazy scroll containers.
-- [ ] Start with a bounded render/prefetch window near 200% of viewport height, tune it using frame/memory measurements, and prove off-window blocks are disposed with composition instrumentation.
-- [ ] Preserve block keys, measured-height continuity, selection, scroll anchoring, and follow-bottom behavior during chunk freezing and block insertion.
-- [ ] Add intra-block virtualization for content whose own size is too large for one composed node.
-- [ ] Verify off-screen blocks are recomposed only when entering the render window and use cached models without reparsing.
+- [~] Evaluate the flattened stable-row option. The current design keeps the top-level chat `LazyColumn` message rows and uses custom-success `MarkdownElement` children in shared-viewport `SubcomposeLayout` rows, avoiding nested vertical lazy lists. Compose disposal tests are added; validate message actions, selection, accessibility, and scroll anchoring on device before considering a separate flattened-row migration.
+- [~] Replace eager frozen-chunk `Column` composition with viewport-based `SubcomposeLayout` rows sharing chat's viewport; do not introduce nested same-direction lazy scroll containers. Compose instrumentation coverage is added; device tuning remains open.
+- [~] Start with a bounded render/prefetch window near 200% of viewport height (50% overscan on each side), prove off-window blocks are disposed with composition instrumentation, then tune using frame/memory measurements.
+- [x] Preserve block keys, measured-height continuity, selection, scroll anchoring, and follow-bottom behavior during chunk freezing and block insertion.
+- [~] Add intra-block virtualization for content whose own size is too large for one composed node. Finalized paragraph/code/raw-HTML blocks and active overflow use bounded previews with on-demand lazy source rows; progressive rich Markdown parsing/rendering for active overflow remains open.
+- [x] Verify off-screen blocks are recomposed only when entering the render window and use cached models without reparsing.
 
 ### Phase 5 — Weighted caches and memory lifecycle
 
-- [ ] Add weighted in-memory cache for immutable parse/render models with explicit byte/character budget and LRU eviction.
-- [ ] Include all parser/render/layout-affecting inputs in cache keys and invalidate on version, regeneration, theme, font scale, width, or option changes as appropriate.
-- [ ] Prevent unbounded retention of full content strings, ASTs, annotated strings, parser snapshots, and layout data. Large entries must be bypassed, segmented, or checkpointed.
-- [ ] Test hits, misses, eviction, regeneration invalidation, and cache-pressure behavior while streaming.
+- [x] Add weighted in-memory cache for immutable parse/render models with explicit byte/character budget and LRU eviction.
+- [x] Include all parser/render/layout-affecting inputs in cache keys and invalidate on version, regeneration, theme, font scale, width, or option changes as appropriate.
+- [x] Prevent unbounded retention of full content strings, ASTs, annotated strings, parser snapshots, and layout data. Large entries must be bypassed, segmented, or checkpointed.
+- [~] Test hits, misses, eviction, regeneration invalidation, and cache-pressure behavior while streaming.
 
 ### Phase 6 — Persistent per-message render cache
 
-- [ ] Define a serializable, versioned, non-encrypted cache format for immutable Markdown parse/block models and reusable layout/position metadata; do not serialize Compose UI objects.
-- [ ] Implement a persistent app-private plaintext cache outside OS-disposable `cacheDir` (for example `noBackupFilesDir/render-cache`), with separate entries per message/version, atomic writes, bounded storage, and per-entry eviction.
-- [ ] Hydrate visible/near-visible message entries off Main and reuse valid Markdown/layout variants without full reparsing; handle misses asynchronously per message.
-- [ ] Cache per-message/block measurements and scroll-anchor metadata with multiple profile-keyed variants for distinct widths, font sizes/scales, densities, typography, and relevant theme/layout settings; derive global offsets/prefix sums from current order and update only affected ranges.
-- [ ] Select only an exact compatible layout profile; create a separate variant on a profile miss and bound variant growth with weighted LRU eviction.
-- [ ] Confirm cache payloads are stored unencrypted in the documented serialization format; do not add cache encryption.
-- [ ] Invalidate only affected message/block/profile entries on content/version/parser-schema/render-option changes; implement deletion epochs/tombstones and prove stale writers cannot recreate deleted plaintext entries.
-- [ ] Persist finalized message/block entries asynchronously; coalesce writes and never write the full conversation on each stream delta.
-- [ ] Add tests for warm reopen, message-level hit/miss/eviction, schema/profile invalidation, content edits/regeneration, corruption, cache reset, delete-vs-write races, and conversation deletion with pending jobs.
+- [~] Define a serializable, versioned, non-encrypted cache format for immutable Markdown parse/block models and reusable layout/position metadata; do not serialize Compose UI objects.
+- [x] Implement a persistent app-private plaintext cache outside OS-disposable `cacheDir` (for example `noBackupFilesDir/render-cache`), with separate entries per message/version, atomic writes, bounded storage, and per-entry eviction.
+- [x] Hydrate visible/near-visible message entries off Main and reuse valid Markdown/layout variants without full reparsing; handle misses asynchronously per message.
+- [~] Cache per-message/block measurements and scroll-anchor metadata with multiple profile-keyed variants for distinct widths, font sizes/scales, densities, typography, and relevant theme/layout settings; derive global offsets/prefix sums from current order and update only affected ranges.
+- [x] Select only an exact compatible layout profile; create a separate variant on a profile miss and bound variant growth with weighted LRU eviction.
+- [x] Confirm cache payloads are stored unencrypted in the documented serialization format; do not add cache encryption.
+- [x] Invalidate only affected message/block/profile entries on content/version/parser-schema/render-option changes; implement deletion epochs/tombstones and prove stale writers cannot recreate deleted plaintext entries.
+- [x] Persist finalized message/block entries asynchronously; coalesce writes and never write the full conversation on each stream delta.
+- [~] Add tests for warm reopen, message-level hit/miss/eviction, schema/profile invalidation, content edits/regeneration, corruption, cache reset, delete-vs-write races, and conversation deletion with pending jobs.
 - [ ] Measure warm-open parse avoidance and time-to-first-render against a cold open on the same fixture.
 - [ ] Verify cold/warm app start, conversation reopen, scroll-away/scroll-back reuse, and deletion invalidation; count parse and composition work by stable message/block ID.
 - [ ] Verify persistent entries survive normal app process restarts and are not dependent on Android preserving `cacheDir`; document expected behavior after app-data clear/uninstall.
@@ -271,7 +281,7 @@ Do the phases in order, one focused change at a time. Keep this file updated as 
 - [ ] Compare cold-open and warm-open behavior for an old conversation; confirm valid disk-cache hits skip full Markdown parsing and cache I/O never blocks Main.
 - [ ] Verify ordinary stream work is proportional to new delta plus visible/prefetched content; no ordinary update copies or scans the whole response/history.
 - [ ] Record stream commit frequency and input-to-visible latency; ensure commits follow the measured configured policy and terminal flushes are immediate.
-- [ ] Update `docs/structure.md` and any existing streaming Markdown plan/checklist if file boundaries or responsibilities changed.
+- [x] Update `docs/structure.md` and any existing streaming Markdown plan/checklist if file boundaries or responsibilities changed.
 
 ## Acceptance criteria
 

@@ -1,0 +1,67 @@
+# Streaming FPS and Markdown profiling
+
+This document describes the repeatable measurements for the scalability work. Source-level counters, parser differential unit-test fixtures, and Compose virtualization instrumentation cases are in place, but **no device/profile results have been captured yet**. Do not claim an FPS improvement until the same build/device/scenario has been measured before and after. In the current sandbox, Java, the Android SDK, a Gradle distribution, and cached dependencies are unavailable, so build, test, lint, and device-profile checks were not run; do not install or download tooling here.
+
+## Fixed scenarios
+
+Use one physical device and one build variant for both runs; record device model, Android build, refresh rate, app commit, display/font settings, and whether battery saver is on.
+
+1. **Short stream:** one paragraph, about 20 lines; follow-bottom on and off.
+2. **Long mixed stream:** 200 top-level blocks, with headings, paragraphs, lists, a table, and fenced code; follow-bottom on and off.
+3. **Large single blocks:** a 40k-character paragraph, a 20k-line code fence, a 22k-character raw HTML block, a 180-row list, and a 180-row table. Verify the static paragraph/code/HTML message preview is bounded, expanded rows reach the full source, and an active stream overflow preview can open its captured plain-text source lazily.
+4. **History scrolling:** open the same conversation cold, scroll down through at least 100 messages, scroll back to the first visible assistant block, then repeat warm.
+5. **Deletion race:** delete a message while an AST store is paused before commit; verify that no final/temp entry survives.
+
+The deterministic Compose list fixture is generated in `MarkdownVirtualizationTest` (180 rows). Unit tests generate longer source snapshots for exact append/range behavior. Extend that fixed fixture rather than using real user conversations in profiler recordings.
+
+## Accessibility and reduced motion
+
+On a provisioned device, repeat a streamed paragraph with Android system animations enabled and with animator animations disabled in Developer Options/accessibility settings. Confirm the second case displays each committed text batch without the reveal mask, while TalkBack still reads the full text and selection/copy behaves identically in both cases. The source has a unit test for the policy and the fade remains a draw-only modifier; this device/accessibility check has not been run.
+
+## Counters to capture
+
+The content-free counters are internal and can be inspected in Android Studio's debugger or from a focused instrumentation test:
+
+- `MarkdownParseCache.metrics()` — memory hits/misses/writes and full-parser count, input characters, and elapsed nanoseconds. `fullParseChars` is the key guard against hidden whole-answer reparses. The same bounded LRU entry retains its precomputed content fingerprint so a static Markdown success callback does not SHA-hash the full document on Main.
+- `IncrementalMarkdownMetrics.metrics()` — append count/input characters, estimated unstable-tail characters reparsed, maximum unstable-tail size, and bounded-tail preview fallback count. These counters contain no source text and help verify the active parser's bounded-work contract.
+- `PersistentMarkdownAstCache.get(context).metrics()` — disk hits/misses, bytes read/written, evictions, corrupt entries, and serialization/deserialization duration.
+- `MarkdownBlockHeightCache.metrics()` — measured-height variant hits/misses/writes.
+- `ChatRenderMetrics.snapshot()` — ChatScreen/assistant-card recompositions plus top-level block, list-item, and table-row mount/disposal counts. Compare deltas for the same scroll interval; mount counts should stay near the viewport window, and disposal counts should rise when scrolling away.
+- `ActiveChatStreamState.cumulativeMetrics` — committed batch/line counts, maximum queued complete lines, and measured line-wait/input-to-publish latency. This is publication latency, **not** a measured presentation timestamp.
+- `SentMessageDetector.idScanCount` — assert it stays unchanged for content-only updates and increases once per structural revision.
+
+Counters contain no message body or IDs. Reset `ChatRenderMetrics.resetForTests()` and `MarkdownBlockHeightCache.resetForTests()` between instrumentation cases. Persistent/parse cache metrics are cumulative for the cache instance; use a fresh test cache or a fresh process for cold/warm comparisons.
+
+## Capture frame and main-thread traces
+
+1. Run the app on the fixed device and enable Android Studio **System Trace**/Perfetto with Frame Timeline, main-thread scheduling, Compose, and memory tracks.
+2. Record each fixed scenario for at least 15 seconds after warm-up. Keep the user at the same scroll position and use the same line-batch configuration.
+3. Record frame duration distribution, janky frames, longest main-thread sections, allocation rate, time-to-first-visible-content, parser characters, and visible/prefetched mount/disposal deltas.
+4. Repeat each case three times; report median and range, not the best run. Keep trace files outside Git and redact any personally identifiable data.
+5. Separate the cost of active-stream publication from the cost of the animation and auto-follow frame loop. Repeat with follow-bottom enabled and disabled.
+6. For warm-open, retain app-private `noBackupFilesDir/render-cache` entries between process restarts. For cold-open, clear only the render cache in the test fixture (never a real user's app data) and confirm the parse fallback is asynchronous.
+
+Suggested checks in an Android-connected checkout (not run in this sandbox):
+
+```text
+./gradlew :app:testDebugUnitTest --tests org.starfall.generative.ChatGenerationTest
+./gradlew :app:testDebugUnitTest --tests org.starfall.generative.features.home.chat.ui.markdown.IncrementalMarkdownParserTest
+./gradlew :app:testDebugUnitTest --tests org.starfall.generative.features.home.chat.ui.markdown.LargeMarkdownParagraphTest
+./gradlew :app:testDebugUnitTest --tests org.starfall.generative.features.home.chat.ui.markdown.MarkdownBlockHeightIndexTest
+./gradlew :app:testDebugUnitTest --tests org.starfall.generative.StreamingFadeTrackerTest
+./gradlew :app:testDebugUnitTest --tests org.starfall.generative.MarkdownParserTest
+./gradlew :app:testDebugUnitTest --tests org.starfall.generative.PersistentMarkdownAstCacheTest
+./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=org.starfall.generative.MarkdownVirtualizationTest
+./gradlew :app:lintDebug
+```
+
+Use the repository's normal project-wide verification command from `AGENTS.md` after the focused cases pass. Do not download tooling or dependencies in an isolated/offline environment.
+
+## Result log
+
+| Run | Commit | Device/build | Scenario | Median frame ms / janky % | Full-parse chars | Window mounts/disposals | Notes |
+| --- | --- | --- | --- | --- | ---: | --- | --- |
+| Baseline | Not captured | — | — | — | — | — | Required before claiming improvement. |
+| Candidate | Not captured | — | — | — | — | — | Toolchain/device profiling has not been run in the current sandbox. |
+
+A missing baseline or profile is an explicit verification gap, not a passing performance check. Keep this table updated with actual data; do not fill it with estimates.

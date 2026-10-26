@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 import org.starfall.generative.features.home.chat.logic.ChatGeneration
+import org.starfall.generative.features.home.chat.logic.withUpdatedMessageStructure
 import org.starfall.generative.features.home.chat.logic.input.DirectMediaRequest
 import org.starfall.generative.features.home.chat.logic.shouldGenerateConversationTitle
 import org.starfall.generative.features.home.chat.logic.startedWithDirectMedia
@@ -32,6 +33,7 @@ import org.starfall.generative.shared.storage.ConversationRepository
 import org.starfall.generative.shared.storage.LocalWriteErrors
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
+import org.starfall.generative.features.home.chat.logic.markdown.PersistentMarkdownAstCache
 
 /** Handles chat-message mutations and generation entry points; state is supplied by the ViewModel. */
 internal class ChatMessageActions(
@@ -151,7 +153,8 @@ internal class ChatMessageActions(
                 providerId = baseProvider?.id.orEmpty(),
                 modelId = modelId,
                 profileId = null,
-                selectedInstructionIds = existing?.selectedInstructionIds ?: prefs.instructionLibraryFor(null).selectedIds
+                selectedInstructionIds = existing?.selectedInstructionIds ?: prefs.instructionLibraryFor(null).selectedIds,
+                structuralRevision = (existing?.structuralRevision ?: 0L) + 1L
             )
 
             if (!canGenerate) {
@@ -225,7 +228,8 @@ internal class ChatMessageActions(
         )).copy(
             title = if (isFirstMessage) request.prompt.take(30) else existing.title,
             messages = existing?.messages.orEmpty() + user + assistant,
-            updatedAt = now
+            updatedAt = now,
+            structuralRevision = (existing?.structuralRevision ?: 0L) + 1L
         )
         _currentConversation.value = conversation
         viewModelScope.launch(LocalWriteErrors.handler) {
@@ -378,8 +382,7 @@ internal class ChatMessageActions(
                     activeVersionIndex = previousResponse.versions.size
                 ) ?: StoredMessage(responseId, ChatRole.MODEL, listOf(responseVersion))
                 val updatedMessages = currentMsgs.take(idx + 1) + response
-                val updated = conv.copy(
-                    messages = updatedMessages,
+                val updated = conv.withUpdatedMessageStructure(updatedMessages).copy(
                     summary = summaryAfterMessageMutation(conv, idx, updatedMessages),
                     updatedAt = now,
                     providerId = provider.id,
@@ -389,8 +392,7 @@ internal class ChatMessageActions(
                 return@guardRestoreBoolean startUserMessageResponse(updated, responseId, provider, modelId, prefs)
             }
 
-            val updated = conv.copy(
-                messages = currentMsgs,
+            val updated = conv.withUpdatedMessageStructure(currentMsgs).copy(
                 summary = summaryAfterMessageMutation(conv, idx, currentMsgs),
                 updatedAt = System.currentTimeMillis()
             )
@@ -456,8 +458,8 @@ internal class ChatMessageActions(
         val messageIndex = conv.messages.indexOfFirst { it.id == messageId }
         if (messageIndex == -1) return@guardRestoreUnit
         val currentMsgs = conv.messages.filter { it.id != messageId }
-        val updated = conv.copy(
-            messages = currentMsgs,
+        PersistentMarkdownAstCache.invalidateMessage(conv.id, messageId)
+        val updated = conv.withUpdatedMessageStructure(currentMsgs).copy(
             summary = summaryAfterMessageMutation(conv, messageIndex, currentMsgs),
             updatedAt = System.currentTimeMillis()
         )
@@ -486,6 +488,7 @@ internal class ChatMessageActions(
         val message = currentMsgs[messageIndex]
         if (message.versions.size <= 1) {
             currentMsgs.removeAt(messageIndex)
+            PersistentMarkdownAstCache.invalidateMessage(conv.id, messageId)
         } else {
             val versions = message.versions.toMutableList().apply {
                 removeAt(message.activeVersionIndex.coerceIn(indices))
@@ -496,8 +499,7 @@ internal class ChatMessageActions(
             )
         }
 
-        val updated = conv.copy(
-            messages = currentMsgs,
+        val updated = conv.withUpdatedMessageStructure(currentMsgs).copy(
             summary = summaryAfterMessageMutation(conv, messageIndex, currentMsgs),
             updatedAt = System.currentTimeMillis()
         )
