@@ -54,14 +54,10 @@ internal fun ChunkedStreamingMarkdown(
         var frozen by remember { mutableStateOf(FrozenMarkdown.EMPTY) }
         val appendOnlyGeneration = streamGenerationId != null
 
-        fun prefixStillMatches(text: String, state: FrozenMarkdown): Boolean = when {
-            appendOnlyGeneration -> text.length >= state.prefixLength
-            else -> state.prefixText?.let { prefix -> text.startsWith(prefix) } == true
-        }
 
         // A generation id makes the provider's append-only contract sufficient to validate the prefix in O(1).
         // Without one, retain the exact prefix and verify it before reusing chunks.
-        val valid = if (prefixStillMatches(content, frozen)) frozen else FrozenMarkdown.EMPTY
+        val valid = frozen.takeIf { frozenPrefixMatches(content, it, appendOnlyGeneration) } ?: FrozenMarkdown.EMPTY
         val tailLength = (content.length - valid.prefixLength).coerceAtLeast(0)
         val tailIsPreview = tailLength > MAX_CHUNKED_MARKDOWN_TAIL_CHARS
         val tail = if (tailIsPreview) {
@@ -71,56 +67,13 @@ internal fun ChunkedStreamingMarkdown(
         }
 
         LaunchedEffect(Unit) {
-            snapshotFlow { latestContent }.conflate().collect { text ->
-                var base = frozen.takeIf { prefixStillMatches(text, it) } ?: FrozenMarkdown.EMPTY
-                if (base !== frozen) frozen = base
-                while (true) {                                   // a burst may contain several finished blocks
-                    val current = latestContent
-                    if (!prefixStillMatches(current, base)) break
-                    val restLength = current.length - base.prefixLength
-                    if (restLength > MAX_CHUNKED_MARKDOWN_TAIL_CHARS) break // do not rescan an unclosed huge block
-                    val rest = current.substring(base.prefixLength)
-                    val cut = stableMarkdownPrefixLength(rest)
-                    if (cut <= 0) break
-                    val chunk = rest.substring(0, cut)
-                    val (chunkState, fingerprint) = withContext(Dispatchers.Default) {
-                        val startedAt = System.nanoTime()
-                        val state = try {
-                            parseLibraryMarkdown(chunk)
-                        } finally {
-                            MarkdownParseCache.recordFullParse(chunk.length, System.nanoTime() - startedAt)
-                        }
-                        state to markdownContentFingerprint(chunk)
-                    }
-                    if (chunkState !is State.Success) break      // keep it in the tail; the final render handles it
-                    val chunkIdentity = cacheIdentity?.forBlock("chunk-${base.chunks.size}")
-                    MarkdownParseCache.put(chunk, chunkState, chunkIdentity, fingerprint) // cache before publishing the chunk
-                    val prefixLength = base.prefixLength + chunk.length
-                    val prefixText = if (appendOnlyGeneration) null else base.prefixText.orEmpty() + chunk
-                    val tailText = current.substring(prefixLength)
-                    val tailSeed = withContext(Dispatchers.Default) {
-                        val startedAt = System.nanoTime()
-                        try {
-                            parseLibraryMarkdown(tailText)
-                        } finally {
-                            MarkdownParseCache.recordFullParse(tailText.length, System.nanoTime() - startedAt)
-                        }
-                    }
-                    val latestStillMatches = if (appendOnlyGeneration) {
-                        latestContent.length >= prefixLength
-                    } else {
-                        latestContent.startsWith(prefixText.orEmpty())
-                    }
-                    if (!latestStillMatches) break // text changed during the parse
-                    base = FrozenMarkdown(
-                        prefixLength = prefixLength,
-                        prefixText = prefixText,
-                        chunks = base.chunks.add(FrozenMarkdownChunk(chunk, chunkState, chunkIdentity, fingerprint)),
-                        tailSeed = tailSeed.takeIf { it is State.Success }
-                    )
-                    frozen = base                                // ONE atomic state write: chunk appears, tail shrinks
-                }
-            }
+            observeFrozenMarkdown(
+                latestContent = { latestContent },
+                currentFrozen = { frozen },
+                appendOnlyGeneration = appendOnlyGeneration,
+                cacheIdentity = cacheIdentity,
+                onFrozen = { frozen = it }
+            )
         }
 
         val preferences = LocalCodeRenderingPreferences.current
@@ -137,6 +90,86 @@ internal fun ChunkedStreamingMarkdown(
             typographyKey = typographyKey,
             optionsKey = renderOptionsKey
         )
+    }
+}
+
+private fun frozenPrefixMatches(text: String, state: FrozenMarkdown, appendOnlyGeneration: Boolean): Boolean = when {
+    appendOnlyGeneration -> text.length >= state.prefixLength
+    else -> state.prefixText?.let { prefix -> text.startsWith(prefix) } == true
+}
+
+private suspend fun observeFrozenMarkdown(
+    latestContent: () -> String,
+    currentFrozen: () -> FrozenMarkdown,
+    appendOnlyGeneration: Boolean,
+    cacheIdentity: MarkdownRenderCacheIdentity?,
+    onFrozen: (FrozenMarkdown) -> Unit
+) {
+    snapshotFlow { latestContent() }.conflate().collect { text ->
+        val existing = currentFrozen()
+        var base = existing.takeIf { frozenPrefixMatches(text, it, appendOnlyGeneration) } ?: FrozenMarkdown.EMPTY
+        if (base !== existing) onFrozen(base)
+        while (true) {
+            val current = latestContent()
+            if (!frozenPrefixMatches(current, base, appendOnlyGeneration)) break
+            if (current.length - base.prefixLength > MAX_CHUNKED_MARKDOWN_TAIL_CHARS) break
+            val next = freezeStableMarkdownChunk(base, current, appendOnlyGeneration, cacheIdentity, latestContent)
+                ?: break
+            base = next
+            onFrozen(base)
+        }
+    }
+}
+
+private suspend fun freezeStableMarkdownChunk(
+    base: FrozenMarkdown,
+    current: String,
+    appendOnlyGeneration: Boolean,
+    cacheIdentity: MarkdownRenderCacheIdentity?,
+    latestContent: () -> String
+): FrozenMarkdown? {
+    val rest = current.substring(base.prefixLength)
+    val cut = stableMarkdownPrefixLength(rest)
+    if (cut <= 0) return null
+    val chunk = rest.substring(0, cut)
+    val (chunkState, fingerprint) = withContext(Dispatchers.Default) {
+        val startedAt = System.nanoTime()
+        val state = try {
+            parseLibraryMarkdown(chunk)
+        } finally {
+            MarkdownParseCache.recordFullParse(chunk.length, System.nanoTime() - startedAt)
+        }
+        state to markdownContentFingerprint(chunk)
+    }
+    if (chunkState !is State.Success) return null
+
+    val chunkIdentity = cacheIdentity?.forBlock("chunk-${base.chunks.size}")
+    MarkdownParseCache.put(chunk, chunkState, chunkIdentity, fingerprint)
+    val prefixLength = base.prefixLength + chunk.length
+    val prefixText = if (appendOnlyGeneration) null else base.prefixText.orEmpty() + chunk
+    val tailSeed = parseFrozenTail(current.substring(prefixLength))
+    val latestStillMatches = if (appendOnlyGeneration) {
+        latestContent().length >= prefixLength
+    } else {
+        latestContent().startsWith(prefixText.orEmpty())
+    }
+    if (!latestStillMatches) return null
+    return FrozenMarkdown(
+        prefixLength = prefixLength,
+        prefixText = prefixText,
+        chunks = base.chunks.add(FrozenMarkdownChunk(chunk, chunkState, chunkIdentity, fingerprint)),
+        tailSeed = tailSeed.takeIf { it is State.Success }
+    )
+}
+
+private suspend fun parseFrozenTail(text: String): State {
+    return withContext(Dispatchers.Default) {
+        val startedAt = System.nanoTime()
+        try {
+            parseLibraryMarkdown(text)
+        } finally {
+            MarkdownParseCache.recordFullParse(text.length, System.nanoTime() - startedAt)
+        }
     }
 }
 

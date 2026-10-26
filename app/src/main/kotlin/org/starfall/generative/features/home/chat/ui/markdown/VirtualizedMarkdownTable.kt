@@ -67,7 +67,6 @@ internal fun RenderVirtualizedMarkdownTable(
     if (columnCount == 0) return
 
     val density = LocalDensity.current
-    val layoutDirection = LocalLayoutDirection.current
     val measurer = rememberTextMeasurer()
     val maxCellContentPx = with(density) { (MAX_TABLE_COLUMN_WIDTH - TABLE_CELL_HORIZONTAL_PADDING * 2).toPx() }
     val columnWidths = remember(
@@ -86,13 +85,46 @@ internal fun RenderVirtualizedMarkdownTable(
         )
     }
     val tableWidth = columnWidths.fold(0.dp) { width, columnWidth -> width + columnWidth }
-    val border = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant
-    val headerBackground = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHigh
-    val shape = RoundedCornerShape(8.dp)
     val providedFingerprint = LocalMarkdownContentFingerprint.current
     val contentFingerprint = remember(content, providedFingerprint) {
         providedFingerprint ?: markdownContentFingerprint(content)
     }
+    RenderVirtualizedMarkdownTableFrame(
+        content = content,
+        header = header,
+        bodyRows = bodyRows,
+        columnWidths = columnWidths,
+        tableWidth = tableWidth,
+        identity = identity,
+        contentFingerprint = contentFingerprint,
+        preferencesKey = preferencesKey,
+        typographyKey = typographyKey,
+        settings = settings,
+        baseStyle = baseStyle,
+        headerStyle = headerStyle
+    )
+}
+
+@Composable
+private fun RenderVirtualizedMarkdownTableFrame(
+    content: String,
+    header: TableRow?,
+    bodyRows: List<TableRow>,
+    columnWidths: List<Dp>,
+    tableWidth: Dp,
+    identity: MarkdownRenderCacheIdentity?,
+    contentFingerprint: String,
+    preferencesKey: Int,
+    typographyKey: Int,
+    settings: AnnotatorSettings,
+    baseStyle: TextStyle,
+    headerStyle: TextStyle
+) {
+    val border = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant
+    val headerBackground = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHigh
+    val shape = RoundedCornerShape(8.dp)
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
     val viewport = LocalMarkdownViewportState.current
     val rootTop = remember { mutableFloatStateOf(Float.NaN) }
     val measureRevision = remember { mutableIntStateOf(0) }
@@ -126,90 +158,38 @@ internal fun RenderVirtualizedMarkdownTable(
                         }
                 ) { constraints ->
                     @Suppress("UNUSED_VARIABLE") val observedRevision = measureRevision.intValue
-                    val viewportBounds = viewport?.bounds
-                    val top = rootTop.floatValue
-                    val width = constraints.maxWidth.takeIf { it != Constraints.Infinity } ?: constraints.minWidth
-                    val profile = TableLayoutProfile(
-                        widthPx = width,
-                        columnWidthsHash = columnWidths.hashCode(),
-                        minWidthPx = constraints.minWidth,
-                        maxWidthPx = constraints.maxWidth,
-                        densityMilli = (density.density * 1_000f).toInt(),
-                        fontScaleMilli = (density.fontScale * 1_000f).toInt(),
+                    val context = prepareMarkdownTableLayout(
+                        constraints = constraints,
+                        bodyRows = bodyRows,
+                        columnWidths = columnWidths,
+                        identity = identity,
+                        contentFingerprint = contentFingerprint,
+                        viewportBounds = viewport?.bounds,
+                        rootTop = rootTop.floatValue,
+                        density = density,
                         direction = layoutDirection,
                         typographyKey = typographyKey,
-                        preferencesKey = preferencesKey
+                        preferencesKey = preferencesKey,
+                        indexes = indexes
                     )
-                    val heightIndex = indexes.getOrPut(profile) {
-                        val topBottomPx = with(density) { (TABLE_CELL_VERTICAL_PADDING * 2).roundToPx() }
-                        val heights = IntArray(bodyRows.size) { index ->
-                            val row = bodyRows[index]
-                            val key = tableRowCacheKey(identity, contentFingerprint, profile, index, row)
-                            MarkdownBlockHeightCache.get(key) ?: estimateTableRowHeight(
-                                row = row,
-                                columnWidths = columnWidths,
-                                density = density.density,
-                                cellVerticalPaddingPx = topBottomPx
-                            )
-                        }
-                        if (indexes.size >= MAX_TABLE_LAYOUT_PROFILES) indexes.clear()
-                        MarkdownBlockHeightIndex(heights)
-                    }
-                    val totalHeight = heightIndex.totalHeight.coerceAtMost(MAX_TABLE_LAYOUT_HEIGHT_PX)
-                    val visibleStart = if (viewportBounds == null || top.isNaN()) 0
-                    else (viewportBounds.top - top).toInt()
-                    val visibleEnd = if (viewportBounds == null || top.isNaN()) INITIAL_TABLE_VIEWPORT_PX
-                    else (viewportBounds.bottom - top).toInt()
-                    val viewportHeight = if (viewportBounds == null) INITIAL_TABLE_VIEWPORT_PX
-                    else (viewportBounds.bottom - viewportBounds.top).toInt().coerceAtLeast(1)
-                    val overscan = (viewportHeight * TABLE_OVERSCAN_FRACTION).toInt().coerceAtLeast(1)
-                    val startOffset = (visibleStart - overscan).coerceAtLeast(0)
-                    val endOffset = (visibleEnd + overscan).coerceAtMost(totalHeight)
-                    val first = if (viewportBounds != null && top > viewportBounds.bottom) bodyRows.size
-                    else heightIndex.blockAt(startOffset)
-                    val measured = ArrayList<Pair<Int, androidx.compose.ui.layout.Placeable>>()
-                    var index = first
-                    while (index < bodyRows.size && heightIndex.topOf(index) < endOffset) {
-                        val row = bodyRows[index]
-                        val cacheKey = tableRowCacheKey(identity, contentFingerprint, profile, index, row)
-                        val rowIndex = index + 1
-                        val placeable = subcompose("table-row:${tableRowSlot(index, row)}") {
-                            TrackMarkdownVirtualizedScope(MarkdownVirtualizedScope.TABLE_ROW)
-                            Box(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .onSizeChanged { size ->
-                                        if (heightIndex.update(rowIndex - 1, size.height)) {
-                                            MarkdownBlockHeightCache.put(cacheKey, size.height)
-                                            measureRevision.intValue += 1
-                                        }
-                                    }
-                            ) {
-                                MarkdownTableRowContent(
-                                    content = content,
-                                    row = row,
-                                    rowIndex = rowIndex,
-                                    columnWidths = columnWidths,
-                                    settings = settings,
-                                    baseStyle = baseStyle,
-                                    headerStyle = headerStyle,
-                                    headerBackground = headerBackground
-                                )
-                            }
-                        }.single().measure(Constraints(
-                            minWidth = width,
-                            maxWidth = width,
-                            minHeight = 0,
-                            maxHeight = Constraints.Infinity
-                        ))
-                        measured += index to placeable
-                        index++
-                    }
-
-                    val layoutWidth = constraints.constrainWidth(width)
-                    val layoutHeight = constraints.constrainHeight(heightIndex.totalHeight.coerceAtMost(MAX_TABLE_LAYOUT_HEIGHT_PX))
-                    layout(layoutWidth, layoutHeight) {
-                        var y = measured.firstOrNull()?.first?.let(heightIndex::topOf) ?: 0
+                    val measured = measureVisibleMarkdownTableRows(
+                        context = context,
+                        bodyRows = bodyRows,
+                        content = content,
+                        identity = identity,
+                        contentFingerprint = contentFingerprint,
+                        columnWidths = columnWidths,
+                        settings = settings,
+                        baseStyle = baseStyle,
+                        headerStyle = headerStyle,
+                        headerBackground = headerBackground,
+                        measureRevision = { measureRevision.intValue++ }
+                    )
+                    val layoutHeight = constraints.constrainHeight(
+                        context.heightIndex.totalHeight.coerceAtMost(MAX_TABLE_LAYOUT_HEIGHT_PX)
+                    )
+                    layout(context.layoutWidth, layoutHeight) {
+                        var y = measured.firstOrNull()?.first?.let(context.heightIndex::topOf) ?: 0
                         measured.forEach { (_, placeable) ->
                             placeable.place(0, y.coerceAtMost(layoutHeight))
                             y = (y + placeable.height).coerceAtMost(layoutHeight)
@@ -219,6 +199,176 @@ internal fun RenderVirtualizedMarkdownTable(
             }
         }
     }
+}
+
+private data class MarkdownTableViewportLayout(
+    val profile: TableLayoutProfile,
+    val heightIndex: MarkdownBlockHeightIndex,
+    val layoutWidth: Int,
+    val visibleRows: List<Int>
+)
+
+private fun prepareMarkdownTableLayout(
+    constraints: Constraints,
+    bodyRows: List<TableRow>,
+    columnWidths: List<Dp>,
+    identity: MarkdownRenderCacheIdentity?,
+    contentFingerprint: String,
+    viewportBounds: androidx.compose.ui.geometry.Rect?,
+    rootTop: Float,
+    density: androidx.compose.ui.unit.Density,
+    direction: LayoutDirection,
+    typographyKey: Int,
+    preferencesKey: Int,
+    indexes: LinkedHashMap<TableLayoutProfile, MarkdownBlockHeightIndex>
+): MarkdownTableViewportLayout {
+    val width = constraints.maxWidth.takeIf { it != Constraints.Infinity } ?: constraints.minWidth
+    val profile = TableLayoutProfile(
+        widthPx = width,
+        columnWidthsHash = columnWidths.hashCode(),
+        minWidthPx = constraints.minWidth,
+        maxWidthPx = constraints.maxWidth,
+        densityMilli = (density.density * 1_000f).toInt(),
+        fontScaleMilli = (density.fontScale * 1_000f).toInt(),
+        direction = direction,
+        typographyKey = typographyKey,
+        preferencesKey = preferencesKey
+    )
+    val heightIndex = indexes.getOrPut(profile) {
+        createMarkdownTableHeightIndex(bodyRows, columnWidths, identity, contentFingerprint, profile, density)
+            .also { if (indexes.size >= MAX_TABLE_LAYOUT_PROFILES) indexes.clear() }
+    }
+    val totalHeight = heightIndex.totalHeight.coerceAtMost(MAX_TABLE_LAYOUT_HEIGHT_PX)
+    return MarkdownTableViewportLayout(
+        profile = profile,
+        heightIndex = heightIndex,
+        layoutWidth = constraints.constrainWidth(width),
+        visibleRows = visibleMarkdownTableRows(heightIndex, bodyRows.size, totalHeight, viewportBounds, rootTop)
+    )
+}
+
+private fun createMarkdownTableHeightIndex(
+    bodyRows: List<TableRow>,
+    columnWidths: List<Dp>,
+    identity: MarkdownRenderCacheIdentity?,
+    contentFingerprint: String,
+    profile: TableLayoutProfile,
+    density: androidx.compose.ui.unit.Density
+): MarkdownBlockHeightIndex {
+    val cellVerticalPaddingPx = with(density) { (TABLE_CELL_VERTICAL_PADDING * 2).roundToPx() }
+    val heights = IntArray(bodyRows.size) { index ->
+        val row = bodyRows[index]
+        val key = tableRowCacheKey(identity, contentFingerprint, profile, index, row)
+        MarkdownBlockHeightCache.get(key) ?: estimateTableRowHeight(
+            row = row,
+            columnWidths = columnWidths,
+            density = density.density,
+            cellVerticalPaddingPx = cellVerticalPaddingPx
+        )
+    }
+    return MarkdownBlockHeightIndex(heights)
+}
+
+private fun visibleMarkdownTableRows(
+    heightIndex: MarkdownBlockHeightIndex,
+    rowCount: Int,
+    totalHeight: Int,
+    viewportBounds: androidx.compose.ui.geometry.Rect?,
+    rootTop: Float
+): List<Int> {
+    val visibleStart = if (viewportBounds == null || rootTop.isNaN()) 0
+    else (viewportBounds.top - rootTop).toInt()
+    val visibleEnd = if (viewportBounds == null || rootTop.isNaN()) INITIAL_TABLE_VIEWPORT_PX
+    else (viewportBounds.bottom - rootTop).toInt()
+    val viewportHeight = if (viewportBounds == null) INITIAL_TABLE_VIEWPORT_PX
+    else (viewportBounds.bottom - viewportBounds.top).toInt().coerceAtLeast(1)
+    val overscan = (viewportHeight * TABLE_OVERSCAN_FRACTION).toInt().coerceAtLeast(1)
+    val startOffset = (visibleStart - overscan).coerceAtLeast(0)
+    val endOffset = (visibleEnd + overscan).coerceAtMost(totalHeight)
+    val first = if (viewportBounds != null && rootTop > viewportBounds.bottom) rowCount
+    else heightIndex.blockAt(startOffset)
+    val rows = ArrayList<Int>()
+    var index = first
+    while (index < rowCount && heightIndex.topOf(index) < endOffset) {
+        rows += index
+        index++
+    }
+    return rows
+}
+
+private fun androidx.compose.ui.layout.SubcomposeMeasureScope.measureVisibleMarkdownTableRows(
+    context: MarkdownTableViewportLayout,
+    bodyRows: List<TableRow>,
+    content: String,
+    identity: MarkdownRenderCacheIdentity?,
+    contentFingerprint: String,
+    columnWidths: List<Dp>,
+    settings: AnnotatorSettings,
+    baseStyle: TextStyle,
+    headerStyle: TextStyle,
+    headerBackground: androidx.compose.ui.graphics.Color,
+    measureRevision: () -> Unit
+): List<Pair<Int, androidx.compose.ui.layout.Placeable>> = context.visibleRows.map { bodyIndex ->
+    measureMarkdownTableRow(
+        bodyIndex = bodyIndex,
+        row = bodyRows[bodyIndex],
+        context = context,
+        content = content,
+        identity = identity,
+        contentFingerprint = contentFingerprint,
+        columnWidths = columnWidths,
+        settings = settings,
+        baseStyle = baseStyle,
+        headerStyle = headerStyle,
+        headerBackground = headerBackground,
+        measureRevision = measureRevision
+    )
+}
+
+private fun androidx.compose.ui.layout.SubcomposeMeasureScope.measureMarkdownTableRow(
+    bodyIndex: Int,
+    row: TableRow,
+    context: MarkdownTableViewportLayout,
+    content: String,
+    identity: MarkdownRenderCacheIdentity?,
+    contentFingerprint: String,
+    columnWidths: List<Dp>,
+    settings: AnnotatorSettings,
+    baseStyle: TextStyle,
+    headerStyle: TextStyle,
+    headerBackground: androidx.compose.ui.graphics.Color,
+    measureRevision: () -> Unit
+): Pair<Int, androidx.compose.ui.layout.Placeable> {
+    val cacheKey = tableRowCacheKey(identity, contentFingerprint, context.profile, bodyIndex, row)
+    val rowIndex = bodyIndex + 1
+    val placeable = subcompose("table-row:${tableRowSlot(bodyIndex, row)}") {
+        TrackMarkdownVirtualizedScope(MarkdownVirtualizedScope.TABLE_ROW)
+        Box(
+            Modifier.fillMaxWidth().onSizeChanged { size ->
+                if (context.heightIndex.update(rowIndex - 1, size.height)) {
+                    MarkdownBlockHeightCache.put(cacheKey, size.height)
+                    measureRevision()
+                }
+            }
+        ) {
+            MarkdownTableRowContent(
+                content = content,
+                row = row,
+                rowIndex = rowIndex,
+                columnWidths = columnWidths,
+                settings = settings,
+                baseStyle = baseStyle,
+                headerStyle = headerStyle,
+                headerBackground = headerBackground
+            )
+        }
+    }.single().measure(Constraints(
+        minWidth = context.profile.widthPx,
+        maxWidth = context.profile.widthPx,
+        minHeight = 0,
+        maxHeight = Constraints.Infinity
+    ))
+    return bodyIndex to placeable
 }
 
 @Composable

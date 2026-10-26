@@ -81,114 +81,219 @@ internal fun VirtualizedMarkdownBlocks(
             }
         }
     ) { constraints ->
-        // A tiny document is cheaper and more predictable with the renderer's regular eager path.
         if (nodes.size <= SMALL_DOCUMENT_BLOCK_LIMIT) {
-            val placeables = subcompose(EagerBlocksSlot) {
-                androidx.compose.foundation.layout.Column(modifier = Modifier.fillMaxWidth()) {
-                    nodes.forEachIndexed { index, node ->
-                        androidx.compose.runtime.key(blockSlot(index, node)) {
-                            MarkdownBlockElement(node, components, content, includeSpacer = true)
-                        }
-                    }
-                }
-            }.map { it.measure(constraints) }
-            val placeable = placeables.single()
+            val placeable = measureEagerMarkdownBlocks(nodes, components, content, constraints)
             return@SubcomposeLayout layout(placeable.width, placeable.height) { placeable.place(0, 0) }
         }
 
-        // Reading these state values here invalidates the measure only when the viewport or a measured
-        // child size changes; response text itself is not used as a scroll-frame key.
-        val currentRevision = measureRevision.intValue
-        val viewportBounds = viewport?.bounds
-        val rootTop = measuredRootTop.floatValue
-        val width = constraints.maxWidth.takeIf { it != Constraints.Infinity } ?: constraints.minWidth
-        val profile = LayoutProfile(
-            widthPx = width,
-            minWidthPx = constraints.minWidth,
-            maxWidthPx = constraints.maxWidth,
-            minHeightPx = constraints.minHeight,
-            maxHeightPx = constraints.maxHeight,
-            densityMilli = (density.density * 1_000f).toInt(),
-            fontScaleMilli = (density.fontScale * 1_000f).toInt(),
+        @Suppress("UNUSED_VARIABLE") val observedRevision = measureRevision.intValue
+        val context = prepareMarkdownBlockLayout(
+            constraints = constraints,
+            nodes = nodes,
+            content = content,
+            identity = identity,
+            contentFingerprint = contentFingerprint,
+            viewportBounds = viewport?.bounds,
+            rootTop = measuredRootTop.floatValue,
+            density = density,
             direction = layoutDirection,
             typographyKey = typographyKey,
-            optionsKey = optionsKey
+            optionsKey = optionsKey,
+            indexes = indexes
         )
-        val heightIndex = indexes.getOrPut(profile) {
-            val spacingPx = with(density) { BLOCK_SPACING.roundToPx() }
-            val estimatedHeights = IntArray(nodes.size) { index ->
-                val node = nodes[index]
-                val key = blockHeightCacheKey(identity, contentFingerprint, profile, index, node)
-                MarkdownBlockHeightCache.get(key)
-                    ?: estimateBlockHeight(node, content, width, density.density, spacingPx)
-            }
-            if (indexes.size >= MAX_LAYOUT_PROFILES_PER_MESSAGE) indexes.clear()
-            MarkdownBlockHeightIndex(estimatedHeights)
-        }
-        // The state read is intentionally observed by the measure policy: onSizeChanged below updates
-        // the prefix tree and increments this revision to schedule a fresh range calculation.
-        @Suppress("UNUSED_VARIABLE") val observedRevision = currentRevision
-
-        val totalHeight = heightIndex.totalHeight.coerceAtMost(MAX_LAYOUT_HEIGHT_PX)
-        val visibleStart = if (viewportBounds == null || rootTop.isNaN()) 0
-        else (viewportBounds.top - rootTop).toInt()
-        val visibleEnd = if (viewportBounds == null || rootTop.isNaN()) INITIAL_VIEWPORT_ESTIMATE_PX
-        else (viewportBounds.bottom - rootTop).toInt()
-        val viewportHeight = if (viewportBounds == null) INITIAL_VIEWPORT_ESTIMATE_PX
-        else (viewportBounds.bottom - viewportBounds.top).toInt().coerceAtLeast(1)
-        val overscan = (viewportHeight * OVERSCAN_FRACTION).toInt().coerceAtLeast(1)
-        val startOffset = (visibleStart - overscan).coerceAtLeast(0)
-        val endOffset = (visibleEnd + overscan).coerceAtMost(totalHeight)
-        val first = if (viewportBounds != null && rootTop > viewportBounds.bottom) {
-            nodes.size
-        } else heightIndex.blockAt(startOffset)
-        val selected = ArrayList<Int>()
-        var index = first
-        while (index < nodes.size && heightIndex.topOf(index) < endOffset) {
-            selected += index
-            index += 1
-        }
-
-        val measured = ArrayList<Pair<Int, androidx.compose.ui.layout.Placeable>>(selected.size)
-        selected.forEach { blockIndex ->
-            val node = nodes[blockIndex]
-            val slot = blockSlot(blockIndex, node)
-            val cacheKey = blockHeightCacheKey(identity, contentFingerprint, profile, blockIndex, node)
-            val placeable = subcompose(slot) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onSizeChanged { size ->
-                            val height = size.height
-                            if (height > 0 && heightIndex.update(blockIndex, height)) {
-                                MarkdownBlockHeightCache.put(cacheKey, height)
-                                measureRevision.intValue += 1
-                            }
-                        }
-                ) {
-                    TrackMarkdownVirtualizedScope(MarkdownVirtualizedScope.TOP_LEVEL_BLOCK)
-                    MarkdownBlockElement(node, components, content, includeSpacer = true)
-                }
-            }.single().measure(Constraints(
-                minWidth = 0,
-                maxWidth = width,
-                minHeight = 0,
-                maxHeight = Constraints.Infinity
-            ))
-            measured += blockIndex to placeable
-        }
-
-        val actualTotalHeight = heightIndex.totalHeight.coerceAtMost(MAX_LAYOUT_HEIGHT_PX)
-        val layoutWidth = constraints.constrainWidth(width)
-        val layoutHeight = constraints.constrainHeight(actualTotalHeight)
-        layout(layoutWidth, layoutHeight) {
-            var y = measured.firstOrNull()?.first?.let(heightIndex::topOf) ?: 0
+        val measured = measureVisibleMarkdownBlocks(
+            context = context,
+            nodes = nodes,
+            components = components,
+            content = content,
+            identity = identity,
+            contentFingerprint = contentFingerprint,
+            measureRevision = { measureRevision.intValue++ }
+        )
+        val layoutHeight = constraints.constrainHeight(
+            context.heightIndex.totalHeight.coerceAtMost(MAX_LAYOUT_HEIGHT_PX)
+        )
+        layout(context.layoutWidth, layoutHeight) {
+            var y = measured.firstOrNull()?.first?.let(context.heightIndex::topOf) ?: 0
             measured.forEach { (_, placeable) ->
                 placeable.place(0, y.coerceAtMost(layoutHeight))
                 y = (y + placeable.height).coerceAtMost(layoutHeight)
             }
         }
     }
+}
+
+private fun androidx.compose.ui.layout.SubcomposeMeasureScope.measureEagerMarkdownBlocks(
+    nodes: List<ASTNode>,
+    components: MarkdownComponents,
+    content: String,
+    constraints: Constraints
+): androidx.compose.ui.layout.Placeable = subcompose(EagerBlocksSlot) {
+    androidx.compose.foundation.layout.Column(modifier = Modifier.fillMaxWidth()) {
+        nodes.forEachIndexed { index, node ->
+            androidx.compose.runtime.key(blockSlot(index, node)) {
+                MarkdownBlockElement(node, components, content, includeSpacer = true)
+            }
+        }
+    }
+}.single().measure(constraints)
+
+private data class MarkdownBlockViewportLayout(
+    val profile: LayoutProfile,
+    val heightIndex: MarkdownBlockHeightIndex,
+    val layoutWidth: Int,
+    val visibleRows: List<Int>
+)
+
+private fun prepareMarkdownBlockLayout(
+    constraints: Constraints,
+    nodes: List<ASTNode>,
+    content: String,
+    identity: MarkdownRenderCacheIdentity?,
+    contentFingerprint: String,
+    viewportBounds: Rect?,
+    rootTop: Float,
+    density: androidx.compose.ui.unit.Density,
+    direction: LayoutDirection,
+    typographyKey: Int,
+    optionsKey: Int,
+    indexes: LinkedHashMap<LayoutProfile, MarkdownBlockHeightIndex>
+): MarkdownBlockViewportLayout {
+    val width = constraints.maxWidth.takeIf { it != Constraints.Infinity } ?: constraints.minWidth
+    val profile = markdownLayoutProfile(constraints, width, density, direction, typographyKey, optionsKey)
+    val heightIndex = indexes.getOrPut(profile) {
+        createMarkdownBlockHeightIndex(nodes, content, identity, contentFingerprint, profile, width, density)
+            .also { if (indexes.size >= MAX_LAYOUT_PROFILES_PER_MESSAGE) indexes.clear() }
+    }
+    val totalHeight = heightIndex.totalHeight.coerceAtMost(MAX_LAYOUT_HEIGHT_PX)
+    val visibleRows = visibleMarkdownBlockRows(heightIndex, nodes.size, totalHeight, viewportBounds, rootTop)
+    return MarkdownBlockViewportLayout(
+        profile = profile,
+        heightIndex = heightIndex,
+        layoutWidth = constraints.constrainWidth(width),
+        visibleRows = visibleRows
+    )
+}
+
+private fun markdownLayoutProfile(
+    constraints: Constraints,
+    width: Int,
+    density: androidx.compose.ui.unit.Density,
+    direction: LayoutDirection,
+    typographyKey: Int,
+    optionsKey: Int
+): LayoutProfile = LayoutProfile(
+    widthPx = width,
+    minWidthPx = constraints.minWidth,
+    maxWidthPx = constraints.maxWidth,
+    minHeightPx = constraints.minHeight,
+    maxHeightPx = constraints.maxHeight,
+    densityMilli = (density.density * 1_000f).toInt(),
+    fontScaleMilli = (density.fontScale * 1_000f).toInt(),
+    direction = direction,
+    typographyKey = typographyKey,
+    optionsKey = optionsKey
+)
+
+private fun createMarkdownBlockHeightIndex(
+    nodes: List<ASTNode>,
+    content: String,
+    identity: MarkdownRenderCacheIdentity?,
+    contentFingerprint: String,
+    profile: LayoutProfile,
+    width: Int,
+    density: androidx.compose.ui.unit.Density
+): MarkdownBlockHeightIndex {
+    val spacingPx = with(density) { BLOCK_SPACING.roundToPx() }
+    val heights = IntArray(nodes.size) { index ->
+        val node = nodes[index]
+        val key = blockHeightCacheKey(identity, contentFingerprint, profile, index, node)
+        MarkdownBlockHeightCache.get(key)
+            ?: estimateBlockHeight(node, content, width, density.density, spacingPx)
+    }
+    return MarkdownBlockHeightIndex(heights)
+}
+
+private fun visibleMarkdownBlockRows(
+    heightIndex: MarkdownBlockHeightIndex,
+    rowCount: Int,
+    totalHeight: Int,
+    viewportBounds: Rect?,
+    rootTop: Float
+): List<Int> {
+    val visibleStart = if (viewportBounds == null || rootTop.isNaN()) 0
+    else (viewportBounds.top - rootTop).toInt()
+    val visibleEnd = if (viewportBounds == null || rootTop.isNaN()) INITIAL_VIEWPORT_ESTIMATE_PX
+    else (viewportBounds.bottom - rootTop).toInt()
+    val viewportHeight = if (viewportBounds == null) INITIAL_VIEWPORT_ESTIMATE_PX
+    else (viewportBounds.bottom - viewportBounds.top).toInt().coerceAtLeast(1)
+    val overscan = (viewportHeight * OVERSCAN_FRACTION).toInt().coerceAtLeast(1)
+    val startOffset = (visibleStart - overscan).coerceAtLeast(0)
+    val endOffset = (visibleEnd + overscan).coerceAtMost(totalHeight)
+    val first = if (viewportBounds != null && rootTop > viewportBounds.bottom) rowCount
+    else heightIndex.blockAt(startOffset)
+    val rows = ArrayList<Int>()
+    var index = first
+    while (index < rowCount && heightIndex.topOf(index) < endOffset) {
+        rows += index
+        index++
+    }
+    return rows
+}
+
+private fun androidx.compose.ui.layout.SubcomposeMeasureScope.measureVisibleMarkdownBlocks(
+    context: MarkdownBlockViewportLayout,
+    nodes: List<ASTNode>,
+    components: MarkdownComponents,
+    content: String,
+    identity: MarkdownRenderCacheIdentity?,
+    contentFingerprint: String,
+    measureRevision: () -> Unit
+): List<Pair<Int, androidx.compose.ui.layout.Placeable>> = context.visibleRows.map { blockIndex ->
+    measureMarkdownBlock(
+        blockIndex = blockIndex,
+        node = nodes[blockIndex],
+        context = context,
+        components = components,
+        content = content,
+        identity = identity,
+        contentFingerprint = contentFingerprint,
+        measureRevision = measureRevision
+    )
+}
+
+private fun androidx.compose.ui.layout.SubcomposeMeasureScope.measureMarkdownBlock(
+    blockIndex: Int,
+    node: ASTNode,
+    context: MarkdownBlockViewportLayout,
+    components: MarkdownComponents,
+    content: String,
+    identity: MarkdownRenderCacheIdentity?,
+    contentFingerprint: String,
+    measureRevision: () -> Unit
+): Pair<Int, androidx.compose.ui.layout.Placeable> {
+    val cacheKey = blockHeightCacheKey(identity, contentFingerprint, context.profile, blockIndex, node)
+    val placeable = subcompose(blockSlot(blockIndex, node)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onSizeChanged { size ->
+                    if (size.height > 0 && context.heightIndex.update(blockIndex, size.height)) {
+                        MarkdownBlockHeightCache.put(cacheKey, size.height)
+                        measureRevision()
+                    }
+                }
+        ) {
+            TrackMarkdownVirtualizedScope(MarkdownVirtualizedScope.TOP_LEVEL_BLOCK)
+            MarkdownBlockElement(node, components, content, includeSpacer = true)
+        }
+    }.single().measure(Constraints(
+        minWidth = 0,
+        maxWidth = context.profile.widthPx,
+        minHeight = 0,
+        maxHeight = Constraints.Infinity
+    ))
+    return blockIndex to placeable
 }
 
 private data class LayoutProfile(

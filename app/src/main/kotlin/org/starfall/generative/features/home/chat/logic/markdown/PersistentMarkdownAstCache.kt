@@ -203,13 +203,10 @@ internal class PersistentMarkdownAstCache internal constructor(
         state: State.Success,
         capturedEpoch: MarkdownAstCacheEpoch
     ): Boolean = withContext(Dispatchers.IO) {
-        val epoch = capturedEpoch
         if (content.length > MAX_PERSISTED_SOURCE_CHARS || state.content != content ||
-            !isCurrent(identity, epoch)
+            !isCurrent(identity, capturedEpoch)
         ) return@withContext false
-
         val tree = flatten(state.node) ?: return@withContext false
-        val startedAt = System.nanoTime()
         val entry = DiskEntry(
             schemaVersion = SCHEMA_VERSION,
             parserVersion = PARSER_VERSION,
@@ -218,40 +215,61 @@ internal class PersistentMarkdownAstCache internal constructor(
             nodes = tree,
             links = collectLinks(state.node, content)
         )
-        val serialized = try {
+        persistSerializedEntry(identity, content, capturedEpoch, serialize(entry))
+    }
+
+    private fun serialize(entry: DiskEntry): ByteArray {
+        val startedAt = System.nanoTime()
+        return try {
             json.encodeToString(entry).toByteArray(StandardCharsets.UTF_8)
         } finally {
             serializeNanos.addAndGet(System.nanoTime() - startedAt)
         }
-        if (serialized.size.toLong() > MAX_ENTRY_BYTES || !isCurrent(identity, epoch)) return@withContext false
+    }
 
-        if (!root.exists() && !root.mkdirs() && !root.isDirectory) return@withContext false
+    private suspend fun persistSerializedEntry(
+        identity: MarkdownRenderCacheIdentity,
+        content: String,
+        epoch: MarkdownAstCacheEpoch,
+        serialized: ByteArray
+    ): Boolean {
+        if (serialized.size.toLong() > MAX_ENTRY_BYTES || !isCurrent(identity, epoch)) return false
+        if (!root.exists() && !root.mkdirs() && !root.isDirectory) return false
+
         val destination = entryFile(identity, content)
         val temporary = File(root, "${destination.name}.${java.util.UUID.randomUUID()}.tmp")
-        try {
+        return try {
             FileOutputStream(temporary).use { output ->
                 output.write(serialized)
                 output.fd.sync()
             }
             beforeCommitForTest()
-            synchronized(lock) {
-                if (!isCurrentLocked(identity, epoch)) return@synchronized false
-                if (destination.isFile) {
-                    temporary.delete()
-                    destination.setLastModified(System.currentTimeMillis())
-                    return@synchronized true
-                }
-                if (!temporary.renameTo(destination)) return@synchronized false
-                bytesWrittenCount.addAndGet(serialized.size.toLong())
-                true
-            }.also { committed ->
-                if (committed) evictToBudget()
-            }
+            commitTemporaryEntry(identity, epoch, destination, temporary, serialized.size)
         } catch (_: IOException) {
             false
         } finally {
             if (temporary.exists()) temporary.delete()
         }
+    }
+
+    private fun commitTemporaryEntry(
+        identity: MarkdownRenderCacheIdentity,
+        epoch: MarkdownAstCacheEpoch,
+        destination: File,
+        temporary: File,
+        byteCount: Int
+    ): Boolean = synchronized(lock) {
+        if (!isCurrentLocked(identity, epoch)) return@synchronized false
+        if (destination.isFile) {
+            temporary.delete()
+            destination.setLastModified(System.currentTimeMillis())
+            return@synchronized true
+        }
+        if (!temporary.renameTo(destination)) return@synchronized false
+        bytesWrittenCount.addAndGet(byteCount.toLong())
+        true
+    }.also { committed ->
+        if (committed) evictToBudget()
     }
 
     /** In-memory tombstone is installed synchronously before asynchronous physical cleanup starts. */

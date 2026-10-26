@@ -81,6 +81,27 @@ fun MarkdownRenderer(
 ) {
     val context = LocalContext.current.applicationContext
     val persistentCache = remember(context) { PersistentMarkdownAstCache.get(context) }
+    RegisterMarkdownCacheInvalidators(persistentCache)
+    if (content.isBlank()) return
+    if (content.length > MAX_MARKDOWN_RENDER_CHARS) {
+        TruncatedMarkdown(content, modifier, fillMaxWidth)
+        return
+    }
+    RenderMarkdownDocument(
+        content = content,
+        modifier = modifier,
+        isStreaming = isStreaming,
+        latexMode = latexMode,
+        fillMaxWidth = fillMaxWidth,
+        trimLeadingBlockSpace = trimLeadingBlockSpace,
+        initialParse = initialParse,
+        cacheIdentity = cacheIdentity,
+        persistentCache = persistentCache
+    )
+}
+
+@Composable
+private fun RegisterMarkdownCacheInvalidators(persistentCache: PersistentMarkdownAstCache) {
     SideEffect {
         persistentCache.registerMemoryInvalidator(MarkdownParseCache) { conversationId, messageId ->
             when {
@@ -97,107 +118,58 @@ fun MarkdownRenderer(
             }
         }
     }
-    if (content.isBlank()) return
-    if (content.length > MAX_MARKDOWN_RENDER_CHARS) {
-        SelectionContainer {
-            Text(
-                text = content.take(MAX_MARKDOWN_RENDER_CHARS) + "\n\n" + stringResource(R.string.chat_response_truncated),
-                style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp),
-                modifier = modifier.then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)
-            )
-        }
-        return
+}
+
+@Composable
+private fun TruncatedMarkdown(content: String, modifier: Modifier, fillMaxWidth: Boolean) {
+    SelectionContainer {
+        Text(
+            text = content.take(MAX_MARKDOWN_RENDER_CHARS) + "\n\n" + stringResource(R.string.chat_response_truncated),
+            style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp),
+            modifier = modifier.then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)
+        )
     }
-    val latestContent by rememberUpdatedState(content)
-    val latestCacheIdentity by rememberUpdatedState(cacheIdentity)
-    val latestInitialParse by rememberUpdatedState(initialParse)
-    val streamingNow by rememberUpdatedState(isStreaming)
-    // A tree parsed earlier in this process is shown on the very first frame, so a reopened chat has its
-    // final height immediately instead of growing once the background parse finishes.
-    val inheritedFingerprint = LocalMarkdownContentFingerprint.current
-    val latestInheritedFingerprint by rememberUpdatedState(inheritedFingerprint)
-    val initialParsed = remember {
-        initialParse ?: MarkdownParseCache.get(content, cacheIdentity)
-    }
-    var parsed by remember {
-        mutableStateOf<State>(initialParsed ?: State.Loading())
-    }
-    var parsedFingerprint by remember {
-        mutableStateOf(inheritedFingerprint ?: MarkdownParseCache.getFingerprint(content, cacheIdentity))
-    }
-    val settledParse = parsed
-    TrackPendingWork(settledParse is State.Loading)
-    TrackReadyAssets(
-        if (settledParse is State.Success) listOf(AssetKey.Markdown(settledParse.content, cacheIdentity)) else emptyList()
-    )
-    LaunchedEffect(Unit) {
-        // Disk hydration and parser fallback are both off Main. Conflation keeps rapid source changes
-        // from queuing an unbounded series of obsolete parse jobs.
-        snapshotFlow { Triple(latestContent, latestCacheIdentity, streamingNow) }.conflate().collect { update ->
-            val (input, identity, activeStream) = update
-            val epoch = identity?.let(persistentCache::captureEpoch)
-            val inMemory = MarkdownParseCache.get(input, identity)
-            val memoryFingerprint = if (inMemory != null) MarkdownParseCache.getFingerprint(input, identity) else null
-            val onDisk = if (inMemory == null && !activeStream && identity != null && epoch != null) {
-                persistentCache.load(identity, input, epoch)
-            } else null
-            val seeded = latestInitialParse?.takeIf { state ->
-                state is State.Success && state.content == input
-            }
-            val result: Pair<State, String?> = when {
-                inMemory != null -> inMemory to (
-                    memoryFingerprint ?: withContext(Dispatchers.Default) { markdownContentFingerprint(input) }
-                    )
-                onDisk != null -> onDisk to withContext(Dispatchers.Default) { markdownContentFingerprint(input) }
-                seeded is State.Success -> seeded to (
-                    latestInheritedFingerprint ?: withContext(Dispatchers.Default) { markdownContentFingerprint(input) }
-                    )
-                else -> withContext(Dispatchers.Default) {
-                    val startedAt = System.nanoTime()
-                    val state = try {
-                        parseLibraryMarkdown(input)
-                    } finally {
-                        MarkdownParseCache.recordFullParse(input.length, System.nanoTime() - startedAt)
-                    }
-                    state to if (state is State.Success) markdownContentFingerprint(input) else null
-                }
-            }
-            val (state, resultFingerprint) = result
-            parsed = state
-            parsedFingerprint = resultFingerprint
-            if (!activeStream && state is State.Success) {
-                MarkdownParseCache.put(input, state, identity, resultFingerprint)
-                if (identity != null && onDisk == null && epoch != null) {
-                    persistentCache.store(identity, input, state, epoch)
-                }
-            }
-        }
-    }
-    LaunchedEffect(isStreaming, settledParse, content, cacheIdentity, parsedFingerprint) {
-        // The last streamed chunk may have been parsed before the answer became final. Persist it under
-        // its immutable message/block/content key without delaying stream completion or UI collection.
-        if (!isStreaming && settledParse is State.Success && settledParse.content == content) {
-            val fingerprint = parsedFingerprint ?: withContext(Dispatchers.Default) {
-                markdownContentFingerprint(content)
-            }
-            MarkdownParseCache.put(settledParse.content, settledParse, cacheIdentity, fingerprint)
-            if (cacheIdentity != null) {
-                val epoch = persistentCache.captureEpoch(cacheIdentity)
-                persistentCache.store(cacheIdentity, content, settledParse, epoch)
-            }
-        }
-    }
+}
+
+private data class MarkdownParseRequest(
+    val content: String,
+    val identity: MarkdownRenderCacheIdentity?,
+    val isStreaming: Boolean
+)
+
+private data class MarkdownParseResult(
+    val state: State,
+    val fingerprint: String?,
+    val epoch: org.starfall.generative.features.home.chat.logic.markdown.MarkdownAstCacheEpoch?,
+    val diskCacheMiss: Boolean
+)
+
+private data class MarkdownParsePresentation(val state: State, val fingerprint: String?)
+
+@Composable
+private fun RenderMarkdownDocument(
+    content: String,
+    modifier: Modifier,
+    isStreaming: Boolean,
+    latexMode: String?,
+    fillMaxWidth: Boolean,
+    trimLeadingBlockSpace: Boolean,
+    initialParse: State?,
+    cacheIdentity: MarkdownRenderCacheIdentity?,
+    persistentCache: PersistentMarkdownAstCache
+) {
+    val parsed = rememberMarkdownParsePresentation(content, initialParse, cacheIdentity, isStreaming, persistentCache)
     val type = MaterialTheme.typography
     val preferences = LocalCodeRenderingPreferences.current
-    // The Settings choice (ON / OFF / AUTO) is the default; nothing used to pass it down.
     val effectiveLatexMode = latexMode ?: preferences.latexMode
     val bodySize = preferences.effectiveMessageFontSize.sp
     val messageFont = preferences.messageFontFamily.toComposeFontFamily()
     val markdownTypography = messageMarkdownTypography()
     val renderOptionsKey = 31 * preferences.hashCode() +
         17 * effectiveLatexMode.hashCode() + 7 * fillMaxWidth.hashCode() + isStreaming.hashCode()
+
     Markdown(
-        state = parsed,
+        state = parsed.state,
         modifier = modifier
             .then(if (trimLeadingBlockSpace) Modifier.trimLeadingSpace(MARKDOWN_BLOCK_PADDING) else Modifier)
             .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier),
@@ -206,38 +178,199 @@ fun MarkdownRenderer(
         padding = markdownPadding(block = MARKDOWN_BLOCK_PADDING),
         components = chatMarkdownComponents(isStreaming, effectiveLatexMode, fillMaxWidth, cacheIdentity, renderOptionsKey),
         success = { state, components, successModifier ->
-            val viewport = LocalMarkdownViewportState.current
-            if (!isStreaming && viewport != null) {
-                val fingerprint = LocalMarkdownContentFingerprint.current ?: parsedFingerprint
-                if (fingerprint == null) {
-                    // A legacy cache entry without its precomputed fingerprint is a one-frame eager fallback;
-                    // the off-main cache load below supplies the fingerprint before virtualization starts.
-                    CompositionLocalProvider(LocalMarkdownViewportState provides null) {
-                        MarkdownSuccessWithBoundedHtml(state, components, successModifier)
-                    }
-                } else {
-                    CompositionLocalProvider(LocalMarkdownContentFingerprint provides fingerprint) {
-                        if (state.node.children.size > VIRTUALIZED_TOP_LEVEL_BLOCKS) {
-                            VirtualizedMarkdownBlocks(
-                                state = state,
-                                components = components,
-                                modifier = successModifier,
-                                identity = cacheIdentity,
-                                contentFingerprint = fingerprint,
-                                typographyKey = markdownTypography.hashCode(),
-                                optionsKey = renderOptionsKey
-                            )
-                        } else {
-                            MarkdownSuccessWithBoundedHtml(state, components, successModifier)
-                        }
-                    }
-                }
-            } else {
-                MarkdownSuccessWithBoundedHtml(state, components, successModifier)
-            }
+            RenderMarkdownSuccess(
+                state = state,
+                components = components,
+                modifier = successModifier,
+                isStreaming = isStreaming,
+                cacheIdentity = cacheIdentity,
+                parsedFingerprint = parsed.fingerprint,
+                typographyKey = markdownTypography.hashCode(),
+                optionsKey = renderOptionsKey
+            )
         },
         error = { Text(content, style = type.bodyLarge.copy(fontFamily = messageFont, fontSize = bodySize)) }
     )
+}
+
+@Composable
+private fun rememberMarkdownParsePresentation(
+    content: String,
+    initialParse: State?,
+    cacheIdentity: MarkdownRenderCacheIdentity?,
+    isStreaming: Boolean,
+    persistentCache: PersistentMarkdownAstCache
+): MarkdownParsePresentation {
+    val latestContent by rememberUpdatedState(content)
+    val latestCacheIdentity by rememberUpdatedState(cacheIdentity)
+    val latestInitialParse by rememberUpdatedState(initialParse)
+    val streamingNow by rememberUpdatedState(isStreaming)
+    val inheritedFingerprint = LocalMarkdownContentFingerprint.current
+    val latestInheritedFingerprint by rememberUpdatedState(inheritedFingerprint)
+    val initialParsed = remember { initialParse ?: MarkdownParseCache.get(content, cacheIdentity) }
+    var parsed by remember { mutableStateOf<State>(initialParsed ?: State.Loading()) }
+    var parsedFingerprint by remember {
+        mutableStateOf(inheritedFingerprint ?: MarkdownParseCache.getFingerprint(content, cacheIdentity))
+    }
+    val settledParse = parsed
+    TrackPendingWork(settledParse is State.Loading)
+    TrackReadyAssets(
+        if (settledParse is State.Success) listOf(AssetKey.Markdown(settledParse.content, cacheIdentity)) else emptyList()
+    )
+
+    LaunchedEffect(Unit) {
+        val requests = snapshotFlow {
+            MarkdownParseRequest(latestContent, latestCacheIdentity, streamingNow)
+        }
+        collectMarkdownParseUpdates(
+            requests = requests,
+            initialParse = { latestInitialParse },
+            inheritedFingerprint = { latestInheritedFingerprint },
+            persistentCache = persistentCache
+        ) { state, fingerprint ->
+            parsed = state
+            parsedFingerprint = fingerprint
+        }
+    }
+    LaunchedEffect(isStreaming, settledParse, content, cacheIdentity, parsedFingerprint) {
+        persistSettledMarkdown(settledParse, content, isStreaming, cacheIdentity, parsedFingerprint, persistentCache)
+    }
+    return MarkdownParsePresentation(parsed, parsedFingerprint)
+}
+
+private suspend fun collectMarkdownParseUpdates(
+    requests: kotlinx.coroutines.flow.Flow<MarkdownParseRequest>,
+    initialParse: () -> State?,
+    inheritedFingerprint: () -> String?,
+    persistentCache: PersistentMarkdownAstCache,
+    onParsed: (State, String?) -> Unit
+) {
+    requests.conflate().collect { request ->
+        val result = resolveMarkdownParseRequest(request, initialParse, inheritedFingerprint, persistentCache)
+        onParsed(result.state, result.fingerprint)
+        val state = result.state
+        if (!request.isStreaming && state is State.Success) {
+            MarkdownParseCache.put(request.content, state, request.identity, result.fingerprint)
+            val epoch = result.epoch
+            if (request.identity != null && result.diskCacheMiss && epoch != null) {
+                persistentCache.store(request.identity, request.content, state, epoch)
+            }
+        }
+    }
+}
+
+private suspend fun resolveMarkdownParseRequest(
+    request: MarkdownParseRequest,
+    initialParse: () -> State?,
+    inheritedFingerprint: () -> String?,
+    persistentCache: PersistentMarkdownAstCache
+): MarkdownParseResult {
+    val epoch = request.identity?.let(persistentCache::captureEpoch)
+    val inMemory = MarkdownParseCache.get(request.content, request.identity)
+    val memoryFingerprint = if (inMemory != null) {
+        MarkdownParseCache.getFingerprint(request.content, request.identity)
+    } else null
+    val onDisk = if (inMemory == null && !request.isStreaming && request.identity != null && epoch != null) {
+        persistentCache.load(request.identity, request.content, epoch)
+    } else null
+    val seeded = initialParse()?.takeIf { it is State.Success && it.content == request.content }
+    val resolved = resolveMarkdownParseState(inMemory, memoryFingerprint, onDisk, seeded, inheritedFingerprint(), request.content)
+    return MarkdownParseResult(resolved.first, resolved.second, epoch, diskCacheMiss = onDisk == null)
+}
+
+private suspend fun resolveMarkdownParseState(
+    inMemory: State.Success?,
+    memoryFingerprint: String?,
+    onDisk: State.Success?,
+    seeded: State?,
+    inheritedFingerprint: String?,
+    content: String
+): Pair<State, String?> = when {
+    inMemory != null -> inMemory to (
+        memoryFingerprint ?: withContext(Dispatchers.Default) { markdownContentFingerprint(content) }
+        )
+    onDisk != null -> onDisk to withContext(Dispatchers.Default) { markdownContentFingerprint(content) }
+    seeded is State.Success -> seeded to (
+        inheritedFingerprint ?: withContext(Dispatchers.Default) { markdownContentFingerprint(content) }
+        )
+    else -> withContext(Dispatchers.Default) {
+        val startedAt = System.nanoTime()
+        val state = try {
+            parseLibraryMarkdown(content)
+        } finally {
+            MarkdownParseCache.recordFullParse(content.length, System.nanoTime() - startedAt)
+        }
+        state to if (state is State.Success) markdownContentFingerprint(content) else null
+    }
+}
+
+private suspend fun persistSettledMarkdown(
+    state: State,
+    content: String,
+    isStreaming: Boolean,
+    cacheIdentity: MarkdownRenderCacheIdentity?,
+    fingerprint: String?,
+    persistentCache: PersistentMarkdownAstCache
+) {
+    if (isStreaming || state !is State.Success || state.content != content) return
+    val settledFingerprint = fingerprint ?: withContext(Dispatchers.Default) { markdownContentFingerprint(content) }
+    MarkdownParseCache.put(state.content, state, cacheIdentity, settledFingerprint)
+    if (cacheIdentity != null) {
+        val epoch = persistentCache.captureEpoch(cacheIdentity)
+        persistentCache.store(cacheIdentity, content, state, epoch)
+    }
+}
+
+@Composable
+private fun RenderMarkdownSuccess(
+    state: State.Success,
+    components: MarkdownComponents,
+    modifier: Modifier,
+    isStreaming: Boolean,
+    cacheIdentity: MarkdownRenderCacheIdentity?,
+    parsedFingerprint: String?,
+    typographyKey: Int,
+    optionsKey: Int
+) {
+    if (isStreaming || LocalMarkdownViewportState.current == null) {
+        MarkdownSuccessWithBoundedHtml(state, components, modifier)
+        return
+    }
+    val fingerprint = LocalMarkdownContentFingerprint.current ?: parsedFingerprint
+    if (fingerprint == null) {
+        CompositionLocalProvider(LocalMarkdownViewportState provides null) {
+            MarkdownSuccessWithBoundedHtml(state, components, modifier)
+        }
+        return
+    }
+    CompositionLocalProvider(LocalMarkdownContentFingerprint provides fingerprint) {
+        RenderMarkdownBlocksBySize(state, components, modifier, cacheIdentity, fingerprint, typographyKey, optionsKey)
+    }
+}
+
+@Composable
+private fun RenderMarkdownBlocksBySize(
+    state: State.Success,
+    components: MarkdownComponents,
+    modifier: Modifier,
+    cacheIdentity: MarkdownRenderCacheIdentity?,
+    fingerprint: String,
+    typographyKey: Int,
+    optionsKey: Int
+) {
+    if (state.node.children.size > VIRTUALIZED_TOP_LEVEL_BLOCKS) {
+        VirtualizedMarkdownBlocks(
+            state = state,
+            components = components,
+            modifier = modifier,
+            identity = cacheIdentity,
+            contentFingerprint = fingerprint,
+            typographyKey = typographyKey,
+            optionsKey = optionsKey
+        )
+    } else {
+        MarkdownSuccessWithBoundedHtml(state, components, modifier)
+    }
 }
 
 internal const val MAX_MARKDOWN_RENDER_CHARS = 128_000

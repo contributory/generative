@@ -49,14 +49,8 @@ internal fun RenderCodeBlock(
     isStreaming: Boolean,
     trimTrailingWhitespace: Boolean = false
 ) {
-    val preferences = LocalCodeRenderingPreferences.current
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val start = startOffset.coerceIn(0, source.length)
-    var end = endOffset.coerceIn(start, source.length)
-    if (trimTrailingWhitespace) {
-        while (end > start && source[end - 1].isWhitespace()) end--
-    }
+    val end = adjustedCodeEnd(source, start, endOffset, trimTrailingWhitespace)
     val codeLength = end - start
     val initialLineCount = remember(source, start, end, isStreaming) {
         if (isStreaming) null else if (codeLength <= MAX_INLINE_CODE_CHARS) countLines(source, start, end) else null
@@ -64,71 +58,174 @@ internal fun RenderCodeBlock(
     val lineCount by produceState<Int?>(initialLineCount, source, start, end, isStreaming) {
         if (!isStreaming && value == null) value = withContext(Dispatchers.Default) { countLines(source, start, end) }
     }
-    val isHuge = codeLength > MAX_INLINE_CODE_CHARS || (lineCount ?: 0) > MAX_INLINE_CODE_LINES
     var expanded by remember(language, source, start, end) { mutableStateOf(false) }
     var drawerVisible by remember(language, source, start, end) { mutableStateOf(false) }
 
-    if (isHuge) {
-        HugeCodeBlockPreview(
+    if (isHugeCode(codeLength, lineCount)) {
+        RenderHugeCodeBlock(
             language = language,
             source = source,
-            startOffset = start,
-            endOffset = end,
+            start = start,
+            end = end,
             lineCount = lineCount,
             isStreaming = isStreaming,
-            onCopy = {
-                scope.launch {
-                    val code = withContext(Dispatchers.Default) { source.substring(start, end) }
-                    copyCode(context, code)
-                }
-            },
-            onOpen = { drawerVisible = true }
+            drawerVisible = drawerVisible,
+            onOpen = { drawerVisible = true },
+            onClose = { drawerVisible = false }
         )
-        if (drawerVisible) {
-            HugeCodeBlockDialog(language, source, start, end, onDismiss = { drawerVisible = false })
-        }
         return
     }
+    RenderConfiguredCodeBlock(
+        language = language,
+        source = source,
+        start = start,
+        end = end,
+        lineCount = lineCount,
+        isStreaming = isStreaming,
+        expanded = expanded,
+        drawerVisible = drawerVisible,
+        onExpandedChange = { expanded = it },
+        onOpen = { drawerVisible = true },
+        onClose = { drawerVisible = false }
+    )
+}
 
+private fun adjustedCodeEnd(source: String, start: Int, endOffset: Int, trimTrailingWhitespace: Boolean): Int {
+    var end = endOffset.coerceIn(start, source.length)
+    if (trimTrailingWhitespace) {
+        while (end > start && source[end - 1].isWhitespace()) end--
+    }
+    return end
+}
+
+private fun isHugeCode(codeLength: Int, lineCount: Int?): Boolean =
+    codeLength > MAX_INLINE_CODE_CHARS || (lineCount ?: 0) > MAX_INLINE_CODE_LINES
+
+@Composable
+private fun RenderHugeCodeBlock(
+    language: String,
+    source: String,
+    start: Int,
+    end: Int,
+    lineCount: Int?,
+    isStreaming: Boolean,
+    drawerVisible: Boolean,
+    onOpen: () -> Unit,
+    onClose: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    HugeCodeBlockPreview(
+        language = language,
+        source = source,
+        startOffset = start,
+        endOffset = end,
+        lineCount = lineCount,
+        isStreaming = isStreaming,
+        onCopy = {
+            scope.launch {
+                val code = withContext(Dispatchers.Default) { source.substring(start, end) }
+                copyCode(context, code)
+            }
+        },
+        onOpen = onOpen
+    )
+    if (drawerVisible) HugeCodeBlockDialog(language, source, start, end, onDismiss = onClose)
+}
+
+@Composable
+private fun RenderConfiguredCodeBlock(
+    language: String,
+    source: String,
+    start: Int,
+    end: Int,
+    lineCount: Int?,
+    isStreaming: Boolean,
+    expanded: Boolean,
+    drawerVisible: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onOpen: () -> Unit,
+    onClose: () -> Unit
+) {
+    val preferences = LocalCodeRenderingPreferences.current
     val code = remember(source, start, end) { source.substring(start, end) }
     val codeLanguageFallback = stringResource(R.string.code_language_fallback)
-    val managesUndefined = preferences.codeBlockIncludeUndefined || language.isNotBlank()
-    val isLong = !isStreaming && managesUndefined && lineCount.orZero() > preferences.codeBlockMaxLines
+    val isLong = isLongCodeBlock(language, isStreaming, lineCount, preferences)
     val displayMode = preferences.codeBlockDisplayMode
-
     if (displayMode == CodeBlockDisplayMode.SHOW_IN_DRAWER && isLong) {
-        Surface(
-            onClick = { drawerVisible = true },
-            shape = RoundedCornerShape(10.dp),
-            color = nestedContainerColor(),
-            border = nestedContainerBorder(),
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-        ) {
-            Box(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    stringResource(R.string.code_block_summary, language.ifBlank { codeLanguageFallback }, lineCount.orZero()),
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.labelLarge
-                )
-            }
-        }
+        LongCodeBlockDrawerCard(language, codeLanguageFallback, lineCount, onOpen)
         if (drawerVisible) {
             CodeBlockDialog(
                 language = language,
                 code = code,
                 isStreaming = isStreaming,
-                onDismiss = { drawerVisible = false }
+                onDismiss = onClose
             )
         }
         return
     }
+    RenderInlineCodeBlock(
+        language = language,
+        code = code,
+        isStreaming = isStreaming,
+        displayMode = displayMode,
+        maxLines = preferences.codeBlockMaxLines,
+        isLong = isLong,
+        expanded = expanded,
+        onExpandedChange = onExpandedChange
+    )
+}
 
+private fun isLongCodeBlock(
+    language: String,
+    isStreaming: Boolean,
+    lineCount: Int?,
+    preferences: org.starfall.generative.shared.storage.preferences.AppPreferences
+): Boolean = !isStreaming &&
+    (preferences.codeBlockIncludeUndefined || language.isNotBlank()) &&
+    lineCount.orZero() > preferences.codeBlockMaxLines
+
+@Composable
+private fun LongCodeBlockDrawerCard(
+    language: String,
+    languageFallback: String,
+    lineCount: Int?,
+    onOpen: () -> Unit
+) {
+    Surface(
+        onClick = onOpen,
+        shape = RoundedCornerShape(10.dp),
+        color = nestedContainerColor(),
+        border = nestedContainerBorder(),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                stringResource(R.string.code_block_summary, language.ifBlank { languageFallback }, lineCount.orZero()),
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
+    }
+}
+
+@Composable
+private fun RenderInlineCodeBlock(
+    language: String,
+    code: String,
+    isStreaming: Boolean,
+    displayMode: CodeBlockDisplayMode,
+    maxLines: Int,
+    isLong: Boolean,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit
+) {
     val visibleCode = if (displayMode == CodeBlockDisplayMode.EXTENDABLE && isLong && !expanded) {
-        code.lineSequence().take(preferences.codeBlockMaxLines).joinToString("\n")
+        code.lineSequence().take(maxLines).joinToString("\n")
     } else code
     CodeBlockSurface(
         language = language,
@@ -137,7 +234,7 @@ internal fun RenderCodeBlock(
         originalCode = code,
         isStreaming = isStreaming,
         onExpansionChange = if (displayMode == CodeBlockDisplayMode.EXTENDABLE && isLong) {
-            { expanded = !expanded }
+            { onExpandedChange(!expanded) }
         } else null,
         expanded = expanded
     )
