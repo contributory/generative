@@ -731,7 +731,6 @@ fun ChatScreen(
             }
             }
             }
-            }
         }
 
         Column(
