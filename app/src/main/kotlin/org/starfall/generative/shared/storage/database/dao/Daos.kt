@@ -65,6 +65,9 @@ interface ConversationDao {
     @Query("SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY sequence ASC")
     suspend fun getMessages(conversationId: String): List<MessageEntity>
 
+    @Query("SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY sequence DESC")
+    suspend fun getMessagesNewestFirst(conversationId: String): List<MessageEntity>
+
     @Query("SELECT * FROM message_versions WHERE conversationId = :conversationId AND messageId = :messageId ORDER BY versionIndex ASC")
     suspend fun getMessageVersions(conversationId: String, messageId: String): List<MessageVersionEntity>
 

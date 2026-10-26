@@ -124,7 +124,8 @@ class ConversationRepository(private val db: AppDatabase) {
         val issues = dao.getMigrationIssues(entity.id)
         if (issues.isNotEmpty()) throw ConversationMigrationException(entity.id, issues.map { it.errorCode })
 
-        val messages = dao.getMessages(entity.id).map { message ->
+        // Materialize nested data newest-first, then restore chronological order for chat/history logic.
+        val messages = dao.getMessagesNewestFirst(entity.id).map { message ->
             val versions = dao.getMessageVersions(entity.id, message.id).map { version ->
                 val activities = dao.getToolActivities(entity.id, message.id, version.versionIndex).map { activity ->
                     ToolActivity(
@@ -164,7 +165,7 @@ class ConversationRepository(private val db: AppDatabase) {
                 versions = versions,
                 activeVersionIndex = message.activeVersionIndex
             )
-        }
+        }.asReversed()
         return Conversation(
             id = entity.id,
             title = entity.title,

@@ -82,13 +82,6 @@ import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
-// Jump-to-latest: ease time constant (smaller is faster), frames the bottom must hold, and a hard cap.
-private const val JUMP_EASE_MS = 90f
-private const val JUMP_SETTLE_FRAMES = 3
-private const val JUMP_MAX_DURATION_MS = 2500L
-// Far larger than any item; clamped to the bottom by the first LazyColumn measure.
-private const val OPEN_AT_BOTTOM_OFFSET = 10_000_000
-
 // The opening veil lifts after the list has stayed at its newest message with no background work
 // pending for this many frames.
 private const val OPENING_STABLE_FRAMES = 4
@@ -154,25 +147,12 @@ fun ChatScreen(
     activeStream: StateFlow<ActiveChatStreamState?>? = null
 ) {
     val conversationKey = conversation?.id ?: "__empty_conversation__"
-    // Start at the newest item so opening a conversation does not flash its oldest messages.
-    // The offset is clamped by LazyColumn after the first measure pass.
-    val initialLastIndex = (
-        (conversation?.messages?.size ?: 0) + queuedMessages.size - 1 +
-            (if (isGenerating && generatingConversationId != conversation?.id) 1 else 0)
-        ).coerceAtLeast(0)
-    val listState = remember(conversationKey) {
-        LazyListState(
-            firstVisibleItemIndex = initialLastIndex,
-            firstVisibleItemScrollOffset = OPEN_AT_BOTTOM_OFFSET
-        )
-    }
+    // reverseLayout puts item 0 at the physical bottom. The list data is reversed below,
+    // so the newest message is item 0 and opening a conversation needs no corrective scroll.
+    val listState = remember(conversationKey) { LazyListState() }
     var followBottom by remember(conversationKey) { mutableStateOf(true) }
     var jumpingToBottom by remember(conversationKey) { mutableStateOf(false) }
-    var openingAtBottom by remember(conversationKey) { mutableStateOf(true) }
-    var openingLayoutRevision by remember(conversationKey) { mutableIntStateOf(0) }
     val settleTracker = remember(conversationKey) { ChatSettleTracker() }
-    // Scroll position of a just-sent message: middle by default, top only by the user's drag.
-    val anchor = remember(conversationKey) { ChatScrollAnchor() }
     var revealed by remember(conversationKey) { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val seenMessageIds = remember(conversationKey) { mutableSetOf<String>() }
@@ -187,38 +167,13 @@ fun ChatScreen(
     val structuralRevision = conversation?.structuralRevision ?: 0L
     val streamingHere = isGenerating && generatingConversationId == conversation?.id
     val messageIds = remember(conversationKey, structuralRevision) { conversationMessages.map { it.id } }
-    val queuedMessageIds = remember(queuedMessages) { queuedMessages.map { it.id } }
-    val allMessageIds = remember(messageIds, queuedMessageIds) { messageIds + queuedMessageIds }
-    // During a live stream, the active stream state owns response text. Re-materialize the historical
-    // row list only at a persisted message boundary (updatedAt) or a structural/queue change, not for
-    // every render-state publication.
+    // Keep domain/history order chronological, but feed the UI newest-first. With reverseLayout,
+    // item 0 is the newest message at the physical bottom of the viewport.
     val messages = remember(conversationKey, structuralRevision, conversation?.updatedAt, queuedMessages) {
         conversationMessages + queuedMessages
     }
-    // A just-sent message is the anchor. A chat that merely ends with a user message (reopened, or
-    // still unanswered) gets the same tail padding for it, so it can be dragged flush under the app bar.
-    val tailAnchorId = anchor.messageId
-        ?: messages.lastOrNull()?.takeIf { it.role == ChatRole.USER && !it.isQueued }?.id
-    // A user message entering history is a send, whichever way it got there (typed now, handed over
-    // by the tool loop with its queued id, or drained from the queue under a new id). Detecting it
-    // here, in the apply phase, runs before any LaunchedEffect of this commit starts, so every scroll
-    // effect below already sees anchor.settling and leaves the list alone.
-    SideEffect {
-        ChatRenderMetrics.recordChatScreenRecomposition()
-        val sentId = anchor.detector.observe(conversationMessages, structuralRevision)
-        if (sentId != null && (followBottom || !autoScroll)) {
-            openingAtBottom = false
-            anchor.start(sentId)
-        } else if (anchor.messageId?.let { id -> messages.none { it.id == id } } == true) {
-            anchor.end()
-        }
-        // "Open at the newest message" is for reopening a saved chat. A reply that starts streaming ends it,
-        // otherwise the very first exchange of a chat (no anchor, no previous messages) is pinned to the
-        // bottom by the opening effects below whatever the auto scroll setting is.
-        if (openingAtBottom && isGenerating && generatingConversationId == conversation?.id) {
-            openingAtBottom = false
-        }
-    }
+    val displayMessages = remember(messages) { messages.asReversed() }
+    SideEffect { ChatRenderMetrics.recordChatScreenRecomposition() }
 
     var editDraft by remember(conversation?.id) { mutableStateOf<ChatInputEditDraft?>(null) }
     val selection = LocalChatAttachmentSelection.current ?: remember(conversation?.id) { ChatAttachmentSelection() }
@@ -263,17 +218,14 @@ fun ChatScreen(
     val openedWarm = remember(conversationKey, hasSavedMessages, openSignature, renderEnvironment) {
         hasSavedMessages && ChatOpenCache.isWarm(conversationKey, openSignature, renderEnvironment)
     }
-    val veilActive = openingAtBottom && !revealed && hasSavedMessages && !openedWarm && !streamingHere
+    val veilActive = !revealed && hasSavedMessages && !openedWarm && !streamingHere
     fun whenIdle(action: () -> Unit) {
         if (!isGenerating) action()
     }
     val nearBottomPx = with(LocalDensity.current) { 32.dp.toPx() }
-    fun isNearBottom(): Boolean {
-        val layout = listState.layoutInfo
-        val last = layout.visibleItemsInfo.lastOrNull() ?: return false
-        if (last.index != layout.totalItemsCount - 1) return false
-        return last.offset + last.size - (layout.viewportEndOffset - layout.afterContentPadding) <= nearBottomPx
-    }
+    fun isNearBottom(): Boolean =
+        !listState.canScrollBackward ||
+            (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset <= nearBottomPx)
     val scrollConnection = remember(listState) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -281,9 +233,7 @@ fun ChatScreen(
                 // finger drag. This lets a reverse swipe take control immediately while the
                 // response is still streaming.
                 if (source == NestedScrollSource.UserInput) {
-                    openingAtBottom = false
                     followBottom = false
-                    anchor.release()
                 }
                 return Offset.Zero
             }
@@ -296,69 +246,28 @@ fun ChatScreen(
                 // Resume following only when the fling was toward newer messages. A short fling
                 // toward history can end within the near-bottom tolerance; treating that as a
                 // request to follow would immediately pull the list back to the latest message.
-                if (consumed.y > 0f && isNearBottom()) followBottom = true
+                if (consumed.y < 0f && isNearBottom()) followBottom = true
                 return Velocity.Zero
             }
         }
     }
-    val messageIndexOffset = if (isGenerating && !streamingHere) 1 else 0
-    // The jump-to-latest button is only needed when the newest message is outside the viewport.
-    // Keep this independent of followBottom, which controls scrolling behavior.
-    val latestMessageVisible by remember(listState, messages.size, messageIndexOffset) {
+    // Newest-first data + reverseLayout means the latest visible message is item 0.
+    val latestMessageVisible by remember(listState, displayMessages.size) {
         derivedStateOf {
-            val latestIndex = messages.lastIndex + messageIndexOffset
-            latestIndex >= 0 && listState.layoutInfo.visibleItemsInfo.any { it.index == latestIndex }
+            displayMessages.isNotEmpty() && listState.layoutInfo.visibleItemsInfo.any { it.index == 0 }
         }
     }
     suspend fun scrollToBottom(includeQueued: Boolean = true) {
-        // Derive the target from the current data rather than layoutInfo: a message added in
-        // this frame may not have been measured yet.
-        val index = (if (includeQueued) messages.lastIndex else conversationMessages.lastIndex) +
-            messageIndexOffset
-        if (index < 0) return
-        // While a sent message is anchored the end of the content is the position under the app bar
-        // (the newest item is padded for it). Reveal the newest message instead of jumping there.
-        // A reopened conversation that ends with a user message has the same tail padding as a
-        // freshly sent message. Keep that padded tail in view instead of bypassing it with the
-        // generic large-offset jump; this leaves the user message draggable under the app bar.
-        if (tailAnchorId != null) listState.revealItemBottom(index)
-        else listState.scrollToItem(index, OPEN_AT_BOTTOM_OFFSET)
+        // Domain order stays chronological; resolve the desired latest message in the reversed UI list.
+        val targetId = if (includeQueued) messages.lastOrNull()?.id else conversationMessages.lastOrNull()?.id
+        val index = targetId?.let { id -> displayMessages.indexOfFirst { it.id == id } } ?: -1
+        if (index >= 0) listState.scrollToItem(index)
     }
-    // Animated version used by the jump-to-latest button. Distant targets are first brought within
-    // a few items so the animation covers a short, visible distance instead of the whole history.
-    // The rest is one continuous per-frame ease toward the bottom edge of the newest item. Re-reading
-    // the layout every frame keeps it smooth when sizes change underneath it (items measured for the
-    // first time, the tail spacer, streamed text); chained fixed-length tweens would each decelerate to
-    // zero and make the scroll stutter.
     suspend fun animateScrollToBottom() {
-        val index = messages.lastIndex + messageIndexOffset
+        val targetId = messages.lastOrNull()?.id ?: return
+        val index = displayMessages.indexOfFirst { it.id == targetId }
         if (index < 0) return
-        if (index - listState.firstVisibleItemIndex > 6) listState.scrollToItem(index - 3)
-        var previous = 0L
-        var started = 0L
-        var settledFrames = 0
-        while (settledFrames < JUMP_SETTLE_FRAMES) {
-            val now = withFrameNanos { it }
-            if (started == 0L) started = now
-            // Never loop forever if the content keeps growing under the animation.
-            if ((now - started) / 1_000_000L > JUMP_MAX_DURATION_MS) break
-            val elapsedMs = if (previous == 0L) 16f else ((now - previous) / 1_000_000f).coerceIn(1f, 64f)
-            previous = now
-            val layout = listState.layoutInfo
-            val item = layout.visibleItemsInfo.firstOrNull { it.index == index }
-            if (item == null) {
-                listState.scrollToItem(index)
-                continue
-            }
-            val remaining = (item.offset + item.size - (layout.viewportEndOffset - layout.afterContentPadding)).toFloat()
-            if (remaining <= 1f) {
-                settledFrames++
-                continue
-            }
-            settledFrames = 0
-            val step = (remaining * (1f - exp(-elapsedMs / JUMP_EASE_MS))).coerceAtLeast(min(remaining, elapsedMs * 0.05f))
-            listState.scrollBy(step)
-        }
+        listState.animateScrollToItem(index)
         scrollToBottom()
     }
     LaunchedEffect(conversation?.id, messageIds, autoScroll) {
@@ -366,39 +275,12 @@ fun ChatScreen(
         val hasNewUserMessage = conversationMessages.any { it.id !in seenMessageIds && it.role == ChatRole.USER }
         val firstLoad = seenMessageIds.isEmpty()
         seenMessageIds.addAll(messageIds)
-        if (hasNewMessage && !firstLoad) openingAtBottom = false
-        // The anchor owns the scroll position until the sent message is in place.
-        if (anchor.settling) return@LaunchedEffect
-        if (firstLoad && messageIds.isNotEmpty()) {
-            // The conversation can arrive after ChatScreen was first composed. Wait until its
-            // items have been measured before correcting the initial state.
-            snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > 0 }
-            if (openingAtBottom) {
-                withFrameNanos { }
-                followBottom = true
-                scrollToBottom(includeQueued = true)
-            }
-        } else if (hasNewMessage && !firstLoad && (if (autoScroll) followBottom else hasNewUserMessage)) {
-            // With auto scroll on, a newly started response is followed once. With it off only a
-            // user message is shown; the AI reply (including its first message) never moves the list.
+        // A first load is already at the newest message by construction; only later additions need a scroll.
+        if (firstLoad) return@LaunchedEffect
+        if (hasNewMessage && (if (autoScroll) followBottom else hasNewUserMessage)) {
             scrollToBottom()
             followBottom = true
         }
-    }
-    LaunchedEffect(listState, openingAtBottom, streamingHere, messages.size, messageIndexOffset) {
-        if (!openingAtBottom || messages.isEmpty()) return@LaunchedEffect
-        // Markdown parsing, media loading and input-area measurement can grow the layout
-        // after the first scroll. Keep a reopened chat at the end until the user takes
-        // control or a new message arrives, even when streaming auto-scroll is disabled.
-        snapshotFlow { listState.canScrollForward }.collect { canScrollForward ->
-            if (openingAtBottom && canScrollForward) openingLayoutRevision++
-        }
-    }
-    LaunchedEffect(openingLayoutRevision, openingAtBottom, streamingHere, messages.size, messageIndexOffset) {
-        if (!openingAtBottom || messages.isEmpty()) return@LaunchedEffect
-        // Run outside the snapshot observer that noticed the layout change.
-        withFrameNanos { }
-        if (openingAtBottom) scrollToBottom()
     }
     LaunchedEffect(conversationKey, veilActive) {
         if (!veilActive) return@LaunchedEffect
@@ -410,7 +292,7 @@ fun ChatScreen(
         while (true) {
             val frameNanos = withFrameNanos { it }
             if (startedNanos == 0L) startedNanos = frameNanos
-            val settled = settleTracker.pending == 0 && !listState.canScrollForward && !listState.isScrollInProgress
+            val settled = settleTracker.pending == 0 && !listState.canScrollBackward && !listState.isScrollInProgress
             stableFrames = if (settled) stableFrames + 1 else 0
             if (stableFrames >= OPENING_STABLE_FRAMES) break
             // The veil swallows touches, so a layout that never stops changing must not trap the chat behind it.
@@ -424,7 +306,7 @@ fun ChatScreen(
         // view is at the newest message and idle, never a half-scrolled or still-loading layout.
         snapshotFlow {
             settleTracker.pending == 0 && !listState.isScrollInProgress &&
-                (!listState.canScrollForward || anchor.messageId != null)
+                !listState.canScrollBackward
         }.first { it }
         ChatOpenCache.remember(conversationKey, openSignature, renderEnvironment, settleTracker.readyAssets())
     }
@@ -435,39 +317,39 @@ fun ChatScreen(
         autoScrollTick,
         followBottom,
         streamingHere,
-        anchor.settling,
         if (autoScroll) summaryProgress?.progress else null
     ) {
-        if (autoScroll && followBottom && messages.isNotEmpty() && !streamingHere && !anchor.settling) {
+        if (autoScroll && followBottom && messages.isNotEmpty() && !streamingHere) {
             scrollToBottom(includeQueued = true)
         }
     }
-    // Auto scroll on: ease toward the bottom every frame while text streams. Keeping this
-    // independent of text length makes the movement smooth instead of jumping per chunk.
-    LaunchedEffect(conversation?.id, conversationMessages.size, autoScroll, streamingHere, followBottom, anchor.settling) {
-        if (!autoScroll || !streamingHere || !followBottom || anchor.settling) return@LaunchedEffect
+    // With reverseLayout, new stream content grows away from item 0's bottom edge. If a layout
+    // change or queued item displaces the active response, ease its logical start back to the bottom.
+    LaunchedEffect(conversation?.id, conversationMessages.size, autoScroll, streamingHere, followBottom) {
+        if (!autoScroll || !streamingHere || !followBottom) return@LaunchedEffect
         var previous = 0L
         while (isActive) {
             // The nested-scroll callback changes this as soon as the user touches the list.
-            // Check it inside the loop as well so a pending frame cannot take the scroll lock
-            // back from a manual reverse swipe.
-            if (!followBottom || anchor.settling) return@LaunchedEffect
+            // Check inside the loop so a pending frame cannot take scroll control back from a manual drag.
+            if (!followBottom) return@LaunchedEffect
             val now = withFrameNanos { it }
             val elapsedMs = if (previous == 0L) 16f else ((now - previous) / 1_000_000f).coerceIn(1f, 64f)
             previous = now
             if (!followBottom || listState.isScrollInProgress || conversationMessages.isEmpty()) continue
-            val index = conversationMessages.lastIndex + messageIndexOffset
+            val activeMessageId = conversationMessages.lastOrNull()?.id ?: continue
+            val index = displayMessages.indexOfFirst { it.id == activeMessageId }
+            if (index < 0) continue
             val layout = listState.layoutInfo
             val item = layout.visibleItemsInfo.firstOrNull { it.index == index }
             if (item == null) {
                 scrollToBottom(includeQueued = false)
                 continue
             }
-            val remaining = (item.offset + item.size - (layout.viewportEndOffset - layout.afterContentPadding)).toFloat()
+            val remaining = (item.offset - layout.viewportStartOffset).toFloat()
             if (remaining > 0.5f) {
                 val step = (remaining * (1f - exp(-elapsedMs / 120f))).coerceAtLeast(min(remaining, elapsedMs * 0.05f))
                 try {
-                    listState.scrollBy(step)
+                    listState.scrollBy(-step)
                 } catch (e: CancellationException) {
                     currentCoroutineContext().ensureActive()
                 }
@@ -567,21 +449,6 @@ fun ChatScreen(
                 )
             }
         } else {
-            val visibleChatPx = with(density) {
-                (maxHeight - (appBarHeight + 8.dp) - bottomClearance).coerceAtLeast(0.dp).roundToPx()
-            }
-            val anchorTailIds = remember(allMessageIds, tailAnchorId) {
-                val index = allMessageIds.indexOf(tailAnchorId)
-                if (index < 0) emptyList() else allMessageIds.drop(index)
-            }
-            ChatAnchorEffects(
-                anchor = anchor,
-                listState = listState,
-                itemIndexOf = { id ->
-                    messages.indexOfFirst { it.id == id }.let { if (it < 0) -1 else it + messageIndexOffset }
-                },
-                itemCount = { messages.size + messageIndexOffset }
-            )
             ChatOpeningVeil(active = veilActive, modifier = Modifier.fillMaxSize()) {
             CompositionLocalProvider(
                 LocalChatSettleTracker provides settleTracker
@@ -589,30 +456,15 @@ fun ChatScreen(
             PlatformTextSelectionRegion {
             LazyColumn(
                 state = listState,
+                reverseLayout = true,
                 modifier = Modifier
                     .fillMaxSize()
                     .nestedScroll(scrollConnection),
                 contentPadding = PaddingValues(top = appBarHeight + 8.dp, bottom = bottomClearance)
             ) {
-                if (isGenerating && !streamingHere) {
-                    item(key = "generation-warning") {
-                        Text(
-                            stringResource(R.string.chat_error_other_conversation),
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-
-                items(messages, key = { it.id }) { msg ->
+                items(displayMessages, key = { it.id }) { msg ->
                     val isLast = msg.id == lastMessage?.id
-                    Column(
-                        Modifier.anchorTailItem(
-                            anchor, msg.id, msg.id == messages.last().id,
-                            anchorTailIds.dropLast(1), visibleChatPx,
-                            padNewest = tailAnchorId != null
-                        )
-                    ) {
+                    Column {
 
                     if (msg.role == ChatRole.USER) {
                         UserMessageCard(
@@ -727,6 +579,15 @@ fun ChatScreen(
                     }
                     }
                 }
+                if (isGenerating && !streamingHere) {
+                    item(key = "generation-warning") {
+                        Text(
+                            stringResource(R.string.chat_error_other_conversation),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
             }
             }
             }
@@ -766,7 +627,6 @@ fun ChatScreen(
                     onClick = {
                         // Resume following only after the animation finishes; setting it first
                         // would trigger the instant jump in the auto-scroll effect.
-                        openingAtBottom = false
                         coroutineScope.launch {
                             jumpingToBottom = true
                             try {
