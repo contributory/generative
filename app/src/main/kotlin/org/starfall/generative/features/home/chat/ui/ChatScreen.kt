@@ -453,6 +453,9 @@ fun ChatScreen(
                 (maxHeight - (appBarHeight + 8.dp) - bottomClearance).coerceAtLeast(0.dp).roundToPx()
             }
             val newestMessageId = messages.lastOrNull()?.id
+            val precedingUserId = messages.getOrNull(messages.size - 2)
+                ?.takeIf { it.role == ChatRole.USER }?.id
+            val tailUserHeights = remember { HashMap<String, Int>() }
             ChatOpeningVeil(active = veilActive, modifier = Modifier.fillMaxSize()) {
             CompositionLocalProvider(
                 LocalChatSettleTracker provides settleTracker
@@ -468,16 +471,26 @@ fun ChatScreen(
             ) {
                 items(displayMessages, key = { it.id }) { msg ->
                     val isLast = msg.id == lastMessage?.id
-                    val tailPaddingFraction = when {
-                        msg.id != newestMessageId -> 0f
-                        msg.role == ChatRole.USER -> 1f
-                        msg.role == ChatRole.MODEL -> 0.5f
-                        else -> 0f
+                    val isNewest = msg.id == newestMessageId
+                    val precedingUserHeight = if (isNewest && msg.role == ChatRole.MODEL) {
+                        precedingUserId?.let { tailUserHeights[it] }
+                    } else null
+                    val tailModifier = when {
+                        !isNewest -> Modifier
+                        msg.role == ChatRole.USER ->
+                            Modifier.reverseTailScrollPadding(
+                                visibleChatPx, 1f,
+                                onNaturalHeight = { tailUserHeights[msg.id] = it }
+                            )
+                        msg.role == ChatRole.MODEL ->
+                            Modifier.reverseTailScrollPadding(
+                                visibleChatPx, 0.5f,
+                                minItemHeightPx = precedingUserHeight?.let { (visibleChatPx - it).coerceAtLeast(0) }
+                            )
+                        else -> Modifier
                     }
                     Column(
-                        modifier = if (tailPaddingFraction > 0f) {
-                            Modifier.reverseTailScrollPadding(visibleChatPx, tailPaddingFraction)
-                        } else Modifier
+                        modifier = tailModifier
                     ) {
 
                     if (msg.role == ChatRole.USER) {

@@ -163,20 +163,31 @@ internal fun Modifier.anchorTailItem(
 /**
  * Adds scroll room to the newest item in a reverse-layout chat list.
  *
- * The blank area must be placed before the bubble in list order (above it on screen), so swiping
- * toward history can move the bubble toward the app bar. User messages get all of the remaining
- * visible height; assistant messages get half of that same spacer.
+ * The list starts at the bottom, so the newest item is the last thing a drag can reach. The blank
+ * area therefore goes *below* the bubble on screen (after it in reading order, at the start edge of
+ * the list): that is what lets the user drag the bubble up until it sits right under the app bar.
+ * A blank area above the bubble would only push it away from history and could never be scrolled
+ * through. A user message gets all of the remaining visible height and reports its natural height.
+ * The reply that follows it passes [minItemHeightPx] (visible height minus that user message), so the
+ * content from the user message to the end keeps the same total and the user message does not move
+ * when the reply starts. The spacer is never smaller than [fraction] of the remaining visible height,
+ * so a reply keeps shrinking toward that floor and then to zero as it grows.
  */
 internal fun Modifier.reverseTailScrollPadding(
     visiblePx: Int,
-    fraction: Float
+    fraction: Float,
+    minItemHeightPx: Int? = null,
+    onNaturalHeight: ((Int) -> Unit)? = null
 ): Modifier = layout { measurable, constraints ->
     val placeable = measurable.measure(constraints)
+    onNaturalHeight?.invoke(placeable.height)
     val remainingSpace = (visiblePx - placeable.height).coerceAtLeast(0)
-    val spacer = (remainingSpace * fraction.coerceIn(0f, 1f)).roundToInt()
+    val fractionSpacer = (remainingSpace * fraction.coerceIn(0f, 1f)).roundToInt()
+    val keepInPlaceSpacer = minItemHeightPx?.let { (it - placeable.height).coerceAtLeast(0) } ?: 0
+    val spacer = maxOf(fractionSpacer, keepInPlaceSpacer)
     val height = placeable.height + spacer
     layout(placeable.width, height) {
-        placeable.placeRelative(0, height - placeable.height)
+        placeable.placeRelative(0, 0)
     }
 }
 
