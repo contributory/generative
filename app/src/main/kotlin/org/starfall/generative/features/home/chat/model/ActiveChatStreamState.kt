@@ -29,8 +29,12 @@ data class StreamMetricsSnapshot(
 /** A persistent, append-only link to one committed display segment. Equality is referential on purpose. */
 internal class StreamTextSegment(
     val sequence: Long,
+    val ordinal: Long,
+    val startOffset: Long,
+    val endOffset: Long,
     val text: String,
-    val previous: StreamTextSegment?
+    val previous: StreamTextSegment?,
+    val skipPrevious: StreamTextSegment?
 )
 
 /**
@@ -40,15 +44,89 @@ internal class StreamTextSegment(
 internal class StreamTextSnapshot private constructor(
     val baseText: String,
     val latestSegment: StreamTextSegment?,
-    val length: Long
+    val length: Long,
+    private val segmentCount: Long
 ) {
     fun append(text: String, sequence: Long): StreamTextSnapshot {
         if (text.isEmpty()) return this
+        val ordinal = segmentCount + 1L
+        val skipPrevious = if ((ordinal - 1L) % SEGMENT_SKIP_DISTANCE == 0L) {
+            var ancestor = latestSegment
+            repeat((SEGMENT_SKIP_DISTANCE - 1L).toInt()) { ancestor = ancestor?.previous }
+            ancestor
+        } else null
+        val segment = StreamTextSegment(
+            sequence = sequence,
+            ordinal = ordinal,
+            startOffset = length,
+            endOffset = length + text.length,
+            text = text,
+            previous = latestSegment,
+            skipPrevious = skipPrevious
+        )
         return StreamTextSnapshot(
             baseText = baseText,
-            latestSegment = StreamTextSegment(sequence, text, latestSegment),
-            length = length + text.length.toLong()
+            latestSegment = segment,
+            length = length + text.length.toLong(),
+            segmentCount = ordinal
         )
+    }
+
+    /** Extracts a bounded source range without materializing the whole accumulated response. */
+    fun slice(startOffset: Int, endOffset: Int): String {
+        val start = startOffset.coerceAtLeast(0).toLong()
+        val end = endOffset.toLong().coerceAtMost(length)
+        if (end <= start) return ""
+        val output = StringBuilder((end - start).coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+        val baseEnd = minOf(end, baseText.length.toLong())
+        if (start < baseEnd) {
+            output.append(baseText, start.toInt(), baseEnd.toInt())
+        }
+
+        var segment = latestSegment
+        while (segment != null && segment.startOffset >= end) {
+            val skip = segment.skipPrevious
+            segment = if (skip != null && skip.startOffset >= end) skip else segment.previous
+        }
+        val intersecting = ArrayList<StreamTextSegment>()
+        while (segment != null && segment.endOffset > start) {
+            if (segment.startOffset < end) intersecting += segment
+            segment = segment.previous
+        }
+        for (index in intersecting.lastIndex downTo 0) {
+            val part = intersecting[index]
+            val from = maxOf(start, part.startOffset) - part.startOffset
+            val until = minOf(end, part.endOffset) - part.startOffset
+            if (until > from) output.append(part.text, from.toInt(), until.toInt())
+        }
+        return output.toString()
+    }
+
+    /** Returns only append-only display segments newer than [sequence], in source order. */
+    fun segmentsAfter(sequence: Long): List<StreamTextSegment> {
+        val reversed = ArrayList<StreamTextSegment>()
+        var segment = latestSegment
+        while (segment != null && segment.sequence > sequence) {
+            reversed += segment
+            segment = segment.previous
+        }
+        return reversed.asReversed()
+    }
+
+    fun prefix(maxLength: Int): String {
+        if (maxLength <= 0) return ""
+        if (baseText.length >= maxLength) return baseText.substring(0, maxLength)
+        val remaining = maxLength - baseText.length
+        return buildString(maxLength) {
+            append(baseText)
+            var appended = 0
+            for (segment in segmentsAfter(Long.MIN_VALUE)) {
+                if (appended >= remaining) break
+                val count = minOf(segment.text.length, remaining - appended)
+                append(segment.text, 0, count)
+                appended += count
+            }
+        }
     }
 
     fun materialize(): String {
@@ -67,7 +145,9 @@ internal class StreamTextSnapshot private constructor(
 
     companion object {
         fun of(baseText: String = ""): StreamTextSnapshot =
-            StreamTextSnapshot(baseText, latestSegment = null, length = baseText.length.toLong())
+            StreamTextSnapshot(baseText, latestSegment = null, length = baseText.length.toLong(), segmentCount = 0L)
+
+        private const val SEGMENT_SKIP_DISTANCE = 32L
     }
 }
 

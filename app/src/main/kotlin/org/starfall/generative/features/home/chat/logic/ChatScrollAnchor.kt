@@ -16,11 +16,22 @@ import org.starfall.generative.shared.model.StoredMessage
 internal class SentMessageDetector {
     private var knownIds: Set<String>? = null
     private var lastHistory: List<StoredMessage>? = null
+    private var lastStructuralRevision: Long? = null
+    internal var idScanCount: Long = 0L
+        private set
 
-    /** The id of a user message that entered [history] since the previous call, or null. */
+    /** Compatibility helper for callers without an explicit structural epoch. */
     fun observe(history: List<StoredMessage>): String? {
         if (history === lastHistory) return null
+        return observe(history, (lastStructuralRevision ?: -1L) + 1L)
+    }
+
+    /** The id of a user message that entered [history] since the previous structural revision, or null. */
+    fun observe(history: List<StoredMessage>, structuralRevision: Long): String? {
+        if (lastStructuralRevision == structuralRevision) return null
+        lastStructuralRevision = structuralRevision
         lastHistory = history
+        idScanCount += 1L
         val previous = knownIds
         knownIds = history.mapTo(HashSet(history.size * 2)) { it.id }
         // The first snapshot is the baseline: opening a chat or switching to one is not a send.

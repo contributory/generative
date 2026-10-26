@@ -29,6 +29,7 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import org.starfall.generative.features.home.chat.ui.markdown.MarkdownRenderer
+import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
@@ -44,9 +45,13 @@ fun UserMessageCard(
     onResend: (() -> Unit)? = null,
     onResendFromMenu: (() -> Unit)? = null,
     resendEnabled: Boolean = true,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    conversationId: String? = null
 ) {
     val context = LocalContext.current
+    val renderCacheIdentity = remember(conversationId, message.id) {
+        conversationId?.takeUnless { message.isQueued }?.let { MarkdownRenderCacheIdentity(it, message.id) }
+    }
     var showMenu by remember { mutableStateOf(false) }
 
     BoxWithConstraints(
@@ -84,7 +89,12 @@ fun UserMessageCard(
                     // Text Content
                     // Same renderer (markdown, LaTeX, code, tables, font and size) as AI messages.
                     val messageText: @Composable () -> Unit = {
-                        MarkdownRenderer(content = message.content, fillMaxWidth = false, trimLeadingBlockSpace = true)
+                        MarkdownRenderer(
+                            content = message.content,
+                            fillMaxWidth = false,
+                            trimLeadingBlockSpace = true,
+                            cacheIdentity = renderCacheIdentity
+                        )
                     }
                     if (message.isQueued) {
                         messageText()

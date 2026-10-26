@@ -12,13 +12,33 @@ internal suspend fun parseLibraryMarkdown(content: String): State {
 
 internal data class MarkdownFence(val language: String, val code: String, val closed: Boolean)
 
+/** Source-backed fence metadata lets large code blocks preview without first copying the whole block. */
+internal data class MarkdownFenceSource(
+    val language: String,
+    val codeStartOffset: Int,
+    val codeEndOffset: Int,
+    val closed: Boolean
+)
+
+internal fun markdownFenceSource(content: String, node: ASTNode): MarkdownFenceSource {
+    val tokens = node.children.filter { it.type == MarkdownTokenTypes.CODE_FENCE_CONTENT }
+    val start = tokens.firstOrNull()?.startOffset ?: 0
+    val end = tokens.lastOrNull()?.endOffset ?: start
+    return MarkdownFenceSource(
+        language = node.children.firstOrNull { it.type == MarkdownTokenTypes.FENCE_LANG }
+            ?.getTextInNode(content)?.toString().orEmpty(),
+        codeStartOffset = start,
+        codeEndOffset = end,
+        closed = node.children.any { it.type == MarkdownTokenTypes.CODE_FENCE_END }
+    )
+}
+
 /** Use the library's token boundaries; preserve whitespace for copying and code preview. */
 internal fun markdownFence(content: String, node: ASTNode): MarkdownFence {
-    val tokens = node.children.filter { it.type == MarkdownTokenTypes.CODE_FENCE_CONTENT }
-    val code = if (tokens.isEmpty()) "" else content.substring(tokens.first().startOffset, tokens.last().endOffset)
-    return MarkdownFence(
-        node.children.firstOrNull { it.type == MarkdownTokenTypes.FENCE_LANG }?.getTextInNode(content)?.toString().orEmpty(),
-        code,
-        node.children.any { it.type == MarkdownTokenTypes.CODE_FENCE_END }
+    val source = markdownFenceSource(content, node)
+    val code = content.substring(
+        source.codeStartOffset.coerceIn(0, content.length),
+        source.codeEndOffset.coerceIn(source.codeStartOffset.coerceIn(0, content.length), content.length)
     )
+    return MarkdownFence(source.language, code, source.closed)
 }

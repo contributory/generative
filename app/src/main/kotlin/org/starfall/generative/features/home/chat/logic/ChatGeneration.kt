@@ -275,18 +275,16 @@ internal class ChatGeneration(
                                 role = ChatRole.MODEL,
                                 versions = listOf(responseVersion)
                             )
-                            snapshot = snapshot!!.copy(
-                                updatedAt = now,
-                                messages = snapshot!!.messages.map { message ->
-                                    if (message.id != previousId) message else message.copy(
-                                        versions = message.versions.mapIndexed { index, version ->
-                                            if (index == message.activeVersionIndex) {
-                                                version.copy(processingFinishedAt = now)
-                                            } else version
-                                        }
-                                    )
-                                } + chunk.message.copy(isQueued = false) + response
-                            )
+                            val nextMessages = snapshot!!.messages.map { message ->
+                                if (message.id != previousId) message else message.copy(
+                                    versions = message.versions.mapIndexed { index, version ->
+                                        if (index == message.activeVersionIndex) {
+                                            version.copy(processingFinishedAt = now)
+                                        } else version
+                                    }
+                                )
+                            } + chunk.message.copy(isQueued = false) + response
+                            snapshot = snapshot!!.withStructuralMessageChange(nextMessages).copy(updatedAt = now)
                             resetDisplayFor(response)
                             publish(snapshot!!)
                             persist(snapshot!!)
@@ -461,6 +459,7 @@ internal fun prepareRegeneration(conversation: Conversation, messageId: String,
     if (index < 1 || conversation.messages.take(index).none { it.role == ChatRole.USER }) return null
     val message = conversation.messages[index]
     val replaceActive = message.activeVersion.isErrorOnly()
-    return conversation.copy(messages = conversation.messages.take(index) +
-        message.withAttempt(version, replaceActive))
+    return conversation.withUpdatedMessageStructure(
+        conversation.messages.take(index) + message.withAttempt(version, replaceActive)
+    )
 }

@@ -78,6 +78,8 @@ import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.features.home.shared.ui.ConversationSummarySheet
 import org.starfall.generative.features.home.chat.model.ContextWindowStatus
 import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
+import org.starfall.generative.features.home.chat.ui.markdown.LocalMarkdownViewportState
+import org.starfall.generative.features.home.chat.ui.markdown.MarkdownViewportState
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
@@ -169,6 +171,7 @@ fun ChatScreen(
     var openingAtBottom by remember(conversationKey) { mutableStateOf(true) }
     var openingLayoutRevision by remember(conversationKey) { mutableIntStateOf(0) }
     val settleTracker = remember(conversationKey) { ChatSettleTracker() }
+    val markdownViewport = remember(conversationKey) { MarkdownViewportState() }
     // Scroll position of a just-sent message: middle by default, top only by the user's drag.
     val anchor = remember(conversationKey) { ChatScrollAnchor() }
     var revealed by remember(conversationKey) { mutableStateOf(false) }
@@ -182,7 +185,15 @@ fun ChatScreen(
         ?.displayName?.takeIf { it.isNotBlank() } ?: selectedModelName
 
     val conversationMessages = conversation?.messages.orEmpty()
-    val messages = remember(conversationMessages, queuedMessages) {
+    val structuralRevision = conversation?.structuralRevision ?: 0L
+    val streamingHere = isGenerating && generatingConversationId == conversation?.id
+    val messageIds = remember(conversationKey, structuralRevision) { conversationMessages.map { it.id } }
+    val queuedMessageIds = remember(queuedMessages) { queuedMessages.map { it.id } }
+    val allMessageIds = remember(messageIds, queuedMessageIds) { messageIds + queuedMessageIds }
+    // During a live stream, the active stream state owns response text. Re-materialize the historical
+    // row list only at a persisted message boundary (updatedAt) or a structural/queue change, not for
+    // every render-state publication.
+    val messages = remember(conversationKey, structuralRevision, conversation?.updatedAt, queuedMessages) {
         conversationMessages + queuedMessages
     }
     // A just-sent message is the anchor. A chat that merely ends with a user message (reopened, or
@@ -194,7 +205,8 @@ fun ChatScreen(
     // here, in the apply phase, runs before any LaunchedEffect of this commit starts, so every scroll
     // effect below already sees anchor.settling and leaves the list alone.
     SideEffect {
-        val sentId = anchor.detector.observe(conversationMessages)
+        ChatRenderMetrics.recordChatScreenRecomposition()
+        val sentId = anchor.detector.observe(conversationMessages, structuralRevision)
         if (sentId != null && (followBottom || !autoScroll)) {
             openingAtBottom = false
             anchor.start(sentId)
@@ -224,17 +236,28 @@ fun ChatScreen(
     var showSummaryDialog by remember(conversation?.id) { mutableStateOf(false) }
     var inlineChatError by remember(conversation?.id) { mutableStateOf<String?>(null) }
     var modelPickerOpenRequest by remember(conversation?.id) { mutableIntStateOf(0) }
-    val streamingHere = isGenerating && generatingConversationId == conversation?.id
     val lastMessage = conversationMessages.lastOrNull()
     val streamingMessage = if (streamingHere) conversationMessages.lastOrNull { it.role == ChatRole.MODEL } else null
-    val unansweredMessages = remember(conversationMessages) { unansweredUserMessageIds(conversationMessages) }
+    val lastResponseState = conversationMessages.lastOrNull()?.activeVersion
+    val unansweredMessages = remember(
+        conversationKey,
+        structuralRevision,
+        lastResponseState?.generationError,
+        lastResponseState?.generationInterrupted,
+        lastResponseState?.processingFinishedAt
+    ) { unansweredUserMessageIds(conversationMessages) }
     // Streaming text is followed by the per-frame loop below; stepping on text length made the scroll jump per chunk.
     val autoScrollTick = if (!autoScroll || streamingHere) null else lastMessage?.activeVersionIndex
     // A chat that was already settled at its newest message earlier in this process, and whose parsed
     // content is still in the (evictable) RAM cache, opens at its final size on the first frame and needs
     // no veil. Otherwise the first open hides the chat until it is fully loaded and at the latest message.
     val renderEnvironment = chatRenderEnvironmentKey()
-    val openSignature = remember(conversationMessages, streamingHere) {
+    val openSignature = remember(
+        conversationKey,
+        structuralRevision,
+        streamingHere,
+        if (streamingHere) 0L else conversation?.updatedAt
+    ) {
         if (streamingHere) 0 else chatOpenSignature(conversationMessages)
     }
     val hasSavedMessages = conversationMessages.isNotEmpty()
@@ -336,7 +359,6 @@ fun ChatScreen(
         }
         scrollToBottom()
     }
-    val messageIds = remember(conversationMessages) { conversationMessages.map { it.id } }
     LaunchedEffect(conversation?.id, messageIds, autoScroll) {
         val hasNewMessage = messageIds.any { it !in seenMessageIds }
         val hasNewUserMessage = conversationMessages.any { it.id !in seenMessageIds && it.role == ChatRole.USER }
@@ -542,9 +564,9 @@ fun ChatScreen(
             val visibleChatPx = with(density) {
                 (maxHeight - (appBarHeight + 8.dp) - bottomClearance).coerceAtLeast(0.dp).roundToPx()
             }
-            val anchorTailIds = remember(messages, tailAnchorId) {
-                val index = messages.indexOfFirst { it.id == tailAnchorId }
-                if (index < 0) emptyList() else messages.drop(index).map { it.id }
+            val anchorTailIds = remember(allMessageIds, tailAnchorId) {
+                val index = allMessageIds.indexOf(tailAnchorId)
+                if (index < 0) emptyList() else allMessageIds.drop(index)
             }
             ChatAnchorEffects(
                 anchor = anchor,
@@ -555,12 +577,16 @@ fun ChatScreen(
                 itemCount = { messages.size + messageIndexOffset }
             )
             ChatOpeningVeil(active = veilActive, modifier = Modifier.fillMaxSize()) {
-            CompositionLocalProvider(LocalChatSettleTracker provides settleTracker) {
+            CompositionLocalProvider(
+                LocalChatSettleTracker provides settleTracker,
+                LocalMarkdownViewportState provides markdownViewport
+            ) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .nestedScroll(scrollConnection),
+                    .nestedScroll(scrollConnection)
+                    .onGloballyPositioned { markdownViewport.update(it.boundsInRoot()) },
                 contentPadding = PaddingValues(top = appBarHeight + 8.dp, bottom = bottomClearance)
             ) {
                 if (isGenerating && !streamingHere) {
@@ -586,6 +612,7 @@ fun ChatScreen(
                     if (msg.role == ChatRole.USER) {
                         UserMessageCard(
                             message = msg,
+                            conversationId = conversation?.id,
                             selectedImageAttachments = inputAttachments,
                             onToggleChatImage = toggleChatImage,
                             onResend = if (msg.id in unansweredMessages) ({

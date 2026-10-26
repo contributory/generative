@@ -1,9 +1,6 @@
 package org.starfall.generative.features.home.chat.ui.markdown
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -14,86 +11,134 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import com.mikepenz.markdown.model.State
+import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.withContext
+import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
 import org.starfall.generative.features.home.chat.logic.markdown.parseLibraryMarkdown
 import org.starfall.generative.features.home.chat.logic.markdown.stableMarkdownPrefixLength
 import org.starfall.generative.features.home.chat.ui.MarkdownParseCache
-import org.starfall.generative.shared.ui.text.LocalStreamingTextFade
+import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
+import org.starfall.generative.shared.ui.text.messageMarkdownTypography
 
-/** One finished top-level block. [parsed] is kept here so the chunk never waits for [MarkdownParseCache]. */
-private class FrozenChunk(val text: String, val parsed: State)
-
-/**
- * Finished top-level blocks of a streaming answer. [prefix] is their concatenated source; [tailSeed] is the
- * parse of the text that follows it. Both are written in one state update, so the tail never shows text that
- * has already moved into a chunk.
- */
-private class FrozenMarkdown(val prefix: String, val chunks: List<FrozenChunk>, val tailSeed: State?) {
+/** Frozen top-level nodes plus the length of their append-only source prefix. */
+private class FrozenMarkdown(
+    val prefixLength: Int,
+    /** Present only on the compatibility path that has no generation-scoped append-only source. */
+    val prefixText: String?,
+    val chunks: PersistentList<FrozenMarkdownChunk>,
+    val tailSeed: State?
+) {
     companion object {
-        val EMPTY = FrozenMarkdown("", emptyList(), null)
+        val EMPTY = FrozenMarkdown(prefixLength = 0, prefixText = "", chunks = persistentListOf(), tailSeed = null)
     }
 }
 
 /**
- * Streaming answer split into frozen chunks and one growing tail. Frozen chunks are parsed once, are not
- * faded, and are not re-parsed; only the tail is re-parsed on each update. See plans/streaming-markdown-chunking.md.
+ * Compatibility renderer for streaming callers that do not yet provide [StreamTextSnapshot]. Finished
+ * chunks are parsed once and virtualized with the chat viewport. The active incomplete tail is bounded;
+ * when it outgrows the parser limit, a short plain-text preview is shown until the final static parse.
  */
 @Composable
-internal fun ChunkedStreamingMarkdown(content: String, modifier: Modifier = Modifier) {
-    val latestContent by rememberUpdatedState(content)
-    var frozen by remember { mutableStateOf(FrozenMarkdown.EMPTY) }
+internal fun ChunkedStreamingMarkdown(
+    content: String,
+    modifier: Modifier = Modifier,
+    cacheIdentity: MarkdownRenderCacheIdentity? = null,
+    streamGenerationId: Long? = null
+) {
+    key(streamGenerationId, cacheIdentity) {
+        val latestContent by rememberUpdatedState(content)
+        var frozen by remember { mutableStateOf(FrozenMarkdown.EMPTY) }
+        val appendOnlyGeneration = streamGenerationId != null
 
-    // Text that no longer starts with the frozen prefix (regeneration, tool-block restart, think-tag
-    // stripping) invalidates it. Derive it at composition time so no stale frame is ever drawn.
-    val valid = if (content.startsWith(frozen.prefix)) frozen else FrozenMarkdown.EMPTY
-    val tail = content.substring(valid.prefix.length)
+        fun prefixStillMatches(text: String, state: FrozenMarkdown): Boolean = when {
+            appendOnlyGeneration -> text.length >= state.prefixLength
+            else -> state.prefixText?.let { prefix -> text.startsWith(prefix) } == true
+        }
 
-    LaunchedEffect(Unit) {
-        snapshotFlow { latestContent }.conflate().collect { text ->
-            var base = frozen.takeIf { text.startsWith(it.prefix) } ?: FrozenMarkdown.EMPTY
-            if (base !== frozen) frozen = base
-            while (true) {                                   // a burst may contain several finished blocks
-                val current = latestContent
-                if (!current.startsWith(base.prefix)) break
-                val rest = current.substring(base.prefix.length)
-                val cut = stableMarkdownPrefixLength(rest)
-                if (cut <= 0) break
-                val chunk = rest.substring(0, cut)
-                val chunkState = withContext(Dispatchers.Default) { parseLibraryMarkdown(chunk) }
-                if (chunkState !is State.Success) break      // keep it in the tail; the final render handles it
-                MarkdownParseCache.put(chunk, chunkState)    // must be cached BEFORE the chunk is shown
-                val prefix = base.prefix + chunk
-                val tailSeed = withContext(Dispatchers.Default) {
-                    parseLibraryMarkdown(current.substring(prefix.length))
+        // A generation id makes the provider's append-only contract sufficient to validate the prefix in O(1).
+        // Without one, retain the exact prefix and verify it before reusing chunks.
+        val valid = if (prefixStillMatches(content, frozen)) frozen else FrozenMarkdown.EMPTY
+        val tailLength = (content.length - valid.prefixLength).coerceAtLeast(0)
+        val tailIsPreview = tailLength > MAX_CHUNKED_MARKDOWN_TAIL_CHARS
+        val tail = if (tailIsPreview) {
+            "…\n" + content.takeLast(CHUNKED_TAIL_PREVIEW_CHARS)
+        } else {
+            content.substring(valid.prefixLength)
+        }
+
+        LaunchedEffect(Unit) {
+            snapshotFlow { latestContent }.conflate().collect { text ->
+                var base = frozen.takeIf { prefixStillMatches(text, it) } ?: FrozenMarkdown.EMPTY
+                if (base !== frozen) frozen = base
+                while (true) {                                   // a burst may contain several finished blocks
+                    val current = latestContent
+                    if (!prefixStillMatches(current, base)) break
+                    val restLength = current.length - base.prefixLength
+                    if (restLength > MAX_CHUNKED_MARKDOWN_TAIL_CHARS) break // do not rescan an unclosed huge block
+                    val rest = current.substring(base.prefixLength)
+                    val cut = stableMarkdownPrefixLength(rest)
+                    if (cut <= 0) break
+                    val chunk = rest.substring(0, cut)
+                    val (chunkState, fingerprint) = withContext(Dispatchers.Default) {
+                        val startedAt = System.nanoTime()
+                        val state = try {
+                            parseLibraryMarkdown(chunk)
+                        } finally {
+                            MarkdownParseCache.recordFullParse(chunk.length, System.nanoTime() - startedAt)
+                        }
+                        state to markdownContentFingerprint(chunk)
+                    }
+                    if (chunkState !is State.Success) break      // keep it in the tail; the final render handles it
+                    val chunkIdentity = cacheIdentity?.forBlock("chunk-${base.chunks.size}")
+                    MarkdownParseCache.put(chunk, chunkState, chunkIdentity, fingerprint) // cache before publishing the chunk
+                    val prefixLength = base.prefixLength + chunk.length
+                    val prefixText = if (appendOnlyGeneration) null else base.prefixText.orEmpty() + chunk
+                    val tailText = current.substring(prefixLength)
+                    val tailSeed = withContext(Dispatchers.Default) {
+                        val startedAt = System.nanoTime()
+                        try {
+                            parseLibraryMarkdown(tailText)
+                        } finally {
+                            MarkdownParseCache.recordFullParse(tailText.length, System.nanoTime() - startedAt)
+                        }
+                    }
+                    val latestStillMatches = if (appendOnlyGeneration) {
+                        latestContent.length >= prefixLength
+                    } else {
+                        latestContent.startsWith(prefixText.orEmpty())
+                    }
+                    if (!latestStillMatches) break // text changed during the parse
+                    base = FrozenMarkdown(
+                        prefixLength = prefixLength,
+                        prefixText = prefixText,
+                        chunks = base.chunks.add(FrozenMarkdownChunk(chunk, chunkState, chunkIdentity, fingerprint)),
+                        tailSeed = tailSeed.takeIf { it is State.Success }
+                    )
+                    frozen = base                                // ONE atomic state write: chunk appears, tail shrinks
                 }
-                if (!latestContent.startsWith(prefix)) break // text changed during the parse
-                base = FrozenMarkdown(
-                    prefix = prefix,
-                    chunks = base.chunks + FrozenChunk(chunk, chunkState),
-                    tailSeed = tailSeed.takeIf { it is State.Success }
-                )
-                frozen = base                                // ONE atomic write: chunk appears, tail shrinks
             }
         }
-    }
 
-    Column(modifier.fillMaxWidth()) {                        // no spacing: the library already spaces blocks
-        CompositionLocalProvider(LocalStreamingTextFade provides false) {
-            valid.chunks.forEachIndexed { index, chunk ->
-                key(index, chunk.text) {
-                    MarkdownRenderer(content = chunk.text, isStreaming = false, initialParse = chunk.parsed)
-                }
-            }
-        }
-        if (tail.isNotBlank()) {
-            // Keyed by the frozen state: when a block is frozen the tail gets a new renderer that starts from
-            // the parse written with it. Otherwise the old tail parse would still show the frozen block.
-            key(valid) {
-                MarkdownRenderer(content = tail, isStreaming = true, initialParse = valid.tailSeed)
-            }
-        }
+        val preferences = LocalCodeRenderingPreferences.current
+        val typographyKey = messageMarkdownTypography().hashCode()
+        val renderOptionsKey = 31 * preferences.hashCode() +
+            17 * preferences.latexMode.hashCode() + 7 * true.hashCode() + false.hashCode()
+        VirtualizedFrozenChunks(
+            chunks = valid.chunks,
+            tail = tail,
+            tailIsPreview = tailIsPreview,
+            tailSeed = valid.tailSeed,
+            identity = cacheIdentity,
+            modifier = modifier,
+            typographyKey = typographyKey,
+            optionsKey = renderOptionsKey
+        )
     }
 }
+
+private const val MAX_CHUNKED_MARKDOWN_TAIL_CHARS = 8_000
+private const val CHUNKED_TAIL_PREVIEW_CHARS = 4_000

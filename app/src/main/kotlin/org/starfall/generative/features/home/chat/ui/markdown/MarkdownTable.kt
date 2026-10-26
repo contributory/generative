@@ -7,7 +7,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -29,15 +28,17 @@ import org.intellij.markdown.flavours.gfm.GFMElementTypes
 import org.intellij.markdown.flavours.gfm.GFMTokenTypes
 import org.starfall.generative.features.home.chat.logic.markdown.MathPiece
 import org.starfall.generative.features.home.chat.logic.markdown.MathSplitter
+import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 import org.starfall.generative.shared.ui.text.toComposeFontFamily
 
 private val MaxTableColumnWidth = 260.dp
 private val TableCellHorizontalPadding = 10.dp
+private const val MAX_EAGER_TABLE_ROWS = 48
 
-private class TableRow(val header: Boolean, val cells: List<ASTNode>)
+internal class TableRow(val header: Boolean, val cells: List<ASTNode>)
 
-private data class TableCellContent(
+internal data class TableCellContent(
     val annotated: AnnotatedString?,
     val mathPieces: List<MathPiece>?
 )
@@ -46,7 +47,7 @@ private fun tableRows(node: ASTNode): List<TableRow> = node.children
     .filter { it.type == GFMElementTypes.HEADER || it.type == GFMElementTypes.ROW }
     .map { row -> TableRow(row.type == GFMElementTypes.HEADER, row.children.filter { it.type == GFMTokenTypes.CELL }) }
 
-private fun AnnotatedString.trimmed(): AnnotatedString {
+internal fun AnnotatedString.trimmed(): AnnotatedString {
     val start = text.indexOfFirst { !it.isWhitespace() }
     if (start < 0) return AnnotatedString("")
     return subSequence(start, text.indexOfLast { !it.isWhitespace() } + 1)
@@ -57,7 +58,13 @@ private fun AnnotatedString.trimmed(): AnnotatedString {
  * and a table wider than the message scrolls horizontally.
  */
 @Composable
-internal fun RenderMarkdownTable(model: MarkdownComponentModel) {
+internal fun RenderMarkdownTable(
+    model: MarkdownComponentModel,
+    identity: MarkdownRenderCacheIdentity? = null,
+    allowVirtualization: Boolean = false,
+    typographyKey: Int = model.typography.hashCode(),
+    optionsKey: Int = 0
+) {
     val content = model.content
     val rows = remember(model.node) { tableRows(model.node) }
     if (rows.isEmpty()) return
@@ -71,6 +78,19 @@ internal fun RenderMarkdownTable(model: MarkdownComponentModel) {
         color = MaterialTheme.colorScheme.onSurface
     )
     val headerStyle = baseStyle.copy(fontWeight = FontWeight.SemiBold)
+    if (allowVirtualization && rows.size > MAX_EAGER_TABLE_ROWS) {
+        RenderVirtualizedMarkdownTable(
+            content = content,
+            rows = rows,
+            identity = identity,
+            preferencesKey = optionsKey,
+            typographyKey = typographyKey,
+            settings = settings,
+            baseStyle = baseStyle,
+            headerStyle = headerStyle
+        )
+        return
+    }
     val cells = rows.map { row ->
         row.cells.map { cell ->
             val source = cell.getTextInNode(content).toString().trim()

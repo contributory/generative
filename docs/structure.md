@@ -152,6 +152,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   │   │   ├── 📄 MarkdownHeading.kt
 │   │   │   │   │   ├── 📄 MarkdownLibrary.kt
 │   │   │   │   │   ├── 📄 MathSplitter.kt
+│   │   │   │   │   ├── 📄 PersistentMarkdownAstCache.kt
 │   │   │   │   │   └── 📄 StableMarkdownPrefix.kt
 │   │   │   │   ├── 📁 service/
 │   │   │   │   │   ├── 📄 AutomaticConversationSummaryCoordinator.kt
@@ -176,6 +177,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   │   ├── 📄 ChatViewModel.kt
 │   │   │   │   ├── 📄 ContextWindowLogic.kt
 │   │   │   │   ├── 📄 ContextUsageLogic.kt
+│   │   │   │   ├── 📄 ConversationStructure.kt
 │   │   │   │   ├── 📄 ConversationSummaryGeneration.kt
 │   │   │   │   ├── 📄 ConversationSummaryCoordinator.kt
 │   │   │   │   ├── 📄 SendFileTool.kt
@@ -186,16 +188,25 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   └── 📁 ui/
 │   │   │       ├── 📁 input/
 │   │   │       │   └── 📄 ChatInputAreaUi.kt
-│   │       │   ├── 📁 markdown/
-│   │       │   │   ├── 📄 ChunkedStreamingMarkdown.kt
-│   │       │   │   ├── 📄 LatexFormulaRenderer.kt
-│   │       │   │   ├── 📄 MarkdownCodeBlock.kt
-│   │       │   │   ├── 📄 MarkdownHeading.kt
-│   │       │   │   ├── 📄 MarkdownInlineText.kt
+│   │   │       ├── 📁 markdown/
+│   │   │       │   ├── 📄 ChunkedStreamingMarkdown.kt
+│   │   │       │   ├── 📄 IncrementalMarkdownParser.kt
+│   │   │       │   ├── 📄 LargeMarkdownParagraph.kt
+│   │   │       │   ├── 📄 LatexFormulaRenderer.kt
+│   │   │       │   ├── 📄 MarkdownBlockElement.kt
+│   │   │       │   ├── 📄 MarkdownBlockVirtualizer.kt
+│   │   │       │   ├── 📄 MarkdownCodeBlock.kt
+│   │   │       │   ├── 📄 MarkdownHeading.kt
+│   │   │       │   ├── 📄 MarkdownInlineText.kt
 │   │   │       │   ├── 📄 MarkdownLatexBlock.kt
 │   │   │       │   ├── 📄 MarkdownMathParagraph.kt
 │   │   │       │   ├── 📄 MarkdownRenderer.kt
-│   │   │       │   └── 📄 MarkdownTable.kt
+│   │   │       │   ├── 📄 MarkdownTable.kt
+│   │   │       │   ├── 📄 StreamingMarkdownRenderer.kt
+│   │   │       │   ├── 📄 VirtualizedFrozenChunks.kt
+│   │   │       │   ├── 📄 VirtualizedIncrementalMarkdown.kt
+│   │   │       │   ├── 📄 VirtualizedMarkdownList.kt
+│   │   │       │   └── 📄 VirtualizedMarkdownTable.kt
 │   │   │       ├── 📁 tool/
 │   │   │       │   └── 📄 ToolActivityCards.kt
 │   │   │       ├── 📄 AssistantMessageCard.kt
@@ -210,9 +221,9 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │       ├── 📄 GenerationLoadingIndicator.kt
 │   │   │       ├── 📄 LiveThinkingBlock.kt
 │   │   │       ├── 📄 MessageBubble.kt
-│   │       │   ├── 📄 ReasoningDropdown.kt
-│   │       │   ├── 📄 ThinkingMarkdown.kt
-│   │       │   └── 📄 UserMessageCard.kt
+│   │   │       ├── 📄 ReasoningDropdown.kt
+│   │   │       ├── 📄 ThinkingMarkdown.kt
+│   │   │       └── 📄 UserMessageCard.kt
 │   │   ├── 📁 drawer/
 │   │   │   ├── 📁 logic/
 │   │   │   │   └── 📄 ConversationModelIcon.kt

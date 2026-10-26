@@ -26,6 +26,7 @@ import org.starfall.generative.shared.storage.ConversationRepository
 import org.starfall.generative.shared.storage.LocalWriteErrors
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
+import org.starfall.generative.features.home.chat.logic.markdown.PersistentMarkdownAstCache
 
 /** Coordinates conversation selection, history mutations, queued sends and persistence ordering. */
 internal class ChatConversationCoordinator(
@@ -234,13 +235,16 @@ internal class ChatConversationCoordinator(
                 conversationRepo.saveConversation(updated)
             } catch (error: Exception) {
                 if (currentConversation.value == updated) {
-                    currentConversation.value = conversationRepo.loadById(previous.id) ?: previous
+                    val restored = conversationRepo.loadById(previous.id) ?: previous
+                    currentConversation.value = restored
+                    PersistentMarkdownAstCache.authorizeConversation(restored.id, restored.messages.map { it.id })
                 }
                 throw error
             }
         }
         if (!accepted && currentConversation.value == updated) {
             currentConversation.value = previous
+            PersistentMarkdownAstCache.authorizeConversation(previous.id, previous.messages.map { it.id })
         }
         return accepted
     }
@@ -298,6 +302,7 @@ internal class ChatConversationCoordinator(
 
     private fun applySelectedConversation(conversation: Conversation) {
         val selected = existingGeneration(conversation.id)?.snapshot ?: conversation
+        PersistentMarkdownAstCache.authorizeConversation(selected.id, selected.messages.map { it.id })
         if (selected.id != currentConversation.value?.id) disconnectRemoteMachines()
         currentConversation.value = selected
         scope.launch(LocalWriteErrors.handler) {
@@ -366,6 +371,7 @@ internal class ChatConversationCoordinator(
         writeConversation(
             serialize = true,
             beforeLaunch = {
+                targets.forEach(PersistentMarkdownAstCache::invalidateConversation)
                 previous = currentConversation.value?.takeIf { it.id in targets }
                 deletingConversations.update { it + targets }
                 if (previous != null) {
@@ -392,6 +398,7 @@ internal class ChatConversationCoordinator(
             } catch (error: Exception) {
                 if (!deleted && currentConversation.value == null && previous != null) {
                     currentConversation.value = previous
+                    PersistentMarkdownAstCache.authorizeConversation(previous.id, previous.messages.map { it.id })
                 }
                 throw error
             } finally {
@@ -447,6 +454,7 @@ internal class ChatConversationCoordinator(
         return writeConversation(
             serialize = true,
             beforeLaunch = {
+                PersistentMarkdownAstCache.invalidateAll()
                 previous = currentConversation.value
                 deletingAllConversations.value = true
                 currentConversation.value = null
@@ -468,7 +476,10 @@ internal class ChatConversationCoordinator(
                 prefsRepo.updateSidebar { SidebarOrganization() }
                 deleteOrphanedUploads(uploads, attachedFiles, removedConversationIds = emptySet())
             } catch (error: Exception) {
-                if (!deleted && currentConversation.value == null) currentConversation.value = previous
+                if (!deleted && currentConversation.value == null) {
+                    currentConversation.value = previous
+                    previous?.let { PersistentMarkdownAstCache.authorizeConversation(it.id, it.messages.map { message -> message.id }) }
+                }
                 throw error
             } finally {
                 deletingAllConversations.value = false

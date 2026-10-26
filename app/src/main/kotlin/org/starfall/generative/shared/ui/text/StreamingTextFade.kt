@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.ui.text
 
+import android.animation.ValueAnimator
 import android.os.SystemClock
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.runtime.*
@@ -9,6 +10,7 @@ import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.text.TextLayoutResult
 
 internal val LocalStreamingTextFade = compositionLocalOf { false }
@@ -42,10 +44,15 @@ internal data class StreamingTextPresentation(
     val onTextLayout: (TextLayoutResult) -> Unit
 )
 
+internal fun shouldRevealStreamingText(localEnabled: Boolean, systemAnimationsEnabled: Boolean): Boolean =
+    localEnabled && systemAnimationsEnabled
+
 @Composable
 internal fun rememberStreamingTextPresentation(text: String): StreamingTextPresentation {
     val enabled = LocalStreamingTextFade.current
-    if (!enabled) return StreamingTextPresentation(Modifier, {})
+    if (!shouldRevealStreamingText(enabled, ValueAnimator.areAnimatorsEnabled())) {
+        return StreamingTextPresentation(Modifier, {})
+    }
 
     val tracker = remember { StreamingFadeTracker() }
     val ranges = remember(text) { tracker.update(text, SystemClock.uptimeMillis()) }

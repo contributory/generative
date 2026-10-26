@@ -2,6 +2,7 @@ package org.starfall.generative.features.home.chat.logic
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.starfall.generative.features.home.chat.model.StreamTextSnapshot
 
 class StreamResponseTextSplitterTest {
     @Test
@@ -71,6 +72,38 @@ class StreamResponseTextSplitterTest {
 
         splitter.append(" continued  ")
         assertEquals("reason \n continued".length, splitter.visibleReasoningLength)
+    }
+
+    @Test
+    fun streamTextSnapshotExposesNewSegmentsWithoutMaterializingTheWholeValue() {
+        val initial = StreamTextSnapshot.of("base")
+        val first = initial.append("a", sequence = 1L)
+        val second = first.append("b", sequence = 2L)
+
+        assertEquals(listOf("a", "b"), second.segmentsAfter(0L).map { it.text })
+        assertEquals(listOf("b"), second.segmentsAfter(1L).map { it.text })
+        assertEquals("baseab", second.materialize())
+        assertEquals("basea", second.prefix(5))
+        assertEquals("baseab", second.prefix(50))
+    }
+
+    @Test
+    fun streamTextSnapshotSlicesAcrossBaseAndManyImmutableSegments() {
+        var snapshot = StreamTextSnapshot.of("base-")
+        val expected = StringBuilder("base-")
+        repeat(160) { index ->
+            val segment = "[$index]"
+            snapshot = snapshot.append(segment, sequence = index + 1L)
+            expected.append(segment)
+        }
+        val source = expected.toString()
+
+        for (start in 0..source.length step 13) {
+            val end = (start + 37).coerceAtMost(source.length)
+            assertEquals(source.substring(start, end), snapshot.slice(start, end))
+        }
+        assertEquals("", snapshot.slice(source.length, source.length + 20))
+        assertEquals(source, snapshot.materialize())
     }
 
     private fun parse(input: String): StreamResponseText {
