@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import org.starfall.generative.features.home.chat.logic.SentMessageDetector
 import org.starfall.generative.features.home.chat.logic.anchorTailSpacer
 
@@ -157,6 +158,26 @@ internal fun Modifier.anchorTailItem(
         maxOf(placeable.height, anchor.newestItemMinHeight(visiblePx, precedingIds))
     } else placeable.height
     layout(placeable.width, height) { placeable.placeRelative(0, 0) }
+}
+
+/**
+ * Adds scroll room to the newest item in a reverse-layout chat list.
+ *
+ * The blank area must be placed before the bubble in list order (above it on screen), so swiping
+ * toward history can move the bubble toward the app bar. User messages get all of the remaining
+ * visible height; assistant messages get half of that same spacer.
+ */
+internal fun Modifier.reverseTailScrollPadding(
+    visiblePx: Int,
+    fraction: Float
+): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    val remainingSpace = (visiblePx - placeable.height).coerceAtLeast(0)
+    val spacer = (remainingSpace * fraction.coerceIn(0f, 1f)).roundToInt()
+    val height = placeable.height + spacer
+    layout(placeable.width, height) {
+        placeable.placeRelative(0, height - placeable.height)
+    }
 }
 
 /**

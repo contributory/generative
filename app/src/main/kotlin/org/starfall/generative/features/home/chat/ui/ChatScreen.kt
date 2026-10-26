@@ -449,6 +449,10 @@ fun ChatScreen(
                 )
             }
         } else {
+            val visibleChatPx = with(density) {
+                (maxHeight - (appBarHeight + 8.dp) - bottomClearance).coerceAtLeast(0.dp).roundToPx()
+            }
+            val newestMessageId = messages.lastOrNull()?.id
             ChatOpeningVeil(active = veilActive, modifier = Modifier.fillMaxSize()) {
             CompositionLocalProvider(
                 LocalChatSettleTracker provides settleTracker
@@ -464,7 +468,17 @@ fun ChatScreen(
             ) {
                 items(displayMessages, key = { it.id }) { msg ->
                     val isLast = msg.id == lastMessage?.id
-                    Column {
+                    val tailPaddingFraction = when {
+                        msg.id != newestMessageId -> 0f
+                        msg.role == ChatRole.USER -> 1f
+                        msg.role == ChatRole.MODEL -> 0.5f
+                        else -> 0f
+                    }
+                    Column(
+                        modifier = if (tailPaddingFraction > 0f) {
+                            Modifier.reverseTailScrollPadding(visibleChatPx, tailPaddingFraction)
+                        } else Modifier
+                    ) {
 
                     if (msg.role == ChatRole.USER) {
                         UserMessageCard(
