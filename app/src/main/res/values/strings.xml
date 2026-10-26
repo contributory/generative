@@ -681,7 +681,7 @@
     <string name="mcp_attachments_mode_classic">Attach all enabled MCP tools</string>
     <string name="mcp_attachments_classic_description">Sends every enabled MCP tool with each request.</string>
     <string name="mcp_attachments_include_description">Include tool descriptions</string>
-    <string name="mcp_attachments_include_description_summary">Off: descriptions are omitted for MCP tools attached beforehand, reducing request size. On-demand MCP descriptions are controlled by connect_mcps' detailed parameter.</string>
+    <string name="mcp_attachments_include_description_summary">Off: descriptions are omitted for MCP tools attached beforehand, reducing request size. The detailed parameter on connect_mcps controls descriptions for on-demand MCPs.</string>
     <string name="mcp_attachments_dynamic_description">The model gets list_mcps and connect_mcps and connects MCP servers only when it needs them. Dynamic applies once both minimums below are reached; until then MCPs are sent classically. Include tool descriptions applies to classically attached MCPs; for on-demand MCPs, connect_mcps uses its detailed parameter.</string>
     <string name="mcp_attachments_min_mcps">Minimum MCP servers</string>
     <string name="mcp_attachments_min_mcps_hint">Default is %1$d. 0 applies Dynamic to any number of MCPs.</string>
