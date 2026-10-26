@@ -8,7 +8,7 @@ class LargeMarkdownParagraphTest {
     @Test
     fun chunkingPreservesTheCompleteSourceWithoutOversizedRows() {
         val source = buildString {
-            repeat(4_107) { append(('a' + it % 26)) }
+            repeat(4_107) { append('a' + it % 26) }
         }
 
         val chunks = chunkLargeMarkdownParagraph(source, chunkSize = 256)

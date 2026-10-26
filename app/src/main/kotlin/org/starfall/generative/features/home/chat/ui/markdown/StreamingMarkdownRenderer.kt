@@ -124,7 +124,7 @@ internal fun StreamingMarkdownRenderer(
                 )
             }
             // `!isStreaming` keeps a regenerated answer on the chunked path on its first frame, before the effect resets `settled`.
-            (settled && !isStreaming) -> MarkdownRenderer(
+            settled && !isStreaming -> MarkdownRenderer(
                 content = displayContent,
                 modifier = modifier,
                 isStreaming = isStreaming,

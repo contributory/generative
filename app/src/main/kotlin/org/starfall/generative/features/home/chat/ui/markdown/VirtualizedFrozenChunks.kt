@@ -126,7 +126,7 @@ internal fun VirtualizedFrozenChunks(
         val endOffset = (visibleEnd + overscan).coerceAtMost(totalHeight)
         val outsideBelow = viewportBounds != null && top > viewportBounds.bottom
         val first = if (outsideBelow) heightIndex.size else heightIndex.blockAt(startOffset)
-        val rowCount = chunks.size + (if (tailActive) 1 else 0)
+        val rowCount = chunks.size + if (tailActive) 1 else 0
         val measured = ArrayList<Pair<Int, androidx.compose.ui.layout.Placeable>>()
         var index = first
         while (index < rowCount && heightIndex.topOf(index) < endOffset) {
