@@ -136,6 +136,78 @@ class ChatGenerationTest {
         runner.stopAndJoin()
     }
 
+    @Test fun stopFreezesTheLastPublishedChunkWithoutATerminalRerender() = runBlocking {
+        val published = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
+        val visibleChunkPublished = CompletableDeferred<Unit>()
+        val queuedChunkAccepted = CompletableDeferred<Unit>()
+        val runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = {},
+            publish = {},
+            publishStream = { _, state ->
+                state?.let {
+                    published += it
+                    if (it.content.materialize() == "visible") visibleChunkPublished.complete(Unit)
+                }
+            },
+            streamCommitIntervalMs = 50L,
+            monotonicTimeMillis = { 0L },
+            waitForStreamInterval = { awaitCancellation() }
+        )
+
+        runner.start(conversation(), "a1", flow {
+            emit("visible")
+            visibleChunkPublished.await()
+            emit(" queued")
+            queuedChunkAccepted.complete(Unit)
+            awaitCancellation()
+        })
+        visibleChunkPublished.await()
+        queuedChunkAccepted.await()
+
+        assertEquals("visible", published.last().content.materialize())
+        val publishedCountAtStop = published.size
+        runner.stop()
+        runner.stopAndJoin()
+
+        assertEquals("Stop must not publish a terminal stream revision", publishedCountAtStop, published.size)
+        assertEquals("visible", published.last().content.materialize())
+        assertEquals(ChatStreamStatus.STREAMING, published.last().status)
+    }
+
+    @Test fun stoppingPersistsExactlyTheFrozenVisibleSnapshotAndDropsQueuedText() = runBlocking {
+        var saved: Conversation? = null
+        val visibleChunkPublished = CompletableDeferred<Unit>()
+        val queuedChunkAccepted = CompletableDeferred<Unit>()
+        val runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = { saved = it },
+            publish = {},
+            publishStream = { _, state ->
+                if (state?.content?.materialize() == "visible") visibleChunkPublished.complete(Unit)
+            },
+            streamCommitIntervalMs = 50L,
+            monotonicTimeMillis = { 0L },
+            waitForStreamInterval = { awaitCancellation() }
+        )
+
+        runner.start(conversation(), "a1", flow {
+            emit("visible")
+            visibleChunkPublished.await()
+            emit(" queued but not yet published")
+            queuedChunkAccepted.complete(Unit)
+            awaitCancellation()
+        })
+        visibleChunkPublished.await()
+        queuedChunkAccepted.await()
+
+        runner.stop()
+        runner.stopAndJoin()
+
+        assertEquals("visible", saved!!.messages.last().activeVersion.content)
+        assertTrue(saved!!.messages.last().activeVersion.generationInterrupted)
+    }
+
     @Test fun terminalFlushPublishesFinalShortCharacterChunkOnce() = runBlocking {
         val streamStates = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
         val runner = ChatGeneration(

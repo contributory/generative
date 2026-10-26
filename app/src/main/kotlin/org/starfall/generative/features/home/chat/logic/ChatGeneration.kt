@@ -2,6 +2,8 @@ package org.starfall.generative.features.home.chat.logic
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.MessageVersion
@@ -51,6 +53,7 @@ internal class ChatGeneration(
     @Volatile private var activeStopSession: GenerationStopSession? = null
     private val pendingUpdateWrites = linkedSetOf<Job>()
     private val pendingUpdateWritesLock = Any()
+    private val persistenceMutex = Mutex()
 
     init {
         require(charactersPerBatch > 0) { "charactersPerBatch must be positive" }
@@ -85,10 +88,18 @@ internal class ChatGeneration(
         snapshot = conversation
         publish(conversation)
         job = scope.launch(start = CoroutineStart.LAZY) {
-            suspend fun persist(conversation: Conversation) {
-                // Keep the live placeholder for the streaming UI, but never write an AI message
-                // that still has no answer, reasoning, files, tools or error.
-                save(conversation.pruningEmptyResponses())
+            suspend fun persist(
+                conversation: Conversation,
+                allowStoppedSnapshot: Boolean = false
+            ) {
+                persistenceMutex.withLock {
+                    // A queued checkpoint must not overwrite the frozen response after Stop.
+                    // The final frozen snapshot is explicitly allowed through this guard.
+                    if (stopSession.isRequested() && !allowStoppedSnapshot) return@withLock
+                    // Keep the live placeholder for the streaming UI, but never write an AI message
+                    // that still has no answer, reasoning, files, tools or error.
+                    save(conversation.pruningEmptyResponses())
+                }
             }
 
             val initialVersion = snapshot?.messages?.firstOrNull { it.id == messageId }?.activeVersion
@@ -414,7 +425,7 @@ internal class ChatGeneration(
                             })
                         }
                         publish(snapshot!!)
-                        persist(snapshot!!)
+                        persist(snapshot!!, allowStoppedSnapshot = stoppedAtClick)
                     }
                 } catch (e: Exception) {
                     _error.value = "$SAVE_CONVERSATION_ERROR_PREFIX ${e.localizedMessage}"
@@ -438,7 +449,7 @@ internal class ChatGeneration(
         snapshot = updated
         snapshotMutationRevision++
         publish(updated)
-        val writeJob = scope.launch(start = CoroutineStart.LAZY) { save(updated) }
+        val writeJob = scope.launch(start = CoroutineStart.LAZY) { persistenceMutex.withLock { save(updated) } }
         synchronized(pendingUpdateWritesLock) { pendingUpdateWrites += writeJob }
         writeJob.invokeOnCompletion {
             synchronized(pendingUpdateWritesLock) { pendingUpdateWrites -= writeJob }

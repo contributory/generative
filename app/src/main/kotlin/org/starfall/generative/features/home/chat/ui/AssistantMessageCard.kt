@@ -73,6 +73,12 @@ fun AssistantMessageCard(
     SideEffect { ChatRenderMetrics.recordMessageCardRecomposition() }
     var showMoreMenu by remember { mutableStateOf(false) }
     val storedVersion = message.activeVersion
+    val stoppedStreamForMessage = streamStateFlow?.value?.takeIf {
+        it.conversationId == conversationId && it.messageId == message.id && it.stopSignal.isFrozen
+    }
+    // Keep the exact incremental Markdown tree mounted after Stop instead of switching to the
+    // persisted String and parsing the whole answer again.
+    val keepStreamRendererMounted = isStreaming || stoppedStreamForMessage != null
     val renderCacheIdentity = remember(conversationId, message.id) {
         conversationId?.let { MarkdownRenderCacheIdentity(it, message.id) }
     }
@@ -107,11 +113,11 @@ fun AssistantMessageCard(
         CompletedAssistantContent(
             version = activeVersion,
             processingDurationMillis = processingDurationMillis.takeUnless { isStreaming },
-            animateStreamingContent = isStreaming,
+            animateStreamingContent = keepStreamRendererMounted,
             selectedImageAttachments = selectedImageAttachments,
             onToggleChatImage = onToggleChatImage,
             renderCacheIdentity = renderCacheIdentity,
-            streamStateFlow = streamStateFlow?.takeIf { isStreaming },
+            streamStateFlow = streamStateFlow?.takeIf { keepStreamRendererMounted },
             streamConversationId = conversationId,
             streamMessageId = message.id
         )
@@ -444,7 +450,8 @@ private fun StreamingAssistantText(
             streamGenerationId = stream.generationId,
             streamMessageId = stream.messageId,
             streamStartOffset = startOffset,
-            cacheIdentity = cacheIdentity
+            cacheIdentity = cacheIdentity,
+            streamFreezeSignal = stream.stopSignal
         )
     }
 }
