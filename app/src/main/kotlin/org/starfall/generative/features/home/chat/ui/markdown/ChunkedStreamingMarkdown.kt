@@ -40,7 +40,7 @@ private class FrozenMarkdown(
 /**
  * Compatibility renderer for streaming callers that do not yet provide [StreamTextSnapshot]. Finished
  * chunks are parsed once and virtualized with the chat viewport. The active incomplete tail is bounded;
- * when it outgrows the parser limit, a short plain-text preview is shown until the final static parse.
+ * when it outgrows the parser limit, it is shown in full as plain text until the final static parse.
  */
 @Composable
 internal fun ChunkedStreamingMarkdown(
@@ -60,11 +60,8 @@ internal fun ChunkedStreamingMarkdown(
         val valid = frozen.takeIf { frozenPrefixMatches(content, it, appendOnlyGeneration) } ?: FrozenMarkdown.EMPTY
         val tailLength = (content.length - valid.prefixLength).coerceAtLeast(0)
         val tailIsPreview = tailLength > MAX_CHUNKED_MARKDOWN_TAIL_CHARS
-        val tail = if (tailIsPreview) {
-            "…\n" + content.takeLast(CHUNKED_TAIL_PREVIEW_CHARS)
-        } else {
-            content.substring(valid.prefixLength)
-        }
+        // An oversized tail is rendered as plain text, but never shortened: all of it stays visible.
+        val tail = content.substring(valid.prefixLength)
 
         LaunchedEffect(Unit) {
             observeFrozenMarkdown(
@@ -112,7 +109,6 @@ private suspend fun observeFrozenMarkdown(
         while (true) {
             val current = latestContent()
             if (!frozenPrefixMatches(current, base, appendOnlyGeneration)) break
-            if (current.length - base.prefixLength > MAX_CHUNKED_MARKDOWN_TAIL_CHARS) break
             val next = freezeStableMarkdownChunk(base, current, appendOnlyGeneration, cacheIdentity, latestContent)
                 ?: break
             base = next
@@ -147,7 +143,9 @@ private suspend fun freezeStableMarkdownChunk(
     MarkdownParseCache.put(chunk, chunkState, chunkIdentity, fingerprint)
     val prefixLength = base.prefixLength + chunk.length
     val prefixText = if (appendOnlyGeneration) null else base.prefixText.orEmpty() + chunk
-    val tailSeed = parseFrozenTail(current.substring(prefixLength))
+    // An oversized remainder is shown as plain text, so its seed parse would be wasted work.
+    val remainingTail = current.substring(prefixLength)
+    val tailSeed = if (remainingTail.length <= MAX_CHUNKED_MARKDOWN_TAIL_CHARS) parseFrozenTail(remainingTail) else null
     val latestStillMatches = if (appendOnlyGeneration) {
         latestContent().length >= prefixLength
     } else {
@@ -158,7 +156,7 @@ private suspend fun freezeStableMarkdownChunk(
         prefixLength = prefixLength,
         prefixText = prefixText,
         chunks = base.chunks.add(FrozenMarkdownChunk(chunk, chunkState, chunkIdentity, fingerprint)),
-        tailSeed = tailSeed.takeIf { it is State.Success }
+        tailSeed = tailSeed?.takeIf { it is State.Success }
     )
 }
 
@@ -174,4 +172,3 @@ private suspend fun parseFrozenTail(text: String): State {
 }
 
 private const val MAX_CHUNKED_MARKDOWN_TAIL_CHARS = 8_000
-private const val CHUNKED_TAIL_PREVIEW_CHARS = 4_000

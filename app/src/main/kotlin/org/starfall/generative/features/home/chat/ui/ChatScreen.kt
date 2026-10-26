@@ -93,6 +93,7 @@ private const val OPEN_AT_BOTTOM_OFFSET = 10_000_000
 // The opening veil lifts after the list has stayed at its newest message with no background work
 // pending for this many frames.
 private const val OPENING_STABLE_FRAMES = 4
+private const val OPENING_MAX_WAIT_MS = 4_000L
 
 @Composable
 fun ChatScreen(
@@ -404,11 +405,15 @@ fun ChatScreen(
         // being parsed or loaded and the view has stayed at the latest message for a few frames.
         snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > 0 }
         var stableFrames = 0
+        var startedNanos = 0L
         while (true) {
-            withFrameNanos { }
+            val frameNanos = withFrameNanos { it }
+            if (startedNanos == 0L) startedNanos = frameNanos
             val settled = settleTracker.pending == 0 && !listState.canScrollForward && !listState.isScrollInProgress
             stableFrames = if (settled) stableFrames + 1 else 0
             if (stableFrames >= OPENING_STABLE_FRAMES) break
+            // The veil swallows touches, so a layout that never stops changing must not trap the chat behind it.
+            if ((frameNanos - startedNanos) / 1_000_000L > OPENING_MAX_WAIT_MS) break
         }
         revealed = true
     }
@@ -420,7 +425,12 @@ fun ChatScreen(
             settleTracker.pending == 0 && !listState.isScrollInProgress &&
                 (!listState.canScrollForward || anchor.messageId != null)
         }.first { it }
-        ChatOpenCache.remember(conversationKey, openSignature, renderEnvironment, settleTracker.readyAssets())
+        // A chat showing viewport-virtualized Markdown is not recorded as warm: only the rows near the
+        // viewport are composed, the rest are sized by estimate, and the first frame of a reopen cannot
+        // know which rows those are. Such a chat reopens behind the veil, which hides that settling.
+        if (settleTracker.virtualizedLayouts == 0) {
+            ChatOpenCache.remember(conversationKey, openSignature, renderEnvironment, settleTracker.readyAssets())
+        }
     }
     LaunchedEffect(
         conversation?.id,

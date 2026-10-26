@@ -171,7 +171,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   │   ├── 📄 ChatGeneration.kt
 │   │   │   │   ├── 📄 ChatScrollAnchor.kt
 │   │   │   │   ├── 📄 ChatStreamDisplay.kt
-│   │   │   │   ├── 📄 StreamLineBatcher.kt
+│   │   │   │   ├── 📄 StreamCharBatcher.kt
 │   │   │   │   ├── 📄 StreamResponseTextSplitter.kt
 │   │   │   │   ├── 📄 ChatSpeechCoordinator.kt
 │   │   │   │   ├── 📄 ChatViewModel.kt

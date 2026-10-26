@@ -3,26 +3,13 @@ package org.starfall.generative.features.home.chat.ui.markdown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.boundsInRoot
@@ -30,19 +17,14 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.mikepenz.markdown.compose.MarkdownElement
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import com.mikepenz.markdown.compose.components.MarkdownComponents
 import org.intellij.markdown.ast.ASTNode
-import org.starfall.generative.R
 import org.starfall.generative.features.home.chat.model.StreamTextSnapshot
 import org.starfall.generative.features.home.chat.ui.MarkdownVirtualizedScope
 import org.starfall.generative.features.home.chat.ui.TrackMarkdownVirtualizedScope
@@ -332,7 +314,7 @@ private fun estimateIncrementalTail(
         )
     }
     val previewLength = overflowStart?.let {
-        (source.length - it).coerceIn(0L, MAX_STREAMING_TAIL_PREVIEW_CHARS.toLong()).toInt()
+        (source.length - it).coerceIn(0L, MAX_MARKDOWN_RENDER_CHARS.toLong()).toInt()
     } ?: 0
     val overflowHeight = if (overflowStart == null) 0 else estimateMarkdownBlockHeight(
         sourceLength = previewLength,
@@ -407,7 +389,8 @@ private fun visibleIncrementalTailRows(
     val tailVisible = hasTail && !window.outsideBelow && (
         !window.hasViewport ||
             (window.visibleEnd + window.overscan > tailStartY &&
-                window.visibleStart - window.overscan < tailEstimate.totalHeight)
+                // The overflow block's real height is only known once measured, so the estimate must not cull it.
+                (overflowStart != null || window.visibleStart - window.overscan < tailEstimate.totalHeight))
         )
     if (!tailVisible) return IncrementalTailSelection(emptyList(), false)
 
@@ -580,61 +563,11 @@ private fun StreamingMarkdownSourceBlock(
 @Composable
 private fun IncrementalTailPreview(source: StreamTextSnapshot, overflowStart: Int) {
     val end = source.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-    val start = maxOf(overflowStart, end - MAX_STREAMING_TAIL_PREVIEW_CHARS).coerceAtLeast(0)
-    val preview = remember(source.latestSegment, source.length, overflowStart) { source.slice(start, end) }
-    var expandedSource by remember(overflowStart) { mutableStateOf<StreamTextSnapshot?>(null) }
-    val sourceAtOpen = expandedSource
-    val chunks by produceState(emptyList<String>(), sourceAtOpen, overflowStart) {
-        value = if (sourceAtOpen == null) {
-            emptyList()
-        } else {
-            withContext(Dispatchers.Default) {
-                val snapshotEnd = sourceAtOpen.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-                chunkLargeMarkdownParagraph(
-                    sourceAtOpen.slice(overflowStart, snapshotEnd),
-                    chunkSize = STREAMING_TAIL_DIALOG_CHUNK_CHARS
-                )
-            }
-        }
-    }
-    val style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp)
+    val start = overflowStart.coerceIn(0, end)
+    val text = remember(source.latestSegment, source.length, overflowStart) { source.slice(start, end) }
     Column(Modifier.fillMaxWidth()) {
         Spacer(Modifier.height(STREAMING_BLOCK_SPACING))
-        SelectionContainer {
-            Text(
-                text = (if (start > overflowStart) "…\n" else "") + preview,
-                style = style,
-                maxLines = MAX_STREAMING_TAIL_PREVIEW_LINES
-            )
-        }
-        androidx.compose.material3.TextButton(onClick = { expandedSource = source }) {
-            Text(stringResource(R.string.expand))
-        }
-    }
-    if (sourceAtOpen != null) {
-        AlertDialog(
-            onDismissRequest = { expandedSource = null },
-            title = { Text(stringResource(R.string.expand)) },
-            text = {
-                Surface(
-                    modifier = Modifier.fillMaxWidth().fillMaxHeight(0.78f),
-                    color = MaterialTheme.colorScheme.surface
-                ) {
-                    SelectionContainer {
-                        LazyColumn {
-                            itemsIndexed(chunks, key = { index, _ -> index }) { _, chunk ->
-                                Text(text = chunk, style = style)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { expandedSource = null }) {
-                    Text(stringResource(R.string.common_close))
-                }
-            }
-        )
+        OverflowPlainText(text)
     }
 }
 
@@ -662,8 +595,5 @@ private const val MAX_REMEMBERED_TAIL_HEIGHTS = 32
 private const val STREAMING_OVERSCAN_FRACTION = 0.5f
 private const val INITIAL_INCREMENTAL_VIEWPORT_PX = 1_200
 private const val MAX_INCREMENTAL_LAYOUT_HEIGHT_PX = 16_000_000
-private const val MAX_STREAMING_TAIL_PREVIEW_CHARS = 4_000
-private const val MAX_STREAMING_TAIL_PREVIEW_LINES = 16
-private const val STREAMING_TAIL_DIALOG_CHUNK_CHARS = 2_048
 private val STREAMING_BLOCK_SPACING = 8.dp
 private const val IncrementalTailPreviewSlot = "incremental-tail-preview"

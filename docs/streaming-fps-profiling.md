@@ -1,6 +1,6 @@
 # Streaming FPS and Markdown profiling
 
-This document describes the repeatable measurements for the scalability work. Source-level counters, parser differential unit-test fixtures, and Compose virtualization instrumentation cases are in place, but **no device/profile results have been captured yet**. Do not claim an FPS improvement until the same build/device/scenario has been measured before and after. In the current sandbox, Java, the Android SDK, a Gradle distribution, and cached dependencies are unavailable, so build, test, lint, and device-profile checks were not run; do not install or download tooling here.
+This document describes the repeatable measurements for the scalability work. Source-level counters, parser differential unit-test fixtures, and Compose virtualization instrumentation cases are in place, but **no device/profile results have been captured yet**. Do not claim an FPS improvement until the same build/device/scenario has been measured before and after. Java and the Android SDK are present in this workspace, but the Gradle wrapper distribution is not cached locally; project build, Gradle tests/lint, and device-profile checks were not run in this pass. Do not download tooling or dependencies in an isolated/offline environment.
 
 ## Fixed scenarios
 
@@ -27,7 +27,7 @@ The content-free counters are internal and can be inspected in Android Studio's 
 - `PersistentMarkdownAstCache.get(context).metrics()` — disk hits/misses, bytes read/written, evictions, corrupt entries, and serialization/deserialization duration.
 - `MarkdownBlockHeightCache.metrics()` — measured-height variant hits/misses/writes.
 - `ChatRenderMetrics.snapshot()` — ChatScreen/assistant-card recompositions plus top-level block, list-item, and table-row mount/disposal counts. Compare deltas for the same scroll interval; mount counts should stay near the viewport window, and disposal counts should rise when scrolling away.
-- `ActiveChatStreamState.cumulativeMetrics` — committed batch/line counts, maximum queued complete lines, and measured line-wait/input-to-publish latency. This is publication latency, **not** a measured presentation timestamp.
+- `ActiveChatStreamState.cumulativeMetrics` — committed character counts, maximum queued characters, and measured character-chunk-wait/input-to-publish latency. A normal chunk targets 30 Unicode code points including whitespace/newlines; queued chunks stay separate, and a short tail is published after 300 ms without new model input. This is publication latency, **not** a measured presentation timestamp.
 - `SentMessageDetector.idScanCount` — assert it stays unchanged for content-only updates and increases once per structural revision.
 
 Counters contain no message body or IDs. Reset `ChatRenderMetrics.resetForTests()` and `MarkdownBlockHeightCache.resetForTests()` between instrumentation cases. Persistent/parse cache metrics are cumulative for the cache instance; use a fresh test cache or a fresh process for cold/warm comparisons.
@@ -35,7 +35,7 @@ Counters contain no message body or IDs. Reset `ChatRenderMetrics.resetForTests(
 ## Capture frame and main-thread traces
 
 1. Run the app on the fixed device and enable Android Studio **System Trace**/Perfetto with Frame Timeline, main-thread scheduling, Compose, and memory tracks.
-2. Record each fixed scenario for at least 15 seconds after warm-up. Keep the user at the same scroll position and use the same line-batch configuration.
+2. Record each fixed scenario for at least 15 seconds after warm-up. Keep the user at the same scroll position and use the same character-chunk configuration.
 3. Record frame duration distribution, janky frames, longest main-thread sections, allocation rate, time-to-first-visible-content, parser characters, and visible/prefetched mount/disposal deltas.
 4. Repeat each case three times; report median and range, not the best run. Keep trace files outside Git and redact any personally identifiable data.
 5. Separate the cost of active-stream publication from the cost of the animation and auto-follow frame loop. Repeat with follow-bottom enabled and disabled.

@@ -96,6 +96,8 @@ class AppContainer(context: Context) {
 /** Localized tool status labels; English sources live in strings.xml. */
 private fun toolChatLabels(context: Context) = ToolChatLabels(
     toolsReady = context.getString(R.string.tool_status_ready),
+    gettingMcpServers = context.getString(R.string.tool_status_getting_mcp_servers),
+    connectingMcpServers = context.getString(R.string.tool_status_connecting_mcp_servers),
     stopped = context.getString(R.string.tool_status_stopped),
     fileSent = context.getString(R.string.tool_summary_file_sent),
     mediaDisplayed = { count -> context.getString(R.string.tool_summary_media_displayed, count) },

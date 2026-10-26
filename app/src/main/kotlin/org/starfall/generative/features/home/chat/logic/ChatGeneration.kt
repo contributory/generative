@@ -30,7 +30,7 @@ internal class ChatGeneration(
     private val save: suspend (Conversation) -> Unit,
     private val publish: (Conversation) -> Unit,
     private val publishStream: (String, ActiveChatStreamState?) -> Unit = { _, _ -> },
-    private val linesPerBatch: Int = STREAM_LINES_PER_BATCH,
+    private val charactersPerBatch: Int = STREAM_CHARS_PER_BATCH,
     private val streamCommitIntervalMs: Long = STREAM_COMMIT_INTERVAL_MS,
     private val monotonicTimeMillis: () -> Long = { System.nanoTime() / 1_000_000L },
     private val waitForStreamInterval: suspend (Long) -> Unit = { delay(it) }
@@ -52,7 +52,7 @@ internal class ChatGeneration(
     private val pendingUpdateWritesLock = Any()
 
     init {
-        require(linesPerBatch > 0) { "linesPerBatch must be positive" }
+        require(charactersPerBatch > 0) { "charactersPerBatch must be positive" }
         require(streamCommitIntervalMs >= 0L) { "streamCommitIntervalMs cannot be negative" }
     }
 
@@ -105,7 +105,7 @@ internal class ChatGeneration(
                 initialReasoning = initialReasoning,
                 alreadyInsideVisibleContent = resume && initialContent.isNotEmpty(),
                 scope = scope,
-                linesPerBatch = linesPerBatch,
+                charactersPerBatch = charactersPerBatch,
                 commitIntervalMillis = streamCommitIntervalMs,
                 monotonicTimeMillis = monotonicTimeMillis,
                 waitForInterval = waitForStreamInterval,
@@ -221,7 +221,9 @@ internal class ChatGeneration(
                         is GenerationEvent.Tool -> {
                             _waitingForTool.value = chunk.activity.status == "running"
                             logToolActivity(chunk.activity)
-                            // Commit a structural/tool boundary, but leave undersized display batches queued.
+                            // A tool boundary shows everything received so far, so text written before the call
+                            // is not hidden behind an undersized batch while the tool runs.
+                            streamDisplay.flushPending()
                             snapshot = responseSnapshot()
                             val contentOffset = streamDisplay.visibleContentLength
                             val explicitReasoningLength = reasoningOutput.toString()
@@ -301,13 +303,13 @@ internal class ChatGeneration(
                     val averageLatency = if (batches == 0L) 0L else {
                         metrics.totalInputToVisibleLatencyMillis / batches
                     }
-                    val averageLineWait = if (batches == 0L) 0L else {
-                        metrics.totalLineWaitMillis / batches
+                    val averageChunkWait = if (batches == 0L) 0L else {
+                        metrics.totalChunkWaitMillis / batches
                     }
                     "Output ≈ $answer tokens, reasoning ≈ $reasoning tokens in $ms ms (estimate); " +
-                        "stream batches=$batches, lines=${metrics.committedLines}, " +
-                        "max queued lines=${metrics.maxQueuedLines}, " +
-                        "average line wait=${averageLineWait}ms, " +
+                        "stream batches=$batches, characters=${metrics.committedCharacters}, " +
+                        "max queued characters=${metrics.maxQueuedCharacters}, " +
+                        "average chunk wait=${averageChunkWait}ms, " +
                         "average input-to-visible=${averageLatency}ms"
                 }
             } catch (e: CancellationException) {

@@ -15,7 +15,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.waitUntil
@@ -250,7 +249,7 @@ class MarkdownVirtualizationTest {
     }
 
     @Test
-    fun oversizedActiveBlockKeepsABoundedPreviewAndOffersLazyFullSource() {
+    fun oversizedActiveBlockStaysFullyVisibleAsPlainText() {
         val stream = "STREAMING_HEAD_MARKER " + "x".repeat(13_900) +
             "STREAMING_TAIL_MARKER " + "x".repeat(3_900)
         val snapshot = StreamTextSnapshot.of(stream)
@@ -271,12 +270,9 @@ class MarkdownVirtualizationTest {
             compose.onAllNodesWithText("STREAMING_TAIL_MARKER", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        compose.onNodeWithText("STREAMING_HEAD_MARKER", substring = true).assertDoesNotExist()
-        compose.onNodeWithText("Expand").performClick()
-        compose.waitUntil(10_000) {
-            compose.onAllNodesWithText("STREAMING_HEAD_MARKER", substring = true)
-                .fetchSemanticsNodes().isNotEmpty()
-        }
+        // Nothing is hidden behind a preview: the start of the block is still on screen.
+        compose.onNodeWithText("STREAMING_HEAD_MARKER", substring = true).assertExists()
+        compose.onNodeWithText("Expand").assertDoesNotExist()
     }
 
     @Test

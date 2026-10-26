@@ -21,9 +21,6 @@ import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import com.mikepenz.markdown.model.State
 import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
 import org.starfall.generative.features.home.chat.ui.MarkdownBlockHeightCache
@@ -280,12 +277,7 @@ private fun unboundedRowConstraints(width: Int): Constraints = Constraints(
 @Composable
 private fun FrozenStreamingTailPreview(text: String) {
     CompositionLocalProvider(LocalStreamingTextFade provides false) {
-        Text(
-            text = text,
-            modifier = Modifier.fillMaxWidth(),
-            style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp),
-            maxLines = 16
-        )
+        OverflowPlainText(text)
     }
 }
 

@@ -74,23 +74,22 @@ fun McpAttachmentsPreferences(
         }
     }
 
-    if (settings.mode == McpAttachmentMode.CLASSIC) {
-        Row(
-            Modifier.fillMaxWidth()
-                .toggleable(
-                    value = settings.includeToolDescription,
-                    role = Role.Switch,
-                    onValueChange = { onChange(settings.copy(includeToolDescription = it)) }
-                )
-                .padding(vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(stringResource(R.string.mcp_attachments_include_description), style = MaterialTheme.typography.titleSmall)
-            Switch(checked = settings.includeToolDescription, onCheckedChange = null)
-        }
-        return
+    Row(
+        Modifier.fillMaxWidth()
+            .toggleable(
+                value = settings.includeToolDescription,
+                role = Role.Switch,
+                onValueChange = { onChange(settings.copy(includeToolDescription = it)) }
+            )
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(stringResource(R.string.mcp_attachments_include_description), style = MaterialTheme.typography.titleSmall)
+        Switch(checked = settings.includeToolDescription, onCheckedChange = null)
     }
+
+    if (settings.mode == McpAttachmentMode.CLASSIC) return
 
     McpNumberField(
         value = settings.minMcps,

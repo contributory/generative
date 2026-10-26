@@ -29,8 +29,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.starfall.generative.R
 import org.starfall.generative.features.about.ui.AboutScreen
 import org.starfall.generative.features.appdata.logic.AppDataTransferService
@@ -107,6 +109,9 @@ enum class AppDestination(val route: String) {
     APP_DATA("AppData"),
     ABOUT("About"),
 }
+
+/** Longest a chat selection waits for the drawer to finish closing before it is applied anyway. */
+private const val DRAWER_CLOSE_WAIT_MS = 700L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -355,9 +360,17 @@ fun AppNavigation(
                     onDeleteConversations = { ids ->
                         viewModel.deleteConversations(ids, chatAttachments.attachments.value)
                     },
-                    onSelectConversation = {
-                        viewModel.selectConversation(it.id)
+                    onSelectConversation = { item ->
                         navigate(AppDestination.CHAT)
+                        // Switching chats composes the whole history. Doing that while the drawer is still
+                        // sliding away makes the close animation drop frames, so the switch waits for the
+                        // drawer to settle (bounded, in case it is reopened or never reports closed).
+                        coroutineScope.launch {
+                            withTimeoutOrNull(DRAWER_CLOSE_WAIT_MS) {
+                                snapshotFlow { drawerState.isClosed }.first { it }
+                            }
+                            viewModel.selectConversation(item.id)
+                        }
                     },
                     onNewChat = {
                         startNewChat()

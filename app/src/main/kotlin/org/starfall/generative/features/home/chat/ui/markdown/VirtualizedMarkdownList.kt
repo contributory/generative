@@ -42,6 +42,7 @@ import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderC
 import org.starfall.generative.features.home.chat.ui.MarkdownBlockHeightCache
 import org.starfall.generative.features.home.chat.ui.MarkdownVirtualizedScope
 import org.starfall.generative.features.home.chat.ui.TrackMarkdownVirtualizedScope
+import org.starfall.generative.features.home.chat.ui.TrackVirtualizedLayout
 
 /** Virtualizes list items with the same outer chat viewport; no nested vertical LazyColumn is created. */
 @Composable
@@ -64,6 +65,7 @@ internal fun VirtualizedMarkdownList(
     val itemPadding = MarkdownListItemPadding(padding.listItemTop, padding.listItemBottom)
     val rootTop = remember { mutableFloatStateOf(Float.NaN) }
     val measureRevision = remember { mutableIntStateOf(0) }
+    TrackVirtualizedLayout(measureRevision, rootTop)
     val indexes = remember(node, contentFingerprint, depth, ordered, typographyKey, optionsKey) {
         LinkedHashMap<ListLayoutProfile, MarkdownBlockHeightIndex>()
     }

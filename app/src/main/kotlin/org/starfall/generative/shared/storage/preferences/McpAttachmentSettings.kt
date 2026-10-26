@@ -32,7 +32,7 @@ const val MAX_MCP_LOAD_LIMIT = 100
  * - [CLASSIC][McpAttachmentMode.CLASSIC]: every enabled MCP tool is sent; [includeToolDescription] decides whether
  *   the tool descriptions are sent too.
  * - [DYNAMIC][McpAttachmentMode.DYNAMIC]: once [minMcps] and [minTools] are reached, the model gets `list_mcps` and
- *   `load_mcps` and loads MCPs on demand. Below those thresholds everything is attached classically.
+ *   `connect_mcps` and connects MCP servers on demand. Below those thresholds everything is attached classically.
  */
 @Serializable
 data class McpAttachmentSettings(

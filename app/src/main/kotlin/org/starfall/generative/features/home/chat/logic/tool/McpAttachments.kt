@@ -14,20 +14,17 @@ import org.starfall.generative.shared.storage.preferences.McpAttachmentSettings
 import org.starfall.generative.shared.storage.preferences.McpDynamicStrategy
 
 internal const val LIST_MCPS_TOOL_NAME = "list_mcps"
-internal const val LOAD_MCPS_TOOL_NAME = "load_mcps"
-internal val mcpDynamicToolNames = setOf(LIST_MCPS_TOOL_NAME, LOAD_MCPS_TOOL_NAME)
+internal const val CONNECT_MCPS_TOOL_NAME = "connect_mcps"
+internal val mcpDynamicToolNames = setOf(LIST_MCPS_TOOL_NAME, CONNECT_MCPS_TOOL_NAME)
 
 /** A loaded MCP is unloaded once this many user messages passed without it being loaded again or used. */
 internal const val MCP_AUTO_UNLOAD_USER_TURNS = 3
-
-/** Earlier paging tools. They are gone, but old conversations may still contain calls to them. */
-internal val legacyMcpPaginationToolNames = setOf("list_mcp", "mcps_paginate", "search_mcp")
 
 /**
  * Decides which enabled MCP tools are attached to each model request, following the "MCP Attachments" preferences.
  *
  * Classic attaches every MCP tool. Dynamic attaches nothing up front (or only the first MCPs below the minimum, with
- * the Overflow strategy) and gives the model [LIST_MCPS_TOOL_NAME] / [LOAD_MCPS_TOOL_NAME] to load the rest on demand.
+ * the Overflow strategy) and gives the model [LIST_MCPS_TOOL_NAME] / [CONNECT_MCPS_TOOL_NAME] to connect MCP tools on demand.
  * Dynamic only switches on when the MCP count and total tool count reach the configured minimums; below them everything
  * is attached classically.
  *
@@ -35,31 +32,41 @@ internal val legacyMcpPaginationToolNames = setOf("list_mcp", "mcps_paginate", "
  * [replayLoad], [markUsed]), so they also expire correctly after a restart, retry or branch.
  */
 internal class McpAttachments(private val entries: List<Entry>, private val settings: McpAttachmentSettings) {
-    data class Entry(val serverId: String, val name: String, val tools: List<ToolDefinition>)
+    data class Entry(
+        val serverId: String,
+        val name: String,
+        val tools: List<ToolDefinition>,
+        /** Web Search Provider is always attached and never participates in the on-demand thresholds. */
+        val alwaysAttached: Boolean = false
+    )
 
+    /** MCPs pinned outside Dynamic, such as the selected Web Search Provider. */
+    private val alwaysAttachedEntries: List<Entry>
     /** MCPs attached classically while Dynamic is active: those below the minimum with the Overflow strategy. */
     private val classicEntries: List<Entry>
-    /** MCPs the model has to load with [LOAD_MCPS_TOOL_NAME]. */
+    /** MCPs the model has to load with [CONNECT_MCPS_TOOL_NAME]. */
     private val dynamicEntries: List<Entry>
 
-    /** True when the model gets the list/load tools. */
+    /** True when the model gets the list/connect tools. */
     val active: Boolean
 
     init {
-        val thresholdsMet = settings.mode == McpAttachmentMode.DYNAMIC && entries.isNotEmpty() &&
-            (settings.minMcps == 0 || entries.size >= settings.minMcps) &&
-            (settings.minTools == 0 || entries.sumOf { it.tools.size } >= settings.minTools)
+        alwaysAttachedEntries = entries.filter { it.alwaysAttached }
+        val managedEntries = entries.filterNot { it.alwaysAttached }
+        val thresholdsMet = settings.mode == McpAttachmentMode.DYNAMIC && managedEntries.isNotEmpty() &&
+            (settings.minMcps == 0 || managedEntries.size >= settings.minMcps) &&
+            (settings.minTools == 0 || managedEntries.sumOf { it.tools.size } >= settings.minTools)
         val classicCount = if (settings.strategy == McpDynamicStrategy.OVERFLOW) {
             (settings.minMcps - 1).coerceAtLeast(0)
         } else 0
-        classicEntries = if (thresholdsMet) entries.take(classicCount) else entries
-        dynamicEntries = if (thresholdsMet) entries.drop(classicCount) else emptyList()
+        classicEntries = if (thresholdsMet) managedEntries.take(classicCount) else managedEntries
+        dynamicEntries = if (thresholdsMet) managedEntries.drop(classicCount) else emptyList()
         active = dynamicEntries.isNotEmpty()
     }
 
-    private val classicIds = classicEntries.mapTo(HashSet()) { it.serverId }
+    private val classicIds = (alwaysAttachedEntries + classicEntries).mapTo(HashSet()) { it.serverId }
 
-    /** Loaded MCPs, oldest first, mapped to whether their tool descriptions are attached. */
+    /** Connected on-demand MCPs, oldest first, mapped to whether their tool descriptions are attached. */
     private val loaded = LinkedHashMap<String, Boolean>()
 
     private val lastActiveTurn = HashMap<String, Int>()
@@ -76,7 +83,7 @@ internal class McpAttachments(private val entries: List<Entry>, private val sett
         if (serverId in loaded) lastActiveTurn[serverId] = userTurn
     }
 
-    /** Re-applies a successful earlier load_mcps call while rebuilding the state from the conversation. */
+    /** Re-applies a successful earlier connect_mcps call while rebuilding the state from the conversation. */
     fun replayLoad(args: JsonObject) {
         runCatching { load(args) }
         lastPreview = ""
@@ -99,15 +106,15 @@ internal class McpAttachments(private val entries: List<Entry>, private val sett
         ToolDefinition(
             name = LIST_MCPS_TOOL_NAME,
             description = "List the MCP servers that are not attached yet, as {mcp_name, mcp_id}. " +
-                "Their tools are only available after load_mcps.",
+                "Their tools are only available after connect_mcps.",
             schema = obj("type" to str("object"), "properties" to obj())
         ),
         ToolDefinition(
-            name = LOAD_MCPS_TOOL_NAME,
-            description = "Load MCP servers by mcp_id so their tools are added to the next requests; call them right after loading. " +
-                "At most ${settings.loadLimit} MCP servers stay loaded; loading more unloads the oldest, " +
-                "and a server not used for $MCP_AUTO_UNLOAD_USER_TURNS user messages is unloaded automatically. " +
-                "Returns only which servers were loaded, not their tools. detailed=true also attaches the tool descriptions.",
+            name = CONNECT_MCPS_TOOL_NAME,
+            description = "Connect to MCP servers by mcp_id so their tools are added to the next requests; use them right after connecting. " +
+                "At most ${settings.loadLimit} MCP servers stay connected; connecting more disconnects the oldest, " +
+                "and a server not used for $MCP_AUTO_UNLOAD_USER_TURNS user messages is disconnected automatically. " +
+                "Returns only which servers were connected, not their tools. detailed=true also attaches the tool descriptions.",
             schema = obj(
                 "type" to str("object"),
                 "properties" to obj(
@@ -128,13 +135,13 @@ internal class McpAttachments(private val entries: List<Entry>, private val sett
 
     fun execute(name: String, args: JsonObject): JsonObject = when (name) {
         LIST_MCPS_TOOL_NAME -> list()
-        LOAD_MCPS_TOOL_NAME -> load(args)
+        CONNECT_MCPS_TOOL_NAME -> load(args)
         else -> error("Unknown internal tool: $name")
     }
 
     private fun list(): JsonObject {
         val shown = dynamicEntries.take(settings.listLimit)
-        lastPreview = "Listed ${shown.size} MCP(s)."
+        lastPreview = "Got ${shown.size} MCP server(s)."
         val mcps = JsonArray(shown.map { obj("mcp_name" to str(it.name), "mcp_id" to str(it.serverId)) })
         return if (shown.size < dynamicEntries.size) {
             obj("mcps" to mcps, "total" to JsonPrimitive(dynamicEntries.size), "truncated" to JsonPrimitive(true))
@@ -147,7 +154,7 @@ internal class McpAttachments(private val entries: List<Entry>, private val sett
         val requested = requestedIds(args["mcp_ids"])
         require(requested.isNotEmpty()) { "mcp_ids is required." }
         require(requested.size <= settings.loadLimit) {
-            "At most ${settings.loadLimit} MCP(s) can be loaded at once, but ${requested.size} were requested."
+            "At most ${settings.loadLimit} MCP server(s) can be connected at once, but ${requested.size} were requested."
         }
         val detailed = args["detailed"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: false
         val resolved = mutableListOf<Entry>()
@@ -171,12 +178,12 @@ internal class McpAttachments(private val entries: List<Entry>, private val sett
             loaded.remove(oldest)
             dynamicEntries.firstOrNull { it.serverId == oldest }?.let { unloaded += it.name }
         }
-        lastPreview = "Loaded ${resolved.joinToString { it.name }}."
+        lastPreview = "Connected to ${resolved.joinToString { it.name }}."
         val fields = mutableListOf<Pair<String, JsonElement>>(
             "status" to str("OK"),
-            "loaded" to JsonArray(resolved.map { str(it.name) })
+            "connected" to JsonArray(resolved.map { str(it.name) })
         )
-        if (unloaded.isNotEmpty()) fields += "unloaded" to JsonArray(unloaded.map { str(it) })
+        if (unloaded.isNotEmpty()) fields += "disconnected" to JsonArray(unloaded.map { str(it) })
         if (notFound.isNotEmpty()) fields += "not_found" to JsonArray(notFound.map { str(it) })
         return obj(*fields.toTypedArray())
     }

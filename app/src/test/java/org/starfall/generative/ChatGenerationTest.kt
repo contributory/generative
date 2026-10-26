@@ -76,7 +76,7 @@ class ChatGenerationTest {
         assertEquals("partial\nanswer", saved!!.messages.last().content)
     }
 
-    @Test fun streamCommitsAreMessageScopedExactlyThreeLinesAndPacedIndependently() = runBlocking {
+    @Test fun streamCommitsThirtyCharactersOneChunkAtATimeWithoutCoalescing() = runBlocking {
         val publishedConversations = mutableListOf<Conversation>()
         val streamStates = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
         val waits = mutableListOf<Long>()
@@ -86,7 +86,6 @@ class ChatGenerationTest {
             save = {},
             publish = { publishedConversations += it },
             publishStream = { _, state -> state?.let(streamStates::add) },
-            linesPerBatch = 3,
             streamCommitIntervalMs = 300L,
             monotonicTimeMillis = { now },
             waitForStreamInterval = { duration ->
@@ -94,46 +93,74 @@ class ChatGenerationTest {
                 now += duration
             }
         )
+        val output = "a".repeat(30) + "b".repeat(30) + "c".repeat(60)
 
-        runner.start(conversation(), "a1", flowOf("one\ntwo\nthree\nfour\nfive\nsix\n"))
+        runner.start(conversation(), "a1", flow { emit(output) })
 
-        assertEquals("ordinary stream batches do not publish Conversation", 2, publishedConversations.size)
-        assertEquals("initial state, two render commits, and terminal lifecycle state", 4, streamStates.size)
-        assertEquals("one\ntwo\nthree\n", streamStates[1].content.materialize())
-        assertEquals("four\nfive\nsix\n", streamStates[2].content.materialize().removePrefix("one\ntwo\nthree\n"))
-        assertEquals(3, streamStates[1].lastCommitMetrics?.lineCount)
-        assertEquals(3, streamStates[1].lastCommitMetrics?.queuedLines)
-        assertEquals(0, streamStates[2].lastCommitMetrics?.queuedLines)
-        assertEquals(2L, streamStates[2].cumulativeMetrics.batchCount)
-        assertEquals(6L, streamStates[2].cumulativeMetrics.committedLines)
+        assertEquals("ordinary stream batches do not publish Conversation per chunk", 2, publishedConversations.size)
+        assertEquals("initial state, four independent chunks, and terminal lifecycle state", 6, streamStates.size)
+        assertEquals(listOf(30, 30, 30, 30), streamStates.subList(1, 5).map { it.lastCommitMetrics?.characterCount })
+        assertEquals(30, streamStates[1].content.length.toInt())
+        assertEquals(60, streamStates[2].content.length.toInt())
+        assertEquals(90, streamStates[3].content.length.toInt())
+        assertEquals(120, streamStates[4].content.length.toInt())
+        assertEquals(0, streamStates[4].lastCommitMetrics?.queuedCharacters)
+        assertEquals(4L, streamStates[4].cumulativeMetrics.batchCount)
+        assertEquals(120L, streamStates[4].cumulativeMetrics.committedCharacters)
+        assertEquals(listOf(300L, 300L, 300L), waits)
+        assertTrue(streamStates[4].revision > streamStates[1].revision)
         assertEquals(ChatStreamStatus.COMPLETED, streamStates.last().status)
-        assertEquals(streamStates[2].content.materialize(), streamStates.last().content.materialize())
-        assertEquals(listOf(300L), waits)
-        assertTrue(streamStates[1].generationId > 0L)
-        assertTrue(streamStates[2].revision > streamStates[1].revision)
+        assertEquals(output, streamStates.last().content.materialize())
     }
 
-    @Test fun terminalFlushPublishesAnUndersizedBatchAndFinalPartialLineOnce() = runBlocking {
+    @Test fun shortChunkIsRenderedAfterThreeHundredMillisecondsWithoutNewTokens() = runBlocking {
+        val streamStates = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
+        var now = 0L
+        val runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = {},
+            publish = {},
+            publishStream = { _, state -> state?.let(streamStates::add) },
+            streamCommitIntervalMs = 300L,
+            monotonicTimeMillis = { now },
+            waitForStreamInterval = { duration -> now += duration }
+        )
+
+        runner.start(conversation(), "a1", flow {
+            emit("short text")
+            awaitCancellation()
+        })
+
+        assertEquals(2, streamStates.size)
+        assertEquals("short text", streamStates.last().content.materialize())
+        assertEquals(10, streamStates.last().lastCommitMetrics?.characterCount)
+        assertFalse(streamStates.last().lastCommitMetrics?.terminal == true)
+        assertEquals(ChatStreamStatus.STREAMING, streamStates.last().status)
+        runner.stopAndJoin()
+    }
+
+    @Test fun terminalFlushPublishesFinalShortCharacterChunkOnce() = runBlocking {
         val streamStates = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
         val runner = ChatGeneration(
             scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
             save = {},
             publish = {},
             publishStream = { _, state -> state?.let(streamStates::add) },
-            streamCommitIntervalMs = 300L
+            streamCommitIntervalMs = 300L,
+            waitForStreamInterval = { awaitCancellation() }
         )
 
         runner.start(conversation(), "a1", flow {
-            emit("first\nsecond partial")
+            emit("short stream text")
             awaitCancellation()
         })
-        assertEquals("only the initial stream state; fewer than three complete lines", 1, streamStates.size)
+        assertEquals("only the initial state; the short chunk has not reached 30 characters", 1, streamStates.size)
 
         runner.stopAndJoin()
 
         assertEquals(2, streamStates.size)
-        assertEquals("first\nsecond partial", streamStates.last().content.materialize())
-        assertEquals(2, streamStates.last().lastCommitMetrics?.lineCount)
+        assertEquals("short stream text", streamStates.last().content.materialize())
+        assertEquals(17, streamStates.last().lastCommitMetrics?.characterCount)
         assertTrue(streamStates.last().lastCommitMetrics?.terminal == true)
         assertEquals(ChatStreamStatus.CANCELLED, streamStates.last().status)
     }

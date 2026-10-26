@@ -21,7 +21,7 @@ internal class ChatStreamDisplay(
     initialReasoning: String,
     alreadyInsideVisibleContent: Boolean,
     private val scope: CoroutineScope,
-    private val linesPerBatch: Int = STREAM_LINES_PER_BATCH,
+    private val charactersPerBatch: Int = STREAM_CHARS_PER_BATCH,
     private val commitIntervalMillis: Long = STREAM_COMMIT_INTERVAL_MS,
     private val monotonicTimeMillis: () -> Long = { System.nanoTime() / 1_000_000L },
     private val waitForInterval: suspend (Long) -> Unit = { delay(it) },
@@ -50,7 +50,7 @@ internal class ChatStreamDisplay(
     private var renderJob: Job? = null
 
     init {
-        require(linesPerBatch > 0) { "linesPerBatch must be positive" }
+        require(charactersPerBatch > 0) { "charactersPerBatch must be positive" }
         require(commitIntervalMillis >= 0L) { "commitIntervalMillis cannot be negative" }
     }
 
@@ -81,7 +81,21 @@ internal class ChatStreamDisplay(
         scheduleStreamDrain()
     }
 
-    /** Flushes every pending line and unterminated tail; safe to call more than once. */
+    /**
+     * Commits all text received so far, including a short character chunk, without finishing the stream.
+     * Called at tool boundaries so pre-tool text stays visible while the tool runs and stored offsets match.
+     */
+    fun flushPending() {
+        if (displayFinished) return
+        val committedAt = monotonicTimeMillis()
+        val contentBatch = contentBatcher.takeAllPending(committedAt)
+        val inlineReasoningBatch = inlineReasoningBatcher.takeAllPending(committedAt)
+        val explicitReasoningBatch = explicitReasoningBatcher.takeAllPending(committedAt)
+        if (contentBatch == null && inlineReasoningBatch == null && explicitReasoningBatch == null) return
+        publishCommittedBatches(contentBatch, inlineReasoningBatch, explicitReasoningBatch)
+    }
+
+    /** Flushes all complete chunks and the final short tail; safe to call more than once. */
     fun finish(finalStatus: ChatStreamStatus) {
         if (displayFinished) return
         displayFinished = true
@@ -122,7 +136,7 @@ internal class ChatStreamDisplay(
         publishCurrentState()
     }
 
-    private fun newBatcher() = StreamLineBatcher(linesPerBatch, monotonicTimeMillis)
+    private fun newBatcher() = StreamCharBatcher(charactersPerBatch, monotonicTimeMillis)
 
     private fun activeStreamState() = ActiveChatStreamState(
         conversationId = conversationId,
@@ -138,13 +152,34 @@ internal class ChatStreamDisplay(
 
     private fun publishCurrentState() = publish(conversationId, activeStreamState())
 
-    private fun pendingCompleteLines() = contentBatcher.queuedCompleteLines +
-        inlineReasoningBatcher.queuedCompleteLines + explicitReasoningBatcher.queuedCompleteLines
+    private fun batchers() = listOf(contentBatcher, inlineReasoningBatcher, explicitReasoningBatcher)
 
-    private fun hasEligibleBatch() = contentBatcher.hasEligibleBatch ||
-        inlineReasoningBatcher.hasEligibleBatch || explicitReasoningBatcher.hasEligibleBatch
+    private fun hasPendingText() = batchers().any { it.hasPendingText }
 
-    private fun takeNextEligibleBatch(committedAtMillis: Long): Pair<Int, StreamLineBatch>? {
+    private fun hasEligibleBatch() = batchers().any { it.hasEligibleBatch }
+
+    private fun millisUntilIdlePartialFlush(nowMillis: Long): Long? = batchers()
+        .mapNotNull { it.millisUntilIdlePartialFlush(nowMillis, commitIntervalMillis) }
+        .minOrNull()
+
+    private fun takeNextIdlePartialBatch(committedAtMillis: Long): Pair<Int, StreamTextBatch>? {
+        repeat(3) { offset ->
+            val channel = (nextBatchChannel + offset) % 3
+            val batcher = when (channel) {
+                0 -> contentBatcher
+                1 -> inlineReasoningBatcher
+                else -> explicitReasoningBatcher
+            }
+            val batch = batcher.takeIdlePartialBatch(committedAtMillis, commitIntervalMillis)
+            if (batch != null) {
+                nextBatchChannel = (channel + 1) % 3
+                return channel to batch
+            }
+        }
+        return null
+    }
+
+    private fun takeNextEligibleBatch(committedAtMillis: Long): Pair<Int, StreamTextBatch>? {
         repeat(3) { offset ->
             val channel = (nextBatchChannel + offset) % 3
             val batch = when (channel) {
@@ -161,9 +196,9 @@ internal class ChatStreamDisplay(
     }
 
     private fun publishCommittedBatches(
-        contentBatch: StreamLineBatch? = null,
-        inlineReasoningBatch: StreamLineBatch? = null,
-        explicitReasoningBatch: StreamLineBatch? = null,
+        contentBatch: StreamTextBatch? = null,
+        inlineReasoningBatch: StreamTextBatch? = null,
+        explicitReasoningBatch: StreamTextBatch? = null,
         newStatus: ChatStreamStatus = status
     ) {
         val batches = listOfNotNull(contentBatch, inlineReasoningBatch, explicitReasoningBatch)
@@ -187,18 +222,18 @@ internal class ChatStreamDisplay(
         }
         status = newStatus
         val commitMetrics = StreamCommitMetrics(
-            lineCount = batches.sumOf { it.lineCount },
-            queuedLines = pendingCompleteLines(),
-            lineWaitMillis = batches.maxOf { it.lineWaitMillis },
+            characterCount = batches.sumOf { it.characterCount },
+            queuedCharacters = contentBatcher.pendingCharacterCount + inlineReasoningBatcher.pendingCharacterCount + explicitReasoningBatcher.pendingCharacterCount,
+            chunkWaitMillis = batches.maxOf { it.chunkWaitMillis },
             inputToVisibleLatencyMillis = batches.maxOf { it.inputToVisibleLatencyMillis },
             terminal = batches.any { it.terminal }
         )
         lastCommitMetrics = commitMetrics
         cumulativeMetrics = cumulativeMetrics.copy(
             batchCount = cumulativeMetrics.batchCount + 1L,
-            committedLines = cumulativeMetrics.committedLines + commitMetrics.lineCount.toLong(),
-            maxQueuedLines = maxOf(cumulativeMetrics.maxQueuedLines, commitMetrics.queuedLines),
-            totalLineWaitMillis = cumulativeMetrics.totalLineWaitMillis + commitMetrics.lineWaitMillis,
+            committedCharacters = cumulativeMetrics.committedCharacters + commitMetrics.characterCount.toLong(),
+            maxQueuedCharacters = maxOf(cumulativeMetrics.maxQueuedCharacters, commitMetrics.queuedCharacters),
+            totalChunkWaitMillis = cumulativeMetrics.totalChunkWaitMillis + commitMetrics.chunkWaitMillis,
             totalInputToVisibleLatencyMillis = cumulativeMetrics.totalInputToVisibleLatencyMillis +
                 commitMetrics.inputToVisibleLatencyMillis
         )
@@ -207,23 +242,45 @@ internal class ChatStreamDisplay(
     }
 
     private fun scheduleStreamDrain() {
-        if (displayFinished || renderJob?.isActive == true || !hasEligibleBatch()) return
+        if (displayFinished || renderJob?.isActive == true || !hasPendingText()) return
         val scheduledEpoch = pipelineEpoch
-        val now = monotonicTimeMillis()
-        val initialWait = lastBatchAtMillis?.let {
-            (commitIntervalMillis - (now - it)).coerceAtLeast(0L)
-        } ?: 0L
         val scheduledJob = scope.launch(start = CoroutineStart.LAZY) {
-            if (initialWait > 0L) waitForInterval(initialWait)
             while (isActive && !displayFinished && scheduledEpoch == pipelineEpoch) {
-                val next = takeNextEligibleBatch(monotonicTimeMillis()) ?: break
-                when (next.first) {
-                    0 -> publishCommittedBatches(contentBatch = next.second)
-                    1 -> publishCommittedBatches(inlineReasoningBatch = next.second)
-                    else -> publishCommittedBatches(explicitReasoningBatch = next.second)
+                val now = monotonicTimeMillis()
+                val pacingWait = lastBatchAtMillis?.let {
+                    (commitIntervalMillis - (now - it)).coerceAtLeast(0L)
+                } ?: 0L
+
+                // Do not coalesce a backlog: each complete 30-character chunk gets its own render turn.
+                if (pacingWait == 0L) {
+                    val next = takeNextEligibleBatch(now)
+                    if (next != null) {
+                        when (next.first) {
+                            0 -> publishCommittedBatches(contentBatch = next.second)
+                            1 -> publishCommittedBatches(inlineReasoningBatch = next.second)
+                            else -> publishCommittedBatches(explicitReasoningBatch = next.second)
+                        }
+                        continue
+                    }
                 }
-                if (!hasEligibleBatch()) break
-                waitForInterval(commitIntervalMillis)
+
+                // If the model pauses for 300 ms, reveal a short tail too; it need not reach 30 chars.
+                val idlePartial = takeNextIdlePartialBatch(now)
+                if (idlePartial != null) {
+                    when (idlePartial.first) {
+                        0 -> publishCommittedBatches(contentBatch = idlePartial.second)
+                        1 -> publishCommittedBatches(inlineReasoningBatch = idlePartial.second)
+                        else -> publishCommittedBatches(explicitReasoningBatch = idlePartial.second)
+                    }
+                    continue
+                }
+
+                val idleWait = millisUntilIdlePartialFlush(now)
+                val waitMillis = listOfNotNull(
+                    pacingWait.takeIf { it > 0L && hasEligibleBatch() },
+                    idleWait
+                ).minOrNull() ?: break
+                waitForInterval(waitMillis.coerceAtLeast(1L))
             }
         }
         renderJob = scheduledJob

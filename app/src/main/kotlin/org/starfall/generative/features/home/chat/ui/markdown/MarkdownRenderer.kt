@@ -275,7 +275,9 @@ private suspend fun resolveMarkdownParseRequest(
     } else null
     val seeded = initialParse()?.takeIf { it is State.Success && it.content == request.content }
     val resolved = resolveMarkdownParseState(inMemory, memoryFingerprint, onDisk, seeded, inheritedFingerprint(), request.content)
-    return MarkdownParseResult(resolved.first, resolved.second, epoch, diskCacheMiss = onDisk == null)
+    // Only a state that came from neither cache is new to the disk. A memory hit is persisted (once, and
+    // only if the entry is missing) by persistSettledMarkdown, not re-written on every mount.
+    return MarkdownParseResult(resolved.first, resolved.second, epoch, diskCacheMiss = inMemory == null && onDisk == null)
 }
 
 private suspend fun resolveMarkdownParseState(
@@ -316,8 +318,12 @@ private suspend fun persistSettledMarkdown(
     val settledFingerprint = fingerprint ?: withContext(Dispatchers.Default) { markdownContentFingerprint(content) }
     MarkdownParseCache.put(state.content, state, cacheIdentity, settledFingerprint)
     if (cacheIdentity != null) {
-        val epoch = persistentCache.captureEpoch(cacheIdentity)
-        persistentCache.store(cacheIdentity, content, state, epoch)
+        // Epoch capture hashes IDs and the store checks the disk: keep both off the Main thread, which
+        // runs this effect for every message that is mounted while a chat opens or scrolls.
+        withContext(Dispatchers.IO) {
+            val epoch = persistentCache.captureEpoch(cacheIdentity)
+            persistentCache.store(cacheIdentity, content, state, epoch)
+        }
     }
 }
 

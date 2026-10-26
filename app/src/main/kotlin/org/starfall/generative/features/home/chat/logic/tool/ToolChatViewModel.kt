@@ -40,6 +40,7 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.generation.hasToolCalls
 import org.starfall.generative.shared.model.globalMcpToolEnabled
+import org.starfall.generative.shared.model.isWebSearchProvider
 import org.starfall.generative.shared.model.mcpServerEnabled
 import org.starfall.generative.shared.model.configuredMcpTool
 import org.starfall.generative.shared.model.configuredMcpArguments
@@ -84,6 +85,8 @@ private fun sentFileNames(result: JsonObject): List<String> {
  */
 data class ToolChatLabels(
     val toolsReady: String = "Tools ready",
+    val gettingMcpServers: String = "Getting MCP Servers",
+    val connectingMcpServers: String = "Connecting to MCP Servers",
     val stopped: String = "Stopped",
     val fileSent: String = "File sent to chat.",
     val mediaDisplayed: (Int) -> String = { "Displayed $it media item(s) in chat." },
@@ -164,7 +167,12 @@ class ToolChatViewModel internal constructor(
                             globalMcpToolEnabled(settings(), server.id, it.originalName)
                         }
                         tools += discovered
-                        if (discovered.isNotEmpty()) mcpEntries += McpAttachments.Entry(server.id, server.name, discovered)
+                        if (discovered.isNotEmpty()) mcpEntries += McpAttachments.Entry(
+                            serverId = server.id,
+                            name = server.name,
+                            tools = discovered,
+                            alwaysAttached = isWebSearchProvider(settings(), server.id)
+                        )
                         send(GenerationEvent.Tool(activity.copy(status = "success", summary = labels.toolsReady)))
                     } catch (e: CancellationException) {
                         send(GenerationEvent.Tool(activity.copy(status = "cancelled")))
@@ -251,12 +259,12 @@ class ToolChatViewModel internal constructor(
             // switches on as soon as the current turn makes a tool call (see below).
             var sendThinkingContent = passbackConfig.sendsThinkingBack(messages.hasToolCalls())
             val importedAttachments = mutableMapOf<String, String>()
-            // Rebuild which MCPs are still loaded: a load keeps an MCP for a few user messages, using it extends that.
+            // Rebuild which MCP tools are attached: connect keeps an MCP available for a few user messages, and using it extends that.
             val serverByWireName = tools.mapNotNull { tool -> tool.serverId?.let { tool.name to it } }.toMap()
             messages.forEach { message ->
                 if (message.role == ChatRole.USER) mcpAttachments.startUserTurn()
                 else if (mcpAttachments.active) message.activeVersion.toolActivity.forEach { activity ->
-                    if (activity.wireName == LOAD_MCPS_TOOL_NAME && activity.status == "success") {
+                    if (activity.wireName == CONNECT_MCPS_TOOL_NAME && activity.status == "success") {
                         runCatching { toolArguments(JsonPrimitive(activity.arguments)) }.getOrNull()?.let(mcpAttachments::replayLoad)
                     } else serverByWireName[activity.wireName]?.let(mcpAttachments::markUsed)
                 }
@@ -266,8 +274,8 @@ class ToolChatViewModel internal constructor(
                     message.activeVersion.toolActivity.filterNot {
                         it.name.endsWith(": connect") ||
                             (!settings().sendFileEnabled && it.wireName == SEND_FILE_TOOL_NAME) ||
-                            // Loaded MCPs are per generation, so earlier list/load calls must not be replayed.
-                            it.wireName in mcpDynamicToolNames || it.wireName in legacyMcpPaginationToolNames
+                            // On-demand MCP tools are per generation, so earlier list/connect calls must not be replayed.
+                            it.wireName in mcpDynamicToolNames
                     }
                 } else emptyList()
                 val replay = replayToolActivities(message.content, activities, http.requireFiles())
@@ -381,13 +389,17 @@ class ToolChatViewModel internal constructor(
                     }
                     val activity = ToolActivity(
                         id = UUID.randomUUID().toString(),
-                        name = tool?.let { definition ->
-                            servers.find { it.id == definition.serverId }
-                                ?.let { "${it.name} / ${definition.originalName}" }
-                                ?: configuredMachines.find { it.id == definition.remoteMachineId }
+                        name = when (name) {
+                            LIST_MCPS_TOOL_NAME -> labels.gettingMcpServers
+                            CONNECT_MCPS_TOOL_NAME -> labels.connectingMcpServers
+                            else -> tool?.let { definition ->
+                                servers.find { it.id == definition.serverId }
                                     ?.let { "${it.name} / ${definition.originalName}" }
-                                ?: definition.originalName
-                        } ?: name,
+                                    ?: configuredMachines.find { it.id == definition.remoteMachineId }
+                                        ?.let { "${it.name} / ${definition.originalName}" }
+                                    ?: definition.originalName
+                            } ?: name
+                        },
                         wireName = name,
                         arguments = rawArguments
                     )

@@ -10,9 +10,9 @@ enum class ChatStreamStatus {
 
 /** Metrics for the most recent visible commit; these contain no response text. */
 data class StreamCommitMetrics(
-    val lineCount: Int,
-    val queuedLines: Int,
-    val lineWaitMillis: Long,
+    val characterCount: Int,
+    val queuedCharacters: Int,
+    val chunkWaitMillis: Long,
     /** Time to the state-publication call; actual on-screen latency still needs frame instrumentation. */
     val inputToVisibleLatencyMillis: Long,
     val terminal: Boolean
@@ -20,9 +20,9 @@ data class StreamCommitMetrics(
 
 data class StreamMetricsSnapshot(
     val batchCount: Long = 0L,
-    val committedLines: Long = 0L,
-    val maxQueuedLines: Int = 0,
-    val totalLineWaitMillis: Long = 0L,
+    val committedCharacters: Long = 0L,
+    val maxQueuedCharacters: Int = 0,
+    val totalChunkWaitMillis: Long = 0L,
     val totalInputToVisibleLatencyMillis: Long = 0L
 )
 

@@ -45,6 +45,7 @@ import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderC
 import org.starfall.generative.features.home.chat.ui.MarkdownBlockHeightCache
 import org.starfall.generative.features.home.chat.ui.MarkdownVirtualizedScope
 import org.starfall.generative.features.home.chat.ui.TrackMarkdownVirtualizedScope
+import org.starfall.generative.features.home.chat.ui.TrackVirtualizedLayout
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 import org.starfall.generative.features.home.chat.logic.markdown.MathPiece
@@ -128,6 +129,7 @@ private fun RenderVirtualizedMarkdownTableFrame(
     val viewport = LocalMarkdownViewportState.current
     val rootTop = remember { mutableFloatStateOf(Float.NaN) }
     val measureRevision = remember { mutableIntStateOf(0) }
+    TrackVirtualizedLayout(measureRevision, rootTop)
     val indexes = remember(contentFingerprint, bodyRows, columnWidths, typographyKey, preferencesKey) {
         LinkedHashMap<TableLayoutProfile, MarkdownBlockHeightIndex>()
     }

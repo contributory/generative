@@ -110,6 +110,9 @@ internal class PersistentMarkdownAstCache internal constructor(
     private val memoryInvalidators = LinkedHashMap<Any, (String?, String?) -> Unit>()
     private val invalidatedConversations = HashSet<String>()
     private val invalidatedMessages = HashSet<String>()
+    private val writesInFlight = HashSet<String>()
+    // Starts "due" so the first commit after process start checks a directory that may already be full.
+    private var bytesSinceEvictionCheck = Long.MAX_VALUE / 2
     private val hitCount = AtomicLong()
     private val missCount = AtomicLong()
     @Volatile internal var beforeCommitForTest: suspend () -> Unit = {}
@@ -206,16 +209,27 @@ internal class PersistentMarkdownAstCache internal constructor(
         if (content.length > MAX_PERSISTED_SOURCE_CHARS || state.content != content ||
             !isCurrent(identity, capturedEpoch)
         ) return@withContext false
-        val tree = flatten(state.node) ?: return@withContext false
-        val entry = DiskEntry(
-            schemaVersion = SCHEMA_VERSION,
-            parserVersion = PARSER_VERSION,
-            contentHash = sha256(content),
-            root = 0,
-            nodes = tree,
-            links = collectLinks(state.node, content)
-        )
-        persistSerializedEntry(identity, content, capturedEpoch, serialize(entry))
+        // A settled message asks to be persisted every time it is mounted (opening a chat, scrolling back).
+        // An entry that is already on disk, or is being written right now, must not be flattened,
+        // serialized, written and followed by an eviction scan a second time: that work, repeated for
+        // every visible message, is what made switching chats and closing the drawer stutter.
+        val destination = entryFile(identity, content)
+        if (destination.isFile) return@withContext true
+        if (!synchronized(lock) { writesInFlight.add(destination.name) }) return@withContext true
+        try {
+            val tree = flatten(state.node) ?: return@withContext false
+            val entry = DiskEntry(
+                schemaVersion = SCHEMA_VERSION,
+                parserVersion = PARSER_VERSION,
+                contentHash = sha256(content),
+                root = 0,
+                nodes = tree,
+                links = collectLinks(state.node, content)
+            )
+            persistSerializedEntry(identity, destination, capturedEpoch, serialize(entry))
+        } finally {
+            synchronized(lock) { writesInFlight.remove(destination.name) }
+        }
     }
 
     private fun serialize(entry: DiskEntry): ByteArray {
@@ -229,20 +243,18 @@ internal class PersistentMarkdownAstCache internal constructor(
 
     private suspend fun persistSerializedEntry(
         identity: MarkdownRenderCacheIdentity,
-        content: String,
+        destination: File,
         epoch: MarkdownAstCacheEpoch,
         serialized: ByteArray
     ): Boolean {
         if (serialized.size.toLong() > MAX_ENTRY_BYTES || !isCurrent(identity, epoch)) return false
         if (!root.exists() && !root.mkdirs() && !root.isDirectory) return false
 
-        val destination = entryFile(identity, content)
         val temporary = File(root, "${destination.name}.${java.util.UUID.randomUUID()}.tmp")
         return try {
-            FileOutputStream(temporary).use { output ->
-                output.write(serialized)
-                output.fd.sync()
-            }
+            // No fsync: this is a disposable render cache. The atomic rename keeps readers from seeing a
+            // half-written entry, and an entry truncated by a crash fails to decode and is treated as a miss.
+            FileOutputStream(temporary).use { output -> output.write(serialized) }
             beforeCommitForTest()
             commitTemporaryEntry(identity, epoch, destination, temporary, serialized.size)
         } catch (_: IOException) {
@@ -267,9 +279,10 @@ internal class PersistentMarkdownAstCache internal constructor(
         }
         if (!temporary.renameTo(destination)) return@synchronized false
         bytesWrittenCount.addAndGet(byteCount.toLong())
+        bytesSinceEvictionCheck += byteCount.toLong()
         true
     }.also { committed ->
-        if (committed) evictToBudget()
+        if (committed) evictToBudgetIfDue()
     }
 
     /** In-memory tombstone is installed synchronously before asynchronous physical cleanup starts. */
@@ -310,6 +323,9 @@ internal class PersistentMarkdownAstCache internal constructor(
         val conversationKey = conversationKey(conversationId)
         synchronized(lock) {
             invalidatedConversations.remove(conversationKey)
+            // Hashing every message ID costs one SHA-256 each on the caller's (Main) thread. Nothing needs
+            // clearing unless this conversation actually has a message tombstone.
+            if (invalidatedMessages.none { it.startsWith("$conversationKey-") }) return@synchronized
             currentMessageIds.forEach { id -> invalidatedMessages.remove(messageKey(conversationKey, id)) }
         }
     }
@@ -402,15 +418,34 @@ internal class PersistentMarkdownAstCache internal constructor(
         }.forEach { it.delete() }
     }
 
+    /**
+     * Scanning and sorting the whole directory is far too costly to repeat after every entry, so it runs
+     * only once enough new bytes have been written to matter (the first commit of a process always checks,
+     * because the directory may already be full). The budget can be exceeded by at most one interval.
+     */
+    private fun evictToBudgetIfDue() {
+        val interval = (maxBytes / EVICTION_CHECK_DIVISOR).coerceIn(1L, MAX_EVICTION_CHECK_BYTES)
+        val due = synchronized(lock) {
+            if (bytesSinceEvictionCheck < interval) false else {
+                bytesSinceEvictionCheck = 0L
+                true
+            }
+        }
+        if (due) evictToBudget()
+    }
+
     private fun evictToBudget() {
-        val entries = root.listFiles().orEmpty().filter { it.isFile && it.extension == "json" }
-            .sortedBy { it.lastModified() }
-        var total = entries.sumOf { it.length() }
-        for (file in entries) {
+        // One stat per file: sorting with lastModified() as the selector would stat on every comparison.
+        class Snapshot(val file: File, val modified: Long, val length: Long)
+        val entries = root.listFiles().orEmpty()
+            .filter { it.isFile && it.extension == "json" }
+            .map { Snapshot(it, it.lastModified(), it.length()) }
+            .sortedBy { it.modified }
+        var total = entries.sumOf { it.length }
+        for (entry in entries) {
             if (total <= maxBytes) break
-            val size = file.length()
-            if (file.delete()) {
-                total -= size
+            if (entry.file.delete()) {
+                total -= entry.length
                 evictionCount.incrementAndGet()
             }
         }
@@ -520,6 +555,8 @@ internal class PersistentMarkdownAstCache internal constructor(
         const val MAX_PERSISTED_AST_NODES = 250_000
         const val DEFAULT_MAX_BYTES = 64L * 1024L * 1024L
         const val HASH_PREFIX_CHARS = 32
+        const val EVICTION_CHECK_DIVISOR = 16L
+        const val MAX_EVICTION_CHECK_BYTES = 4L * 1024L * 1024L
         const val CLEANUP_ATTEMPTS = 3
         const val CLEANUP_RETRY_DELAY_MS = 250L
         const val STALE_TEMP_AGE_MS = 24L * 60L * 60L * 1_000L

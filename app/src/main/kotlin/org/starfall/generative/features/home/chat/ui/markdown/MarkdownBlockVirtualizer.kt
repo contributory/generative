@@ -30,6 +30,7 @@ import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderC
 import org.starfall.generative.features.home.chat.ui.MarkdownBlockHeightCache
 import org.starfall.generative.features.home.chat.ui.MarkdownVirtualizedScope
 import org.starfall.generative.features.home.chat.ui.TrackMarkdownVirtualizedScope
+import org.starfall.generative.features.home.chat.ui.TrackVirtualizedLayout
 
 /** Shared viewport bounds let a Markdown message virtualize its own blocks without nesting a LazyColumn. */
 @Stable
@@ -69,6 +70,7 @@ internal fun VirtualizedMarkdownBlocks(
     val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
     val measuredRootTop = remember { mutableFloatStateOf(Float.NaN) }
     val measureRevision = remember { mutableIntStateOf(0) }
+    TrackVirtualizedLayout(measureRevision, measuredRootTop)
     val indexes = remember(state.node, contentFingerprint, typographyKey, optionsKey) {
         LinkedHashMap<LayoutProfile, MarkdownBlockHeightIndex>()
     }

@@ -4,10 +4,16 @@ import android.content.ComponentCallbacks2
 import android.util.LruCache
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.FloatState
+import androidx.compose.runtime.IntState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.mikepenz.markdown.model.State
 import java.lang.ref.SoftReference
@@ -330,6 +336,22 @@ internal class ChatSettleTracker {
     var pending by mutableIntStateOf(0)
         private set
 
+    /**
+     * Mounted Markdown layouts that mount their rows by viewport position. Their unmeasured rows are
+     * sized by estimate and only the rows near the viewport are composed, so a chat showing one cannot
+     * be reopened "at its final size on the first frame" from cached assets alone.
+     */
+    var virtualizedLayouts by mutableIntStateOf(0)
+        private set
+
+    fun beginVirtualized() {
+        virtualizedLayouts += 1
+    }
+
+    fun endVirtualized() {
+        virtualizedLayouts = (virtualizedLayouts - 1).coerceAtLeast(0)
+    }
+
     private val retained = LinkedHashMap<AssetKey, Int>()
 
     fun beginPending() {
@@ -375,4 +397,31 @@ internal fun TrackReadyAssets(assets: List<AssetKey>) {
         assets.forEach(tracker::retain)
         onDispose { assets.forEach(tracker::release) }
     }
+}
+
+private const val VIRTUALIZED_QUIET_FRAMES = 3
+
+/**
+ * A viewport-virtualized Markdown layout composes the wrong rows until it learns its own position, then
+ * swaps estimated row heights for measured ones as rows mount. The chat's opening veil must stay up
+ * through that, so this reports pending work from every change of [rootTop]'s availability or of the
+ * measure [revision] until [VIRTUALIZED_QUIET_FRAMES] frames pass without another one. A layout that is
+ * composed but never placed (an off-screen prefetch) never learns its position and simply goes quiet.
+ */
+@Composable
+internal fun TrackVirtualizedLayout(revision: IntState, rootTop: FloatState) {
+    val tracker = LocalChatSettleTracker.current ?: return
+    DisposableEffect(tracker) {
+        tracker.beginVirtualized()
+        onDispose { tracker.endVirtualized() }
+    }
+    val currentRevision = revision.intValue
+    val positioned = !rootTop.floatValue.isNaN()
+    var quiet by remember { mutableStateOf(false) }
+    LaunchedEffect(currentRevision, positioned) {
+        quiet = false
+        repeat(VIRTUALIZED_QUIET_FRAMES) { withFrameNanos { } }
+        quiet = true
+    }
+    TrackPendingWork(!quiet)
 }

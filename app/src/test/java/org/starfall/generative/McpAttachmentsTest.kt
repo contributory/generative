@@ -43,6 +43,79 @@ class McpAttachmentsTest {
         assertTrue(McpAttachments(entries(3, toolsEach = 1), McpAttachmentSettings(minMcps = 3, minTools = 0)).active)
     }
 
+    @Test fun alwaysAttachedProviderDoesNotCountTowardDynamicThresholds() {
+        val regular = entries(4)
+        val pinned = entries(1).single().let { entry ->
+            entry.copy(
+                serverId = "web",
+                tools = entry.tools.map { it.copy(serverId = "web") },
+                alwaysAttached = true
+            )
+        }
+        val attachments = McpAttachments(
+            regular + pinned,
+            McpAttachmentSettings(minMcps = 5, minTools = 0, strategy = McpDynamicStrategy.ALL)
+        )
+        assertFalse(attachments.active)
+        assertEquals(listOf("id1", "id2", "id3", "id4"), attachments.attachedIds(4))
+        assertTrue(attachments.includes("web"))
+    }
+
+    @Test fun pinnedProviderRemainsAttachedWhenDynamicThresholdsAreMet() {
+        val regular = entries(5)
+        val pinned = entries(1).single().let { entry ->
+            entry.copy(
+                serverId = "web",
+                tools = entry.tools.map { it.copy(serverId = "web") },
+                alwaysAttached = true
+            )
+        }
+        val attachments = McpAttachments(regular + pinned, McpAttachmentSettings(minMcps = 5, minTools = 0, strategy = McpDynamicStrategy.ALL))
+        assertTrue(attachments.active)
+        assertTrue(attachments.includes("web"))
+        assertFalse(attachments.includes("id1"))
+    }
+
+    @Test fun alwaysAttachedProviderToolsDoNotCountTowardToolThreshold() {
+        val regular = entries(5, toolsEach = 3)
+        val pinned = entries(1, toolsEach = 5).single().let { entry ->
+            entry.copy(
+                serverId = "web",
+                tools = entry.tools.map { it.copy(serverId = "web") },
+                alwaysAttached = true
+            )
+        }
+        val attachments = McpAttachments(
+            regular + pinned,
+            McpAttachmentSettings(minMcps = 0, minTools = 20, strategy = McpDynamicStrategy.ALL)
+        )
+        assertFalse(attachments.active)
+        assertTrue(attachments.includes("web"))
+        assertTrue(attachments.includes("id1"))
+    }
+
+    @Test fun descriptionPreferenceAppliesToPreAttachedMcpButNotOnDemandMcp() {
+        val allEntries = entries(8)
+        val attachments = McpAttachments(
+            allEntries,
+            McpAttachmentSettings(strategy = McpDynamicStrategy.OVERFLOW, includeToolDescription = false)
+        )
+        attachments.execute("connect_mcps", buildJsonObject {
+            put("mcp_ids", JsonArray(listOf(JsonPrimitive("id5")))); put("detailed", JsonPrimitive(true))
+        })
+        // Overflow's first four MCPs are attached beforehand and respect the setting.
+        assertEquals("", attachments.present(allEntries[0].tools.first()).description)
+        // A connected on-demand MCP uses connect_mcps' detailed flag rather than the global setting.
+        assertEquals("desc", attachments.present(allEntries[4].tools.first()).description)
+    }
+
+    @Test fun dynamicDefinitionsUseClearActionNames() {
+        val definitions = McpAttachments(entries(8), McpAttachmentSettings(strategy = McpDynamicStrategy.ALL)).definitions()
+        assertEquals(listOf("list_mcps", "connect_mcps"), definitions.map { it.name })
+        assertTrue(definitions[0].description.contains("connect_mcps"))
+        assertTrue(definitions[1].description.contains("list_mcps"))
+    }
+
     @Test fun overflowKeepsMcpsBelowTheMinimumClassic() {
         val attachments = McpAttachments(entries(8), McpAttachmentSettings())
         assertEquals(listOf("id1", "id2", "id3", "id4"), attachments.attachedIds(8))
@@ -55,11 +128,11 @@ class McpAttachmentsTest {
         assertTrue(attachments.attachedIds(8).isEmpty())
         val tool = entries(1).single().tools.first()
 
-        attachments.execute("load_mcps", buildJsonObject { put("mcp_ids", JsonArray(listOf(JsonPrimitive("id1")))) })
+        attachments.execute("connect_mcps", buildJsonObject { put("mcp_ids", JsonArray(listOf(JsonPrimitive("id1")))) })
         assertEquals(listOf("id1"), attachments.attachedIds(8))
         assertEquals("", attachments.present(tool).description)
 
-        attachments.execute("load_mcps", buildJsonObject {
+        attachments.execute("connect_mcps", buildJsonObject {
             put("mcp_ids", JsonArray(listOf(JsonPrimitive("id2"), JsonPrimitive("id3")))); put("detailed", JsonPrimitive(true))
         })
         // id1 was the oldest, so it is unloaded to stay within the limit.

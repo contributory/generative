@@ -337,6 +337,8 @@
     <string name="speech_playback_failed">Could not play the synthesized speech.</string>
     <string name="speech_synthesis_failed">Speech synthesis failed.</string>
     <string name="tool_status_ready">Tools ready</string>
+    <string name="tool_status_getting_mcp_servers">Getting MCP Servers</string>
+    <string name="tool_status_connecting_mcp_servers">Connecting to MCP Servers</string>
     <string name="tool_status_stopped">Stopped</string>
     <string name="tool_summary_file_sent">File sent to chat.</string>
     <string name="tool_summary_media_displayed">Displayed %1$d media item(s) in chat.</string>
@@ -679,8 +681,8 @@
     <string name="mcp_attachments_mode_classic">Attach all enabled MCP tools</string>
     <string name="mcp_attachments_classic_description">Sends every enabled MCP tool with each request.</string>
     <string name="mcp_attachments_include_description">Include tool descriptions</string>
-    <string name="mcp_attachments_include_description_summary">Off: only tool names and parameters are sent, which makes requests smaller.</string>
-    <string name="mcp_attachments_dynamic_description">The model gets list_mcps and load_mcps and loads MCPs only when it needs them. Dynamic applies once both minimums below are reached; until then MCPs are sent classically, following the Classic description setting.</string>
+    <string name="mcp_attachments_include_description_summary">Off: descriptions are omitted for MCP tools attached beforehand, reducing request size. On-demand MCP descriptions are controlled by connect_mcps' detailed parameter.</string>
+    <string name="mcp_attachments_dynamic_description">The model gets list_mcps and connect_mcps and connects MCP servers only when it needs them. Dynamic applies once both minimums below are reached; until then MCPs are sent classically. Include tool descriptions applies to classically attached MCPs; for on-demand MCPs, connect_mcps uses its detailed parameter.</string>
     <string name="mcp_attachments_min_mcps">Minimum MCP servers</string>
     <string name="mcp_attachments_min_mcps_hint">Default is %1$d. 0 applies Dynamic to any number of MCPs.</string>
     <string name="mcp_attachments_min_tools">Minimum MCP tool count</string>
@@ -691,7 +693,7 @@
     <string name="mcp_attachments_strategy_overflow_description">Overflow keeps the few MCPs below the minimum attached classically; the rest are loaded on demand.</string>
     <string name="mcp_attachments_strategy_all_description">All loads every MCP on demand.</string>
     <string name="mcp_attachments_list_limit">Maximum servers returned by list_mcps</string>
-    <string name="mcp_attachments_load_limit">Maximum MCP servers kept loaded</string>
+    <string name="mcp_attachments_load_limit">Maximum MCP servers kept connected</string>
     <string name="mcp_attachments_number_invalid_from_zero">Enter a number from 0 to %1$d.</string>
     <string name="settings_limit_tool_rounds">Limit tool-call rounds</string>
     <string name="settings_limit_tool_rounds_description">When enabled, stop generating after this many rounds of tool calls. When disabled, there is no round limit.</string>
