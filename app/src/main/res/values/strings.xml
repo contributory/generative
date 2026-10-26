@@ -97,7 +97,7 @@
     <string name="sidebar_folders">Folders</string>
     <string name="sidebar_new_chat">New chat</string>
     <string name="sidebar_search">Search</string>
-    <string name="sidebar_menu">Menu</string>
+    <string name="sidebar_menu">Generative</string>
     <string name="sidebar_clear_search">Clear search</string>
     <string name="sidebar_exit_selection">Exit selection</string>
     <string name="sidebar_move_selected_to_folder">Move selected chats to folder</string>
