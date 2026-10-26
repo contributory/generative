@@ -494,7 +494,7 @@ internal class PersistentMarkdownAstCache internal constructor(
         .digest(value.toByteArray(StandardCharsets.UTF_8))
         .joinToString(separator = "") { byte -> "%02x".format(byte) }
 
-    private companion object {
+    companion object {
         const val SCHEMA_VERSION = 1
         const val PARSER_VERSION = 1
         const val MAX_PERSISTED_SOURCE_CHARS = 128_000
@@ -508,7 +508,7 @@ internal class PersistentMarkdownAstCache internal constructor(
         const val ALL_CONVERSATIONS = "__all__"
         private val typeRegistry: Map<TypeKey, IElementType> by lazy { buildMarkdownTypeRegistry() }
 
-        fun markdownTypeRegistry(): Map<TypeKey, IElementType> = typeRegistry
+        private fun markdownTypeRegistry(): Map<TypeKey, IElementType> = typeRegistry
 
         private fun buildMarkdownTypeRegistry(): Map<TypeKey, IElementType> {
             val result = HashMap<TypeKey, IElementType>()

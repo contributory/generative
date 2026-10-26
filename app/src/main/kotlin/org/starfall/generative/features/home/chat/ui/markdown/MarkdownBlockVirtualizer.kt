@@ -19,6 +19,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.mikepenz.markdown.compose.components.MarkdownComponents
@@ -91,8 +93,7 @@ internal fun VirtualizedMarkdownBlocks(
                 }
             }.map { it.measure(constraints) }
             val placeable = placeables.single()
-            layout(placeable.width, placeable.height) { placeable.place(0, 0) }
-            return@SubcomposeLayout
+            return@SubcomposeLayout layout(placeable.width, placeable.height) { placeable.place(0, 0) }
         }
 
         // Reading these state values here invalidates the measure only when the viewport or a measured
@@ -383,7 +384,7 @@ private const val MAX_LAYOUT_HEIGHT_PX = 16_000_000
 private const val BODY_CHARACTER_WIDTH_DP = 7.5f
 private const val CODE_CHARACTER_WIDTH_DP = 8f
 private const val BODY_LINE_HEIGHT_DP = 24f
-private const val BLOCK_SPACING = 8.dp
+private val BLOCK_SPACING = 8.dp
 private const val LARGE_CODE_BLOCK_CHARS = 16_000
 private const val LARGE_CODE_BLOCK_HEIGHT_DP = 220f
 private const val EagerBlocksSlot = "markdown-eager-blocks"

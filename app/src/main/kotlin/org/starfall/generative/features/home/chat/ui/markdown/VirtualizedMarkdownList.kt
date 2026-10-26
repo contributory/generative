@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -18,6 +19,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.mikepenz.markdown.compose.LocalBulletListHandler
@@ -27,7 +30,6 @@ import com.mikepenz.markdown.compose.LocalMarkdownTypography
 import com.mikepenz.markdown.compose.LocalOrderedListHandler
 import com.mikepenz.markdown.compose.components.MarkdownComponentModel
 import com.mikepenz.markdown.compose.elements.listDepth
-import com.mikepenz.markdown.compose.elements.material.MarkdownBasicText
 import com.mikepenz.markdown.utils.getUnescapedTextInNode
 import kotlinx.collections.immutable.persistentMapOf
 import org.intellij.markdown.MarkdownElementTypes
@@ -185,7 +187,7 @@ internal fun VirtualizedMarkdownList(
                                         depth = depth
                                     )
                                 }
-                                MarkdownBasicText(
+                                Text(
                                     text = indicator,
                                     style = if (ordered) markdownTypography.ordered else markdownTypography.bullet
                                 )

@@ -31,7 +31,7 @@ import org.starfall.generative.shared.ui.text.STREAM_FADE_DURATION_MS
 import org.starfall.generative.shared.ui.text.messageMarkdownTypography
 
 @Composable
-fun StreamingMarkdownRenderer(
+internal fun StreamingMarkdownRenderer(
     content: String,
     modifier: Modifier = Modifier,
     isStreaming: Boolean = true,

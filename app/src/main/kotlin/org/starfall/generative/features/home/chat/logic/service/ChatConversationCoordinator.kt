@@ -396,9 +396,13 @@ internal class ChatConversationCoordinator(
                 prefsRepo.updateSidebar { it.removeChats(targets) }
                 deleteOrphanedUploads(uploads, attachedFiles, removedConversationIds = targets)
             } catch (error: Exception) {
-                if (!deleted && currentConversation.value == null && previous != null) {
-                    currentConversation.value = previous
-                    PersistentMarkdownAstCache.authorizeConversation(previous.id, previous.messages.map { it.id })
+                val previousConversation = previous
+                if (!deleted && currentConversation.value == null && previousConversation != null) {
+                    currentConversation.value = previousConversation
+                    PersistentMarkdownAstCache.authorizeConversation(
+                        previousConversation.id,
+                        previousConversation.messages.map { it.id }
+                    )
                 }
                 throw error
             } finally {
