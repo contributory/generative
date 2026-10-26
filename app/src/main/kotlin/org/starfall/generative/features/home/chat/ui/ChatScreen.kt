@@ -69,6 +69,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.text.PlatformTextSelection
+import org.starfall.generative.shared.ui.text.PlatformTextSelectionRegion
 import org.starfall.generative.features.home.chat.logic.input.ChatInputEditDraft
 import org.starfall.generative.features.home.chat.logic.input.DirectMediaRequest
 import org.starfall.generative.shared.model.language.ModelType
@@ -585,6 +586,7 @@ fun ChatScreen(
             CompositionLocalProvider(
                 LocalChatSettleTracker provides settleTracker
             ) {
+            PlatformTextSelectionRegion {
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -725,6 +727,8 @@ fun ChatScreen(
                     }
                     }
                 }
+            }
+            }
             }
             }
             }

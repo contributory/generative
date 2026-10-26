@@ -27,21 +27,29 @@ import androidx.compose.ui.text.AnnotatedString
 import kotlin.math.roundToInt
 import org.starfall.generative.R
 
-/** Keep selection in Compose while letting Android render and populate its floating toolbar. */
+private val LocalSelectionClipboardCapture = staticCompositionLocalOf<SelectionClipboard?> { null }
+private val LocalPlatformSelectionToolbar = staticCompositionLocalOf<PlatformSelectionToolbar?> { null }
+
+/** Keep read-only text selection in Compose while letting Android render its floating toolbar. */
 @Composable
 fun PlatformTextSelection(content: @Composable () -> Unit) {
     val view = LocalView.current
+    // Keep the platform clipboard in the ambient for the whole screen. Editable text fields rely on
+    // AndroidClipboard's native handle for selection, cut/paste and IME operations.
     val clipboard = LocalClipboard.current
     val selectionClipboard = remember(clipboard) { SelectionClipboard(clipboard) }
     val toolbar = remember(view, selectionClipboard) { PlatformSelectionToolbar(view, selectionClipboard) }
     val focusManager = LocalFocusManager.current
     DisposableEffect(toolbar) { onDispose { toolbar.hide() } }
-    CompositionLocalProvider(LocalClipboard provides selectionClipboard, LocalTextToolbar provides toolbar) {
+    CompositionLocalProvider(
+        LocalSelectionClipboardCapture provides selectionClipboard,
+        LocalPlatformSelectionToolbar provides toolbar
+    ) {
         Box(Modifier.fillMaxSize().pointerInput(toolbar, focusManager) {
             awaitEachGesture {
                 awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                 if (toolbar.hasReadOnlySelection) {
-                    // SelectionContainer releases its highlight and handles on focus loss.
+                    // SelectionContainer releases its highlight and handles focus loss.
                     // Observe before children so this same touch still activates its target.
                     // Handles and Android's floating toolbar use separate popup windows.
                     focusManager.clearFocus(force = true)
@@ -51,6 +59,25 @@ fun PlatformTextSelection(content: @Composable () -> Unit) {
         }) {
             content()
         }
+    }
+}
+
+/**
+ * Applies the clipboard-capturing toolbar only to read-only message content. Text fields elsewhere
+ * keep Compose's native AndroidClipboard, which must not be wrapped by [SelectionClipboard].
+ */
+@Composable
+internal fun PlatformTextSelectionRegion(content: @Composable () -> Unit) {
+    val clipboard = LocalSelectionClipboardCapture.current
+    val toolbar = LocalPlatformSelectionToolbar.current
+    if (clipboard == null || toolbar == null) {
+        content()
+    } else {
+        CompositionLocalProvider(
+            LocalClipboard provides clipboard,
+            LocalTextToolbar provides toolbar,
+            content = content
+        )
     }
 }
 
