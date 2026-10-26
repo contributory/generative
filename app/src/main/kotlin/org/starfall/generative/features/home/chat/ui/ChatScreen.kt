@@ -317,7 +317,10 @@ fun ChatScreen(
         if (index < 0) return
         // While a sent message is anchored the end of the content is the position under the app bar
         // (the newest item is padded for it). Reveal the newest message instead of jumping there.
-        if (anchor.messageId != null) listState.revealItemBottom(index)
+        // A reopened conversation that ends with a user message has the same tail padding as a
+        // freshly sent message. Keep that padded tail in view instead of bypassing it with the
+        // generic large-offset jump; this leaves the user message draggable under the app bar.
+        if (tailAnchorId != null) listState.revealItemBottom(index)
         else listState.scrollToItem(index, OPEN_AT_BOTTOM_OFFSET)
     }
     // Animated version used by the jump-to-latest button. Distant targets are first brought within
