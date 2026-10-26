@@ -27,6 +27,77 @@ internal sealed interface MathBlock {
  * checks, so "$10 and $20" is never mistaken for a formula.
  */
 internal object MathSplitter {
+    /**
+     * True when the current streaming tail ends inside a plausible math expression. The caller can
+     * keep showing the previous safe source until the closing delimiter arrives, instead of flashing
+     * the unfinished TeX as ordinary text and then replacing it with a formula renderer.
+     */
+    internal fun hasUnclosedMathDelimiter(text: String): Boolean {
+        var i = 0
+        while (i < text.length) {
+            when (text[i]) {
+                '\\' -> {
+                    val opening = when {
+                        text.startsWith("\\(", i) -> "\\)"
+                        text.startsWith("\\[", i) -> "\\]"
+                        else -> null
+                    }
+                    if (opening == null) {
+                        i += 2
+                    } else {
+                        val close = text.indexOf(opening, i + 2)
+                        if (close < 0) return true
+                        i = close + opening.length
+                    }
+                }
+                '`' -> {
+                    val ticks = text.substring(i).takeWhile { it == '`' }.length
+                    val after = skipCodeSpan(text, i)
+                    // An unfinished inline code span consumes the remainder; dollars inside it are code.
+                    i = if (after == i + ticks) text.length else after
+                }
+                '$' -> {
+                    if (text.startsWith("$$", i)) {
+                        val close = text.indexOf("$$", i + 2)
+                        if (close < 0) return true
+                        i = close + 2
+                    } else {
+                        val close = findInlineClose(text, i + 1)
+                        if (close >= 0) {
+                            i = close + 1
+                        } else {
+                            val newline = text.indexOf('\n', i + 1)
+                            if (newline < 0) {
+                                if (looksLikePotentialMathPrefix(text.substring(i + 1))) return true
+                                i++
+                            } else {
+                                // Inline dollar math cannot cross a line break. Resume scanning after it.
+                                i = newline + 1
+                            }
+                        }
+                    }
+                }
+                else -> i++
+            }
+        }
+        return false
+    }
+
+    private fun looksLikePotentialMathPrefix(value: String): Boolean {
+        val candidate = value.trim()
+        if (candidate.isEmpty()) return true
+        if (LatexDetector.looksLikeMath(candidate) || candidate.any { it == '\\' || it == '^' || it == '_' }) {
+            return true
+        }
+        // A formula may arrive split after an operator (for example, "$2 +" then " 2$").
+        if (candidate.matches(Regex("""(?s)^[a-zA-Z0-9]+\s*[+\-*/=<>±≠≤≥]\s*$"""))) {
+            return true
+        }
+        val arithmeticOnly = Regex("""^[\d\s.,+\-−–*/×÷=<>≠≤≥±()]+$""")
+        return arithmeticOnly.matches(candidate) && candidate.any(Char::isDigit) &&
+            candidate.any { it in "+-−–*/×÷=<>≠≤≥±" }
+    }
+
     fun split(text: String, mode: String): List<MathPiece> {
         if (text.isEmpty()) return emptyList()
         if (mode.equals("OFF", ignoreCase = true)) return listOf(MathPiece.Text(text))

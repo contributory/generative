@@ -11,6 +11,7 @@ import org.starfall.generative.features.home.chat.model.ChatStreamStatus
 import org.starfall.generative.features.home.chat.model.StreamCommitMetrics
 import org.starfall.generative.features.home.chat.model.StreamMetricsSnapshot
 import org.starfall.generative.features.home.chat.model.StreamTextSnapshot
+import org.starfall.generative.features.home.chat.model.StreamFreezeSignal
 
 /** Owns buffered text and the paced, message-scoped display state for one generation. */
 internal class ChatStreamDisplay(
@@ -45,6 +46,8 @@ internal class ChatStreamDisplay(
         alreadyInsideVisibleContent = alreadyInsideVisibleContent
     )
     private var displayFinished = false
+    private var frozenForStop = false
+    private val stopSignal = StreamFreezeSignal()
     private var pipelineEpoch = 0L
     private var renderJob: Job? = null
 
@@ -62,18 +65,37 @@ internal class ChatStreamDisplay(
     val cumulativeStreamMetrics: StreamMetricsSnapshot
         get() = cumulativeMetrics
 
-    fun publishInitialState() = publishCurrentState()
+    @Synchronized
+    fun publishInitialState() {
+        if (!frozenForStop) publishCurrentState()
+    }
 
+    /** Freeze the currently published snapshot. No pending batch is flushed and no new state is published. */
+    @Synchronized
+    fun freezeForStop(): ActiveChatStreamState {
+        if (!frozenForStop) {
+            frozenForStop = true
+            displayFinished = true
+            pipelineEpoch++
+            renderJob?.cancel()
+            renderJob = null
+            stopSignal.freeze()
+        }
+        return activeStreamState()
+    }
+
+    @Synchronized
     fun appendText(fragment: String) {
-        check(!displayFinished) { "Cannot append to a finalized stream display" }
+        if (frozenForStop || displayFinished) return
         val pieces = responseSplitter.append(fragment)
         contentBatcher.append(pieces.content)
         inlineReasoningBatcher.append(pieces.reasoning)
         scheduleStreamDrain()
     }
 
+    @Synchronized
     fun appendExplicitReasoning(text: String) {
-        check(!displayFinished) { "Cannot append to a finalized stream display" }
+        if (frozenForStop || displayFinished) return
         if (text.isEmpty()) return
         explicitReasoningPreferred = true
         explicitReasoningBatcher.append(text)
@@ -84,8 +106,9 @@ internal class ChatStreamDisplay(
      * Commits all text received so far, including a short character chunk, without finishing the stream.
      * Called at tool boundaries so pre-tool text stays visible while the tool runs and stored offsets match.
      */
+    @Synchronized
     fun flushPending() {
-        if (displayFinished) return
+        if (displayFinished || frozenForStop) return
         val committedAt = monotonicTimeMillis()
         val contentBatch = contentBatcher.takeAllPending(committedAt)
         val inlineReasoningBatch = inlineReasoningBatcher.takeAllPending(committedAt)
@@ -95,8 +118,9 @@ internal class ChatStreamDisplay(
     }
 
     /** Flushes all complete chunks and the final short tail; safe to call more than once. */
+    @Synchronized
     fun finish(finalStatus: ChatStreamStatus) {
-        if (displayFinished) return
+        if (displayFinished || frozenForStop) return
         displayFinished = true
         pipelineEpoch++
         renderJob?.cancel()
@@ -115,8 +139,9 @@ internal class ChatStreamDisplay(
     }
 
     /** Starts display state for the next assistant message in a multi-turn tool response. */
+    @Synchronized
     fun resetForMessage(newMessageId: String) {
-        check(displayFinished) { "Finish the current stream display before resetting it" }
+        check(displayFinished && !frozenForStop) { "Finish the current stream display before resetting it" }
         messageId = newMessageId
         displayedContent = StreamTextSnapshot.of()
         displayedInlineReasoning = StreamTextSnapshot.of()
@@ -145,6 +170,7 @@ internal class ChatStreamDisplay(
         status = status,
         content = displayedContent,
         reasoning = if (explicitReasoningPreferred) displayedExplicitReasoning else displayedInlineReasoning,
+        stopSignal = stopSignal,
         lastCommitMetrics = lastCommitMetrics,
         cumulativeMetrics = cumulativeMetrics
     )
@@ -155,6 +181,7 @@ internal class ChatStreamDisplay(
         .any { it.hasPendingText }
 
     /** Takes all pending text from every channel as one time-window commit. */
+    @Synchronized
     private fun takeRenderWindow(committedAtMillis: Long): Triple<StreamTextBatch?, StreamTextBatch?, StreamTextBatch?> =
         Triple(
             contentBatcher.takeAllPending(committedAtMillis),
@@ -162,12 +189,14 @@ internal class ChatStreamDisplay(
             explicitReasoningBatcher.takeAllPending(committedAtMillis)
         )
 
+    @Synchronized
     private fun publishCommittedBatches(
         contentBatch: StreamTextBatch? = null,
         inlineReasoningBatch: StreamTextBatch? = null,
         explicitReasoningBatch: StreamTextBatch? = null,
         newStatus: ChatStreamStatus = status
     ) {
+        if (frozenForStop) return
         val batches = listOfNotNull(contentBatch, inlineReasoningBatch, explicitReasoningBatch)
         if (batches.isEmpty()) {
             if (newStatus != status) {

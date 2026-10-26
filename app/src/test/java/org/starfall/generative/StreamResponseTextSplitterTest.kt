@@ -88,6 +88,26 @@ class StreamResponseTextSplitterTest {
     }
 
     @Test
+    fun streamTextSnapshotSuffixViewKeepsQueuedSegmentsInOrderWithoutCopyingTheWholeSource() {
+        val initial = StreamTextSnapshot.of("base-")
+        val first = initial.append("abcdef", sequence = 1L)
+        val second = first.append("ghij", sequence = 2L)
+
+        val tail = second.suffixFrom(8)
+        assertEquals("defghij", tail.materialize())
+        assertEquals(7L, tail.length)
+        assertEquals(listOf("def", "ghij"), tail.segmentsAfter(0L).map { it.text })
+        assertEquals("defgh", tail.prefix(5))
+        assertEquals("", tail.slice(tail.length.toInt(), tail.length.toInt() + 10))
+
+        val baseTail = second.suffixFrom(2)
+        assertEquals("se-abcdefghij", baseTail.materialize())
+        val middleSegmentTail = second.suffixFrom(6)
+        assertEquals("bcdefghij", middleSegmentTail.materialize())
+        assertEquals(listOf("ghij"), middleSegmentTail.segmentsAfter(1L).map { it.text })
+    }
+
+    @Test
     fun streamTextSnapshotSlicesAcrossBaseAndManyImmutableSegments() {
         var snapshot = StreamTextSnapshot.of("base-")
         val expected = StringBuilder("base-")

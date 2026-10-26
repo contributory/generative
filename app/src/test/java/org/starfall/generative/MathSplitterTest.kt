@@ -99,6 +99,23 @@ class MathSplitterTest {
         }
     }
 
+    @Test fun streamingTailWaitsForPlausibleMathClosersButNotPricesOrCode() {
+        listOf(
+            "Result: \$x^2",
+            "Result: \$\$\nE=mc^2",
+            "Result: \\(\\frac{1}{2}",
+            "Result: \$2 +"
+        ).forEach { assertTrue("pending math: $it", MathSplitter.hasUnclosedMathDelimiter(it)) }
+
+        listOf(
+            "Cost is \$100 today",
+            "Cost is \$10 and \$20",
+            "literal `\$x^2`",
+            "Complete: \$x^2\$",
+            "Not multiline inline math: \$x^2\nnext line"
+        ).forEach { assertTrue("not pending math: $it", !MathSplitter.hasUnclosedMathDelimiter(it)) }
+    }
+
     @Test fun inlineDollarFormulaNeverSpansALine() {
         assertEquals(listOf(text("\$a^2\nb^2\$")), split("\$a^2\nb^2\$"))
     }

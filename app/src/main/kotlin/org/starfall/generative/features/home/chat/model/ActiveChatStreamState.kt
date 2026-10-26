@@ -1,5 +1,9 @@
 package org.starfall.generative.features.home.chat.model
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
 /** Lifecycle of a message currently being generated. */
 enum class ChatStreamStatus {
     STREAMING,
@@ -42,12 +46,25 @@ internal class StreamTextSegment(
  * of copying the full accumulated response; [materialize] is reserved for the active UI renderer.
  */
 internal class StreamTextSnapshot private constructor(
-    val baseText: String,
+    private val sourceBaseText: String,
     val latestSegment: StreamTextSegment?,
-    val length: Long,
-    private val segmentCount: Long
+    private val sourceLength: Long,
+    private val segmentCount: Long,
+    private val viewStartOffset: Long = 0L
 ) {
+    /** Source prefix visible through this snapshot view, without materializing streamed segments. */
+    val baseText: String
+        get() {
+            val baseEnd = minOf(sourceLength, sourceBaseText.length.toLong())
+            val visibleStart = viewStartOffset.coerceAtMost(baseEnd).toInt()
+            return sourceBaseText.substring(visibleStart, baseEnd.toInt())
+        }
+
+    /** Length relative to this view; the underlying append-only source remains shared. */
+    val length: Long get() = (sourceLength - viewStartOffset).coerceAtLeast(0L)
+
     fun append(text: String, sequence: Long): StreamTextSnapshot {
+        require(viewStartOffset == 0L) { "Cannot append to a suffix view of a stream snapshot" }
         if (text.isEmpty()) return this
         val ordinal = segmentCount + 1L
         val skipPrevious = if ((ordinal - 1L) % SEGMENT_SKIP_DISTANCE == 0L) {
@@ -58,29 +75,42 @@ internal class StreamTextSnapshot private constructor(
         val segment = StreamTextSegment(
             sequence = sequence,
             ordinal = ordinal,
-            startOffset = length,
-            endOffset = length + text.length,
+            startOffset = sourceLength,
+            endOffset = sourceLength + text.length,
             text = text,
             previous = latestSegment,
             skipPrevious = skipPrevious
         )
         return StreamTextSnapshot(
-            baseText = baseText,
+            sourceBaseText = sourceBaseText,
             latestSegment = segment,
-            length = length + text.length.toLong(),
+            sourceLength = sourceLength + text.length.toLong(),
             segmentCount = ordinal
+        )
+    }
+
+    /** A zero-copy view used when rendering only the response tail after a tool/action block. */
+    fun suffixFrom(startOffset: Int): StreamTextSnapshot {
+        val relativeStart = startOffset.coerceAtLeast(0).toLong().coerceAtMost(length)
+        return StreamTextSnapshot(
+            sourceBaseText = sourceBaseText,
+            latestSegment = latestSegment,
+            sourceLength = sourceLength,
+            segmentCount = segmentCount,
+            viewStartOffset = viewStartOffset + relativeStart
         )
     }
 
     /** Extracts a bounded source range without materializing the whole accumulated response. */
     fun slice(startOffset: Int, endOffset: Int): String {
-        val start = startOffset.coerceAtLeast(0).toLong()
-        val end = endOffset.toLong().coerceAtMost(length)
+        val start = (startOffset.coerceAtLeast(0).toLong() + viewStartOffset).coerceAtMost(sourceLength)
+        val relativeEnd = endOffset.toLong().coerceAtMost(length)
+        val end = (relativeEnd + viewStartOffset).coerceAtMost(sourceLength)
         if (end <= start) return ""
         val output = StringBuilder((end - start).coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
-        val baseEnd = minOf(end, baseText.length.toLong())
+        val baseEnd = minOf(end, sourceBaseText.length.toLong())
         if (start < baseEnd) {
-            output.append(baseText, start.toInt(), baseEnd.toInt())
+            output.append(sourceBaseText, start.toInt(), baseEnd.toInt())
         }
 
         var segment = latestSegment
@@ -110,15 +140,29 @@ internal class StreamTextSnapshot private constructor(
             reversed += segment
             segment = segment.previous
         }
-        return reversed.asReversed()
+        return reversed.asReversed().mapNotNull { part ->
+            if (part.endOffset <= viewStartOffset) return@mapNotNull null
+            val visibleStart = maxOf(part.startOffset, viewStartOffset)
+            val textStart = (visibleStart - part.startOffset).toInt()
+            StreamTextSegment(
+                sequence = part.sequence,
+                ordinal = part.ordinal,
+                startOffset = visibleStart - viewStartOffset,
+                endOffset = part.endOffset - viewStartOffset,
+                text = part.text.substring(textStart),
+                previous = null,
+                skipPrevious = null
+            )
+        }
     }
 
     fun prefix(maxLength: Int): String {
         if (maxLength <= 0) return ""
-        if (baseText.length >= maxLength) return baseText.substring(0, maxLength)
-        val remaining = maxLength - baseText.length
+        val visibleBase = baseText
+        if (visibleBase.length >= maxLength) return visibleBase.substring(0, maxLength)
+        val remaining = maxLength - visibleBase.length
         return buildString(maxLength) {
-            append(baseText)
+            append(visibleBase)
             var appended = 0
             for (segment in segmentsAfter(Long.MIN_VALUE)) {
                 if (appended >= remaining) break
@@ -131,24 +175,26 @@ internal class StreamTextSnapshot private constructor(
 
     fun materialize(): String {
         val capacity = length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-        val segments = ArrayList<StreamTextSegment>()
-        var segment = latestSegment
-        while (segment != null) {
-            segments += segment
-            segment = segment.previous
-        }
         return buildString(capacity) {
             append(baseText)
-            for (index in segments.lastIndex downTo 0) append(segments[index].text)
+            segmentsAfter(Long.MIN_VALUE).forEach { append(it.text) }
         }
     }
 
     companion object {
         fun of(baseText: String = ""): StreamTextSnapshot =
-            StreamTextSnapshot(baseText, latestSegment = null, length = baseText.length.toLong(), segmentCount = 0L)
+            StreamTextSnapshot(baseText, latestSegment = null, sourceLength = baseText.length.toLong(), segmentCount = 0L)
 
         private const val SEGMENT_SKIP_DISTANCE = 32L
     }
+}
+
+/** A generation-scoped, non-Compose signal used to cancel in-flight Markdown parsing on Stop. */
+internal class StreamFreezeSignal {
+    private val _frozen = MutableStateFlow(false)
+    val frozen: StateFlow<Boolean> = _frozen.asStateFlow()
+    val isFrozen: Boolean get() = _frozen.value
+    fun freeze() { _frozen.value = true }
 }
 
 /**
@@ -163,6 +209,7 @@ class ActiveChatStreamState internal constructor(
     val status: ChatStreamStatus,
     internal val content: StreamTextSnapshot,
     internal val reasoning: StreamTextSnapshot,
+    internal val stopSignal: StreamFreezeSignal,
     val lastCommitMetrics: StreamCommitMetrics?,
     val cumulativeMetrics: StreamMetricsSnapshot
 )

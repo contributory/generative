@@ -48,6 +48,7 @@ internal class ChatGeneration(
     private var snapshotMutationRevision = 0L
     private var job: Job? = null
     private var nextGenerationId = 0L
+    @Volatile private var activeStopSession: GenerationStopSession? = null
     private val pendingUpdateWrites = linkedSetOf<Job>()
     private val pendingUpdateWritesLock = Any()
 
@@ -75,6 +76,8 @@ internal class ChatGeneration(
     ): Boolean {
         if (_busy.value) return false
         val generationId = ++nextGenerationId
+        val stopSession = GenerationStopSession()
+        activeStopSession = stopSession
         _busy.value = true
         _waitingForTool.value = false
         _error.value = null
@@ -111,6 +114,10 @@ internal class ChatGeneration(
                 waitForInterval = waitForStreamInterval,
                 publish = { id, state -> publishStream(id, state) }
             )
+            synchronized(stopSession.lock) {
+                stopSession.freeze = { streamDisplay.freezeForStop() }
+                if (stopSession.requested) stopSession.frozenState = streamDisplay.freezeForStop()
+            }
             if (resume) {
                 initialVersion?.let { version ->
                     output.append(version.content)
@@ -173,12 +180,15 @@ internal class ChatGeneration(
             var lastCheckpointAt = System.currentTimeMillis()
             suspend fun checkpointPartialResponse() {
                 val now = System.currentTimeMillis()
+                if (stopSession.isRequested()) return
                 if (now - lastCheckpointAt < PARTIAL_SAVE_INTERVAL_MS) return
                 if (output.isEmpty() && reasoningOutput.isEmpty()) return
                 lastCheckpointAt = now
                 try {
-                    snapshot = responseSnapshot()
-                    persist(snapshot!!)
+                    val checkpoint = responseSnapshot()
+                    if (stopSession.isRequested()) return
+                    snapshot = checkpoint
+                    persist(checkpoint)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -193,38 +203,61 @@ internal class ChatGeneration(
                 "Context ≈ ${history.sumOf { estimateMessageTokens(it, true) }} tokens in ${history.size} messages (estimate)"
             }
             try {
-                streamDisplay.publishInitialState()
-                persist(snapshot!!)
+                if (!stopSession.isRequested()) {
+                    streamDisplay.publishInitialState()
+                    persist(snapshot!!)
+                }
                 chunks.collect { chunk ->
+                    if (stopSession.isRequested()) return@collect
                     when (chunk) {
                         is GenerationEvent.Text -> {
-                            appendLimited(output, chunk.text, MAX_GENERATION_TEXT_CHARS, "Answer")
-                            streamDisplay.appendText(chunk.text)
-                            checkpointPartialResponse()
+                            val accepted = synchronized(stopSession.lock) {
+                                if (stopSession.requested) false else {
+                                    appendLimited(output, chunk.text, MAX_GENERATION_TEXT_CHARS, "Answer")
+                                    streamDisplay.appendText(chunk.text)
+                                    true
+                                }
+                            }
+                            if (accepted) checkpointPartialResponse()
                         }
                         is GenerationEvent.Reasoning -> {
-                            appendLimited(reasoningOutput, chunk.text, MAX_GENERATION_TEXT_CHARS, "Reasoning")
-                            chunk.signature?.let {
-                                appendLimited(reasoningSignatureOutput, it, MAX_GENERATION_SIGNATURE_CHARS, "Reasoning signature")
+                            val accepted = synchronized(stopSession.lock) {
+                                if (stopSession.requested) false else {
+                                    appendLimited(reasoningOutput, chunk.text, MAX_GENERATION_TEXT_CHARS, "Reasoning")
+                                    chunk.signature?.let {
+                                        appendLimited(reasoningSignatureOutput, it, MAX_GENERATION_SIGNATURE_CHARS, "Reasoning signature")
+                                    }
+                                    streamDisplay.appendExplicitReasoning(chunk.text)
+                                    true
+                                }
                             }
-                            streamDisplay.appendExplicitReasoning(chunk.text)
-                            checkpointPartialResponse()
+                            if (accepted) checkpointPartialResponse()
                         }
                         is GenerationEvent.Usage -> {
-                            if (usageContextKey != null && chunk.usage.isValid) {
-                                snapshot = responseSnapshot()
-                                snapshot = recordContextUsage(snapshot!!, activeMessageId, chunk.usage, usageContextKey)
+                            if (usageContextKey != null && chunk.usage.isValid && !stopSession.isRequested()) {
+                                val current = responseSnapshot()
+                                if (stopSession.isRequested()) return@collect
+                                snapshot = recordContextUsage(current, activeMessageId, chunk.usage, usageContextKey)
+                                if (stopSession.isRequested()) return@collect
                                 publish(snapshot!!)
                                 persist(snapshot!!)
                             }
                         }
                         is GenerationEvent.Tool -> {
-                            _waitingForTool.value = chunk.activity.status == "running"
-                            logToolActivity(chunk.activity)
+                            val accepted = synchronized(stopSession.lock) {
+                                if (stopSession.requested) false else {
+                                    _waitingForTool.value = chunk.activity.status == "running"
+                                    logToolActivity(chunk.activity)
+                                    streamDisplay.flushPending()
+                                    true
+                                }
+                            }
+                            if (!accepted) return@collect
                             // A tool boundary shows everything received so far, so text written before the call
                             // is not hidden behind an undersized batch while the tool runs.
-                            streamDisplay.flushPending()
-                            snapshot = responseSnapshot()
+                            val current = responseSnapshot()
+                            if (stopSession.isRequested()) return@collect
+                            snapshot = current
                             val contentOffset = streamDisplay.visibleContentLength
                             val explicitReasoningLength = reasoningOutput.toString()
                                 .takeIf { it.isNotBlank() }
@@ -253,13 +286,22 @@ internal class ChatGeneration(
                                     }
                                 })
                             })
+                            if (stopSession.isRequested()) return@collect
                             publish(snapshot!!)
                             persist(snapshot!!)
                         }
                         is GenerationEvent.UserMessage -> {
-                            _waitingForTool.value = false
-                            streamDisplay.finish(ChatStreamStatus.STREAMING)
-                            snapshot = responseSnapshot()
+                            val accepted = synchronized(stopSession.lock) {
+                                if (stopSession.requested) false else {
+                                    _waitingForTool.value = false
+                                    streamDisplay.finish(ChatStreamStatus.STREAMING)
+                                    true
+                                }
+                            }
+                            if (!accepted) return@collect
+                            val current = responseSnapshot()
+                            if (stopSession.isRequested()) return@collect
+                            snapshot = current
 
                             val previousId = activeMessageId
                             val now = System.currentTimeMillis()
@@ -287,13 +329,20 @@ internal class ChatGeneration(
                                 )
                             } + chunk.message.copy(isQueued = false) + response
                             snapshot = snapshot!!.withStructuralMessageChange(nextMessages).copy(updatedAt = now)
-                            resetDisplayFor(response)
+                            val stillAccepted = synchronized(stopSession.lock) {
+                                if (stopSession.requested) false else {
+                                    resetDisplayFor(response)
+                                    true
+                                }
+                            }
+                            if (!stillAccepted) return@collect
                             publish(snapshot!!)
                             persist(snapshot!!)
                         }
                     }
                 }
-                streamDisplay.finish(ChatStreamStatus.COMPLETED)
+                if (stopSession.isRequested()) generationInterrupted = true
+                else streamDisplay.finish(ChatStreamStatus.COMPLETED)
                 DebugLog.log(DebugLogCategory.TOKENS, "Generation") {
                     val ms = System.currentTimeMillis() - startedAtMs
                     val answer = estimateTextTokens(output.toString())
@@ -314,7 +363,7 @@ internal class ChatGeneration(
                 }
             } catch (e: CancellationException) {
                 generationInterrupted = true
-                streamDisplay.finish(ChatStreamStatus.CANCELLED)
+                if (!stopSession.isRequested()) streamDisplay.finish(ChatStreamStatus.CANCELLED)
                 throw e
             } catch (e: Exception) {
                 DebugLog.error(DebugLogCategory.ERRORS, "Generation", "Generation failed", e)
@@ -325,12 +374,22 @@ internal class ChatGeneration(
                 try {
                     // A stopped stream must retain its partial response before allowing another send.
                     withContext(NonCancellable) {
+                        val stoppedAtClick = stopSession.isRequested()
+                        if (stoppedAtClick) {
+                            generationInterrupted = true
+                            stopSession.frozenState?.let { frozen ->
+                                output.setLength(0)
+                                output.append(frozen.content.materialize())
+                                reasoningOutput.setLength(0)
+                                reasoningOutput.append(frozen.reasoning.materialize())
+                            }
+                        }
                         val terminalStatus = when {
                             generationInterrupted -> ChatStreamStatus.CANCELLED
                             generationErrorMessage != null -> ChatStreamStatus.FAILED
                             else -> ChatStreamStatus.COMPLETED
                         }
-                        streamDisplay.finish(terminalStatus)
+                        if (!stoppedAtClick) streamDisplay.finish(terminalStatus)
                         val hasGeneratedResponse = output.isNotBlank() || reasoningOutput.isNotBlank() ||
                             snapshot!!.messages.firstOrNull { it.id == activeMessageId }
                                 ?.activeVersion?.toolActivity
@@ -360,7 +419,8 @@ internal class ChatGeneration(
                 } catch (e: Exception) {
                     _error.value = "$SAVE_CONVERSATION_ERROR_PREFIX ${e.localizedMessage}"
                 } finally {
-                    publishStream(conversation.id, null)
+                    if (!stopSession.isRequested()) publishStream(conversation.id, null)
+                    if (activeStopSession === stopSession) activeStopSession = null
                     snapshot = null
                     _conversationId.value = null
                     _waitingForTool.value = false
@@ -386,7 +446,16 @@ internal class ChatGeneration(
         writeJob.start()
     }
 
-    fun stop() { job?.cancel() }
+    /** Synchronous UI cutoff first, network/job cancellation second. */
+    fun stop() {
+        val session = activeStopSession ?: return
+        synchronized(session.lock) {
+            if (session.requested) return
+            session.requested = true
+            session.frozenState = session.freeze?.invoke()
+        }
+        job?.cancel(CancellationException("Stopped by user"))
+    }
 
     suspend fun stopAndJoin() {
         job?.cancelAndJoin()
@@ -464,4 +533,12 @@ internal fun prepareRegeneration(conversation: Conversation, messageId: String,
     return conversation.withUpdatedMessageStructure(
         conversation.messages.take(index) + message.withAttempt(version, replaceActive)
     )
+}
+private class GenerationStopSession {
+    val lock = Any()
+    var requested: Boolean = false
+    var freeze: (() -> ActiveChatStreamState)? = null
+    var frozenState: ActiveChatStreamState? = null
+
+    fun isRequested(): Boolean = synchronized(lock) { requested }
 }

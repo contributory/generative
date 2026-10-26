@@ -430,14 +430,20 @@ private fun StreamingAssistantText(
         if (fallback.isNotBlank()) SmoothStreamingMarkdownMessage(fallback, false, cacheIdentity)
         return
     }
-    val end = stream.content.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-    val text = stream.content.slice(startOffset.coerceIn(0, end), end).trimEnd()
-    if (text.isNotBlank()) {
+    val streamTail = remember(stream.content, startOffset) {
+        stream.content.suffixFrom(startOffset)
+    }
+    if (streamTail.length > 0L) {
         StreamingMarkdownRenderer(
-            content = text,
+            // The snapshot is the source of truth on this path; avoid copying the complete tail to a String
+            // on every stream publication just to satisfy the compatibility renderer's parameter.
+            content = "",
             isStreaming = true,
+            // The conflated collector can drain every queued segment in order without dropping chunks.
+            streamSnapshot = streamTail,
             streamGenerationId = stream.generationId,
             streamMessageId = stream.messageId,
+            streamStartOffset = startOffset,
             cacheIdentity = cacheIdentity
         )
     }

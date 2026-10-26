@@ -39,6 +39,7 @@ internal fun StreamingMarkdownRenderer(
     streamSnapshot: StreamTextSnapshot? = null,
     streamGenerationId: Long? = null,
     streamMessageId: String? = null,
+    streamStartOffset: Int = 0,
     cacheIdentity: MarkdownRenderCacheIdentity? = null
 ) {
     val truncationLabel = stringResource(R.string.chat_response_truncated)
@@ -47,6 +48,7 @@ internal fun StreamingMarkdownRenderer(
             streamSnapshot = streamSnapshot,
             generationId = streamGenerationId,
             messageId = streamMessageId,
+            sourceStartOffset = streamStartOffset,
             modifier = modifier,
             cacheIdentity = cacheIdentity
         )
@@ -242,12 +244,13 @@ private fun IncrementalStreamingMarkdown(
     streamSnapshot: StreamTextSnapshot,
     generationId: Long,
     messageId: String,
+    sourceStartOffset: Int,
     modifier: Modifier,
     cacheIdentity: MarkdownRenderCacheIdentity?
 ) {
     val initialBaseText = streamSnapshot.baseText
     val truncationLabel = stringResource(R.string.chat_response_truncated)
-    key(generationId, messageId, initialBaseText) {
+    key(generationId, messageId, sourceStartOffset, initialBaseText) {
         val cancellationToken = remember { MarkdownParserCancellationToken() }
         val incrementalParser = remember { IncrementalMarkdownParser(cancellationToken) }
         val latestSnapshot = rememberUpdatedState(streamSnapshot)
@@ -445,6 +448,7 @@ private fun RenderIncrementalMarkdownDocument(
                 source = latestSnapshot.value,
                 overflowStart = renderSnapshot.overflowStart,
                 components = components,
+                latexEnabled = !preferences.latexMode.equals("OFF", ignoreCase = true),
                 modifier = successModifier
             )
         },
