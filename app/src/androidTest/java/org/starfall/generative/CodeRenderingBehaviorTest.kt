@@ -26,7 +26,7 @@ class CodeRenderingBehaviorTest {
         var preferences by mutableStateOf(AppPreferences())
         compose.setContent { MaterialTheme {
             CompositionLocalProvider(LocalCodeRenderingPreferences provides preferences) {
-                RenderCodeBlock("html", "<p>Hello</p>", false)
+                RenderCodeBlock("html", "<p>Hello</p>", 0, "<p>Hello</p>".length, false)
             }
         } }
         compose.onNodeWithContentDescription("Preview code").assertExists()
@@ -45,7 +45,7 @@ class CodeRenderingBehaviorTest {
         val code = "0123456789".repeat(12)
         compose.setContent { MaterialTheme {
             CompositionLocalProvider(LocalCodeRenderingPreferences provides preferences) {
-                Column(Modifier.width(300.dp)) { RenderCodeBlock("text", code, false) }
+                Column(Modifier.width(300.dp)) { RenderCodeBlock("text", code, 0, code.length, false) }
             }
         } }
         fun lineCount(): Int {

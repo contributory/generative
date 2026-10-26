@@ -6,7 +6,7 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
+import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -77,7 +77,7 @@ fun MessageBubble(
                 if (message.content.isBlank()) {
                     GenerativeLoadingIndicator(modifier = Modifier.size(18.dp))
                 } else {
-                    SelectionContainer {
+                    GatedSelectionContainer {
                         MarkdownRenderer(content = message.content)
                     }
                 }

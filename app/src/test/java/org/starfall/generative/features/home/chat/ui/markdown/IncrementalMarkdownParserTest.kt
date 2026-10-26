@@ -75,6 +75,28 @@ class IncrementalMarkdownParserTest {
     }
 
     @Test
+    fun overflowFallbackStartsAtTheFirstUnstableNodeWithoutDuplicatingIt() {
+        val parser = IncrementalMarkdownParser(MarkdownParserCancellationToken())
+        val text = "Stable paragraph.\n\n" + "x".repeat(256) + " tail that must remain visible"
+        val source = StreamTextSnapshot.of(text)
+        val result = parser.append(
+            text = text,
+            source = source,
+            maxUnstableTailChars = 32,
+            maxParserAppendChars = 16
+        )
+
+        val fallback = parser.preserveUnstableTailAsPlainText()
+        val start = requireNotNull(fallback.overflowStart)
+        val tail = source.slice(start, source.length.toInt())
+
+        assertTrue(fallback.stableNodes.isNotEmpty())
+        assertEquals(result.snapshot.overflowStart, start)
+        assertEquals(text.substring(start), tail)
+        assertTrue(fallback.unstableNodes.isNotEmpty())
+    }
+
+    @Test
     fun inlineLinkTargetsArePublishedForTheMarkdownReferenceHandler() {
         val parser = IncrementalMarkdownParser(MarkdownParserCancellationToken())
         val text = "[guide](https://example.test/guide)"

@@ -3,9 +3,10 @@ package org.starfall.generative.features.home.chat.logic
 import java.util.ArrayDeque
 
 internal const val STREAM_CHARS_PER_BATCH = 30
-internal const val STREAM_COMMIT_INTERVAL_MS = 300L
+/** Minimum interval between visible stream commits. All text received in the window is committed together. */
+internal const val STREAM_COMMIT_INTERVAL_MS = 50L
 
-/** One immutable visible commit; ordinary stream commits contain one character chunk. */
+/** One immutable visible commit; a commit may contain all text accumulated in one render window. */
 internal data class StreamTextBatch(
     val text: String,
     val characterCount: Int,
@@ -16,9 +17,9 @@ internal data class StreamTextBatch(
 )
 
 /**
- * Buffers arbitrary provider fragments and exposes a chunk after about [charactersPerBatch] Unicode
- * code points, counting spaces, punctuation, tabs, and newlines. A surrogate pair split across input
- * fragments stays together. A short chunk is released after an input-idle timeout or an explicit boundary.
+ * Buffers arbitrary provider fragments while preserving Unicode boundaries. The display layer takes all
+ * pending text at each render window; [charactersPerBatch] remains only as an internal scan boundary for
+ * compatibility with existing metrics and tests, never as a visible flush limit.
  *
  * The scan cursor advances only over newly appended characters. Consumed storage is compacted
  * amortized-linearly, so draining a large queued response does not shift the remaining text per chunk.
@@ -86,36 +87,22 @@ internal class StreamCharBatcher(
         return result
     }
 
-    /**
-     * Returns how long until a short tail may be flushed, or null when a full chunk, empty buffer,
-     * or incomplete trailing surrogate means the idle timer cannot release it yet.
-     */
-    fun millisUntilIdlePartialFlush(nowMillis: Long, idleTimeoutMillis: Long): Long? {
-        if (terminal || completeChunks.isNotEmpty() || consumedOffset >= buffer.length ||
-            charactersInCurrentChunk == 0 || scanOffset < buffer.length
-        ) return null
-        return (idleTimeoutMillis - (nowMillis - lastInputAtMillisInternal)).coerceAtLeast(0L)
-    }
-
-    /** Releases a short tail only after no new input has arrived for [idleTimeoutMillis]. */
-    fun takeIdlePartialBatch(
-        committedAtMillis: Long = nowMillis(),
-        idleTimeoutMillis: Long
-    ): StreamTextBatch? {
-        if (millisUntilIdlePartialFlush(committedAtMillis, idleTimeoutMillis) != 0L) return null
-        return takeAllPending(committedAtMillis)
-    }
-
     /** Releases all buffered text, including a short chunk, without ending the stream. */
     fun takeAllPending(committedAtMillis: Long = nowMillis()): StreamTextBatch? {
         if (terminal || consumedOffset >= buffer.length) return null
 
-        val text = buffer.substring(consumedOffset)
+        // A render window may open between two provider fragments. Keep an unpaired high surrogate
+        // out of the visible commit so the next fragment can complete the code point.
+        val selectedEnd = if (scanOffset < buffer.length && buffer.last().isHighSurrogate()) {
+            buffer.length - 1
+        } else buffer.length
+        if (selectedEnd <= consumedOffset) return null
+        val text = buffer.substring(consumedOffset, selectedEnd)
         val characterCount = text.codePointCount(0, text.length)
         val firstCompletedAt = completeChunks.firstOrNull()?.completedAtMillis ?: lastInputAtMillisInternal
         val lastCompletedAt = completeChunks.lastOrNull()?.completedAtMillis ?: lastInputAtMillisInternal
-        consumedOffset = buffer.length
-        scanOffset = buffer.length
+        consumedOffset = selectedEnd
+        if (selectedEnd == buffer.length) scanOffset = buffer.length
         completeChunks.clear()
         charactersInCurrentChunk = 0
         val result = StreamTextBatch(

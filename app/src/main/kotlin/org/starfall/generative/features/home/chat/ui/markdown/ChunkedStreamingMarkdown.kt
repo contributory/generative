@@ -21,8 +21,6 @@ import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderC
 import org.starfall.generative.features.home.chat.logic.markdown.parseLibraryMarkdown
 import org.starfall.generative.features.home.chat.logic.markdown.stableMarkdownPrefixLength
 import org.starfall.generative.features.home.chat.ui.MarkdownParseCache
-import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.shared.ui.text.messageMarkdownTypography
 
 /** Frozen top-level nodes plus the length of their append-only source prefix. */
 private class FrozenMarkdown(
@@ -38,9 +36,9 @@ private class FrozenMarkdown(
 }
 
 /**
- * Compatibility renderer for streaming callers that do not yet provide [StreamTextSnapshot]. Finished
- * chunks are parsed once and virtualized with the chat viewport. The active incomplete tail is bounded;
- * when it outgrows the parser limit, it is shown in full as plain text until the final static parse.
+ * Compatibility renderer for streaming callers that do not yet provide [StreamTextSnapshot]. Stable
+ * completed chunks are parsed once and kept in a measured column. The changing tail remains complete;
+ * when it grows beyond the incremental parsing budget, it is displayed as one plain-text node.
  */
 @Composable
 internal fun ChunkedStreamingMarkdown(
@@ -59,7 +57,7 @@ internal fun ChunkedStreamingMarkdown(
         // Without one, retain the exact prefix and verify it before reusing chunks.
         val valid = frozen.takeIf { frozenPrefixMatches(content, it, appendOnlyGeneration) } ?: FrozenMarkdown.EMPTY
         val tailLength = (content.length - valid.prefixLength).coerceAtLeast(0)
-        val tailIsPreview = tailLength > MAX_CHUNKED_MARKDOWN_TAIL_CHARS
+        val tailUsesPlainTextFallback = tailLength > MAX_CHUNKED_MARKDOWN_TAIL_CHARS
         // An oversized tail is rendered as plain text, but never shortened: all of it stays visible.
         val tail = content.substring(valid.prefixLength)
 
@@ -73,19 +71,13 @@ internal fun ChunkedStreamingMarkdown(
             )
         }
 
-        val preferences = LocalCodeRenderingPreferences.current
-        val typographyKey = messageMarkdownTypography().hashCode()
-        val renderOptionsKey = 31 * preferences.hashCode() +
-            17 * preferences.latexMode.hashCode() + 7 * true.hashCode() + false.hashCode()
-        VirtualizedFrozenChunks(
+        RenderFrozenMarkdownChunks(
             chunks = valid.chunks,
             tail = tail,
-            tailIsPreview = tailIsPreview,
+            tailUsesPlainTextFallback = tailUsesPlainTextFallback,
             tailSeed = valid.tailSeed,
             identity = cacheIdentity,
-            modifier = modifier,
-            typographyKey = typographyKey,
-            optionsKey = renderOptionsKey
+            modifier = modifier
         )
     }
 }

@@ -47,24 +47,6 @@ class StreamCharBatcherTest {
     }
 
     @Test
-    fun partialTailCanBeReleasedAfterThreeHundredMillisecondsWithoutInput() {
-        var now = 100L
-        val batcher = StreamCharBatcher(charactersPerBatch = 30) { now }
-        batcher.append("short tail")
-
-        assertEquals(300L, batcher.millisUntilIdlePartialFlush(now, 300L))
-        assertNull(batcher.takeIdlePartialBatch(committedAtMillis = 399L, idleTimeoutMillis = 300L))
-        assertEquals(1L, batcher.millisUntilIdlePartialFlush(399L, 300L))
-
-        now = 400L
-        val partial = batcher.takeIdlePartialBatch(committedAtMillis = now, idleTimeoutMillis = 300L)!!
-        assertEquals("short tail", partial.text)
-        assertEquals(10, partial.characterCount)
-        assertFalse(partial.terminal)
-        assertFalse(batcher.hasPendingText)
-    }
-
-    @Test
     fun defaultBatchTargetIsThirtyCharactersAndNewlinesCountAsCharacters() {
         val batcher = StreamCharBatcher { 1L }
         val input = "line 1\n" + "x".repeat(23)
@@ -105,6 +87,17 @@ class StreamCharBatcherTest {
         val final = batcher.finishAndTakeRemainder()!!
         assertEquals(" ", final.text)
         assertEquals(1, final.characterCount)
+    }
+
+    @Test
+    fun renderWindowDoesNotFlushAnUnpairedSurrogate() {
+        val batcher = StreamCharBatcher(charactersPerBatch = 30) { 1L }
+        batcher.append("prefix\uD83D")
+        assertEquals("prefix", batcher.takeAllPending()!!.text)
+        assertNull(batcher.takeAllPending())
+
+        batcher.append("\uDE00")
+        assertEquals("😀", batcher.takeAllPending()!!.text)
     }
 
     @Test

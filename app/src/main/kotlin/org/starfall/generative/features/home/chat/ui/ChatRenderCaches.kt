@@ -2,19 +2,13 @@ package org.starfall.generative.features.home.chat.ui
 
 import android.content.ComponentCallbacks2
 import android.util.LruCache
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.FloatState
-import androidx.compose.runtime.IntState
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
-import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.DisposableEffect
 import com.mikepenz.markdown.model.State
 import java.lang.ref.SoftReference
 import java.util.concurrent.CopyOnWriteArrayList
@@ -188,112 +182,17 @@ internal object MarkdownParseCache {
     fun clearAll() = cache.trimToFraction(0f)
 }
 
-/** A bounded, profile-aware cache of measured top-level Markdown block heights. */
-internal data class MarkdownBlockHeightCacheMetrics(val hits: Long, val misses: Long, val writes: Long)
-
-internal object MarkdownBlockHeightCache {
-    private const val MAX_KEY_WEIGHT = 2 * 1024 * 1024
-    private val cache = SoftLruCache<String, Int>(MAX_KEY_WEIGHT)
-    private val hits = AtomicLong()
-    private val misses = AtomicLong()
-    private val writes = AtomicLong()
-
-    fun get(key: String): Int? = cache.get(key).also {
-        if (it == null) misses.incrementAndGet() else hits.incrementAndGet()
-    }
-
-    fun put(key: String, heightPx: Int) {
-        if (heightPx <= 0) return
-        cache.put(key, heightPx, key.length)
-        writes.incrementAndGet()
-    }
-
-    fun metrics(): MarkdownBlockHeightCacheMetrics =
-        MarkdownBlockHeightCacheMetrics(hits.get(), misses.get(), writes.get())
-
-    fun invalidateMessage(conversationId: String, messageId: String) {
-        cache.removeIf { key ->
-            key.startsWith("$conversationId|$messageId|") ||
-                key.startsWith("list|$conversationId|$messageId|") ||
-                key.startsWith("table|$conversationId|$messageId|")
-        }
-    }
-
-    fun invalidateConversation(conversationId: String) {
-        cache.removeIf { key ->
-            key.startsWith("$conversationId|") || key.startsWith("list|$conversationId|") || key.startsWith("table|$conversationId|")
-        }
-    }
-
-    fun clearAll() = cache.trimToFraction(0f)
-
-    internal fun resetForTests() {
-        cache.trimToFraction(0f)
-        hits.set(0)
-        misses.set(0)
-        writes.set(0)
-    }
-}
-
-/** One thing a message needs from background work before it has its final size. */
-internal enum class MarkdownVirtualizedScope { TOP_LEVEL_BLOCK, LIST_ITEM, TABLE_ROW }
-
-internal data class ChatRenderMetricsSnapshot(
-    val chatScreenRecompositions: Long,
-    val messageCardRecompositions: Long,
-    val topLevelBlockMounts: Long,
-    val topLevelBlockDisposals: Long,
-    val listItemMounts: Long,
-    val listItemDisposals: Long,
-    val tableRowMounts: Long,
-    val tableRowDisposals: Long
-)
-
-/** Aggregate, content-free counters used by profiling and regression tests. */
+/** Content-free recomposition counters used by profiling. */
 internal object ChatRenderMetrics {
     private val screenRecompositions = AtomicLong()
     private val messageRecompositions = AtomicLong()
-    private val topBlockMounts = AtomicLong()
-    private val topBlockDisposals = AtomicLong()
-    private val listMounts = AtomicLong()
-    private val listDisposals = AtomicLong()
-    private val tableMounts = AtomicLong()
-    private val tableDisposals = AtomicLong()
 
     fun recordChatScreenRecomposition() { screenRecompositions.incrementAndGet() }
     fun recordMessageCardRecomposition() { messageRecompositions.incrementAndGet() }
 
-    fun mounted(scope: MarkdownVirtualizedScope) = when (scope) {
-        MarkdownVirtualizedScope.TOP_LEVEL_BLOCK -> topBlockMounts.incrementAndGet()
-        MarkdownVirtualizedScope.LIST_ITEM -> listMounts.incrementAndGet()
-        MarkdownVirtualizedScope.TABLE_ROW -> tableMounts.incrementAndGet()
-    }
-
-    fun disposed(scope: MarkdownVirtualizedScope) = when (scope) {
-        MarkdownVirtualizedScope.TOP_LEVEL_BLOCK -> topBlockDisposals.incrementAndGet()
-        MarkdownVirtualizedScope.LIST_ITEM -> listDisposals.incrementAndGet()
-        MarkdownVirtualizedScope.TABLE_ROW -> tableDisposals.incrementAndGet()
-    }
-
-    fun snapshot() = ChatRenderMetricsSnapshot(
-        screenRecompositions.get(), messageRecompositions.get(),
-        topBlockMounts.get(), topBlockDisposals.get(),
-        listMounts.get(), listDisposals.get(), tableMounts.get(), tableDisposals.get()
-    )
-
     internal fun resetForTests() {
-        screenRecompositions.set(0); messageRecompositions.set(0)
-        topBlockMounts.set(0); topBlockDisposals.set(0)
-        listMounts.set(0); listDisposals.set(0)
-        tableMounts.set(0); tableDisposals.set(0)
-    }
-}
-
-@Composable
-internal fun TrackMarkdownVirtualizedScope(scope: MarkdownVirtualizedScope) {
-    DisposableEffect(scope) {
-        ChatRenderMetrics.mounted(scope)
-        onDispose { ChatRenderMetrics.disposed(scope) }
+        screenRecompositions.set(0)
+        messageRecompositions.set(0)
     }
 }
 
@@ -335,22 +234,6 @@ internal object ChatOpenCache {
 internal class ChatSettleTracker {
     var pending by mutableIntStateOf(0)
         private set
-
-    /**
-     * Mounted Markdown layouts that mount their rows by viewport position. Their unmeasured rows are
-     * sized by estimate and only the rows near the viewport are composed, so a chat showing one cannot
-     * be reopened "at its final size on the first frame" from cached assets alone.
-     */
-    var virtualizedLayouts by mutableIntStateOf(0)
-        private set
-
-    fun beginVirtualized() {
-        virtualizedLayouts += 1
-    }
-
-    fun endVirtualized() {
-        virtualizedLayouts = (virtualizedLayouts - 1).coerceAtLeast(0)
-    }
 
     private val retained = LinkedHashMap<AssetKey, Int>()
 
@@ -397,31 +280,4 @@ internal fun TrackReadyAssets(assets: List<AssetKey>) {
         assets.forEach(tracker::retain)
         onDispose { assets.forEach(tracker::release) }
     }
-}
-
-private const val VIRTUALIZED_QUIET_FRAMES = 3
-
-/**
- * A viewport-virtualized Markdown layout composes the wrong rows until it learns its own position, then
- * swaps estimated row heights for measured ones as rows mount. The chat's opening veil must stay up
- * through that, so this reports pending work from every change of [rootTop]'s availability or of the
- * measure [revision] until [VIRTUALIZED_QUIET_FRAMES] frames pass without another one. A layout that is
- * composed but never placed (an off-screen prefetch) never learns its position and simply goes quiet.
- */
-@Composable
-internal fun TrackVirtualizedLayout(revision: IntState, rootTop: FloatState) {
-    val tracker = LocalChatSettleTracker.current ?: return
-    DisposableEffect(tracker) {
-        tracker.beginVirtualized()
-        onDispose { tracker.endVirtualized() }
-    }
-    val currentRevision = revision.intValue
-    val positioned = !rootTop.floatValue.isNaN()
-    var quiet by remember { mutableStateOf(false) }
-    LaunchedEffect(currentRevision, positioned) {
-        quiet = false
-        repeat(VIRTUALIZED_QUIET_FRAMES) { withFrameNanos { } }
-        quiet = true
-    }
-    TrackPendingWork(!quiet)
 }

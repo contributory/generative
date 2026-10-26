@@ -4,12 +4,13 @@ import android.graphics.drawable.Drawable
 import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,6 +40,7 @@ import org.starfall.generative.features.home.chat.ui.ChatRenderCaches
 import org.starfall.generative.features.home.chat.ui.EvictableCache
 import org.starfall.generative.features.home.chat.ui.TrackPendingWork
 import org.starfall.generative.features.home.chat.ui.TrackReadyAssets
+import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 
 internal enum class LatexDisplayMode {
     Overflow,
@@ -89,31 +91,59 @@ internal fun LatexFormulaRenderer(
         LatexRenderResult.Loading -> LatexFallbackText(formula, textStyle, modifier)
         is LatexRenderResult.Fallback -> LatexFallbackText(renderResult.source, textStyle, modifier)
         is LatexRenderResult.Ready -> {
-            if (widthMode == LatexDisplayMode.Overflow) {
-                BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-                    val viewportWidth = if (constraints.hasBoundedWidth) maxWidth else 0.dp
-                    Box(
-                        modifier = Modifier
-                            .horizontalScroll(rememberScrollState())
-                            .defaultMinSize(minWidth = viewportWidth),
-                        contentAlignment = if (displayMode) Alignment.Center else Alignment.CenterStart
-                    ) {
-                        Image(
-                            painter = rememberLatexDrawablePainter(renderResult.drawable),
-                            contentDescription = stringResource(R.string.latex_rendered_formula)
-                        )
-                    }
-                }
-            } else {
-                Box(
-                    modifier = modifier.fillMaxWidth(),
-                    contentAlignment = if (displayMode) Alignment.Center else Alignment.CenterStart
-                ) {
-                    Image(
-                        painter = rememberLatexDrawablePainter(renderResult.drawable),
-                        contentDescription = stringResource(R.string.latex_rendered_formula)
-                    )
-                }
+            RenderReadyLatex(
+                drawable = renderResult.drawable,
+                modifier = modifier,
+                displayMode = displayMode,
+                widthMode = widthMode,
+                contentDescription = stringResource(R.string.latex_rendered_formula)
+            )
+        }
+    }
+}
+
+@Composable
+private fun RenderReadyLatex(
+    drawable: Drawable,
+    modifier: Modifier,
+    displayMode: Boolean,
+    widthMode: LatexDisplayMode,
+    contentDescription: String
+) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val intrinsicWidth = with(density) { drawable.intrinsicWidth.coerceAtLeast(1).toDp() }
+    val intrinsicHeight = with(density) { drawable.intrinsicHeight.coerceAtLeast(1).toDp() }
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val boundedWidth = if (constraints.hasBoundedWidth) maxWidth else intrinsicWidth
+        val fitWidth = intrinsicWidth.coerceAtMost(boundedWidth).coerceAtLeast(1.dp)
+        val fitHeight = if (intrinsicWidth > 0.dp) {
+            intrinsicHeight * (fitWidth / intrinsicWidth)
+        } else intrinsicHeight
+        val imageWidth = if (widthMode == LatexDisplayMode.FitWidth) fitWidth else intrinsicWidth
+        val imageHeight = if (widthMode == LatexDisplayMode.FitWidth) fitHeight else intrinsicHeight
+        val image: @Composable () -> Unit = {
+            Image(
+                painter = rememberLatexDrawablePainter(drawable),
+                contentDescription = contentDescription,
+                modifier = Modifier.width(imageWidth).height(imageHeight),
+                contentScale = ContentScale.FillBounds
+            )
+        }
+        if (widthMode == LatexDisplayMode.Overflow && intrinsicWidth > boundedWidth) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                contentAlignment = if (displayMode) Alignment.Center else Alignment.CenterStart
+            ) {
+                Box(Modifier.width(intrinsicWidth).height(intrinsicHeight)) { image() }
+            }
+        } else {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = if (displayMode) Alignment.Center else Alignment.CenterStart
+            ) {
+                image()
             }
         }
     }
@@ -121,7 +151,7 @@ internal fun LatexFormulaRenderer(
 
 @Composable
 private fun LatexFallbackText(source: String, style: TextStyle, modifier: Modifier) {
-    SelectionContainer {
+    GatedSelectionContainer {
         androidx.compose.material3.Text(
             text = latexFallbackSource(source),
             modifier = modifier,

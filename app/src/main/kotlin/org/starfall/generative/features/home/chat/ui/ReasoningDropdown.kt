@@ -14,6 +14,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +36,7 @@ import org.starfall.generative.features.home.chat.ui.tool.ToolActivityCards
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
+import org.starfall.generative.shared.ui.text.IndependentSelectionContainer
 
 @Composable
 fun ReasoningDropdown(
@@ -92,13 +94,15 @@ fun ReasoningDropdown(
                 thickness = 0.5.dp,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
-            CollapsibleThinkingText(
-                reasoning = reasoning,
-                expanded = isExpanded,
-                isStreaming = isStreaming,
-                onToggle = { isExpanded = !isExpanded },
-                modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 10.dp)
-            )
+            IndependentSelectionContainer {
+                CollapsibleThinkingText(
+                    reasoning = reasoning,
+                    expanded = isExpanded,
+                    isStreaming = isStreaming,
+                    onToggle = { isExpanded = !isExpanded },
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 10.dp)
+                )
+            }
         }
     }
 }
@@ -148,26 +152,28 @@ internal fun ProcessingDropdown(
             .fillMaxWidth()
             .padding(start = 8.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .clickable(role = Role.Button) { expanded = !expanded }
-                .padding(horizontal = 4.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = processingLabel,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.outline
-            )
-            Spacer(Modifier.width(4.dp))
-            FluentIcon(
-                imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
-                contentDescription = if (expanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
-                tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(20.dp)
-            )
+        DisableSelection {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(role = Role.Button) { expanded = !expanded }
+                    .padding(horizontal = 4.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = processingLabel,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Spacer(Modifier.width(4.dp))
+                FluentIcon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                    contentDescription = if (expanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
+                    tint = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
 
         // One list for both states: collapsed shows only the newest `previewCount` items, expanded
@@ -235,21 +241,27 @@ internal fun ProcessingDropdown(
                                 Box(modifier = Modifier.weight(1f)) {
                                     when (item) {
                                         is ProcessingDropdownItem.Thinking -> {
-                                            if (isStreaming && index == visibleItems.lastIndex) {
-                                                LiveThinkingBlock(item.reasoning, active = true, showHeader = false)
-                                            } else {
-                                                var thinkingExpanded by remember { mutableStateOf(false) }
-                                                CollapsibleThinkingText(
-                                                    reasoning = item.reasoning,
-                                                    expanded = thinkingExpanded,
-                                                    onToggle = { thinkingExpanded = !thinkingExpanded },
-                                                    modifier = Modifier.padding(end = 8.dp, bottom = 2.dp)
-                                                )
-                                            }
-                                        }
-                                        is ProcessingDropdownItem.Tool -> {
-                                            ToolActivityCards(listOf(item.activity))
-                                        }
+                                             if (isStreaming && index == visibleItems.lastIndex) {
+                                                 IndependentSelectionContainer {
+                                                     LiveThinkingBlock(item.reasoning, active = true, showHeader = false)
+                                                 }
+                                             } else {
+                                                 var thinkingExpanded by remember { mutableStateOf(false) }
+                                                 IndependentSelectionContainer {
+                                                     CollapsibleThinkingText(
+                                                         reasoning = item.reasoning,
+                                                         expanded = thinkingExpanded,
+                                                         onToggle = { thinkingExpanded = !thinkingExpanded },
+                                                         modifier = Modifier.padding(end = 8.dp, bottom = 2.dp)
+                                                     )
+                                                 }
+                                             }
+                                         }
+                                         is ProcessingDropdownItem.Tool -> {
+                                             DisableSelection {
+                                                 ToolActivityCards(listOf(item.activity))
+                                             }
+                                         }
                                     }
                                 }
                             }

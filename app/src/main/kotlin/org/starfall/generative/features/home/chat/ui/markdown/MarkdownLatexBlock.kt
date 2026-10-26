@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -23,6 +24,7 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
+import org.starfall.generative.shared.ui.text.SelectionOnlyPlaceholder
 
 @Composable
 internal fun RenderLatexBlock(source: String, formula: String) {
@@ -73,13 +75,16 @@ internal fun RenderLatexBlock(source: String, formula: String) {
                 }
             }
             Spacer(Modifier.height(6.dp))
-            LatexFormulaRenderer(
-                formula = formula,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-                displayMode = true,
-                modifier = Modifier.fillMaxWidth(),
-                widthMode = widthMode
-            )
+            SelectionOnlyPlaceholder(source)
+            DisableSelection {
+                LatexFormulaRenderer(
+                    formula = formula,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                    displayMode = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    widthMode = widthMode
+                )
+            }
         }
     }
 }

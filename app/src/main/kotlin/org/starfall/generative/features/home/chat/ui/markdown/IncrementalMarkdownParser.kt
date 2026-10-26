@@ -172,6 +172,18 @@ internal class IncrementalMarkdownParser(
         )
     }
 
+    /** Stops parsing the unstable tail and exposes its source range for complete plain-text rendering. */
+    fun preserveUnstableTailAsPlainText(): IncrementalMarkdownSnapshot {
+        if (overflowStart == null) {
+            // Stable nodes end before this point. Replacing every unstable AST node with the full source
+            // slice from this offset avoids both duplicated tail text and partial Select all ranges.
+            overflowStart = unstableNodes.firstOrNull()?.startOffset ?: file.endOffset
+            revision++
+            IncrementalMarkdownMetrics.recordFallback()
+        }
+        return currentSnapshot()
+    }
+
     fun currentSnapshot(): IncrementalMarkdownSnapshot = IncrementalMarkdownSnapshot(
         stableNodes = stableNodes,
         unstableNodes = unstableNodes,

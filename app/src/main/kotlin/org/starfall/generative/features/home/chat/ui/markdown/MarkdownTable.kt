@@ -28,13 +28,11 @@ import org.intellij.markdown.flavours.gfm.GFMElementTypes
 import org.intellij.markdown.flavours.gfm.GFMTokenTypes
 import org.starfall.generative.features.home.chat.logic.markdown.MathPiece
 import org.starfall.generative.features.home.chat.logic.markdown.MathSplitter
-import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 import org.starfall.generative.shared.ui.text.toComposeFontFamily
 
 private val MaxTableColumnWidth = 260.dp
 private val TableCellHorizontalPadding = 10.dp
-private const val MAX_EAGER_TABLE_ROWS = 48
 
 internal class TableRow(val header: Boolean, val cells: List<ASTNode>)
 
@@ -58,13 +56,7 @@ internal fun AnnotatedString.trimmed(): AnnotatedString {
  * and a table wider than the message scrolls horizontally.
  */
 @Composable
-internal fun RenderMarkdownTable(
-    model: MarkdownComponentModel,
-    identity: MarkdownRenderCacheIdentity? = null,
-    allowVirtualization: Boolean = false,
-    typographyKey: Int = model.typography.hashCode(),
-    optionsKey: Int = 0
-) {
+internal fun RenderMarkdownTable(model: MarkdownComponentModel) {
     val content = model.content
     val rows = remember(model.node) { tableRows(model.node) }
     if (rows.isEmpty()) return
@@ -78,19 +70,6 @@ internal fun RenderMarkdownTable(
         color = MaterialTheme.colorScheme.onSurface
     )
     val headerStyle = baseStyle.copy(fontWeight = FontWeight.SemiBold)
-    if (allowVirtualization && rows.size > MAX_EAGER_TABLE_ROWS) {
-        RenderVirtualizedMarkdownTable(
-            content = content,
-            rows = rows,
-            identity = identity,
-            preferencesKey = optionsKey,
-            typographyKey = typographyKey,
-            settings = settings,
-            baseStyle = baseStyle,
-            headerStyle = headerStyle
-        )
-        return
-    }
     RenderEagerMarkdownTable(content, rows, preferences.latexMode, settings, baseStyle, headerStyle)
 }
 

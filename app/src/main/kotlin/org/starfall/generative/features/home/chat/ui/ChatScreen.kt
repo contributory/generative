@@ -78,8 +78,6 @@ import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.features.home.shared.ui.ConversationSummarySheet
 import org.starfall.generative.features.home.chat.model.ContextWindowStatus
 import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
-import org.starfall.generative.features.home.chat.ui.markdown.LocalMarkdownViewportState
-import org.starfall.generative.features.home.chat.ui.markdown.MarkdownViewportState
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
@@ -172,7 +170,6 @@ fun ChatScreen(
     var openingAtBottom by remember(conversationKey) { mutableStateOf(true) }
     var openingLayoutRevision by remember(conversationKey) { mutableIntStateOf(0) }
     val settleTracker = remember(conversationKey) { ChatSettleTracker() }
-    val markdownViewport = remember(conversationKey) { MarkdownViewportState() }
     // Scroll position of a just-sent message: middle by default, top only by the user's drag.
     val anchor = remember(conversationKey) { ChatScrollAnchor() }
     var revealed by remember(conversationKey) { mutableStateOf(false) }
@@ -425,12 +422,7 @@ fun ChatScreen(
             settleTracker.pending == 0 && !listState.isScrollInProgress &&
                 (!listState.canScrollForward || anchor.messageId != null)
         }.first { it }
-        // A chat showing viewport-virtualized Markdown is not recorded as warm: only the rows near the
-        // viewport are composed, the rest are sized by estimate, and the first frame of a reopen cannot
-        // know which rows those are. Such a chat reopens behind the veil, which hides that settling.
-        if (settleTracker.virtualizedLayouts == 0) {
-            ChatOpenCache.remember(conversationKey, openSignature, renderEnvironment, settleTracker.readyAssets())
-        }
+        ChatOpenCache.remember(conversationKey, openSignature, renderEnvironment, settleTracker.readyAssets())
     }
     LaunchedEffect(
         conversation?.id,
@@ -588,15 +580,13 @@ fun ChatScreen(
             )
             ChatOpeningVeil(active = veilActive, modifier = Modifier.fillMaxSize()) {
             CompositionLocalProvider(
-                LocalChatSettleTracker provides settleTracker,
-                LocalMarkdownViewportState provides markdownViewport
+                LocalChatSettleTracker provides settleTracker
             ) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .nestedScroll(scrollConnection)
-                    .onGloballyPositioned { markdownViewport.update(it.boundsInRoot()) },
+                    .nestedScroll(scrollConnection),
                 contentPadding = PaddingValues(top = appBarHeight + 8.dp, bottom = bottomClearance)
             ) {
                 if (isGenerating && !streamingHere) {
@@ -683,7 +673,7 @@ fun ChatScreen(
                             streamStateFlow = activeStream,
                             onCopy = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.common_copy), msg.content))
+                                clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.common_copy), assistantCopyText(msg)))
                                 Toast.makeText(context, context.getString(R.string.common_copied_to_clipboard), Toast.LENGTH_SHORT).show()
                             },
                             onRegenerate = {

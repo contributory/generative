@@ -6,7 +6,6 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,7 +44,6 @@ import org.starfall.generative.features.home.chat.logic.markdown.PersistentMarkd
 import org.starfall.generative.features.home.chat.logic.markdown.markdownFenceSource
 import org.starfall.generative.features.home.chat.logic.markdown.parseLibraryMarkdown
 import org.starfall.generative.features.home.chat.ui.AssetKey
-import org.starfall.generative.features.home.chat.ui.MarkdownBlockHeightCache
 import org.starfall.generative.features.home.chat.ui.MarkdownParseCache
 import org.starfall.generative.features.home.chat.ui.TrackPendingWork
 import org.starfall.generative.features.home.chat.ui.TrackReadyAssets
@@ -112,19 +110,12 @@ private fun RegisterMarkdownCacheInvalidators(persistentCache: PersistentMarkdow
                 else -> MarkdownParseCache.invalidateMessage(conversationId, messageId)
             }
         }
-        persistentCache.registerMemoryInvalidator(MarkdownBlockHeightCache) { conversationId, messageId ->
-            when {
-                conversationId == null -> MarkdownBlockHeightCache.clearAll()
-                messageId == null -> MarkdownBlockHeightCache.invalidateConversation(conversationId)
-                else -> MarkdownBlockHeightCache.invalidateMessage(conversationId, messageId)
-            }
-        }
     }
 }
 
 @Composable
 private fun CompletePlainTextMarkdown(content: String, modifier: Modifier, fillMaxWidth: Boolean) {
-    SelectionContainer {
+    GatedSelectionContainer {
         OverflowPlainText(
             text = content,
             modifier = modifier,
@@ -168,9 +159,6 @@ private fun RenderMarkdownDocument(
     val bodySize = preferences.effectiveMessageFontSize.sp
     val messageFont = preferences.messageFontFamily.toComposeFontFamily()
     val markdownTypography = messageMarkdownTypography()
-    val renderOptionsKey = 31 * preferences.hashCode() +
-        17 * effectiveLatexMode.hashCode() + 7 * fillMaxWidth.hashCode() + isStreaming.hashCode()
-
     Markdown(
         state = parsed.state,
         modifier = modifier
@@ -179,13 +167,12 @@ private fun RenderMarkdownDocument(
         colors = markdownColor(),
         typography = markdownTypography,
         padding = markdownPadding(block = MARKDOWN_BLOCK_PADDING),
-        components = chatMarkdownComponents(isStreaming, effectiveLatexMode, fillMaxWidth, cacheIdentity, renderOptionsKey),
+        components = chatMarkdownComponents(isStreaming, effectiveLatexMode, fillMaxWidth),
         success = { state, components, successModifier ->
             RenderMarkdownSuccess(
                 state = state,
                 components = components,
-                modifier = successModifier,
-                isStreaming = isStreaming
+                modifier = successModifier
             )
         },
         error = { Text(content, style = type.bodyLarge.copy(fontFamily = messageFont, fontSize = bodySize)) }
@@ -330,36 +317,23 @@ private suspend fun persistSettledMarkdown(
 private fun RenderMarkdownSuccess(
     state: State.Success,
     components: MarkdownComponents,
-    modifier: Modifier,
-    isStreaming: Boolean
+    modifier: Modifier
 ) {
-    if (isStreaming || LocalMarkdownViewportState.current == null) {
-        MarkdownSuccessWithBoundedHtml(state, components, modifier)
-        return
-    }
-
-    // A completed message must use measured, real layout heights. The old virtualized path reserved
-    // estimated space for unrendered blocks, so small estimation errors accumulated into large blank
-    // regions and could push the final text out of practical reach. Render the settled document and
-    // its lists/tables eagerly; keep viewport virtualization for the active streaming pipeline only.
-    CompositionLocalProvider(LocalMarkdownViewportState provides null) {
-        MarkdownSuccessWithBoundedHtml(state, components, modifier)
-    }
+    // Every Markdown block is composed in source order and measured by Compose. Lazy loading belongs
+    // to the outer conversation list; no child block gets a guessed height or a private viewport.
+    MarkdownSuccessWithBoundedHtml(state, components, modifier)
 }
 
 internal const val MAX_MARKDOWN_RENDER_CHARS = 128_000
 internal const val MAX_INCREMENTAL_UNSTABLE_TAIL_CHARS = 8_000
 internal const val MAX_INCREMENTAL_PARSER_APPEND_CHARS = 4_096
-private const val VIRTUALIZED_LIST_ITEMS = 12
 internal val MARKDOWN_BLOCK_PADDING = 8.dp
 
 @Composable
 internal fun chatMarkdownComponents(
     isStreaming: Boolean,
     latexMode: String,
-    fillMaxWidth: Boolean,
-    cacheIdentity: MarkdownRenderCacheIdentity? = null,
-    renderOptionsKey: Int = 0
+    fillMaxWidth: Boolean
 ): MarkdownComponents = markdownComponents(
     codeFence = { model ->
         val fence = markdownFenceSource(model.content, model.node)
@@ -381,7 +355,6 @@ internal fun chatMarkdownComponents(
             trimTrailingWhitespace = true
         )
     },
-
     heading1 = { model -> RenderMarkdownHeading(model, model.typography.h1, latexMode, fillMaxWidth) },
     heading2 = { model -> RenderMarkdownHeading(model, model.typography.h2, latexMode, fillMaxWidth) },
     heading3 = { model -> RenderMarkdownHeading(model, model.typography.h3, latexMode, fillMaxWidth) },
@@ -396,50 +369,12 @@ internal fun chatMarkdownComponents(
     },
     paragraph = { model -> RenderParagraph(model, latexMode, fillMaxWidth) },
     orderedList = { model ->
-        val itemCount = remember(model.node) {
-            model.node.children.count { it.type == MarkdownElementTypes.LIST_ITEM }
-        }
-        if (LocalMarkdownViewportState.current != null && itemCount > VIRTUALIZED_LIST_ITEMS) {
-            VirtualizedMarkdownList(
-                model = model,
-                identity = cacheIdentity,
-                contentFingerprint = LocalMarkdownContentFingerprint.current
-                    ?: markdownContentFingerprint(model.content),
-                ordered = true,
-                typographyKey = model.typography.hashCode(),
-                optionsKey = renderOptionsKey
-            )
-        } else {
-            MarkdownOrderedList(model.content, model.node, style = model.typography.ordered, depth = model.listDepth)
-        }
+        MarkdownOrderedList(model.content, model.node, style = model.typography.ordered, depth = model.listDepth)
     },
     unorderedList = { model ->
-        val itemCount = remember(model.node) {
-            model.node.children.count { it.type == MarkdownElementTypes.LIST_ITEM }
-        }
-        if (LocalMarkdownViewportState.current != null && itemCount > VIRTUALIZED_LIST_ITEMS) {
-            VirtualizedMarkdownList(
-                model = model,
-                identity = cacheIdentity,
-                contentFingerprint = LocalMarkdownContentFingerprint.current
-                    ?: markdownContentFingerprint(model.content),
-                ordered = false,
-                typographyKey = model.typography.hashCode(),
-                optionsKey = renderOptionsKey
-            )
-        } else {
-            MarkdownBulletList(model.content, model.node, style = model.typography.bullet, depth = model.listDepth)
-        }
+        MarkdownBulletList(model.content, model.node, style = model.typography.bullet, depth = model.listDepth)
     },
-    table = { model ->
-        RenderMarkdownTable(
-            model = model,
-            identity = cacheIdentity,
-            allowVirtualization = LocalMarkdownViewportState.current != null,
-            typographyKey = model.typography.hashCode(),
-            optionsKey = renderOptionsKey
-        )
-    }
+    table = { model -> RenderMarkdownTable(model) }
 )
 
 /** Cuts [amount] from the top of the content: it is measured in full, then placed higher and reported shorter. */

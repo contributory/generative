@@ -2,6 +2,7 @@ package org.starfall.generative.shared.ui.text
 
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
@@ -10,6 +11,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
@@ -18,6 +20,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastAll
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -58,6 +61,12 @@ internal val LocalGlyphHitRegistry = staticCompositionLocalOf<GlyphHitRegistry?>
 /** True while a long press on blank space must not start text selection. */
 internal val LocalSelectionBlocked = compositionLocalOf { false }
 
+/**
+ * Prevents nested SelectionContainers from fragmenting Select all into independent text islands.
+ * Message-level containers set this for all markdown descendants.
+ */
+private val LocalSelectionContainerActive = compositionLocalOf { false }
+
 @Composable
 internal fun rememberGlyphTarget(): GlyphTarget? {
     val registry = LocalGlyphHitRegistry.current ?: return null
@@ -73,10 +82,44 @@ internal fun rememberGlyphTarget(): GlyphTarget? {
 internal fun Modifier.glyphTarget(target: GlyphTarget?): Modifier =
     if (target == null) this else onGloballyPositioned { target.coordinates = it }
 
-/** SelectionContainer that turns selection off while [LocalSelectionBlocked] is set. */
+/**
+ * Selection container that turns selection off while [LocalSelectionBlocked] is set and reuses an
+ * ancestor message-level container when one exists. Nested SelectionContainers create separate
+ * selection registrars, making Select all stop at an individual paragraph or chunk.
+ */
 @Composable
 internal fun GatedSelectionContainer(content: @Composable () -> Unit) {
-    if (LocalSelectionBlocked.current) DisableSelection(content = content) else SelectionContainer(content = content)
+    when {
+        LocalSelectionBlocked.current -> DisableSelection(content = content)
+        LocalSelectionContainerActive.current -> content()
+        else -> SelectionContainer {
+            androidx.compose.runtime.CompositionLocalProvider(
+                LocalSelectionContainerActive provides true,
+                content = content
+            )
+        }
+    }
+}
+
+/** A deliberate selection island, used for reasoning text that is separate from answer content. */
+@Composable
+internal fun IndependentSelectionContainer(content: @Composable () -> Unit) {
+    androidx.compose.foundation.text.selection.SelectionContainer(content = content)
+}
+
+/**
+ * Adds copy/select text for a visual message block without drawing another visible line.
+ * The surrounding message-level selection container still sees this text in source order.
+ */
+@Composable
+internal fun SelectionOnlyPlaceholder(text: String) {
+    androidx.compose.material3.Text(
+        text = text,
+        color = Color.Transparent,
+        fontSize = 0.sp,
+        lineHeight = 0.sp,
+        modifier = Modifier.height(0.dp)
+    )
 }
 
 /**

@@ -199,7 +199,7 @@ Checks while implementing:
 
 ## Step 4 — Wire it into `StreamingMarkdownRenderer`
 
-Edit only `StreamingMarkdownRenderer` in `MarkdownRenderer.kt`. Keep its existing 64 ms `displayContent` throttle and fade-finish logic.
+Edit only `StreamingMarkdownRenderer` in `MarkdownRenderer.kt`. Keep its fade-finish logic; stream publication is paced by the message-scoped 50 ms render window, so the renderer must not add another display throttle.
 
 1. Add `var settled by remember { mutableStateOf(!isStreaming) }`. A message that is already finished when first composed uses the old single renderer immediately (cache path, `ChatOpenCache` unaffected).
 2. In the existing `LaunchedEffect`, streaming branch: set `settled = false`.

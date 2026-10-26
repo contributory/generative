@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -111,8 +110,10 @@ private fun InlineMathFlow(pieces: List<MathPiece>, style: TextStyle, fillMaxWid
         buildMap<String, InlineTextContent> {
             drawables.forEachIndexed { index, drawable ->
                 if (drawable == null || index >= MAX_INLINE_FORMULAS) return@forEachIndexed
-                val width = with(density) { drawable.intrinsicWidth.coerceAtLeast(1).toSp() }
-                val height = with(density) { drawable.intrinsicHeight.coerceAtLeast(1).toSp() }
+                // Drawable dimensions are pixels; passing them directly as sp made large inline
+                // formulas grow by the density factor and get clipped by the paragraph layout.
+                val width = with(density) { drawable.intrinsicWidth.coerceAtLeast(1).toDp().toSp() }
+                val height = with(density) { drawable.intrinsicHeight.coerceAtLeast(1).toDp().toSp() }
                 put(
                     inlineMathId(index),
                     InlineTextContent(Placeholder(width, height, PlaceholderVerticalAlign.TextCenter)) {
@@ -168,7 +169,9 @@ private fun weaveInlineMath(
         if (index !in 0 until known) continue
         append(styled.subSequence(copiedUpTo, position))
         if (drawables[index] != null) {
-            appendInlineContent(inlineMathId(index), mathPlaceholder(index).toString())
+            // Inline content's alternate text is the selection/copy representation. Keep the
+            // rendered drawable visual while exposing the original delimiter source to selection.
+            appendInlineContent(inlineMathId(index), maths[index].source)
         } else {
             withStyle(SpanStyle(fontFamily = FontFamily.Serif)) { append(maths[index].source) }
         }

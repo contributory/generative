@@ -1,7 +1,6 @@
 package org.starfall.generative.features.home.chat.ui.markdown
 
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -22,6 +21,7 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
+import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 import org.starfall.generative.features.home.chat.logic.markdown.parseLibraryMarkdown
 import org.starfall.generative.features.home.chat.model.StreamTextSnapshot
 import org.starfall.generative.features.home.chat.ui.MarkdownParseCache
@@ -100,12 +100,13 @@ private fun ObserveOversizedStreamingPreview(
     LaunchedEffect(streamGenerationId, streamMessageId, cacheIdentity) {
         var previewCreated = false
         snapshotFlow { latestContent.value }.conflate().collect { input ->
-            if (!previewCreated && input.length > MAX_MARKDOWN_RENDER_CHARS) {
+            if (input.length > MAX_MARKDOWN_RENDER_CHARS) {
                 previewCreated = true
-                val preview = withContext(Dispatchers.Default) {
-                    input.take(MAX_MARKDOWN_RENDER_CHARS) + "\n\n" + truncationLabel
-                }
-                onPreview(preview)
+                delay(80)
+                val latest = latestContent.value
+                if (latest.length > MAX_MARKDOWN_RENDER_CHARS) onPreview(latest)
+            } else if (!previewCreated) {
+                onPreview("")
             }
         }
     }
@@ -147,7 +148,6 @@ private suspend fun collectStreamingMarkdownChunks(
     displayContent: MutableState<String>
 ) {
     snapshotFlow { latestContent.value }.conflate().collect {
-        delay(64)
         val latest = latestContent.value
         if (latest.length <= MAX_MARKDOWN_RENDER_CHARS) displayContent.value = latest
     }
@@ -186,11 +186,8 @@ private fun RenderStreamingMarkdown(
         when {
             // This is only a live-stream safety preview. Once generation stops, let the complete
             // source reach MarkdownRenderer, which falls back to bounded plain-text nodes if needed.
-            isStreaming && oversizedPreview != null -> StreamingMarkdownPreview(oversizedPreview, modifier)
-            isStreaming && displayContent.length > MAX_MARKDOWN_RENDER_CHARS -> StreamingMarkdownPreview(
-                displayContent.take(MAX_MARKDOWN_RENDER_CHARS) + "\n\n" + truncationLabel,
-                modifier
-            )
+            isStreaming && !oversizedPreview.isNullOrEmpty() -> StreamingMarkdownPreview(oversizedPreview, modifier)
+            isStreaming && displayContent.length > MAX_MARKDOWN_RENDER_CHARS -> StreamingMarkdownPreview(displayContent, modifier)
             else -> RenderStreamingMarkdownDocument(
                 displayContent = displayContent,
                 modifier = modifier,
@@ -205,7 +202,7 @@ private fun RenderStreamingMarkdown(
 
 @Composable
 private fun StreamingMarkdownPreview(text: String, modifier: Modifier) {
-    SelectionContainer {
+    GatedSelectionContainer {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp),
@@ -255,9 +252,6 @@ private fun IncrementalStreamingMarkdown(
         val incrementalParser = remember { IncrementalMarkdownParser(cancellationToken) }
         val latestSnapshot = rememberUpdatedState(streamSnapshot)
         val renderSnapshot = remember { mutableStateOf(incrementalParser.currentSnapshot()) }
-        val truncatedContent = remember {
-            mutableStateOf(initialTruncatedContent(streamSnapshot, truncationLabel))
-        }
         val parsing = remember { mutableStateOf(false) }
         TrackPendingWork(parsing.value)
         CollectIncrementalMarkdownStream(
@@ -266,26 +260,18 @@ private fun IncrementalStreamingMarkdown(
             parser = incrementalParser,
             cancellationToken = cancellationToken,
             renderSnapshot = renderSnapshot,
-            truncatedContent = truncatedContent,
-            parsing = parsing,
-            truncationLabel = truncationLabel
+            parsing = parsing
         )
         RenderIncrementalMarkdown(
             parser = incrementalParser,
             renderSnapshot = renderSnapshot.value,
             latestSnapshot = latestSnapshot,
-            truncatedContent = truncatedContent.value,
             truncationLabel = truncationLabel,
             modifier = modifier,
             cacheIdentity = cacheIdentity
         )
     }
 }
-
-private fun initialTruncatedContent(snapshot: StreamTextSnapshot, truncationLabel: String): String? =
-    snapshot.takeIf { it.length > MAX_MARKDOWN_RENDER_CHARS.toLong() }
-        ?.prefix(MAX_MARKDOWN_RENDER_CHARS)
-        ?.let { "$it\n\n$truncationLabel" }
 
 @Composable
 private fun CollectIncrementalMarkdownStream(
@@ -294,22 +280,17 @@ private fun CollectIncrementalMarkdownStream(
     parser: IncrementalMarkdownParser,
     cancellationToken: MarkdownParserCancellationToken,
     renderSnapshot: MutableState<IncrementalMarkdownSnapshot>,
-    truncatedContent: MutableState<String?>,
-    parsing: MutableState<Boolean>,
-    truncationLabel: String
+    parsing: MutableState<Boolean>
 ) {
     LaunchedEffect(Unit) {
         cancellationToken.ownerJob = currentCoroutineContext()[Job]
         try {
-            if (truncatedContent.value != null) return@LaunchedEffect
             appendInitialMarkdownBase(initialBaseText, parser, renderSnapshot, parsing)
             collectIncrementalMarkdownUpdates(
                 latestSnapshot = latestSnapshot,
                 parser = parser,
                 renderSnapshot = renderSnapshot,
-                truncatedContent = truncatedContent,
-                parsing = parsing,
-                truncationLabel = truncationLabel
+                parsing = parsing
             )
         } finally {
             cancellationToken.ownerJob = null
@@ -332,23 +313,25 @@ private suspend fun collectIncrementalMarkdownUpdates(
     latestSnapshot: androidx.compose.runtime.State<StreamTextSnapshot>,
     parser: IncrementalMarkdownParser,
     renderSnapshot: MutableState<IncrementalMarkdownSnapshot>,
-    truncatedContent: MutableState<String?>,
-    parsing: MutableState<Boolean>,
-    truncationLabel: String
+    parsing: MutableState<Boolean>
 ) {
     var lastSequence = 0L
-    if (latestSnapshot.value.length > MAX_MARKDOWN_RENDER_CHARS.toLong()) {
-        truncatedContent.value = truncatedMarkdownText(latestSnapshot.value, truncationLabel)
-        return
-    }
     snapshotFlow { latestSnapshot.value }.conflate().collect { current ->
-        if (truncatedContent.value != null) return@collect
-        if (current.length > MAX_MARKDOWN_RENDER_CHARS.toLong()) {
-            truncatedContent.value = truncatedMarkdownText(current, truncationLabel)
-            return@collect
-        }
         if (renderSnapshot.value.overflowStart != null) {
             lastSequence = current.latestSegment?.sequence ?: lastSequence
+            return@collect
+        }
+        if (current.length > MAX_MARKDOWN_RENDER_CHARS.toLong()) {
+            // Do not parse or lay out the whole answer again. Freeze the parser's stable prefix and
+            // render only the remaining source as one Text node in the same selection/layout tree.
+            delay(80)
+            if (latestSnapshot.value.length > MAX_MARKDOWN_RENDER_CHARS.toLong()) {
+                val overflowSnapshot = withContext(Dispatchers.Default) {
+                    parser.preserveUnstableTailAsPlainText()
+                }
+                renderSnapshot.value = overflowSnapshot
+            }
+            lastSequence = latestSnapshot.value.latestSegment?.sequence ?: lastSequence
             return@collect
         }
         appendNewMarkdownSegments(current, lastSequence, parser, renderSnapshot, parsing).also {
@@ -402,39 +385,28 @@ private suspend fun appendIncrementalMarkdown(
     }
 }
 
-private fun truncatedMarkdownText(snapshot: StreamTextSnapshot, truncationLabel: String): String =
-    snapshot.prefix(MAX_MARKDOWN_RENDER_CHARS) + "\n\n" + truncationLabel
-
 @Composable
 private fun RenderIncrementalMarkdown(
     parser: IncrementalMarkdownParser,
     renderSnapshot: IncrementalMarkdownSnapshot,
     latestSnapshot: androidx.compose.runtime.State<StreamTextSnapshot>,
-    truncatedContent: String?,
     truncationLabel: String,
     modifier: Modifier,
     cacheIdentity: MarkdownRenderCacheIdentity?
 ) {
     val preferences = LocalCodeRenderingPreferences.current
     val typography = messageMarkdownTypography()
-    val renderOptionsKey = 31 * preferences.hashCode() +
-        17 * preferences.latexMode.hashCode() + 7 * true.hashCode() + true.hashCode()
     CompositionLocalProvider(LocalStreamingTextFade provides true) {
-        if (truncatedContent != null) {
-            StreamingMarkdownPreview(truncatedContent, modifier)
-        } else {
-            RenderIncrementalMarkdownDocument(
-                parser = parser,
-                renderSnapshot = renderSnapshot,
-                latestSnapshot = latestSnapshot,
-                truncationLabel = truncationLabel,
-                modifier = modifier,
-                cacheIdentity = cacheIdentity,
-                preferences = preferences,
-                typography = typography,
-                renderOptionsKey = renderOptionsKey
-            )
-        }
+        RenderIncrementalMarkdownDocument(
+            parser = parser,
+            renderSnapshot = renderSnapshot,
+            latestSnapshot = latestSnapshot,
+            truncationLabel = truncationLabel,
+            modifier = modifier,
+            cacheIdentity = cacheIdentity,
+            preferences = preferences,
+            typography = typography
+        )
     }
 }
 
@@ -447,8 +419,7 @@ private fun RenderIncrementalMarkdownDocument(
     modifier: Modifier,
     cacheIdentity: MarkdownRenderCacheIdentity?,
     preferences: org.starfall.generative.shared.storage.preferences.AppPreferences,
-    typography: MarkdownTypography,
-    renderOptionsKey: Int
+    typography: MarkdownTypography
 ) {
     Markdown(
         state = State.Success(
@@ -465,21 +436,16 @@ private fun RenderIncrementalMarkdownDocument(
         components = chatMarkdownComponents(
             isStreaming = true,
             latexMode = preferences.latexMode,
-            fillMaxWidth = true,
-            cacheIdentity = cacheIdentity,
-            renderOptionsKey = renderOptionsKey
+            fillMaxWidth = true
         ),
         success = { _, components, successModifier ->
-            VirtualizedIncrementalMarkdown(
+            RenderIncrementalMarkdownDocument(
                 stableNodes = renderSnapshot.stableNodes,
                 unstableNodes = renderSnapshot.unstableNodes,
                 source = latestSnapshot.value,
                 overflowStart = renderSnapshot.overflowStart,
-                parserKey = parser,
                 components = components,
-                modifier = successModifier,
-                typographyKey = typography.hashCode(),
-                optionsKey = renderOptionsKey
+                modifier = successModifier
             )
         },
         error = { androidx.compose.material3.Text(truncationLabel, modifier = Modifier.fillMaxWidth()) }
