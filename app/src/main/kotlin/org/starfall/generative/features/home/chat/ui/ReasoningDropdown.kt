@@ -208,7 +208,7 @@ internal fun ProcessingDropdown(
                             item.activity.status == "running"
                         val shown = expanded || index >= visibleItems.size - previewCount || runningTool
                         // Items added while streaming start hidden so they animate in.
-                        val visibility = remember { MutableTransitionState(previewCount == 0) }
+                        val visibility = remember { MutableTransitionState(previewCount == 0 && shown) }
                         visibility.targetState = shown
                         AnimatedVisibility(
                             visibleState = visibility,
