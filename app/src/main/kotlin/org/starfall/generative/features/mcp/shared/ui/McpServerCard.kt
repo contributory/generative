@@ -1,15 +1,11 @@
 package org.starfall.generative.features.mcp.shared.ui
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,9 +18,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.isWebSearchProvider
 import org.starfall.generative.shared.model.ToolSettings
-import org.starfall.generative.shared.ui.layout.AdaptiveCardLayout
-import org.starfall.generative.shared.ui.layout.prominentContainerBorder
-import org.starfall.generative.shared.ui.layout.prominentContainerColor
+import org.starfall.generative.shared.ui.lists.AppListItem
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -36,16 +30,10 @@ fun McpUnifiedCard(server: McpInfo, isGrid: Boolean, modifier: Modifier = Modifi
     loading: Boolean, isEnabled: Boolean, onToggleEnabled: () -> Unit,
     onToolErrorClick: (String) -> Unit, onEdit: () -> Unit, onDelete: () -> Unit,
     managedSettings: ToolSettings = ToolSettings()) {
-    val corner by animateDpAsState(if (isGrid) 20.dp else 16.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow), label = "mcpShapeCorner")
-    Surface(
+    AppListItem(
+        isGrid = isGrid,
         onClick = onEdit,
-        shape = RoundedCornerShape(corner),
-        color = prominentContainerColor(),
-        border = prominentContainerBorder(1.5.dp),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        AdaptiveCardLayout(isGrid = isGrid, modifier = Modifier.fillMaxWidth().padding(14.dp),
+        modifier = modifier,
             icon = { EntityIcon(server.icon, Modifier.size(42.dp), text = providerInitials(server.name),
                 fallback = Icons.Outlined.Extension, matchName = server.name) },
             actions = {
@@ -81,5 +69,4 @@ fun McpUnifiedCard(server: McpInfo, isGrid: Boolean, modifier: Modifier = Modifi
                     }
                 }
             })
-    }
 }

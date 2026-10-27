@@ -1,12 +1,11 @@
 package org.starfall.generative.shared.ui.media
 
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,11 +22,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.prominentContainerBorder
-import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
 
 internal data class MediaViewerAction(
@@ -59,32 +55,26 @@ internal fun MediaViewerMenu(
                     )
                 }
             }
-            MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(14.dp))) {
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    containerColor = prominentContainerColor(),
-                    tonalElevation = if (LocalAmoledMode.current) 0.dp else 6.dp,
-                    shadowElevation = if (LocalAmoledMode.current) 0.dp else 8.dp,
-                    border = prominentContainerBorder()
-                ) {
-                    actions.forEach { action ->
-                        val contentColor = action.tint ?: Color.Unspecified
-                        RoundedDropdownMenuItem(
-                            text = { Text(action.label, color = contentColor) },
-                            leadingIcon = {
-                                FluentIcon(
-                                    action.icon,
-                                    contentDescription = null,
-                                    tint = action.tint ?: MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            onClick = {
-                                expanded = false
-                                action.onClick()
-                            }
-                        )
-                    }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                actions.forEach { action ->
+                    val contentColor = action.tint ?: Color.Unspecified
+                    RoundedDropdownMenuItem(
+                        text = { Text(action.label, color = contentColor) },
+                        leadingIcon = {
+                            FluentIcon(
+                                action.icon,
+                                contentDescription = null,
+                                tint = action.tint ?: MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        onClick = {
+                            expanded = false
+                            action.onClick()
+                        }
+                    )
                 }
             }
         }

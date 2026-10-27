@@ -1,5 +1,7 @@
 package org.starfall.generative.features.providers.editor.ui
 
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
+import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.features.providers.shared.ui.ModelConfigDialog
@@ -25,6 +28,7 @@ import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.media.MediaGenerationMode
 import org.starfall.generative.shared.model.media.MediaRequestProfile
+import org.starfall.generative.shared.model.media.withDefaultMediaProfile
 import org.starfall.generative.shared.model.language.SELECTABLE_REASONING_EFFORTS
 import org.starfall.generative.shared.model.language.ThinkingPassback
 import org.starfall.generative.shared.model.language.passbackMode
@@ -37,8 +41,8 @@ import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
-import org.starfall.generative.shared.ui.text.HeaderNameField
 import org.starfall.generative.shared.ui.code.CodeBlockSurface
 import org.starfall.generative.shared.ui.model.modelInitial
 
@@ -62,12 +66,15 @@ fun ModelEditor(
     var iconImporting by remember { mutableStateOf(false) }
     var typeExpanded by remember { mutableStateOf(false) }
     var apiTypeExpanded by remember { mutableStateOf(false) }
-    var profileExpanded by remember { mutableStateOf(false) }
     var showSampling by remember { mutableStateOf(false) }
     var showModelTools by remember { mutableStateOf(false) }
     var showModelJsonDialog by remember { mutableStateOf(false) }
     val trimmedId = modelId.trim()
-    val customMediaProfiles = if (config.modelType == ModelType.VIDEO_GENERATION) customVideoMediaProfiles else customImageMediaProfiles
+    val isVideoGen = config.modelType == ModelType.VIDEO_GENERATION
+    val mediaProfiles = (if (isVideoGen) customVideoMediaProfiles else customImageMediaProfiles)
+        .withDefaultMediaProfile(isVideoGen)
+    val chosenMediaProfile = mediaProfiles[config.mediaRequestProfileId]
+        ?: mediaProfiles.values.first { it.mode == MediaGenerationMode.DEFAULT }
     val modelJson = if (initialModelId.isNotBlank() && trimmedId == initialModelId) config.modelJson else JsonObject(emptyMap())
     val prettyJson = remember { Json { prettyPrint = true } }
     val modelJsonCode = remember(modelJson) { prettyJson.encodeToString(JsonObject.serializer(), modelJson) }
@@ -110,14 +117,16 @@ fun ModelEditor(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
+                colors = edgeToEdgeTopAppBarColors(),
                 title = {
-                    // Blank display name falls back to the model ID, so the ID doubles as the hint.
-                    HeaderNameField(
-                        value = config.displayName,
-                        onValueChange = { config = config.copy(displayName = it) },
-                        placeholder = trimmedId.ifBlank {
-                            stringResource(if (initialModelId.isBlank()) R.string.add_model_title else R.string.edit_model_title)
-                        }
+                    Text(
+                        text = config.displayName.trim().ifBlank {
+                            trimmedId.ifBlank {
+                                stringResource(if (initialModelId.isBlank()) R.string.add_model_title else R.string.edit_model_title)
+                            }
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
                 navigationIcon = {
@@ -134,8 +143,8 @@ fun ModelEditor(
         }
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()
-                .verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier.fillMaxSize().consumeWindowInsets(padding).imePadding()
+                .verticalScroll(rememberScrollState()).padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             IconPickerRow(
@@ -147,6 +156,18 @@ fun ModelEditor(
                 fallbackMatchName = modelId,
                 model = true,
                 faviconBaseUrl = provider.baseUrl
+            )
+            SelectableOutlinedTextField(
+                value = config.displayName,
+                onValueChange = { config = config.copy(displayName = it) },
+                label = { Text(stringResource(R.string.common_name)) },
+                placeholder = {
+                    Text(trimmedId.ifBlank {
+                        stringResource(if (initialModelId.isBlank()) R.string.add_model_title else R.string.edit_model_title)
+                    })
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
             )
             SelectableOutlinedTextField(
                 value = modelId,
@@ -166,7 +187,7 @@ fun ModelEditor(
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).fillMaxWidth()
                 )
-                ExposedDropdownMenu(expanded = typeExpanded, onDismissRequest = { typeExpanded = false }) {
+                AppExposedDropdownMenu(expanded = typeExpanded, onDismissRequest = { typeExpanded = false }) {
                     ModelType.entries.forEach { type ->
                         DropdownMenuItem(
                             text = { Text(type.displayName) },
@@ -319,51 +340,27 @@ fun ModelEditor(
                     onExpandedChange = { apiTypeExpanded = !apiTypeExpanded }
                 ) {
                     SelectableOutlinedTextField(
-                        value = stringResource(if (config.mediaApiType == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom),
-                        onValueChange = {},
-                        readOnly = true,
+                        value = chosenMediaProfile.name,
+                        onValueChange = {}, readOnly = true,
                         label = { Text(stringResource(R.string.media_api_type)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(apiTypeExpanded) },
-                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).fillMaxWidth()
+                        modifier = Modifier.menuAnchor(
+                            ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true
+                        ).fillMaxWidth()
                     )
-                    ExposedDropdownMenu(expanded = apiTypeExpanded, onDismissRequest = { apiTypeExpanded = false }) {
-                        listOf(MediaGenerationMode.DEFAULT, MediaGenerationMode.CUSTOM).forEach { mode ->
+                    AppExposedDropdownMenu(apiTypeExpanded, { apiTypeExpanded = false }) {
+                        mediaProfiles.values.forEach { profile ->
                             DropdownMenuItem(
-                                text = { Text(stringResource(if (mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom)) },
+                                text = { Text(profile.name + " · " +
+                                    stringResource(if (profile.mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom)) },
                                 onClick = {
                                     config = config.copy(
-                                        mediaApiType = mode,
-                                        mediaRequestProfileId = if (mode == MediaGenerationMode.DEFAULT) "" else config.mediaRequestProfileId
+                                        mediaApiType = profile.mode,
+                                        mediaRequestProfileId = profile.id
                                     )
                                     apiTypeExpanded = false
                                 }
                             )
-                        }
-                    }
-                }
-                if (config.mediaApiType == MediaGenerationMode.CUSTOM) {
-                    ExposedDropdownMenuBox(
-                        expanded = profileExpanded,
-                        onExpandedChange = { profileExpanded = !profileExpanded }
-                    ) {
-                        SelectableOutlinedTextField(
-                            value = customMediaProfiles[config.mediaRequestProfileId]?.name.orEmpty().ifBlank { stringResource(R.string.media_chain_select_profile) },
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text(stringResource(R.string.media_chain_profile)) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(profileExpanded) },
-                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).fillMaxWidth()
-                        )
-                        ExposedDropdownMenu(expanded = profileExpanded, onDismissRequest = { profileExpanded = false }) {
-                            customMediaProfiles.values.forEach { profile ->
-                                DropdownMenuItem(
-                                    text = { Text(profile.name) },
-                                    onClick = {
-                                        config = config.copy(mediaRequestProfileId = profile.id)
-                                        profileExpanded = false
-                                    }
-                                )
-                            }
                         }
                     }
                 }
@@ -380,6 +377,7 @@ fun ModelEditor(
         AlertDialog(
             onDismissRequest = { showModelJsonDialog = false },
             title = { Text(stringResource(R.string.model_json)) },
+            scrollableContent = false,
             text = {
                 Box(
                     Modifier.fillMaxWidth()

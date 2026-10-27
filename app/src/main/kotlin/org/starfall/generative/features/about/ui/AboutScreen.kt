@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -46,14 +47,15 @@ import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @Composable
-fun AboutScreen(modifier: Modifier = Modifier) {
+fun AboutScreen(modifier: Modifier = Modifier, contentPadding: PaddingValues = PaddingValues()) {
     val context = LocalContext.current
     val packageInfo = remember(context) { context.packageManager.getPackageInfo(context.packageName, 0) }
     val versionName = packageInfo.versionName.orEmpty()
     val versionCode = PackageInfoCompat.getLongVersionCode(packageInfo)
 
     Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
+        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(contentPadding).padding(horizontal = 16.dp, vertical = 8.dp).padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         AboutCard {

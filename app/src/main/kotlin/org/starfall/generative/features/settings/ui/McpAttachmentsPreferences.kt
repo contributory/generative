@@ -1,13 +1,13 @@
 package org.starfall.generative.features.settings.ui
 
+import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
+import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -64,7 +64,7 @@ fun McpAttachmentsPreferences(
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
                 .testTag("mcp-attachment-mode")
         )
-        ExposedDropdownMenu(expanded = modeExpanded, onDismissRequest = { modeExpanded = false }) {
+        AppExposedDropdownMenu(expanded = modeExpanded, onDismissRequest = { modeExpanded = false }) {
             modeLabels.forEach { (mode, label) ->
                 DropdownMenuItem(text = { Text(label) }, onClick = {
                     onChange(settings.copy(mode = mode))
@@ -122,7 +122,7 @@ fun McpAttachmentsPreferences(
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
                 .testTag("mcp-attachment-strategy")
         )
-        ExposedDropdownMenu(expanded = strategyExpanded, onDismissRequest = { strategyExpanded = false }) {
+        AppExposedDropdownMenu(expanded = strategyExpanded, onDismissRequest = { strategyExpanded = false }) {
             strategyLabels.forEach { (strategy, label) ->
                 DropdownMenuItem(text = { Text(label) }, onClick = {
                     onChange(settings.copy(strategy = strategy))

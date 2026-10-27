@@ -87,10 +87,10 @@ internal fun ModelPickerToolbar(
         ?: selectedModelId.ifBlank { stringResource(R.string.select_model) }
     val openSelectedDescription = stringResource(R.string.open_selected_model)
 
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
-        val reservedWidth = 48.dp + 8.dp + (if (onOpenSelectedModel != null) 56.dp else 0.dp)
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+        val reservedWidth = 40.dp + 8.dp + (if (onOpenSelectedModel != null) 48.dp else 0.dp)
         val searchWidth by animateDpAsState(
-            targetValue = if (searchExpanded) (maxWidth - reservedWidth).coerceAtLeast(48.dp) else 48.dp,
+            targetValue = if (searchExpanded) (maxWidth - reservedWidth).coerceAtLeast(40.dp) else 40.dp,
             label = "modelPickerSearchWidth"
         )
         Row(
@@ -101,7 +101,7 @@ internal fun ModelPickerToolbar(
             FilledTonalIconButton(
                 enabled = toggleEnabled,
                 onClick = onToggleAllCollapsed,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(40.dp)
             ) {
                 FluentIcon(
                     if (allCollapsed) Icons.Outlined.ExpandMore else Icons.Outlined.ExpandLess,
@@ -147,7 +147,7 @@ internal fun ModelPickerToolbar(
                 } else {
                     FilledTonalIconButton(
                         onClick = { searchExpanded = true },
-                        modifier = Modifier.size(48.dp).testTag("model-picker-search-button")
+                        modifier = Modifier.size(40.dp).testTag("model-picker-search-button")
                     ) {
                         FluentIcon(
                             Icons.Outlined.Search,
@@ -165,10 +165,10 @@ internal fun ModelPickerToolbar(
                             if (searchExpanded) focusManager.clearFocus()
                             onOpenSelectedModel()
                         },
-                        modifier = Modifier.height(48.dp)
+                        modifier = Modifier.height(40.dp)
                             .testTag("open-selected-model-button")
                             .semantics { contentDescription = openSelectedDescription },
-                        shape = RoundedCornerShape(24.dp),
+                        shape = RoundedCornerShape(20.dp),
                         color = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     ) {
@@ -179,7 +179,7 @@ internal fun ModelPickerToolbar(
                         ) {
                             EntityIcon(
                                 image = selectedModel?.icon,
-                                modifier = Modifier.size(32.dp).testTag("selected-model-icon"),
+                                modifier = Modifier.size(28.dp).testTag("selected-model-icon"),
                                 text = modelInitial(selectedModelId),
                                 fallback = if (selectedModelId.isBlank()) Icons.Outlined.Add else null,
                                 matchName = modelName,
@@ -190,7 +190,7 @@ internal fun ModelPickerToolbar(
                                 Text(
                                     text = modelName,
                                     modifier = Modifier.weight(1f, fill = false),
-                                    style = MaterialTheme.typography.labelLarge,
+                                    style = MaterialTheme.typography.labelMedium,
                                     maxLines = 1,
                                     overflow = TextOverflow.Clip
                                 )

@@ -1,5 +1,7 @@
 package org.starfall.generative.features.settings.ui
 
+import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
+import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
@@ -51,7 +53,7 @@ internal fun CodeRenderingPreferences(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("word-wrap-mode")
         )
-        ExposedDropdownMenu(expanded, { expanded = false }) {
+        AppExposedDropdownMenu(expanded, { expanded = false }) {
             labels.forEach { (mode, label) ->
                 DropdownMenuItem(text = { Text(label) }, onClick = { onModeChange(mode); expanded = false })
             }
@@ -93,7 +95,7 @@ internal fun CodeRenderingPreferences(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(codeBlockExpanded) },
             modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("code-block-display-mode")
         )
-        ExposedDropdownMenu(codeBlockExpanded, { codeBlockExpanded = false }) {
+        AppExposedDropdownMenu(codeBlockExpanded, { codeBlockExpanded = false }) {
             codeBlockLabels.forEach { (mode, label) ->
                 DropdownMenuItem(text = { Text(label) }, onClick = {
                     onCodeBlockDisplayModeChange(mode)
@@ -194,7 +196,7 @@ internal fun TextAppearancePreferences(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(fontExpanded) },
             modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("message-font-family")
         )
-        ExposedDropdownMenu(fontExpanded, { fontExpanded = false }) {
+        AppExposedDropdownMenu(fontExpanded, { fontExpanded = false }) {
             fontLabels.forEach { (family, label) ->
                 DropdownMenuItem(text = { Text(label) }, onClick = {
                     onFontFamilyChange(family)

@@ -1,5 +1,8 @@
 package org.starfall.generative.features.chatoptions.ui
 
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -16,8 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -34,18 +35,20 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.text.FullScreenEditorTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +75,7 @@ internal fun InstructionEditor(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = edgeToEdgeTopAppBarColors(),
                 title = {
                     BasicTextField(
                         value = name,
@@ -160,20 +164,23 @@ internal fun InstructionEditor(
             )
         }
     ) { padding ->
-        SelectableOutlinedTextField(
+        FullScreenEditorTextField(
             value = content,
             onValueChange = { content = it },
-            label = { Text(stringResource(R.string.instruction_content)) },
-            placeholder = { Text(stringResource(R.string.instruction_content_hint)) },
+            placeholder = stringResource(R.string.instruction_content_hint),
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .imePadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = 20.dp, vertical = 20.dp)
                 .testTag("instruction_content_input"),
-            maxLines = Int.MAX_VALUE,
-            textStyle = MaterialTheme.typography.bodyLarge
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 14.sp,
+                lineHeight = 21.sp
+            )
         )
     }
 }

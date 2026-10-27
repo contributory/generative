@@ -233,7 +233,7 @@ class AppSurfaceAndClipConsistencyTest {
         compose.waitForIdle()
         assertEquals(1, providerClicks)
 
-        // 2. InstructionsTab grouped instructions (24.dp outer top corner, 6.dp inner bottom corner).
+        // 2. Instructions use the same 16.dp list-card corners as providers and MCP servers.
         mode = 1
         compose.waitForIdle()
         compose.onNodeWithText("First Instruction").performTouchInput {
@@ -241,12 +241,12 @@ class AppSurfaceAndClipConsistencyTest {
             click(Offset(2.dp.toPx(), 2.dp.toPx()))
         }
         compose.waitForIdle()
-        assertNull("Click outside 24.dp outer top corner of grouped instruction should not fire", previewedInstructionId)
+        assertNull("Click outside the instruction card corner should not fire", previewedInstructionId)
         compose.onNodeWithText("First Instruction").performTouchInput {
-            click(Offset(2.dp.toPx(), height - 2.dp.toPx()))
+            click(center)
         }
         compose.waitForIdle()
-        assertEquals("Click inside 6.dp inner bottom corner of grouped instruction should fire", "s1", previewedInstructionId)
+        assertEquals("Click inside the instruction card should fire", "s1", previewedInstructionId)
 
         // 3. QuickActionsSheet tile (24.dp rounded corners).
         mode = 2

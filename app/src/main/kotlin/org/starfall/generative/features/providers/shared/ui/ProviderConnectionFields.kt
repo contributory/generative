@@ -1,5 +1,6 @@
 package org.starfall.generative.features.providers.shared.ui
 
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*

@@ -3,14 +3,21 @@ package org.starfall.generative.features.chatoptions.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import org.starfall.generative.shared.ui.icons.EntityIcon
+import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.lists.AppListItem
+import org.starfall.generative.shared.ui.lists.EmptyListContent
+import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -18,16 +25,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SavedInstruction
-import org.starfall.generative.shared.ui.layout.groupedItemShape
-import org.starfall.generative.shared.ui.layout.prominentContainerBorder
-import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.menus.ItemContextMenu
 
 @Composable
@@ -35,63 +39,50 @@ internal fun InstructionsTab(
     library: InstructionLibrary,
     onEditInstruction: (SavedInstruction) -> Unit,
     onPreviewInstruction: (SavedInstruction) -> Unit,
-    onDeleteInstruction: (SavedInstruction) -> Unit
+    onDeleteInstruction: (SavedInstruction) -> Unit,
+    isGrid: Boolean = false,
+    bottomPadding: Dp = 0.dp
 ) {
     var instructionPendingDelete by remember { mutableStateOf<SavedInstruction?>(null) }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        if (library.instructions.isEmpty()) {
-            item {
-                Text(
-                    stringResource(R.string.instruction_library_empty),
-                    Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        if (library.instructions.isNotEmpty()) {
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    library.instructions.forEachIndexed { index, instruction ->
-                        Surface(
-                            onClick = { onPreviewInstruction(instruction) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = groupedItemShape(index, library.instructions.size),
-                            color = prominentContainerColor(),
-                            border = prominentContainerBorder()
-                        ) {
-                            Row(
-                                Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(instruction.name, style = MaterialTheme.typography.titleMedium)
-                                    Text(
-                                        stringResource(
-                                            R.string.instruction_metadata,
-                                            instructionRoleLabel(instruction.role),
-                                            instruction.content.length,
-                                            estimateInstructionTokens(instruction.content)
-                                        ),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                ItemContextMenu(
-                                    onEdit = { onEditInstruction(instruction) },
-                                    onDelete = { instructionPendingDelete = instruction },
-                                    deleteColor = MaterialTheme.colorScheme.error
+    if (library.instructions.isEmpty()) {
+        EmptyListContent(Icons.Outlined.Description, stringResource(R.string.instruction_library_empty))
+    } else {
+        FadeGridListContent(isGrid = isGrid, modifier = Modifier.fillMaxSize()) { gridMode ->
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(if (gridMode) 2 else 1),
+                contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp + bottomPadding),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(library.instructions, key = { it.id }) { instruction ->
+                    AppListItem(
+                        isGrid = gridMode,
+                        onClick = { onPreviewInstruction(instruction) },
+                        icon = {
+                            EntityIcon(null, Modifier.size(42.dp), fallback = Icons.Outlined.Description)
+                        },
+                        actions = {
+                            ItemContextMenu(
+                                onEdit = { onEditInstruction(instruction) },
+                                onDelete = { instructionPendingDelete = instruction },
+                                deleteColor = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        content = {
+                            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(instruction.name, style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    stringResource(R.string.instruction_metadata, instructionRoleLabel(instruction.role),
+                                        instruction.content.length, estimateInstructionTokens(instruction.content)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2, overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
-                    }
+                    )
                 }
             }
         }
@@ -100,6 +91,7 @@ internal fun InstructionsTab(
     instructionPendingDelete?.let { instruction ->
         AlertDialog(
             onDismissRequest = { instructionPendingDelete = null },
+            title = { Text(stringResource(R.string.dialog_delete_instruction_title)) },
             text = { Text(stringResource(R.string.instruction_delete_confirmation, instruction.name)) },
             confirmButton = {
                 TextButton(onClick = {

@@ -1,8 +1,11 @@
 package org.starfall.generative.features.tools.ui
 
+import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -12,6 +15,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import org.starfall.generative.shared.model.SystemToolConfig
+import org.starfall.generative.shared.model.media.MediaGenerationMode
+import org.starfall.generative.shared.model.media.defaultMediaProfile
+import org.starfall.generative.shared.ui.ToolSwitch
+import org.starfall.generative.shared.helpers.media.imageOptionFields
+import org.starfall.generative.shared.helpers.media.videoOptionFields
+import org.starfall.generative.shared.helpers.media.optionAt
+import org.starfall.generative.shared.helpers.media.withOption
+import org.starfall.generative.shared.helpers.media.validateImageOptions
+import org.starfall.generative.shared.helpers.media.validateVideoOptions
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu
+import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.media.MediaFinalResponse
 import org.starfall.generative.shared.model.media.MediaRequestProfile
@@ -33,22 +50,36 @@ internal fun MediaRequestProfileEditor(
     provider: ModelProvider,
     profile: MediaRequestProfile,
     video: Boolean,
+    config: SystemToolConfig = SystemToolConfig(),
     onSave: (MediaRequestProfile) -> Unit,
     onAutoSave: (MediaRequestProfile) -> Unit = {},
     onBack: () -> Unit
 ) {
     var draft by remember(profile.id) { mutableStateOf(profile) }
+    var modeMenu by remember { mutableStateOf(false) }
+    var advancedOptions by remember { mutableStateOf(false) }
+    var optionsJson by remember(profile.id) { mutableStateOf(profile.options.toString()) }
+    val parsedOptions = remember(optionsJson) {
+        runCatching { Json.parseToJsonElement(optionsJson) as? JsonObject }.getOrNull()
+    }
+    val optionsError = if (draft.mode == MediaGenerationMode.DEFAULT && parsedOptions != null) {
+        runCatching {
+            if (video) validateVideoOptions(provider, config.modelId, parsedOptions)
+            else validateImageOptions(provider, config.modelId, parsedOptions)
+        }.exceptionOrNull()?.message
+    } else if (draft.mode == MediaGenerationMode.DEFAULT) stringResource(R.string.speech_json_invalid_hint) else null
     var editingStep by remember { mutableStateOf<Int?>(null) }
     var editingFinalResponse by remember { mutableStateOf(false) }
     var confirmDiscard by remember { mutableStateOf(false) }
-    val dirty = draft != profile
+    val dirty = draft != profile || (draft.mode == MediaGenerationMode.DEFAULT && parsedOptions != draft.options)
 
     fun leave() {
         if (dirty) confirmDiscard = true else onBack()
     }
 
+    fun preparedDraft() = draft.copy(name = draft.name.trim(), options = parsedOptions ?: draft.options)
     fun autoSaveDraft() {
-        onAutoSave(draft.copy(name = draft.name.trim()))
+        onAutoSave(preparedDraft())
     }
 
     fun closeStepEditor() {
@@ -70,8 +101,9 @@ internal fun MediaRequestProfileEditor(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = edgeToEdgeTopAppBarColors(),
                 title = {
-                    Text(stringResource(if (video) R.string.tool_video_settings else R.string.tool_image_settings))
+                    Text(stringResource(if (video) R.string.media_video_gen_profile else R.string.media_image_gen_profile))
                 },
                 navigationIcon = {
                     IconButton(onClick = ::leave) {
@@ -79,9 +111,25 @@ internal fun MediaRequestProfileEditor(
                     }
                 },
                 actions = {
+                    Box {
+                        TextButton(onClick = { modeMenu = true }, enabled = profile.id != defaultMediaProfile(video).id) {
+                            Text(stringResource(if (draft.mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom))
+                            FluentIcon(Icons.Default.ArrowDropDown, null)
+                        }
+                        AppDropdownMenu(modeMenu, { modeMenu = false }) {
+                            MediaGenerationMode.entries.forEach { mode ->
+                                RoundedDropdownMenuItem(
+                                    text = { Text(stringResource(if (mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom)) },
+                                    onClick = { draft = draft.copy(mode = mode); modeMenu = false }
+                                )
+                            }
+                        }
+                    }
                     IconButton(
-                        enabled = draft.name.isNotBlank() && chainValidationError(draft.chain) == null,
-                        onClick = { onSave(draft.copy(name = draft.name.trim())) },
+                        enabled = draft.name.isNotBlank() &&
+                            (draft.mode == MediaGenerationMode.DEFAULT && parsedOptions != null && optionsError == null ||
+                                draft.mode == MediaGenerationMode.CUSTOM && chainValidationError(draft.chain) == null),
+                        onClick = { onSave(preparedDraft()) }
                     ) {
                         FluentIcon(Icons.Outlined.Save, stringResource(R.string.common_save))
                     }
@@ -90,8 +138,8 @@ internal fun MediaRequestProfileEditor(
         }
     ) { padding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding).imePadding(),
-            contentPadding = PaddingValues(16.dp),
+            modifier = Modifier.fillMaxSize().imePadding(),
+            contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
@@ -109,6 +157,41 @@ internal fun MediaRequestProfileEditor(
                     modifier = Modifier.padding(top = 6.dp)
                 )
             }
+            if (draft.mode == MediaGenerationMode.DEFAULT) {
+                item {
+                    Text(stringResource(R.string.image_tool_model_options_description), style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(10.dp))
+                    ToolSwitch(stringResource(R.string.image_tool_advanced_json), advancedOptions) { advancedOptions = it }
+                }
+                if (advancedOptions) {
+                    item {
+                        SelectableOutlinedTextField(
+                            value = optionsJson, onValueChange = { if (it.length <= 65536) optionsJson = it },
+                            label = { Text(stringResource(R.string.image_tool_additional_body)) },
+                            isError = parsedOptions == null, minLines = 8, maxLines = 18,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                } else if (parsedOptions != null) {
+                    items(if (video) videoOptionFields(provider, config.modelId) else imageOptionFields(provider, config.modelId), key = { it.path }) { field ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                ImageOptionInput(field, parsedOptions.optionAt(field.path)) { value ->
+                                    val next = parsedOptions.withOption(field.path, value)
+                                    optionsJson = next.toString()
+                                }
+                            }
+                            Switch(
+                                checked = field.path !in draft.disabledParams,
+                                onCheckedChange = { enabled ->
+                                    draft = draft.copy(disabledParams = if (enabled) draft.disabledParams - field.path else draft.disabledParams + field.path)
+                                }
+                            )
+                        }
+                    }
+                }
+                if (optionsError != null) item { Text(optionsError, color = MaterialTheme.colorScheme.error) }
+            } else {
             item {
                 SettingsCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -170,6 +253,7 @@ internal fun MediaRequestProfileEditor(
                         }
                     }
                 }
+            }
             }
         }
     }

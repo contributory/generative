@@ -69,6 +69,19 @@
     <string name="common_back">Back</string>
     <string name="common_save">Save</string>
     <string name="common_delete">Delete</string>
+    <string name="dialog_delete_instruction_title">Delete instruction?</string>
+    <string name="dialog_delete_skill_title">Delete skill?</string>
+    <string name="dialog_delete_message_title">Delete message?</string>
+    <string name="dialog_delete_conversations_title">Delete conversations?</string>
+    <string name="dialog_remove_folder_title">Remove folder?</string>
+    <string name="dialog_delete_file_title">Delete file?</string>
+    <string name="dialog_delete_files_title">Delete files?</string>
+    <string name="dialog_delete_machine_title">Delete machine?</string>
+    <string name="dialog_delete_connector_title">Delete connector?</string>
+    <string name="dialog_delete_provider_title">Delete provider?</string>
+    <string name="dialog_delete_provider_group_title">Delete provider group?</string>
+    <string name="dialog_delete_speech_title">Delete speech service?</string>
+    <string name="dialog_remove_profile_title">Remove profile?</string>
     <string name="common_cancel">Cancel</string>
     <string name="common_close">Close</string>
     <string name="common_clear">Clear</string>
@@ -165,6 +178,7 @@
     <string name="custom_headers">Custom Headers</string>
     <string name="open_model_catalog">Open model catalog</string>
     <string name="test_connection">Test connection</string>
+    <string name="check_connection">Check Connection</string>
     <string name="test_model">Test %1$s</string>
     <string name="delete_model">Delete %1$s</string>
     <string name="restore_model">Restore %1$s</string>
@@ -662,6 +676,7 @@
     <string name="agent_skill_export_failed">Could not export skill.</string>
     <string name="agent_skill_github_invalid">Enter a GitHub link to a SKILL.md file or skill folder.</string>
 
+    <string name="agent_skill_editor_line_count">%1$d lines</string>
     <string name="agent_skill_invalid_document">SKILL.md needs valid YAML frontmatter (name and description) and Markdown instructions.</string>
     <string name="agent_skills_menu_title">Agent Skills</string>
     <string name="agent_skills_manage">Manage skills</string>
@@ -994,7 +1009,7 @@
     <string name="mcp_add_servers_hint">Add servers in MCP Connectors first.</string>
     <string name="mcp_tool_list_not_cached_description">Tool list is not cached. Save or refresh this server in MCP Connectors first.</string>
     <string name="mcp_no_globally_enabled_tools_description">No globally enabled tools available.</string>
-    <string name="image_tool_model_options_description">Only set options this model supports. Empty fields use model provider defaults. Settings are saved separately for each model.</string>
+    <string name="image_tool_model_options_description">Configure supported options for this Default profile. Empty fields use model provider defaults. The profile can be shared across models.</string>
     <string name="image_tool_request_body_help">Nested objects and model provider extensions are supported. Model and prompt come from the chat.</string>
     <string name="image_tool_json_invalid_hint">Fix the JSON in Advanced JSON to use this form.</string>
     <string name="image_tool_discard_video_message">Your video settings have not been saved.</string>
@@ -1006,10 +1021,15 @@
     <string name="media_chain_edit_custom">Edit custom mapping</string>
     <string name="media_chain_custom_summary">Custom request chain is active.</string>
     <string name="media_chain_custom_not_configured">Custom mode is selected, but no request chain is configured.</string>
-    <string name="media_chain_profile">Custom profile</string>
+    <string name="media_chain_profile">Generation profile</string>
     <string name="media_chain_select_profile">Select a profile</string>
-    <string name="media_chain_remove_profile_message">Remove this custom profile? Its request steps will be removed from the reusable profile list.</string>
-    <string name="media_chain_profiles_help">Choose a reusable request profile. It is used only in Custom mode.</string>
+    <string name="media_chain_remove_profile_message">Remove this API profile? Models using it will return to the Default profile.</string>
+    <string name="media_chain_profiles_help">Manage reusable Default and Custom API profiles for your image/video models.</string>
+    <string name="media_image_gen_profile">ImageGenProfile</string>
+    <string name="media_video_gen_profile">VideoGenProfile</string>
+    <string name="media_image_gen_profiles">ImageGenProfiles</string>
+    <string name="media_video_gen_profiles">VideoGenProfiles</string>
+    <string name="media_profile_default_hint">Uses the selected profile with the provider’s default generation API.</string>
     <string name="media_chain_profiles">Profiles</string>
     <string name="media_chain_profile_step_count">%1$d request step(s)</string>
     <string name="media_chain_active_profile">Active profile</string>

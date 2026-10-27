@@ -1,5 +1,9 @@
 package org.starfall.generative.features.settings.ui
 
+import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
+import androidx.compose.ui.platform.LocalLayoutDirection
+import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
+import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -101,9 +105,10 @@ fun AppearanceSettingsView(
     onCodeBlockIncludeUndefinedChange: (Boolean) -> Unit = {},
     onMessageFontSizeChange: (Int) -> Unit = {},
     onMessageFontSizeCustomChange: (Boolean) -> Unit = {},
-    onMessageFontFamilyChange: (MessageFontFamily) -> Unit = {}
+    onMessageFontFamilyChange: (MessageFontFamily) -> Unit = {},
+    contentPadding: PaddingValues = PaddingValues(bottom = 24.dp)
 ) {
-    LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             SettingsSection(stringResource(R.string.settings_theme)) {
                 Text(stringResource(R.string.settings_theme_description), style = MaterialTheme.typography.bodySmall,
@@ -205,9 +210,10 @@ fun PreferencesSettingsView(
     onAppLanguageChange: (useSystem: Boolean, tag: String) -> Unit = { _, _ -> },
     onAutoSummaryEnabledChange: (Boolean) -> Unit = {},
     onSummarySuggestionEnabledChange: (Boolean) -> Unit = {},
-    onAutoSummaryPercentChange: (Int) -> Unit = {}
+    onAutoSummaryPercentChange: (Int) -> Unit = {},
+    contentPadding: PaddingValues = PaddingValues(bottom = 24.dp)
 ) {
-    LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             SettingsSection(stringResource(R.string.settings_language)) {
                 PreferenceToggle(stringResource(R.string.use_system_language), stringResource(R.string.use_system_language_desc),
@@ -227,7 +233,7 @@ fun PreferencesSettingsView(
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                             modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("app-language")
                         )
-                        ExposedDropdownMenu(expanded, { expanded = false }) {
+                        AppExposedDropdownMenu(expanded, { expanded = false }) {
                             AppLanguage.entries.forEach { language ->
                                 DropdownMenuItem(text = { Text(language.nativeName) }, onClick = {
                                     onAppLanguageChange(false, language.tag)
@@ -257,7 +263,7 @@ fun PreferencesSettingsView(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(wakelockExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
                     )
-                    ExposedDropdownMenu(wakelockExpanded, { wakelockExpanded = false }) {
+                    AppExposedDropdownMenu(wakelockExpanded, { wakelockExpanded = false }) {
                         wakelockLabels.forEach { (mode, label) ->
                             DropdownMenuItem(text = { Text(label) }, onClick = {
                                 onScreenWakelockModeChange(mode)
@@ -296,7 +302,7 @@ fun PreferencesSettingsView(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(strategyExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("tool-call-strategy")
                     )
-                    ExposedDropdownMenu(strategyExpanded, { strategyExpanded = false }) {
+                    AppExposedDropdownMenu(strategyExpanded, { strategyExpanded = false }) {
                         strategyLabels.forEach { (strategy, label) ->
                             DropdownMenuItem(text = { Text(label) }, onClick = {
                                 onToolCallStrategyChange(strategy)
@@ -431,12 +437,27 @@ fun AppSettings(
     onAppLanguageChange: (Boolean, String) -> Unit,
     onAutoSummaryEnabledChange: (Boolean) -> Unit = {},
     onSummarySuggestionEnabledChange: (Boolean) -> Unit = {},
-    onAutoSummaryPercentChange: (Int) -> Unit = {}
+    onAutoSummaryPercentChange: (Int) -> Unit = {},
+    scaffoldPadding: PaddingValues = PaddingValues()
 ) {
     val pager = rememberPagerState(pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
-    Column(Modifier.fillMaxSize()) {
-        PrimaryTabRow(selectedTabIndex = pager.currentPage) {
+    // Tabs stay below the toolbar. The pages themselves scroll under the navigation bar.
+    val pagePadding = scrollableScaffoldPadding(
+        PaddingValues(
+            start = scaffoldPadding.calculateStartPadding(LocalLayoutDirection.current),
+            end = scaffoldPadding.calculateEndPadding(LocalLayoutDirection.current),
+            bottom = scaffoldPadding.calculateBottomPadding()
+        ), horizontal = 16.dp, top = 8.dp, bottom = 24.dp
+    )
+    Column(Modifier.fillMaxSize().padding(top = scaffoldPadding.calculateTopPadding() + 8.dp)) {
+        PrimaryTabRow(
+            selectedTabIndex = pager.currentPage,
+            modifier = Modifier.padding(
+                start = scaffoldPadding.calculateStartPadding(LocalLayoutDirection.current) + 16.dp,
+                end = scaffoldPadding.calculateEndPadding(LocalLayoutDirection.current) + 16.dp
+            )
+        ) {
             Tab(
                 selected = pager.currentPage == 0,
                 onClick = { coroutineScope.launch { pager.animateScrollToPage(0) } },
@@ -452,6 +473,7 @@ fun AppSettings(
         HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
             when (page) {
                 0 -> PreferencesSettingsView(
+                    contentPadding = pagePadding,
                     appPreferences = appPreferences,
                     onContinueLastConversationChange = onContinueLastConversationChange,
                     onPersistSelectedModelChange = onPersistSelectedModelChange,
@@ -473,6 +495,7 @@ fun AppSettings(
                     onAutoSummaryPercentChange = onAutoSummaryPercentChange
                 )
                 else -> AppearanceSettingsView(
+                    contentPadding = pagePadding,
                     appPreferences = appPreferences,
                     onThemeChange = onThemeChange,
                     onAmoledChange = onAmoledChange,

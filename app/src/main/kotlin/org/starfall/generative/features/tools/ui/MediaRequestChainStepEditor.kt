@@ -1,5 +1,6 @@
 package org.starfall.generative.features.tools.ui
 
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*

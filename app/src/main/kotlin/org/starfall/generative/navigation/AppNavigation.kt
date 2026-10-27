@@ -46,6 +46,7 @@ import org.starfall.generative.features.machines.list.ui.RemoteMachinesScreen
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
 import org.starfall.generative.shared.ui.terminal.RemoteTerminalScreen
 import org.starfall.generative.features.menu.ui.AppMenuScreen
+import org.starfall.generative.features.userprofile.ui.UserProfileScreen
 import org.starfall.generative.features.mcp.editor.ui.ServerEditor
 import org.starfall.generative.features.mcp.list.ui.ServerListScreen
 import org.starfall.generative.features.providers.editor.ui.ProviderEditor
@@ -97,6 +98,7 @@ enum class AppDestination(val route: String) {
     MCP("mcp"),
     SPEECH("speech"),
     FEATURES("features"),
+    USER_PROFILE("user_profile"),
     CHAT_OPTIONS("chat_options"),
     TOOLS_EDITOR("system_tools"),
     STORAGE("storage"),
@@ -369,6 +371,7 @@ fun AppNavigation(
                     isOpen = drawerState.isOpen,
                     generatingConversationIds = generatingConversationIds,
                     organization = appPrefs.chatRelations.sidebar,
+                    backgroundImage = appPrefs.userProfile.drawerBackground,
                     onUpdateOrganization = settingsViewModel::updateSidebar,
                     onDeleteConversations = { ids ->
                         viewModel.deleteConversations(ids, chatAttachments.attachments.value)
@@ -441,6 +444,7 @@ fun AppNavigation(
                         )
                 ) {
                     ChatScreen(
+                        backgroundImage = appPrefs.userProfile.chatBackground,
                         conversation = currentConvState.value,
                         isDrawerOpening = drawerState.targetValue == DrawerValue.Open || drawerState.isOpen,
                         activeStream = viewModel.activeStreamForCurrentConversation,
@@ -907,11 +911,20 @@ fun AppNavigation(
                             }
                         }
                     }
+                    composable(AppDestination.USER_PROFILE.route) {
+                        UserProfileScreen(
+                            profile = appPrefs.userProfile,
+                            onChange = settingsViewModel::updateUserProfile,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
                     composable(AppDestination.FEATURES.route) {
                         AppMenuScreen(
                             modifier = Modifier.fillMaxSize(),
                             logoImage = appPrefs.featuresLogoImage,
                             onLogoImageChange = settingsViewModel::setFeaturesLogoImage,
+                            backgroundImage = appPrefs.userProfile.menuBackground,
+                            onNavigateToUserProfile = { openConfiguration(AppDestination.USER_PROFILE) },
                             onBack = { navController.popBackStack() },
                             onNavigateToChatOptions = { openConfiguration(AppDestination.CHAT_OPTIONS) },
                             onNavigateToToolsEditor = { openConfiguration(AppDestination.TOOLS_EDITOR) },
@@ -936,13 +949,9 @@ fun AppNavigation(
                                 )
                             }
                         ) { padding ->
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(padding)
-                                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                            ) {
+                            Box(Modifier.fillMaxSize()) {
                                 AppSettings(
+                                    scaffoldPadding = padding,
                                     appPreferences = appPrefs,
                                     onThemeChange = { mode ->
                                         settingsViewModel.setThemeMode(mode)
@@ -1029,11 +1038,7 @@ fun AppNavigation(
                                 )
                             }
                         ) { padding ->
-                            AboutScreen(
-                                modifier = Modifier
-                                    .padding(padding)
-                                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
+                            AboutScreen(contentPadding = padding)
                         }
                     }
 

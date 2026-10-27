@@ -10,6 +10,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -41,13 +42,15 @@ class ProviderFolderContainerTest {
         compose.setContent {
             MaterialTheme {
                 var editorOpened by remember { mutableStateOf(false) }
+                var gridView by remember { mutableStateOf(true) }
                 if (editorOpened) {
                     Text("Provider editor", modifier = androidx.compose.ui.Modifier.testTag("provider_editor"))
                 } else {
                     ProvidersScreen(
                         providers = source,
                         providerGroups = listOf(group),
-                        isGridView = true,
+                        isGridView = gridView,
+                        onToggleGridView = { gridView = it },
                         onOpenProviderEditor = { _, _ -> editorOpened = true },
                         onDeleteProvider = {},
                         onReorderProviders = {},
@@ -75,17 +78,21 @@ class ProviderFolderContainerTest {
     }
 
     @Test
-    fun clickingFolderOpensPhoneStyleDialogWithItsProviders() {
+    fun clickingFolderOpensFullScreenPageWithItsOwnHeaderAndToolbar() {
         showFolder()
 
         compose.onNodeWithTag("provider_group_g", useUnmergedTree = true).performClick()
-        compose.onNodeWithTag("provider_folder_dialog_g", useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("provider_folder_screen_g", useUnmergedTree = true).assertExists()
         compose.onNodeWithTag("provider_folder_provider_member-a", useUnmergedTree = true).assertExists()
         compose.onNodeWithTag("provider_folder_provider_member-b", useUnmergedTree = true).assertExists()
-        compose.onNodeWithTag("provider_root", useUnmergedTree = true).assertExists()
-
-        compose.onNodeWithContentDescription("Close").performClick()
-        compose.onNodeWithTag("provider_folder_dialog_g", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("provider_folder_header_g", useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("provider_folder_header_icon_g", useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("provider_folder_header_name_g", useUnmergedTree = true).assertTextEquals("Folder")
+        compose.onNodeWithTag("provider_folder_toolbar_g", useUnmergedTree = true).assertExists()
+        compose.onNodeWithContentDescription("Close").assertDoesNotExist()
+        val headerBottom = compose.onNodeWithTag("provider_folder_header_g").fetchSemanticsNode().boundsInRoot.bottom
+        val gridTop = compose.onNodeWithTag("provider_folder_grid_g").fetchSemanticsNode().boundsInRoot.top
+        assertTrue("Provider list must start below the folder's own header", gridTop >= headerBottom)
     }
 
     @Test
@@ -103,12 +110,23 @@ class ProviderFolderContainerTest {
     fun commonAddButtonCreatesAProviderForTheOpenFolder() {
         showFolder()
         compose.onNodeWithTag("provider_group_g").performClick()
-        compose.onNodeWithTag("add_provider", useUnmergedTree = true).performClick()
-        compose.onNodeWithTag("provider_folder_dialog_g").assertDoesNotExist()
+        compose.onNodeWithTag("add_folder_provider", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("provider_folder_screen_g").assertDoesNotExist()
     }
 
     @Test
-    fun droppingAProviderOnFolderMovesItInWithoutOpeningTheDialog() {
+    fun folderToolbarSwitchesBetweenGridAndListWithoutClosingTheFolder() {
+        showFolder()
+        compose.onNodeWithTag("provider_group_g").performClick()
+        compose.onNodeWithContentDescription("Switch to list view").performClick()
+        compose.onNodeWithTag("provider_folder_screen_g").assertExists()
+        compose.onNodeWithContentDescription("Switch to grid view").assertExists()
+        compose.onNodeWithContentDescription("Switch to grid view").performClick()
+        compose.onNodeWithContentDescription("Switch to list view").assertExists()
+    }
+
+    @Test
+    fun droppingAProviderOnFolderMovesItInWithoutOpeningTheFolder() {
         val writes = mutableListOf<ProviderPlacement>()
         showFolder(
             source = listOf(
@@ -129,6 +147,6 @@ class ProviderFolderContainerTest {
 
         assertEquals("g", writes.single().groupId)
         assertEquals(listOf("member", "source"), writes.single().groupOrders.getValue("g"))
-        compose.onNodeWithTag("provider_folder_dialog_g", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("provider_folder_screen_g", useUnmergedTree = true).assertDoesNotExist()
     }
 }

@@ -9,6 +9,7 @@ import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.storage.LocalWriteErrors
 import org.starfall.generative.shared.storage.preferences.AppPreferences
+import org.starfall.generative.shared.storage.preferences.UserProfile
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.storage.preferences.CodeBlockDisplayMode
 import org.starfall.generative.shared.storage.preferences.MessageFontFamily
@@ -37,7 +38,10 @@ class SettingsViewModel(
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setUseDynamicColor(value) }
     }
     fun setFeaturesLogoImage(value: String?) {
-        viewModelScope.launch(LocalWriteErrors.handler) { repository.setFeaturesLogoImage(value) }
+        updateUserProfile { it.copy(photo = value) }
+    }
+    fun updateUserProfile(transform: (UserProfile) -> UserProfile) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.updateUserProfile(transform) }
     }
     fun setColorSchemeName(value: String) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setColorSchemeName(value) }

@@ -1,5 +1,6 @@
 package org.starfall.generative.features.home.chat.logic.tool
 
+import org.starfall.generative.shared.model.resolveMediaProfile
 import org.starfall.generative.shared.model.media.ContentApiMediaResult
 import org.starfall.generative.shared.model.media.MediaGenerationMode
 import org.starfall.generative.features.home.shared.logic.prepareToolResult
@@ -287,8 +288,10 @@ class ToolChatViewModel internal constructor(
                 if (config?.enabled == true) {
                     val mediaProvider = providers.find { it.id == config.providerId }
                     val mediaModel = mediaProvider?.config?.modelConfigs?.get(config.modelId)
-                    val generationMode = mediaModel?.mediaApiType
-                        ?: if (name == "generate_image") config.imageGenerationMode else config.videoGenerationMode
+                    val profile = settings().resolveMediaProfile(name == "generate_video", mediaModel)
+                    val generationMode = profile.mode
+                    val disabledParams = if (profile.id == org.starfall.generative.shared.model.media.defaultMediaProfile(name == "generate_video").id &&
+                        profile.disabledParams.isEmpty()) config.disabledParams else profile.disabledParams
                     tools += ToolDefinition(
                         name = name,
                         description = if (name == "generate_image") {
@@ -298,8 +301,8 @@ class ToolChatViewModel internal constructor(
                         },
                         schema = mediaToolSchema(
                             name,
-                            if (generationMode == MediaGenerationMode.DEFAULT) config.disabledParams
-                            else config.disabledParams + setOf("input_image_url", "input_video_url"),
+                            if (generationMode == MediaGenerationMode.DEFAULT) disabledParams
+                            else disabledParams + setOf("input_image_url", "input_video_url"),
                             if (generationMode == MediaGenerationMode.DEFAULT) mediaProvider else null,
                             if (generationMode == MediaGenerationMode.DEFAULT) config.modelId else ""
                         )
@@ -599,32 +602,27 @@ class ToolChatViewModel internal constructor(
                                     mediaProvider.config.modelIds?.contains(cfg.modelId) != false
                              ) { "Select an available media model in Feature Tools" }
                              val mediaModel = mediaProvider.config.modelConfigs[cfg.modelId]
-                             val generationMode = mediaModel?.mediaApiType
-                                 ?: if (name == "generate_image") cfg.imageGenerationMode else cfg.videoGenerationMode
-                             val allSystemConfigs = settings().system.values
-                             val requestProfile = if (name == "generate_image") {
-                                 mediaModel?.mediaRequestProfileId?.let { id ->
-                                     allSystemConfigs.firstNotNullOfOrNull { it.imageRequestProfiles[id] }
-                                 } ?: cfg.activeImageRequestProfile
-                             } else {
-                                 mediaModel?.mediaRequestProfileId?.let { id ->
-                                     allSystemConfigs.firstNotNullOfOrNull { it.videoRequestProfiles[id] }
-                                 } ?: cfg.activeVideoRequestProfile
-                             }
+                             val profile = settings().resolveMediaProfile(name == "generate_video", mediaModel)
+                             val generationMode = profile.mode
+                             val builtIn = profile.id == org.starfall.generative.shared.model.media.defaultMediaProfile(name == "generate_video").id
+                             val effectiveDisabled = if (builtIn && profile.disabledParams.isEmpty()) cfg.disabledParams else profile.disabledParams
+                             val effectiveOptions = if (builtIn && profile.options.isEmpty()) {
+                                 if (name == "generate_image") cfg.imageOptions else cfg.videoOptions
+                             } else profile.options
                              mediaGeneration.executeConfiguredTool(
                                 name = name,
                                 provider = mediaProvider,
                                 model = cfg.modelId,
                                 prompt = args.text("prompt"),
-                                imageOptions = configuredMediaOptions(name, mediaProvider, cfg.modelId, cfg.imageOptions, args, cfg.disabledParams),
-                                inputImage = if ("input_image" in cfg.disabledParams) null else mediaInputImageArgument(args),
-                                inputImages = if ("input_images" in cfg.disabledParams) emptyList() else mediaInputImagesArgument(args),
-                                videoOptions = configuredMediaOptions(name, mediaProvider, cfg.modelId, cfg.videoOptions, args, cfg.disabledParams),
-                                inputImageUrl = if ("input_image_url" in cfg.disabledParams) null else mediaInputImageUrlArgument(args),
-                                inputVideo = if ("input_video" in cfg.disabledParams) null else mediaInputVideoArgument(args),
-                                inputVideoUrl = if ("input_video_url" in cfg.disabledParams) null else mediaInputVideoUrlArgument(args),
+                                imageOptions = configuredMediaOptions(name, mediaProvider, cfg.modelId, if (name == "generate_image") effectiveOptions else cfg.imageOptions, args, effectiveDisabled),
+                                inputImage = if ("input_image" in effectiveDisabled) null else mediaInputImageArgument(args),
+                                inputImages = if ("input_images" in effectiveDisabled) emptyList() else mediaInputImagesArgument(args),
+                                videoOptions = configuredMediaOptions(name, mediaProvider, cfg.modelId, if (name == "generate_video") effectiveOptions else cfg.videoOptions, args, effectiveDisabled),
+                                inputImageUrl = if ("input_image_url" in effectiveDisabled) null else mediaInputImageUrlArgument(args),
+                                inputVideo = if ("input_video" in effectiveDisabled) null else mediaInputVideoArgument(args),
+                                inputVideoUrl = if ("input_video_url" in effectiveDisabled) null else mediaInputVideoUrlArgument(args),
                                  generationMode = generationMode,
-                                 requestChain = requestProfile?.chain
+                                 requestChain = if (generationMode == MediaGenerationMode.CUSTOM) profile.chain else null
                             )
                         }
 

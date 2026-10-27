@@ -1,5 +1,6 @@
 package org.starfall.generative.features.providers.shared.ui
 
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
 import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 
 import androidx.compose.foundation.layout.*

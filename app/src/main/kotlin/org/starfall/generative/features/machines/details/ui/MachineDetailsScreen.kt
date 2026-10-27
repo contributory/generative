@@ -2,6 +2,8 @@
 
 package org.starfall.generative.features.machines.details.ui
 
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 
 import android.app.Activity
@@ -24,8 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
@@ -204,10 +204,10 @@ internal fun MachineDetailsScreen(
         Column(
             Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .consumeWindowInsets(padding)
                 .imePadding()
                 .verticalScroll(rememberScrollState())
+                .padding(padding)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

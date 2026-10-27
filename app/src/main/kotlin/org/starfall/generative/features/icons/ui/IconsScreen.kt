@@ -1,5 +1,6 @@
 package org.starfall.generative.features.icons.ui
 
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -7,8 +8,17 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.saveable.rememberSaveable
+import org.starfall.generative.shared.ui.lists.AppListItem
+import org.starfall.generative.shared.ui.lists.EmptyListContent
+import org.starfall.generative.shared.ui.lists.FadeGridListContent
+import org.starfall.generative.shared.ui.lists.ListViewToggle
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,13 +44,11 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.icons.model.StoredIcon
 import org.starfall.generative.shared.ui.GenerativeLinearWavyProgressIndicator
+import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
-import org.starfall.generative.shared.ui.layout.prominentContainerBorder
-import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.menus.ItemContextMenu
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,6 +61,7 @@ fun IconsScreen(onBack: () -> Unit) {
     val entries by produceState(emptyList<StoredIcon>(), revision) {
         value = withContext(Dispatchers.IO) { store.entries() }
     }
+    var isGrid by rememberSaveable { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var searchExpanded by remember { mutableStateOf(false) }
     var searchHasFocus by remember { mutableStateOf(false) }
@@ -133,6 +142,7 @@ fun IconsScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = edgeToEdgeTopAppBarColors(),
                 title = {
                     AnimatedContent(targetState = searchExpanded, label = "icons_app_bar_search") { searching ->
                         if (searching) {
@@ -162,10 +172,18 @@ fun IconsScreen(onBack: () -> Unit) {
                                 )
                             )
                         } else {
-                            Text(
-                                text = stringResource(R.string.icon_settings_title),
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)
-                            )
+                            Column {
+                                Text(
+                                    text = stringResource(R.string.icon_settings_title),
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(stringResource(R.string.icon_settings_description),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.outline, maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis)
+                            }
                         }
                     }
                 },
@@ -176,6 +194,7 @@ fun IconsScreen(onBack: () -> Unit) {
                 },
                 actions = {
                     if (!searchExpanded) {
+                        ListViewToggle(isGrid = isGrid, onToggle = { isGrid = !isGrid })
                         IconButton(onClick = { searchExpanded = true }) {
                             Icon(FluentUi.Regular.Search, contentDescription = stringResource(R.string.icon_cache_search))
                         }
@@ -190,48 +209,48 @@ fun IconsScreen(onBack: () -> Unit) {
         }
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp, vertical = 8.dp),
+            Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (busy) GenerativeLinearWavyProgressIndicator(Modifier.fillMaxWidth())
-            LazyColumn(
-                Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 16.dp)
-            ) {
-                if (visible.isEmpty()) item {
-                    SettingsCard {
-                        Text(
-                            stringResource(if (query.isBlank()) R.string.icon_cache_empty else R.string.icon_cache_no_results),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                items(visible, key = { it.image }) { entry ->
-                    Surface(
-                        shape = RoundedCornerShape(24.dp),
-                        color = prominentContainerColor(),
-                        border = prominentContainerBorder()
+            if (visible.isEmpty()) {
+                EmptyListContent(
+                    Icons.Outlined.Image,
+                    stringResource(if (query.isBlank()) R.string.icon_cache_empty else R.string.icon_cache_no_results),
+                    Modifier.weight(1f)
+                )
+            } else {
+                FadeGridListContent(isGrid = isGrid, modifier = Modifier.weight(1f)) { gridMode ->
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(if (gridMode) 2 else 1),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = padding.calculateBottomPadding() + 16.dp)
                     ) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(18.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            StoredIconPreview(entry.image, Modifier.size(48.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(entry.filename, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.titleSmall)
-                                Text(entry.patterns.joinToString(" · ").ifEmpty {
-                                    stringResource(R.string.icon_cache_no_matches)
-                                }, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.bodySmall)
-                            }
-                            ItemContextMenu(
-                                onEdit = { edit(entry) },
-                                onDelete = { mutate { store.delete(entry.image) } },
-                                deleteColor = MaterialTheme.colorScheme.error,
-                                enabled = !busy
+                        items(visible, key = { it.image }) { entry ->
+                            AppListItem(
+                                isGrid = gridMode,
+                                onClick = { if (!busy) edit(entry) },
+                                icon = { StoredIconPreview(entry.image, Modifier.size(42.dp)) },
+                                actions = {
+                                    ItemContextMenu(
+                                        onEdit = { edit(entry) },
+                                        onDelete = { mutate { store.delete(entry.image) } },
+                                        deleteColor = MaterialTheme.colorScheme.error,
+                                        enabled = !busy
+                                    )
+                                },
+                                content = {
+                                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(entry.filename, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+                                        Text(entry.patterns.joinToString(" · ").ifEmpty {
+                                            stringResource(R.string.icon_cache_no_matches)
+                                        }, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
                             )
                         }
                     }
@@ -245,8 +264,9 @@ fun IconsScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { if (!busy) editing = null },
             title = { Text(stringResource(R.string.icon_cache_edit)) },
+            scrollableContent = false,
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         StoredIconPreview(entry.image, Modifier.size(48.dp))
                         Text(entry.filename, modifier = Modifier.weight(1f), maxLines = 2,

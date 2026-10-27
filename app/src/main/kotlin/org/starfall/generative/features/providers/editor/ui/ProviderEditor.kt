@@ -1,5 +1,7 @@
 package org.starfall.generative.features.providers.editor.ui
 
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
+import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
 import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 
 import androidx.activity.compose.BackHandler
@@ -74,7 +76,6 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
-import org.starfall.generative.shared.ui.text.HeaderNameField
 import org.starfall.generative.shared.ui.layout.SlideScreenContent
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.ui.icons.providerInitials
@@ -181,18 +182,24 @@ fun ProviderEditor(
     val antigravityChangelistValid = type != ModelApiType.ANTIGRAVITY || isValidAntigravityChangelist(antigravityChangelist)
     val valid = urlValid && authValid && headersValid && codexClientVersionValid &&
         antigravityVersionValid && antigravityChangelistValid
-    fun requestConfig() = initialProvider.config.copy(supportStream = supportStream, anthropicPromptCache = anthropicPromptCache, headers = parsedHeaders ?: initialProvider.config.headers,
+    fun requestConfig(
+        modelOrder: List<String> = order,
+        modelValues: Map<String, ModelConfiguration> = models
+    ) = initialProvider.config.copy(supportStream = supportStream, anthropicPromptCache = anthropicPromptCache, headers = parsedHeaders ?: initialProvider.config.headers,
         multipleApiKeys = apiKeys.enabled, apiKeys = apiKeys.entries, oauthAccounts = oauthAccounts,
         codexClientVersion = if (type == ModelApiType.OPENAI_CODEX) codexClientVersion.trim().ifEmpty { null } else null,
         antigravityVersion = if (type == ModelApiType.ANTIGRAVITY) antigravityVersion.trim().ifEmpty { null } else null,
         antigravityChangelist = if (type == ModelApiType.ANTIGRAVITY) antigravityChangelist.trim().ifEmpty { null } else null,
         antigravityProjectIds = if (type == ModelApiType.ANTIGRAVITY) antigravityProjectIds else emptyMap(),
-        modelConfigs = order.associateWith { models.getValue(it) }, modelIds = order)
-    fun draft(): ModelProvider {
+        modelConfigs = modelOrder.associateWith { modelValues.getValue(it) }, modelIds = modelOrder)
+    fun draft(
+        modelOrder: List<String> = order,
+        modelValues: Map<String, ModelConfiguration> = models
+    ): ModelProvider {
         if (apiKeys.enabled && authMethod !in listOf(AuthMethod.OAUTH, AuthMethod.NONE, AuthMethod.OTHER)) apiKeys.ensureCurrent(::keyIdentity)
         return initialProvider.copy(name = name.trim().ifEmpty { type.defaultName }, icon = providerIcon, type = type,
             baseUrl = if (type.isAccountProvider) type.defaultBaseUrl else baseUrl.trim(),
-            auth = authorization(), config = requestConfig())
+            auth = authorization(), config = requestConfig(modelOrder, modelValues))
     }
     fun selectOAuthAccount(account: ProviderOAuthAccount) {
         oauthAccountId = account.id; oauthIdentity = account.identity; oauthMarker = account.marker
@@ -244,9 +251,18 @@ fun ProviderEditor(
     }
     fun updateModels(updated: Map<String, ModelConfiguration>) {
         val existing = order.toSet()
-        order = order.filter { it in updated } + updated.keys.filterNot { it in existing }
+        val nextOrder = order.filter { it in updated } + updated.keys.filterNot { it in existing }
+        order = nextOrder
         models = updated
-        if (providerPersisted) onSaveModels(initialProvider.id, order.associateWith { updated.getValue(it) })
+        val savedModels = nextOrder.associateWith { updated.getValue(it) }
+        if (providerPersisted) {
+            onSaveModels(initialProvider.id, savedModels)
+        } else if (updated.isNotEmpty()) {
+            // A new provider does not exist in storage until its first model is added. Persist the
+            // complete draft now so subsequent model edits can use the normal model-only writes.
+            onSave(draft(nextOrder, updated))
+            providerPersisted = true
+        }
     }
     BackHandler(enabled = LocalScreenTransitionActive.current && editingModel == null, onBack = onDismiss)
     SlideScreenContent(editor = editingModel, label = stringResource(R.string.model_editor)) { modelId ->
@@ -258,11 +274,15 @@ fun ProviderEditor(
                 onBack = { editingModel = null })
         } else {
             Scaffold(modifier = Modifier.fillMaxSize(), topBar = {
-                TopAppBar(title = { HeaderNameField(name, { name = it }, placeholder = type.defaultName, enabled = pager.currentPage == 0) },
+                TopAppBar(
+                    colors = edgeToEdgeTopAppBarColors(),
+            title = {
+                    Text(name.trim().ifEmpty { type.defaultName }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                },
                     navigationIcon = { IconButton(onClick = onDismiss) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                     actions = {
                         if (pager.currentPage == 0) Button(enabled = valid && !oauthAuthorizing && !iconImporting,
-                            onClick = { onSave(draft()) }, modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(R.string.common_save)) }
+                            onClick = { onSave(draft()); providerPersisted = true }, modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(R.string.common_save)) }
                         else {
                             IconButton(onClick = { showTestDialog = true },
                                 enabled = testingConnection || (onTestConnection != null && (type.isAccountProvider || baseUrl.isNotBlank()) && valid && models.isNotEmpty())) {
@@ -284,10 +304,18 @@ fun ProviderEditor(
                     HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
                         if (page == 0) Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             IconPickerRow(providerIcon, { providerIcon = it }, text = providerInitials(name), onBusyChange = { iconImporting = it }, matchName = name, faviconBaseUrl = baseUrl, fetchState = faviconFetch)
+                            SelectableOutlinedTextField(
+                                value = name,
+                                onValueChange = { name = it },
+                                label = { Text(stringResource(R.string.common_name)) },
+                                placeholder = { Text(type.defaultName) },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                             ExposedDropdownMenuBox(typeExpanded, { typeExpanded = !typeExpanded }, modifier = Modifier.fillMaxWidth()) {
                                 SelectableOutlinedTextField(type.displayName, {}, readOnly = true, label = { Text(stringResource(R.string.common_type)) },
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(typeExpanded) }, modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).fillMaxWidth())
-                                ExposedDropdownMenu(typeExpanded, { typeExpanded = false }) {
+                                AppExposedDropdownMenu(typeExpanded, { typeExpanded = false }) {
                                     ModelApiType.entries.forEach { next -> RoundedDropdownMenuItem(text = { Text(next.displayName) }, onClick = {
                                         if (next != type) {
                                             val updated = initialProvider.copy(name = name, type = type, baseUrl = baseUrl).withModelApiType(next)
@@ -401,16 +429,31 @@ fun ProviderEditor(
             if (showApiKeys) ProviderApiKeysDialog(apiKeys, ::keyIdentity, onDismiss = { showApiKeys = false })
             if (showTestDialog) ModelConnectionDialog(draft().copy(name = name.trim().ifEmpty { context.getString(R.string.provider_fallback_name) }), tests, onTestConnection != null,
                 onRemoveModels = { updateModels(models - it) }, onDismiss = { showTestDialog = false })
-            if (showCatalog) ProviderModelCatalogSheet(initialProvider.copy(name = name, type = type, baseUrl = baseUrl.trim(), auth = authorization(), config = requestConfig()),
-                models.keys, onFetchModels, onCatalogLoaded = { discovered ->
+            if (showCatalog) ProviderModelCatalogSheet(
+                provider = initialProvider.copy(name = name, type = type, baseUrl = baseUrl.trim(),
+                    auth = authorization(), config = requestConfig()),
+                selectedModels = models.keys,
+                onFetchModels = onFetchModels,
+                onCatalogLoaded = { discovered ->
                     catalog = discovered.associateBy { it.id }
-                    updateModels(models.mapValues { (id, config) -> val metadata = catalog[id]
+                    updateModels(models.mapValues { (id, config) ->
+                        val metadata = catalog[id]
                         config.copy(modelJson = metadata?.metadata ?: config.modelJson,
                             contextWindowTokens = metadata?.contextWindowTokens ?: config.contextWindowTokens,
-                            displayName = config.displayName.ifBlank { metadata?.displayName.orEmpty() }) })
-                }, onToggle = { id -> updateModels(if (id in models) models - id else models + (id to memory.configurationFor(catalog[id] ?: DiscoveredModel(id)))) },
-                onSetSelection = { ids, selected -> updateModels(if (selected) models + ids.associateWith { models[it] ?: memory.configurationFor(catalog[it] ?: DiscoveredModel(it)) } else models - ids.toSet()) },
-                onDismiss = { showCatalog = false })
+                            displayName = config.displayName.ifBlank { metadata?.displayName.orEmpty() })
+                    })
+                },
+                onToggle = { id ->
+                    updateModels(if (id in models) models - id
+                        else models + (id to memory.configurationFor(catalog[id] ?: DiscoveredModel(id))))
+                },
+                onSetSelection = { ids, selected ->
+                    updateModels(if (selected) models + ids.associateWith {
+                        models[it] ?: memory.configurationFor(catalog[it] ?: DiscoveredModel(it))
+                    } else models - ids.toSet())
+                },
+                onDismiss = { showCatalog = false }
+            )
         }
     }
 }

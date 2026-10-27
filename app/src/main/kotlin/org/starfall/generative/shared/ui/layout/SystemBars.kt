@@ -13,6 +13,12 @@ fun Activity.enableTransparentSystemBars() {
     WindowCompat.setDecorFitsSystemWindows(window, false)
     window.statusBarColor = Color.TRANSPARENT
     window.navigationBarColor = Color.TRANSPARENT
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        window.navigationBarDividerColor = Color.TRANSPARENT
+        window.attributes = window.attributes.apply {
+            layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+    }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         window.isStatusBarContrastEnforced = false
         window.isNavigationBarContrastEnforced = false

@@ -19,15 +19,14 @@ import org.starfall.generative.shared.files.CrashReport
 
 @Composable
 internal fun CrashReportDialog(report: CrashReport, onCreateIssue: () -> Unit, onSaveLog: () -> Unit, onDismiss: () -> Unit) {
-    AppAlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.crash_report_title)) },
-        text = {
+        content = {
             Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.crash_report_description))
                 Text("${report.appVersion} · ${report.androidVersion}", style = MaterialTheme.typography.bodySmall)
-                TextButton(onClick = onSaveLog) { Text(stringResource(R.string.crash_save_log)) }
                 SelectionContainer {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(report.cause, style = MaterialTheme.typography.bodyMedium)
@@ -37,7 +36,10 @@ internal fun CrashReportDialog(report: CrashReport, onCreateIssue: () -> Unit, o
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onCreateIssue) { Text(stringResource(R.string.crash_create_issue)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) } }
+        buttons = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
+            TextButton(onClick = onSaveLog) { Text(stringResource(R.string.crash_save_log)) }
+            TextButton(onClick = onCreateIssue) { Text(stringResource(R.string.crash_create_issue)) }
+        }
     )
 }

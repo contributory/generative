@@ -6,8 +6,12 @@ import java.util.UUID
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.language.ModelType
+import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.media.MediaGenerationMode
 import org.starfall.generative.shared.model.media.MediaRequestProfile
+import org.starfall.generative.shared.model.media.ImageGenProfile
+import org.starfall.generative.shared.model.media.VideoGenProfile
+import org.starfall.generative.shared.model.media.withDefaultMediaProfile
 
 @Serializable
 data class McpAccess(val enabled: Boolean = false, val tools: Map<String, Boolean> = emptyMap())
@@ -57,6 +61,34 @@ data class SystemToolConfig(
     fun withVideoRequestProfiles(profiles: Map<String, MediaRequestProfile>, activeId: String) =
         copy(videoRequestProfiles = profiles, activeVideoRequestProfileId = activeId, videoGenerationMode = MediaGenerationMode.CUSTOM)
 
+    /** Domain-specific views retain the old JSON keys for saved configuration compatibility. */
+    val imageGenProfiles: Map<String, ImageGenProfile> get() = mediaProfiles(false)
+    val videoGenProfiles: Map<String, VideoGenProfile> get() = mediaProfiles(true)
+
+    /** Every model resolves its own profile; an unset/missing id uses the first Default. */
+    fun mediaProfiles(video: Boolean): Map<String, MediaRequestProfile> =
+        (if (video) videoRequestProfiles else imageRequestProfiles).withDefaultMediaProfile(video)
+
+    fun mediaProfile(video: Boolean, profileId: String): MediaRequestProfile =
+        mediaProfiles(video).let { library ->
+            library[profileId] ?: library.values.first { it.mode == MediaGenerationMode.DEFAULT }
+        }
+
+    fun selectedMediaProfile(video: Boolean, model: ModelConfiguration?): MediaRequestProfile {
+        val id = model?.mediaRequestProfileId.orEmpty()
+        if (id.isNotBlank()) return mediaProfile(video, id)
+        // Legacy Custom selections stored on the tool itself; new/unconfigured models use Default.
+        if (model?.mediaApiType == MediaGenerationMode.CUSTOM) {
+            val legacyId = if (video) activeVideoRequestProfileId else activeImageRequestProfileId
+            mediaProfiles(video)[legacyId]?.let { return it }
+        }
+        return mediaProfile(video, "")
+    }
+
+    fun withMediaProfiles(video: Boolean, profiles: Map<String, MediaRequestProfile>): SystemToolConfig =
+        if (video) copy(videoRequestProfiles = profiles.withDefaultMediaProfile(true))
+        else copy(imageRequestProfiles = profiles.withDefaultMediaProfile(false))
+
     fun withImageGenerationMode(mode: MediaGenerationMode) = copy(imageGenerationMode = mode)
 
     fun withVideoGenerationMode(mode: MediaGenerationMode) = copy(videoGenerationMode = mode)
@@ -86,6 +118,21 @@ data class ToolSettings(
     /** Opt-in discovery; Agent Skills stay detached until a search or explicit user selection. */
     val agentSkillsSearchEnabled: Boolean = false
 )
+
+/** Resolves a media model's profile from the shared library, including legacy selections. */
+fun ToolSettings.resolveMediaProfile(video: Boolean, model: ModelConfiguration?): MediaRequestProfile {
+    val toolName = if (video) "generate_video" else "generate_image"
+    val configured = system[toolName] ?: SystemToolConfig()
+    val id = model?.mediaRequestProfileId.orEmpty()
+    if (id.isNotEmpty()) {
+        system.values.forEach { config ->
+            val match = (if (video) config.videoRequestProfiles else config.imageRequestProfiles)[id]
+            if (match != null) return match
+        }
+        return configured.mediaProfile(video, "")
+    }
+    return configured.selectedMediaProfile(video, model)
+}
 
 @Serializable
 data class ToolActivity(

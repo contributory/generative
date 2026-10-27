@@ -1,6 +1,7 @@
 package org.starfall.generative.features.home.chat.ui
 
 
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer

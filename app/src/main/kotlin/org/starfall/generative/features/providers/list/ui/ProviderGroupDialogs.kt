@@ -1,5 +1,6 @@
 package org.starfall.generative.features.providers.list.ui
 
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
 import org.starfall.generative.features.providers.list.logic.*
 import org.starfall.generative.features.providers.list.model.*
 
@@ -132,6 +133,7 @@ internal fun ProviderGroupPickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.move_to_group)) },
+        scrollableContent = false,
         text = {
             LazyColumn(Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.6f)) {
                 item(key = UNGROUPED_SECTION) {
@@ -152,7 +154,7 @@ internal fun ProviderGroupPickerDialog(
                 }
             }
         },
-        confirmButton = {}
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
     )
 }
 
@@ -212,6 +214,7 @@ private fun ProviderGroupChoiceCard(
 internal fun ProviderDeleteGroupDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.dialog_delete_provider_group_title)) },
         text = { Text(stringResource(R.string.delete_provider_group_message)) },
         confirmButton = {
             Button(
@@ -232,6 +235,7 @@ internal fun ProviderDeleteGroupDialog(onDismiss: () -> Unit, onConfirm: () -> U
 internal fun ProviderDeleteDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.dialog_delete_provider_title)) },
         text = { Text(stringResource(R.string.delete_provider_message)) },
         confirmButton = {
             Button(

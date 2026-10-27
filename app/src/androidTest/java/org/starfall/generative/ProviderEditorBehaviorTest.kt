@@ -4,6 +4,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.*
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.junit4.createComposeRule
 import org.junit.Assert.*
 import org.junit.Rule
@@ -233,16 +235,32 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         compose.onNodeWithText("Models").performClick()
         compose.waitForIdle()
         compose.onNodeWithContentDescription("Test connection").performClick()
-        compose.onNode(hasText("Test connection") and hasAnyAncestor(isDialog())).assertDoesNotExist()
+        compose.onNode(hasText("Check Connection") and hasAnyAncestor(isDialog())).assertIsDisplayed()
         compose.onNode(hasText("image-only") and hasAnyAncestor(isDialog())).assertDoesNotExist()
+        compose.onNodeWithContentDescription("Remove unavailable models").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Restore models marked for removal").assertDoesNotExist()
+        val compactHeight = compose.onNodeWithTag("connection-model-text-ok").fetchSemanticsNode().boundsInRoot.height
+        assertTrue("Model rows without a logo should be compact", compactHeight <= with(compose.density) { 72.dp.toPx() })
+        compose.onNode(hasText("Close") and hasAnyAncestor(isDialog())).assertIsDisplayed()
         compose.onNodeWithContentDescription("Test all language models").performClick()
         compose.waitUntil(5_000) { calls.size == 2 }
         compose.waitForIdle()
+        val deleteBounds = compose.onNodeWithContentDescription("Remove unavailable models").assertIsDisplayed()
+            .fetchSemanticsNode().boundsInRoot
+        val testBounds = compose.onNodeWithContentDescription("Test all language models").fetchSemanticsNode().boundsInRoot
+        val closeBounds = compose.onNode(hasText("Close") and hasAnyAncestor(isDialog())).fetchSemanticsNode().boundsInRoot
+        assertTrue("Delete unavailable belongs on the left", deleteBounds.right < testBounds.left)
+        assertTrue("Close belongs to the right of Test All", testBounds.right <= closeBounds.right)
         compose.onNodeWithContentDescription("Remove unavailable models").performClick()
-        compose.runOnIdle {
-            assertEquals(setOf("text-ok", "text-bad"), calls.toSet())
-            assertEquals(setOf("text-ok", "image-only"), saved.keys)
-        }
+        compose.onNodeWithContentDescription("Remove unavailable models").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Restore models marked for removal").assertIsDisplayed()
+        compose.onNodeWithTag("connection-model-text-bad").assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Will be removed when this dialog closes")
+        )
+        compose.onNodeWithContentDescription("Restore text-bad").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(setOf("text-ok", "text-bad"), calls.toSet()) }
+        compose.onNode(hasText("Close") and hasAnyAncestor(isDialog())).performClick()
+        compose.runOnIdle { assertEquals(setOf("text-ok", "image-only"), saved.keys) }
         compose.onNodeWithText("text-bad").assertDoesNotExist()
     }
 
@@ -263,12 +281,13 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
                 compose.onAllNodesWithContentDescription("1 returned no content").fetchSemanticsNodes().isNotEmpty()
         }
         compose.onNodeWithText("No content").assertIsDisplayed()
-        // The dialog toolbar reports the run with icons and counts rather than a title or banner.
+        compose.onNodeWithContentDescription("Remove unavailable models").assertDoesNotExist()
+        // The dialog content reports the run with icons and counts without an outside banner.
         compose.onNodeWithContentDescription("1 passed").assertIsDisplayed()
         compose.onNodeWithContentDescription("1 returned no content").assertIsDisplayed()
         compose.onNodeWithText("Connection tests finished").assertDoesNotExist()
         compose.onNodeWithTag("model-connection-status").assertDoesNotExist()
-        compose.onNodeWithContentDescription("Close").performClick()
+        compose.onNode(hasText("Close") and hasAnyAncestor(isDialog())).performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Connection tests finished").assertDoesNotExist()
         compose.onNodeWithTag("model-connection-status").assertDoesNotExist()

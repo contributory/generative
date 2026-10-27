@@ -1,5 +1,6 @@
 package org.starfall.generative.features.settings.ui
 
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +18,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 @Composable
 fun MainAppbar(title: String, onBack: () -> Unit) {
     TopAppBar(
+        colors = edgeToEdgeTopAppBarColors(),
         title = {
             Text(
                 text = title,

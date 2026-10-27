@@ -2,6 +2,7 @@ package org.starfall.generative.shared.model.media
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 @Serializable
 enum class MediaRequestMode {
@@ -99,5 +100,32 @@ data class MediaRequestChain(
 data class MediaRequestProfile(
     val id: String,
     val name: String,
-    val chain: MediaRequestChain = MediaRequestChain()
+    val chain: MediaRequestChain = MediaRequestChain(),
+    /** Default uses the provider's built-in API; Custom executes [chain]. */
+    val mode: MediaGenerationMode = MediaGenerationMode.CUSTOM,
+    val options: JsonObject = JsonObject(emptyMap()),
+    val disabledParams: Set<String> = emptySet()
 )
+
+/** Domain-specific profile names; both use the same serialized shape for backwards compatibility. */
+typealias ImageGenProfile = MediaRequestProfile
+typealias VideoGenProfile = MediaRequestProfile
+
+const val DEFAULT_IMAGE_GEN_PROFILE_ID = "imagegen-default"
+const val DEFAULT_VIDEO_GEN_PROFILE_ID = "videogen-default"
+
+fun defaultMediaProfile(video: Boolean): MediaRequestProfile = MediaRequestProfile(
+    id = if (video) DEFAULT_VIDEO_GEN_PROFILE_ID else DEFAULT_IMAGE_GEN_PROFILE_ID,
+    name = "Default",
+    mode = MediaGenerationMode.DEFAULT
+)
+
+/** Always expose a non-removable built-in Default, including for legacy Custom-only libraries. */
+fun Map<String, MediaRequestProfile>.withDefaultMediaProfile(video: Boolean): Map<String, MediaRequestProfile> {
+    val builtIn = defaultMediaProfile(video)
+    val existing = this[builtIn.id]
+    // Keep the built-in first, so a model without an explicit selection always has a Default.
+    return linkedMapOf(builtIn.id to (existing?.copy(mode = MediaGenerationMode.DEFAULT) ?: builtIn)).apply {
+        putAll(this@withDefaultMediaProfile.filterKeys { it != builtIn.id })
+    }
+}

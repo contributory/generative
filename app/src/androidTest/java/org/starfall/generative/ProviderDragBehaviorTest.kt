@@ -43,7 +43,7 @@ class ProviderDragBehaviorTest {
     }
 
     @Test
-    fun folderOpensAsDialogInsteadOfExpandingInsideTheGrid() {
+    fun folderOpensAsFullScreenPageInsteadOfExpandingInsideTheGrid() {
         setScreen(
             listOf(
                 ModelProvider("root", "Root", ModelApiType.OPENAI, baseUrl = "", sortOrder = 0),
@@ -53,12 +53,12 @@ class ProviderDragBehaviorTest {
 
         compose.onNodeWithTag("provider_member", useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithTag("provider_group_g", useUnmergedTree = true).performClick()
-        compose.onNodeWithTag("provider_folder_dialog_g", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("provider_folder_screen_g", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithTag("provider_folder_provider_member", useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test
-    fun droppingRootProviderOnFolderMovesItInWithoutOpeningTheDialog() {
+    fun droppingRootProviderOnFolderMovesItInWithoutOpeningThePage() {
         val writes = mutableListOf<ProviderPlacement>()
         setScreen(
             listOf(
@@ -80,6 +80,6 @@ class ProviderDragBehaviorTest {
         compose.waitForIdle()
 
         assertTrue(writes.single().groupId == "g")
-        compose.onNodeWithTag("provider_folder_dialog_g", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("provider_folder_screen_g", useUnmergedTree = true).assertDoesNotExist()
     }
 }

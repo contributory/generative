@@ -39,6 +39,7 @@ internal fun DeleteMessageDialog(
     val hasMultipleVersions = message.versions.size > 1
     AlertDialog(
         onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.dialog_delete_message_title)) },
         text = {
             Text(
                 if (hasMultipleVersions) {

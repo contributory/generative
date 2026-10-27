@@ -1,5 +1,6 @@
 package org.starfall.generative.navigation
 
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 
 import androidx.activity.compose.BackHandler
@@ -60,6 +61,7 @@ internal fun <T : Any> TargetedEditorContent(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = edgeToEdgeTopAppBarColors(),
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -70,7 +72,7 @@ internal fun <T : Any> TargetedEditorContent(
         }
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(24.dp),
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
         ) {

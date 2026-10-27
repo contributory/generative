@@ -212,6 +212,7 @@ internal fun MediaViewer(store: ToolFiles, file: File, onDismiss: () -> Unit) {
 
     if (confirmDelete) AlertDialog(
         onDismissRequest = { confirmDelete = false },
+        title = { Text(stringResource(R.string.dialog_delete_file_title)) },
         text = { Text(stringResource(R.string.media_delete_file_message)) },
         confirmButton = {
             TextButton(onClick = {

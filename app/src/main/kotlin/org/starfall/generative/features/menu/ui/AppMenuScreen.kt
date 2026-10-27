@@ -1,5 +1,7 @@
 package org.starfall.generative.features.menu.ui
 
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,8 +31,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -89,6 +89,8 @@ fun AppMenuScreen(
     modifier: Modifier = Modifier,
     logoImage: String? = null,
     onLogoImageChange: (String?) -> Unit = {},
+    backgroundImage: String? = null,
+    onNavigateToUserProfile: () -> Unit = {},
     onBack: () -> Unit = {},
     onNavigateToChatOptions: () -> Unit = {},
     onNavigateToToolsEditor: () -> Unit = {},
@@ -102,34 +104,6 @@ fun AppMenuScreen(
     onNavigateToAppData: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {}
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val iconStore = remember(context) { IconStore(context) }
-    var logoMenuExpanded by remember { mutableStateOf(false) }
-    var logoBusy by remember { mutableStateOf(false) }
-    val logoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch {
-            logoBusy = true
-            try {
-                val previous = logoImage
-                val replacement = withContext(Dispatchers.IO) {
-                    iconStore.importImage(uri, shared = false)
-                }
-                previous?.let { old ->
-                    withContext(Dispatchers.IO) { runCatching { iconStore.delete(old) } }
-                }
-                onLogoImageChange(replacement)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                // Keep the existing logo if the selected image cannot be imported.
-            } finally {
-                logoBusy = false
-            }
-        }
-    }
-
     val edgeSwipeStarted = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     val edgeSwipeDistance = androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     val gestureStartWidthPx = with(LocalDensity.current) {
@@ -139,9 +113,10 @@ fun AppMenuScreen(
     val safeDrawing = WindowInsets.safeDrawing.asPaddingValues()
     val layoutDirection = LocalLayoutDirection.current
 
+    Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage)
     LazyColumn(
-        modifier = modifier.fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+        modifier = Modifier.fillMaxSize()
             .pointerInput(onBack, gestureStartWidthPx, backThresholdPx) {
                 detectHorizontalDragGestures(
                     onDragStart = { offset ->
@@ -191,50 +166,15 @@ fun AppMenuScreen(
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Box {
-                    Box(
-                        modifier = Modifier
-                            .size(84.dp)
-                            .clip(CircleShape)
-                            .combinedClickable(
-                                onClick = {},
-                                onLongClick = { if (!logoBusy) logoMenuExpanded = true }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        FeaturesLogoImage(logoImage, Modifier.size(84.dp))
-                    }
-                    DropdownMenu(
-                        expanded = logoMenuExpanded,
-                        onDismissRequest = { logoMenuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.choose_icon)) },
-                            enabled = !logoBusy,
-                            onClick = {
-                                logoMenuExpanded = false
-                                logoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.common_remove)) },
-                            enabled = !logoBusy && logoImage != null,
-                            onClick = {
-                                logoMenuExpanded = false
-                                logoImage?.let { old ->
-                                    scope.launch {
-                                        logoBusy = true
-                                        try {
-                                            withContext(Dispatchers.IO) { iconStore.delete(old) }
-                                            onLogoImageChange(null)
-                                        } finally {
-                                            logoBusy = false
-                                        }
-                                    }
-                                }
-                            }
-                        )
-                    }
+                Box(
+                    modifier = Modifier.size(84.dp).clip(CircleShape)
+                        .combinedClickable(
+                            onClick = onNavigateToUserProfile,
+                            onLongClick = onNavigateToUserProfile
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    FeaturesLogoImage(logoImage, Modifier.size(84.dp))
                 }
             }
         }
@@ -346,6 +286,7 @@ fun AppMenuScreen(
                 )
             }
         }
+    }
     }
 }
 

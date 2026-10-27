@@ -164,7 +164,11 @@ internal fun ModelPickerSheetContent(
             collapsedGroupIds = collapsedGroupIds,
             collapsedProviderIds = collapsedProviderIds,
             modelFilter = modelFilter
-        )
+        ).let { items ->
+            // Without any folder there is no boundary to mark, so skip the "Ungrouped" header
+            // (and its lone tab) instead of showing a divider above the only section.
+            if (providerGroups.isEmpty()) items.filterNot { it is ModelPickerItem.Ungrouped } else items
+        }
     }
 
     val folderTabs = remember(flatItems, ungroupedTabLabel) {

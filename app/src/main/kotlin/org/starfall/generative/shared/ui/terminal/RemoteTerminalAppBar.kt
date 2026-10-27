@@ -1,8 +1,9 @@
 package org.starfall.generative.shared.ui.terminal
 
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
@@ -38,6 +39,7 @@ internal fun TerminalAppBar(
 ) {
     var inputMenuOpen by remember { mutableStateOf(false) }
     TopAppBar(
+        colors = edgeToEdgeTopAppBarColors(),
         title = {},
         // The screen handles system insets for the entire terminal surface.
         windowInsets = WindowInsets(0, 0, 0, 0),

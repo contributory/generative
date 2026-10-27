@@ -1,5 +1,7 @@
 package org.starfall.generative.features.chatoptions.ui
 
+import androidx.compose.ui.platform.LocalLayoutDirection
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -54,6 +56,8 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.icons.EntityIcon
+import org.starfall.generative.shared.ui.lists.ListViewToggle
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.layout.SlideScreenContent
@@ -101,6 +105,7 @@ fun ChatOptionsScreen(
 ) {
     var choosing by remember { mutableStateOf<String?>(null) }
     var helperSettings by rememberSaveable { mutableStateOf<String?>(null) }
+    var isGrid by rememberSaveable { mutableStateOf(false) }
     val initialPage = when (initialTab) {
         "instructions" -> 1
         "skills" -> 2
@@ -278,7 +283,16 @@ fun ChatOptionsScreen(
             Scaffold(
                 topBar = {
                     TopAppBar(
-                        title = { Text(stringResource(R.string.settings_chat_options)) },
+                        colors = edgeToEdgeTopAppBarColors(),
+                        title = {
+                            Column {
+                                Text(stringResource(R.string.settings_chat_options),
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
+                                Text(stringResource(R.string.settings_chat_options_description),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.outline, maxLines = 1)
+                            }
+                        },
                         navigationIcon = {
                             IconButton(onClick = onBack) {
                                 FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
@@ -286,6 +300,7 @@ fun ChatOptionsScreen(
                         },
                         actions = {
                             if (pager.currentPage in 1..2) {
+                                ListViewToggle(isGrid = isGrid, onToggle = { isGrid = !isGrid })
                                 IconButton(onClick = {
                                     if (pager.currentPage == 1) creatingInstruction = true else creatingSkill = true
                                 }) {
@@ -305,7 +320,13 @@ fun ChatOptionsScreen(
                     )
                 }
             ) { padding ->
-                Column(Modifier.fillMaxSize().padding(padding)) {
+                Column(
+                    Modifier.fillMaxSize().padding(
+                        start = padding.calculateStartPadding(LocalLayoutDirection.current),
+                        top = padding.calculateTopPadding(),
+                        end = padding.calculateEndPadding(LocalLayoutDirection.current)
+                    )
+                ) {
                     PrimaryTabRow(selectedTabIndex = pager.currentPage) {
                         Tab(
                             selected = pager.currentPage == 0,
@@ -331,7 +352,7 @@ fun ChatOptionsScreen(
                         when (page) {
                             0 -> LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(16.dp),
+                                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + padding.calculateBottomPadding()),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
                                 item {
@@ -357,11 +378,18 @@ fun ChatOptionsScreen(
 
                                     SettingsCard {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
+                                            EntityIcon(
+                                                image = null,
+                                                modifier = Modifier.size(42.dp),
+                                                fallback = if (name == "title_generation") Icons.Outlined.DocumentSparkle
+                                                    else Icons.Outlined.Summarize
+                                            )
+                                            Spacer(Modifier.width(14.dp))
                                             Column(
                                                 Modifier.weight(1f),
                                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                                             ) {
-                                                Text(title, style = MaterialTheme.typography.titleMedium)
+                                                Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
                                                 Text(
                                                     description,
                                                     style = MaterialTheme.typography.bodySmall,
@@ -400,7 +428,9 @@ fun ChatOptionsScreen(
                                 }
                             }
                             1 -> InstructionsTab(
+                                bottomPadding = padding.calculateBottomPadding(),
                                 library = library,
+                                isGrid = isGrid,
                                 onEditInstruction = { editingInstructionId = it.id },
                                 onPreviewInstruction = { previewingInstructionId = it.id },
                                 onDeleteInstruction = { instruction ->
@@ -413,7 +443,9 @@ fun ChatOptionsScreen(
                                  }
                              )
                             2 -> SkillsTab(
+                                bottomPadding = padding.calculateBottomPadding(),
                                 skills = skills,
+                                isGrid = isGrid,
                                 onEditSkill = { editingSkillId = it.id },
                                 onDeleteSkill = { skill ->
                                     val next = skills.filterNot { it.id == skill.id }

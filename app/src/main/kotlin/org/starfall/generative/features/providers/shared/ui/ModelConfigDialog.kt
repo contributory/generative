@@ -21,6 +21,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.ui.Alignment
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
+import org.starfall.generative.shared.ui.dialogs.AppDialog
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 
 @Composable
@@ -40,10 +41,10 @@ fun ModelConfigDialog(
     val topPValid = topP.isBlank() || topP.toDoubleOrNull()?.let { it.isFinite() && it in 0.0..1.0 } == true
     val topKValid = !supportsTopK || topK.isBlank() || topK.toIntOrNull()?.let { it > 0 } == true
 
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         title = { Text(modelId, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-        text = {
+        content = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(provider.name, style = MaterialTheme.typography.labelLarge)
                 Text(stringResource(R.string.model_stream_settings_description))
@@ -61,17 +62,17 @@ fun ModelConfigDialog(
                          supportingText = { if (!topKValid) Text(stringResource(R.string.model_top_k_invalid)) },
                         isError = !topKValid, singleLine = true, modifier = Modifier.fillMaxWidth())
                 }
-                TextButton(onClick = { temperature = ""; topP = ""; topK = "" }) { Text(stringResource(R.string.model_reset_sampling)) }
             }
         },
-        confirmButton = {
+        buttons = {
+            TextButton(onClick = { temperature = ""; topP = ""; topK = "" }) { Text(stringResource(R.string.model_reset_sampling)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
             Button(enabled = tempValid && topPValid && topKValid, onClick = {
                 onSave(config.copy(temperature = temperature.toDoubleOrNull(), topP = topP.toDoubleOrNull(),
                     topK = if (supportsTopK) topK.toIntOrNull() else null))
                 onDismiss()
             }) { Text(stringResource(R.string.common_save)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
+        }
     )
 }
 
@@ -113,6 +114,7 @@ fun ModelToolsDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.model_tools_title)) },
+        scrollableContent = false,
         text = {
             Column(
                 Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState()),

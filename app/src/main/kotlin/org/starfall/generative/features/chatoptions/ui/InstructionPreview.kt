@@ -1,5 +1,6 @@
 package org.starfall.generative.features.chatoptions.ui
 
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -52,6 +53,7 @@ internal fun InstructionPreview(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = edgeToEdgeTopAppBarColors(),
                 title = {
                     Text(
                         instruction.name.ifBlank { stringResource(R.string.instruction_preview_title) },
@@ -77,8 +79,8 @@ internal fun InstructionPreview(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .verticalScroll(rememberScrollState())
+                .padding(padding)
                 .padding(horizontal = 12.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {

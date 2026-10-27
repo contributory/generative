@@ -3,7 +3,6 @@ package org.starfall.generative.features.mcp.shared.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,9 +19,9 @@ import org.starfall.generative.shared.model.McpToolParameterConfig
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.GenerativeLinearWavyProgressIndicator
-import org.starfall.generative.shared.ui.layout.prominentContainerBorder
-import org.starfall.generative.shared.ui.layout.prominentContainerColor
+import org.starfall.generative.shared.ui.lists.AppListContainer
 
 @Composable
 internal fun McpToolsTab(
@@ -53,8 +52,8 @@ internal fun McpToolsTab(
         when {
             tools == null -> ToolListPlaceholder(R.string.no_cached_tools_yet)
             tools.isEmpty() -> ToolListPlaceholder(R.string.server_reported_no_tools)
-            else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(tools, key = { it.name }) { tool ->
                     McpToolItem(
                         serverId = serverId,
@@ -89,20 +88,18 @@ private fun McpToolItem(
     var expanded by remember(tool.name) { mutableStateOf(false) }
     val properties = tool.schema["properties"] as? JsonObject ?: JsonObject(emptyMap())
     val required = (tool.schema["required"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }?.toSet().orEmpty()
-    Surface(
+    AppListContainer(
+        isGrid = false,
         onClick = { expanded = !expanded },
-        shape = RoundedCornerShape(16.dp),
-        border = prominentContainerBorder(),
-        color = prominentContainerColor(),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column {
             ListItem(colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                content = { Text(tool.originalName, fontWeight = FontWeight.Medium) },
+                content = { Text(tool.originalName, fontWeight = FontWeight.SemiBold) },
                 supportingContent = {
                     if (tool.description.isNotBlank()) Text(tool.description, maxLines = if (expanded) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
                 },
-                leadingContent = { FluentIcon(Icons.Outlined.Extension, null) },
+                leadingContent = { EntityIcon(null, Modifier.size(42.dp), fallback = Icons.Outlined.Extension) },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(enabled, onCheckedChange = onEnabledChange)

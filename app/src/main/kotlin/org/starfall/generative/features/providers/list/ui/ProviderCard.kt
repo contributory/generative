@@ -1,16 +1,13 @@
 package org.starfall.generative.features.providers.list.ui
 
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
 import org.starfall.generative.features.providers.list.logic.*
 import org.starfall.generative.features.providers.list.model.*
 
 import org.starfall.generative.features.providers.list.logic.ProviderRootItem
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,13 +22,13 @@ import androidx.compose.ui.unit.sp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.shared.ui.layout.AdaptiveCardLayout
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.lists.AppListItem
 import org.starfall.generative.shared.ui.icons.providerInitials
 
 private val ProviderListCardHeight = 88.dp
@@ -79,46 +76,27 @@ private fun ProviderGroupCollapsedCard(
     modifier: Modifier = Modifier,
     onOpen: () -> Unit
 ) {
-    val corner by animateDpAsState(
-        targetValue = if (isGrid) 20.dp else 16.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "providerGroupCorner"
-    )
     val height = if (isGrid) ProviderGridCardHeight else ProviderListCardHeight
-
-    Surface(
+    AppListItem(
+        isGrid = isGrid,
         onClick = onOpen,
-        shape = RoundedCornerShape(corner),
-        color = if (isDropTarget) MaterialTheme.colorScheme.primaryContainer
-            else prominentContainerColor(),
-        border = if (isDropTarget) {
-            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-        } else {
-            prominentContainerBorder(1.5.dp)
+        modifier = modifier.height(height),
+        color = if (isDropTarget) MaterialTheme.colorScheme.primaryContainer else prominentContainerColor(),
+        border = if (isDropTarget) BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+            else prominentContainerBorder(1.5.dp),
+        icon = {
+            ProviderFolderPreview(group, providers,
+                Modifier.size(if (isGrid) 52.dp else 46.dp).testTag("provider_group_icon_${group.id}"))
         },
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height)
-    ) {
-        val titleColor = if (isDropTarget) MaterialTheme.colorScheme.onPrimaryContainer else LocalContentColor.current
-        if (isGrid) {
-            Column(Modifier.fillMaxSize().padding(14.dp)) {
-                ProviderFolderPreview(
-                    group,
-                    providers,
-                    Modifier.size(52.dp).testTag("provider_group_icon_${group.id}")
-                )
-                Spacer(Modifier.weight(1f))
+        actions = {},
+        content = {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = group.name,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = titleColor,
+                    color = if (isDropTarget) MaterialTheme.colorScheme.onPrimaryContainer else LocalContentColor.current,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth()
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = stringResource(R.string.provider_count, providers.size),
@@ -127,34 +105,8 @@ private fun ProviderGroupCollapsedCard(
                     maxLines = 1
                 )
             }
-        } else {
-            Row(
-                Modifier.fillMaxSize().padding(horizontal = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ProviderFolderPreview(
-                    group,
-                    providers,
-                    Modifier.size(46.dp).testTag("provider_group_icon_${group.id}")
-                )
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = group.name,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = titleColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = stringResource(R.string.provider_count, providers.size),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
         }
-    }
+    )
 }
 
 /** A provider inside an open folder: the very same card as outside, only with its own test tag. */
@@ -189,27 +141,11 @@ fun ProviderUnifiedCard(
     onMoveToGroup: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val shapeCorner by animateDpAsState(
-        targetValue = if (isGrid) 20.dp else 16.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "providerCorner"
-    )
-
-    Surface(
+    AppListItem(
+        isGrid = isGrid,
         onClick = onEdit,
-        shape = RoundedCornerShape(shapeCorner),
-        color = prominentContainerColor(),
-        border = prominentContainerBorder(1.5.dp),
         modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = if (isGrid) ProviderGridCardHeight else ProviderListCardHeight)
-    ) {
-        AdaptiveCardLayout(
-            isGrid = isGrid,
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            .heightIn(min = if (isGrid) ProviderGridCardHeight else ProviderListCardHeight),
             icon = {
                 EntityIcon(provider.icon, Modifier.size(42.dp), text = providerInitials(provider.name), matchName = provider.name)
             },
@@ -244,7 +180,6 @@ fun ProviderUnifiedCard(
                 }
             }
         )
-    }
 }
 
 @Composable

@@ -78,6 +78,10 @@ class ChatOptionsAndToolsEditorTest {
         compose.onNodeWithContentDescription("Add").performClick()
         compose.onNodeWithTag("instruction_name_input").assertIsDisplayed()
         compose.onNodeWithText("System").assertIsDisplayed()
+        val editorSize = compose.onNodeWithTag("instruction_content_input").fetchSemanticsNode().boundsInRoot
+        val screenSize = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        assertTrue("Instruction editor must span the available screen width", editorSize.width > screenSize.width * 0.85f)
+        assertTrue("Instruction editor must fill the available screen height", editorSize.height > screenSize.height * 0.70f)
         compose.onAllNodes(hasSetTextAction()).assertCountEquals(2)
         compose.onAllNodes(hasSetTextAction())[0].performTextInput("Concise")
         compose.onAllNodes(hasSetTextAction())[1].performTextInput("Keep answers concise")

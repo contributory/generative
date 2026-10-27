@@ -1,5 +1,6 @@
 package org.starfall.generative.features.mcp.shared.ui
 
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -40,7 +41,7 @@ internal fun mcpTransportLabel(protocol: McpProtocol) = stringResource(
 
 @Composable
 internal fun McpConnectionSettings(
-    name: String, icon: String?, onIconChange: (String?) -> Unit, onIconBusyChange: (Boolean) -> Unit,
+    name: String, onNameChange: (String) -> Unit, icon: String?, onIconChange: (String?) -> Unit, onIconBusyChange: (Boolean) -> Unit,
     protocol: McpProtocol, onProtocolChange: (McpProtocol) -> Unit, url: String, onUrlChange: (String) -> Unit,
     authMethod: McpAuthMethod, onAuthMethodChange: (McpAuthMethod) -> Unit,
     authKey: String, onAuthKeyChange: (String) -> Unit, authValue: String, onAuthValueChange: (String) -> Unit, authValid: Boolean,
@@ -56,6 +57,13 @@ internal fun McpConnectionSettings(
     Column(modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         IconPickerRow(icon, onIconChange, text = providerInitials(name), fallback = Icons.Outlined.Extension,
             onBusyChange = onIconBusyChange, matchName = name, faviconBaseUrl = url)
+        SelectableOutlinedTextField(
+            value = name,
+            onValueChange = onNameChange,
+            label = { Text(stringResource(R.string.common_name)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.legacy_sse), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             Switch(protocol == McpProtocol.SSE, onCheckedChange = { onProtocolChange(if (it) McpProtocol.SSE else McpProtocol.STREAMABLE_HTTP) })

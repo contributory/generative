@@ -2,6 +2,7 @@ package org.starfall.generative
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -11,6 +12,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import org.junit.Assert.assertEquals
 import org.starfall.generative.shared.ui.sheets.AppSheet
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +31,52 @@ import org.starfall.generative.features.providers.editor.ui.ProviderModelCatalog
 
 class BottomSheetScrollBehaviorTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test fun upwardDragExpandsToStatusBarBeforeScrollingItems() {
+        lateinit var listState: LazyListState
+        compose.activityRule.scenario.onActivity { WindowCompat.setDecorFitsSystemWindows(it.window, false) }
+        compose.setContent { MaterialTheme {
+            listState = rememberLazyListState()
+            AppSheet(onDismissRequest = {}, fixedHeightFraction = 0.5f) {
+                LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().fillMaxHeight().testTag("growing-list")) {
+                    items(80) { Text("Row $it", Modifier.fillMaxWidth().height(52.dp)) }
+                }
+            }
+        } }
+        compose.waitForIdle()
+        val insets = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
+        val statusBottom = maxOf(insets.getInsets(WindowInsetsCompat.Type.systemBars()).top,
+            insets.displayCutout?.safeInsetTop ?: 0).toFloat()
+        val sheet = compose.onNodeWithTag("bottom-sheet-window")
+        val list = compose.onNodeWithTag("growing-list")
+        val initialTop = sheet.fetchSemanticsNode().boundsInRoot.top
+        val firstDistance = minOf(with(compose.density) { 70.dp.toPx() }, (initialTop - statusBottom) / 3f)
+
+        list.performTouchInput {
+            down(Offset(width / 2f, height * 0.8f))
+            moveBy(Offset(0f, -firstDistance), delayMillis = 200)
+        }
+        compose.waitForIdle()
+        val intermediateTop = sheet.fetchSemanticsNode().boundsInRoot.top
+        assertTrue("The first upward drag must expand the sheet", intermediateTop < initialTop - 10f)
+        compose.runOnIdle {
+            assertEquals(0, listState.firstVisibleItemIndex)
+            assertEquals(0, listState.firstVisibleItemScrollOffset)
+        }
+
+        val remaining = (intermediateTop - statusBottom).coerceAtLeast(0f)
+        val extra = with(compose.density) { 120.dp.toPx() }
+        list.performTouchInput { moveBy(Offset(0f, -(remaining + extra)), delayMillis = 300) }
+        compose.waitForIdle()
+        val expandedTop = sheet.fetchSemanticsNode().boundsInRoot.top
+        assertTrue("The sheet must stop below the status bar", expandedTop >= statusBottom - 2f)
+        assertTrue("The same drag should reach the maximum height", expandedTop <= statusBottom + 4f)
+        compose.runOnIdle {
+            assertTrue("Remaining drag must scroll the list after expansion",
+                listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0)
+        }
+        list.performTouchInput { moveBy(Offset.Zero, delayMillis = 200); up() }
+    }
 
     @Test fun draggingDownAtListStartMovesTheSheet() {
         checkDownwardDrag(initialIndex = 0, expectSheetMovement = true)

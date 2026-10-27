@@ -1,5 +1,7 @@
 package org.starfall.generative.features.appdata.ui
 
+import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,7 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
+import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +62,7 @@ fun AppDataScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = edgeToEdgeTopAppBarColors(),
                 title = { Text(stringResource(R.string.settings_category_app_data)) },
                 navigationIcon = {
                     IconButton(onClick = onBack, enabled = !importInProgress) {
@@ -70,8 +73,8 @@ fun AppDataScreen(
         }
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = scrollableScaffoldPadding(innerPadding, horizontal = 20.dp, top = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item {

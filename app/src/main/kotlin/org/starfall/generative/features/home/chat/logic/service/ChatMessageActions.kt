@@ -1,5 +1,6 @@
 package org.starfall.generative.features.home.chat.logic.service
 
+import org.starfall.generative.shared.model.resolveMediaProfile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -260,24 +261,16 @@ internal class ChatMessageActions(
             it.providerId == provider.id && it.modelId == modelId
         }
         val modelConfig = provider.config.modelConfigs[modelId]
-        val generationMode = modelConfig?.mediaApiType ?: config?.let {
-            if (kind == ModelType.IMAGE_GENERATION) it.imageGenerationMode else it.videoGenerationMode
-        } ?: org.starfall.generative.shared.model.media.MediaGenerationMode.DEFAULT
-        val allSystemConfigs = toolSettings.value.system.values
-        val requestProfile = if (kind == ModelType.IMAGE_GENERATION) {
-            modelConfig?.mediaRequestProfileId?.let { id ->
-                allSystemConfigs.firstNotNullOfOrNull { profileConfig -> profileConfig.imageRequestProfiles[id] }
-            } ?: config?.activeImageRequestProfile
-        } else {
-            modelConfig?.mediaRequestProfileId?.let { id ->
-                allSystemConfigs.firstNotNullOfOrNull { profileConfig -> profileConfig.videoRequestProfiles[id] }
-            } ?: config?.activeVideoRequestProfile
-        }
+        val requestProfile = toolSettings.value.resolveMediaProfile(kind == ModelType.VIDEO_GENERATION, modelConfig)
+        val generationMode = requestProfile.mode
+        val builtIn = requestProfile.id == org.starfall.generative.shared.model.media.defaultMediaProfile(kind == ModelType.VIDEO_GENERATION).id
+        val imageOptions = if (builtIn && requestProfile.options.isEmpty()) config?.imageOptions ?: obj() else requestProfile.options
+        val videoOptions = if (builtIn && requestProfile.options.isEmpty()) config?.videoOptions ?: obj() else requestProfile.options
         return toolChat.generateMedia(provider, modelId, kind, prompt,
-            config?.imageOptions ?: obj(), attachments,
-            videoOptions = config?.videoOptions ?: obj(),
+            imageOptions, attachments,
+            videoOptions = videoOptions,
             generationMode = generationMode,
-            requestChain = requestProfile?.chain)
+            requestChain = if (generationMode == org.starfall.generative.shared.model.media.MediaGenerationMode.CUSTOM) requestProfile.chain else null)
     }
 
     /** Image/video model a response was produced with, or null when it was a normal chat reply. */

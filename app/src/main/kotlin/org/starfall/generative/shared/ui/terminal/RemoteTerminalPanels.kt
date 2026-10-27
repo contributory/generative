@@ -174,17 +174,22 @@ internal fun TerminalExtraKeys(bridge: RemoteTerminalBridge) {
                 TerminalKey("TAB") { bridge.sendSpecial("\t") }
                 TerminalKey("CTRL", active = bridge.ctrlActive) { bridge.ctrlActive = !bridge.ctrlActive }
                 TerminalKey("ALT", active = bridge.altActive) { bridge.altActive = !bridge.altActive }
-                TerminalKey("←", repeat = true) { bridge.sendSpecial("\u001b[D", forceRemote = true) }
-                TerminalKey("↑", repeat = true) { bridge.sendSpecial("\u001b[A", forceRemote = true) }
-                TerminalKey("↓", repeat = true) { bridge.sendSpecial("\u001b[B", forceRemote = true) }
-                TerminalKey("→", repeat = true) { bridge.sendSpecial("\u001b[C", forceRemote = true) }
+                // Keep cursor navigation as a compact D-pad, with Up directly above Down.
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    TerminalKey("↑", repeat = true) { bridge.sendSpecial("\u001b[A", forceRemote = true) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TerminalKey("←", repeat = true) { bridge.sendSpecial("\u001b[D", forceRemote = true) }
+                        TerminalKey("↓", repeat = true) { bridge.sendSpecial("\u001b[B", forceRemote = true) }
+                        TerminalKey("→", repeat = true) { bridge.sendSpecial("\u001b[C", forceRemote = true) }
+                    }
+                }
                 TerminalKey("HOME") { bridge.sendSpecial("\u001b[H", forceRemote = true) }
                 TerminalKey("END") { bridge.sendSpecial("\u001b[F", forceRemote = true) }
                 TerminalKey("PGUP") { bridge.sendSpecial("\u001b[5~", forceRemote = true) }
                 TerminalKey("PGDN") { bridge.sendSpecial("\u001b[6~", forceRemote = true) }
-                listOf('|', '~', '-', '/', '\\', '_', '$', '&', '*', '<', '>', '`').forEach { char ->
-                    TerminalKey(char.toString()) { bridge.sendChar(char) }
-                }
             }
             IconButton(onClick = { bridge.toggleKeyboard() }) {
                 FluentIcon(Icons.Outlined.Keyboard, stringResource(R.string.remote_machine_terminal_keyboard))

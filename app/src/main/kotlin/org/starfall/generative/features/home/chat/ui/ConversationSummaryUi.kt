@@ -112,6 +112,7 @@ fun ConversationSummaryDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.conversation_summary_title)) },
+        scrollableContent = false,
         text = {
             Column(
                 modifier = Modifier

@@ -1,8 +1,8 @@
 package org.starfall.generative.features.tools.ui
 
+import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
+import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -94,7 +94,7 @@ internal fun MediaTemplateAutocompleteField(
             maxLines = maxLines,
             colors = OutlinedTextFieldDefaults.colors()
         )
-        ExposedDropdownMenu(
+        AppExposedDropdownMenu(
             expanded = suggestions.isNotEmpty(),
             onDismissRequest = {},
             modifier = Modifier.heightIn(max = 280.dp)

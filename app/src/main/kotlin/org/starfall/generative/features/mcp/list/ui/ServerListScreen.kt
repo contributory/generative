@@ -1,5 +1,7 @@
 package org.starfall.generative.features.mcp.list.ui
 
+import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -34,6 +36,7 @@ import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.mcpServerEnabled
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
+import org.starfall.generative.shared.ui.lists.ListViewToggle
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.lists.moved
@@ -54,24 +57,24 @@ fun ServerListScreen(
     var orderedServers by remember(mcpServers) { mutableStateOf(mcpServers) }
     val context = LocalContext.current
     Scaffold(topBar = {
-            TopAppBar(title = {
+            TopAppBar(
+                colors = edgeToEdgeTopAppBarColors(),
+            title = {
                 Column {
                     Text(stringResource(R.string.mcp_servers_title), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
                     Text(stringResource(R.string.mcp_servers_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                 }
             }, navigationIcon = { IconButton(onClick = onBack) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                 actions = {
-                    IconButton(onClick = { onToggleGridView?.invoke(!isGridView) }) {
-                        FluentIcon(if (isGridView) Icons.Default.List else Icons.Default.GridView, stringResource(R.string.toggle_grid_list))
-                    }
+                    ListViewToggle(isGridView) { onToggleGridView?.invoke(!isGridView) }
                     IconButton(onClick = {
                         onOpenEditor(McpInfo(id = UUID.randomUUID().toString(), name = "", protocol = McpProtocol.STREAMABLE_HTTP,
                             url = null, headers = emptyMap()), true)
                     }) { FluentIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
                 })
         }) { padding ->
-            Box(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp, vertical = 8.dp)) {
-                if (mcpServers.isEmpty()) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxSize()) {
+                if (mcpServers.isEmpty()) Box(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         FluentIcon(Icons.Outlined.Extension, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(48.dp))
                         Spacer(Modifier.height(12.dp))
@@ -84,7 +87,9 @@ fun ServerListScreen(
                         orderedServers = orderedServers.moved(from.index, to.index)
                     }
                     LazyVerticalGrid(state = gridState, columns = GridCells.Fixed(if (gridMode) 2 else 1),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize()) {
+                        horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
+                        modifier = Modifier.fillMaxSize()) {
                         itemsIndexed(orderedServers, key = { _, item -> item.id }) { _, server ->
                             ReorderableItem(reorderState, key = server.id) { _ ->
                                 McpUnifiedCard(server = server, isGrid = gridMode,
@@ -105,12 +110,14 @@ fun ServerListScreen(
     }
 
     if (deletingServerId != null) AlertDialog(onDismissRequest = { deletingServerId = null },
+        title = { Text(stringResource(R.string.dialog_delete_connector_title)) },
         text = { Text(stringResource(R.string.delete_mcp_server_message)) },
         confirmButton = { Button(onClick = { deletingServerId?.let(onDeleteMcpServer); deletingServerId = null },
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.common_delete)) } },
         dismissButton = { TextButton(onClick = { deletingServerId = null }) { Text(stringResource(R.string.common_cancel)) } })
     selectedToolError?.let { (serverName, error) ->
         AlertDialog(onDismissRequest = { selectedToolError = null }, title = { Text(stringResource(R.string.mcp_tool_discovery_error_title, serverName)) },
+            scrollableContent = false,
             text = {
                 Box(Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.6f).verticalScroll(rememberScrollState())) {
                     SelectionContainer { Text(error, style = MaterialTheme.typography.bodySmall) }

@@ -20,6 +20,7 @@ internal class ProviderDragSurfaces {
     var rootGrid: LazyGridState? = null
     var folderGrid: LazyGridState? = null
     var boxOrigin = Offset.Zero
+    var rootGridOrigin = Offset.Zero
     var panelBounds: Rect? = null
     var folderGridOrigin = Offset.Zero
     var layoutGate = 0

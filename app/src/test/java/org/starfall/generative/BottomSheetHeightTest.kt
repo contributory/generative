@@ -43,4 +43,21 @@ class BottomSheetHeightTest {
         assertEquals(780, afterKeyboard.heightFor(1800, 780f))
         assertEquals(1, bottomSheetHeightBounds(0, 0).heightFor(0, null))
     }
+
+    @Test fun maximumUsesTheWindowAreaBelowStatusBarEvenWhenTheWindowShrinks() {
+        val bounds = bottomSheetHeightBounds(windowHeight = 1200, availableHeight = 1200, topInset = 80)
+        assertEquals(400, bounds.minimum)
+        assertEquals(1120, bounds.maximum)
+        assertEquals(1120, bounds.heightFor(2000, null))
+        assertEquals(720, bottomSheetHeightBounds(1200, 800, topInset = 80).maximum)
+        assertEquals(1, bottomSheetHeightBounds(100, 100, topInset = 150).maximum)
+    }
+
+    @Test fun decorHeightDeterminesTheCapWhenConfigurationExcludesSystemBars() {
+        val bounds = bottomSheetHeightBounds(
+            windowHeight = 1100, availableHeight = 1200, topInset = 60, windowBoundsHeight = 1200
+        )
+        assertEquals(1140, bounds.maximum)
+        assertEquals(366, bounds.minimum)
+    }
 }

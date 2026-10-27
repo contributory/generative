@@ -1,13 +1,19 @@
 package org.starfall.generative.features.chatoptions.ui
 
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -19,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -33,7 +40,7 @@ import org.starfall.generative.shared.model.parseAgentSkillDocument
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.text.FullScreenEditorTextField
 
 /** Edit and exchange one complete SKILL.md, not three disconnected form fields. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,6 +65,7 @@ internal fun SkillEditor(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = edgeToEdgeTopAppBarColors(),
                 title = {
                     Text(
                         parsed?.name ?: stringResource(R.string.agent_skill_details),
@@ -80,30 +88,58 @@ internal fun SkillEditor(
             )
         }
     ) { padding ->
-        SelectableOutlinedTextField(
-            value = document,
-            onValueChange = { document = it },
-            label = { Text("SKILL.md") },
-            supportingText = if (parsed == null) {
-                { Text(stringResource(R.string.agent_skill_invalid_document)) }
-            } else null,
-            isError = parsed == null,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.None,
-                autoCorrectEnabled = false
-            ),
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .imePadding()
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-                .testTag("agent_skill_document_input"),
-            maxLines = Int.MAX_VALUE,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                fontFamily = FontFamily.Monospace,
-                fontSize = 14.sp,
-                lineHeight = 20.sp
+        ) {
+            // A lightweight file tab, instead of a labeled, rounded input box.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("SKILL.md", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary)
+                Text(
+                    stringResource(R.string.agent_skill_editor_line_count, document.count { it == '\n' } + 1),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+            FullScreenEditorTextField(
+                value = document,
+                onValueChange = { document = it },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    autoCorrectEnabled = false
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .testTag("agent_skill_document_input"),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 14.sp,
+                    lineHeight = 21.sp
+                )
             )
-        )
+            if (parsed == null) {
+                Text(
+                    stringResource(R.string.agent_skill_invalid_document),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
     }
 }

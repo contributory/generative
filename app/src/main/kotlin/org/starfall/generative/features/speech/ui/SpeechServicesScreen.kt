@@ -1,9 +1,7 @@
 package org.starfall.generative.features.speech.ui
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
+import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -11,15 +9,12 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -33,18 +28,20 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.effectiveTtsProviderId
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.ui.layout.AdaptiveCardLayout
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
+import org.starfall.generative.shared.ui.lists.AppListItem
+import org.starfall.generative.shared.ui.lists.ListViewToggle
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.ItemContextMenu
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.ui.icons.providerInitials
+import org.starfall.generative.shared.ui.layout.SlideScreenContent
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
-private data class SpeechEditor(val service: SpeechService, val isNew: Boolean)
+private data class SpeechEditorPage(val service: SpeechService, val isNew: Boolean)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,128 +61,121 @@ fun SpeechServicesScreen(
     onStopPlayback: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    var editor by remember { mutableStateOf<SpeechEditor?>(null) }
+    var editor by remember { mutableStateOf<SpeechEditorPage?>(null) }
     var deletingServiceId by remember { mutableStateOf<String?>(null) }
     var orderedServices by remember(speechServices) { mutableStateOf(speechServices) }
     val providersById = remember(providers) { providers.associateBy { it.id } }
     val effectiveSelectedId = speechServices.effectiveTtsProviderId(selectedSpeechServiceId)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            stringResource(R.string.speech_services_title),
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
-                        Text(
-                            stringResource(R.string.speech_services_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { onToggleGridView?.invoke(!isGridView) }) {
-                        FluentIcon(
-                            imageVector = if (isGridView) Icons.Default.List else Icons.Default.GridView,
-                            contentDescription = stringResource(if (isGridView) R.string.switch_to_list_view else R.string.switch_to_grid_view)
-                        )
-                    }
-                    IconButton(
-                        onClick = {
-                            editor = SpeechEditor(SpeechService(
-                                id = UUID.randomUUID().toString(),
-                                name = context.getString(R.string.speech_custom_tts),
-                                icon = null,
-                                provider = "system",
-                                modelId = null,
-                                voice = "Default",
-                                speed = 1.0f,
-                                pitch = 1.0f
-                            ), true)
+    SlideScreenContent(editor = editor, label = stringResource(R.string.speech_edit_title)) { page ->
+        if (page != null) {
+            key(page.service.id) {
+                SpeechEditor(
+                    initialService = page.service,
+                    isNew = page.isNew,
+                    providers = providers,
+                    isPlaying = page.service.id == activeTestServiceId,
+                    onTest = { service, text ->
+                        if (service.id == activeTestServiceId) onStopPlayback()
+                        else onTestVoice(service, text)
+                    },
+                    onDismiss = { editor = null },
+                    onSave = { saved -> onSaveService(saved); editor = null }
+                )
+            }
+        } else {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        colors = edgeToEdgeTopAppBarColors(),
+                        title = {
+                            Column {
+                                Text(
+                                    stringResource(R.string.speech_services_title),
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                                Text(
+                                    stringResource(R.string.speech_services_description),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = onBack) {
+                                FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
+                            }
+                        },
+                        actions = {
+                            ListViewToggle(isGridView) { onToggleGridView?.invoke(!isGridView) }
+                            IconButton(
+                                onClick = {
+                                    editor = SpeechEditorPage(SpeechService(
+                                        id = UUID.randomUUID().toString(),
+                                        name = context.getString(R.string.speech_custom_tts),
+                                        icon = null,
+                                        provider = "system",
+                                        modelId = null,
+                                        voice = "Default",
+                                        speed = 1.0f,
+                                        pitch = 1.0f
+                                    ), true)
+                                }
+                            ) {
+                                FluentIcon(Icons.Default.Add, contentDescription = stringResource(R.string.speech_add_service))
+                            }
                         }
+                    )
+                }
+            ) { padding ->
+                FadeGridListContent(
+                    isGrid = isGridView,
+                    modifier = Modifier.fillMaxSize()
+                ) { gridMode ->
+                    val gridState = rememberLazyGridState()
+                    val reorderState = rememberReorderableLazyGridState(gridState, scrollMoveMode = ScrollMoveMode.INSERT) { from, to ->
+                        orderedServices = orderedServices.moved(from.index, to.index)
+                    }
+                    LazyVerticalGrid(state = gridState,
+                        columns = GridCells.Fixed(if (gridMode) 2 else 1),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        FluentIcon(Icons.Default.Add, contentDescription = stringResource(R.string.speech_add_service))
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        FadeGridListContent(
-            isGrid = isGridView,
-            modifier = Modifier.fillMaxSize()
-        ) { gridMode ->
-            val gridState = rememberLazyGridState()
-            val reorderState = rememberReorderableLazyGridState(gridState, scrollMoveMode = ScrollMoveMode.INSERT) { from, to ->
-                orderedServices = orderedServices.moved(from.index, to.index)
-            }
-            LazyVerticalGrid(state = gridState,
-                columns = GridCells.Fixed(if (gridMode) 2 else 1),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                itemsIndexed(orderedServices, key = { _, item -> item.id }) { _, service ->
-                    ReorderableItem(reorderState, key = service.id) { _ ->
-                        val providerName = when {
-                            service.provider.equals("system", ignoreCase = true) -> stringResource(R.string.speech_system_tts)
-                            else -> providersById[service.provider]?.name ?: service.provider
+                        itemsIndexed(orderedServices, key = { _, item -> item.id }) { _, service ->
+                            ReorderableItem(reorderState, key = service.id) { _ ->
+                                val providerName = when {
+                                    service.provider.equals("system", ignoreCase = true) -> stringResource(R.string.speech_system_tts)
+                                    else -> providersById[service.provider]?.name ?: service.provider
+                                }
+                                val provider = providersById[service.provider]
+                                SpeechServiceUnifiedCard(
+                                    service = service,
+                                    provider = provider,
+                                    isGrid = gridMode,
+                                    modifier = Modifier.longPressDraggableHandle(
+                                        onDragStopped = { onReorderServices(orderedServices.map { it.id }) }
+                                    ),
+                                    providerName = providerName,
+                                    selected = service.id == effectiveSelectedId,
+                                    isPlaying = service.id == activeTestServiceId,
+                                    onSetTtsProvider = { onSetTtsProvider(service.id) },
+                                    onTest = {
+                                        if (service.id == activeTestServiceId) onStopPlayback()
+                                        else onTestVoice(service, context.getString(R.string.speech_preview_text, service.name))
+                                    },
+                                    onEdit = { editor = SpeechEditorPage(service, false) },
+                                    onDelete = { deletingServiceId = service.id }
+                                )
+                            }
                         }
-                        val provider = providersById[service.provider]
-                        SpeechServiceUnifiedCard(
-                            service = service,
-                            provider = provider,
-                            isGrid = gridMode,
-                            modifier = Modifier.longPressDraggableHandle(
-                                onDragStopped = { onReorderServices(orderedServices.map { it.id }) }
-                            ),
-                            providerName = providerName,
-                            selected = service.id == effectiveSelectedId,
-                            isPlaying = service.id == activeTestServiceId,
-                            onSetTtsProvider = { onSetTtsProvider(service.id) },
-                            onTest = {
-                                if (service.id == activeTestServiceId) onStopPlayback()
-                                else onTestVoice(service, context.getString(R.string.speech_preview_text, service.name))
-                            },
-                            onEdit = { editor = SpeechEditor(service, false) },
-                            onDelete = { deletingServiceId = service.id }
-                        )
                     }
                 }
             }
         }
-    }
-
-    editor?.let { page ->
-        AddOrEditSpeechDialog(
-            initialService = page.service,
-            isNew = page.isNew,
-            providers = providers,
-            isPlaying = page.service.id == activeTestServiceId,
-            onTest = { service, text ->
-                if (service.id == activeTestServiceId) onStopPlayback()
-                else onTestVoice(service, text)
-            },
-            onDismiss = {
-                editor = null
-            },
-            onSave = { saved ->
-                onSaveService(saved)
-                editor = null
-            }
-        )
     }
 
     deletingServiceId?.let { id ->
@@ -214,18 +204,9 @@ private fun SpeechServiceUnifiedCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val shapeCorner by animateDpAsState(
-        targetValue = if (isGrid) 20.dp else 16.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "speechShapeCorner"
-    )
-
-    Surface(
+    AppListItem(
+        isGrid = isGrid,
         onClick = onEdit,
-        shape = RoundedCornerShape(shapeCorner),
         color = if (selected) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
         } else {
@@ -236,13 +217,7 @@ private fun SpeechServiceUnifiedCard(
         } else {
             prominentContainerBorder(1.5.dp)
         },
-        modifier = modifier.fillMaxWidth()
-    ) {
-        AdaptiveCardLayout(
-            isGrid = isGrid,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
+        modifier = modifier,
             icon = {
                 EntityIcon(
                     image = service.icon ?: provider?.icon,
@@ -332,5 +307,4 @@ private fun SpeechServiceUnifiedCard(
                 }
             }
         )
-    }
 }

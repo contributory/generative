@@ -7,6 +7,7 @@ Generative uses **Jetpack Compose and Material 3**, with app-specific layouts an
 - Use `GenerativeTheme`, `MaterialTheme.colorScheme`, and `MaterialTheme.typography` for colors and text. Respect system/light/dark themes, dynamic colors, custom palettes, and AMOLED mode; avoid hard-coded colors and typography when a theme token exists.
 - Keep clear hierarchy through spacing, typography, and restrained surface contrast. Reuse shared cards, settings sections, top bars, dialogs, bottom sheets, and transitions before creating new variants. Use sensible list-based layouts for long content and keep chat focused on conversation content.
 - Prefer shared UI components under `shared/ui` over duplicated implementations. Use string resources for user-facing text so screens remain localizable.
+- Entity collections use `AppListItem`, `ListViewToggle`, and `FadeGridListContent` for the same list/grid presentation as Model Providers and MCP Connectors; expandable items can use `AppListContainer`. Use `AppSheet`, `AppDialog`/`AppAlertDialog`, `AppDropdownMenu`/`AppExposedDropdownMenu`, `AppPopup`, and `RoundedDropdownMenuItem` for the corresponding shared surfaces and menu actions. Every dialog uses the shared title, content, and bottom action slots; use independently scrollable content for long forms and lists.
 
 The existing UI generally follows this direction, but there are legacy icon aliases, direct drawable references, and occasional hard-coded text. New work should favor shared components and consistent resource usage without unrelated rewrites.
 

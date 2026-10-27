@@ -124,6 +124,7 @@ data class AppPreferences(
     val useSystemLanguage: Boolean = true,
     /** App-owned image used for the Features entry points and the Features screen header. */
     val featuresLogoImage: String? = null,
+    val userProfile: UserProfile = UserProfile(),
     val showProfilesAsGrid: Boolean = true,
     val showProvidersAsGrid: Boolean = false,
     val showMcpAsGrid: Boolean = false,
@@ -201,6 +202,7 @@ class AppPreferencesRepository(private val context: Context) {
         val SELECTED_LANGUAGE = stringPreferencesKey("selected_language")
         val USE_SYSTEM_LANGUAGE = booleanPreferencesKey("use_system_language")
         val FEATURES_LOGO_IMAGE = stringPreferencesKey("features_logo_image")
+        val USER_PROFILE = stringPreferencesKey("user_profile")
         val SHOW_PROFILES_AS_GRID = booleanPreferencesKey("show_profiles_as_grid")
         val SHOW_PROVIDERS_AS_GRID = booleanPreferencesKey("show_providers_as_grid")
         val SHOW_MCP_AS_GRID = booleanPreferencesKey("show_mcp_as_grid")
@@ -275,6 +277,9 @@ class AppPreferencesRepository(private val context: Context) {
                 selectedLanguage = preferences[PreferenceKeys.SELECTED_LANGUAGE] ?: "en",
                 useSystemLanguage = preferences[PreferenceKeys.USE_SYSTEM_LANGUAGE] ?: true,
                 featuresLogoImage = preferences[PreferenceKeys.FEATURES_LOGO_IMAGE]?.takeIf { it.isNotBlank() },
+                userProfile = preferences[PreferenceKeys.USER_PROFILE]?.let { raw ->
+                    runCatching { Json.decodeFromString<UserProfile>(raw) }.getOrNull()
+                } ?: UserProfile(photo = preferences[PreferenceKeys.FEATURES_LOGO_IMAGE]),
                 showProfilesAsGrid = preferences[PreferenceKeys.SHOW_PROFILES_AS_GRID] ?: true,
                 showProvidersAsGrid = preferences[PreferenceKeys.SHOW_PROVIDERS_AS_GRID] ?: false,
                 showMcpAsGrid = preferences[PreferenceKeys.SHOW_MCP_AS_GRID] ?: false,
@@ -506,14 +511,23 @@ class AppPreferencesRepository(private val context: Context) {
         }
     }
 
-    suspend fun setFeaturesLogoImage(image: String?) {
-        state.mutate({ it.copy(featuresLogoImage = image?.takeIf { value -> value.isNotBlank() }) }) {
+    suspend fun updateUserProfile(transform: (UserProfile) -> UserProfile) {
+        val current = state.value?.userProfile ?: AppPreferences().userProfile
+        val updated = transform(current)
+        state.mutate({ it.copy(userProfile = updated, featuresLogoImage = updated.photo) }) {
             context.dataStore.edit { preferences ->
-                if (image.isNullOrBlank()) preferences.remove(PreferenceKeys.FEATURES_LOGO_IMAGE)
-                else preferences[PreferenceKeys.FEATURES_LOGO_IMAGE] = image
+                val persisted = preferences[PreferenceKeys.USER_PROFILE]?.let { raw ->
+                    runCatching { Json.decodeFromString<UserProfile>(raw) }.getOrNull()
+                } ?: current
+                val merged = transform(persisted)
+                preferences[PreferenceKeys.USER_PROFILE] = Json.encodeToString(merged)
+                if (merged.photo.isNullOrBlank()) preferences.remove(PreferenceKeys.FEATURES_LOGO_IMAGE)
+                else preferences[PreferenceKeys.FEATURES_LOGO_IMAGE] = merged.photo
             }
         }
     }
+
+    suspend fun setFeaturesLogoImage(image: String?) = updateUserProfile { it.copy(photo = image) }
 
     suspend fun setColorSchemeName(scheme: String) {
         state.mutate({ it.copy(colorSchemeName = scheme) }) {
@@ -895,6 +909,7 @@ class AppPreferencesRepository(private val context: Context) {
                 stored[PreferenceKeys.SELECTED_LANGUAGE] = preferences.selectedLanguage
                 stored[PreferenceKeys.USE_SYSTEM_LANGUAGE] = preferences.useSystemLanguage
                 preferences.featuresLogoImage?.let { stored[PreferenceKeys.FEATURES_LOGO_IMAGE] = it }
+                stored[PreferenceKeys.USER_PROFILE] = Json.encodeToString(preferences.userProfile)
                 stored[PreferenceKeys.SHOW_PROFILES_AS_GRID] = preferences.showProfilesAsGrid
                 stored[PreferenceKeys.SHOW_PROVIDERS_AS_GRID] = preferences.showProvidersAsGrid
                 stored[PreferenceKeys.SHOW_MCP_AS_GRID] = preferences.showMcpAsGrid

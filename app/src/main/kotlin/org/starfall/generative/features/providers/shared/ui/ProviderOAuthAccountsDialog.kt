@@ -1,12 +1,14 @@
 package org.starfall.generative.features.providers.shared.ui
 
-import androidx.activity.compose.BackHandler
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,6 +17,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -59,41 +63,28 @@ internal fun ProviderOAuthAccountsDialog(
             finally { busy = false }
         }
     }
-    AppDialog(onDismissRequest = { if (editing && !busy) editing = false else dismiss() }) {
-        BackHandler(enabled = editing && !busy) { editing = false }
-        Surface(shape = MaterialTheme.shapes.extraLarge,
-            modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp)) {
-            Column {
-                TopAppBar(title = { Text(stringResource(if (editing) {
-                    if (editingId == null) R.string.provider_add_account else R.string.provider_edit_account
-                } else R.string.provider_manage_accounts)) },
-                    navigationIcon = { if (editing) IconButton(enabled = !busy, onClick = { editing = false }) {
-                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    } },
-                    actions = {
-                        if (editing) IconButton(enabled = !busy && (editingId != null || canAuthorize), onClick = {
-                            if (editingId == null) signIn() else { onSaveLabel(editingId!!, label); editing = false }
-                        }) { FluentIcon(Icons.Outlined.Save, stringResource(R.string.common_save)) }
-                        if (!editing) IconButton(enabled = !busy && canAuthorize, onClick = { edit(null) }) {
-                            FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
-                        }
-                        IconButton(onClick = ::dismiss) { FluentIcon(Icons.Default.Close, stringResource(R.string.common_close)) }
-                    })
-                error?.let { Text(it, Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error) }
-                if (editing) Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val addLabel = stringResource(R.string.common_add)
+    val backLabel = stringResource(R.string.common_back)
+    val closeLabel = stringResource(R.string.common_close)
+    val saveLabel = stringResource(R.string.common_save)
+    AppDialog(
+        onDismissRequest = { if (editing && !busy) editing = false else dismiss() },
+        title = { Text(stringResource(if (editing) {
+            if (editingId == null) R.string.provider_add_account else R.string.provider_edit_account
+        } else R.string.provider_manage_accounts)) },
+        content = {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                if (editing) Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SelectableOutlinedTextField(label, { label = it }, singleLine = true, enabled = !busy,
                         label = { Text(stringResource(R.string.common_label)) },
                         modifier = Modifier.fillMaxWidth().testTag("oauth-account-label"))
                     accounts.firstOrNull { it.id == editingId }?.identity?.let { Text(it) }
-                    Button(enabled = !busy && canAuthorize, onClick = signIn, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(if (busy) R.string.oauth_signing_in else if (editingId == null)
-                            R.string.oauth_sign_in else R.string.oauth_sign_in_again))
-                    }
-                    if (busy) TextButton(onClick = onCancelAuthorization) { Text(stringResource(R.string.common_cancel)) }
-                } else if (accounts.isEmpty()) Text(stringResource(R.string.provider_no_accounts), Modifier.padding(24.dp))
+                } else if (accounts.isEmpty()) Text(stringResource(R.string.provider_no_accounts))
                 else LazyColumn(
-                    Modifier.fillMaxWidth().weight(1f, fill = false),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    Modifier.fillMaxWidth().heightIn(max = 400.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(accounts.sortedBy { it.id != selectedId }, key = { it.id }) { account ->
@@ -154,6 +145,30 @@ internal fun ProviderOAuthAccountsDialog(
                     }
                 }
             }
+        },
+        buttons = {
+            if (editing && !busy) TextButton(onClick = { editing = false },
+                modifier = Modifier.semantics { contentDescription = backLabel }) { Text(backLabel) }
+            if (busy && editing) TextButton(onClick = onCancelAuthorization) { Text(stringResource(R.string.common_cancel)) }
+            TextButton(onClick = ::dismiss, modifier = Modifier.semantics { contentDescription = closeLabel }) {
+                Text(closeLabel)
+            }
+            if (!editing) {
+                TextButton(enabled = !busy && canAuthorize, onClick = { edit(null) },
+                    modifier = Modifier.semantics { contentDescription = addLabel }) { Text(addLabel) }
+            } else {
+                if (editingId != null) TextButton(enabled = !busy && canAuthorize, onClick = signIn) {
+                    Text(stringResource(R.string.oauth_sign_in_again))
+                }
+                Button(enabled = !busy && (editingId != null || canAuthorize),
+                    modifier = if (editingId != null) Modifier.semantics { contentDescription = saveLabel } else Modifier,
+                    onClick = {
+                    if (editingId == null) signIn() else { onSaveLabel(editingId!!, label); editing = false }
+                }) {
+                    Text(stringResource(if (busy) R.string.oauth_signing_in else if (editingId == null)
+                        R.string.oauth_sign_in else R.string.common_save))
+                }
+            }
         }
-    }
+    )
 }

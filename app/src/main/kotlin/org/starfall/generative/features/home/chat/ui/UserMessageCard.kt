@@ -1,5 +1,6 @@
 package org.starfall.generative.features.home.chat.ui
 
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.text.GlyphHitRegistry
 import org.starfall.generative.shared.ui.text.LocalGlyphHitRegistry

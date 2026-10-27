@@ -1,7 +1,10 @@
 package org.starfall.generative.features.providers.list.ui
 
+import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -13,18 +16,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import java.util.UUID
@@ -99,7 +104,6 @@ fun ProvidersScreen(
     } else rootItems
     fun closeSearch() { searching = false; searchQuery = ""; searchFilterOpen = false }
     BackHandler(enabled = LocalScreenTransitionActive.current && searching) { closeSearch() }
-    BackHandler(enabled = LocalScreenTransitionActive.current && openGroupId != null) { openGroupId = null }
     var draggedProviderId by remember { mutableStateOf<String?>(null) }
     var draggedGroupId by remember { mutableStateOf<String?>(null) }
     var dragRootSnapshot by remember { mutableStateOf<List<ProviderRootItem>?>(null) }
@@ -111,6 +115,9 @@ fun ProvidersScreen(
     var dropFolderId by remember { mutableStateOf<String?>(null) }
     var dragHoverKey by remember { mutableStateOf<String?>(null) }
     val surfaces = remember { ProviderDragSurfaces() }
+    // Track the actual visible folder card, including root grid scrolling and grid/list changes.
+    val folderCardBounds = remember { mutableStateMapOf<String, Rect>() }
+    var openedCardBounds by remember { mutableStateOf<Rect?>(null) }
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
 
@@ -122,7 +129,17 @@ fun ProvidersScreen(
     LaunchedEffect(openGroup?.id) {
         if (openGroup != null) renderedFolderGroup = openGroup
     }
+    // Barely-there blur: items behind the translucent folder stay recognisable and their text
+    // stays faintly legible (API 31+; a no-op below).
+    val backdropBlur by animateDpAsState(
+        targetValue = if (openGroup != null) 1.5.dp else 0.dp,
+        animationSpec = tween(durationMillis = 180),
+        label = "providerFolderBackdropBlur"
+    )
     val folderOverlayGroup = openGroup ?: renderedFolderGroup
+    BackHandler(enabled = LocalScreenTransitionActive.current && folderOverlayGroup != null) {
+        if (openGroupId != null) openGroupId = null
+    }
     // The skip flag is one-shot: the overlay reads it when first composed, then it is cleared so later opens animate.
     LaunchedEffect(folderOverlayGroup?.id) {
         if (folderOverlayGroup != null) skipNextFolderEnterAnimation = false
@@ -252,7 +269,10 @@ fun ProvidersScreen(
         liveOrderChanged = false
     }
 
-    fun rootTiles(): List<DragTile> = surfaces.rootGrid?.dragTiles().orEmpty()
+    fun rootTiles(): List<DragTile> {
+        val origin = surfaces.rootGridOrigin - surfaces.boxOrigin
+        return surfaces.rootGrid?.dragTiles()?.map { DragTile(it.key, it.rect.translate(origin)) }.orEmpty()
+    }
 
     fun folderTiles(): List<DragTile> {
         val grid = surfaces.folderGrid ?: return emptyList()
@@ -392,7 +412,7 @@ fun ProvidersScreen(
             val session = dragSession ?: break
             val inFolder = session.fromFolderId != null
             val grid = if (inFolder) surfaces.folderGrid else surfaces.rootGrid
-            val top = if (inFolder) surfaces.folderGridOrigin.y - surfaces.boxOrigin.y else 0f
+            val top = (if (inFolder) surfaces.folderGridOrigin.y else surfaces.rootGridOrigin.y) - surfaces.boxOrigin.y
             val pointer = dragPointer
             val nearEdge = grid != null && autoScrollDelta(pointer.y - top, grid.viewportHeightPx, zone, 1f) != 0f
             if (surfaces.layoutGate == 0 && !nearEdge) {
@@ -479,12 +499,26 @@ fun ProvidersScreen(
         if (cleaned != collapsedSections) setCollapsedSections(cleaned)
     }
 
-    Scaffold(
+    // The shared drag ancestor includes both the root app bar and the folder overlay.
+    // This keeps the drag pointer alive while a member leaves a full-screen folder.
+    Box(
+        Modifier.fillMaxSize()
+            .onGloballyPositioned { surfaces.boxOrigin = it.positionInRoot() }
+            .providerDragGesture(
+                enabled = !searching,
+                canPickUp = { pickTile(it) != null },
+                onPickUp = ::pickUp,
+                onMove = ::dragMove,
+                onDrop = ::dropDrag,
+                onCancel = ::cancelDrag
+            )
+    ) {
+        Scaffold(
+            // Root controls are covered by the folder page, and must also be hidden from accessibility.
+            modifier = (if (folderOverlayGroup != null) Modifier.clearAndSetSemantics {} else Modifier)
+                .then(if (backdropBlur > 0.dp) Modifier.blur(backdropBlur) else Modifier),
             topBar = {
                 ProviderScreenTopBar(
-                    visibleGroupId = openGroup?.id,
-                    sortedGroups = sortedGroups,
-                    orderedProviders = orderedProviders,
                     isGridView = isGridView,
                     searching = searching,
                     searchQuery = searchQuery,
@@ -496,39 +530,22 @@ fun ProvidersScreen(
                     onSearchFilterOpenChange = { searchFilterOpen = it },
                     onBack = onBack,
                     onToggleGridView = onToggleGridView,
-                    onAddProvider = { createProvider(openGroupId) },
-                    onAddProviderToGroup = { createProvider(it) },
+                    onAddProvider = { createProvider() },
                     onCreateGroup = { dialogs.creatingGroup = true },
                     onOpenSearch = { openGroupId = null; searching = true },
-                    onCloseSearch = ::closeSearch,
-                    onCloseGroup = { openGroupId = null },
-                    onEditGroup = { dialogs.groupToRename = it },
-                    onDeleteGroup = { dialogs.deletingGroup = it; openGroupId = null }
+                    onCloseSearch = ::closeSearch
                 )
             }
         ) { padding ->
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .onGloballyPositioned { surfaces.boxOrigin = it.positionInRoot() }
-                    .providerDragGesture(
-                        enabled = !searching,
-                        canPickUp = { pickTile(it) != null },
-                        onPickUp = ::pickUp,
-                        onMove = ::dragMove,
-                        onDrop = ::dropDrag,
-                        onCancel = ::cancelDrag
-                    )
+                modifier = Modifier.fillMaxSize()
             ) {
-                // Folder open: blur what sits behind the translucent folder panel (API 31+; no-op below).
-                val backdropBlur = if (openGroup != null) 20.dp else 0.dp
                 if (visibleRootItems.isEmpty()) {
-                    ProviderEmptyState(hasSearchQuery = query.isNotEmpty(), backdropBlur = backdropBlur)
+                    Box(Modifier.fillMaxSize().padding(padding)) { ProviderEmptyState(hasSearchQuery = query.isNotEmpty(), backdropBlur = 0.dp) }
                 } else {
                     FadeGridListContent(
                         isGrid = isGridView,
-                        modifier = Modifier.fillMaxSize().blur(backdropBlur)
+                        modifier = Modifier.fillMaxSize()
                     ) { gridMode ->
                         val gridState = rememberLazyGridState()
                         if (gridMode == isGridView) SideEffect { surfaces.rootGrid = gridState }
@@ -536,8 +553,12 @@ fun ProvidersScreen(
                         LazyVerticalGrid(
                             state = gridState,
                             columns = GridCells.Fixed(if (gridMode) 2 else 1),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            modifier = Modifier.fillMaxSize().testTag("provider_list")
+                            contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
+                            modifier = Modifier.fillMaxSize()
+                                .onGloballyPositioned {
+                                    if (gridMode == isGridView) surfaces.rootGridOrigin = it.positionInRoot()
+                                }
+                                .testTag("provider_list")
                         ) {
                             items(visibleRootItems, key = { it.cellKey() }) { item ->
                                 val key = item.cellKey()
@@ -548,6 +569,11 @@ fun ProvidersScreen(
                                         .height(cellHeight)
                                         .graphicsLayer { alpha = if (dragSession?.key == key) 0.25f else 1f }
                                         .padding(6.dp)
+                                        .onGloballyPositioned { coordinates ->
+                                            if (item is ProviderRootItem.GroupItem && gridMode == isGridView) {
+                                                folderCardBounds[item.id] = coordinates.boundsInRoot()
+                                            }
+                                        }
                                 ) {
                                     ProviderRootCard(
                                         item = item,
@@ -558,55 +584,71 @@ fun ProvidersScreen(
                                         onEditProvider = { onOpenProviderEditor(it, false) },
                                         onMoveProvider = { dialogs.movingProvider = it },
                                         onDeleteProvider = { dialogs.deletingProviderId = it },
-                                        onOpenGroup = { openGroupId = it }
+                                        onOpenGroup = { id ->
+                                            openedCardBounds = folderCardBounds[id]
+                                            renderedFolderGroup = sortedGroups.firstOrNull { it.id == id }
+                                            openGroupId = id
+                                        }
                                     )
                                 }
                             }
                         }
                     }
                 }
-
-                folderOverlayGroup?.let { group ->
-                    val members = orderedProviders.filter { it.groupId == group.id }
-                    val folderMatches = query.isEmpty() || matchesFolderSearch(group.name, query, searchFields)
-                    key(group.id) {
-                        ProviderFolderOverlay(
-                            group = group,
-                            providers = if (folderMatches) members else members.filter(::matches),
-                            isGrid = isGridView,
-                            surfaces = surfaces,
-                            draggingKey = dragSession?.key,
-                            showExitHint = dragSession?.fromFolderId != null,
-                            visible = openGroupId == group.id && openGroup != null,
-                            animateEnter = !skipNextFolderEnterAnimation,
-                            onDismiss = { openGroupId = null },
-                            onExitFinished = {
-                                if ((openGroupId == null || openGroup == null) && renderedFolderGroup?.id == group.id) {
-                                    renderedFolderGroup = null
-                                }
-                            },
-                            onEditGroup = { dialogs.groupToRename = group },
-                            onDeleteGroup = { dialogs.deletingGroup = group; openGroupId = null },
-                            onEditProvider = {
-                                skipNextFolderEnterAnimation = true
-                                onOpenProviderEditor(it, false)
-                            },
-                            onMoveProvider = { dialogs.movingProvider = it },
-                            onDeleteProvider = { dialogs.deletingProviderId = it }
-                        )
-                    }
-                }
-
-                dragSession?.let { session ->
-                    ProviderDragGhost(
-                        session = session,
-                        pointer = { dragPointer },
-                        orderedProviders = orderedProviders,
-                        rootItems = rootItems
-                    )
-                }
             }
         }
+
+        // Folder draws over the entire Scaffold, including its app bar, with a separate header.
+        folderOverlayGroup?.let { group ->
+            val members = orderedProviders.filter { it.groupId == group.id }
+            val folderMatches = query.isEmpty() || matchesFolderSearch(group.name, query, searchFields)
+            key(group.id) {
+                ProviderFolderOverlay(
+                    group = group,
+                    providers = if (folderMatches) members else members.filter(::matches),
+                    isGrid = isGridView,
+                    originBounds = folderCardBounds[group.id] ?: openedCardBounds,
+                    hostOrigin = surfaces.boxOrigin,
+                    animateExitImmediately = dragSession != null,
+                    surfaces = surfaces,
+                    draggingKey = dragSession?.key,
+                    showExitHint = dragSession?.fromFolderId != null,
+                    visible = openGroupId == group.id && openGroup != null,
+                    animateEnter = !skipNextFolderEnterAnimation,
+                    onExitFinished = {
+                        if ((openGroupId == null || openGroup == null) && renderedFolderGroup?.id == group.id) {
+                            renderedFolderGroup = null
+                        }
+                    },
+                    onDismiss = { openGroupId = null },
+                    onAddProvider = {
+                        // Returning from the editor keeps this folder open, so don't replay the open animation.
+                        skipNextFolderEnterAnimation = true
+                        createProvider(group.id)
+                    },
+                    onToggleGridView = { onToggleGridView?.invoke(!isGridView) },
+                    onEditGroup = { dialogs.groupToRename = group },
+                    onDeleteGroup = { dialogs.deletingGroup = group; openGroupId = null },
+                    onEditProvider = {
+                        skipNextFolderEnterAnimation = true
+                        onOpenProviderEditor(it, false)
+                    },
+                    onMoveProvider = { dialogs.movingProvider = it },
+                    onDeleteProvider = { dialogs.deletingProviderId = it }
+                )
+            }
+        }
+
+        // The ghost must stay above the full-screen folder during drag-and-drop.
+        dragSession?.let { session ->
+            ProviderDragGhost(
+                session = session,
+                pointer = { dragPointer },
+                orderedProviders = orderedProviders,
+                rootItems = rootItems
+            )
+        }
+    }
 
         ProviderDialogHost(
             dialogs = dialogs,

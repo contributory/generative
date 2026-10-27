@@ -113,6 +113,7 @@ fun ChatScreen(
     onNewChat: () -> Unit,
     onOpenSettings: () -> Unit,
     featuresLogoImage: String? = null,
+    backgroundImage: String? = null,
     onRegenerate: (String) -> Unit,
     onRetryFromError: (String) -> Unit = {},
     onEditMessage: (messageId: String, newContent: String, files: List<String>) -> Boolean,
@@ -419,6 +420,7 @@ fun ChatScreen(
                 }
             }
     ) {
+        org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage)
         // Let the list occupy the whole edge-to-edge surface. Its top padding keeps the newest
         // content readable initially, while later scrolls visibly pass behind the translucent app bar.
         BoxWithConstraints(

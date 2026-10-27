@@ -2,6 +2,7 @@
 
 package org.starfall.generative.features.home.chat.ui.input
 
+import org.starfall.generative.shared.ui.menus.AppPopup as Popup
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -55,7 +56,6 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import org.starfall.generative.R
 import org.starfall.generative.shared.files.ToolFiles

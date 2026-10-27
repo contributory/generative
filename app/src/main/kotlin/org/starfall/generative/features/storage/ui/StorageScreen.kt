@@ -1,19 +1,25 @@
 package org.starfall.generative.features.storage.ui
 
+import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.runtime.saveable.rememberSaveable
+import org.starfall.generative.shared.ui.lists.AppListItem
+import org.starfall.generative.shared.ui.lists.EmptyListContent
+import org.starfall.generative.shared.ui.lists.FadeGridListContent
+import org.starfall.generative.shared.ui.lists.ListViewToggle
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -33,8 +39,6 @@ import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
-import org.starfall.generative.shared.ui.layout.prominentContainerBorder
-import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.media.MediaViewer
 import org.starfall.generative.shared.ui.media.mediaMimeType
 import org.starfall.generative.shared.ui.media.mediaThumbnail
@@ -49,6 +53,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
     val revision by ToolFiles.revision.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    var isGrid by rememberSaveable { mutableStateOf(false) }
     var snapshot by remember { mutableStateOf(ToolFilesSnapshot(emptyList(), 0L)) }
     val files = snapshot.files
     var selected by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -82,6 +87,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
         topBar = {
             if (inSelectMode) {
                 TopAppBar(
+                    colors = edgeToEdgeTopAppBarColors(),
                     title = {
                         val title = if (selected.isEmpty()) {
                             stringResource(R.string.sidebar_select)
@@ -135,11 +141,15 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                 )
             } else {
                 TopAppBar(
+                    colors = edgeToEdgeTopAppBarColors(),
                     title = {
-                        Text(
-                            stringResource(R.string.settings_storage),
-                            style = MaterialTheme.typography.titleLarge
-                        )
+                        Column {
+                            Text(stringResource(R.string.settings_storage),
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold))
+                            Text(stringResource(R.string.settings_storage_description),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline, maxLines = 1)
+                        }
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
@@ -150,6 +160,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                         }
                     },
                     actions = {
+                        ListViewToggle(isGrid = isGrid, onToggle = { isGrid = !isGrid })
                         IconButton(onClick = {
                             if (!openAppStorageInDocumentsUi(context)) {
                                 Toast.makeText(context, R.string.storage_open_in_files_failed, Toast.LENGTH_SHORT).show()
@@ -173,55 +184,39 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
             }
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        Box(Modifier.fillMaxSize()) {
             if (files.isEmpty()) {
-                item(key = "storage-empty") {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 56.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        FluentIcon(
-                            Icons.Outlined.FolderOpen,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.outline
-                        )
-                        Text(
-                            stringResource(R.string.storage_empty),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                Box(Modifier.fillMaxSize().padding(padding)) {
+                    EmptyListContent(Icons.Outlined.FolderOpen, stringResource(R.string.storage_empty))
                 }
             } else {
-                items(files, key = { it.name }) { file ->
-                    val isSelected = file.name in selected
-                    StorageFileRow(
-                        store = store,
-                        file = file,
-                        inSelectMode = inSelectMode,
-                        selected = isSelected,
-                        onToggleSelect = { checked ->
-                            selected = if (checked) selected + file.name else selected - file.name
-                        },
-                        onEnterSelectMode = {
-                            if (!inSelectMode) {
-                                inSelectMode = true
-                                selected = setOf(file.name)
-                            }
-                        },
-                        onOpenViewer = {
-                            viewingFile = file
+                FadeGridListContent(isGrid = isGrid, modifier = Modifier.fillMaxSize()) { gridMode ->
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(if (gridMode) 2 else 1),
+                        contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(files, key = { it.name }) { file ->
+                            val isSelected = file.name in selected
+                            StorageFileRow(
+                                file = file,
+                                isGrid = gridMode,
+                                inSelectMode = inSelectMode,
+                                selected = isSelected,
+                                onToggleSelect = { checked ->
+                                    selected = if (checked) selected + file.name else selected - file.name
+                                },
+                                onEnterSelectMode = {
+                                    if (!inSelectMode) {
+                                        inSelectMode = true
+                                        selected = setOf(file.name)
+                                    }
+                                },
+                                onOpenViewer = { viewingFile = file }
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
@@ -230,6 +225,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
+            title = { Text(stringResource(R.string.dialog_delete_files_title)) },
             text = { Text(stringResource(R.string.storage_delete_message, selected.size)) },
             confirmButton = {
                 TextButton(onClick = {
@@ -253,8 +249,8 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
 
 @Composable
 private fun StorageFileRow(
-    store: ToolFiles,
     file: File,
+    isGrid: Boolean,
     inSelectMode: Boolean,
     selected: Boolean,
     onToggleSelect: (Boolean) -> Unit,
@@ -267,30 +263,13 @@ private fun StorageFileRow(
     LaunchedEffect(file.path, file.lastModified()) {
         thumbnail = mediaThumbnail(context, file.path, mime, 112)
     }
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(88.dp),
-        shape = RoundedCornerShape(16.dp),
-        color = prominentContainerColor(),
-        border = prominentContainerBorder()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .combinedClickable(
-                    onClick = {
-                        if (inSelectMode) onToggleSelect(!selected) else onOpenViewer()
-                    },
-                    onLongClick = {
-                        if (!inSelectMode) onEnterSelectMode()
-                    }
-                )
-                .padding(start = 12.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    AppListItem(
+        isGrid = isGrid,
+        onClick = { if (inSelectMode) onToggleSelect(!selected) else onOpenViewer() },
+        onLongClick = { if (!inSelectMode) onEnterSelectMode() },
+        icon = {
             Surface(
-                modifier = Modifier.size(56.dp),
+                modifier = Modifier.size(42.dp),
                 shape = RoundedCornerShape(12.dp),
                 color = nestedContainerColor(),
                 border = nestedContainerBorder()
@@ -311,9 +290,15 @@ private fun StorageFileRow(
                     )
                 }
             }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(file.name, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        },
+        actions = {
+            if (inSelectMode) Checkbox(checked = selected, onCheckedChange = onToggleSelect)
+        },
+        content = {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(file.name, style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
                     android.text.format.Formatter.formatFileSize(context, file.length()),
                     style = MaterialTheme.typography.bodySmall,
@@ -321,13 +306,6 @@ private fun StorageFileRow(
                     maxLines = 1
                 )
             }
-            if (inSelectMode) {
-                Checkbox(
-                    checked = selected,
-                    onCheckedChange = onToggleSelect,
-                    modifier = Modifier.padding(start = 4.dp)
-                )
-            }
         }
-    }
+    )
 }

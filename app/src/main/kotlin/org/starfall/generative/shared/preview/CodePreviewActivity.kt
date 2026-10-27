@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.preview
 
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -42,7 +43,9 @@ class CodePreviewActivity : ComponentActivity() {
                 var webView by remember { mutableStateOf<WebView?>(null) }
                 DisposableEffect(Unit) { onDispose { webView?.stopLoading(); webView?.destroy(); webView = null } }
                 Scaffold(topBar = {
-                    TopAppBar(title = { Text(stringResource(R.string.code_preview_title)) }, navigationIcon = {
+                    TopAppBar(
+                        colors = edgeToEdgeTopAppBarColors(),
+            title = { Text(stringResource(R.string.code_preview_title)) }, navigationIcon = {
                         IconButton(onClick = { finish() }) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) }
                     }, actions = {
                         if (document != null) IconButton(onClick = {

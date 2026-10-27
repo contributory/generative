@@ -1,5 +1,8 @@
 package org.starfall.generative.features.tools.ui
 
+import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -50,14 +53,15 @@ fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave:
     BackHandler(enabled = LocalScreenTransitionActive.current) { back() }
     Scaffold(
         topBar = { TopAppBar(
+        topBar = {     colors = edgeToEdgeTopAppBarColors(),
             title = { Text(stringResource(if (video) R.string.tool_video_settings else R.string.tool_image_settings)) },
             navigationIcon = { IconButton(onClick = { back() }) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                     actions = { Button(enabled = error == null, onClick = { parsed?.let { onSave(it, disabledParams) } }, modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(R.string.common_save)) } }
         ) }
     ) { padding ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding(),
-            contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
+            Modifier.fillMaxSize().consumeWindowInsets(padding).imePadding(),
+            contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
                 Text(provider.name + " / " + (provider.config.modelConfigs[config.modelId]?.displayName?.ifBlank { config.modelId } ?: config.modelId),

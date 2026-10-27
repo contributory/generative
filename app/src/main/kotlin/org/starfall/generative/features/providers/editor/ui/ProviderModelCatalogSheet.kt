@@ -1,10 +1,25 @@
 package org.starfall.generative.features.providers.editor.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.unit.lerp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,11 +49,12 @@ import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun ProviderModelCatalogSheet(
     provider: ModelProvider,
     selectedModels: Set<String>,
+    visible: Boolean = true,
     onFetchModels: (suspend (ModelProvider) -> List<DiscoveredModel>)?,
     onCatalogLoaded: (List<DiscoveredModel>) -> Unit,
     onToggle: (String) -> Unit,
@@ -54,9 +70,42 @@ internal fun ProviderModelCatalogSheet(
     var loadError by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableStateOf(0) }
     var query by remember { mutableStateOf("") }
+    var searchExpanded by remember { mutableStateOf(false) }
+    var searchFocused by remember { mutableStateOf(false) }
+    val searchFocus = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    fun collapseSearch() {
+        searchExpanded = false
+        searchFocused = false
+        query = ""
+        focusManager.clearFocus(force = true)
+        keyboard?.hide()
+    }
+    LaunchedEffect(searchExpanded, visible) {
+        if (searchExpanded && visible) {
+            withFrameNanos { }
+            searchFocus.requestFocus()
+        }
+    }
+    val imeVisible = WindowInsets.isImeVisible
+    var imeWasVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(imeVisible) {
+        if (imeVisible) imeWasVisible = true
+        else if (imeWasVisible) {
+            imeWasVisible = false
+            if (searchExpanded) collapseSearch()
+        }
+    }
+    LaunchedEffect(visible) {
+        // This composable also exists while closed: never clear an editor field's focus
+        // just because the model catalog has not been opened yet.
+        if (!visible && (searchExpanded || query.isNotEmpty())) collapseSearch()
+    }
     val context = LocalContext.current
     val discoveryUnavailable = stringResource(R.string.model_discovery_unavailable)
-    LaunchedEffect(refresh, discoveryIdentity) {
+    LaunchedEffect(visible, refresh, discoveryIdentity) {
+        if (!visible) return@LaunchedEffect
         loading = true
         loadError = null
         try {
@@ -76,39 +125,60 @@ internal fun ProviderModelCatalogSheet(
     val selectionDescription = stringResource(
         if (allVisibleSelected) R.string.provider_deselect_visible_models else R.string.select_all_visible_models
     )
-    AppSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconButton(onClick = { refresh++ }, enabled = !loading) {
-                    FluentIcon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.refresh_models))
+    if (!visible) return
+    AppSheet(
+        onDismissRequest = onDismiss,
+        // Keep the original opening height while fetching. Once the results arrive, let the
+        // actual list content determine the sheet height (capped below the status bar).
+        fixedHeightFraction = if (loading) 0.78f else null,
+        // Release a drag made during loading when transitioning to content-based sizing.
+        // After loading, normal manual resizing stays in the user's control.
+        contentKey = loading
+    ) {
+        Column(
+            Modifier.fillMaxWidth()
+                .then(if (loading) Modifier.fillMaxHeight() else Modifier)
+                .imePadding()
+                .pointerInput(searchExpanded) {
+                    // Like ConversationSideDrawer, tapping an unoccupied area dismisses search.
+                    if (searchExpanded) detectTapGestures(onTap = { collapseSearch() })
                 }
-                SelectableOutlinedTextField(query, { query = it }, label = { Text(stringResource(R.string.search_models)) },
-                    singleLine = true, modifier = Modifier.weight(1f))
-                TriStateCheckbox(
-                    state = when {
-                        allVisibleSelected -> ToggleableState.On
-                        visibleModels.any { it in selectedModels } -> ToggleableState.Indeterminate
-                        else -> ToggleableState.Off
-                    },
-                    onClick = { onSetSelection(visibleModels, !allVisibleSelected) },
-                    enabled = visibleModels.isNotEmpty(),
-                    modifier = Modifier.semantics {
-                        contentDescription = selectionDescription
-                    }
-                )
-            }
+        ) {
             if (loading) GenerativeLinearWavyProgressIndicator(Modifier.fillMaxWidth())
-            loadError?.let {
-                Text(it, color = MaterialTheme.colorScheme.error)
-                TextButton(onClick = { refresh++ }, enabled = !loading) { Text(stringResource(R.string.common_retry)) }
+            loadError?.let { error ->
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                        .testTag("provider-model-catalog-error"),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                ) {
+                    Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                        Text(error, style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { refresh++ }, enabled = !loading) {
+                                Text(stringResource(R.string.common_retry))
+                            }
+                            IconButton(onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.unable_to_load_models), error))
+                            }, modifier = Modifier.testTag("provider-model-catalog-copy-error")) {
+                                FluentIcon(Icons.Outlined.ContentCopy, stringResource(R.string.common_copy),
+                                    tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                }
             }
             LazyColumn(
                 Modifier
+                    // Wrap short results; long lists consume the maximum available height.
+                    .weight(1f, fill = loading)
                     .fillMaxWidth()
-                    .weight(1f, fill = false)
                     .testTag("provider-model-catalog-list"),
-                contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (visibleModels.isEmpty() && !loading && loadError == null) {
                     item { Text(stringResource(if (query.isBlank()) R.string.no_models_returned else R.string.no_matching_models), modifier = Modifier.padding(16.dp)) }
@@ -169,6 +239,73 @@ internal fun ProviderModelCatalogSheet(
                         }
                         }
                     }
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                // Match ConversationSideDrawer: search starts as a circular button, grows in
+                // place, receives focus only when opened, and collapses when focus/IME leaves.
+                val progress by animateFloatAsState(
+                    targetValue = if (searchExpanded) 1f else 0f,
+                    animationSpec = tween(260, easing = FastOutSlowInEasing),
+                    label = "catalogSearchProgress"
+                )
+                val collapsedWidth = 52.dp
+                val expandedWidth = (maxWidth - 112.dp).coerceAtLeast(collapsedWidth)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.width(lerp(collapsedWidth, expandedWidth, progress)).height(56.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (searchExpanded || progress > 0.01f) {
+                            SelectableOutlinedTextField(
+                                value = query, onValueChange = { query = it }, singleLine = true,
+                                placeholder = { Text(stringResource(R.string.search_models), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                leadingIcon = { FluentIcon(Icons.Default.Search, stringResource(R.string.search_models)) },
+                                trailingIcon = {
+                                    if (query.isNotEmpty()) IconButton(onClick = { query = "" }) {
+                                        FluentIcon(Icons.Default.Close, stringResource(R.string.sidebar_clear_search))
+                                    }
+                                },
+                                shape = RoundedCornerShape(28.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                                    .graphicsLayer { alpha = ((progress - 0.2f) / 0.5f).coerceIn(0f, 1f) }
+                                    .focusRequester(searchFocus)
+                                    .testTag("provider_model_catalog_search")
+                                    .onFocusChanged {
+                                        if (!it.isFocused && searchFocused && searchExpanded) collapseSearch()
+                                        searchFocused = it.isFocused
+                                    }
+                            )
+                        }
+                        if (progress < 0.35f) {
+                            OutlinedIconButton(
+                                onClick = { searchExpanded = true },
+                                shape = RoundedCornerShape(28.dp),
+                                modifier = Modifier.size(52.dp)
+                                    .graphicsLayer { alpha = (1f - progress / 0.35f).coerceIn(0f, 1f) }
+                                    .testTag("provider_model_catalog_search_button")
+                            ) { FluentIcon(Icons.Default.Search, stringResource(R.string.search_models)) }
+                        }
+                    }
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = { refresh++ }, enabled = !loading, modifier = Modifier.size(52.dp)) {
+                        FluentIcon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.refresh_models))
+                    }
+                    TriStateCheckbox(
+                        state = when {
+                            allVisibleSelected -> ToggleableState.On
+                            visibleModels.any { it in selectedModels } -> ToggleableState.Indeterminate
+                            else -> ToggleableState.Off
+                        },
+                        onClick = { onSetSelection(visibleModels, !allVisibleSelected) },
+                        enabled = visibleModels.isNotEmpty(),
+                        modifier = Modifier.semantics { contentDescription = selectionDescription }
+                    )
                 }
             }
         }

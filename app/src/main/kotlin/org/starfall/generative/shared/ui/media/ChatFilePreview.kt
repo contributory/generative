@@ -199,6 +199,7 @@ private fun FileCornerActions(reference: String, name: String, mime: String, sel
         AppAlertDialog(
             onDismissRequest = { saveError = null },
             title = { Text(stringResource(R.string.file_download_failed)) },
+            scrollableContent = false,
             text = {
                 Column(Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.6f).verticalScroll(rememberScrollState())) {
                     Text(name, style = MaterialTheme.typography.labelMedium)

@@ -2,17 +2,10 @@ package org.starfall.generative.features.machines.list.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,7 +24,7 @@ import org.starfall.generative.features.machines.shared.ui.RemoteTextField
 import org.starfall.generative.features.machines.shared.ui.remoteLiteralKeyboardOptions
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.ui.dialogs.AppDialog
-import org.starfall.generative.shared.ui.machines.MachineDialogTopBar
+import org.starfall.generative.shared.ui.machines.MachineDialogTitle
 
 private enum class ForwardType(val labelRes: Int) {
     LOCAL(R.string.remote_machine_forward_local),
@@ -62,103 +55,93 @@ internal fun PortForwardDialog(
         ForwardType.DYNAMIC -> dynamicPorts.isNotEmpty()
     }
 
-    AppDialog(onDismissRequest = onDismiss) {
-        Surface(shape = MaterialTheme.shapes.extraLarge, modifier = Modifier.fillMaxWidth().heightIn(max = 640.dp)) {
-            Column {
-                MachineDialogTopBar(
-                    title = stringResource(R.string.remote_machine_start_port_forward),
-                    machine = machine
+    AppDialog(
+        onDismissRequest = onDismiss,
+        title = { MachineDialogTitle(stringResource(R.string.remote_machine_start_port_forward), machine) },
+        content = {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                RemoteDropdownField(
+                    label = stringResource(R.string.remote_machine_forward_type),
+                    options = ForwardType.entries.map { it to stringResource(it.labelRes) },
+                    selected = selectedType,
+                    onSelect = { selectedType = it; error = null }
                 )
-                Column(
-                    Modifier
-                        .weight(1f, fill = false)
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    RemoteDropdownField(
-                        label = stringResource(R.string.remote_machine_forward_type),
-                        options = ForwardType.entries.map { it to stringResource(it.labelRes) },
-                        selected = selectedType,
-                        onSelect = { selectedType = it; error = null }
-                    )
-                    when (selectedType) {
-                        ForwardType.LOCAL -> {
-                            RemoteTextField(
-                                value = localText,
-                                onValueChange = { localText = it; error = null },
-                                label = stringResource(R.string.remote_machine_forward_local_rules),
-                                supporting = stringResource(R.string.remote_machine_forward_local_hint),
-                                keyboardOptions = remoteLiteralKeyboardOptions(),
-                                minLines = 3
-                            )
-                        }
-                        ForwardType.REMOTE -> {
-                            RemoteTextField(
-                                value = remoteText,
-                                onValueChange = { remoteText = it; error = null },
-                                label = stringResource(R.string.remote_machine_forward_remote_rules),
-                                supporting = stringResource(R.string.remote_machine_forward_remote_hint),
-                                keyboardOptions = remoteLiteralKeyboardOptions(),
-                                minLines = 3
-                            )
-                        }
-                        ForwardType.DYNAMIC -> {
-                            RemoteTextField(
-                                value = dynamicText,
-                                onValueChange = { input ->
-                                    val text = input.filter { it.isDigit() || it == ',' || it == ' ' }
-                                    dynamicText = text
-                                    error = null
-                                },
-                                label = stringResource(R.string.remote_machine_forward_dynamic_ports),
-                                supporting = stringResource(R.string.remote_machine_forward_dynamic_hint),
-                                // Raw password-style IME disables composition but still offers commas for the list.
-                                keyboardOptions = remoteLiteralKeyboardOptions()
-                            )
-                        }
+                when (selectedType) {
+                    ForwardType.LOCAL -> {
+                        RemoteTextField(
+                            value = localText,
+                            onValueChange = { localText = it; error = null },
+                            label = stringResource(R.string.remote_machine_forward_local_rules),
+                            supporting = stringResource(R.string.remote_machine_forward_local_hint),
+                            keyboardOptions = remoteLiteralKeyboardOptions(),
+                            minLines = 3
+                        )
                     }
-                    error?.let { RemoteErrorText(it) }
+                    ForwardType.REMOTE -> {
+                        RemoteTextField(
+                            value = remoteText,
+                            onValueChange = { remoteText = it; error = null },
+                            label = stringResource(R.string.remote_machine_forward_remote_rules),
+                            supporting = stringResource(R.string.remote_machine_forward_remote_hint),
+                            keyboardOptions = remoteLiteralKeyboardOptions(),
+                            minLines = 3
+                        )
+                    }
+                    ForwardType.DYNAMIC -> {
+                        RemoteTextField(
+                            value = dynamicText,
+                            onValueChange = { input ->
+                                val text = input.filter { it.isDigit() || it == ',' || it == ' ' }
+                                dynamicText = text
+                                error = null
+                            },
+                            label = stringResource(R.string.remote_machine_forward_dynamic_ports),
+                            supporting = stringResource(R.string.remote_machine_forward_dynamic_hint),
+                            // Raw password-style IME disables composition but still offers commas for the list.
+                            keyboardOptions = remoteLiteralKeyboardOptions()
+                        )
+                    }
                 }
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        enabled = hasPorts,
-                        onClick = {
-                            // Only the selected kind is started. Other kinds keep their saved rules
-                            // for the next time this dialog opens, but are not active in this session.
-                            val nextConfig = when (selectedType) {
-                                ForwardType.LOCAL -> initial.copy(
-                                    localEnabled = true,
-                                    localRules = localText.splitEntries(),
-                                    remoteEnabled = false,
-                                    dynamicEnabled = false
-                                )
-                                ForwardType.REMOTE -> initial.copy(
-                                    localEnabled = false,
-                                    remoteEnabled = true,
-                                    remoteRules = remoteText.splitEntries(),
-                                    dynamicEnabled = false
-                                )
-                                ForwardType.DYNAMIC -> initial.copy(
-                                    localEnabled = false,
-                                    remoteEnabled = false,
-                                    dynamicEnabled = true,
-                                    dynamicPorts = dynamicPorts
-                                )
-                            }
-                            runCatching { nextConfig.validated() }
-                                .onSuccess { config -> onSaveAndStart(machine.copy(portForwarding = config)) }
-                                .onFailure { failure -> error = failure.message }
-                        }
-                    ) { Text(stringResource(R.string.remote_machine_start_port_forward)) }
-                }
+                error?.let { RemoteErrorText(it) }
             }
+        },
+        buttons = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+            Button(
+                enabled = hasPorts,
+                onClick = {
+                    // Only the selected kind is started. Other kinds keep their saved rules
+                    // for the next time this dialog opens, but are not active in this session.
+                    val nextConfig = when (selectedType) {
+                        ForwardType.LOCAL -> initial.copy(
+                            localEnabled = true,
+                            localRules = localText.splitEntries(),
+                            remoteEnabled = false,
+                            dynamicEnabled = false
+                        )
+                        ForwardType.REMOTE -> initial.copy(
+                            localEnabled = false,
+                            remoteEnabled = true,
+                            remoteRules = remoteText.splitEntries(),
+                            dynamicEnabled = false
+                        )
+                        ForwardType.DYNAMIC -> initial.copy(
+                            localEnabled = false,
+                            remoteEnabled = false,
+                            dynamicEnabled = true,
+                            dynamicPorts = dynamicPorts
+                        )
+                    }
+                    runCatching { nextConfig.validated() }
+                        .onSuccess { config -> onSaveAndStart(machine.copy(portForwarding = config)) }
+                        .onFailure { failure -> error = failure.message }
+                }
+            ) { Text(stringResource(R.string.remote_machine_start_port_forward)) }
         }
-    }
+    )
 }

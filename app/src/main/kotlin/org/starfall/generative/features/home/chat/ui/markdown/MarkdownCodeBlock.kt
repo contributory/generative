@@ -8,10 +8,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import org.starfall.generative.shared.ui.dialogs.AppDialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -213,36 +216,36 @@ private fun CodeBlockDialog(
     isStreaming: Boolean,
     onDismiss: () -> Unit
 ) {
-    Dialog(
+    val closeLabel = stringResource(R.string.code_block_close)
+    AppDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(Modifier.fillMaxSize()) {
-                Row(
-                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(language.ifBlank { "code" }, Modifier.weight(1f),
-                        style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace))
-                    IconButton(onClick = onDismiss) {
-                        FluentIcon(Icons.Outlined.Close, stringResource(R.string.code_block_close))
-                    }
-                }
-                Box(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
-                    CodeBlockSurface(
-                        language = language,
-                        code = code,
-                        modifier = Modifier.padding(vertical = 4.dp),
-                        originalCode = code,
-                        isStreaming = isStreaming,
-                        onExpansionChange = null,
-                        expanded = true
-                    )
-                }
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        edgeToEdge = true,
+        shape = RectangleShape,
+        containerColor = MaterialTheme.colorScheme.background,
+        title = {
+            Text(language.ifBlank { "code" },
+                style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace))
+        },
+        content = {
+            Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                CodeBlockSurface(
+                    language = language,
+                    code = code,
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    originalCode = code,
+                    isStreaming = isStreaming,
+                    onExpansionChange = null,
+                    expanded = true
+                )
+            }
+        },
+        buttons = {
+            TextButton(onClick = onDismiss, modifier = Modifier.semantics { contentDescription = closeLabel }) {
+                Text(stringResource(R.string.common_close))
             }
         }
-    }
+    )
 }
 
 /** Only visible/prefetched code lines are composed; pathological individual lines are safely abbreviated. */

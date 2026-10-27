@@ -1,24 +1,15 @@
 package org.starfall.generative.shared.ui.menus
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
-import org.starfall.generative.shared.theme.LocalAmoledMode
-import org.starfall.generative.shared.ui.layout.prominentContainerBorder
-import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @Composable
 fun ItemContextMenu(
@@ -40,58 +31,50 @@ fun ItemContextMenu(
             FluentIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.common_more_options))
         }
 
-        MaterialTheme(
-            shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(14.dp))
+        AppDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
         ) {
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                containerColor = prominentContainerColor(),
-                tonalElevation = if (LocalAmoledMode.current) 0.dp else 6.dp,
-                shadowElevation = if (LocalAmoledMode.current) 0.dp else 8.dp,
-                border = prominentContainerBorder()
+            if (firstActionText != null && onFirstAction != null &&
+                (firstActionIcon != null || firstActionImageVector != null)
             ) {
-                if (firstActionText != null && onFirstAction != null &&
-                    (firstActionIcon != null || firstActionImageVector != null)
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(firstActionText) },
-                        leadingIcon = {
-                            if (firstActionImageVector != null) {
-                                FluentIcon(firstActionImageVector, contentDescription = null)
-                            } else {
-                                FluentIcon(firstActionIcon!!, contentDescription = null)
-                            }
-                        },
-                        onClick = {
-                            expanded = false
-                            onFirstAction()
-                        }
-                    )
-                }
-                if (showEdit) DropdownMenuItem(
-                    text = { Text(stringResource(R.string.common_edit)) },
-                    leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
-                    onClick = {
-                        expanded = false
-                        onEdit()
-                    }
-                )
-                if (showDelete) DropdownMenuItem(
-                    text = { Text(stringResource(R.string.common_delete), color = deleteColor) },
+                DropdownMenuItem(
+                    text = { Text(firstActionText) },
                     leadingIcon = {
-                        FluentIcon(
-                            Icons.Outlined.Delete,
-                            contentDescription = null,
-                            tint = deleteColor
-                        )
+                        if (firstActionImageVector != null) {
+                            FluentIcon(firstActionImageVector, contentDescription = null)
+                        } else {
+                            FluentIcon(firstActionIcon!!, contentDescription = null)
+                        }
                     },
                     onClick = {
                         expanded = false
-                        onDelete()
+                        onFirstAction()
                     }
                 )
             }
+            if (showEdit) DropdownMenuItem(
+                text = { Text(stringResource(R.string.common_edit)) },
+                leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
+                onClick = {
+                    expanded = false
+                    onEdit()
+                }
+            )
+            if (showDelete) DropdownMenuItem(
+                text = { Text(stringResource(R.string.common_delete), color = deleteColor) },
+                leadingIcon = {
+                    FluentIcon(
+                        Icons.Outlined.Delete,
+                        contentDescription = null,
+                        tint = deleteColor
+                    )
+                },
+                onClick = {
+                    expanded = false
+                    onDelete()
+                }
+            )
         }
     }
 }

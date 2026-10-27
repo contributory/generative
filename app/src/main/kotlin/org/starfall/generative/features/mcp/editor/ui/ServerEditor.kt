@@ -1,6 +1,6 @@
 package org.starfall.generative.features.mcp.editor.ui
-import org.starfall.generative.shared.ui.text.HeaderNameField
 
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
@@ -83,7 +84,10 @@ fun ServerEditor(
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Scaffold(topBar = {
             TopAppBar(
-                title = { HeaderNameField(name, { name = it }, placeholder = stringResource(R.string.common_name), enabled = selectedTab == 0) },
+                colors = edgeToEdgeTopAppBarColors(),
+                title = {
+                    Text(name.trim().ifEmpty { stringResource(R.string.common_name) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                },
                 navigationIcon = { IconButton(onClick = onDismiss) {
                     FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                 } },
@@ -97,7 +101,7 @@ fun ServerEditor(
                     Tab(selectedTab == 1, { selectedTab = 1 }, text = { Text(stringResource(R.string.common_tools), fontWeight = FontWeight.SemiBold) })
                 }
                 if (selectedTab == 0) McpConnectionSettings(
-                    name = name, icon = serverIcon, onIconChange = { serverIcon = it }, onIconBusyChange = { iconImporting = it },
+                    name = name, onNameChange = { name = it }, icon = serverIcon, onIconChange = { serverIcon = it }, onIconBusyChange = { iconImporting = it },
                     protocol = protocol, onProtocolChange = { protocol = it }, url = url,
                     onUrlChange = { changed -> if (authMethod == McpAuthMethod.OAUTH2 && changed.trim() != url.trim()) oauthAuthorized = false; url = changed },
                     authMethod = authMethod, onAuthMethodChange = { method ->

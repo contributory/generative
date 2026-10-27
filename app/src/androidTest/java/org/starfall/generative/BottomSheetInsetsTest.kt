@@ -95,13 +95,16 @@ class BottomSheetInsetsTest {
             }
         }
         val sheetBottom = height - maxOf(bottomInset, keyboardInset)
-        // Material draws the surface behind system bars; interactive content stays safe.
+        // Both the surface and its interactive content must stay below the status bar.
         compose.waitUntil(10_000) {
             val content = compose.onNodeWithTag("content").fetchSemanticsNode().boundsInRoot
-            content.bottom <= sheetBottom + 1 && content.top >= topInset - 1
+            val sheet = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot
+            content.bottom <= sheetBottom + 1 && content.top >= topInset - 1 && sheet.top >= topInset - 1
         }
         val content = compose.onNodeWithTag("content").getUnclippedBoundsInRoot()
+        val sheet = compose.onNodeWithTag("bottom-sheet-window").getUnclippedBoundsInRoot()
         with(compose.density) {
+            assertTrue("Sheet surface must stay below status bar", sheet.top.toPx() >= topInset - 1)
             assertTrue("Content must stay below status bar", content.top.toPx() >= topInset - 1)
             assertTrue("Content must stay above navigation bar/keyboard", content.bottom.toPx() <= sheetBottom + 1)
             if (fullHeight) assertEquals(sheetBottom.toFloat(), content.bottom.toPx(), 1f)

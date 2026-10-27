@@ -26,16 +26,16 @@ import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
 
 @Composable
-fun DefaultModelSelector(
-    provider: ModelProvider?,
-    modelId: String,
-    model: ModelConfiguration?,
-    onClick: () -> Unit
+internal fun DefaultSelectionItem(
+    title: String,
+    subtitle: String,
+    icon: @Composable () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val modelName = model?.displayName?.ifBlank { modelId }
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = nestedContainerColor(),
         border = nestedContainerBorder()
@@ -45,24 +45,16 @@ fun DefaultModelSelector(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            EntityIcon(
-                image = model?.icon,
-                modifier = Modifier.size(48.dp),
-                text = modelId.substringAfterLast('/').take(1).uppercase(),
-                fallback = if (model == null) Icons.Outlined.Add else null,
-                matchName = modelName,
-                fallbackMatchName = modelId,
-                model = true
-            )
+            icon()
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    modelName ?: stringResource(R.string.select_model),
+                    title,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    if (model == null) stringResource(R.string.tool_select_model_hint) else provider?.name.orEmpty(),
+                    subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -76,4 +68,30 @@ fun DefaultModelSelector(
             )
         }
     }
+}
+
+@Composable
+fun DefaultModelSelector(
+    provider: ModelProvider?,
+    modelId: String,
+    model: ModelConfiguration?,
+    onClick: () -> Unit
+) {
+    val modelName = model?.displayName?.ifBlank { modelId }
+    DefaultSelectionItem(
+        title = modelName ?: stringResource(R.string.select_model),
+        subtitle = if (model == null) stringResource(R.string.tool_select_model_hint) else provider?.name.orEmpty(),
+        icon = {
+            EntityIcon(
+                image = model?.icon,
+                modifier = Modifier.size(48.dp),
+                text = modelId.substringAfterLast('/').take(1).uppercase(),
+                fallback = if (model == null) Icons.Outlined.Add else null,
+                matchName = modelName,
+                fallbackMatchName = modelId,
+                model = true
+            )
+        },
+        onClick = onClick
+    )
 }

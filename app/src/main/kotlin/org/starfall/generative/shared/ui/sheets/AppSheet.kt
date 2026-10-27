@@ -53,12 +53,30 @@ internal val LocalBottomSheetManuallyResized = compositionLocalOf { false }
 /** Tallest content the sheet can show (window cap minus drag handle and navigation inset). */
 internal val LocalBottomSheetMaxContentHeight = compositionLocalOf { 0.dp }
 
-/** Let downward motion at the list start reach Material; contain overscroll at the list end. */
-internal fun bottomSheetListScrollBoundary(): NestedScrollConnection = object : NestedScrollConnection {
+/** Expand before scrolling upward; let downward motion at the list start reach Material. */
+internal fun bottomSheetListScrollBoundary(
+    expand: (Float) -> Float = { 0f }
+): NestedScrollConnection = object : NestedScrollConnection {
+    private var upwardFling = false
+
+    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+        if (source == NestedScrollSource.UserInput) upwardFling = false
+        return if (available.y < 0f && (source == NestedScrollSource.UserInput || upwardFling)) {
+            Offset(0f, expand(available.y).coerceIn(available.y, 0f))
+        } else Offset.Zero
+    }
+
+    override suspend fun onPreFling(available: Velocity): Velocity {
+        upwardFling = available.y < 0f
+        return Velocity.Zero
+    }
+
     override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset =
         if (source == NestedScrollSource.UserInput && available.y < 0f) Offset(0f, available.y) else Offset.Zero
-    override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity =
-        if (available.y < 0f) Velocity(0f, available.y) else Velocity.Zero
+    override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+        upwardFling = false
+        return if (available.y < 0f) Velocity(0f, available.y) else Velocity.Zero
+    }
 }
 
 /** Material owns the dialog, scrim, accessibility, insets and show/hide lifecycle. */
@@ -88,8 +106,8 @@ fun AppSheet(
         initialValue = SheetValue.Hidden,
         enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
     )
-    val scrollBoundary = remember { bottomSheetListScrollBoundary() }
     val windowHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.roundToPx() }
+    val windowBoundsHeight = rememberSheetWindowHeight(windowHeight)
     var requestedHeight by remember { mutableStateOf<Float?>(null) }
     var previousContentKey by remember { mutableStateOf(contentKey) }
     if (contentKey != previousContentKey) {
@@ -116,16 +134,27 @@ fun AppSheet(
         containerColor = containerColor,
         scrimColor = modalScrimColor(BottomSheetDefaults.ScrimColor),
         dragHandle = null,
+        // The surface itself is capped below the top safe inset; adding it as content
+        // padding could make Material's surface extend back into the status bar.
         contentWindowInsets = {
-            WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
+            WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
         }
     ) {
         ConfigureBottomSheetWindow(navigationBarColor ?: containerColor)
-        // FlexibleBottomSheet snaps to segmented sizes. Retain the app's free-form
-        // content sizing in this small wrapper, without owning a dialog/window.
+        // Retain free-form sizing while Material owns the dialog and its lifecycle.
         BoxWithConstraints(Modifier.fillMaxWidth().testTag("bottom-sheet-window")) {
             val density = LocalDensity.current
-            val bounds = bottomSheetHeightBounds(windowHeight, constraints.maxHeight)
+            val topInsetPx = WindowInsets.safeDrawing.getTop(density)
+            val bounds = bottomSheetHeightBounds(windowHeight, constraints.maxHeight, topInsetPx, windowBoundsHeight)
+            val scrollBoundary = remember(bounds) {
+                bottomSheetListScrollBoundary { availableY ->
+                    val currentHeight = (requestedHeight ?: measuredHeight.toFloat())
+                        .coerceIn(bounds.minimum.toFloat(), bounds.maximum.toFloat())
+                    val consumed = bounds.consumeUpwardScroll(currentHeight, availableY)
+                    if (consumed < 0f) requestedHeight = currentHeight - consumed
+                    consumed
+                }
+            }
             val bottomInsetPx = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).getBottom(density)
             val dragHandlePx = with(density) { dragHandleHeight.roundToPx() }
             val effectiveMinSheetHeight = fixedHeightFraction?.let { fraction ->
@@ -259,6 +288,22 @@ private data class ResizeDrag(
     val startY: Float,
     val startOffsetY: Float = 0f
 )
+
+/** The decor height includes system bars even on versions where screenHeightDp excludes them. */
+@Composable
+private fun rememberSheetWindowHeight(fallback: Int): Int {
+    val root = LocalView.current.rootView
+    var height by remember(root) { mutableIntStateOf(root.height) }
+    DisposableEffect(root) {
+        val listener = View.OnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ ->
+            height = (bottom - top).coerceAtLeast(0)
+        }
+        root.addOnLayoutChangeListener(listener)
+        height = root.height
+        onDispose { root.removeOnLayoutChangeListener(listener) }
+    }
+    return height.takeIf { it > 0 } ?: fallback
+}
 
 /** Plain holder written while drawing; deliberately not snapshot state, so it never triggers redraws. */
 private class SettledBrush { var brush: Brush? = null }

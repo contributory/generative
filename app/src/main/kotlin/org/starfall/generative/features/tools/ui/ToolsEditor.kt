@@ -1,10 +1,12 @@
 package org.starfall.generative.features.tools.ui
 
+import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
+import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -68,102 +70,58 @@ fun ToolsEditor(
 ) {
     var choosing by remember { mutableStateOf<String?>(null) }
     var editingMedia by remember { mutableStateOf<String?>(null) }
-    var editingMediaCustom by remember { mutableStateOf(false) }
+
     val mediaConfig = settings.system[editingMedia] ?: SystemToolConfig()
     val mediaProvider = providers.find { it.id == mediaConfig.providerId }
 
-    fun openMediaSettings(name: String, custom: Boolean) {
-        editingMedia = name
-        editingMediaCustom = custom
-    }
+    fun openMediaSettings(name: String) { editingMedia = name }
 
     SlideScreenContent(
         editor = editingMedia?.let { name -> mediaProvider?.let { Triple(name, it, mediaConfig) } },
         label = stringResource(R.string.tool_settings_media_label)
     ) { page ->
         if (page != null) {
-            if (editingMediaCustom) {
-                MediaRequestChainSettings(
-                    page.second,
-                    page.third,
-                    onSave = { profiles, activeId ->
-                        val updatedConfig = if (page.first == "generate_video") {
-                            page.third.withVideoRequestProfiles(profiles, activeId)
-                        } else {
-                            page.third.withImageRequestProfiles(profiles, activeId)
+            MediaRequestChainSettings(
+                provider = page.second,
+                config = page.third,
+                onSave = { profiles, activeId ->
+                    val video = page.first == "generate_video"
+                    val updated = page.third.withMediaProfiles(video, profiles)
+                    val selected = updated.mediaProfile(video, activeId)
+                    val newConfig = if (video) updated.copy(
+                        activeVideoRequestProfileId = selected.id, videoGenerationMode = selected.mode
+                    ) else updated.copy(
+                        activeImageRequestProfileId = selected.id, imageGenerationMode = selected.mode
+                    )
+                    onSave(page.first, newConfig)
+                    page.second.config.modelConfigs[page.third.modelId]?.let { model ->
+                        onSaveModelConfiguration(page.third.providerId, page.third.modelId,
+                            model.copy(mediaApiType = selected.mode, mediaRequestProfileId = selected.id))
+                    }
+                    // Repair deleted profile references; preserve selections of every other model.
+                    val kind = if (video) ModelType.VIDEO_GENERATION else ModelType.IMAGE_GENERATION
+                    providers.forEach { source ->
+                        source.config.modelConfigs.forEach { (id, model) ->
+                            if (model.modelType == kind && model.mediaRequestProfileId.isNotBlank() &&
+                                model.mediaRequestProfileId !in profiles) {
+                                val fallback = newConfig.mediaProfile(video, "")
+                                onSaveModelConfiguration(source.id, id, model.copy(
+                                    mediaRequestProfileId = fallback.id, mediaApiType = fallback.mode
+                                ))
+                            }
                         }
-                        onSave(page.first, updatedConfig)
-                        page.second.config.modelConfigs[page.third.modelId]?.let { model ->
-                            onSaveModelConfiguration(
-                                page.third.providerId,
-                                page.third.modelId,
-                                model.copy(
-                                    mediaApiType = MediaGenerationMode.CUSTOM,
-                                    mediaRequestProfileId = activeId
-                                )
-                            )
-                        }
-                        editingMedia = null
-                    },
-                    onAutoSave = { profiles, activeId ->
-                        val updatedConfig = if (page.first == "generate_video") {
-                            page.third.withVideoRequestProfiles(profiles, activeId)
-                        } else {
-                            page.third.withImageRequestProfiles(profiles, activeId)
-                        }
-                        onSave(page.first, updatedConfig)
-                        page.second.config.modelConfigs[page.third.modelId]?.let { model ->
-                            onSaveModelConfiguration(
-                                page.third.providerId,
-                                page.third.modelId,
-                                model.copy(
-                                    mediaApiType = MediaGenerationMode.CUSTOM,
-                                    mediaRequestProfileId = activeId
-                                )
-                            )
-                        }
-                    },
-                    onBack = { editingMedia = null },
-                    video = page.first == "generate_video"
-                )
-            } else {
-                ImageToolSettings(
-                    page.second,
-                    page.third,
-                    onSave = { options, disabledParams ->
-                        val updatedConfig = if (page.first == "generate_video") {
-                            page.third.withVideoOptions(options).copy(
-                                disabledParams = disabledParams,
-                                videoGenerationMode = MediaGenerationMode.DEFAULT
-                            )
-                        } else {
-                            page.third.withImageOptions(options).copy(
-                                disabledParams = disabledParams,
-                                imageGenerationMode = MediaGenerationMode.DEFAULT
-                            )
-                        }
-                        onSave(page.first, updatedConfig)
-                        page.second.config.modelConfigs[page.third.modelId]?.let { model ->
-                            onSaveModelConfiguration(
-                                page.third.providerId,
-                                page.third.modelId,
-                                model.copy(
-                                    mediaApiType = MediaGenerationMode.DEFAULT,
-                                    mediaRequestProfileId = ""
-                                )
-                            )
-                        }
-                        editingMedia = null
-                    },
-                    onBack = { editingMedia = null },
-                    video = page.first == "generate_video"
-                )
-            }
+                    }
+                    editingMedia = null
+                },
+                onBack = { editingMedia = null },
+                video = page.first == "generate_video"
+            )
         } else {
             BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
             Scaffold(
                 topBar = {
                     TopAppBar(
+                        colors = edgeToEdgeTopAppBarColors(),
                         title = { Text(stringResource(R.string.common_feature_tools)) },
                         navigationIcon = {
                             IconButton(onClick = onBack) {
@@ -174,8 +132,8 @@ fun ToolsEditor(
                 }
             ) { padding ->
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(16.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 16.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     item {
@@ -191,9 +149,9 @@ fun ToolsEditor(
                         val provider = providers.find { it.id == config.providerId }
                         val model = provider?.config?.modelConfigs?.get(config.modelId)
                         val image = name == "generate_image"
-                        val generationMode = model?.mediaApiType
-                            ?: if (image) config.imageGenerationMode else config.videoGenerationMode
-                        val available = systemMediaToolAvailable(name, config, providers, generationMode)
+                        val selectedProfile = config.selectedMediaProfile(!image, model)
+                        val available = systemMediaToolAvailable(name, config, providers, selectedProfile.mode)
+                        val profiles = config.mediaProfiles(!image)
                         var apiTypeExpanded by remember(name, config.providerId, config.modelId) {
                             mutableStateOf(false)
                         }
@@ -241,119 +199,63 @@ fun ToolsEditor(
                                 Spacer(Modifier.height(8.dp))
                                 HorizontalDivider()
                                 Spacer(Modifier.height(8.dp))
-                                val defaultModeAvailable = provider?.type?.isOpenAi == true ||
-                                    provider?.type == ModelApiType.GOOGLE
-                                val customProfile = if (generationMode == MediaGenerationMode.CUSTOM) {
-                                    if (image) config.activeImageRequestProfile else config.activeVideoRequestProfile
-                                } else null
-                                ExposedDropdownMenuBox(
-                                    expanded = apiTypeExpanded,
-                                    onExpandedChange = { apiTypeExpanded = !apiTypeExpanded }
-                                ) {
-                                    SelectableOutlinedTextField(
-                                        value = stringResource(
-                                            if (generationMode == MediaGenerationMode.DEFAULT) {
-                                                R.string.common_default
-                                            } else {
-                                                R.string.media_chain_custom
-                                            }
-                                        ),
-                                        onValueChange = {},
-                                        readOnly = true,
-                                        label = { Text(stringResource(R.string.media_api_type)) },
-                                        trailingIcon = {
-                                            ExposedDropdownMenuDefaults.TrailingIcon(apiTypeExpanded)
-                                        },
-                                        modifier = Modifier.menuAnchor(
-                                            ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                                            enabled = true
-                                        ).fillMaxWidth()
-                                    )
-                                    ExposedDropdownMenu(
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    ExposedDropdownMenuBox(
                                         expanded = apiTypeExpanded,
-                                        onDismissRequest = { apiTypeExpanded = false }
+                                        onExpandedChange = { apiTypeExpanded = !apiTypeExpanded },
+                                        modifier = Modifier.weight(1f)
                                     ) {
-                                        listOf(
-                                            MediaGenerationMode.DEFAULT,
-                                            MediaGenerationMode.CUSTOM
-                                        ).forEach { mode ->
-                                            DropdownMenuItem(
-                                                text = {
-                                                    Text(
-                                                        stringResource(
-                                                            if (mode == MediaGenerationMode.DEFAULT) {
-                                                                R.string.common_default
-                                                            } else {
-                                                                R.string.media_chain_custom
-                                                            }
-                                                        )
-                                                    )
-                                                },
-                                                onClick = {
-                                                    if (mode != MediaGenerationMode.DEFAULT || defaultModeAvailable) {
-                                                        val updatedModel = (model ?: ModelConfiguration()).copy(
-                                                            mediaApiType = mode,
-                                                            mediaRequestProfileId = if (mode == MediaGenerationMode.DEFAULT) {
-                                                                ""
-                                                            } else {
-                                                                model?.mediaRequestProfileId.orEmpty()
-                                                            }
-                                                        )
+                                        SelectableOutlinedTextField(
+                                            value = selectedProfile.name,
+                                            onValueChange = {},
+                                            readOnly = true,
+                                            label = { Text(stringResource(R.string.media_api_type)) },
+                                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(apiTypeExpanded) },
+                                            modifier = Modifier.menuAnchor(
+                                                ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true
+                                            ).fillMaxWidth()
+                                        )
+                                        AppExposedDropdownMenu(apiTypeExpanded, { apiTypeExpanded = false }) {
+                                            profiles.values.forEach { profile ->
+                                                DropdownMenuItem(
+                                                    text = { Text(profile.name + " · " +
+                                                        stringResource(if (profile.mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom)) },
+                                                    onClick = {
                                                         if (provider != null && config.modelId.isNotBlank()) {
-                                                            onSaveModelConfiguration(
-                                                                config.providerId,
-                                                                config.modelId,
-                                                                updatedModel
-                                                            )
+                                                            onSaveModelConfiguration(config.providerId, config.modelId,
+                                                                (model ?: ModelConfiguration()).copy(
+                                                                    mediaApiType = profile.mode,
+                                                                    mediaRequestProfileId = profile.id
+                                                                ))
                                                         }
-                                                        onSave(
-                                                            name,
-                                                            if (image) config.withImageGenerationMode(mode)
-                                                            else config.withVideoGenerationMode(mode)
-                                                        )
+                                                        onSave(name, if (image) config.copy(
+                                                            activeImageRequestProfileId = profile.id,
+                                                            imageGenerationMode = profile.mode
+                                                        ) else config.copy(
+                                                            activeVideoRequestProfileId = profile.id,
+                                                            videoGenerationMode = profile.mode
+                                                        ))
+                                                        apiTypeExpanded = false
                                                     }
-                                                    apiTypeExpanded = false
-                                                }
-                                            )
+                                                )
+                                            }
                                         }
                                     }
-                                }
-                                if (generationMode == MediaGenerationMode.CUSTOM) {
-                                    Text(
-                                        if (customProfile == null) {
-                                            stringResource(R.string.media_chain_custom_not_configured)
-                                        } else {
-                                            stringResource(R.string.media_chain_custom_summary)
-                                        },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (customProfile == null) {
-                                            MaterialTheme.colorScheme.error
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        }
-                                    )
-                                    IconButton(onClick = { openMediaSettings(name, true) }) {
-                                        FluentIcon(
-                                            Icons.Outlined.Settings,
-                                            stringResource(R.string.media_chain_edit_custom)
-                                        )
-                                    }
-                                } else {
-                                    Text(
-                                        stringResource(R.string.media_chain_default_settings_hint),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
                                     IconButton(
-                                        onClick = { if (defaultModeAvailable) openMediaSettings(name, false) },
-                                        enabled = defaultModeAvailable
+                                        onClick = { openMediaSettings(name) },
+                                        enabled = provider != null,
+                                        modifier = Modifier.padding(start = 6.dp)
                                     ) {
-                                        FluentIcon(
-                                            Icons.Outlined.Settings,
-                                            stringResource(R.string.media_chain_open_default_settings)
-                                        )
+                                        FluentIcon(Icons.Outlined.FormatListBulleted,
+                                            stringResource(if (image) R.string.media_image_gen_profiles else R.string.media_video_gen_profiles))
                                     }
                                 }
+                                Text(
+                                    stringResource(if (selectedProfile.mode == MediaGenerationMode.DEFAULT)
+                                        R.string.media_profile_default_hint else R.string.media_chain_custom_summary),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }

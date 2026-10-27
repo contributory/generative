@@ -2,6 +2,9 @@
 
 package org.starfall.generative.features.machines.shared.ui
 
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
+import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
+import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,9 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon
 import androidx.compose.material3.IconButton
@@ -67,6 +68,7 @@ internal fun RemoteMachinesTopBar(
     actions: @Composable () -> Unit = {}
 ) {
     TopAppBar(
+        colors = edgeToEdgeTopAppBarColors(),
         modifier = modifier,
         title = {
             Column {
@@ -188,7 +190,7 @@ internal fun <T> RemoteDropdownField(
             trailingIcon = { TrailingIcon(expanded) },
             modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
         )
-        ExposedDropdownMenu(expanded, { expanded = false }) {
+        AppExposedDropdownMenu(expanded, { expanded = false }) {
             options.forEach { (value, text) ->
                 DropdownMenuItem(text = { Text(text) }, onClick = { onSelect(value); expanded = false })
             }

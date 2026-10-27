@@ -2,16 +2,14 @@ package org.starfall.generative
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.fetchSemanticsNode
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNode
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -70,6 +68,10 @@ class AgentSkillsTest {
         compose.onNodeWithTag("agent_skill_name_input").assertDoesNotExist()
         compose.onNodeWithTag("agent_skill_description_input").assertDoesNotExist()
         compose.onNodeWithTag("agent_skill_content_input").assertDoesNotExist()
+        val editorSize = compose.onNodeWithTag("agent_skill_document_input").fetchSemanticsNode().boundsInRoot
+        val screenSize = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        assertTrue("Skill editor should use the full available screen width", editorSize.width > screenSize.width * 0.85f)
+        assertTrue("Skill editor should occupy the screen, not a single growing input", editorSize.height > screenSize.height * 0.65f)
         compose.onNodeWithTag("agent_skill_document_input")
             .assertTextContains("---", substring = true)
             .assertTextContains("name: new-agent-skill", substring = true)

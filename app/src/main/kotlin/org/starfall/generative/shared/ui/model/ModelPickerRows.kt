@@ -21,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.theme.LocalAmoledMode
@@ -92,13 +93,13 @@ internal fun ModelPickerProviderRow(
             .combinedClickable(onClick = onToggle, onLongClick = onEdit)
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             FluentIcon(
                 if (collapsed) Icons.Default.KeyboardArrowRight else Icons.Default.KeyboardArrowDown,
                 contentDescription = stringResource(if (collapsed) R.string.expand_group else R.string.collapse_group, provider.name),
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(18.dp)
             )
             Spacer(Modifier.width(4.dp))
             ProviderMark(
@@ -111,7 +112,7 @@ internal fun ModelPickerProviderRow(
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
                  color = if (hasSelectedModel) MaterialTheme.colorScheme.onPrimaryContainer
                      else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
                  fontWeight = FontWeight.Medium
@@ -121,7 +122,7 @@ internal fun ModelPickerProviderRow(
                      Icons.Filled.Check,
                      contentDescription = null,
                      tint = MaterialTheme.colorScheme.primary,
-                     modifier = Modifier.size(18.dp)
+                     modifier = Modifier.size(16.dp)
                  )
              }
         }

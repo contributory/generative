@@ -5,19 +5,36 @@ import android.content.ContextWrapper
 import android.graphics.drawable.ColorDrawable
 import android.view.View
 import androidx.compose.material3.AlertDialogDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.Surface
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
@@ -26,6 +43,7 @@ import java.util.IdentityHashMap
 import org.starfall.generative.shared.theme.AmoledModalScrim
 import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.theme.LocalDarkMode
+import org.starfall.generative.shared.ui.layout.windowHeightIn
 
 /** One tint on the activity background, even when a dialog is opened from a sheet. */
 private class DialogBackdrop(val drawable: ColorDrawable, val listener: View.OnLayoutChangeListener, var users: Int = 0)
@@ -99,49 +117,101 @@ private fun ConfigureAmoledDialogWindow() {
     }
 }
 
+/** Every dialog has a fixed title and action area around its independently scrollable content. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AppDialog(
     onDismissRequest: () -> Unit,
+    title: @Composable () -> Unit,
+    content: @Composable () -> Unit,
+    buttons: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
     properties: DialogProperties = DialogProperties(),
-    content: @Composable () -> Unit
+    edgeToEdge: Boolean = false,
+    scrollableContent: Boolean = false,
+    icon: (@Composable () -> Unit)? = null,
+    shape: Shape = AlertDialogDefaults.shape,
+    containerColor: Color = AlertDialogDefaults.containerColor,
+    iconContentColor: Color = AlertDialogDefaults.iconContentColor,
+    titleContentColor: Color = AlertDialogDefaults.titleContentColor,
+    textContentColor: Color = AlertDialogDefaults.textContentColor,
+    tonalElevation: Dp = AlertDialogDefaults.TonalElevation
 ) {
     AmoledDialogBackdrop()
     androidx.compose.ui.window.Dialog(onDismissRequest, properties = properties) {
         ConfigureAmoledDialogWindow()
-        val modalBorder = if (LocalAmoledMode.current) {
-            Modifier.border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), MaterialTheme.shapes.extraLarge)
-        } else Modifier
-        Box(Modifier.safeDrawingPadding().imePadding().then(modalBorder)) {
-            content()
+        val insets = if (edgeToEdge) Modifier else Modifier.safeDrawingPadding().imePadding()
+        Box(insets) {
+            val surfaceModifier = if (edgeToEdge) modifier.fillMaxSize()
+                else modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.9f)
+            Surface(
+                modifier = surfaceModifier.testTag("app-dialog"),
+                shape = shape,
+                color = containerColor,
+                tonalElevation = tonalElevation,
+                border = if (LocalAmoledMode.current && !edgeToEdge)
+                    BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null
+            ) {
+                val columnModifier = if (edgeToEdge) Modifier.fillMaxSize().safeDrawingPadding().imePadding()
+                    else Modifier.fillMaxWidth()
+                Column(columnModifier) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 16.dp)
+                            .testTag("app-dialog-title").semantics { heading() },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        if (icon != null) CompositionLocalProvider(LocalContentColor provides iconContentColor) { icon() }
+                        CompositionLocalProvider(LocalContentColor provides titleContentColor) {
+                            ProvideTextStyle(MaterialTheme.typography.headlineSmall) { title() }
+                        }
+                    }
+                    val contentScroll = if (scrollableContent) Modifier.verticalScroll(rememberScrollState()) else Modifier
+                    Box(
+                        Modifier.weight(1f, fill = edgeToEdge).fillMaxWidth().padding(horizontal = 24.dp)
+                            .then(contentScroll).testTag("app-dialog-content")
+                    ) {
+                        CompositionLocalProvider(LocalContentColor provides textContentColor) {
+                            ProvideTextStyle(MaterialTheme.typography.bodyMedium) { content() }
+                        }
+                    }
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, top = 16.dp, end = 24.dp, bottom = 24.dp)
+                            .testTag("app-dialog-buttons"),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) { buttons() }
+                }
+            }
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AppAlertDialog(
     onDismissRequest: () -> Unit,
     confirmButton: @Composable () -> Unit,
+    title: @Composable () -> Unit,
+    text: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     dismissButton: (@Composable () -> Unit)? = null,
     icon: (@Composable () -> Unit)? = null,
-    title: (@Composable () -> Unit)? = null,
-    text: (@Composable () -> Unit)? = null,
     shape: Shape = AlertDialogDefaults.shape,
     containerColor: Color = AlertDialogDefaults.containerColor,
     iconContentColor: Color = AlertDialogDefaults.iconContentColor,
     titleContentColor: Color = AlertDialogDefaults.titleContentColor,
     textContentColor: Color = AlertDialogDefaults.textContentColor,
     tonalElevation: Dp = AlertDialogDefaults.TonalElevation,
-    properties: DialogProperties = DialogProperties()
+    properties: DialogProperties = DialogProperties(),
+    scrollableContent: Boolean = true
 ) {
-    AmoledDialogBackdrop()
-    val modalModifier = if (LocalAmoledMode.current) {
-        modifier.border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shape)
-    } else modifier
-    androidx.compose.material3.AlertDialog(
+    AppDialog(
         onDismissRequest = onDismissRequest,
-        confirmButton = { ConfigureAmoledDialogWindow(); confirmButton() },
-        modifier = modalModifier, dismissButton = dismissButton, icon = icon, title = title, text = text,
+        title = title,
+        content = text,
+        buttons = { dismissButton?.invoke(); confirmButton() },
+        modifier = modifier, icon = icon, scrollableContent = scrollableContent,
         shape = shape, containerColor = containerColor, iconContentColor = iconContentColor,
         titleContentColor = titleContentColor, textContentColor = textContentColor,
         tonalElevation = tonalElevation, properties = properties

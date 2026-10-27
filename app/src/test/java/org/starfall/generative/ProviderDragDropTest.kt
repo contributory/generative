@@ -109,7 +109,7 @@ class ProviderDragDropTest {
         assertEquals("c", placement.providerId)
         assertEquals("g", placement.groupId)
         assertEquals(listOf("m1", "m2", "c"), placement.groupOrders.getValue("g"))
-        assertFalse("dropping must not open the folder", exists("provider_folder_dialog_g"))
+        assertFalse("dropping must not open the folder", exists("provider_folder_screen_g"))
         assertFalse("the provider now lives in the folder", exists("provider_c"))
     }
 
@@ -139,7 +139,7 @@ class ProviderDragDropTest {
         // A folder is reordered through the root order only; membership is untouched.
         assertTrue(writes.isEmpty())
         assertEquals(listOf("g", "a", "b", "c"), rootOrders.single().map { it.id })
-        assertFalse(exists("provider_folder_dialog_g"))
+        assertFalse(exists("provider_folder_screen_g"))
     }
 
     @Test
@@ -147,7 +147,7 @@ class ProviderDragDropTest {
         show(rootProviders + members, listOf(g))
 
         compose.onNodeWithTag("provider_group_g", useUnmergedTree = true).performClick()
-        assertTrue(exists("provider_folder_dialog_g"))
+        assertTrue(exists("provider_folder_screen_g"))
         assertTrue(exists("provider_folder_provider_m1"))
         assertTrue(exists("provider_folder_provider_m2"))
     }
@@ -165,7 +165,7 @@ class ProviderDragDropTest {
         assertEquals("m1", placement.providerId)
         assertEquals("g", placement.groupId)
         assertEquals(listOf("m2", "m1"), placement.groupOrders.getValue("g"))
-        assertTrue("the folder stays open after reordering inside it", exists("provider_folder_dialog_g"))
+        assertTrue("the folder stays open after reordering inside it", exists("provider_folder_screen_g"))
     }
 
     @Test
@@ -174,13 +174,13 @@ class ProviderDragDropTest {
         show(rootProviders + members, listOf(g), writes)
         compose.onNodeWithTag("provider_group_g", useUnmergedTree = true).performClick()
         compose.waitForIdle()
-        val panel = compose.onNodeWithTag("provider_folder_dialog_g", useUnmergedTree = true)
+        val panel = compose.onNodeWithTag("provider_folder_grid_g", useUnmergedTree = true)
             .fetchSemanticsNode().boundsInRoot
         val outside = Offset(panel.left + 40f, panel.top - 140f)
 
         drag(center("provider_folder_provider_m1"), outside, release = false)
 
-        assertFalse("leaving the container closes the folder", exists("provider_folder_dialog_g"))
+        assertFalse("leaving the container closes the folder", exists("provider_folder_screen_g"))
         compose.onRoot().performTouchInput { up() }
         compose.waitForIdle()
 
@@ -198,7 +198,7 @@ class ProviderDragDropTest {
         show(rootProviders + members + provider("n1", "h", 0), listOf(g, h), writes)
         compose.onNodeWithTag("provider_group_g", useUnmergedTree = true).performClick()
         compose.waitForIdle()
-        val panel = compose.onNodeWithTag("provider_folder_dialog_g", useUnmergedTree = true)
+        val panel = compose.onNodeWithTag("provider_folder_grid_g", useUnmergedTree = true)
             .fetchSemanticsNode().boundsInRoot
         val outside = Offset(panel.left + 40f, panel.top - 140f)
         val start = center("provider_folder_provider_m1")
@@ -209,7 +209,7 @@ class ProviderDragDropTest {
         root.performTouchInput { moveTo(outside) }
         compose.mainClock.advanceTimeBy(300)
         compose.waitForIdle()
-        assertFalse(exists("provider_folder_dialog_g"))
+        assertFalse(exists("provider_folder_screen_g"))
         root.performTouchInput { moveTo(center("provider_group_h")) }
         compose.mainClock.advanceTimeBy(300)
         compose.waitForIdle()
@@ -221,7 +221,7 @@ class ProviderDragDropTest {
         assertEquals("h", placement.groupId)
         assertEquals(listOf("n1", "m1"), placement.groupOrders.getValue("h"))
         assertEquals(listOf("m2"), placement.groupOrders.getValue("g"))
-        assertFalse("dropping must not open the target folder", exists("provider_folder_dialog_h"))
+        assertFalse("dropping must not open the target folder", exists("provider_folder_screen_h"))
     }
 
     @Test
@@ -267,6 +267,6 @@ class ProviderDragDropTest {
         drag(center("provider_c"), center("provider_group_g"))
 
         assertEquals("g", writes.single().groupId)
-        assertFalse(exists("provider_folder_dialog_g"))
+        assertFalse(exists("provider_folder_screen_g"))
     }
 }

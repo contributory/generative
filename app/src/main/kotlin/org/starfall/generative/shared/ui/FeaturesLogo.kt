@@ -26,7 +26,8 @@ fun FeaturesLogoImage(
     val context = LocalContext.current
     val revision by IconStore.revision.collectAsState()
     val data = remember(image, revision, context) {
-        image?.let { IconStore(context).imageData(it, dark = false) }
+        image?.let { IconStore(context).imageData(it, dark = false)
+            ?: java.io.File(it).takeIf { file -> file.isFile } }
     }
     val dark = LocalDarkMode.current
     Box(

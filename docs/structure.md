@@ -541,14 +541,18 @@ This document is the detailed package map and architecture reference. The mandat
 │       │   ├── 📄 SlideScreenContent.kt
 │       │   └── 📄 SystemBars.kt
 │       ├── 📁 lists/
+│       │   ├── 📄 AppListContainer.kt
+│       │   ├── 📄 AppListItem.kt
+│       │   ├── 📄 EmptyListContent.kt
 │       │   ├── 📄 FadeGridListContent.kt
-│       │   └── 📄 ListOrder.kt
+│       │   ├── 📄 ListOrder.kt
+│       │   └── 📄 ListViewToggle.kt
 │       ├── 📁 logging/
 │       │   ├── 📄 DebugLogCategoryLabel.kt
 │       │   ├── 📄 DebugLogOverlay.kt
 │       │   └── 📄 DebugLogPanel.kt
 │       ├── 📁 machines/
-│       │   ├── 📄 MachineDialogTopBar.kt
+│       │   ├── 📄 MachineDialogTitle.kt
 │       │   └── 📄 MachineToolsDialog.kt
 │       ├── 📁 media/
 │       │   ├── 📄 ChatAttachmentSelection.kt
@@ -559,6 +563,8 @@ This document is the detailed package map and architecture reference. The mandat
 │       │   ├── 📄 MediaViewerCover.kt
 │       │   └── 📄 MediaViewerMenu.kt
 │       ├── 📁 menus/
+│       │   ├── 📄 AppDropdownMenu.kt
+│       │   ├── 📄 AppPopup.kt
 │       │   ├── 📄 ItemContextMenu.kt
 │       │   └── 📄 RoundedDropdownMenuItem.kt
 │       ├── 📁 model/

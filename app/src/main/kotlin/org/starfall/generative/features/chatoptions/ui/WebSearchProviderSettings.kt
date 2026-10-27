@@ -1,14 +1,14 @@
 package org.starfall.generative.features.chatoptions.ui
 
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.ExposedDropdownMenu
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -20,16 +20,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.layout.SettingsCard
+import org.starfall.generative.shared.ui.icons.EntityIcon
+import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.icons.providerInitials
+import org.starfall.generative.shared.ui.model.DefaultSelectionItem
 
 /** Selects and enables the MCP server that supplies web-search tools. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WebSearchProviderSettings(
     servers: List<McpInfo>,
@@ -46,10 +49,12 @@ fun WebSearchProviderSettings(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            EntityIcon(null, Modifier.size(42.dp), fallback = Icons.Outlined.Language)
+            Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     stringResource(R.string.tool_web_search_provider_title),
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                 )
                 Text(
                     stringResource(R.string.tool_web_search_provider_description),
@@ -65,21 +70,22 @@ fun WebSearchProviderSettings(
             }
         }
 
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = it }
-        ) {
-            SelectableOutlinedTextField(
-                value = selectedProvider?.name ?: stringResource(R.string.tool_web_search_provider_none),
-                onValueChange = {},
-                readOnly = true,
-                label = { Text(stringResource(R.string.tool_web_search_provider_select)) },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
+        Box(Modifier.fillMaxWidth()) {
+            DefaultSelectionItem(
+                title = selectedProvider?.name ?: stringResource(R.string.tool_web_search_provider_none),
+                subtitle = stringResource(R.string.tool_web_search_provider_select),
+                icon = {
+                    EntityIcon(
+                        image = selectedProvider?.icon,
+                        modifier = Modifier.size(48.dp),
+                        text = providerInitials(selectedProvider?.name.orEmpty()),
+                        fallback = Icons.Outlined.Language,
+                        matchName = selectedProvider?.name
+                    )
+                },
+                onClick = { expanded = true }
             )
-            ExposedDropdownMenu(
+            AppDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {

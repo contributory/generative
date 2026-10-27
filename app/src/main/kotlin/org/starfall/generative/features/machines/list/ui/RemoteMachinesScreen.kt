@@ -2,6 +2,9 @@
 
 package org.starfall.generative.features.machines.list.ui
 
+import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,17 +18,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.runtime.saveable.rememberSaveable
+import org.starfall.generative.shared.ui.lists.AppListItem
+import org.starfall.generative.shared.ui.lists.FadeGridListContent
+import org.starfall.generative.shared.ui.lists.ListViewToggle
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -54,8 +58,6 @@ import org.starfall.generative.shared.model.RemoteMachineType
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.prominentContainerBorder
-import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.machines.MachineToolsDialog
 
 @Composable
@@ -68,6 +70,7 @@ fun RemoteMachinesScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val connectedIds by viewModel.connectedMachineIds.collectAsStateWithLifecycle()
+    var isGrid by rememberSaveable { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<RemoteMachine?>(null) }
     var portForwardMachine by remember { mutableStateOf<RemoteMachine?>(null) }
     var toolsMachine by remember { mutableStateOf<RemoteMachine?>(null) }
@@ -82,6 +85,7 @@ fun RemoteMachinesScreen(
                 subtitle = stringResource(R.string.remote_machines_description),
                 onBack = onBack,
                 actions = {
+                    ListViewToggle(isGrid = isGrid, onToggle = { isGrid = !isGrid })
                     IconButton(onClick = { onOpenEditor(viewModel.newMachine(), true) }) {
                         FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
                     }
@@ -92,10 +96,10 @@ fun RemoteMachinesScreen(
             )
         }
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        Box(Modifier.fillMaxSize()) {
             if (state.machines.isEmpty()) {
                 Column(
-                    Modifier.fillMaxSize().padding(32.dp),
+                    Modifier.fillMaxSize().padding(padding).padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -115,14 +119,18 @@ fun RemoteMachinesScreen(
                     }
                 }
             } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                FadeGridListContent(isGrid = isGrid, modifier = Modifier.fillMaxSize()) { gridMode ->
+                  LazyVerticalGrid(
+                    columns = GridCells.Fixed(if (gridMode) 2 else 1),
+                    contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
-                ) {
+                  ) {
                     items(state.machines, key = { machine -> machine.id }) { machine ->
                         RemoteMachineCard(
                             machine = machine,
+                            isGrid = gridMode,
                             connected = machine.id in connectedIds,
                             onDisconnect = { viewModel.disconnect(machine.id) },
                             onStartPortForward = { portForwardMachine = machine },
@@ -149,6 +157,7 @@ fun RemoteMachinesScreen(
                             }
                         )
                     }
+                  }
                 }
             }
         }
@@ -185,6 +194,7 @@ fun RemoteMachinesScreen(
     deleting?.let { machine ->
         AppAlertDialog(
             onDismissRequest = { deleting = null },
+            title = { Text(stringResource(R.string.dialog_delete_machine_title)) },
             text = { Text(stringResource(R.string.remote_machine_delete_message, machine.name)) },
             confirmButton = {
                 Button(onClick = {
@@ -215,6 +225,7 @@ fun RemoteMachinesScreen(
 @Composable
 private fun RemoteMachineCard(
     machine: RemoteMachine,
+    isGrid: Boolean,
     connected: Boolean,
     onDisconnect: () -> Unit,
     onStartPortForward: () -> Unit,
@@ -227,63 +238,43 @@ private fun RemoteMachineCard(
 ) {
     var menu by remember { mutableStateOf(false) }
     val gcloud = machine.type == RemoteMachineType.GCLOUD_SHELL
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        color = prominentContainerColor(),
-        border = prominentContainerBorder()
-    ) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+    AppListItem(
+        isGrid = isGrid,
+        onClick = onEdit,
+        icon = {
             RemoteIconTile(
                 icon = if (gcloud) Icons.Outlined.Cloud else Icons.Outlined.Computer,
                 containerColor = if (gcloud) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
                 contentColor = if (gcloud) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
             )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        machine.name.ifBlank { stringResource(R.string.remote_machine_unnamed) },
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    RemoteStatusDot(connected)
-                }
-                Text(
-                    stringResource(if (gcloud) R.string.remote_machine_type_gcloud else R.string.remote_machine_type_ssh),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    "${machine.username.ifBlank { "?" }}@${machine.displayHost}:${machine.port}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (connected) {
-                    Text(
-                        stringResource(R.string.remote_machine_terminal_connected),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-            if (connected) {
+        },
+        actions = {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            if (connected && !isGrid) {
                 IconButton(onClick = onDisconnect) {
                     FluentIcon(Icons.Outlined.LinkOff, stringResource(R.string.remote_machine_disconnect))
                 }
             }
-            IconButton(onClick = onTerminal) {
-                FluentIcon(Icons.Outlined.Terminal, stringResource(R.string.remote_machine_open_terminal))
+            if (!isGrid) {
+                IconButton(onClick = onTerminal) {
+                    FluentIcon(Icons.Outlined.Terminal, stringResource(R.string.remote_machine_open_terminal))
+                }
             }
             Box {
                 IconButton(onClick = { menu = true }) {
                     FluentIcon(Icons.Default.MoreVert, stringResource(R.string.common_more_options))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    if (isGrid) DropdownMenuItem(
+                        text = { Text(stringResource(R.string.remote_machine_open_terminal)) },
+                        leadingIcon = { FluentIcon(Icons.Outlined.Terminal, null) },
+                        onClick = { menu = false; onTerminal() }
+                    )
+                    if (connected && isGrid) DropdownMenuItem(
+                        text = { Text(stringResource(R.string.remote_machine_disconnect)) },
+                        leadingIcon = { FluentIcon(Icons.Outlined.LinkOff, null) },
+                        onClick = { menu = false; onDisconnect() }
+                    )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.remote_machine_start_port_forward)) },
                         leadingIcon = { FluentIcon(Icons.Outlined.Hub, null) },
@@ -318,6 +309,40 @@ private fun RemoteMachineCard(
                     )
                 }
             }
+          }
+        },
+        content = {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        machine.name.ifBlank { stringResource(R.string.remote_machine_unnamed) },
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    RemoteStatusDot(connected)
+                }
+                Text(
+                    stringResource(if (gcloud) R.string.remote_machine_type_gcloud else R.string.remote_machine_type_ssh),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "${machine.username.ifBlank { "?" }}@${machine.displayHost}:${machine.port}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (connected) {
+                    Text(
+                        stringResource(R.string.remote_machine_terminal_connected),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
         }
-    }
+    )
 }

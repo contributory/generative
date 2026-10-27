@@ -507,5 +507,5 @@ internal fun ProviderMark(
     compact: Boolean = false
 ) {
     val mark = providerInitials(provider.name)
-    EntityIcon(provider.icon, Modifier.size(if (compact) 22.dp else 42.dp), text = mark, matchName = provider.name)
+    EntityIcon(provider.icon, Modifier.size(if (compact) 18.dp else 42.dp), text = mark, matchName = provider.name)
 }

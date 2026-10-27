@@ -136,6 +136,7 @@ internal fun FaviconDialog(
     AppAlertDialog(
         onDismissRequest = onClose,
         title = { Text(context.getString(R.string.favicon_get_logo)) },
+        scrollableContent = false,
         text = {
             Column(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),

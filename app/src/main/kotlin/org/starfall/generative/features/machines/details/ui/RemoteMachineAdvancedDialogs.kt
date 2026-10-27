@@ -5,12 +5,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -18,10 +15,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,7 +28,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.features.machines.shared.ui.RemoteErrorText
@@ -111,9 +105,8 @@ internal fun SshOptionsEditor(
 }
 
 /**
- * WebSocket Proxy configuration. Follows the app's other editor dialogs ([AppDialog] with a
- * rounded surface and its own top bar) instead of an alert dialog crammed with fields; the
- * rarely used settings live in an expandable advanced section inside the same dialog.
+ * WebSocket Proxy configuration. The shared [AppDialog] keeps advanced settings in an
+ * expandable section within the content area.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,158 +133,141 @@ internal fun WebSocketProxyDialog(
     fun numeric(update: (String) -> Unit): (String) -> Unit =
         { value -> if (value.all(Char::isDigit)) update(value) }
 
-    AppDialog(onDismissRequest = onDismiss) {
-        Surface(shape = MaterialTheme.shapes.extraLarge, modifier = Modifier.fillMaxWidth().heightIn(max = 640.dp)) {
-            Column {
-                TopAppBar(
-                    title = {
-                        Text(
-                            stringResource(R.string.remote_machine_websocket_proxy),
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+    AppDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.remote_machine_websocket_proxy)) },
+        content = {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                RemoteTextField(
+                    url,
+                    { url = it; error = null },
+                    stringResource(R.string.remote_machine_websocket_url),
+                    keyboardOptions = remoteLiteralKeyboardOptions()
                 )
-                Column(
-                    Modifier
-                        .weight(1f, fill = false)
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    RemoteTextField(
-                        url,
-                        { url = it; error = null },
-                        stringResource(R.string.remote_machine_websocket_url),
-                        keyboardOptions = remoteLiteralKeyboardOptions()
-                    )
-                    RemoteTextField(
-                        headersText,
-                        { headersText = it },
-                        stringResource(R.string.remote_machine_websocket_headers),
-                        keyboardOptions = remoteLiteralKeyboardOptions(),
-                        minLines = 3,
-                        maxLines = 6
-                    )
-                    RemoteTextField(
-                        connectTimeout,
-                        numeric { connectTimeout = it },
-                        stringResource(R.string.remote_machine_websocket_connect_timeout),
-                        keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
-                    )
-                    RemoteToggle(
-                        label = stringResource(R.string.remote_machine_websocket_skip_certificates),
-                        checked = skipCertificates,
-                        onCheckedChange = { skipCertificates = it }
-                    )
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { advancedExpanded = !advancedExpanded }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            stringResource(
-                                if (advancedExpanded) R.string.remote_machine_websocket_hide_advanced
-                                else R.string.remote_machine_websocket_show_advanced
-                            ),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f)
-                        )
-                        FluentIcon(
-                            if (advancedExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                            null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    AnimatedVisibility(visible = advancedExpanded) {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            RemoteTextField(
-                                caCertificate,
-                                { caCertificate = it },
-                                stringResource(R.string.remote_machine_websocket_ca_certificate),
-                                keyboardOptions = remoteLiteralKeyboardOptions(),
-                                minLines = 3,
-                                maxLines = 8
-                            )
-                            RemoteTextField(
-                                handshakeTimeout,
-                                numeric { handshakeTimeout = it },
-                                stringResource(R.string.remote_machine_websocket_handshake_timeout),
-                                keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
-                            )
-                            RemoteTextField(
-                                readTimeout,
-                                numeric { readTimeout = it },
-                                stringResource(R.string.remote_machine_websocket_read_timeout),
-                                keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
-                            )
-                            RemoteTextField(
-                                writeTimeout,
-                                numeric { writeTimeout = it },
-                                stringResource(R.string.remote_machine_websocket_write_timeout),
-                                keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
-                            )
-                            RemoteTextField(
-                                closeTimeout,
-                                numeric { closeTimeout = it },
-                                stringResource(R.string.remote_machine_websocket_close_timeout),
-                                keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
-                            )
-                            RemoteTextField(
-                                subProtocols,
-                                { subProtocols = it },
-                                stringResource(R.string.remote_machine_websocket_subprotocols),
-                                keyboardOptions = remoteLiteralKeyboardOptions()
-                            )
-                        }
-                    }
-                    error?.let { RemoteErrorText(it) }
-                }
+                RemoteTextField(
+                    headersText,
+                    { headersText = it },
+                    stringResource(R.string.remote_machine_websocket_headers),
+                    keyboardOptions = remoteLiteralKeyboardOptions(),
+                    minLines = 3,
+                    maxLines = 6
+                )
+                RemoteTextField(
+                    connectTimeout,
+                    numeric { connectTimeout = it },
+                    stringResource(R.string.remote_machine_websocket_connect_timeout),
+                    keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
+                )
+                RemoteToggle(
+                    label = stringResource(R.string.remote_machine_websocket_skip_certificates),
+                    checked = skipCertificates,
+                    onCheckedChange = { skipCertificates = it }
+                )
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { advancedExpanded = !advancedExpanded }
+                        .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (initial != null) {
-                        TextButton(onClick = { onSave(null) }) {
-                            Text(stringResource(R.string.common_remove), color = MaterialTheme.colorScheme.error)
-                        }
+                    Text(
+                        stringResource(
+                            if (advancedExpanded) R.string.remote_machine_websocket_hide_advanced
+                            else R.string.remote_machine_websocket_show_advanced
+                        ),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                    FluentIcon(
+                        if (advancedExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                        null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                AnimatedVisibility(visible = advancedExpanded) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        RemoteTextField(
+                            caCertificate,
+                            { caCertificate = it },
+                            stringResource(R.string.remote_machine_websocket_ca_certificate),
+                            keyboardOptions = remoteLiteralKeyboardOptions(),
+                            minLines = 3,
+                            maxLines = 8
+                        )
+                        RemoteTextField(
+                            handshakeTimeout,
+                            numeric { handshakeTimeout = it },
+                            stringResource(R.string.remote_machine_websocket_handshake_timeout),
+                            keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
+                        )
+                        RemoteTextField(
+                            readTimeout,
+                            numeric { readTimeout = it },
+                            stringResource(R.string.remote_machine_websocket_read_timeout),
+                            keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
+                        )
+                        RemoteTextField(
+                            writeTimeout,
+                            numeric { writeTimeout = it },
+                            stringResource(R.string.remote_machine_websocket_write_timeout),
+                            keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
+                        )
+                        RemoteTextField(
+                            closeTimeout,
+                            numeric { closeTimeout = it },
+                            stringResource(R.string.remote_machine_websocket_close_timeout),
+                            keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
+                        )
+                        RemoteTextField(
+                            subProtocols,
+                            { subProtocols = it },
+                            stringResource(R.string.remote_machine_websocket_subprotocols),
+                            keyboardOptions = remoteLiteralKeyboardOptions()
+                        )
                     }
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-                    Spacer(Modifier.width(8.dp))
-                    Button(onClick = {
-                        runCatching {
-                            val headers = headersText.lineSequence().mapNotNull { line ->
-                                line.substringBefore(':', "").trim().takeIf(String::isNotBlank)?.let { key ->
-                                    key to line.substringAfter(':', "").trim()
-                                }
-                            }.toMap()
-                            WebSocketProxyConfig(
-                                url = url,
-                                headers = headers,
-                                connectTimeoutSeconds = connectTimeout.toIntOrNull() ?: 15,
-                                skipCertificateVerification = skipCertificates,
-                                caCertificatePem = caCertificate,
-                                handshakeTimeoutSeconds = handshakeTimeout.toIntOrNull() ?: 15,
-                                readTimeoutSeconds = readTimeout.toIntOrNull() ?: 0,
-                                writeTimeoutSeconds = writeTimeout.toIntOrNull() ?: 0,
-                                closeTimeoutSeconds = closeTimeout.toIntOrNull() ?: 5,
-                                subProtocols = subProtocols.split(',').map(String::trim).filter(String::isNotBlank)
-                            ).normalized()
-                        }
-                            .onSuccess { config -> onSave(config.takeIf { it.isConfigured }) }
-                            .onFailure { failure -> error = failure.message }
-                    }) { Text(stringResource(R.string.common_save)) }
+                }
+                error?.let { RemoteErrorText(it) }
+            }
+        },
+        buttons = {
+            if (initial != null) {
+                TextButton(onClick = { onSave(null) }) {
+                    Text(stringResource(R.string.common_remove), color = MaterialTheme.colorScheme.error)
                 }
             }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+            Button(onClick = {
+                runCatching {
+                    val headers = headersText.lineSequence().mapNotNull { line ->
+                        line.substringBefore(':', "").trim().takeIf(String::isNotBlank)?.let { key ->
+                            key to line.substringAfter(':', "").trim()
+                        }
+                    }.toMap()
+                    WebSocketProxyConfig(
+                        url = url,
+                        headers = headers,
+                        connectTimeoutSeconds = connectTimeout.toIntOrNull() ?: 15,
+                        skipCertificateVerification = skipCertificates,
+                        caCertificatePem = caCertificate,
+                        handshakeTimeoutSeconds = handshakeTimeout.toIntOrNull() ?: 15,
+                        readTimeoutSeconds = readTimeout.toIntOrNull() ?: 0,
+                        writeTimeoutSeconds = writeTimeout.toIntOrNull() ?: 0,
+                        closeTimeoutSeconds = closeTimeout.toIntOrNull() ?: 5,
+                        subProtocols = subProtocols.split(',').map(String::trim).filter(String::isNotBlank)
+                    ).normalized()
+                }
+                    .onSuccess { config -> onSave(config.takeIf { it.isConfigured }) }
+                    .onFailure { failure -> error = failure.message }
+            }) { Text(stringResource(R.string.common_save)) }
         }
-    }
+    )
 }

@@ -1,10 +1,10 @@
 package org.starfall.generative.features.providers.shared.ui
 
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
 import org.starfall.generative.features.providers.shared.model.maskedProviderApiKey
 
 import org.starfall.generative.features.providers.shared.model.ProviderApiKeysState
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +22,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,95 +55,81 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
         editingId = id; label = entry?.label.orEmpty(); value = entry?.value.orEmpty()
         revealed = false; error = null; editing = true
     }
-    AppDialog(onDismissRequest = { if (editing) editing = false else onDismiss() }) {
-        BackHandler(enabled = editing) { editing = false }
-        Surface(shape = MaterialTheme.shapes.extraLarge, modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp)) {
-            Column {
-                TopAppBar(
-                    title = { Text(stringResource(if (editing) R.string.provider_edit_api_key else R.string.provider_manage_api_keys),
-                        maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    navigationIcon = { if (editing) IconButton(onClick = { editing = false }) {
-                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    } },
-                    actions = {
-                        if (editing) IconButton(enabled = value.isNotBlank(), onClick = {
-                            runCatching {
-                                state.save(
-                                    editingId, label, value, identity,
-                                    blankError = keyRequiredError,
-                                    duplicateError = keyDuplicateError
-                                )
-                            }.onSuccess { editing = false }.onFailure { error = it.message }
-                        }) { FluentIcon(Icons.Outlined.Save, stringResource(R.string.provider_save_api_key)) }
-                        else IconButton(onClick = { edit(null) }) { FluentIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
-                        IconButton(onClick = onDismiss) { FluentIcon(Icons.Default.Close, stringResource(R.string.common_close)) }
-                    }
-                )
-                if (editing) Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SelectableOutlinedTextField(label, { label = it }, label = { Text(stringResource(R.string.common_label)) },
-                        singleLine = true, modifier = Modifier.fillMaxWidth().testTag("provider_api_key_label"))
-                    SelectableOutlinedTextField(value, { value = it; error = null }, label = { Text(stringResource(R.string.provider_api_key_value)) },
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
-                        visualTransformation = if (revealed) VisualTransformation.None else ApiKeyMask,
-                        trailingIcon = { IconButton(onClick = { revealed = !revealed }) {
-                            FluentIcon(if (revealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
-                                stringResource(if (revealed) R.string.provider_hide_api_key else R.string.provider_show_api_key))
-                        } }, maxLines = 3, isError = error != null, modifier = Modifier.fillMaxWidth().testTag("provider_managed_api_key"))
-                    error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-                } else {
-                    val selectedId = state.selectedId(identity)
-                    val ordered = state.entries.sortedBy { it.id != selectedId }
-                    if (ordered.isEmpty()) Text(stringResource(R.string.provider_no_api_keys), Modifier.padding(24.dp),
-                        style = MaterialTheme.typography.bodyMedium)
-                    else LazyColumn(
-                        Modifier.fillMaxWidth().weight(1f, fill = false),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(ordered, key = { it.id }) { entry ->
-                            val selected = entry.id == selectedId
-                            var menu by remember(entry.id) { mutableStateOf(false) }
-                            val itemShape = RoundedCornerShape(16.dp)
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = itemShape,
-                                color = if (selected) {
-                                    MaterialTheme.colorScheme.secondaryContainer
-                                } else {
-                                    prominentContainerColor()
-                                },
-                                border = if (selected) {
-                                    BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
-                                } else {
-                                    prominentContainerBorder()
-                                }
+    val addLabel = stringResource(R.string.common_add)
+    val backLabel = stringResource(R.string.common_back)
+    val closeLabel = stringResource(R.string.common_close)
+    val saveKeyLabel = stringResource(R.string.provider_save_api_key)
+    AppDialog(
+        onDismissRequest = { if (editing) editing = false else onDismiss() },
+        title = {
+            Text(stringResource(if (editing) R.string.provider_edit_api_key else R.string.provider_manage_api_keys),
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+        content = {
+            if (editing) Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SelectableOutlinedTextField(label, { label = it }, label = { Text(stringResource(R.string.common_label)) },
+                    singleLine = true, modifier = Modifier.fillMaxWidth().testTag("provider_api_key_label"))
+                SelectableOutlinedTextField(value, { value = it; error = null }, label = { Text(stringResource(R.string.provider_api_key_value)) },
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
+                    visualTransformation = if (revealed) VisualTransformation.None else ApiKeyMask,
+                    trailingIcon = { IconButton(onClick = { revealed = !revealed }) {
+                        FluentIcon(if (revealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                            stringResource(if (revealed) R.string.provider_hide_api_key else R.string.provider_show_api_key))
+                    } }, maxLines = 3, isError = error != null, modifier = Modifier.fillMaxWidth().testTag("provider_managed_api_key"))
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            } else {
+                val selectedId = state.selectedId(identity)
+                val ordered = state.entries.sortedBy { it.id != selectedId }
+                if (ordered.isEmpty()) Text(stringResource(R.string.provider_no_api_keys),
+                    style = MaterialTheme.typography.bodyMedium)
+                else LazyColumn(
+                    Modifier.fillMaxWidth().heightIn(max = 400.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(ordered, key = { it.id }) { entry ->
+                        val selected = entry.id == selectedId
+                        var menu by remember(entry.id) { mutableStateOf(false) }
+                        val itemShape = RoundedCornerShape(16.dp)
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = itemShape,
+                            color = if (selected) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                prominentContainerColor()
+                            },
+                            border = if (selected) {
+                                BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+                            } else {
+                                prominentContainerBorder()
+                            }
+                        ) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clip(itemShape)
+                                    .selectable(selected = selected, role = Role.RadioButton, onClick = {
+                                        state.currentKey = entry.value; onDismiss()
+                                    })
+                                    .padding(start = 16.dp, end = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clip(itemShape)
-                                        .selectable(selected = selected, role = Role.RadioButton, onClick = {
-                                            state.currentKey = entry.value; onDismiss()
-                                        })
-                                        .padding(start = 16.dp, end = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(Modifier.weight(1f).padding(vertical = 12.dp)) {
-                                        Text(entry.label.ifBlank { maskedProviderApiKey(entry.value) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        if (selected) Text(stringResource(R.string.common_selected), style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer)
-                                    }
-                                    if (selected) FluentIcon(Icons.Default.Check, stringResource(R.string.common_selected))
-                                    Box {
-                                        IconButton(onClick = { menu = true }) { FluentIcon(Icons.Default.MoreVert,
-                                            stringResource(R.string.provider_api_key_actions, entry.label.ifBlank { maskedProviderApiKey(entry.value) })) }
-                                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                                            RoundedDropdownMenuItem(text = { Text(stringResource(R.string.common_edit)) },
-                                                leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) }, onClick = { menu = false; edit(entry.id) })
-                                            RoundedDropdownMenuItem(text = { Text(stringResource(R.string.common_delete)) },
-                                                leadingIcon = { FluentIcon(Icons.Outlined.Delete, null) }, onClick = { menu = false; state.delete(entry.id, identity) })
-                                        }
+                                Column(Modifier.weight(1f).padding(vertical = 12.dp)) {
+                                    Text(entry.label.ifBlank { maskedProviderApiKey(entry.value) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    if (selected) Text(stringResource(R.string.common_selected), style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                }
+                                if (selected) FluentIcon(Icons.Default.Check, stringResource(R.string.common_selected))
+                                Box {
+                                    IconButton(onClick = { menu = true }) { FluentIcon(Icons.Default.MoreVert,
+                                        stringResource(R.string.provider_api_key_actions, entry.label.ifBlank { maskedProviderApiKey(entry.value) })) }
+                                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                                        RoundedDropdownMenuItem(text = { Text(stringResource(R.string.common_edit)) },
+                                            leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) }, onClick = { menu = false; edit(entry.id) })
+                                        RoundedDropdownMenuItem(text = { Text(stringResource(R.string.common_delete)) },
+                                            leadingIcon = { FluentIcon(Icons.Outlined.Delete, null) }, onClick = { menu = false; state.delete(entry.id, identity) })
                                     }
                                 }
                             }
@@ -149,6 +137,25 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                     }
                 }
             }
+        },
+        buttons = {
+            if (editing) TextButton(onClick = { editing = false },
+                modifier = Modifier.semantics { contentDescription = backLabel }) { Text(backLabel) }
+            TextButton(onClick = onDismiss, modifier = Modifier.semantics { contentDescription = closeLabel }) {
+                Text(closeLabel)
+            }
+            if (editing) {
+                Button(enabled = value.isNotBlank(), modifier = Modifier.semantics { contentDescription = saveKeyLabel }, onClick = {
+                    runCatching {
+                        state.save(editingId, label, value, identity,
+                            blankError = keyRequiredError, duplicateError = keyDuplicateError)
+                    }.onSuccess { editing = false }.onFailure { error = it.message }
+                }) { Text(stringResource(R.string.common_save)) }
+            } else {
+                TextButton(onClick = { edit(null) }, modifier = Modifier.semantics { contentDescription = addLabel }) {
+                    Text(addLabel)
+                }
+            }
         }
-    }
+    )
 }
