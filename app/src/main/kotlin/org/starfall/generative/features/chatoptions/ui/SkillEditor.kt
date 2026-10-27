@@ -1,8 +1,5 @@
 package org.starfall.generative.features.chatoptions.ui
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,7 +12,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,7 +19,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -56,8 +51,6 @@ internal fun SkillEditor(
     )
     var document by rememberSaveable(key) { mutableStateOf(agentSkillDocument(skill ?: starter)) }
     val parsed = parseAgentSkillDocument(document, preserveEmptyExtras = true)
-    val context = LocalContext.current
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
     fun draft(): AgentSkill? = parsed?.copy(id = skill?.id.orEmpty())
 
@@ -79,18 +72,6 @@ internal fun SkillEditor(
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        clipboard.setPrimaryClip(ClipData.newPlainText("SKILL.md", document))
-                    }) {
-                        FluentIcon(Icons.Outlined.ContentCopy, stringResource(R.string.agent_skill_copy_document))
-                    }
-                    TextButton(onClick = {
-                        val pasted = clipboard.primaryClip?.takeIf { it.itemCount > 0 }
-                            ?.getItemAt(0)?.coerceToText(context)?.toString()
-                        if (!pasted.isNullOrEmpty()) document = pasted
-                    }) {
-                        Text(stringResource(R.string.agent_skill_paste_document))
-                    }
                     IconButton(enabled = parsed != null, onClick = { onBack(draft()) }) {
                         FluentIcon(Icons.Outlined.Save, stringResource(R.string.agent_skill_save))
                     }

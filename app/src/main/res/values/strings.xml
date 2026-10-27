@@ -650,8 +650,18 @@
     <string name="agent_skill_metadata">%1$d characters · ~%2$d tokens</string>
     <string name="agent_skill_delete_confirmation">Delete “%1$s”? This cannot be undone.</string>
     <string name="agent_skill_save">Save skill</string>
-    <string name="agent_skill_copy_document">Copy SKILL.md</string>
-    <string name="agent_skill_paste_document">Paste</string>
+    <string name="agent_skill_import">Import skill</string>
+    <string name="agent_skill_export">Export skill</string>
+    <string name="agent_skill_choose_file">Choose SKILL.md file</string>
+    <string name="agent_skill_github_url">GitHub URL</string>
+    <string name="agent_skill_github_hint">github.com/owner/repo/blob/main/SKILL.md</string>
+    <string name="agent_skill_import_from_github">Import from GitHub</string>
+    <string name="agent_skill_import_invalid">Invalid SKILL.md. Check name, description, and instructions.</string>
+    <string name="agent_skill_import_duplicate">A skill with this name already exists.</string>
+    <string name="agent_skill_import_failed">Could not import skill: %1$s</string>
+    <string name="agent_skill_export_failed">Could not export skill.</string>
+    <string name="agent_skill_github_invalid">Enter a GitHub link to a SKILL.md file or skill folder.</string>
+
     <string name="agent_skill_invalid_document">SKILL.md needs valid YAML frontmatter (name and description) and Markdown instructions.</string>
     <string name="agent_skills_menu_title">Agent Skills</string>
     <string name="agent_skills_manage">Manage skills</string>

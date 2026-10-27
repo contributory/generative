@@ -1,6 +1,16 @@
 package org.starfall.generative.features.chatoptions.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import org.starfall.generative.features.chatoptions.logic.readAgentSkillDocument
+import org.starfall.generative.features.chatoptions.logic.writeAgentSkillDocument
+import org.starfall.generative.integrations.github.downloadGitHubSkill
+import org.starfall.generative.integrations.github.parseGitHubSkillUrl
+import org.starfall.generative.shared.model.parseAgentSkillDocument
+import org.starfall.generative.shared.model.agentSkillDocument
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -117,6 +127,11 @@ fun ChatOptionsScreen(
     var previewingInstructionId by rememberSaveable { mutableStateOf<String?>(null) }
     var creatingSkill by rememberSaveable { mutableStateOf(false) }
     var editingSkillId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showSkillImport by rememberSaveable { mutableStateOf(false) }
+    var skillImportBusy by remember { mutableStateOf(false) }
+    var skillImportError by remember { mutableStateOf<String?>(null) }
+    var exportingSkill by remember { mutableStateOf<AgentSkill?>(null) }
+    val context = LocalContext.current
     var library by remember(instructionLibrary) { mutableStateOf(instructionLibrary) }
     fun updateLibrary(next: InstructionLibrary) {
         library = next
@@ -154,6 +169,44 @@ fun ChatOptionsScreen(
         skills = next
         onAgentSkillsChange(next)
         return skill
+    }
+
+    fun acceptImportedSkill(document: String) {
+        val imported = parseAgentSkillDocument(document, preserveEmptyExtras = true)
+        when {
+            imported == null -> skillImportError = context.getString(R.string.agent_skill_import_invalid)
+            skills.any { it.name == imported.name } ->
+                skillImportError = context.getString(R.string.agent_skill_import_duplicate)
+            else -> {
+                val next = skills + imported
+                skills = next
+                onAgentSkillsChange(next)
+                showSkillImport = false
+                skillImportError = null
+            }
+        }
+    }
+    val importFileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            skillImportBusy = true
+            coroutineScope.launch {
+                runCatching { readAgentSkillDocument(context, uri) }
+                    .onSuccess(::acceptImportedSkill)
+                    .onFailure { skillImportError = context.getString(R.string.agent_skill_import_failed,
+                        it.message.orEmpty()) }
+                skillImportBusy = false
+            }
+        }
+    }
+    val exportFileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/markdown")) { uri ->
+        val skill = exportingSkill
+        exportingSkill = null
+        if (uri != null && skill != null) {
+            coroutineScope.launch {
+                runCatching { writeAgentSkillDocument(context, uri, agentSkillDocument(skill)) }
+                    .onFailure { Toast.makeText(context, R.string.agent_skill_export_failed, Toast.LENGTH_LONG).show() }
+            }
+        }
     }
 
     fun leaveSkillEditor(draft: AgentSkill? = null) {
@@ -237,6 +290,15 @@ fun ChatOptionsScreen(
                                     if (pager.currentPage == 1) creatingInstruction = true else creatingSkill = true
                                 }) {
                                     FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
+                                }
+                            }
+                            if (pager.currentPage == 2) {
+                                IconButton(onClick = {
+                                    skillImportError = null
+                                    showSkillImport = true
+                                }) {
+                                    FluentIcon(Icons.Outlined.UploadFile,
+                                        stringResource(R.string.agent_skill_import))
                                 }
                             }
                         }
@@ -357,6 +419,10 @@ fun ChatOptionsScreen(
                                     val next = skills.filterNot { it.id == skill.id }
                                     skills = next
                                     onAgentSkillsChange(next)
+                                },
+                                onExportSkill = { skill ->
+                                    exportingSkill = skill
+                                    exportFileLauncher.launch("${skill.name}-SKILL.md")
                                 }
                             )
                         }
@@ -365,6 +431,35 @@ fun ChatOptionsScreen(
             }
             }
         }
+    }
+
+    if (showSkillImport) {
+        SkillImportDialog(
+            busy = skillImportBusy,
+            error = skillImportError,
+            onChooseFile = {
+                skillImportError = null
+                importFileLauncher.launch(arrayOf("text/markdown", "text/plain", "text/x-markdown", "*/*"))
+            },
+            onImportGithub = { url ->
+                if (parseGitHubSkillUrl(url) == null) {
+                    skillImportError = context.getString(R.string.agent_skill_github_invalid)
+                } else {
+                    skillImportBusy = true
+                    skillImportError = null
+                    coroutineScope.launch {
+                        runCatching { downloadGitHubSkill(url) }
+                            .onSuccess(::acceptImportedSkill)
+                            .onFailure {
+                                skillImportError = context.getString(R.string.agent_skill_import_failed,
+                                    it.message.orEmpty())
+                            }
+                        skillImportBusy = false
+                    }
+                }
+            },
+            onDismiss = { showSkillImport = false; skillImportError = null }
+        )
     }
 
     helperSettings?.let { name ->

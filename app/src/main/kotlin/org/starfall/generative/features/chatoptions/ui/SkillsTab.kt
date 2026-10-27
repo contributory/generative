@@ -37,7 +37,8 @@ import org.starfall.generative.shared.ui.menus.ItemContextMenu
 internal fun SkillsTab(
     skills: List<AgentSkill>,
     onEditSkill: (AgentSkill) -> Unit,
-    onDeleteSkill: (AgentSkill) -> Unit
+    onDeleteSkill: (AgentSkill) -> Unit,
+    onExportSkill: (AgentSkill) -> Unit = {}
 ) {
     var skillPendingDelete by remember { mutableStateOf<AgentSkill?>(null) }
     var viewingBundledSkill by remember { mutableStateOf<AgentSkill?>(null) }
@@ -99,13 +100,16 @@ internal fun SkillsTab(
                                         maxLines = 2
                                     )
                                 }
-                                if (!bundled) {
-                                    ItemContextMenu(
-                                        onEdit = { onEditSkill(skill) },
-                                        onDelete = { skillPendingDelete = skill },
-                                        deleteColor = MaterialTheme.colorScheme.error
-                                    )
-                                }
+                                ItemContextMenu(
+                                    onEdit = { onEditSkill(skill) },
+                                    onDelete = { skillPendingDelete = skill },
+                                    deleteColor = MaterialTheme.colorScheme.error,
+                                    firstActionText = stringResource(R.string.agent_skill_export),
+                                    firstActionImageVector = org.starfall.generative.shared.ui.icons.Icons.Outlined.Download,
+                                    onFirstAction = { onExportSkill(skill) },
+                                    showEdit = !bundled,
+                                    showDelete = !bundled
+                                )
                             }
                         }
                     }

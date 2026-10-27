@@ -29,7 +29,9 @@ fun ItemContextMenu(
     firstActionIcon: Int? = null,
     firstActionImageVector: ImageVector? = null,
     onFirstAction: (() -> Unit)? = null,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    showEdit: Boolean = true,
+    showDelete: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -67,7 +69,7 @@ fun ItemContextMenu(
                         }
                     )
                 }
-                DropdownMenuItem(
+                if (showEdit) DropdownMenuItem(
                     text = { Text(stringResource(R.string.common_edit)) },
                     leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
                     onClick = {
@@ -75,7 +77,7 @@ fun ItemContextMenu(
                         onEdit()
                     }
                 )
-                DropdownMenuItem(
+                if (showDelete) DropdownMenuItem(
                     text = { Text(stringResource(R.string.common_delete), color = deleteColor) },
                     leadingIcon = {
                         FluentIcon(

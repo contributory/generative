@@ -54,6 +54,8 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   └── 📁 ui/
 │   │       └── 📄 AppDataScreen.kt
 │   ├── 📁 chatoptions/
+│   │   ├── 📁 logic/
+│   │   │   └── 📄 AgentSkillFileTransfer.kt
 │   │   └── 📁 ui/
 │   │       ├── 📄 ChatOptionsScreen.kt
 │   │       ├── 📄 HelperSettings.kt
@@ -63,6 +65,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       ├── 📄 InstructionEditor.kt
 │   │       ├── 📄 InstructionPreview.kt
 │   │       ├── 📄 SkillEditor.kt
+│   │       ├── 📄 SkillImportDialog.kt
 │   │       └── 📄 SkillsTab.kt
 │   ├── 📁 icons/
 │   │   └── 📁 ui/
@@ -286,6 +289,8 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │       └── 📄 ToolSheetState.kt
 │   │   └── 📄 BottomSheetsLink.kt
 ├── 📁 integrations/
+│   ├── 📁 github/
+│   │   └── 📄 GitHubSkillDownloader.kt
 │   ├── 📁 security/
 │   │   └── 📄 SecretCipher.kt
 │   ├── 📁 mcp/

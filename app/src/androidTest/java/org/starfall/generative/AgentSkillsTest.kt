@@ -1,9 +1,6 @@
 package org.starfall.generative
 
 import androidx.activity.ComponentActivity
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
@@ -23,6 +20,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.features.chatoptions.ui.ChatOptionsScreen
+import org.starfall.generative.features.chatoptions.ui.SkillsTab
 import org.starfall.generative.features.home.chat.ui.input.UserInputArea
 import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.ToolSettings
@@ -103,8 +101,7 @@ Write clearly.
     }
 
     @Test
-    fun skillEditorCopiesAndPastesEntireSkillMdFromClipboard() {
-        val clipboard = compose.activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    fun skillEditorOnlyShowsSaveInItsAppbar() {
         compose.setContent {
             MaterialTheme {
                 ChatOptionsScreen(
@@ -117,16 +114,45 @@ Write clearly.
         }
         compose.onNodeWithText("Skills").performClick()
         compose.onNodeWithContentDescription("Add").performClick()
-        compose.onNodeWithContentDescription("Copy SKILL.md").performClick()
-        compose.runOnIdle {
-            val copied = clipboard.primaryClip?.getItemAt(0)?.text.toString()
-            assertTrue(copied.startsWith("---\nname: new-agent-skill"))
-            assertTrue(copied.contains("## Instructions"))
+        compose.onNodeWithContentDescription("Save skill").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Copy SKILL.md").assertDoesNotExist()
+        compose.onNodeWithText("Paste").assertDoesNotExist()
+    }
+
+    @Test
+    fun skillImportIsAfterAddAndShowsFileOrGithubChoices() {
+        compose.setContent {
+            MaterialTheme {
+                ChatOptionsScreen(
+                    providers = emptyList(),
+                    settings = ToolSettings(),
+                    onSave = { _, _ -> },
+                    onBack = {}
+                )
+            }
         }
-        val pasted = "---\nname: from-clipboard\ndescription: Imported skill\n---\n\n# Instructions"
-        clipboard.setPrimaryClip(ClipData.newPlainText("SKILL.md", pasted))
-        compose.onNodeWithText("Paste").performClick()
-        compose.onNodeWithTag("agent_skill_document_input").assertTextContains(pasted, substring = true)
+        compose.onNodeWithText("Skills").performClick()
+        compose.onNodeWithContentDescription("Add").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Import skill").assertIsDisplayed().performClick()
+        compose.onNodeWithText("Import skill").assertIsDisplayed()
+        compose.onNodeWithTag("agent_skill_import_file").assertIsDisplayed()
+        compose.onNodeWithTag("agent_skill_github_url").assertIsDisplayed()
+        compose.onNodeWithTag("agent_skill_import_github").assertIsDisplayed()
+    }
+
+    @Test
+    fun skillItemMenuExportsWithIconAndLabel() {
+        val skill = AgentSkill("awesome-skill", "awesome-skill", "# Instructions", "Test skill")
+        var exported: AgentSkill? = null
+        compose.setContent {
+            MaterialTheme {
+                SkillsTab(listOf(skill), onEditSkill = {}, onDeleteSkill = {},
+                    onExportSkill = { exported = it })
+            }
+        }
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Export skill").assertIsDisplayed().performClick()
+        compose.runOnIdle { org.junit.Assert.assertEquals(skill, exported) }
     }
 
     @Test
