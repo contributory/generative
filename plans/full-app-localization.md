@@ -261,7 +261,7 @@ every locale:
 
 | Was hardcoded in | Now |
 |---|---|
-| `UserProfileScreen.kt` — “User Profile”, “Profile photo options”, “Profile Photo”, “Choose the photo used across the app”, “Chat/Side Drawer/Menu Screen Background”, “Bottom Sheet Background”, “Dialog Background”, “%s options”, “%s (unavailable)”, “Unable to use image”, “OK”, “Photos Gallery”, “Media Storage”, “Remove”, “Close”, “Search photos”, “No photos in Media Storage” | `user_profile_*` resources (17 new keys); “Appearance”, “Media Storage”, “Remove”, “Close” and “OK” reuse the already translated `settings_tab_appearances`, `settings_storage`, `common_remove`, `common_close` and `common_ok`. |
+| `UserProfileScreen.kt` — “User Profile”, “Profile photo options”, “Profile Photo”, “Choose the photo used across the app”, “Chat/Side Drawer/Menu Screen Background”, “Bottom Sheet Background”, “Dialog Background”, “%s options”, “%s (unavailable)”, “Unable to use image”, “OK”, “Photos Gallery”, “Media Storage”, “Remove”, “Close”, “Search photos”, “No photos in Media Storage” | `user_profile_*` resources (15 new keys); “Appearance”, “Media Storage”, “Remove”, “Close” and “OK” reuse the already translated `settings_tab_appearances`, `settings_storage`, `common_remove`, `common_close` and `common_ok`. |
 | `ToolsEditor.kt` and `FeatureToolsSheet.kt` — “Search Tools”, “Find tool names and enabled states” | `tool_search_tools_title`, `tool_search_tools_description` (same pattern as the sibling `tool_agent_skills_search_*`). |
 | `OllamaAdapter.kt` — the chat error prefix “ [Error: … ]” and its “Network error” fallback | `ollama_error_text`, `ollama_network_error`, resolved through the application context. |
 
