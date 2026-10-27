@@ -163,33 +163,22 @@ internal fun Modifier.anchorTailItem(
 /**
  * Adds scroll room to the newest item in a reverse-layout chat list.
  *
- * The list starts at the bottom, so the newest item is the last thing a drag can reach. The blank
- * area therefore goes *below* the bubble on screen (after it in reading order, at the start edge of
- * the list): that is what lets the user drag the bubble up until it sits right under the app bar.
- * A blank area above the bubble would only push it away from history and could never be scrolled
- * through. A user message gets all of the remaining visible height and reports its natural height.
- * The reply that follows it passes [minItemHeightPx] (visible height minus that user message), so the
- * content from the user message to the end keeps the same total and the user message does not move
- * when the reply starts. [minSpacerPx] is a floor measured from the end of the item, independent of
- * how tall the item is, so the end of a long reply can still be dragged up the screen.
+ * The list starts at the bottom, so the blank area goes *below* the bubble on screen (at the start
+ * edge of the list). A newest user message grows to the full visible height, so it sits right under
+ * the app bar and can be dragged back there, and it reports its natural height through
+ * [onNaturalHeight]. The reply that follows passes [minItemHeightPx] (visible height minus that
+ * message) so the content from the user message to the end keeps the same total height and the user
+ * message does not move when the reply starts; the spacer shrinks to zero as the reply grows.
  */
 internal fun Modifier.reverseTailScrollPadding(
     visiblePx: Int,
-    fraction: Float,
     minItemHeightPx: Int? = null,
-    minSpacerPx: Int = 0,
     onNaturalHeight: ((Int) -> Unit)? = null
 ): Modifier = layout { measurable, constraints ->
     val placeable = measurable.measure(constraints)
     onNaturalHeight?.invoke(placeable.height)
-    val remainingSpace = (visiblePx - placeable.height).coerceAtLeast(0)
-    val fractionSpacer = (remainingSpace * fraction.coerceIn(0f, 1f)).roundToInt()
-    val keepInPlaceSpacer = minItemHeightPx?.let { (it - placeable.height).coerceAtLeast(0) } ?: 0
-    val spacer = maxOf(fractionSpacer, keepInPlaceSpacer, minSpacerPx)
-    val height = placeable.height + spacer
-    layout(placeable.width, height) {
-        placeable.placeRelative(0, 0)
-    }
+    val height = maxOf(placeable.height, minItemHeightPx ?: visiblePx)
+    layout(placeable.width, height) { placeable.placeRelative(0, 0) }
 }
 
 /**

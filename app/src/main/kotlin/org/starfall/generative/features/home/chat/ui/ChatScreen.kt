@@ -471,24 +471,21 @@ fun ChatScreen(
             ) {
                 items(displayMessages, key = { it.id }) { msg ->
                     val isLast = msg.id == lastMessage?.id
+                    // The newest user message gets scroll room so it sits flush under the app bar. The
+                    // reply to it only keeps that message from moving when the reply starts.
                     val isNewest = msg.id == newestMessageId
-                    val precedingUserHeight = if (isNewest && msg.role == ChatRole.MODEL) {
-                        precedingUserId?.let { tailUserHeights[it] }
-                    } else null
                     val tailModifier = when {
                         !isNewest -> Modifier
-                        msg.role == ChatRole.USER ->
+                        msg.role == ChatRole.USER -> Modifier.reverseTailScrollPadding(
+                            visibleChatPx,
+                            onNaturalHeight = { tailUserHeights[msg.id] = it }
+                        )
+                        msg.role == ChatRole.MODEL -> precedingUserId?.let { tailUserHeights[it] }?.let { userHeight ->
                             Modifier.reverseTailScrollPadding(
-                                visibleChatPx, 1f,
-                                onNaturalHeight = { tailUserHeights[msg.id] = it }
+                                visibleChatPx,
+                                minItemHeightPx = (visibleChatPx - userHeight).coerceAtLeast(0)
                             )
-                        msg.role == ChatRole.MODEL ->
-                            Modifier.reverseTailScrollPadding(
-                                visibleChatPx, 0f,
-                                minItemHeightPx = precedingUserHeight?.let { (visibleChatPx - it).coerceAtLeast(0) },
-                                // Half of the visible area below the END of the reply, however long it is.
-                                minSpacerPx = visibleChatPx / 2
-                            )
+                        } ?: Modifier
                         else -> Modifier
                     }
                     Column(
