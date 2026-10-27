@@ -4,7 +4,7 @@
 
 Add **ElevenLabs**, **Fish Audio**, and **Cartesia** as first-class engines in **Speech Services**, and add an independently configurable **Music Generation** tool in **Feature Tools**. Keep the existing interface style, auto-save behavior for media profile editing, speech playback, and saved user configurations intact.
 
-**Status: Planned (not implemented).** This is a source-aware implementation checklist; check a task only after the corresponding behavior and tests exist. Keep Speech Services and Music Generation independent: selecting a TTS service must not select a music profile, and music generation must not depend on the chat model, a Provider model, or a speech voice.
+**Status: Source implementation added; verification pending.** This is a source-aware implementation checklist; check a task only after the corresponding behavior and tests exist. Keep Speech Services and Music Generation independent: selecting a TTS service must not select a music profile, and music generation must not depend on the chat model, a Provider model, or a speech voice.
 
 ## Non-negotiable Music Generation UX contract
 
@@ -234,3 +234,33 @@ Accept: audio/*
 - Cartesia Voice List (paginated): https://docs.cartesia.ai/api-reference/voices/list
 - Fish Speech **self-hosted**, separate protocol: https://speech.fish.audio/inference/
 - Optional example of a music API usable by a **custom profile** (not a built-in Music mode or required provider): https://elevenlabs.io/docs/api-reference/music/compose
+
+## Implementation record (2026-10-27)
+
+Implemented standalone engine discrimination with legacy JSON/Room fallback, encrypted speech keys, separate REST adapters for all three engines, on-demand searchable/paginated voice browsing with manual-ID fallback, and dispatch before Provider resolution. Optional preview downloads are intentionally not exposed. Supported initial output selections are ElevenLabs MP3, Fish MP3/WAV/Opus, and Cartesia WAV; raw PCM is not offered for standalone engines. Optional tuning is entered through validated advanced JSON; unsupported keys are rejected. The generic speed slider is reserved for legacy engines.
+
+Implemented a separate Custom-only Music profile library/active ID, profile-only tool controls, auto-save and duplication/deletion, protected profile-owned credentials, per-step tests without files or Provider/model identity, binary audio/JSON URL/base64 extraction, async polling, tool discovery/execution, and existing inline audio/Media Storage output. Music's model-facing schema currently offers only `prompt`; vendor constants and any duration/style/lyrics values belong in the profile request template or in the natural-language prompt. Imported Default music profiles are excluded and cannot be selected/executed. Library map keys are authoritative for imported profile IDs.
+
+Music credentials are Android Keystore envelopes in persisted settings and exports. An envelope restored on another installation is retained but cannot be decrypted; the user must re-enter the Profile API key. Authentication headers must reference `{{api_token}}`; literal sensitive header values block auto-save and execution. No automatic Bearer header is added for Music. Requests and download redirects never forward a Provider credential. Request bodies/headers are omitted from music debug logging and tool errors.
+
+Added tests: `StandaloneSpeechTest`, `MusicGenerationTest`, `MusicCredentialTest`, `MusicProfilesUiTest`, `SpeechVoiceSheetTest`, plus standalone engine/key round trips in `SpeechServiceStorageTest`. These are **not yet executed**. Existing System/OpenAI/Google tests remain in place. Checklist verification items remain open until their tests/device checks pass.
+
+### Verification and smoke checklist
+
+- Static checks passed: Kotlin PSI syntax parsing, string-resource references, XML parsing, checked dependency direction and `git diff --check`. These checks do not establish Android/Compose type correctness. The localization checker reports missing translations for the new English keys across all 13 non-English locales; translation is deferred as permitted by AGENTS.md.
+- Gradle lint/unit/instrumentation tests and app build: not run; this plan requires explicit authorization. After authorization, run lint and tests together, e.g. `./gradlew --offline lint test`, and then the targeted device tests on a provisioned emulator.
+- No live paid synthesis or music API requests were made. Official request/list documentation was rechecked before implementation, including Cartesia's 2026-08-14 version and Bearer authentication.
+- On a device, add each standalone speech engine, enter its key/model, open voices, search, Load more, choose a voice, test/play/stop, retry offline/invalid-key cases, then switch back to System/OpenAI/Google.
+- Create a Music profile, set a protected credential and request-chain mapping, test each step, select it and enable Music Generation. Ask a tool-capable chat model for music; verify inline playback/download, Media Storage, and restart persistence.
+- Repeat with async polling, failed jobs, cancellation/chat switching and a temporary chat. Verify no failed/cancelled output remains, deleted profiles disable generation, and invalid/unconfigured tools make no request.
+- Restore settings on the same installation and another installation. Confirm keys remain masked and the latter requires re-entering Music credentials. Complete the coordinated translation follow-up listed in `full-app-localization.md`.
+
+### Debug build and editor review (user-authorized)
+
+Ran `./gradlew --offline :app:assembleDebug :app:lintDebug :app:testDebugUnitTest --continue --max-workers=2 --console=plain` after the user requested a debug build.
+
+- `:app:assembleDebug` passed and produced `app/build/outputs/apk/debug/app-debug.apk`. Main Kotlin/Java sources compiled, including the new TTS/Music implementation.
+- The combined command exited with failures in lint/unit-test tasks. Offline cache lacks `lint-gradle:32.3.0` and several Robolectric/Espresso runtime dependencies. Unit-test compilation also reports errors in existing unrelated tests, including AppLanguageSelectionTest, ChatTextSelectionDismissalTest, DrawerRemoteMachineContextMenuTest, EdgeToEdgeContentTest, FullBackupRestoreResilienceTest and terminal/UI tests. Unit tests did not execute.
+- Two nullable Java interop warnings remain in ToolFiles at the existing file-parent checks.
+- Reviewed the standalone speech editors: API key precedes synthesis model/voice, engine-specific Voice labels omit the OpenAI alloy example, advanced JSON is collapsed for empty configuration, and redundant standalone help text is removed. The voice sheet uses the shared list container, theme colors and Fluent selection icon, with no empty subtitle row.
+- No connected Android device/emulator was available; runtime visual/playback checks remain pending.

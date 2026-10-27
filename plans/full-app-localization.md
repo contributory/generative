@@ -383,3 +383,14 @@ normalizes both spellings to the same entry, and the tests assert the folder is 
 | `app/src/main/kotlin/org/starfall/generative/integrations/modelapis/ollama/OllamaAdapter.kt` | The chat error prefix and its network-error fallback come from string resources. |
 | `scripts/localization_check.py` | New offline coverage/validation CLI, hardened against XML entity attacks, extended with the `aapt2` format rule and the hardcoded-Kotlin-text rule. |
 | `scripts/translate_strings.py` | `--check` delegates to the new checker (offline, no `googletrans` needed). |
+
+## Speech engines and Music Generation follow-up
+
+The speech/music implementation adds English source keys only, in accordance with AGENTS.md.
+Translate the following keys together across **every** supported non-English locale in a coordinated pass:
+
+- `speech_choose_voice`, `speech_owned_voices`, `speech_no_voices`, `speech_load_more`, `speech_engine_model`, `speech_search_voices`, `speech_engine_api_key`, `speech_engine_api_key_help`, `speech_voice_required`.
+- `music_profiles`, `music_audio`, `tool_music_generation_title`, `tool_generate_music_description`, `music_select_profile`, `music_profile_required`.
+- `music_profile_credential`, `music_profile_credential_help`, `music_duplicate_profile`, `music_unsafe_headers`, `tool_generating_music`, `tool_generate_music`.
+
+Keep engine names, API, Profile, model/voice IDs and request-template placeholders intact. Missing translations currently use Android's English fallback; they are not counted as translated coverage.

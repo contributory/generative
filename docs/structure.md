@@ -573,8 +573,8 @@ This document is the detailed package map and architecture reference. The mandat
 │       │   ├── 📄 ModelPickerItems.kt
 │       │   ├── 📄 ModelPickerRows.kt
 │       │   ├── 📄 ModelPickerSheet.kt
-│       │   ├── 📄 ModelPickerTabRow.kt
 │       │   ├── 📄 ModelPickerToolbar.kt
+│       │   ├── 📄 ModelPickerTabRow.kt
 │       │   ├── 📄 ReasoningEffortControl.kt
 │       │   └── 📄 ThinkingColorBurst.kt
 │       ├── 📁 sheets/
@@ -698,3 +698,14 @@ The project uses `ui/`, `logic/`, and `model/` instead of a canonical `presentat
 - Usage is stored with each response version in nullable relational columns (Room v12). Hashed history/configuration keys prevent reuse after an edit, branch, model/provider change, prompt/tool-settings change or compact. Old/imported history without usage falls back to the local estimator; new messages after a valid snapshot add only an explicitly labeled local estimate.
 - The context details distinguish API usage, estimates and mixed counts. A missing output count remains explicitly unavailable rather than becoming a fabricated zero. The maximum context capacity still comes from model configuration/catalog metadata.
 - Custom summary targets are not restricted to the slider's 6000-token range. Summary requests override the provider's default output budget, while explicit model output limits and input-plus-output context budgets remain enforced. Multiple-pass summaries reserve room for the requested final output.
+
+### Standalone speech and music requests
+
+- `shared/model/SpeechService.kt` declares `SpeechEngine` with legacy System/Provider inference.
+- `integrations/speech/SpeechEngineAdapters.kt` owns ElevenLabs, Fish Audio and Cartesia HTTP mappings and their separate voice pagination protocols; `StandaloneSpeechClient.kt` handles bounded, cancellable transport without diagnostic request logging.
+- `features/speech/ui/SpeechVoiceSheet.kt` owns on-demand voice search, pagination, retries and selection. `SpeechEditor.kt` keeps standalone model/voice IDs separate from Provider models.
+- `SpeechRepository` stores additive engine/voice-name metadata in structured JSON and continues encrypting keys in `SpeechAuthEntity`; no Room schema change is required.
+- `shared/model/media/MediaRequestChain.kt` adds `MediaKind.MUSIC`, `AUDIO`, protected credential envelopes and Custom music-profile validation. `SystemToolConfig` owns a separate music library and active ID.
+- `features/tools/ui/MusicToolSettings.kt` provides the profile-only Music Generation card; `MusicProfileCredentialField.kt` masks and encrypts the profile key before updating the draft. The existing profile library/editor receives an explicit `MediaKind`; Music omits the mode selector and built-in Default.
+- `integrations/media/MusicGenerationClient.kt` snapshots a Custom profile and executes it without a Provider or chat model. It disables request debug logging, uses profile-owned encrypted credentials, bounds execution, and rolls back newly created output files on failure/cancellation through `shared/files/ToolFileBatch.kt`.
+- `shared/media/AudioContent.kt` recognizes supported audio containers for TTS and Music; `ToolFiles` validates audio before publishing a generated file. Existing chat audio previews and Media Storage render saved tracks.
