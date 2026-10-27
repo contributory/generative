@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.storage.database.entities
+package org.starfall.generative.database.entities
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

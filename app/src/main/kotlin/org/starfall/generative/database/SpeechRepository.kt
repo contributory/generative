@@ -1,4 +1,6 @@
-package org.starfall.generative.shared.storage
+package org.starfall.generative.database
+
+import org.starfall.generative.shared.storage.ImmediateState
 
 import androidx.room.withTransaction
 import kotlinx.coroutines.Dispatchers
@@ -9,10 +11,10 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import org.starfall.generative.shared.model.SpeechService
-import org.starfall.generative.shared.storage.database.AppDatabase
-import org.starfall.generative.shared.storage.database.SecretCipher
-import org.starfall.generative.shared.storage.database.entities.SpeechAuthEntity
-import org.starfall.generative.shared.storage.database.entities.SpeechServiceEntity
+import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.integrations.security.SecretCipher
+import org.starfall.generative.database.entities.SpeechAuthEntity
+import org.starfall.generative.database.entities.SpeechServiceEntity
 
 class SpeechRepository(private val db: AppDatabase) {
     private val dao = db.speechServiceDao()

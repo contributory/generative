@@ -6,10 +6,10 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import kotlinx.coroutines.runBlocking
-import org.starfall.generative.shared.storage.database.AppDatabase
+import org.starfall.generative.database.AppDatabase
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.appwiring.*
-import org.starfall.generative.shared.storage.*
+import org.starfall.generative.database.*
 import org.starfall.generative.features.mcp.shared.ui.*
 import org.starfall.generative.integrations.mcp.*
 import org.starfall.generative.features.machines.shared.ui.*

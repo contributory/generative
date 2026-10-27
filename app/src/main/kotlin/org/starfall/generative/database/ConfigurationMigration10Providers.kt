@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.storage.database
+package org.starfall.generative.database
 
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.serialization.json.JsonObject
@@ -9,9 +9,9 @@ import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.shared.storage.EndpointSecrets
-import org.starfall.generative.shared.storage.ProviderAuthPayload
-import org.starfall.generative.shared.storage.hasSecrets
+import org.starfall.generative.database.EndpointSecrets
+import org.starfall.generative.database.ProviderAuthPayload
+import org.starfall.generative.database.hasSecrets
 
 internal object ConfigurationMigration10Providers {
     fun copy(db: SupportSQLiteDatabase) {

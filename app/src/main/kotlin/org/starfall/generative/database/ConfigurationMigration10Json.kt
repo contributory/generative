@@ -1,4 +1,6 @@
-package org.starfall.generative.shared.storage.database
+package org.starfall.generative.database
+
+import org.starfall.generative.integrations.security.SecretCipher
 
 import android.database.Cursor
 import androidx.sqlite.db.SupportSQLiteDatabase

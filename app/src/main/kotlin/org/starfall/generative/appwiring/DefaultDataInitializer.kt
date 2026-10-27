@@ -13,9 +13,9 @@ import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.isContentApiName
 import org.starfall.generative.shared.model.isContentApiPreset
-import org.starfall.generative.shared.storage.McpRepository
-import org.starfall.generative.shared.storage.ModelRepository
-import org.starfall.generative.shared.storage.SpeechRepository
+import org.starfall.generative.database.McpRepository
+import org.starfall.generative.database.ModelRepository
+import org.starfall.generative.database.SpeechRepository
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 
 /** Runs startup defaults and initial MCP tool caching; auth repairs belong in migrations. */

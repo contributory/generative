@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.storage
+package org.starfall.generative.database
 
 import org.starfall.generative.shared.model.McpAuthorization
 import org.starfall.generative.shared.model.McpInfo

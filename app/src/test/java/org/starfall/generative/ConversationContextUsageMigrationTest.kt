@@ -26,8 +26,8 @@ import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.ToolActivity
 import org.starfall.generative.shared.model.generation.ContextUsageSnapshot
 import org.starfall.generative.shared.model.generation.TokenUsage
-import org.starfall.generative.shared.storage.ConversationRepository
-import org.starfall.generative.shared.storage.database.AppDatabase
+import org.starfall.generative.database.ConversationRepository
+import org.starfall.generative.database.AppDatabase
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)

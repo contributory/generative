@@ -16,7 +16,7 @@ import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.storage.ConversationRepository
+import org.starfall.generative.database.ConversationRepository
 
 /** Generates titles independently of the message-send transaction while respecting restore boundaries. */
 internal class ConversationTitleGenerator(

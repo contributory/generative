@@ -37,6 +37,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.features.home.shared.ui.FeatureToolsSheetContent
+import org.starfall.generative.features.home.shared.ui.ConversationSummarySheetContent
+import org.starfall.generative.shared.model.ConversationSummaryRequest
 import org.starfall.generative.features.home.shared.ui.InstructionsSheetContent
 import org.starfall.generative.features.home.shared.ui.McpConnectorsSheetContent
 import org.starfall.generative.features.home.shared.ui.QuickActionsSheetContent
@@ -59,10 +61,11 @@ internal enum class QuickActionsPage {
 internal enum class ModelSheetPage {
     SELECTED_MODEL,
     MODEL_PICKER,
+    SUMMARY,
 }
 
 internal class BottomSheetsLinkState {
-    /** The selected-model overview and the model picker are two pages of one sheet. */
+    /** The selected-model overview, model picker, and summarization share one sheet. */
     var modelSheetPage by mutableStateOf<ModelSheetPage?>(null)
         private set
     /** True when the picker was reached from the overview, so Back returns there instead of closing. */
@@ -103,6 +106,7 @@ internal class BottomSheetsLinkState {
         pickerOpenedFromOverview = true
         modelSheetPage = ModelSheetPage.MODEL_PICKER
     }
+    fun openSummary() { modelSheetPage = ModelSheetPage.SUMMARY }
     fun backFromModelPicker() {
         if (pickerOpenedFromOverview) openSelectedModelOverview() else dismissModelSheet()
     }
@@ -178,8 +182,8 @@ internal fun BottomSheetsLink(
     onOpenMcpConnectorsSettings: () -> Unit = {},
     /** Context window indicator shown above the model card; null hides it. */
     contextWindowContent: (@Composable (onDarkBackground: Boolean) -> Unit)? = null,
-    /** Opens the conversation summarization sheet from the model sheet; null hides the Summarize button. */
-    onOpenSummary: (() -> Unit)? = null
+    /** Starts summarization; null hides the Summarize button. */
+    onStartSummary: ((ConversationSummaryRequest) -> Boolean)? = null
 ) {
     val context = LocalContext.current
     fun retainReadPermission(uri: Uri) {
@@ -325,12 +329,11 @@ internal fun BottomSheetsLink(
         // A conversation override wins; otherwise show the level saved for this model.
         val effectiveReasoningEffort = conversationReasoningEffort ?: selectedConfig.reasoningEffort
         val previewTier = rememberPreviewTier(selectedConfig, effectiveReasoningEffort)
-        val onPicker = modelSheetPage == ModelSheetPage.MODEL_PICKER
-        val style = selectedModelSheetStyle(!onPicker && previewTier.intValue == 6 && selectedConfig.supportsThinking)
+        val style = selectedModelSheetStyle(modelSheetPage == ModelSheetPage.SELECTED_MODEL && previewTier.intValue == 6 && selectedConfig.supportsThinking)
         val maxContentHeight = LocalBottomSheetMaxContentHeight
         CompositionLocalProvider(LocalThinkingScreenBurst provides selectedModelScreenBurst) {
             ThinkingScreenBurstLayer(selectedModelScreenBurst)
-            // One sheet for both pages: switching slides the content and animates the height in place.
+            // One sheet for all pages: switching slides the content and animates the height in place.
             AppSheet(
                 onDismissRequest = {
                     selectedModelScreenBurst.hide()
@@ -348,8 +351,11 @@ internal fun BottomSheetsLink(
                 // The sheet is its own window, so the screen-owned star overlay must also be attached to it.
                 ThinkingScreenBurstLayer(selectedModelScreenBurst)
                 SlideSheetContent(
-                    page = if (onPicker) ModelSheetPage.MODEL_PICKER else null,
-                    onBack = { sheets.backFromModelPicker() },
+                    page = modelSheetPage.takeUnless { it == ModelSheetPage.SELECTED_MODEL },
+                    onBack = {
+                        if (sheets.modelSheetPage == ModelSheetPage.SUMMARY) sheets.openSelectedModelOverview()
+                        else sheets.backFromModelPicker()
+                    },
                     label = "Model sheet"
                 ) { target ->
                     val pageActive = LocalScreenTransitionActive.current
@@ -383,6 +389,14 @@ internal fun BottomSheetsLink(
                             modifier = Modifier.height(maxContentHeight.current * 0.9f),
                             onDismiss = { sheets.dismissModelSheet() }
                         )
+                    } else if (target == ModelSheetPage.SUMMARY) {
+                        if (onStartSummary != null) {
+                            ConversationSummarySheetContent(
+                                onStart = { request -> pageActive && onStartSummary(request) },
+                                onDismiss = { if (pageActive) sheets.dismissModelSheet() },
+                                onBack = { if (pageActive) sheets.openSelectedModelOverview() }
+                            )
+                        }
                     } else {
                         SelectedModelOverviewContent(
                             provider = selectedProvider,
@@ -423,13 +437,8 @@ internal fun BottomSheetsLink(
                             },
                             onOpenModelPicker = { if (pageActive) sheets.switchToModelPicker() },
                             contextWindowContent = contextWindowContent,
-                            onSummarize = onOpenSummary?.let { openSummary ->
-                                {
-                                    if (pageActive) {
-                                        sheets.dismissModelSheet()
-                                        openSummary()
-                                    }
-                                }
+                            onSummarize = onStartSummary?.let {
+                                { if (pageActive) sheets.openSummary() }
                             }
                         )
                     }

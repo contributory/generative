@@ -14,9 +14,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.shared.auth.*
-import org.starfall.generative.shared.storage.database.AppDatabase
+import org.starfall.generative.database.AppDatabase
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.shared.storage.ModelRepository
+import org.starfall.generative.database.ModelRepository
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.auth.Authorization

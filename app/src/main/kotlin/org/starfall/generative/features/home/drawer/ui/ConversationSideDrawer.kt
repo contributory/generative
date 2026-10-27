@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -49,7 +50,6 @@ import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.theme.LocalAmoledMode
-import org.starfall.generative.shared.ui.layout.AmoledBorderEdge
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
@@ -57,9 +57,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 import org.starfall.generative.shared.ui.FeaturesLogoImage
-import org.starfall.generative.shared.ui.layout.amoledEdgeBorder
 import org.starfall.generative.shared.ui.layout.windowHeightIn
-import org.starfall.generative.shared.ui.layout.windowWidth
 import org.starfall.generative.features.home.drawer.logic.lastModelIcon
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -180,16 +178,9 @@ fun ConversationSideDrawer(
         }
     }
     BackHandler(enabled = selecting && isOpen) { stopSelecting() }
-    val drawerShape = RoundedCornerShape(topEnd = 32.dp, bottomEnd = 32.dp)
-    val drawerModifier = modifier.windowWidth(0.85f).let {
-        if (LocalAmoledMode.current) {
-            // Only the edge facing the chat is outlined; top/bottom/start sit against the screen edge.
-            it.amoledEdgeBorder(drawerShape, MaterialTheme.colorScheme.outlineVariant, 1.dp, AmoledBorderEdge.End)
-        } else it
-    }
     ModalDrawerSheet(
-        modifier = drawerModifier,
-        drawerShape = drawerShape,
+        modifier = modifier.fillMaxWidth().testTag("conversation_side_drawer"),
+        drawerShape = RectangleShape,
         drawerContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 1f)
     ) {
         BoxWithConstraints(

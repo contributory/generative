@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.storage
+package org.starfall.generative.database
 
 import java.util.UUID
 import kotlinx.serialization.json.Json
@@ -10,9 +10,9 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import org.starfall.generative.shared.storage.database.dao.StructuredJsonDao
-import org.starfall.generative.shared.storage.database.entities.StructuredJsonDocumentEntity
-import org.starfall.generative.shared.storage.database.entities.StructuredJsonNodeEntity
+import org.starfall.generative.database.dao.StructuredJsonDao
+import org.starfall.generative.database.entities.StructuredJsonDocumentEntity
+import org.starfall.generative.database.entities.StructuredJsonNodeEntity
 
 internal data class StructuredJsonDocument(
     val ownerType: String,

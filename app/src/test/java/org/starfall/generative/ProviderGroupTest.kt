@@ -15,9 +15,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.storage.database.AppDatabase
+import org.starfall.generative.database.AppDatabase
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.shared.storage.ModelRepository
+import org.starfall.generative.database.ModelRepository
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.features.providers.list.ui.newProviderId
 import org.starfall.generative.shared.model.api.ModelApiType
@@ -154,7 +154,7 @@ class ProviderGroupTest {
             val repo = ModelRepository(db, AiService(context))
             repo.saveGroup(ProviderGroup("g", "Work", 0))
             for (id in listOf("z-legacy", "a-legacy")) {
-                db.modelProviderDao().insertOrUpdate(org.starfall.generative.shared.storage.database.entities.ModelProviderEntity(
+                db.modelProviderDao().insertOrUpdate(org.starfall.generative.database.entities.ModelProviderEntity(
                     id = id,
                     name = id,
                     type = ModelApiType.OPENAI.name,

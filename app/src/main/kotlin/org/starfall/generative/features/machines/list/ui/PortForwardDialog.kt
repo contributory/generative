@@ -67,8 +67,7 @@ internal fun PortForwardDialog(
             Column {
                 MachineDialogTopBar(
                     title = stringResource(R.string.remote_machine_start_port_forward),
-                    machine = machine,
-                    onClose = onDismiss
+                    machine = machine
                 )
                 Column(
                     Modifier

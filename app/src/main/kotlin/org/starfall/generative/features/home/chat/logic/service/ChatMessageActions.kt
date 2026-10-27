@@ -29,7 +29,7 @@ import org.starfall.generative.features.home.chat.logic.contextUsageKey
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.storage.ConversationRepository
+import org.starfall.generative.database.ConversationRepository
 import org.starfall.generative.shared.storage.LocalWriteErrors
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository

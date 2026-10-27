@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.storage
+package org.starfall.generative.database
 
 import kotlinx.serialization.Serializable
 import kotlinx.coroutines.CancellationException
@@ -38,7 +38,7 @@ internal inline fun <reified T> decodeEndpointAuth(
 ): T = try {
     check(state == "READY") { "Authentication record is not ready." }
     check(payloadVersion in 1..2 && cipherVersion == 1) { "Unsupported authentication format." }
-    json.decodeFromString<T>(org.starfall.generative.shared.storage.database.SecretCipher.decryptStrict(encryptedPayload))
+    json.decodeFromString<T>(org.starfall.generative.integrations.security.SecretCipher.decryptStrict(encryptedPayload))
 } catch (e: CancellationException) {
     throw e
 } catch (e: Exception) {

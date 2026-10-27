@@ -153,6 +153,7 @@ fun ChatScreen(
     // reverseLayout puts item 0 at the physical bottom. The list data is reversed below,
     // so the newest message is item 0 and opening a conversation needs no corrective scroll.
     val listState = remember(conversationKey) { LazyListState() }
+    val minimapState = remember(conversationKey) { ConversationMinimapSideBarState() }
     var followBottom by remember(conversationKey) { mutableStateOf(true) }
     var jumpingToBottom by remember(conversationKey) { mutableStateOf(false) }
     val settleTracker = remember(conversationKey) { ChatSettleTracker() }
@@ -376,6 +377,7 @@ fun ChatScreen(
     val density = LocalDensity.current
     var appBarHeightPx by remember { mutableIntStateOf(0) }
     var inputAreaHeightPx by remember { mutableIntStateOf(0) }
+    var bottomPanelHeightPx by remember { mutableIntStateOf(0) }
     var chatRootCoordinates by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     var inputAreaBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     val appBarHeight = if (appBarHeightPx > 0) with(density) { appBarHeightPx.toDp() }
@@ -388,6 +390,7 @@ fun ChatScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .onGloballyPositioned { chatRootCoordinates = it }
+            .dismissMinimapOnOutsideTap(minimapState)
             // A plain tap anywhere on the chat screen except the input area (messages, blank space, app bar)
             // drops focus: the input field loses focus and any text selection is cleared. Scrolling and dragging
             // do not. Nothing is consumed, and a press held past the long-press timeout is selection, not a tap.
@@ -627,6 +630,7 @@ fun ChatScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .onSizeChanged { bottomPanelHeightPx = it.height }
                 .navigationBarsPadding()
         ) {
             inlineChatError?.let { error ->
@@ -733,7 +737,7 @@ fun ChatScreen(
                 onCancelEdit = { editDraft = null },
                 onStopGenerating = onStopGenerating,
                 contextWindowStatus = contextWindowStatus,
-                onOpenSummary = { showContextSummarySheet = true },
+                onStartSummary = onStartConversationSummary,
                 selectedModelName = selectedModelName,
                 providers = providers,
                 providerGroups = providerGroups,
@@ -777,6 +781,23 @@ fun ChatScreen(
             },
             modifier = Modifier.align(Alignment.TopCenter)
                 .onSizeChanged { appBarHeightPx = it.height }
+        )
+        ConversationMinimapSideBar(
+            conversationKey = conversationKey,
+            messages = messages,
+            listState = listState,
+            topObscuredPx = with(density) { (appBarHeight + 8.dp).roundToPx() },
+            // Measure the entire bottom panel, including suggestions, errors and navigation insets.
+            bottomObscuredPx = bottomPanelHeightPx + with(density) { 8.dp.roundToPx() },
+            onOpen = {
+                keyboardController?.hide()
+                focusManager.clearFocus(force = true)
+            },
+            onNavigate = {
+                followBottom = false
+                revealed = true
+            },
+            state = minimapState
         )
     }
 

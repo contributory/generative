@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.storage
+package org.starfall.generative.database
 
 import kotlinx.serialization.json.Json
 

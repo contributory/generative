@@ -52,6 +52,7 @@ class ConversationDrawerFocusTest {
 
         isOpen = true
         compose.waitForIdle()
+        compose.onNodeWithTag("conversation_side_drawer").assertWidthIsEqualTo(420.dp)
         // At rest, Search, Menu and New chat share the same 52dp height; Search and New chat are 52dp squares.
         compose.onNodeWithTag("conversation_drawer_search_button")
             .assertIsDisplayed()

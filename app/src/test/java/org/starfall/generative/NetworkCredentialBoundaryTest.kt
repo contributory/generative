@@ -35,8 +35,8 @@ import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
 import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.shared.storage.ModelRepository
-import org.starfall.generative.shared.storage.database.AppDatabase
+import org.starfall.generative.database.ModelRepository
+import org.starfall.generative.database.AppDatabase
 import java.nio.file.Files
 import java.util.Base64
 import java.util.concurrent.TimeUnit

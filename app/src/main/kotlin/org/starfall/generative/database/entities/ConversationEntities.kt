@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.storage.database.entities
+package org.starfall.generative.database.entities
 
 import androidx.room.Entity
 import androidx.room.ForeignKey

@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.storage
+package org.starfall.generative.database
 
 import androidx.room.withTransaction
 import kotlinx.coroutines.Dispatchers
@@ -20,14 +20,14 @@ import org.starfall.generative.shared.model.ToolActivity
 import org.starfall.generative.shared.model.generation.ContextUsageSnapshot
 import org.starfall.generative.shared.model.generation.TokenUsage
 import org.starfall.generative.shared.model.pruningEmptyResponses
-import org.starfall.generative.shared.storage.database.AppDatabase
-import org.starfall.generative.shared.storage.database.entities.ConversationEntity
-import org.starfall.generative.shared.storage.database.entities.ConversationSummaryEntity
-import org.starfall.generative.shared.storage.database.entities.MessageEntity
-import org.starfall.generative.shared.storage.database.entities.MessageVersionEntity
-import org.starfall.generative.shared.storage.database.entities.MessageVersionFileEntity
-import org.starfall.generative.shared.storage.database.entities.ToolActivityEntity
-import org.starfall.generative.shared.storage.database.entities.ToolActivityFileEntity
+import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.entities.ConversationEntity
+import org.starfall.generative.database.entities.ConversationSummaryEntity
+import org.starfall.generative.database.entities.MessageEntity
+import org.starfall.generative.database.entities.MessageVersionEntity
+import org.starfall.generative.database.entities.MessageVersionFileEntity
+import org.starfall.generative.database.entities.ToolActivityEntity
+import org.starfall.generative.database.entities.ToolActivityFileEntity
 
 class ConversationMigrationException(
     val conversationId: String,

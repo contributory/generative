@@ -90,6 +90,7 @@ import org.starfall.generative.features.home.chat.ui.input.agentSkillMenuQuery
 import org.starfall.generative.features.home.chat.ui.ContextWindowBar
 import org.starfall.generative.features.home.chat.ui.ContextWindowRing
 import org.starfall.generative.features.home.BottomSheetsLink
+import org.starfall.generative.shared.model.ConversationSummaryRequest
 import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.shared.ui.model.modelInitial
 
@@ -105,7 +106,7 @@ fun UserInputArea(
     onCancelEdit: () -> Unit,
     onStopGenerating: () -> Unit,
     contextWindowStatus: ContextWindowStatus? = null,
-    onOpenSummary: () -> Unit = {},
+    onStartSummary: ((ConversationSummaryRequest) -> Boolean)? = null,
     selectedModelName: String,
     providers: List<ModelProvider>,
     providerGroups: List<ProviderGroup> = emptyList(),
@@ -696,6 +697,6 @@ fun UserInputArea(
         onOpenFeatureToolsSettings = onOpenFeatureToolsSettings,
         onOpenMcpConnectorsSettings = onOpenMcpConnectorsSettings,
         contextWindowContent = modelSheetContextWindow,
-        onOpenSummary = onOpenSummary.takeIf { contextWindowStatus != null }
+        onStartSummary = onStartSummary.takeIf { contextWindowStatus != null }
     )
 }

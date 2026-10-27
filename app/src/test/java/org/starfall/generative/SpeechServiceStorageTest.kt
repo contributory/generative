@@ -11,10 +11,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.storage.database.AppDatabase
-import org.starfall.generative.shared.storage.database.entities.SpeechServiceEntity
+import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.entities.SpeechServiceEntity
 import org.starfall.generative.shared.model.SpeechService
-import org.starfall.generative.shared.storage.SpeechRepository
+import org.starfall.generative.database.SpeechRepository
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

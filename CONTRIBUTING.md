@@ -50,13 +50,14 @@ The current implementation is under `app/src/main/kotlin/org/starfall/generative
 - `features/`: feature-oriented vertical slices in the project’s UI-First Clean Architecture–inspired structure. Each capability groups presentation (`ui/`), application workflow/use-case coordination and state holders (`logic/`), and feature-specific state/data types (`model/`). A feature may span multiple screens and is not defined by a `FeaturesScreen`/`AppMenuScreen` entry. The project uses `logic/` and `model/` rather than a canonical `domain/`/`data/` split, so place code by responsibility and dependency direction.
 - `features/home/`: chat, conversation drawer, and chat-related shared UI and logic.
 - `integrations/`: code whose primary purpose is communicating with external services, including provider APIs, MCP, media-generation APIs, and remote-machine connections.
-- `shared/`: reusable UI, models, storage, networking primitives, and pure helpers used across layers.
+- `database/`: Room databases, DAOs, entities, migrations, database-backed repositories, and storage mappers.
+- `shared/`: reusable UI, models, preferences, state/networking primitives, and pure helpers used across layers.
 - `navigation/`: app navigation destinations and routing.
 - `appwiring/`: application-level dependency construction and initialization.
 
-Follow this dependency direction: `shared` ← `integrations` ← `features` ← `navigation` ← `appwiring`. In particular:
+Follow this dependency direction: `shared` ← `integrations` ← `database` ← `features` ← `navigation` ← `appwiring`. In particular:
 
-- `shared/` and `integrations/` must not import from `features/`.
+- `shared/` and `integrations/` must not import from `database/` or `features/`; `database/` must not import from `features/`.
 - Feature packages must not import from each other, and one feature must never import another feature.
 - Code used by only one layer should normally stay with that layer. Move code to `shared/` when it is genuinely used by multiple layers; external API calls and protocol handling belong in `integrations/`.
 - Keep UI rendering in Compose and screen state/actions in the appropriate ViewModel or state holder. Within a feature, UI may depend on logic/model, logic may depend on model, and model must not depend on UI or logic. Inject dependencies rather than constructing unrelated services inside UI composables.
@@ -67,7 +68,8 @@ Before changing package structure or moving a file, inspect its callers, tests, 
 
 ## User data, resources, and configuration
 
-- Keep Room entities, DAOs, and migrations in the existing database-related packages. For schema changes, provide a compatible migration and preserve existing users' data.
+- Keep Room entities, DAOs, migrations, and database-backed repositories in root `database/`. Keep Android Keystore encryption in `integrations/security/`, shared by Room persistence and MCP OAuth. For schema changes, provide a compatible migration and preserve existing users' data.
+- Keep historical Room schema snapshots in `app/schemas/org.starfall.generative.database.AppDatabase/`. A package-only relocation must not change schema contents/hashes, the database filename, schema version, migration SQL, or credential key alias.
 - Add app resources under `app/src/main/res/` and raw assets under `app/src/main/assets/`.
 - Do not check in `local.properties`, build outputs, signing material, or machine-specific configuration.
 - Keep credentials out of logs, error messages, test fixtures, sample links, and documentation.

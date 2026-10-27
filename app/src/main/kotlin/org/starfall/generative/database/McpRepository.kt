@@ -1,4 +1,7 @@
-package org.starfall.generative.shared.storage
+package org.starfall.generative.database
+
+import org.starfall.generative.shared.storage.ImmediateState
+import org.starfall.generative.shared.storage.upsert
 
 import androidx.room.withTransaction
 import kotlinx.coroutines.Dispatchers
@@ -17,12 +20,12 @@ import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.McpProtocol
 import org.starfall.generative.shared.model.ToolDefinition
 import org.starfall.generative.shared.model.auth.CredentialLoadState
-import org.starfall.generative.shared.storage.database.AppDatabase
-import org.starfall.generative.shared.storage.database.SecretCipher
-import org.starfall.generative.shared.storage.database.entities.McpAuthEntity
-import org.starfall.generative.shared.storage.database.entities.McpCachedToolEntity
-import org.starfall.generative.shared.storage.database.entities.McpServerEntity
-import org.starfall.generative.shared.storage.database.entities.McpToolCacheEntity
+import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.integrations.security.SecretCipher
+import org.starfall.generative.database.entities.McpAuthEntity
+import org.starfall.generative.database.entities.McpCachedToolEntity
+import org.starfall.generative.database.entities.McpServerEntity
+import org.starfall.generative.database.entities.McpToolCacheEntity
 import kotlinx.serialization.json.JsonObject
 
 class McpRepository(

@@ -8,7 +8,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
-import org.starfall.generative.shared.storage.database.SecretCipher
+import org.starfall.generative.integrations.security.SecretCipher
 
 /** A released v9 schema built independently of either migration, using only synthetic source rows. */
 internal object CredentialV9Fixture {

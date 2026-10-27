@@ -21,10 +21,10 @@ import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.model.provider.ProviderPlacement
 import org.starfall.generative.shared.model.provider.ProviderRootOrderItem
 import org.starfall.generative.shared.storage.LocalWriteErrors
-import org.starfall.generative.shared.storage.McpRepository
-import org.starfall.generative.shared.storage.ModelRepository
-import org.starfall.generative.shared.storage.ProfileRepository
-import org.starfall.generative.shared.storage.SpeechRepository
+import org.starfall.generative.database.McpRepository
+import org.starfall.generative.database.ModelRepository
+import org.starfall.generative.database.ProfileRepository
+import org.starfall.generative.database.SpeechRepository
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 

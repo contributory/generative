@@ -32,11 +32,11 @@ import org.starfall.generative.features.appdata.model.ZipAppDataBackup
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.icons.IconStore
-import org.starfall.generative.shared.storage.ConversationRepository
-import org.starfall.generative.shared.storage.McpRepository
-import org.starfall.generative.shared.storage.ModelRepository
-import org.starfall.generative.shared.storage.ProfileRepository
-import org.starfall.generative.shared.storage.SpeechRepository
+import org.starfall.generative.database.ConversationRepository
+import org.starfall.generative.database.McpRepository
+import org.starfall.generative.database.ModelRepository
+import org.starfall.generative.database.ProfileRepository
+import org.starfall.generative.database.SpeechRepository
 import org.starfall.generative.shared.storage.preferences.AppLocale
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.storage.preferences.ToolSettingsStore

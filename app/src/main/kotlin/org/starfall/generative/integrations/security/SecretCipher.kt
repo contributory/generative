@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.storage.database
+package org.starfall.generative.integrations.security
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties

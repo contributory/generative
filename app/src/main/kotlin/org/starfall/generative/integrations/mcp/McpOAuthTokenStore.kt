@@ -9,7 +9,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
-import org.starfall.generative.shared.storage.database.SecretCipher
+import org.starfall.generative.integrations.security.SecretCipher
 
 @Serializable
 internal data class McpOAuthTokenState(

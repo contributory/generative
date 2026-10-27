@@ -1,4 +1,4 @@
--- Frozen DDL from tracked app/schemas/org.starfall.generative.shared.storage.database.AppDatabase/9.json.
+-- Frozen DDL from tracked app/schemas/org.starfall.generative.database.AppDatabase/9.json.
 -- Only ${TABLE_NAME} substitutions have been applied; each statement occupies one line.
 CREATE TABLE IF NOT EXISTS `conversations` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `messagesJson` TEXT NOT NULL, `tokenCount` INTEGER, `providerId` TEXT NOT NULL, `modelId` TEXT NOT NULL, `profileId` TEXT, `summaryJson` TEXT, `reasoningEffort` TEXT, PRIMARY KEY(`id`));
 CREATE TABLE IF NOT EXISTS `chat_profiles` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `icon` TEXT, `configJson` TEXT NOT NULL, `activeMcpJson` TEXT NOT NULL, `activeModelToolsJson` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, PRIMARY KEY(`id`));

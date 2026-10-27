@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.storage.database
+package org.starfall.generative.database
 
 import androidx.sqlite.db.SupportSQLiteDatabase
 

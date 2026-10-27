@@ -151,11 +151,6 @@ internal fun WebSocketProxyDialog(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                    },
-                    actions = {
-                        IconButton(onClick = onDismiss) {
-                            FluentIcon(Icons.Default.Close, stringResource(R.string.common_close))
-                        }
                     }
                 )
                 Column(

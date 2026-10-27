@@ -1124,4 +1124,7 @@
     <string name="drag_to_exit_folder_hint">Drag up to the app bar or down to the navigation bar to leave the folder</string>
     <string name="conversation_summary_invalid_target">Enter a whole number from 1 to 2,147,483,647. The target size must also fit within the summary language model’s context window and output limit.</string>
     <string name="conversation_summary_invalid_chunk">Enter a whole number of tokens per pass from 1 to 100,000.</string>
+    <string name="chat_minimap_open">Open conversation minimap</string>
+    <string name="chat_minimap_close">Close conversation minimap</string>
+    <string name="chat_minimap_navigate">Conversation minimap. Tap a position to jump there.</string>
 </resources>

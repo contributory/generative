@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.storage
+package org.starfall.generative.database
 
 import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
@@ -19,13 +19,13 @@ import org.starfall.generative.shared.model.media.MediaGenerationMode
 import org.starfall.generative.shared.model.provider.AnthropicPromptCache
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.shared.storage.database.AppDatabase
-import org.starfall.generative.shared.storage.database.SecretCipher
-import org.starfall.generative.shared.storage.database.entities.ModelProviderEntity
-import org.starfall.generative.shared.storage.database.entities.ProviderAuthEntity
-import org.starfall.generative.shared.storage.database.entities.ProviderModelConfigurationEntity
-import org.starfall.generative.shared.storage.database.entities.ProviderModelSelectionEntity
-import org.starfall.generative.shared.storage.database.entities.ProviderModelValueEntity
+import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.integrations.security.SecretCipher
+import org.starfall.generative.database.entities.ModelProviderEntity
+import org.starfall.generative.database.entities.ProviderAuthEntity
+import org.starfall.generative.database.entities.ProviderModelConfigurationEntity
+import org.starfall.generative.database.entities.ProviderModelSelectionEntity
+import org.starfall.generative.database.entities.ProviderModelValueEntity
 
 /** Callers hold a Room transaction. Existing parents/auth must never pass through INSERT REPLACE. */
 internal fun AppDatabase.updateStorageRow(table: String, id: String, vararg columns: Pair<String, Any?>): Boolean {

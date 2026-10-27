@@ -9,12 +9,12 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.storage.database.AppDatabase
-import org.starfall.generative.shared.storage.database.entities.ConversationMigrationQuarantineEntity
-import org.starfall.generative.shared.storage.database.entities.ConversationEntity
+import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.entities.ConversationMigrationQuarantineEntity
+import org.starfall.generative.database.entities.ConversationEntity
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.shared.storage.ConversationRepository
+import org.starfall.generative.database.ConversationRepository
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

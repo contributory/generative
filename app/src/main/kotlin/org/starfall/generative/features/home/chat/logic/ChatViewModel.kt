@@ -27,11 +27,11 @@ import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.storage.ConversationRepository
+import org.starfall.generative.database.ConversationRepository
 import org.starfall.generative.shared.storage.LocalWriteErrors
-import org.starfall.generative.shared.storage.McpRepository
-import org.starfall.generative.shared.storage.ModelRepository
-import org.starfall.generative.shared.storage.SpeechRepository
+import org.starfall.generative.database.McpRepository
+import org.starfall.generative.database.ModelRepository
+import org.starfall.generative.database.SpeechRepository
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.storage.preferences.ToolSettingsStore

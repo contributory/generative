@@ -7,7 +7,11 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -18,6 +22,7 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.features.home.BottomSheetsLink
 import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.shared.model.api.ModelApiType
+import org.starfall.generative.shared.model.ConversationSummaryRequest
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
@@ -33,7 +38,7 @@ class ModelSheetTransitionTest {
     )
 
     @Composable
-    private fun Host(sheets: BottomSheetsLinkState) {
+    private fun Host(sheets: BottomSheetsLinkState, onStartSummary: ((ConversationSummaryRequest) -> Boolean)? = null) {
         MaterialTheme {
             BottomSheetsLink(
                 sheets = sheets,
@@ -65,7 +70,8 @@ class ModelSheetTransitionTest {
                 mediaModelId = "",
                 onMediaModelChange = { _, _ -> },
                 attachments = emptyList(),
-                onAttachmentsChange = {}
+                onAttachmentsChange = {},
+                onStartSummary = onStartSummary
             )
         }
     }
@@ -110,4 +116,44 @@ class ModelSheetTransitionTest {
         assertEquals(overviewHeight, restored.boundsInRoot.height, 2f)
         compose.onNodeWithTag("open-model-picker-button").assertIsDisplayed()
     }
+
+    @Test
+    fun summarizationSlidesInSameSheetAndReturnsOrStarts() {
+        var allowStart = false
+        var startedRequest: ConversationSummaryRequest? = null
+        compose.setContent {
+            val sheets = remember { BottomSheetsLinkState().apply { openSelectedModelOverview() } }
+            Host(sheets) { request -> startedRequest = request; allowStart }
+        }
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+        val sheetId = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id
+
+        compose.onNodeWithTag("summarize-conversation-button").performClick()
+        compose.mainClock.advanceTimeBy(100)
+        assertEquals(sheetId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
+        val enteringLeft = with(compose.density) {
+            compose.onNodeWithTag("summary-sheet-content").getUnclippedBoundsInRoot().left.toPx()
+        }
+        assertTrue("Summary should slide in from the right", enteringLeft > 40f)
+        compose.mainClock.advanceTimeBy(350)
+        compose.onNodeWithText("Conversation Summarization").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.mainClock.advanceTimeBy(350)
+        assertEquals(sheetId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
+        compose.onNodeWithTag("summarize-conversation-button").performClick()
+        compose.mainClock.advanceTimeBy(350)
+        compose.onNodeWithText("Start summarization").performScrollTo().performClick()
+        assertEquals(6000, startedRequest!!.targetTokens)
+        compose.onNodeWithText(
+            "Summarization can’t start. Set a Chat Summary language model in Chat Options, and make sure no response or summarization is already running."
+        ).assertIsDisplayed()
+        assertEquals(sheetId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
+
+        allowStart = true
+        compose.onNodeWithText("Start summarization").performClick()
+        compose.mainClock.advanceTimeBy(350)
+        compose.onNodeWithTag("bottom-sheet-window").assertDoesNotExist()
+    }
+
 }

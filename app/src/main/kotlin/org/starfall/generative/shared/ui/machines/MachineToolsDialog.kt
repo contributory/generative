@@ -54,8 +54,7 @@ fun MachineToolsDialog(
             Column {
                 MachineDialogTopBar(
                     title = stringResource(R.string.remote_machine_tools_section),
-                    machine = machine,
-                    onClose = onDismiss
+                    machine = machine
                 )
                 Column(
                     Modifier

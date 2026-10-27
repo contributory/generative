@@ -22,7 +22,7 @@ import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.storage.ConversationRepository
+import org.starfall.generative.database.ConversationRepository
 import org.starfall.generative.shared.storage.LocalWriteErrors
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository

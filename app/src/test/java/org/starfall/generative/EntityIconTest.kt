@@ -12,11 +12,11 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.storage.database.AppDatabase
-import org.starfall.generative.shared.storage.database.entities.McpServerEntity
+import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.entities.McpServerEntity
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.shared.storage.ModelRepository
-import org.starfall.generative.shared.storage.McpRepository
+import org.starfall.generative.database.ModelRepository
+import org.starfall.generative.database.McpRepository
 import org.starfall.generative.features.mcp.shared.ui.*
 import org.starfall.generative.integrations.mcp.*
 import org.starfall.generative.features.machines.shared.ui.*

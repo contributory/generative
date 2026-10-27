@@ -11,8 +11,8 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.files.uploadedFileNames
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.shared.storage.ConversationRepository
-import org.starfall.generative.shared.storage.database.AppDatabase
+import org.starfall.generative.database.ConversationRepository
+import org.starfall.generative.database.AppDatabase
 import java.io.File
 import java.nio.file.Files
 

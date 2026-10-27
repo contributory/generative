@@ -1,4 +1,6 @@
-package org.starfall.generative.shared.storage
+package org.starfall.generative.database
+
+import org.starfall.generative.shared.storage.ImmediateState
 
 import androidx.room.withTransaction
 import kotlinx.coroutines.Dispatchers
@@ -10,13 +12,13 @@ import kotlinx.coroutines.withContext
 import org.starfall.generative.shared.model.AiChatConfig
 import org.starfall.generative.shared.model.ChatProfile
 import org.starfall.generative.shared.model.McpAccess
-import org.starfall.generative.shared.storage.database.AppDatabase
-import org.starfall.generative.shared.storage.database.entities.ChatProfileActiveMcpEntity
-import org.starfall.generative.shared.storage.database.entities.ChatProfileActiveModelToolEntity
-import org.starfall.generative.shared.storage.database.entities.ChatProfileConfigEntity
-import org.starfall.generative.shared.storage.database.entities.ChatProfileEntity
-import org.starfall.generative.shared.storage.database.entities.ChatProfileMcpAccessEntity
-import org.starfall.generative.shared.storage.database.entities.ChatProfileMcpToolEntity
+import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.entities.ChatProfileActiveMcpEntity
+import org.starfall.generative.database.entities.ChatProfileActiveModelToolEntity
+import org.starfall.generative.database.entities.ChatProfileConfigEntity
+import org.starfall.generative.database.entities.ChatProfileEntity
+import org.starfall.generative.database.entities.ChatProfileMcpAccessEntity
+import org.starfall.generative.database.entities.ChatProfileMcpToolEntity
 
 class ProfileRepository(private val db: AppDatabase) {
     private val dao = db.chatProfileDao()

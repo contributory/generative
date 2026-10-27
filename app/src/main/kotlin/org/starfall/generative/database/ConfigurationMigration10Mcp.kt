@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.storage.database
+package org.starfall.generative.database
 
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.serialization.Serializable
@@ -7,9 +7,9 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.starfall.generative.shared.model.McpAuthorization
 import org.starfall.generative.shared.model.ToolDefinition
-import org.starfall.generative.shared.storage.EndpointSecrets
-import org.starfall.generative.shared.storage.McpAuthPayload
-import org.starfall.generative.shared.storage.hasSecrets
+import org.starfall.generative.database.EndpointSecrets
+import org.starfall.generative.database.McpAuthPayload
+import org.starfall.generative.database.hasSecrets
 
 internal object ConfigurationMigration10Mcp {
     @Serializable

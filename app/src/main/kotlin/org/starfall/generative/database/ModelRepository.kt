@@ -1,4 +1,7 @@
-package org.starfall.generative.shared.storage
+package org.starfall.generative.database
+
+import org.starfall.generative.shared.storage.ImmediateState
+import org.starfall.generative.shared.storage.upsert
 
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.first
@@ -27,10 +30,10 @@ import org.starfall.generative.shared.model.provider.oauthCredentialId
 import org.starfall.generative.shared.model.provider.recordOAuthAccount
 import org.starfall.generative.shared.model.provider.removeOAuthAccount
 import org.starfall.generative.shared.model.provider.reorderedModels
-import org.starfall.generative.shared.storage.database.AppDatabase
-import org.starfall.generative.shared.storage.database.entities.ProviderGroupEntity
-import org.starfall.generative.shared.storage.database.entities.ProviderCatalogModelEntity
-import org.starfall.generative.shared.storage.database.entities.ProviderCatalogToolEntity
+import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.entities.ProviderGroupEntity
+import org.starfall.generative.database.entities.ProviderCatalogModelEntity
+import org.starfall.generative.database.entities.ProviderCatalogToolEntity
 import kotlinx.serialization.json.JsonObject
 
 class ModelRepository(private val db: AppDatabase, private val service: AiService, private val icons: IconStore? = null) {

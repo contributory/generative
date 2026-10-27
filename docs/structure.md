@@ -7,6 +7,33 @@ This document is the detailed package map and architecture reference. The mandat
 ├── 📁 appwiring/
 │   ├── 📄 AppContainer.kt
 │   └── 📄 DefaultDataInitializer.kt
+├── 📁 database/
+│   ├── 📁 dao/
+│   │   └── 📄 Daos.kt
+│   ├── 📁 entities/
+│   │   ├── 📄 ConversationEntities.kt
+│   │   ├── 📄 Entities.kt
+│   │   └── 📄 Phase4Entities.kt
+│   ├── 📄 AppDatabase.kt
+│   ├── 📄 AuthPayloads.kt
+│   ├── 📄 ConfigurationMigration10Catalogs.kt
+│   ├── 📄 ConfigurationMigration10Json.kt
+│   ├── 📄 ConfigurationMigration10Mcp.kt
+│   ├── 📄 ConfigurationMigration10Profiles.kt
+│   ├── 📄 ConfigurationMigration10Providers.kt
+│   ├── 📄 ConfigurationMigration10Schema.kt
+│   ├── 📄 ConfigurationMigration10Speech.kt
+│   ├── 📄 ConfigurationMigration9To10.kt
+│   ├── 📄 ConversationMigration9To10.kt
+│   ├── 📄 ConversationRepository.kt
+│   ├── 📄 EndpointSecrets.kt
+│   ├── 📄 McpRepository.kt
+│   ├── 📄 ModelRepository.kt
+│   ├── 📄 ProfileRepository.kt
+│   ├── 📄 ProviderStorageMapper.kt
+│   ├── 📄 RepositoryJson.kt
+│   ├── 📄 SpeechRepository.kt
+│   └── 📄 StructuredJsonStorage.kt
 ├── 📁 features/
 │   ├── 📁 about/
 │   │   ├── 📁 logic/
@@ -219,6 +246,8 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │       ├── 📄 ChatOpeningVeil.kt
 │   │   │       ├── 📄 ChatRenderCaches.kt
 │   │   │       ├── 📄 ChatScreen.kt
+│   │   │       ├── 📄 ConversationMinimapLayout.kt
+│   │   │       ├── 📄 ConversationMinimapSideBar.kt
 │   │   │       ├── 📄 ChatScrollAnchor.kt
 │   │   │       ├── 📄 ConversationSummaryUi.kt
 │   │   │       ├── 📄 GenerationLoadingIndicator.kt
@@ -254,6 +283,8 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │       └── 📄 ToolSheetState.kt
 │   │   └── 📄 BottomSheetsLink.kt
 ├── 📁 integrations/
+│   ├── 📁 security/
+│   │   └── 📄 SecretCipher.kt
 │   ├── 📁 mcp/
 │   │   ├── 📄 McpOAuthService.kt
 │   │   ├── 📄 McpOAuthTokenStore.kt
@@ -447,24 +478,6 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   ├── 📄 CodePreviewActivity.kt
 │   │   └── 📄 CodePreviewDocument.kt
 │   ├── 📁 storage/
-│   │   ├── 📁 database/
-│   │   │   ├── 📁 dao/
-│   │   │   │   └── 📄 Daos.kt
-│   │   │   ├── 📁 entities/
-│   │   │   │   ├── 📄 ConversationEntities.kt
-│   │   │   │   ├── 📄 Entities.kt
-│   │   │   │   └── 📄 Phase4Entities.kt
-│   │   │   ├── 📄 AppDatabase.kt
-│   │   │   ├── 📄 ConfigurationMigration10Catalogs.kt
-│   │   │   ├── 📄 ConfigurationMigration10Json.kt
-│   │   │   ├── 📄 ConfigurationMigration10Mcp.kt
-│   │   │   ├── 📄 ConfigurationMigration10Profiles.kt
-│   │   │   ├── 📄 ConfigurationMigration10Providers.kt
-│   │   │   ├── 📄 ConfigurationMigration10Schema.kt
-│   │   │   ├── 📄 ConfigurationMigration10Speech.kt
-│   │   │   ├── 📄 ConfigurationMigration9To10.kt
-│   │   │   ├── 📄 ConversationMigration9To10.kt
-│   │   │   └── 📄 SecretCipher.kt
 │   │   ├── 📁 preferences/
 │   │   │   ├── 📄 AppLanguage.kt
 │   │   │   ├── 📄 AppPreferencesRepository.kt
@@ -472,17 +485,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   ├── 📄 ModelConfigurationMemory.kt
 │   │   │   ├── 📄 RemoteTerminalPreferences.kt
 │   │   │   └── 📄 ToolSettingsStore.kt
-│   │   ├── 📄 AuthPayloads.kt
-│   │   ├── 📄 ConversationRepository.kt
-│   │   ├── 📄 EndpointSecrets.kt
-│   │   ├── 📄 ImmediateState.kt
-│   │   ├── 📄 McpRepository.kt
-│   │   ├── 📄 ModelRepository.kt
-│   │   ├── 📄 ProfileRepository.kt
-│   │   ├── 📄 ProviderStorageMapper.kt
-│   │   ├── 📄 RepositoryJson.kt
-│   │   ├── 📄 SpeechRepository.kt
-│   │   └── 📄 StructuredJsonStorage.kt
+│   │   └── 📄 ImmediateState.kt
 │   ├── 📁 terminal/
 │   │   ├── 📄 PendingRemoteSecretRequest.kt
 │   │   ├── 📄 RemoteMouseTouchListener.kt
@@ -591,6 +594,11 @@ The following sections give the package map's supporting conventions and feature
 
 ### Layer placement and boundaries
 
+- Dependency direction: `shared` ← `integrations` ← `database` ← `features` ← `navigation` ← `appwiring`. A layer may depend only on layers to its left.
+- `database/` owns Room databases, DAOs, entities, migrations, database-backed repositories, and their storage mappers/auth payloads. Keep preferences and the reusable state primitive in `shared/storage/`. Repositories may coordinate integration services, but `shared/` and `integrations/` must not import `database/`.
+- The Android Keystore adapter lives in `integrations/security/SecretCipher.kt`; both database credentials and MCP OAuth token storage use it.
+- Room schema history lives in `app/schemas/org.starfall.generative.database.AppDatabase/`. Package-only moves must preserve every schema snapshot and the existing database filename, version, migration SQL, and credential key alias.
+
 - Keep code close to the layer and users that need it. Code used in only one layer stays there; move code to global `shared/` only when it is genuinely used across layers. For example, a media request builder used only by `integrations/media/` stays there, while chat-tool-specific code stays in `features/home/chat/logic/tool/`.
 - `integrations/` owns external communication, including HTTP clients, streaming/SSE readers, polling loops, OAuth flows, and remote connections. Keep each integration's request builders, response parsers, and small data types beside the code that uses them; these are integration-specific, not shared helpers.
 - `shared/helpers/<topic>/` contains cross-layer helpers for preparing inputs or interpreting outputs, such as option validation, field descriptors, provider detection, tool schemas, argument parsers, and input-file resolution. Helpers must not import `integrations/`. Small incidental I/O may be tolerated as a stopgap—for example, fetching a URL returned by a response through injected `ToolHttp` from `shared/networking`, or reading a file through `shared/files`. Move the I/O into `integrations/` when it becomes the file's main purpose or grows its own endpoint, authentication, streaming, or polling protocol.
@@ -623,10 +631,10 @@ Replace `Awesome` with the relevant feature/entity name (for example, `ChatScree
 
 `features/` uses a UI-First Clean Architecture–inspired, feature-first organization around user/business capabilities (vertical slices), not around the screens listed in `FeaturesScreen` or `AppMenuScreen`. A feature owns the presentation for its capability, the application workflows/use-case coordination and state holders that implement it, and its feature-specific data/state models. It may contain several screens and supporting logic that is not rendered by any one screen; a screen is only a presentation entry point, not the feature boundary.
 
-The project uses `ui/`, `logic/`, and `model/` instead of a canonical `presentation/`, `domain/`, and `data/` split. Treat these as responsibility and dependency boundaries, not one-to-one aliases for textbook Clean Architecture layers: `logic/` coordinates use cases and state transitions, while models should remain independent of UI and logic. Place external protocol/API communication in `integrations/` and broadly reused storage/primitives in root `shared/`.
+The project uses `ui/`, `logic/`, and `model/` instead of a canonical `presentation/`, `domain/`, and `data/` split. Treat these as responsibility and dependency boundaries, not one-to-one aliases for textbook Clean Architecture layers: `logic/` coordinates use cases and state transitions, while models should remain independent of UI and logic. Place external protocol/API communication in `integrations/`, Room persistence and database-backed repositories in `database/`, and broadly reused primitives/preferences in root `shared/`.
 
 - Keep feature-specific code together under `features/<name>/`: `ui/` for Compose presentation and user interaction, `logic/` for ViewModels/coordinators/workflows, and `model/` for feature-specific data and state types. UI may depend on logic and model; logic may depend on model; model must not depend on UI or logic. Use only the folders a feature needs.
-- Put external service/protocol communication in `integrations/`, broadly reused primitives in root `shared/`, and code reused only by sub-features in that feature's own `shared/`. A feature must not import another feature; shared needs should be moved to an appropriate shared layer rather than creating cross-feature dependencies.
+- Put external service/protocol communication in `integrations/`, database persistence in `database/`, broadly reused primitives in root `shared/`, and code reused only by sub-features in that feature's own `shared/`. A feature must not import another feature; shared needs should be moved to an appropriate shared layer rather than creating cross-feature dependencies.
 - Menu exposure is a UI/navigation convention, not the definition of a feature. Most settings/configuration features below have an `AppMenuScreen` entry; `menu/` implements that menu surface, while `home/` owns the primary chat experience and is not a menu entry. Feature directory names are short, lowercase, a single word, with no underscores.
 
 | Group | AppMenuScreen entry | Feature folder |
