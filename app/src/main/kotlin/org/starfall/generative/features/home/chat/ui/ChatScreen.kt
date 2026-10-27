@@ -484,8 +484,10 @@ fun ChatScreen(
                             )
                         msg.role == ChatRole.MODEL ->
                             Modifier.reverseTailScrollPadding(
-                                visibleChatPx, 0.5f,
-                                minItemHeightPx = precedingUserHeight?.let { (visibleChatPx - it).coerceAtLeast(0) }
+                                visibleChatPx, 0f,
+                                minItemHeightPx = precedingUserHeight?.let { (visibleChatPx - it).coerceAtLeast(0) },
+                                // Half of the visible area below the END of the reply, however long it is.
+                                minSpacerPx = visibleChatPx / 2
                             )
                         else -> Modifier
                     }

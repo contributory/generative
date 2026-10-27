@@ -170,13 +170,14 @@ internal fun Modifier.anchorTailItem(
  * through. A user message gets all of the remaining visible height and reports its natural height.
  * The reply that follows it passes [minItemHeightPx] (visible height minus that user message), so the
  * content from the user message to the end keeps the same total and the user message does not move
- * when the reply starts. The spacer is never smaller than [fraction] of the remaining visible height,
- * so a reply keeps shrinking toward that floor and then to zero as it grows.
+ * when the reply starts. [minSpacerPx] is a floor measured from the end of the item, independent of
+ * how tall the item is, so the end of a long reply can still be dragged up the screen.
  */
 internal fun Modifier.reverseTailScrollPadding(
     visiblePx: Int,
     fraction: Float,
     minItemHeightPx: Int? = null,
+    minSpacerPx: Int = 0,
     onNaturalHeight: ((Int) -> Unit)? = null
 ): Modifier = layout { measurable, constraints ->
     val placeable = measurable.measure(constraints)
@@ -184,7 +185,7 @@ internal fun Modifier.reverseTailScrollPadding(
     val remainingSpace = (visiblePx - placeable.height).coerceAtLeast(0)
     val fractionSpacer = (remainingSpace * fraction.coerceIn(0f, 1f)).roundToInt()
     val keepInPlaceSpacer = minItemHeightPx?.let { (it - placeable.height).coerceAtLeast(0) } ?: 0
-    val spacer = maxOf(fractionSpacer, keepInPlaceSpacer)
+    val spacer = maxOf(fractionSpacer, keepInPlaceSpacer, minSpacerPx)
     val height = placeable.height + spacer
     layout(placeable.width, height) {
         placeable.placeRelative(0, 0)

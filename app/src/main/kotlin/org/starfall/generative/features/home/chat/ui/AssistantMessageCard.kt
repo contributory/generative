@@ -73,8 +73,15 @@ fun AssistantMessageCard(
     SideEffect { ChatRenderMetrics.recordMessageCardRecomposition() }
     var showMoreMenu by remember { mutableStateOf(false) }
     val storedVersion = message.activeVersion
+    // The frozen stream state of a stopped response stays published after Stop. A card that mounts
+    // later (the chat was left and reopened from history) never saw the live stream, so a fresh
+    // incremental renderer would start already frozen and parse nothing. Only a card that streamed
+    // in this composition keeps the incremental renderer; every other card renders the saved text.
+    val streamedInThisComposition = remember(message.id) { booleanArrayOf(false) }
+    if (isStreaming) streamedInThisComposition[0] = true
     val stoppedStreamForMessage = streamStateFlow?.value?.takeIf {
-        it.conversationId == conversationId && it.messageId == message.id && it.stopSignal.isFrozen
+        streamedInThisComposition[0] &&
+            it.conversationId == conversationId && it.messageId == message.id && it.stopSignal.isFrozen
     }
     // Keep the exact incremental Markdown tree mounted after Stop instead of switching to the
     // persisted String and parsing the whole answer again.
