@@ -44,7 +44,7 @@ import org.starfall.generative.features.machines.details.ui.MachineDetailsScreen
 import org.starfall.generative.features.machines.details.ui.RemoteMachineSettings
 import org.starfall.generative.features.machines.list.ui.RemoteMachinesScreen
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
-import org.starfall.generative.shared.ui.terminal.RemoteTerminalSheet
+import org.starfall.generative.shared.ui.terminal.RemoteTerminalScreen
 import org.starfall.generative.features.menu.ui.AppMenuScreen
 import org.starfall.generative.features.mcp.editor.ui.ServerEditor
 import org.starfall.generative.features.mcp.list.ui.ServerListScreen
@@ -120,6 +120,8 @@ fun AppNavigation(
     remoteMachinesViewModel: RemoteMachinesViewModel,
     toolFiles: ToolFiles,
     appDataTransfer: AppDataTransferService,
+    pendingTerminalMachineId: String? = null,
+    onTerminalLaunchHandled: () -> Unit = {},
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val drawerFocusManager = LocalFocusManager.current
@@ -147,6 +149,10 @@ fun AppNavigation(
 
     fun openConfiguration(destination: AppDestination) {
         navController.navigate(destination.route) { launchSingleTop = true }
+    }
+
+    fun openTerminal(machine: RemoteMachine) {
+        navController.navigate("terminal/${Uri.encode(machine.id)}") { launchSingleTop = true }
     }
 
     fun openInstructions(instructionId: String? = null) {
@@ -191,7 +197,14 @@ fun AppNavigation(
     val connectedMachineIds by remoteMachinesViewModel.connectedMachineIds.collectAsStateWithLifecycle()
     val connectedMachines = remoteMachineState.machines.filter { it.id in connectedMachineIds }
     var remoteMachinePage by remember { mutableStateOf<Any?>(null) }
-    var terminalMachine by remember { mutableStateOf<RemoteMachine?>(null) }
+    LaunchedEffect(pendingTerminalMachineId, remoteMachineState.machines) {
+        val machine = remoteMachineState.machines.firstOrNull { it.id == pendingTerminalMachineId }
+        if (machine != null) {
+            drawerState.close()
+            openTerminal(machine)
+            onTerminalLaunchHandled()
+        }
+    }
 
     val toolSettings by viewModel.toolSettings.collectAsStateWithLifecycle()
     val queuedMessages by viewModel.queuedMessages.collectAsStateWithLifecycle()
@@ -518,7 +531,7 @@ fun AppNavigation(
                         },
                         connectedMachines = connectedMachines,
                          onOpenTerminal = { machine ->
-                             terminalMachine = machine
+                             openTerminal(machine)
                          },
                          onOpenFeatureToolsSettings = { openConfiguration(AppDestination.TOOLS_EDITOR) },
                          onOpenMcpConnectorsSettings = { openConfiguration(AppDestination.MCP) }
@@ -543,6 +556,31 @@ fun AppNavigation(
                     composable(AppDestination.CHAT.route) {
                         // The chat lives outside the NavHost (see above) so it is never disposed.
                         Box(Modifier.fillMaxSize())
+                    }
+
+                    composable(
+                        "terminal/{machineId}",
+                        arguments = listOf(navArgument("machineId") { type = NavType.StringType })
+                    ) { entry ->
+                        val machineId = entry.arguments?.getString("machineId")
+                        val machine = remoteMachineState.machines.firstOrNull { it.id == machineId }
+                        if (machine != null) {
+                            key(machine.id) {
+                                RemoteTerminalScreen(
+                                    machine = machine,
+                                    openTerminal = { selectedMachine, askSecret ->
+                                        remoteMachinesViewModel.openTerminal(selectedMachine, askSecret = askSecret)
+                                    },
+                                    disconnect = remoteMachinesViewModel::disconnect,
+                                    onDismiss = { navController.popBackStack() }
+                                )
+                            }
+                        } else {
+                            // Wait for stored machines to load on a cold notification launch.
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                GenerativeLoadingIndicator()
+                            }
+                        }
                     }
 
                     composable("providers/new") {
@@ -802,7 +840,7 @@ fun AppNavigation(
                     }
                     composable(AppDestination.STORAGE.route) { StorageScreen(toolFiles) { navController.popBackStack() } }
                     composable(AppDestination.REMOTE_MACHINES.route) {
-                        // Sub-pages are transient: never restore an editor/settings/terminal page on re-entry.
+                        // Sub-pages are transient: never restore an editor/settings page on re-entry.
                         DisposableEffect(Unit) {
                             onDispose {
                                 remoteMachinePage = null
@@ -846,7 +884,7 @@ fun AppNavigation(
                                     },
                                     onOpenSettings = { remoteMachinePage = RemoteMachineSettingsPage.SETTINGS },
                                     onOpenTerminal = { machine ->
-                                        terminalMachine = machine
+                                        openTerminal(machine)
                                     }
                                 )
                             }
@@ -991,16 +1029,6 @@ fun AppNavigation(
                             }
                         }
                     }
-                }
-                terminalMachine?.let { machine ->
-                    RemoteTerminalSheet(
-                        machine = machine,
-                        openTerminal = { selectedMachine, askSecret ->
-                            remoteMachinesViewModel.openTerminal(selectedMachine, askSecret = askSecret)
-                        },
-                        disconnect = remoteMachinesViewModel::disconnect,
-                        onDismiss = { terminalMachine = null }
-                    )
                 }
             }
         }

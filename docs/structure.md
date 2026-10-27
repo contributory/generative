@@ -491,7 +491,10 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   ├── 📄 RemoteMouseTouchListener.kt
 │   │   ├── 📄 RemoteTerminalBridge.kt
 │   │   ├── 📄 RemoteTerminalInput.kt
-│   │   └── 📄 RemoteTerminalSessions.kt
+│   │   ├── 📄 RemoteTerminalInputConnection.kt
+│   │   ├── 📄 RemoteTerminalLaunch.kt
+│   │   ├── 📄 RemoteTerminalSessions.kt
+│   │   └── 📄 RemoteTerminalView.kt
 │   ├── 📁 theme/
 │   │   └── 📄 Theme.kt
 │   └── 📁 ui/
@@ -576,7 +579,8 @@ This document is the detailed package map and architecture reference. The mandat
 │       ├── 📄 WebSearchProviderSettings.kt
 │       ├── 📄 ToolSwitch.kt
 │       └── 📁 terminal/
-│           ├── 📄 RemoteTerminalSheet.kt
+│           ├── 📄 RemoteTerminalScreen.kt
+│           ├── 📄 RemoteTerminalAppBar.kt
 │           ├── 📄 RemoteTerminalDialogs.kt
 │           └── 📄 RemoteTerminalPanels.kt
 ├── 📄 MainActivity.kt
@@ -603,6 +607,7 @@ The following sections give the package map's supporting conventions and feature
 - `integrations/` owns external communication, including HTTP clients, streaming/SSE readers, polling loops, OAuth flows, and remote connections. Keep each integration's request builders, response parsers, and small data types beside the code that uses them; these are integration-specific, not shared helpers.
 - `shared/helpers/<topic>/` contains cross-layer helpers for preparing inputs or interpreting outputs, such as option validation, field descriptors, provider detection, tool schemas, argument parsers, and input-file resolution. Helpers must not import `integrations/`. Small incidental I/O may be tolerated as a stopgap—for example, fetching a URL returned by a response through injected `ToolHttp` from `shared/networking`, or reading a file through `shared/files`. Move the I/O into `integrations/` when it becomes the file's main purpose or grows its own endpoint, authentication, streaming, or polling protocol.
 - Put plain data types (data classes and enums) alongside their consumers by default. Use global `shared/model/<topic>/` for types shared across layers. Helpers may import models; models must not import helpers or integrations.
+- Terminal is a full-screen `terminal/{machineId}` navigation destination. Its app bar disconnects and closes on the left, and opens the sessions list on the right. Local/Remote input routing and IME composition are independent per-machine preferences; notification taps open the corresponding machine through `RemoteTerminalLaunch`.
 - Cross-feature terminal presentation and its Android/Termux adapter live in `shared/terminal/` and `shared/ui/terminal/`. They depend on the shared `RemoteTerminalSession` contract, not on a feature ViewModel or a concrete integration implementation.
 
 ### UI component and file naming

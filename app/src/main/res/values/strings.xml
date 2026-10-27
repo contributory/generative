@@ -889,6 +889,10 @@
     <string name="remote_machine_terminal_password_help" translatable="false">The server requests a secret that is not saved for this machine. It is used for this connection only.</string>
     <string name="remote_machine_terminal_passphrase_title" translatable="false">Enter key passphrase</string>
     <string name="remote_machine_terminal_connect" translatable="false">Connect</string>
+    <string name="remote_machine_terminal_disconnect_close" translatable="false">Disconnect and close terminal</string>
+    <string name="remote_machine_terminal_ime" translatable="false">Enable IME composition</string>
+    <string name="remote_machine_terminal_keyboard" translatable="false">Show or hide keyboard</string>
+    <string name="remote_machine_terminal_font_size" translatable="false">Terminal font size</string>
     <string name="remote_machine_terminal_input_settings" translatable="false">Terminal input mode</string>
     <string name="remote_machine_terminal_force_mouse" translatable="false">Mouse events · tap = click, drag = wheel</string>
     <string name="remote_machine_terminal_local_input_label" translatable="false">Local input</string>

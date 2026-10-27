@@ -29,15 +29,6 @@ internal class RemoteTerminalInput(
 
     val hasLocalDraft: Boolean get() = localInput.isNotEmpty()
 
-    fun replaceLocalInput(value: String) {
-        localInput = value
-        localCursor = value.length
-        historyIndex = commandHistory.size
-        submittedLocalInput = null
-    }
-
-    fun submitEditorInput() = submitLocalInput()
-
     fun setInputMode(mode: TerminalInputMode): Boolean {
         if (!mode.usesLocalInput && hasLocalDraft) return false
         inputMode = mode
@@ -68,6 +59,14 @@ internal class RemoteTerminalInput(
         snapToBottom()
         if (inputMode.usesLocalInput) insertLocalText(value)
         else sendRemote(value.toByteArray(Charsets.UTF_8))
+    }
+
+    /** Committed IME text follows the same Unicode, modifier and Enter rules as typed keys. */
+    fun sendImeText(value: String) {
+        value.codePoints().forEach { codePoint ->
+            sendCodePoint(codePoint, ctrlActive, altActive)
+            clearModifiers()
+        }
     }
 
     fun sendChar(char: Char) {

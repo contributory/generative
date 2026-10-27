@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.RemoteMachine
+import org.starfall.generative.shared.terminal.RemoteTerminalLaunch
 
 /**
  * Foreground service that shows one ongoing notification per machine that holds a persistent SSH
@@ -169,6 +170,10 @@ class RemoteConnectionService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         return baseNotification()
+            .setContentIntent(RemoteTerminalLaunch.createIntent(this, machine.id)?.let { launch ->
+                PendingIntent.getActivity(this, notificationId(machine.id), launch,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            })
             .setContentTitle(getString(R.string.remote_connection_notification_title, name))
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))

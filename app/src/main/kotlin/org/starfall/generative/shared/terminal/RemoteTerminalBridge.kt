@@ -35,6 +35,7 @@ internal class RemoteTerminalBridge(
     TerminalViewClient {
     var session: TerminalSession? = null
     var view: TerminalView? = null
+    var inputView: RemoteTerminalView? = null
     private val input = RemoteTerminalInput(
         initialInputMode = initialInputMode,
         sendRemote = ::sendRemote,
@@ -56,6 +57,9 @@ internal class RemoteTerminalBridge(
      * (tap = left click, drag = wheel) even if the app never asked for mouse tracking.
      */
     var forceMouse by mutableStateOf(false)
+    var imeEnabled by mutableStateOf(false)
+        private set
+    var composingText by mutableStateOf("")
     var ctrlActive: Boolean
         get() = input.ctrlActive
         set(value) { input.ctrlActive = value }
@@ -63,17 +67,29 @@ internal class RemoteTerminalBridge(
         get() = input.altActive
         set(value) { input.altActive = value }
     val inputMode: TerminalInputMode get() = input.inputMode
-    val localInput: String get() = input.localInput
-    val submittedLocalInput: String? get() = input.submittedLocalInput
     val hasLocalDraft: Boolean get() = input.hasLocalDraft
 
-    /** Replaces the local command draft from the IME-backed editor. */
-    fun replaceLocalInput(value: String) = input.replaceLocalInput(value)
+    fun sendImeText(value: String) = input.sendImeText(value)
+    fun sendImeKey(keyCode: Int, event: KeyEvent): Boolean = input.sendKey(keyCode, event)
 
-    /** Sends the current IME/editor draft as one command line. */
-    fun submitEditorInput() = input.submitEditorInput()
+    fun updateImeEnabled(enabled: Boolean) {
+        if (imeEnabled == enabled) return
+        inputView?.finishImeComposition()
+        imeEnabled = enabled
+        inputView?.let { host ->
+            val focused = host.hasFocus()
+            host.updateInputMode()
+            if (focused) {
+                host.inputTarget.requestFocus()
+                context.getSystemService(InputMethodManager::class.java)?.restartInput(host.inputTarget)
+            }
+        }
+    }
 
-    fun setInputMode(mode: TerminalInputMode): Boolean = input.setInputMode(mode)
+    fun setInputMode(mode: TerminalInputMode): Boolean {
+        inputView?.finishImeComposition()
+        return input.setInputMode(mode)
+    }
 
     private var themeBackground: Int? = null
     private var themeForeground: Int? = null
@@ -129,9 +145,11 @@ internal class RemoteTerminalBridge(
     }
 
     /** The screen was destroyed (user left); the remote session keeps running and recording. */
-    fun detachView(released: TerminalView) {
-        if (view !== released) return
+    fun detachView(released: RemoteTerminalView) {
+        if (inputView !== released) return
+        released.finishImeComposition()
         view = null
+        inputView = null
         emulatorReady = false
     }
 
@@ -207,6 +225,7 @@ internal class RemoteTerminalBridge(
         session?.finishIfRunning()
         session = null
         view = null
+        inputView = null
         sender.shutdown()
     }
 
@@ -255,9 +274,15 @@ internal class RemoteTerminalBridge(
         sendRemote("\u001b[<$button;$column;$row${if (pressed) 'M' else 'm'}".toByteArray(Charsets.US_ASCII))
     }
 
-    private fun sendText(value: String) = input.sendText(value)
+    private fun sendText(value: String) {
+        inputView?.finishImeComposition()
+        input.sendText(value)
+    }
 
-    fun sendChar(char: Char) = input.sendChar(char)
+    fun sendChar(char: Char) {
+        inputView?.finishImeComposition()
+        input.sendChar(char)
+    }
 
     /** Sends an escape sequence, adding xterm modifier parameters / application cursor mode. */
     fun sendSpecial(
@@ -265,7 +290,10 @@ internal class RemoteTerminalBridge(
         ctrl: Boolean = ctrlActive,
         alt: Boolean = altActive,
         forceRemote: Boolean = false
-    ) = input.sendSpecial(sequence, ctrl, alt, forceRemote)
+    ) {
+        inputView?.finishImeComposition()
+        input.sendSpecial(sequence, ctrl, alt, forceRemote)
+    }
 
     private companion object {
         const val DEFAULT_FOREGROUND_COLOR = 256
@@ -319,8 +347,7 @@ internal class RemoteTerminalBridge(
         return scale
     }
 
-    // The terminal lives inside a bottom sheet, which is its own Dialog window. Driving the keyboard
-    // through the Activity window instead made show/hide silently do nothing, leaving no way to type.
+    // Resolve the hosting window, including a Dialog host if the adapter is reused there.
     private fun windowFor(view: android.view.View): android.view.Window? {
         if (view is DialogWindowProvider) return view.window
         var parent: android.view.ViewParent? = view.parent
@@ -337,7 +364,7 @@ internal class RemoteTerminalBridge(
     }
 
     private fun focusAndShowKeyboard() {
-        val terminalView = view ?: return
+        val terminalView = inputView?.inputTarget ?: view ?: return
         terminalView.post {
             if (closed) return@post
             terminalView.requestFocus()
@@ -346,10 +373,10 @@ internal class RemoteTerminalBridge(
             }
             val imm = context.getSystemService(InputMethodManager::class.java)
             // showSoftInput fails while the view or its window has not gained focus yet (just after the
-            // sheet opens or a session switch); retry once instead of leaving the terminal without a keyboard.
+            // screen opens or a session switch); retry once instead of leaving the terminal without a keyboard.
             if (!imm.showSoftInput(terminalView, 0)) {
                 terminalView.postDelayed({
-                    if (!closed && view === terminalView) {
+                    if (!closed && (inputView?.inputTarget ?: view) === terminalView) {
                         terminalView.requestFocus()
                         imm.showSoftInput(terminalView, 0)
                     }
@@ -364,7 +391,7 @@ internal class RemoteTerminalBridge(
      * connection), which is why typed text used to land in a hidden session.
      */
     fun focusTerminalView(showKeyboard: Boolean = false) {
-        val terminalView = view ?: return
+        val terminalView = inputView?.inputTarget ?: view ?: return
         terminalView.post {
             if (closed) return@post
             terminalView.requestFocus()
@@ -394,7 +421,8 @@ internal class RemoteTerminalBridge(
     override fun shouldUseCtrlSpaceWorkaround(): Boolean = false
     override fun isTerminalViewSelected(): Boolean = true
     override fun copyModeChanged(copyMode: Boolean) = Unit
-    override fun onKeyDown(keyCode: Int, e: KeyEvent, session: TerminalSession): Boolean = input.sendKey(keyCode, e)
+    override fun onKeyDown(keyCode: Int, e: KeyEvent, session: TerminalSession): Boolean =
+        inputView?.sendKeyToIme(e) ?: input.sendKey(keyCode, e)
     override fun onKeyUp(keyCode: Int, e: KeyEvent): Boolean = true
     override fun onLongPress(event: MotionEvent): Boolean = false
     override fun readControlKey(): Boolean = ctrlActive

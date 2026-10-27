@@ -53,6 +53,7 @@ import org.starfall.generative.shared.ui.layout.enableTransparentSystemBars
 import org.starfall.generative.navigation.AppNavigation
 import org.starfall.generative.features.home.chat.logic.ChatViewModel
 import org.starfall.generative.features.home.shared.logic.ChatBackgroundService
+import org.starfall.generative.shared.terminal.RemoteTerminalLaunch
 
 private const val SERVICE_STOP_GRACE_MS = 5_000L
 
@@ -67,6 +68,7 @@ class MainActivity : ComponentActivity() {
 
     /** Language override this Activity was created with; a different one means the UI must be recreated. */
     private var createdLocaleTag: String? = null
+    private var pendingTerminalMachineId by mutableStateOf<String?>(null)
 
     override fun attachBaseContext(newBase: android.content.Context) {
         super.attachBaseContext(AppLocale.wrap(newBase))
@@ -75,6 +77,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         createdLocaleTag = AppLocale.overrideTag(this)
+        pendingTerminalMachineId = savedInstanceState?.getString("pending_terminal_machine_id")
         // A recreated Activity (rotation, locale change, process restore) still carries the original
         // launch intent; only a fresh launch may import its provider link.
         if (savedInstanceState == null) handleIntent(intent)
@@ -162,7 +165,9 @@ class MainActivity : ComponentActivity() {
                     // Keep Surface's behaviour of forcing its content to fill the window.
                     Box(Modifier.fillMaxSize(), propagateMinConstraints = true) {
                         AppNavigation(viewModel, configurationViewModel, settingsViewModel, remoteMachinesViewModel,
-                            container.toolFiles, container.appDataTransfer)
+                            container.toolFiles, container.appDataTransfer,
+                            pendingTerminalMachineId = pendingTerminalMachineId,
+                            onTerminalLaunchHandled = { pendingTerminalMachineId = null })
                         // Drawn last so the draggable debug button and log panel float above every screen.
                         if (appPrefs.debugMode) DebugLogOverlay()
                     }
@@ -254,7 +259,16 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("pending_terminal_machine_id", pendingTerminalMachineId)
+        super.onSaveInstanceState(outState)
+    }
+
     private fun handleIntent(intent: Intent?) {
+        RemoteTerminalLaunch.consumeMachineId(intent)?.let { machineId ->
+            pendingTerminalMachineId = machineId
+            return
+        }
         val data = intent?.data ?: return
         // `generative://` is the canonical scheme; accept `mg://` for older shared links.
         if ((data.scheme.equals("generative", true) || data.scheme.equals("mg", true)) &&

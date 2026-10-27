@@ -1,5 +1,3 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-
 package org.starfall.generative.shared.ui.terminal
 
 import android.content.Context
@@ -18,9 +16,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,7 +28,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -52,19 +51,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.viewinterop.AndroidView
-import com.termux.view.TerminalView
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.isActive
@@ -79,43 +78,22 @@ import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_FORCE_
 import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_UI_PREFERENCES
 import org.starfall.generative.shared.storage.preferences.remoteTerminalImePreferenceKey
 import org.starfall.generative.shared.storage.preferences.remoteTerminalInputModePreferenceKey
+import org.starfall.generative.shared.storage.preferences.remoteTerminalInputPreferences
 import org.starfall.generative.shared.terminal.PendingRemoteSecretRequest
 import org.starfall.generative.shared.terminal.RemoteMouseTouchListener
 import org.starfall.generative.shared.terminal.RemoteTerminalBridge
+import org.starfall.generative.shared.terminal.RemoteTerminalView
 import org.starfall.generative.shared.terminal.RemoteTerminalSessions
 import org.starfall.generative.shared.terminal.TerminalSlot
-import org.starfall.generative.shared.model.remote.TerminalInputMode
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 
 @Composable
-internal fun RemoteTerminalSheet(
-    machine: RemoteMachine,
-    openTerminal: suspend (RemoteMachine, RemoteSecretPrompt?) -> RemoteTerminalSession,
-    disconnect: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    AppSheet(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        fixedHeightFraction = 0.9f
-    ) {
-        RemoteTerminalContent(
-            machine = machine,
-            openTerminal = openTerminal,
-            disconnect = disconnect,
-            onDismiss = onDismiss
-        )
-    }
-}
-
-@Composable
-private fun RemoteTerminalContent(
+internal fun RemoteTerminalScreen(
     machine: RemoteMachine,
     openTerminal: suspend (RemoteMachine, RemoteSecretPrompt?) -> RemoteTerminalSession,
     disconnect: (String) -> Unit,
@@ -131,6 +109,7 @@ private fun RemoteTerminalContent(
     val terminalSlots = RemoteTerminalSessions.slotsFor(machine.id)
     val activeTerminalId = RemoteTerminalSessions.activeIdFor(machine.id)
     var connecting by remember(machine.id) { mutableStateOf(false) }
+    var connectionJob by remember(machine.id) { mutableStateOf<Job?>(null) }
     var openError by remember(machine.id) { mutableStateOf<String?>(null) }
     val error = openError ?: if (RemoteTerminalSessions.connectionLost(machine.id)) {
         stringResource(R.string.remote_machine_terminal_connection_lost)
@@ -166,11 +145,13 @@ private fun RemoteTerminalContent(
 
     // Leaving the screen keeps the sessions alive; only a pending password prompt is dropped.
     fun leaveScreen() {
+        connectionJob?.cancel()
         currentSecretRequest?.answer?.complete(null)
     }
 
     fun openTerminal() {
-        scope.launch {
+        if (connectionJob?.isActive == true) return
+        connectionJob = scope.launch {
             connecting = true
             openError = null
             RemoteTerminalSessions.clearConnectionLost(machine.id)
@@ -192,19 +173,14 @@ private fun RemoteTerminalContent(
                     }
                 }
                 // Read the live preference so sessions opened after a toolbar toggle use it too.
-                val currentInputMode = when (terminalPrefs.getString(remoteTerminalInputModePreferenceKey(machine.id), null)) {
-                    TerminalInputMode.IME.name -> TerminalInputMode.IME
-                    TerminalInputMode.LOCAL.name -> if (
-                        terminalPrefs.getBoolean(remoteTerminalImePreferenceKey(machine.id), true)
-                    ) TerminalInputMode.IME else TerminalInputMode.LOCAL
-                    else -> TerminalInputMode.REMOTE
-                }
+                val inputPreferences = terminalPrefs.remoteTerminalInputPreferences(machine.id)
                 if (!isActive) {
                     // The user left while connecting: do not leave an unowned shell behind.
                     opened.close()
                     throw CancellationException()
                 }
-                val newBridge = RemoteTerminalBridge(context.applicationContext, currentInputMode).also { bridge ->
+                val newBridge = RemoteTerminalBridge(context.applicationContext, inputPreferences.mode).also { bridge ->
+                    bridge.updateImeEnabled(inputPreferences.imeEnabled)
                     bridge.forceMouse = terminalPrefs.getBoolean(REMOTE_TERMINAL_FORCE_MOUSE_KEY, false)
                     bridge.attachRemote(opened)
                 }
@@ -220,7 +196,7 @@ private fun RemoteTerminalContent(
         }
     }
 
-    // Phone back dismisses the sheet while keeping the process-wide terminal sessions alive.
+    // Phone back closes the screen while keeping the process-wide terminal sessions alive.
     BackHandler(enabled = LocalScreenTransitionActive.current) { leaveScreen(); onDismiss() }
     DisposableEffect(machine.id) {
         onDispose { leaveScreen() }
@@ -236,7 +212,7 @@ private fun RemoteTerminalContent(
         if (RemoteTerminalSessions.slotsFor(machine.id).isEmpty()) openTerminal()
     }
     // Sessions can die without a clean end of stream (network drop, killed channel); keep checking while
-    // the sheet is open so a dead terminal is replaced by the reconnect panel instead of staying on screen.
+    // the screen is open so a dead terminal is replaced by the reconnect panel instead of staying on screen.
     LaunchedEffect(machine.id) {
         while (true) {
             RemoteTerminalSessions.pruneDead(machine.id)
@@ -261,14 +237,19 @@ private fun RemoteTerminalContent(
         activeSlot?.bridge?.focusTerminalView()
     }
 
-    Column(Modifier.fillMaxWidth().fillMaxHeight()) {
+    Column(Modifier.fillMaxSize().background(terminalBackground)
+        .windowInsetsPadding(WindowInsets.safeDrawing)) {
         TerminalAppBar(
             bridge = activeBridge,
-            activeTerminal = activeSlot != null,
             onToggleSessions = { drawerExpanded = !sessionsDrawerOpen },
             onDisconnect = {
+                leaveScreen()
                 RemoteTerminalSessions.closeAll(machine.id)
                 disconnect(machine.id)
+                onDismiss()
+            },
+            canUseRemoteInput = terminalSlots.none {
+                it.bridge.hasLocalDraft || (it.bridge.inputMode.usesLocalInput && it.bridge.composingText.isNotEmpty())
             },
             onInputModeChange = { mode ->
                 // Input mode is a per-machine preference: apply it to every
@@ -282,11 +263,18 @@ private fun RemoteTerminalContent(
                         .apply()
                 }
             },
+            onToggleIme = {
+                activeBridge?.let { bridge ->
+                    val enabled = !bridge.imeEnabled
+                    terminalSlots.forEach { it.bridge.updateImeEnabled(enabled) }
+                    terminalPrefs.edit().putBoolean(remoteTerminalImePreferenceKey(machine.id), enabled).apply()
+                }
+            },
             onToggleForceMouse = {
                 activeBridge?.let { bridge ->
                     val enabled = !bridge.forceMouse
                     terminalSlots.forEach { slot -> slot.bridge.forceMouse = enabled }
-                     terminalPrefs.edit().putBoolean(REMOTE_TERMINAL_FORCE_MOUSE_KEY, enabled).apply()
+                    terminalPrefs.edit().putBoolean(REMOTE_TERMINAL_FORCE_MOUSE_KEY, enabled).apply()
                 }
             },
             fontDp = fontDp,
@@ -295,25 +283,6 @@ private fun RemoteTerminalContent(
         Row(
             Modifier.weight(1f).fillMaxWidth().imePadding()
         ) {
-                AnimatedVisibility(
-                    visible = sessionsDrawerOpen,
-                    enter = expandHorizontally() + fadeIn(),
-                    exit = shrinkHorizontally() + fadeOut()
-                ) {
-                    TerminalSessionsSideBar(
-                        machine = machine,
-                        slots = terminalSlots,
-                        activeTerminalId = activeTerminalId,
-                        connecting = connecting,
-                        onSelect = { slot ->
-                            RemoteTerminalSessions.setActive(machine.id, slot.terminal.id)
-                            slot.bridge.focusTerminalView()
-                        },
-                        onClose = { slot -> closeSlot(slot) },
-                        onNew = { openTerminal() }
-                    )
-                }
-                if (sessionsDrawerOpen) VerticalDivider(Modifier.fillMaxHeight())
                 Column(Modifier.weight(1f).fillMaxHeight()) {
                     Box(Modifier.weight(1f).fillMaxWidth().background(terminalBackground)) {
                         // Every session keeps its own TerminalView (and emulator) alive while it
@@ -325,19 +294,19 @@ private fun RemoteTerminalContent(
                             key(slot.terminal.id) {
                                 AndroidView(
                                     factory = { viewContext ->
-                                        val view = TerminalView(viewContext, null)
                                         val slotBridge = slot.bridge
+                                        val host = RemoteTerminalView(viewContext, slotBridge)
+                                        val view = host.terminalView
                                         view.setOnTouchListener(RemoteMouseTouchListener(viewContext, view, slotBridge))
-                                        view.isFocusable = true
-                                        view.isFocusableInTouchMode = true
                                         view.setBackgroundColor(terminalBackgroundArgb)
                                         view.setTextSize(textSizePx)
-                                        view.tag = textSizePx
+                                        host.tag = textSizePx
                                         view.setTerminalViewClient(slotBridge)
                                         slotBridge.view = view
+                                        slotBridge.inputView = host
                                         view.attachSession(slotBridge.createSession(viewContext.filesDir))
                                         slotBridge.setThemeColors(terminalBackgroundArgb, terminalForegroundArgb)
-                                        view
+                                        host
                                     },
                                     modifier = if (slot.terminal.id == activeTerminalId) {
                                         Modifier.fillMaxSize()
@@ -345,15 +314,14 @@ private fun RemoteTerminalContent(
                                         Modifier.size(0.dp)
                                     },
                                     onRelease = { view -> slot.bridge.detachView(view) },
-                                    update = { view ->
-                                        // Do not request focus here: update also runs while the
-                                        // local IME editor is focused, and stealing focus back
-                                        // would break typing there. Focus moves only when the
-                                        // active session changes (see the LaunchedEffect above)
-                                        // or when the user taps the terminal.
+                                    update = { host ->
+                                        // Focus moves only on session changes or terminal taps;
+                                        // output updates must not interrupt the input connection.
+                                        val view = host.terminalView
                                         slot.bridge.view = view
-                                        if (view.tag != textSizePx) {
-                                            view.tag = textSizePx
+                                        slot.bridge.inputView = host
+                                        if (host.tag != textSizePx) {
+                                            host.tag = textSizePx
                                             view.setTextSize(textSizePx)
                                         }
                                         view.setBackgroundColor(terminalBackgroundArgb)
@@ -362,33 +330,28 @@ private fun RemoteTerminalContent(
                                 )
                             }
                         }
-                        if (activeBridge != null && activeBridge.inputMode == TerminalInputMode.IME) {
-                            LocalInputEditor(activeBridge)
-                        } else {
-                            activeBridge?.localDraftForDisplay()?.let { draft ->
-                                Surface(
-                                    Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(8.dp),
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = prominentContainerColor(),
-                                    border = prominentContainerBorder()
-                                ) {
-                                    val label = stringResource(R.string.remote_machine_terminal_local_input_label) + ": "
-                                    val draftScroll = rememberScrollState()
-                                    // Wrap long drafts; cap the height and keep the cursor line (the end) in view.
-                                    LaunchedEffect(draft) { draftScroll.scrollTo(draftScroll.maxValue) }
-                                    Text(
-                                        buildAnnotatedString {
-                                            withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurface)) { append(label) }
-                                            append(draft)
-                                        },
-                                        fontFamily = FontFamily.Monospace,
-                                        softWrap = true,
-                                        modifier = Modifier
-                                            .heightIn(max = 140.dp)
-                                            .verticalScroll(draftScroll)
-                                            .padding(horizontal = 10.dp, vertical = 8.dp)
-                                    )
-                                }
+                        val draft = activeBridge?.localDraftForDisplay().orEmpty()
+                        val composing = activeBridge?.composingText.orEmpty()
+                        if (draft.isNotEmpty() || composing.isNotEmpty()) {
+                            Surface(
+                                Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(8.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                color = prominentContainerColor(),
+                                border = prominentContainerBorder()
+                            ) {
+                                val draftScroll = rememberScrollState()
+                                LaunchedEffect(draft, composing) { draftScroll.scrollTo(draftScroll.maxValue) }
+                                Text(
+                                    buildAnnotatedString {
+                                        append(draft)
+                                        withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) { append(composing) }
+                                    },
+                                    fontFamily = FontFamily.Monospace,
+                                    softWrap = true,
+                                    modifier = Modifier.heightIn(max = 140.dp)
+                                        .verticalScroll(draftScroll)
+                                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                                )
                             }
                         }
                         if (connecting && secretRequest == null) {
@@ -466,6 +429,25 @@ private fun RemoteTerminalContent(
                     }
                     if (activeBridge != null) TerminalExtraKeys(activeBridge)
                 }
+                if (sessionsDrawerOpen) VerticalDivider(Modifier.fillMaxHeight())
+                AnimatedVisibility(
+                    visible = sessionsDrawerOpen,
+                    enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
+                    exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut()
+                ) {
+                    TerminalSessionsSideBar(
+                        machine = machine,
+                        slots = terminalSlots,
+                        activeTerminalId = activeTerminalId,
+                        connecting = connecting,
+                        onSelect = { slot ->
+                            RemoteTerminalSessions.setActive(machine.id, slot.terminal.id)
+                            slot.bridge.focusTerminalView()
+                        },
+                        onClose = { slot -> closeSlot(slot) },
+                        onNew = { openTerminal() }
+                    )
+                }
             }
     }
 
@@ -477,7 +459,7 @@ private fun RemoteTerminalContent(
             showPromptPassword = showPromptPassword,
             onTogglePromptPassword = { showPromptPassword = !showPromptPassword },
             onDismiss = {
-                pending.answer.complete(null)
+                leaveScreen()
                 onDismiss()
             }
         )
