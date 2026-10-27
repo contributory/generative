@@ -155,6 +155,10 @@ fun AppNavigation(
         navController.navigate("terminal/${Uri.encode(machine.id)}") { launchSingleTop = true }
     }
 
+    fun openSkillsSettings() {
+        navController.navigate("${AppDestination.CHAT_OPTIONS.route}?tab=skills") { launchSingleTop = true }
+    }
+
     fun openInstructions(instructionId: String? = null) {
         coroutineScope.launch { drawerState.close() }
         val route = buildString {
@@ -349,7 +353,8 @@ fun AppNavigation(
                 viewModel.setMachineEnabled(machineId, enabled, remoteMachineState.machines.map { it.id })
             },
             setMachineTool = viewModel::setMachineToolEnabled,
-            setSendFile = viewModel::setSendFileEnabled
+            setSendFile = viewModel::setSendFileEnabled,
+            setSearchTools = viewModel::setSearchToolsEnabled
         )
     ) {
         val drawerScrim = modalScrimColor(DrawerDefaults.scrimColor)
@@ -405,6 +410,11 @@ fun AppNavigation(
                         coroutineScope.launch { drawerState.close() }
                         openConfiguration(AppDestination.REMOTE_MACHINES)
                     },
+                    onEditRemoteMachine = { machine ->
+                        remoteMachinePage = MachineEditorPage(machine, isNew = false)
+                        coroutineScope.launch { drawerState.close() }
+                        openConfiguration(AppDestination.REMOTE_MACHINES)
+                    },
                     onSaveMachineTools = remoteMachinesViewModel::saveMachineTools
                 )
             }
@@ -448,13 +458,15 @@ fun AppNavigation(
                          selectedProviderId = chatProviderId,
                           selectedModelName = chatModelId,
                          agentSkills = appPrefs.agentSkills.skills,
+                         onOpenSkillsSettings = { openSkillsSettings() },
                           featuresLogoImage = appPrefs.featuresLogoImage,
                         autoScroll = appPrefs.autoScroll,
                         onSendMedia = viewModel::sendMedia,
                         onMediaModeChange = viewModel::setComposerMedia,
                         onResendUserMessage = viewModel::resendUserMessage,
-                        onSendMessage = { text, files ->
-                            viewModel.sendMessage(text, files)
+                        onSendMessage = { text, files -> viewModel.sendMessage(text, files) },
+                        onSendMessageWithSkill = { text, files, requested ->
+                            viewModel.sendMessage(text, files, requested)
                         },
                         onStopGenerating = {
                             viewModel.stopGeneration()
@@ -820,6 +832,7 @@ fun AppNavigation(
                             settings = toolSettings,
                             onSave = viewModel::setSystemTool,
                             onSetSendFile = viewModel::setSendFileEnabled,
+                            onSetSearchTools = viewModel::setSearchToolsEnabled,
                             onSetWebSearchProvider = viewModel::setWebSearchProvider,
                             onSetWebSearchEnabled = viewModel::setWebSearchEnabled,
                             providerGroups = providerGroups,

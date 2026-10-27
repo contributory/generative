@@ -80,7 +80,9 @@ data class ToolSettings(
     /** Legacy per-machine tool switches retained for decoding older settings. */
     val machineTools: Map<String, Map<String, Boolean>> = emptyMap(),
     /** Lets the AI display files in chat through send_file. On unless the user turns it off. */
-    val sendFileEnabled: Boolean = true
+    val sendFileEnabled: Boolean = true,
+    /** Optional built-in tool allowing the model to find tool names and enablement. */
+    val searchToolsEnabled: Boolean = false
 )
 
 @Serializable

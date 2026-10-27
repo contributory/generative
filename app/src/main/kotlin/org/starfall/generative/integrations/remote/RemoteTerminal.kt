@@ -32,12 +32,16 @@ class RemoteTerminal internal constructor(
     override val id: String,
     private val session: Session,
     private val channel: ChannelShell,
-    override val input: InputStream,
+    input: InputStream,
     override val output: OutputStream,
     private val ownsSession: Boolean = false,
     private val onClosed: () -> Unit = {}
 ) : RemoteTerminalSession {
     private val closed = AtomicBoolean(false)
+    private val outputCapture = RemoteTerminalOutputCapture()
+    override val input: InputStream = CapturingTerminalInputStream(input, outputCapture)
+
+    internal fun readOutputLines(lines: Int): String = outputCapture.latestLines(lines)
     internal val createdAtNanos: Long = System.nanoTime()
 
     override val isOpen: Boolean get() = !closed.get() && channel.isConnected

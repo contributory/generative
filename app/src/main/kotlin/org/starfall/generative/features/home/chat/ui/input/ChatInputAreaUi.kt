@@ -59,6 +59,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import org.starfall.generative.R
 import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.model.DEFAULT_AGENT_SKILL_ID
 import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.defaultAgentSkills
 import org.starfall.generative.shared.model.api.ModelApiType
@@ -133,9 +134,12 @@ fun UserInputArea(
     onOpenMcpConnectorsSettings: () -> Unit = {},
     chatModeRequest: Int = 0,
     modifier: Modifier = Modifier,
-    agentSkills: List<AgentSkill> = defaultAgentSkills()
+    agentSkills: List<AgentSkill> = defaultAgentSkills(),
+    onSendMessageWithSkill: (String, List<String>, Boolean) -> Boolean = { text, files, _ -> onSendMessage(text, files) },
+    onOpenSkillsSettings: (() -> Unit)? = null
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue()) }
+    var createSkillAttachment by remember { mutableStateOf<SkillPromptAttachment?>(null) }
     // The field may only take focus after the user touches it. Returning from another page (for example the
     // terminal, whose Android view held the window focus) hands the focus back to Compose, which would otherwise
     // move it into the only focusable item here and pop the keyboard up.
@@ -289,6 +293,7 @@ fun UserInputArea(
     LaunchedEffect(editDraft?.revision) {
         editDraft?.let {
             mediaKind = null
+            createSkillAttachment = null
             textFieldValue = TextFieldValue(it.text, TextRange(it.text.length))
             onAttachmentsChange(it.attachments)
         }
@@ -391,6 +396,7 @@ fun UserInputArea(
                             onClick = {
                                 onCancelEdit()
                                 textFieldValue = TextFieldValue()
+                                createSkillAttachment = null
                                 onAttachmentsChange(emptyList())
                             }
                         ) { Text(stringResource(R.string.common_cancel)) }
@@ -502,10 +508,11 @@ fun UserInputArea(
                                             onEditMessage(draft.messageId, textState, attachments)
                                         } ?: mediaKind?.let { kind ->
                                             onSendMedia(DirectMediaRequest(textState, kind, mediaProviderId, mediaModelId, attachments))
-                                        } ?: onSendMessage(textState, attachments)
+                                        } ?: onSendMessageWithSkill(textState, attachments, createSkillAttachment != null)
                                         if (submitted) {
                                             focusManager.clearFocus(force = true)
                                             textFieldValue = TextFieldValue()
+                                            createSkillAttachment = null
                                             onAttachmentsChange(emptyList())
                                             if (editDraft != null) onCancelEdit()
                                         } else {
@@ -555,7 +562,10 @@ fun UserInputArea(
 
                     BasicTextField(
                         value = textFieldValue,
-                        onValueChange = { textFieldValue = it },
+                        onValueChange = { next ->
+                            createSkillAttachment = createSkillAttachment?.afterEdit(textFieldValue.text, next.text)
+                            textFieldValue = next
+                        },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                         textStyle = inputTextStyle,
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -648,9 +658,17 @@ fun UserInputArea(
                             .orEmpty()
                         val nextText = if (suffix.isBlank()) skill.content else skill.content + "\n\n" + suffix
                         textFieldValue = TextFieldValue(nextText, TextRange(nextText.length))
+                        createSkillAttachment = if (skill.id == DEFAULT_AGENT_SKILL_ID && skill.content.isNotEmpty())
+                            SkillPromptAttachment(0, skill.content.length) else null
                         skillsMenuOpen = false
                     },
-                    onDismiss = { skillsMenuOpen = false }
+                    onDismiss = { skillsMenuOpen = false },
+                    onOpenSkillsSettings = onOpenSkillsSettings?.let { openSettings ->
+                        {
+                            skillsMenuOpen = false
+                            openSettings()
+                        }
+                    }
                 )
             }
         }

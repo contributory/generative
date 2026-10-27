@@ -84,6 +84,7 @@ class ChatViewModel(
     private val toolSettingsActions = ChatToolSettingsActions(viewModelScope, toolStore)
     fun setSystemTool(name: String, config: SystemToolConfig) = toolSettingsActions.setSystemTool(name, config)
     fun setSendFileEnabled(enabled: Boolean) = toolSettingsActions.setSendFileEnabled(enabled)
+    fun setSearchToolsEnabled(enabled: Boolean) = toolSettingsActions.setSearchToolsEnabled(enabled)
     fun setQuickMcp(id: String, enabled: Boolean) = toolSettingsActions.setQuickMcp(id, enabled)
     fun setWebSearchProvider(id: String?) = toolSettingsActions.setWebSearchProvider(id)
     fun setWebSearchEnabled(enabled: Boolean) = toolSettingsActions.setWebSearchEnabled(enabled)
@@ -106,13 +107,15 @@ class ChatViewModel(
         model: String,
         messages: List<StoredMessage>,
         prompt: String,
-        conversationId: String
+        conversationId: String,
+        createSkillRequested: Boolean
     ) =
         toolChat.generate(provider, model, messages, prompt, mcpServers.value, providers.value,
             settings = { toolSettings.value },
             maxToolRounds = { appPreferences.value.effectiveToolRoundLimit },
             takePendingMessage = { takePendingMessage(conversationId) },
-            mcpAttachmentSettings = { appPreferences.value.mcpAttachments })
+            mcpAttachmentSettings = { appPreferences.value.mcpAttachments },
+            createSkillRequested = createSkillRequested)
 
     private val deletingAllConversations = MutableStateFlow(false)
     private val deletingConversations = MutableStateFlow<Set<String>>(emptySet())
@@ -286,7 +289,7 @@ class ChatViewModel(
         maybeStartAutomaticSummary = { automaticSummary.maybeStart() },
         isGenerationReplacementActive = { replacingGeneration },
         isSummaryActive = { summaryJob?.isActive == true },
-        sendMessage = { text, files -> sendMessage(text, files) },
+        sendMessage = { text, files, createSkill -> sendMessage(text, files, createSkill) },
     )
 
     private val conversationTitleGenerator = ConversationTitleGenerator(
@@ -572,8 +575,8 @@ class ChatViewModel(
         stopSpeaking()
     }
 
-    fun sendMessage(userText: String, fileAttachments: List<String> = emptyList()): Boolean =
-        messageActions.sendMessage(userText, fileAttachments)
+    fun sendMessage(userText: String, fileAttachments: List<String> = emptyList(), createSkillRequested: Boolean = false): Boolean =
+        messageActions.sendMessage(userText, fileAttachments, createSkillRequested)
     fun sendMedia(request: DirectMediaRequest): Boolean = messageActions.sendMedia(request)
     fun setComposerMedia(kind: ModelType?, providerId: String, modelId: String) =
         messageActions.setComposerMedia(kind, providerId, modelId)

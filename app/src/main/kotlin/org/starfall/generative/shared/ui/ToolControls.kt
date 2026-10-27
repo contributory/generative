@@ -19,6 +19,7 @@ data class ToolControls(
     val setMachines: (Boolean)->Unit = {},
     val setMachine: (String, Boolean)->Unit = {_,_->},
     val setMachineTool: (String, String, Boolean)->Unit = {_,_,_->},
-    val setSendFile: (Boolean)->Unit = {}
+    val setSendFile: (Boolean)->Unit = {},
+    val setSearchTools: (Boolean)->Unit = {}
 )
 val LocalToolControls = staticCompositionLocalOf { ToolControls() }

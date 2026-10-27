@@ -19,12 +19,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,10 +50,11 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.machines.MachineToolsDialog
+import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 
 /**
  * Single combined card at the top of the left drawer.
- * - Remote: expandable, shows machine toggles, title is "Remote"
+ * - Remote: expandable list with per-machine context menus, title is "Remote"
  * - Media: navigates to StorageScreen, title is "Media"
  * Both rows share the same [prominentContainerColor] block.
  */
@@ -61,6 +62,7 @@ import org.starfall.generative.shared.ui.machines.MachineToolsDialog
 internal fun DrawerQuickShortcuts(
     onOpenMediaStorage: () -> Unit,
     onOpenRemoteMachines: () -> Unit,
+    onEditRemoteMachine: (RemoteMachine) -> Unit = {},
     onSaveMachineTools: (RemoteMachine) -> Unit,
     modifier: Modifier = Modifier,
     maxExpandedHeight: Dp = 280.dp
@@ -189,6 +191,7 @@ internal fun DrawerQuickShortcuts(
                             machines.forEach { machine ->
                                 val icon = if (machine.type.name == "GCLOUD_SHELL") Icons.Outlined.Cloud else Icons.Outlined.Computer
                                 val checked = remoteMachineEnabled(controls.settings, machine)
+                                var menuExpanded by remember(machine.id) { mutableStateOf(false) }
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
                                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.0f),
@@ -197,36 +200,70 @@ internal fun DrawerQuickShortcuts(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .clickable { toolsMachine = machine }
-                                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                                            .padding(start = 8.dp, end = 2.dp, top = 6.dp, bottom = 6.dp)
+                                            .testTag("drawer_machine_row_${machine.id}"),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         FluentIcon(
                                             imageVector = icon,
                                             contentDescription = null,
                                             modifier = Modifier.size(20.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                                alpha = if (checked) 1f else 0.55f
+                                            )
                                         )
                                         Spacer(Modifier.width(10.dp))
                                         Text(
                                             text = machine.name.ifBlank { stringResource(R.string.remote_machine_unnamed) },
                                             modifier = Modifier.weight(1f),
                                             style = MaterialTheme.typography.bodyMedium,
+                                            color = if (checked) MaterialTheme.colorScheme.onSurface
+                                                else MaterialTheme.colorScheme.onSurfaceVariant,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
-                                        Spacer(Modifier.width(8.dp))
-                                        Switch(
-                                            checked = checked,
-                                            onCheckedChange = { controls.setMachine(machine.id, it) },
-                                            colors = SwitchDefaults.colors(
-                                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                                                checkedTrackColor = MaterialTheme.colorScheme.primary,
-                                                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                                                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                                            )
-                                        )
+                                        Box {
+                                            IconButton(
+                                                onClick = { menuExpanded = true },
+                                                modifier = Modifier.size(36.dp)
+                                                    .testTag("drawer_machine_options_${machine.id}")
+                                            ) {
+                                                FluentIcon(
+                                                    Icons.Default.MoreVert,
+                                                    stringResource(R.string.common_more_options),
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            DropdownMenu(
+                                                expanded = menuExpanded,
+                                                onDismissRequest = { menuExpanded = false }
+                                            ) {
+                                                DropdownMenuItem(
+                                                    text = { Text(stringResource(
+                                                        if (checked) R.string.remote_machine_disable_action
+                                                        else R.string.remote_machine_enable_action
+                                                    )) },
+                                                    onClick = {
+                                                        menuExpanded = false
+                                                        controls.setMachine(machine.id, !checked)
+                                                    }
+                                                )
+                                                DropdownMenuItem(
+                                                    text = { Text(stringResource(R.string.common_tools)) },
+                                                    onClick = {
+                                                        menuExpanded = false
+                                                        toolsMachine = machine
+                                                    }
+                                                )
+                                                DropdownMenuItem(
+                                                    text = { Text(stringResource(R.string.common_edit)) },
+                                                    onClick = {
+                                                        menuExpanded = false
+                                                        onEditRemoteMachine(machine)
+                                                    }
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }

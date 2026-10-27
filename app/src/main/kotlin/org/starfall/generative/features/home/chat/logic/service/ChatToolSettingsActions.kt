@@ -18,6 +18,10 @@ internal class ChatToolSettingsActions(
         }
     }
 
+    fun setSearchToolsEnabled(enabled: Boolean) {
+        scope.launch(LocalWriteErrors.handler) { store.update { it.copy(searchToolsEnabled = enabled) } }
+    }
+
     fun setSendFileEnabled(enabled: Boolean) {
         scope.launch(LocalWriteErrors.handler) { store.update { it.copy(sendFileEnabled = enabled) } }
     }

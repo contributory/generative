@@ -21,6 +21,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.add
@@ -30,6 +31,7 @@ import org.starfall.generative.shared.model.REMOTE_TOOL_CLOSE_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_DISCONNECT
 import org.starfall.generative.shared.model.REMOTE_TOOL_EXECUTE
 import org.starfall.generative.shared.model.REMOTE_TOOL_LIST_TERMINAL
+import org.starfall.generative.shared.model.REMOTE_TOOL_READ_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_OPEN_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_START_MACHINE
 import org.starfall.generative.shared.model.REMOTE_TOOL_UPDATE_IP
@@ -311,7 +313,7 @@ class RemoteMachineService(
                 onFailure = { throw it }
             )
             REMOTE_TOOL_OPEN_TERMINAL -> {
-                val terminal = openTerminal(machine)
+                val terminal = connectionManager.openToolTerminal(machine)
                 buildJsonObject {
                     put("status", "opened")
                     put("terminal_id", terminal.id)
@@ -330,6 +332,18 @@ class RemoteMachineService(
                             put("is_connected", terminal.isConnected)
                         })
                     }
+                }
+            }
+            REMOTE_TOOL_READ_TERMINAL -> {
+                val lines = arguments["lines"]?.jsonPrimitive?.intOrNull
+                    ?: error("lines must be an integer from 1 to 1000")
+                require(lines in 1..1000) { "lines must be between 1 and 1000" }
+                val terminalId = arguments["terminal_id"]?.jsonPrimitive?.contentOrNull
+                val (resolvedId, output) = connectionManager.readTerminal(machine.id, terminalId, lines)
+                buildJsonObject {
+                    put("terminal_id", resolvedId)
+                    put("lines", lines)
+                    put("output", output)
                 }
             }
             REMOTE_TOOL_DISCONNECT -> buildJsonObject {

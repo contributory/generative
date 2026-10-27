@@ -147,7 +147,9 @@ fun ChatScreen(
     onOpenMcpConnectorsSettings: () -> Unit = {},
     modifier: Modifier = Modifier,
     activeStream: StateFlow<ActiveChatStreamState?>? = null,
-    agentSkills: List<AgentSkill> = defaultAgentSkills()
+    agentSkills: List<AgentSkill> = defaultAgentSkills(),
+    onSendMessageWithSkill: (String, List<String>, Boolean) -> Boolean = { text, files, _ -> onSendMessage(text, files) },
+    onOpenSkillsSettings: (() -> Unit)? = null
 ) {
     val conversationKey = conversation?.id ?: "__empty_conversation__"
     // reverseLayout puts item 0 at the physical bottom. The list data is reversed below,
@@ -722,6 +724,11 @@ fun ChatScreen(
                     revealed = true
                     onSendMessage(text, files).also { if (it && !isGenerating) followBottom = true }
                 },
+                onSendMessageWithSkill = { text, files, requested ->
+                    inlineChatError = null
+                    revealed = true
+                    onSendMessageWithSkill(text, files, requested).also { if (it && !isGenerating) followBottom = true }
+                },
                 onEditMessage = { id, text, files ->
                     val isQueued = editDraft?.isQueued == true
                     if (isQueued) {
@@ -760,7 +767,8 @@ fun ChatScreen(
                  onFetchOllamaModels = onFetchOllamaModels,
                  onOpenFeatureToolsSettings = onOpenFeatureToolsSettings,
                   onOpenMcpConnectorsSettings = onOpenMcpConnectorsSettings,
-                  agentSkills = agentSkills
+                  agentSkills = agentSkills,
+                  onOpenSkillsSettings = onOpenSkillsSettings
               )
         }
 

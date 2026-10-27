@@ -638,6 +638,7 @@
     <string name="agent_skill_delete_confirmation">Delete “%1$s”? This cannot be undone.</string>
     <string name="agent_skill_save">Save skill</string>
     <string name="agent_skills_menu_title">Agent Skills</string>
+    <string name="agent_skills_manage">Manage skills</string>
     <string name="agent_skills_menu_empty">No skills are available.</string>
     <string name="agent_skills_menu_no_matches">No matching skills.</string>
     <string name="settings_tools_editor_description">Configure media generation and file tools</string>
@@ -866,10 +867,13 @@
     <string name="remote_machine_oauth_authorized" translatable="false">Google account connected</string>
     <string name="remote_machine_add_oauth_hint" translatable="false">Add an OAuth client in Remote Settings, select it here, and sign in before connecting.</string>
     <string name="remote_machine_tools_section" translatable="false">Machine Tools</string>
+    <string name="remote_machine_enable_action">Enable</string>
+    <string name="remote_machine_disable_action">Disable</string>
     <string name="remote_machine_tool_execute" translatable="false">Execute commands</string>
     <string name="remote_machine_update_ip" translatable="false">Update IP</string>
     <string name="remote_machine_tool_close_terminal" translatable="false">Close terminal</string>
     <string name="remote_machine_tool_list_terminal" translatable="false">List terminals</string>
+    <string name="remote_machine_tool_read_terminal" translatable="false">Read terminal</string>
     <string name="remote_machine_disconnect" translatable="false">Disconnect</string>
     <string name="remote_machine_tool_update_ip_help" translatable="false">Use only if connecting to this machine fails.</string>
     <string name="remote_machine_update_ip_title" translatable="false">Cloud Shell IP · %1$s</string>
@@ -892,7 +896,6 @@
     <string name="remote_machine_terminal_disconnect_close" translatable="false">Disconnect and close terminal</string>
     <string name="remote_machine_terminal_ime" translatable="false">Enable IME composition</string>
     <string name="remote_machine_terminal_keyboard" translatable="false">Show or hide keyboard</string>
-    <string name="remote_machine_terminal_font_size" translatable="false">Terminal font size</string>
     <string name="remote_machine_terminal_input_settings" translatable="false">Terminal input mode</string>
     <string name="remote_machine_terminal_force_mouse" translatable="false">Mouse events · tap = click, drag = wheel</string>
     <string name="remote_machine_terminal_local_input_label" translatable="false">Local input</string>
@@ -909,8 +912,6 @@
     <string name="remote_machine_terminal_input_remote_short" translatable="false">Remote</string>
     <string name="remote_machine_terminal_mouse_short" translatable="false">Mouse</string>
     <string name="remote_machine_terminal_input_ime_short" translatable="false">IME</string>
-    <string name="remote_machine_terminal_font_smaller" translatable="false">Decrease font size</string>
-    <string name="remote_machine_terminal_font_larger" translatable="false">Increase font size</string>
     <string name="remote_machine_terminal_choose_machine" translatable="false">Running machines</string>
     <string name="remote_machine_terminal_connection_lost">Connection lost</string>
     <string name="remote_machine_not_configured">Not configured</string>

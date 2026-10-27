@@ -1,6 +1,7 @@
 package org.starfall.generative
 
 import android.content.Context
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsOn
@@ -38,9 +39,7 @@ class RemoteTerminalAppBarTest {
                     canUseRemoteInput = true,
                     onInputModeChange = { bridge.setInputMode(it); modeChanges++ },
                     onToggleIme = { bridge.updateImeEnabled(!bridge.imeEnabled) },
-                    onToggleForceMouse = { bridge.forceMouse = !bridge.forceMouse },
-                    fontDp = 14,
-                    onFontChange = {}
+                    onToggleForceMouse = { bridge.forceMouse = !bridge.forceMouse }
                 )
             }
         }
@@ -54,6 +53,7 @@ class RemoteTerminalAppBarTest {
         compose.onNodeWithText("Remote").performClick()
         compose.onNodeWithContentDescription("Enable IME composition").assertIsOn()
         compose.onNodeWithContentDescription("Show or hide terminal sessions").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Terminal font size").assertDoesNotExist()
         bridge.close()
     }
 
@@ -69,9 +69,7 @@ class RemoteTerminalAppBarTest {
                     canUseRemoteInput = true,
                     onInputModeChange = {},
                     onToggleIme = {},
-                    onToggleForceMouse = {},
-                    fontDp = 14,
-                    onFontChange = {}
+                    onToggleForceMouse = {}
                 )
             }
         }

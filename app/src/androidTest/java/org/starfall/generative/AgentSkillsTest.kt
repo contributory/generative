@@ -2,6 +2,7 @@ package org.starfall.generative
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.fetchSemanticsNode
@@ -74,6 +75,37 @@ class AgentSkillsTest {
 
         compose.onNodeWithText("Summarize").performClick()
         compose.onNode(hasSetTextAction()).assertTextEquals("Summarize the selected text.")
+    }
+
+    @Test
+    fun skillsPopupManageButtonOpensSkillsSettingsWithoutChangingDraft() {
+        var openedSettings = false
+        compose.setContent {
+            MaterialTheme {
+                UserInputArea(
+                    isGenerating = false,
+                    onSendMessage = { _, _ -> true },
+                    onSendMedia = { false },
+                    onEditMessage = { _, _, _ -> false },
+                    editDraft = null,
+                    onCancelEdit = {},
+                    onStopGenerating = {},
+                    selectedModelName = "",
+                    providers = emptyList(),
+                    selectedProviderId = "",
+                    onSelectModel = { _, _ -> },
+                    conversationReasoningEffort = null,
+                    onSetReasoningEffort = {},
+                    onOpenSkillsSettings = { openedSettings = true }
+                )
+            }
+        }
+
+        compose.onNode(hasSetTextAction()).performTextInput("/")
+        compose.onNodeWithTag("agent-skills-manage").performClick()
+        compose.runOnIdle { assertTrue(openedSettings) }
+        compose.onNodeWithTag("agent-skills-menu").assertDoesNotExist()
+        compose.onNode(hasSetTextAction()).assertTextEquals("/")
     }
 
     @Test

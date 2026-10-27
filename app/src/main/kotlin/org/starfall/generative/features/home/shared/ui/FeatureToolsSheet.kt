@@ -134,6 +134,21 @@ internal fun FeatureToolsSheetContent(
                     )
                 }
             }
+            SettingsCard {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    FluentIcon(Icons.Outlined.Search, contentDescription = null,
+                        modifier = Modifier.size(44.dp).padding(10.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.size(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Search Tools", style = MaterialTheme.typography.titleSmall)
+                        Text("Find tool names and enabled states", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = controls.settings.searchToolsEnabled,
+                        onCheckedChange = controls.setSearchTools)
+                }
+            }
             WebSearchProviderSettings(
                 servers = controls.servers,
                 settings = controls.settings,

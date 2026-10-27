@@ -60,7 +60,7 @@ internal class ChatMessageActions(
     private val selectedChatModel: (Conversation?, AppPreferences) -> Pair<ModelProvider?, String>,
     private val providerWithReasoning: (ModelProvider, String, Conversation) -> ModelProvider,
     private val conversationTitleGenerator: ConversationTitleGenerator,
-    private val toolEvents: (ModelProvider, String, List<StoredMessage>, String, String) -> Flow<GenerationEvent>,
+    private val toolEvents: (ModelProvider, String, List<StoredMessage>, String, String, Boolean) -> Flow<GenerationEvent>,
     private val writeConversation: (() -> Unit, suspend () -> Unit) -> Boolean,
     private val saveEditedConversation: (Conversation, Conversation) -> Boolean,
     private val drainQueuedMessages: () -> Unit,
@@ -86,7 +86,7 @@ internal class ChatMessageActions(
         modelDisplayName = provider?.config?.modelConfigs?.get(modelId)?.displayName?.ifBlank { modelId } ?: modelId
     )
 
-    fun sendMessage(userText: String, fileAttachments: List<String> = emptyList()): Boolean {
+    fun sendMessage(userText: String, fileAttachments: List<String> = emptyList(), createSkillRequested: Boolean = false): Boolean {
         if (userText.isBlank() && fileAttachments.isEmpty()) return false
 
         return guardRestoreBoolean {
@@ -99,6 +99,7 @@ internal class ChatMessageActions(
                     versions = listOf(
                         MessageVersion(
                             content = userText,
+                            createSkillRequested = createSkillRequested,
                             timestamp = System.currentTimeMillis().toString(),
                             files = fileAttachments
                         )
@@ -110,7 +111,7 @@ internal class ChatMessageActions(
             }
 
             val incoming = StoredMessage(UUID.randomUUID().toString(), ChatRole.USER,
-                listOf(MessageVersion(content = userText, files = fileAttachments, timestamp = System.currentTimeMillis().toString())),
+                listOf(MessageVersion(content = userText, files = fileAttachments, createSkillRequested = createSkillRequested, timestamp = System.currentTimeMillis().toString())),
                 isQueued = true)
             if (maybeStartAutomaticSummary(incoming)) {
                 val conversationId = existing?.id ?: return@guardRestoreBoolean false
@@ -127,6 +128,7 @@ internal class ChatMessageActions(
                 listOf(
                     MessageVersion(
                         content = userText,
+                        createSkillRequested = createSkillRequested,
                         timestamp = now.toString(),
                         files = fileAttachments
                     )
@@ -184,7 +186,7 @@ internal class ChatMessageActions(
             val started = generationFor(conv.id).startEvents(
                 conv,
                 assistant.id,
-                toolEvents(provider, modelId, context.messages, context.systemPrompt, conv.id),
+                toolEvents(provider, modelId, context.messages, context.systemPrompt, conv.id, createSkillRequested),
                 usageContextKey = contextUsageKey(conv, prefs.systemPromptFor(conv),
                     baseProvider.config.modelConfigs[modelId] ?: ModelConfiguration(displayName = modelId),
                     prefs.instructionRoleMessagesFor(conv), toolSettings.value)
@@ -431,7 +433,7 @@ internal class ChatMessageActions(
         return generationFor(conversation.id).startEvents(
             conversation,
             responseId,
-            toolEvents(configuredProvider, modelId, context.messages, context.systemPrompt, conversation.id),
+            toolEvents(configuredProvider, modelId, context.messages, context.systemPrompt, conversation.id, false),
             rollbackConversation = rollbackConversation,
             resume = resume,
             usageContextKey = contextUsageKey(conversation, preferences.systemPromptFor(conversation),

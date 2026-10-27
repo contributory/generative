@@ -28,10 +28,12 @@ import org.starfall.generative.shared.model.REMOTE_TOOL_CLOSE_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_START_MACHINE
 import org.starfall.generative.shared.model.REMOTE_TOOL_UPDATE_IP
 import org.starfall.generative.shared.model.REMOTE_TOOL_LIST_TERMINAL
+import org.starfall.generative.shared.model.REMOTE_TOOL_READ_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_OPEN_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_EXECUTE
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
+import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.ToolActivity
 import org.starfall.generative.shared.model.ToolDefinition
@@ -99,7 +101,8 @@ class ToolChatViewModel internal constructor(
     private val mcp: McpService,
     private val aiService: AiService,
     private val remoteMachines: RemoteMachineService? = null,
-    private val labels: ToolChatLabels = ToolChatLabels()
+    private val labels: ToolChatLabels = ToolChatLabels(),
+    private val saveSkill: suspend (String, String) -> AgentSkill = { _, _ -> error("Skill storage unavailable") }
 ) {
     private val toolRequest = ToolRequestService(http, aiService)
     private val mediaGeneration = ToolMediaGenerationService(http, aiService)
@@ -144,13 +147,15 @@ class ToolChatViewModel internal constructor(
         settings: () -> ToolSettings,
         maxToolRounds: () -> Int? = { null },
         takePendingMessage: () -> StoredMessage? = { null },
-        mcpAttachmentSettings: () -> McpAttachmentSettings = { McpAttachmentSettings() }
+        mcpAttachmentSettings: () -> McpAttachmentSettings = { McpAttachmentSettings() },
+        createSkillRequested: Boolean = false
     ): Flow<GenerationEvent> = channelFlow {
         val selectedProvider = aiService.resolveProvider(provider)
         val sessionKey = messages.firstOrNull { it.role == ChatRole.USER }?.id
         val sessions = mutableMapOf<String, McpSession>()
         val tools = mutableListOf<ToolDefinition>()
         val mcpEntries = mutableListOf<McpAttachments.Entry>()
+        val searchable = mutableListOf<SearchableTool>()
         // Keep one catalog for a generation. The service still validates the selected machine at
         // execution time, so deleting a machine cannot redirect a call to another machine.
         val configuredMachines = toolExecution.configuredMachines()
@@ -163,8 +168,12 @@ class ToolChatViewModel internal constructor(
                     try {
                         val session = toolExecution.connect(server)
                         sessions[server.id] = session
-                        val discovered = toolExecution.discoverTools(session).filter {
+                        val allDiscovered = toolExecution.discoverTools(session)
+                        val discovered = allDiscovered.filter {
                             globalMcpToolEnabled(settings(), server.id, it.originalName)
+                        }
+                        searchable += allDiscovered.map {
+                            SearchableTool(it.name, globalMcpToolEnabled(settings(), server.id, it.originalName))
                         }
                         tools += discovered
                         if (discovered.isNotEmpty()) mcpEntries += McpAttachments.Entry(
@@ -199,6 +208,10 @@ class ToolChatViewModel internal constructor(
                                     "Close one terminal on '${machine.name}'. If terminal_id is omitted, close the newest terminal."
                                 REMOTE_TOOL_LIST_TERMINAL ->
                                     "List interactive terminals currently open on '${machine.name}'."
+                                REMOTE_TOOL_READ_TERMINAL ->
+                                    "Read the latest lines of output from an existing interactive terminal on '${machine.name}'. " +
+                                        "Specify lines (1-1000); optionally supply terminal_id, otherwise use the newest terminal. " +
+                                        "This does not execute a command or consume terminal output."
                                 REMOTE_TOOL_UPDATE_IP ->
                                     "Refresh the SSH endpoint of the Google Cloud Shell remote machine '${machine.name}'. Use only after connecting to this machine reports an error."
                                 else ->
@@ -212,6 +225,15 @@ class ToolChatViewModel internal constructor(
                     }
                 }
 
+            searchable += listOf(
+                SearchableTool("generate_image", settings().system["generate_image"]?.enabled == true),
+                SearchableTool("generate_video", settings().system["generate_video"]?.enabled == true),
+                SearchableTool(SEND_FILE_TOOL_NAME, settings().sendFileEnabled),
+                SearchableTool(CREATE_SKILL_TOOL_NAME, createSkillRequested),
+                SearchableTool(SEARCH_TOOLS_TOOL_NAME, settings().searchToolsEnabled)
+            )
+            if (createSkillRequested) tools += createSkillDefinition
+            if (settings().searchToolsEnabled) tools += searchToolsDefinition
             listOf("generate_image", "generate_video").forEach { name ->
                 val config = settings().system[name]
                 if (config?.enabled == true) {
@@ -332,7 +354,9 @@ class ToolChatViewModel internal constructor(
                             remoteMachineToolEnabled(settings(), machine, tool.originalName)
                         } == true
                     } else if (tool.serverId == null) {
-                        if (tool.name == SEND_FILE_TOOL_NAME) fileDeliveryAvailable && settings().sendFileEnabled
+                        if (tool.name == CREATE_SKILL_TOOL_NAME) createSkillRequested
+                        else if (tool.name == SEARCH_TOOLS_TOOL_NAME) settings().searchToolsEnabled
+                        else if (tool.name == SEND_FILE_TOOL_NAME) fileDeliveryAvailable && settings().sendFileEnabled
                         else if (tool.name in mcpDynamicToolNames) mcpAttachments.active
                         else settings().system[tool.name]?.enabled == true
                     } else {
@@ -435,6 +459,13 @@ class ToolChatViewModel internal constructor(
                                 sessions[tool.serverId] ?: error("MCP session unavailable"),
                                 tool.originalName, configuredMcpArguments(tool, args, settings())
                             )
+                        } else if (name == SEARCH_TOOLS_TOOL_NAME) {
+                            check(settings().searchToolsEnabled) { "Search Tools disabled" }
+                            obj("tools" to searchToolCatalog(args.text("query"), searchable))
+                        } else if (name == CREATE_SKILL_TOOL_NAME) {
+                            check(createSkillRequested) { "Create Skill not attached" }
+                            val saved = saveSkill(args.text("name"), args.text("content"))
+                            obj("status" to str("success"), "name" to str(saved.name))
                         } else if (mcpAttachmentTool) {
                             mcpAttachments.execute(name, args)
                         } else if (name == SEND_FILE_TOOL_NAME) {
@@ -620,6 +651,22 @@ class ToolChatViewModel internal constructor(
                     put("description", "Optional terminal ID. Without it, close the newest terminal.")
                 })
             })
+        }
+        REMOTE_TOOL_READ_TERMINAL -> buildJsonObject {
+            put("type", "object")
+            put("properties", buildJsonObject {
+                put("lines", buildJsonObject {
+                    put("type", "integer")
+                    put("description", "Number of latest output lines to read, between 1 and 1000")
+                    put("minimum", 1)
+                    put("maximum", 1000)
+                })
+                put("terminal_id", buildJsonObject {
+                    put("type", "string")
+                    put("description", "Optional open terminal ID. Without it, use the newest terminal.")
+                })
+            })
+            put("required", JsonArray(listOf(JsonPrimitive("lines"))))
         }
         REMOTE_TOOL_EXECUTE -> buildJsonObject {
             put("type", "object")

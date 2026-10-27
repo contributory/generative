@@ -86,6 +86,7 @@ fun ConversationSideDrawer(
     onCloseDrawer: () -> Unit,
     onOpenMediaStorage: () -> Unit = {},
     onOpenRemoteMachines: () -> Unit = {},
+    onEditRemoteMachine: (RemoteMachine) -> Unit = {},
     onSaveMachineTools: (RemoteMachine) -> Unit = {},
     modifier: Modifier = Modifier,
     providers: List<ModelProvider> = emptyList()
@@ -228,6 +229,10 @@ fun ConversationSideDrawer(
                         onOpenRemoteMachines = {
                             unfocusSearch()
                             onOpenRemoteMachines()
+                        },
+                        onEditRemoteMachine = { machine ->
+                            unfocusSearch()
+                            onEditRemoteMachine(machine)
                         },
                         onSaveMachineTools = onSaveMachineTools,
                         maxExpandedHeight = halfDrawerHeight

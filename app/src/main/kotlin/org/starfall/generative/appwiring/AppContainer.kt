@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import org.starfall.generative.integrations.mcp.McpOAuthService
@@ -78,7 +79,18 @@ class AppContainer(context: Context) {
                 providers,
                 mcp,
                 preferences,
-                ToolChatViewModel(toolHttp, mcpService, aiService, remoteMachineService, toolChatLabels(appContext)),
+                ToolChatViewModel(toolHttp, mcpService, aiService, remoteMachineService, toolChatLabels(appContext),
+                    saveSkill = { name, content ->
+                        val cleanName = name.trim().take(120)
+                        val cleanContent = content.trim().take(32000)
+                        require(cleanName.isNotBlank() && cleanContent.isNotBlank()) { "Skill name and content are required" }
+                        val skill = org.starfall.generative.shared.model.AgentSkill(
+                            java.util.UUID.randomUUID().toString(), cleanName, cleanContent
+                        )
+                        val current = preferences.appPreferencesFlow.first().agentSkills.skills
+                        preferences.setAgentSkills(current + skill)
+                        skill
+                    }),
                 toolSettings,
                 speech,
                 TtsHelper(appContext),

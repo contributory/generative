@@ -34,12 +34,9 @@ internal fun TerminalAppBar(
     canUseRemoteInput: Boolean,
     onInputModeChange: (TerminalInputMode) -> Unit,
     onToggleIme: () -> Unit,
-    onToggleForceMouse: () -> Unit,
-    fontDp: Int,
-    onFontChange: (Int) -> Unit
+    onToggleForceMouse: () -> Unit
 ) {
     var inputMenuOpen by remember { mutableStateOf(false) }
-    var fontMenuOpen by remember { mutableStateOf(false) }
     TopAppBar(
         title = {},
         // The screen handles system insets for the entire terminal surface.
@@ -89,25 +86,6 @@ internal fun TerminalAppBar(
                 enabled = bridge != null
             ) {
                 FluentIcon(R.drawable.ic_mouse_24, stringResource(R.string.remote_machine_terminal_force_mouse))
-            }
-            Box {
-                val fontDescription = stringResource(R.string.remote_machine_terminal_font_size)
-                IconButton(onClick = { fontMenuOpen = true },
-                    modifier = Modifier.semantics { contentDescription = fontDescription }) {
-                    Text("A", style = MaterialTheme.typography.titleMedium)
-                }
-                DropdownMenu(expanded = fontMenuOpen, onDismissRequest = { fontMenuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.remote_machine_terminal_font_smaller)) },
-                        enabled = fontDp > MIN_TERMINAL_FONT_DP,
-                        onClick = { onFontChange(-1) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.remote_machine_terminal_font_larger)) },
-                        enabled = fontDp < MAX_TERMINAL_FONT_DP,
-                        onClick = { onFontChange(1) }
-                    )
-                }
             }
             IconButton(onClick = onToggleSessions) {
                 FluentIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.remote_machine_terminal_toggle_sessions))

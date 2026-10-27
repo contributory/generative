@@ -36,6 +36,7 @@ internal fun AgentSkillsMenu(
     query: String,
     onSelect: (AgentSkill) -> Unit,
     onDismiss: () -> Unit,
+    onOpenSkillsSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
     val normalizedQuery = query.trim()
@@ -64,6 +65,17 @@ internal fun AgentSkillsMenu(
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.weight(1f)
                 )
+                onOpenSkillsSettings?.let { openSettings ->
+                    IconButton(
+                        onClick = openSettings,
+                        modifier = Modifier.testTag("agent-skills-manage")
+                    ) {
+                        FluentIcon(
+                            Icons.Outlined.Settings,
+                            stringResource(R.string.agent_skills_manage)
+                        )
+                    }
+                }
                 IconButton(onClick = onDismiss) {
                     FluentIcon(Icons.Default.Close, stringResource(R.string.common_close))
                 }

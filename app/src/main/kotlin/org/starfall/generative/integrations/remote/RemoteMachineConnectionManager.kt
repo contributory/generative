@@ -90,6 +90,36 @@ internal class RemoteMachineConnectionManager(
         }
     }
 
+    /** Tool-created terminals have no UI reader, so drain their output into the same capture buffer. */
+    suspend fun openToolTerminal(machine: RemoteMachine): RemoteTerminal {
+        val terminal = openTerminal(machine)
+        ioScope.launch {
+            val buffer = ByteArray(4096)
+            try {
+                while (isActive && terminal.isOpen) {
+                    if (terminal.input.read(buffer) < 0) break
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: java.io.IOException) {
+                // A dropped or closed shell also ends its output stream.
+            } finally {
+                terminal.close()
+            }
+        }
+        return terminal
+    }
+
+    /** Read captured output without advancing the UI's terminal stream or running a command. */
+    fun readTerminal(machineId: String, terminalId: String?, lines: Int): Pair<String, String> {
+        require(lines in 1..1000) { "lines must be between 1 and 1000" }
+        val available = terminals[machineId].orEmpty().values.filter { it.isOpen }
+        val terminal = if (terminalId.isNullOrBlank()) available.maxByOrNull { it.createdAtNanos }
+            else available.firstOrNull { it.id == terminalId }
+        requireNotNull(terminal) { "No matching open terminal for this machine" }
+        return terminal.id to terminal.readOutputLines(lines)
+    }
+
     fun listTerminals(machineId: String): List<RemoteTerminalInfo> =
             terminals[machineId].orEmpty().values
             .filter { it.isOpen }

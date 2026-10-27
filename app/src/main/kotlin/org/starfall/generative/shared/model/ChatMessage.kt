@@ -24,7 +24,9 @@ data class MessageVersion(
     @SerialName("model_display_name") val modelDisplayName: String = "",
     @SerialName("generation_interrupted") val generationInterrupted: Boolean = false,
     @SerialName("generation_error") val generationError: String? = null,
-    @SerialName("context_usage") val contextUsage: ContextUsageSnapshot? = null
+    @SerialName("context_usage") val contextUsage: ContextUsageSnapshot? = null,
+    /** In-memory provenance from selecting Create Skill, never inferred from message text. */
+    @kotlinx.serialization.Transient val createSkillRequested: Boolean = false
 )
 
 @Serializable

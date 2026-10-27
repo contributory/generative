@@ -276,9 +276,7 @@ internal fun RemoteTerminalScreen(
                     terminalSlots.forEach { slot -> slot.bridge.forceMouse = enabled }
                     terminalPrefs.edit().putBoolean(REMOTE_TERMINAL_FORCE_MOUSE_KEY, enabled).apply()
                 }
-            },
-            fontDp = fontDp,
-            onFontChange = { delta -> setFontDp(fontDp + delta) }
+            }
         )
         Row(
             Modifier.weight(1f).fillMaxWidth().imePadding()
@@ -296,6 +294,7 @@ internal fun RemoteTerminalScreen(
                                     factory = { viewContext ->
                                         val slotBridge = slot.bridge
                                         val host = RemoteTerminalView(viewContext, slotBridge)
+                                        host.setBackgroundColor(terminalBackgroundArgb)
                                         val view = host.terminalView
                                         view.setOnTouchListener(RemoteMouseTouchListener(viewContext, view, slotBridge))
                                         view.setBackgroundColor(terminalBackgroundArgb)
@@ -318,6 +317,7 @@ internal fun RemoteTerminalScreen(
                                         // Focus moves only on session changes or terminal taps;
                                         // output updates must not interrupt the input connection.
                                         val view = host.terminalView
+                                        host.setBackgroundColor(terminalBackgroundArgb)
                                         slot.bridge.view = view
                                         slot.bridge.inputView = host
                                         if (host.tag != textSizePx) {

@@ -18,6 +18,10 @@ internal class RemoteTerminalView(context: Context, private val bridge: RemoteTe
     init {
         isFocusable = true
         isFocusableInTouchMode = true
+        // Termux paints solid black while its emulator is null, ignoring the View background.
+        // Keep the renderer hidden until onEmulatorSet applies the current theme palette;
+        // the FrameLayout behind it displays the actual screen background in the meantime.
+        terminalView.visibility = View.INVISIBLE
         addView(terminalView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         updateInputMode()
     }

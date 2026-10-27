@@ -6,6 +6,7 @@ import android.content.ContextWrapper
 import android.content.ClipboardManager
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -444,6 +445,13 @@ internal class RemoteTerminalBridge(
             // reset() restores the stock white-on-black colors: re-apply the theme before replaying output.
             applyThemeColors()
             history.forEach(::writeToEmulator)
+        }
+        // TerminalView.onDraw() draws a hard-coded black canvas without an emulator.
+        // Reveal it only when it can render with the configured theme colors.
+        view?.let { terminalView ->
+            if (terminalView.mEmulator != null && terminalView.visibility != View.VISIBLE) {
+                terminalView.visibility = View.VISIBLE
+            }
         }
         reportSize()
     }

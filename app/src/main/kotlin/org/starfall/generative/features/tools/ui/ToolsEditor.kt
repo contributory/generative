@@ -56,6 +56,7 @@ fun ToolsEditor(
     mcpServers: List<McpInfo> = emptyList(),
     onSave: (String, SystemToolConfig) -> Unit,
     onSetSendFile: (Boolean) -> Unit = {},
+    onSetSearchTools: (Boolean) -> Unit = {},
     onSetWebSearchProvider: (String?) -> Unit = {},
     onSetWebSearchEnabled: (Boolean) -> Unit = {},
     providerGroups: List<ProviderGroup> = emptyList(),
@@ -375,6 +376,19 @@ fun ToolsEditor(
                             onProviderChange = onSetWebSearchProvider,
                             onEnabledChange = onSetWebSearchEnabled
                         )
+                    }
+                    item {
+                        SettingsCard {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("Search Tools", style = MaterialTheme.typography.titleMedium)
+                                    Text("Find tool names and enabled states",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Switch(checked = settings.searchToolsEnabled, onCheckedChange = onSetSearchTools)
+                            }
+                        }
                     }
                     item {
                         SettingsCard {
