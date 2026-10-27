@@ -9,6 +9,11 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.starfall.generative.shared.model.AgentSkill
+import org.starfall.generative.shared.model.AgentSkills
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SidebarOrganization
@@ -74,21 +79,33 @@ const val DEFAULT_TOOL_CALL_CONCURRENT_LIMIT = 2
 const val MAX_TOOL_CALL_CONCURRENT_LIMIT = 16
 
 @Serializable
-data class AppPreferences(
+data class ChatRelations(
     val sidebar: SidebarOrganization = SidebarOrganization(),
-    val selectedProfileId: String? = null,
-    val selectedProviderId: String = "",
-    val selectedModelId: String = "",
+    /** Null means the app has not recorded a restoration choice; an empty string explicitly clears it. */
+    val lastActiveConversationId: String? = null,
+    val mcpPresetsInitialized: Boolean = false,
+    val contentApiPresetInitialized: Boolean = false
+)
+
+/** A selected model is identified together with the provider that owns it. */
+@Serializable
+data class SelectedModel(
+    val providerId: String = "",
+    val modelId: String = ""
+)
+
+@Serializable
+data class AppPreferences(
+    val chatRelations: ChatRelations = ChatRelations(),
+    val selectedModel: SelectedModel = SelectedModel(),
     val selectedSpeechServiceId: String? = null,
     val themeMode: String = "SYSTEM", // SYSTEM, LIGHT, DARK
     val useAmoled: Boolean = false,
     val useDynamicColor: Boolean = true,
     val colorSchemeName: String = "DEFAULT", // DEFAULT, EMERALD, SUNSET, CRIMSON, VIOLET
-    val defaultSystemPrompt: String = "",
-    val instructionLibrary: org.starfall.generative.shared.model.InstructionLibrary? = null,
+    val instructionLibrary: InstructionLibrary = InstructionLibrary(),
+    val agentSkills: AgentSkills = AgentSkills(),
     val continueLastConversation: Boolean = false,
-    /** Null means not recorded yet; an empty string explicitly means no chat should be restored. */
-    val lastActiveConversationId: String? = null,
     val persistSelectedModel: Boolean = true,
     val autoScroll: Boolean = false,
     val ttsReadCodeBlocks: Boolean = false,
@@ -111,8 +128,6 @@ data class AppPreferences(
     val modelPickerCollapsedGroups: Set<String> = emptySet(),
     val modelPickerCollapsedProviders: Set<String> = emptySet(),
     val modelPickerSelectedTab: String = "default",
-    val mcpPresetsInitialized: Boolean = false,
-    val contentApiPresetInitialized: Boolean = false,
     val latexMode: String = "AUTO", // OFF, AUTO
     val wordWrapMode: WordWrapMode = WordWrapMode.OFF,
     val wordWrapColumn: Int = DEFAULT_WORD_WRAP_COLUMN,
@@ -144,7 +159,7 @@ data class AppPreferences(
     fun instructionLibraryFor(conversation: Conversation?): InstructionLibrary =
         instructionLibraryForSelection(conversation?.selectedInstructionIds)
     fun instructionLibraryForSelection(selectedInstructionIds: Set<String>?): InstructionLibrary =
-        (instructionLibrary ?: InstructionLibrary.fromLegacy(defaultSystemPrompt)).forChat(selectedInstructionIds)
+        instructionLibrary.forChat(selectedInstructionIds)
     fun systemPromptFor(conversation: Conversation?): String = instructionLibraryFor(conversation).systemPrompt()
     fun instructionRoleMessagesFor(conversation: Conversation?) = instructionLibraryFor(conversation).roleMessages()
 }
@@ -152,19 +167,16 @@ data class AppPreferences(
 class AppPreferencesRepository(private val context: Context) {
 
     private object PreferenceKeys {
-        val SIDEBAR = stringPreferencesKey("sidebar_organization")
-        val SELECTED_PROFILE_ID = stringPreferencesKey("selected_profile_id")
-        val SELECTED_PROVIDER_ID = stringPreferencesKey("selected_provider_id")
-        val SELECTED_MODEL_ID = stringPreferencesKey("selected_model_id")
+        val CHAT_RELATIONS = stringPreferencesKey("chat_relations")
+        val SELECTED_MODEL = stringPreferencesKey("selected_model")
         val SELECTED_SPEECH_SERVICE_ID = stringPreferencesKey("selected_speech_service_id")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val USE_AMOLED = booleanPreferencesKey("use_amoled")
         val USE_DYNAMIC_COLOR = booleanPreferencesKey("use_dynamic_color")
         val COLOR_SCHEME_NAME = stringPreferencesKey("color_scheme_name")
-        val DEFAULT_SYSTEM_PROMPT = stringPreferencesKey("default_system_prompt")
         val INSTRUCTION_LIBRARY = stringPreferencesKey("prompt_library")
+        val AGENT_SKILLS = stringPreferencesKey("agent_skills")
         val CONTINUE_LAST_CONVERSATION = booleanPreferencesKey("continue_last_conversation")
-        val LAST_ACTIVE_CONVERSATION_ID = stringPreferencesKey("last_active_conversation_id")
         val PERSIST_SELECTED_MODEL = booleanPreferencesKey("persist_chat_selection")
         val AUTO_SCROLL = booleanPreferencesKey("auto_scroll")
         val TTS_READ_CODE_BLOCKS = booleanPreferencesKey("tts_read_code_blocks")
@@ -184,8 +196,6 @@ class AppPreferencesRepository(private val context: Context) {
         val MODEL_PICKER_COLLAPSED_GROUPS = stringSetPreferencesKey("model_picker_collapsed_groups")
         val MODEL_PICKER_COLLAPSED_PROVIDERS = stringSetPreferencesKey("model_picker_collapsed_providers")
         val MODEL_PICKER_SELECTED_TAB = stringPreferencesKey("model_picker_selected_tab")
-        val MCP_PRESETS_INITIALIZED = booleanPreferencesKey("mcp_presets_initialized")
-        val CONTENT_API_PRESET_INITIALIZED = booleanPreferencesKey("content_api_preset_initialized")
         val LATEX_MODE = stringPreferencesKey("latex_mode")
         val WORD_WRAP_MODE = stringPreferencesKey("word_wrap_mode")
         val WORD_WRAP_COLUMN = intPreferencesKey("word_wrap_column")
@@ -207,27 +217,37 @@ class AppPreferencesRepository(private val context: Context) {
         val AUTO_SUMMARY_PERCENT = intPreferencesKey("auto_summary_percent")
     }
 
+    /** Keys read only to migrate installations that still use the former flat preference schema. */
+    private object LegacyPreferenceKeys {
+        val SIDEBAR = stringPreferencesKey("sidebar_organization")
+        val SELECTED_PROFILE_ID = stringPreferencesKey("selected_profile_id")
+        val SELECTED_PROVIDER_ID = stringPreferencesKey("selected_provider_id")
+        val SELECTED_MODEL_ID = stringPreferencesKey("selected_model_id")
+        val DEFAULT_SYSTEM_PROMPT = stringPreferencesKey("default_system_prompt")
+        val LAST_ACTIVE_CONVERSATION_ID = stringPreferencesKey("last_active_conversation_id")
+        val MCP_PRESETS_INITIALIZED = booleanPreferencesKey("mcp_presets_initialized")
+        val CONTENT_API_PRESET_INITIALIZED = booleanPreferencesKey("content_api_preset_initialized")
+    }
+
+    private val schemaMigrationMutex = Mutex()
+    @Volatile private var legacySchemaMigrated = false
+
     private val storedPreferences: Flow<AppPreferences> = context.dataStore.data
+        .onStart { migrateLegacyPreferenceSchema() }
         .map { preferences ->
-            val profileId = preferences[PreferenceKeys.SELECTED_PROFILE_ID]
             val storedThemeMode = preferences[PreferenceKeys.THEME_MODE] ?: "SYSTEM"
             val legacyAmoled = storedThemeMode == "AMOLED"
             AppPreferences(
-                sidebar = decodeSidebar(preferences[PreferenceKeys.SIDEBAR]),
-                selectedProfileId = if (profileId.isNullOrEmpty()) null else profileId,
-                selectedProviderId = preferences[PreferenceKeys.SELECTED_PROVIDER_ID] ?: "",
-                selectedModelId = preferences[PreferenceKeys.SELECTED_MODEL_ID] ?: "",
+                chatRelations = decodeChatRelations(preferences),
+                selectedModel = decodeSelectedModel(preferences),
                 selectedSpeechServiceId = preferences[PreferenceKeys.SELECTED_SPEECH_SERVICE_ID],
                 themeMode = if (legacyAmoled) "DARK" else storedThemeMode,
                 useAmoled = preferences[PreferenceKeys.USE_AMOLED] ?: legacyAmoled,
                 useDynamicColor = preferences[PreferenceKeys.USE_DYNAMIC_COLOR] ?: true,
                 colorSchemeName = preferences[PreferenceKeys.COLOR_SCHEME_NAME] ?: "DEFAULT",
-                defaultSystemPrompt = preferences[PreferenceKeys.DEFAULT_SYSTEM_PROMPT] ?: "",
-                instructionLibrary = preferences[PreferenceKeys.INSTRUCTION_LIBRARY]?.let {
-                    runCatching { Json.decodeFromString<org.starfall.generative.shared.model.InstructionLibrary>(it) }.getOrNull()
-                },
+                instructionLibrary = decodeInstructionLibrary(preferences),
+                agentSkills = decodeAgentSkills(preferences[PreferenceKeys.AGENT_SKILLS]),
                 continueLastConversation = preferences[PreferenceKeys.CONTINUE_LAST_CONVERSATION] ?: false,
-                lastActiveConversationId = preferences[PreferenceKeys.LAST_ACTIVE_CONVERSATION_ID],
                 persistSelectedModel = preferences[PreferenceKeys.PERSIST_SELECTED_MODEL] ?: true,
                 autoScroll = preferences[PreferenceKeys.AUTO_SCROLL] ?: false,
                 ttsReadCodeBlocks = preferences[PreferenceKeys.TTS_READ_CODE_BLOCKS] ?: false,
@@ -247,8 +267,6 @@ class AppPreferencesRepository(private val context: Context) {
                 modelPickerCollapsedGroups = preferences[PreferenceKeys.MODEL_PICKER_COLLAPSED_GROUPS].orEmpty(),
                 modelPickerCollapsedProviders = preferences[PreferenceKeys.MODEL_PICKER_COLLAPSED_PROVIDERS].orEmpty(),
                 modelPickerSelectedTab = preferences[PreferenceKeys.MODEL_PICKER_SELECTED_TAB] ?: "default",
-                mcpPresetsInitialized = preferences[PreferenceKeys.MCP_PRESETS_INITIALIZED] ?: false,
-                contentApiPresetInitialized = preferences[PreferenceKeys.CONTENT_API_PRESET_INITIALIZED] ?: false,
                 latexMode = preferences[PreferenceKeys.LATEX_MODE]?.takeIf { it == "OFF" } ?: "AUTO", // legacy "ON" now means AUTO
                 wordWrapMode = WordWrapMode.fromValue(preferences[PreferenceKeys.WORD_WRAP_MODE]),
                 wordWrapColumn = preferences[PreferenceKeys.WORD_WRAP_COLUMN]?.takeIf { it > 0 } ?: DEFAULT_WORD_WRAP_COLUMN,
@@ -275,6 +293,111 @@ class AppPreferencesRepository(private val context: Context) {
             )
         }
 
+    /** Collapses the previous flat DataStore keys into the current grouped schema once. */
+    private suspend fun migrateLegacyPreferenceSchema() = schemaMigrationMutex.withLock {
+        if (legacySchemaMigrated) return@withLock
+        context.dataStore.edit { preferences ->
+            val hasLegacySkillList = preferences[PreferenceKeys.AGENT_SKILLS]?.let { raw ->
+                runCatching { Json.decodeFromString<AgentSkills>(raw) }.isFailure &&
+                    runCatching { Json.decodeFromString<List<AgentSkill>>(raw) }.isSuccess
+            } ?: false
+            val hasLegacyData = preferences.contains(LegacyPreferenceKeys.SIDEBAR) ||
+                preferences.contains(LegacyPreferenceKeys.SELECTED_PROFILE_ID) ||
+                preferences.contains(LegacyPreferenceKeys.SELECTED_PROVIDER_ID) ||
+                preferences.contains(LegacyPreferenceKeys.SELECTED_MODEL_ID) ||
+                preferences.contains(LegacyPreferenceKeys.DEFAULT_SYSTEM_PROMPT) ||
+                preferences.contains(LegacyPreferenceKeys.LAST_ACTIVE_CONVERSATION_ID) ||
+                preferences.contains(LegacyPreferenceKeys.MCP_PRESETS_INITIALIZED) ||
+                preferences.contains(LegacyPreferenceKeys.CONTENT_API_PRESET_INITIALIZED) ||
+                hasLegacySkillList
+            if (!hasLegacyData) return@edit
+
+            val relations = preferences[PreferenceKeys.CHAT_RELATIONS]?.let { raw ->
+                runCatching { Json.decodeFromString<ChatRelations>(raw) }.getOrNull()
+            } ?: ChatRelations(
+                sidebar = decodeSidebar(preferences[LegacyPreferenceKeys.SIDEBAR]),
+                lastActiveConversationId = preferences[LegacyPreferenceKeys.LAST_ACTIVE_CONVERSATION_ID],
+                mcpPresetsInitialized = preferences[LegacyPreferenceKeys.MCP_PRESETS_INITIALIZED] ?: false,
+                contentApiPresetInitialized = preferences[LegacyPreferenceKeys.CONTENT_API_PRESET_INITIALIZED] ?: false
+            )
+            preferences[PreferenceKeys.CHAT_RELATIONS] = Json.encodeToString(relations)
+
+            val selectedModel = preferences[PreferenceKeys.SELECTED_MODEL]?.let { raw ->
+                runCatching { Json.decodeFromString<SelectedModel>(raw) }.getOrNull()
+            } ?: SelectedModel(
+                providerId = preferences[LegacyPreferenceKeys.SELECTED_PROVIDER_ID] ?: "",
+                modelId = preferences[LegacyPreferenceKeys.SELECTED_MODEL_ID] ?: ""
+            )
+            preferences[PreferenceKeys.SELECTED_MODEL] = Json.encodeToString(selectedModel)
+
+            val library = preferences[PreferenceKeys.INSTRUCTION_LIBRARY]?.let { raw ->
+                runCatching { Json.decodeFromString<InstructionLibrary>(raw) }.getOrNull()
+            } ?: InstructionLibrary.fromLegacy(preferences[LegacyPreferenceKeys.DEFAULT_SYSTEM_PROMPT] ?: "")
+            preferences[PreferenceKeys.INSTRUCTION_LIBRARY] = Json.encodeToString(library)
+
+            val rawSkills = preferences[PreferenceKeys.AGENT_SKILLS]
+            val skills = rawSkills?.let { raw ->
+                runCatching { Json.decodeFromString<AgentSkills>(raw) }.getOrNull()
+                    ?: runCatching { AgentSkills(Json.decodeFromString<List<AgentSkill>>(raw)) }.getOrNull()
+            } ?: AgentSkills()
+            preferences[PreferenceKeys.AGENT_SKILLS] = Json.encodeToString(skills)
+
+            removeLegacyChatRelationKeys(preferences)
+            preferences.remove(LegacyPreferenceKeys.SELECTED_PROVIDER_ID)
+            preferences.remove(LegacyPreferenceKeys.SELECTED_MODEL_ID)
+            preferences.remove(LegacyPreferenceKeys.DEFAULT_SYSTEM_PROMPT)
+        }
+        legacySchemaMigrated = true
+    }
+
+    private fun decodeChatRelations(preferences: Preferences): ChatRelations {
+        preferences[PreferenceKeys.CHAT_RELATIONS]?.let { raw ->
+            runCatching { Json.decodeFromString<ChatRelations>(raw) }.getOrNull()?.let { return it }
+        }
+        return ChatRelations(
+            sidebar = decodeSidebar(preferences[LegacyPreferenceKeys.SIDEBAR]),
+            lastActiveConversationId = preferences[LegacyPreferenceKeys.LAST_ACTIVE_CONVERSATION_ID],
+            mcpPresetsInitialized = preferences[LegacyPreferenceKeys.MCP_PRESETS_INITIALIZED] ?: false,
+            contentApiPresetInitialized = preferences[LegacyPreferenceKeys.CONTENT_API_PRESET_INITIALIZED] ?: false
+        )
+    }
+
+    private fun decodeSelectedModel(preferences: Preferences): SelectedModel =
+        preferences[PreferenceKeys.SELECTED_MODEL]?.let { raw ->
+            runCatching { Json.decodeFromString<SelectedModel>(raw) }.getOrNull()
+        } ?: SelectedModel(
+            providerId = preferences[LegacyPreferenceKeys.SELECTED_PROVIDER_ID] ?: "",
+            modelId = preferences[LegacyPreferenceKeys.SELECTED_MODEL_ID] ?: ""
+        )
+
+    private fun decodeInstructionLibrary(preferences: Preferences): InstructionLibrary =
+        preferences[PreferenceKeys.INSTRUCTION_LIBRARY]?.let { raw ->
+            runCatching { Json.decodeFromString<InstructionLibrary>(raw) }.getOrNull()
+        } ?: InstructionLibrary.fromLegacy(preferences[LegacyPreferenceKeys.DEFAULT_SYSTEM_PROMPT] ?: "")
+
+    private fun decodeAgentSkills(raw: String?): AgentSkills = raw?.let { value ->
+        runCatching { Json.decodeFromString<AgentSkills>(value) }.getOrNull()
+            ?: runCatching { AgentSkills(Json.decodeFromString<List<AgentSkill>>(value)) }.getOrNull()
+    } ?: AgentSkills()
+
+    private fun removeLegacyChatRelationKeys(preferences: androidx.datastore.preferences.core.MutablePreferences) {
+        preferences.remove(LegacyPreferenceKeys.SIDEBAR)
+        preferences.remove(LegacyPreferenceKeys.LAST_ACTIVE_CONVERSATION_ID)
+        preferences.remove(LegacyPreferenceKeys.MCP_PRESETS_INITIALIZED)
+        preferences.remove(LegacyPreferenceKeys.CONTENT_API_PRESET_INITIALIZED)
+        preferences.remove(LegacyPreferenceKeys.SELECTED_PROFILE_ID)
+    }
+
+    private suspend fun updateChatRelations(transform: (ChatRelations) -> ChatRelations) {
+        state.mutate({ it.copy(chatRelations = transform(it.chatRelations)) }) {
+            context.dataStore.edit { preferences ->
+                val updated = transform(decodeChatRelations(preferences))
+                preferences[PreferenceKeys.CHAT_RELATIONS] = Json.encodeToString(updated)
+                removeLegacyChatRelationKeys(preferences)
+            }
+        }
+    }
+
     private val state = ImmediateState(storedPreferences)
     val appPreferencesFlow: Flow<AppPreferences> = state.flow
 
@@ -283,30 +406,17 @@ class AppPreferencesRepository(private val context: Context) {
     } ?: SidebarOrganization()
 
     suspend fun updateSidebar(transform: (SidebarOrganization) -> SidebarOrganization) {
-        state.mutate({ it.copy(sidebar = transform(it.sidebar)) }) {
-            context.dataStore.edit { preferences ->
-                preferences[PreferenceKeys.SIDEBAR] = Json.encodeToString(transform(decodeSidebar(preferences[PreferenceKeys.SIDEBAR])))
-            }
-        }
-    }
-
-    suspend fun setSelectedProfileId(profileId: String?) {
-        state.mutate({ it.copy(selectedProfileId = profileId) }) {
-            context.dataStore.edit { preferences ->
-                if (profileId.isNullOrEmpty()) {
-                    preferences.remove(PreferenceKeys.SELECTED_PROFILE_ID)
-                } else {
-                    preferences[PreferenceKeys.SELECTED_PROFILE_ID] = profileId
-                }
-            }
-        }
+        updateChatRelations { relations -> relations.copy(sidebar = transform(relations.sidebar)) }
     }
 
     suspend fun setSelectedModel(providerId: String, modelId: String) {
-        state.mutate({ it.copy(selectedProviderId = providerId, selectedModelId = modelId) }) {
+        val selected = SelectedModel(providerId = providerId, modelId = modelId)
+        state.mutate({ it.copy(selectedModel = selected) }) {
             context.dataStore.edit { preferences ->
-                preferences[PreferenceKeys.SELECTED_PROVIDER_ID] = providerId
-                preferences[PreferenceKeys.SELECTED_MODEL_ID] = modelId
+                preferences[PreferenceKeys.SELECTED_MODEL] = Json.encodeToString(selected)
+                preferences.remove(LegacyPreferenceKeys.SELECTED_PROVIDER_ID)
+                preferences.remove(LegacyPreferenceKeys.SELECTED_MODEL_ID)
+                preferences.remove(LegacyPreferenceKeys.SELECTED_PROFILE_ID)
             }
         }
     }
@@ -366,14 +476,6 @@ class AppPreferencesRepository(private val context: Context) {
         }
     }
 
-    suspend fun setDefaultSystemPrompt(instruction: String) {
-        state.mutate({ it.copy(defaultSystemPrompt = instruction) }) {
-            context.dataStore.edit { preferences ->
-                preferences[PreferenceKeys.DEFAULT_SYSTEM_PROMPT] = instruction
-            }
-        }
-    }
-
     suspend fun setContinueLastConversation(enable: Boolean) {
         state.mutate({ it.copy(continueLastConversation = enable) }) {
             context.dataStore.edit { preferences ->
@@ -383,12 +485,8 @@ class AppPreferencesRepository(private val context: Context) {
     }
 
     suspend fun setLastActiveConversationId(conversationId: String?) {
-        val storedId = conversationId.orEmpty()
-        state.mutate({ it.copy(lastActiveConversationId = storedId) }) {
-            context.dataStore.edit { preferences ->
-                preferences[PreferenceKeys.LAST_ACTIVE_CONVERSATION_ID] = storedId
-            }
-        }
+        // Store an empty string for an explicit clear, distinct from never having recorded a choice.
+        updateChatRelations { it.copy(lastActiveConversationId = conversationId.orEmpty()) }
     }
 
     suspend fun setPersistSelectedModel(enable: Boolean) {
@@ -399,11 +497,28 @@ class AppPreferencesRepository(private val context: Context) {
         }
     }
 
-    suspend fun setInstructionLibrary(library: org.starfall.generative.shared.model.InstructionLibrary) {
-        state.mutate({ it.copy(instructionLibrary = library.copy(instructions = library.instructions.distinctBy { p -> p.id }, selectedIds = library.selectedIds.intersect(library.instructions.map { p -> p.id }.toSet()))) }) {
-            val instructions = library.instructions.distinctBy { it.id }
-            val cleaned = library.copy(instructions = instructions, selectedIds = library.selectedIds.intersect(instructions.map { it.id }.toSet()))
-            context.dataStore.edit { it[PreferenceKeys.INSTRUCTION_LIBRARY] = Json.encodeToString(cleaned) }
+    suspend fun setInstructionLibrary(library: InstructionLibrary) {
+        val instructions = library.instructions.distinctBy { it.id }
+        val cleaned = library.copy(
+            instructions = instructions,
+            selectedIds = library.selectedIds.intersect(instructions.map { it.id }.toSet())
+        )
+        state.mutate({ it.copy(instructionLibrary = cleaned) }) {
+            context.dataStore.edit { preferences ->
+                preferences[PreferenceKeys.INSTRUCTION_LIBRARY] = Json.encodeToString(cleaned)
+                preferences.remove(LegacyPreferenceKeys.DEFAULT_SYSTEM_PROMPT)
+            }
+        }
+    }
+
+    suspend fun setAgentSkills(skills: List<AgentSkill>) {
+        val cleaned = skills
+            .map { it.copy(name = it.name.trim(), content = it.content.trim()) }
+            .filter { it.name.isNotBlank() && it.content.isNotBlank() }
+            .distinctBy { it.id }
+        val group = AgentSkills(skills = cleaned)
+        state.mutate({ it.copy(agentSkills = group) }) {
+            context.dataStore.edit { it[PreferenceKeys.AGENT_SKILLS] = Json.encodeToString(group) }
         }
     }
 
@@ -547,19 +662,11 @@ class AppPreferencesRepository(private val context: Context) {
     }
 
     suspend fun setMcpPresetsInitialized(initialized: Boolean) {
-        state.mutate({ it.copy(mcpPresetsInitialized = initialized) }) {
-            context.dataStore.edit { preferences ->
-                preferences[PreferenceKeys.MCP_PRESETS_INITIALIZED] = initialized
-            }
-        }
+        updateChatRelations { it.copy(mcpPresetsInitialized = initialized) }
     }
 
     suspend fun setContentApiPresetInitialized(initialized: Boolean) {
-        state.mutate({ it.copy(contentApiPresetInitialized = initialized) }) {
-            context.dataStore.edit { preferences ->
-                preferences[PreferenceKeys.CONTENT_API_PRESET_INITIALIZED] = initialized
-            }
-        }
+        updateChatRelations { it.copy(contentApiPresetInitialized = initialized) }
     }
 
     suspend fun setLatexMode(mode: String) {
@@ -690,19 +797,16 @@ class AppPreferencesRepository(private val context: Context) {
         state.mutate({ preferences }) {
             context.dataStore.edit { stored ->
                 stored.clear()
-                stored[PreferenceKeys.SIDEBAR] = Json.encodeToString(preferences.sidebar)
-                preferences.selectedProfileId?.let { stored[PreferenceKeys.SELECTED_PROFILE_ID] = it }
-                stored[PreferenceKeys.SELECTED_PROVIDER_ID] = preferences.selectedProviderId
-                stored[PreferenceKeys.SELECTED_MODEL_ID] = preferences.selectedModelId
+                stored[PreferenceKeys.CHAT_RELATIONS] = Json.encodeToString(preferences.chatRelations)
+                stored[PreferenceKeys.SELECTED_MODEL] = Json.encodeToString(preferences.selectedModel)
                 preferences.selectedSpeechServiceId?.let { stored[PreferenceKeys.SELECTED_SPEECH_SERVICE_ID] = it }
                 stored[PreferenceKeys.THEME_MODE] = preferences.themeMode
                 stored[PreferenceKeys.USE_AMOLED] = preferences.useAmoled
                 stored[PreferenceKeys.USE_DYNAMIC_COLOR] = preferences.useDynamicColor
                 stored[PreferenceKeys.COLOR_SCHEME_NAME] = preferences.colorSchemeName
-                stored[PreferenceKeys.DEFAULT_SYSTEM_PROMPT] = preferences.defaultSystemPrompt
-                preferences.instructionLibrary?.let { stored[PreferenceKeys.INSTRUCTION_LIBRARY] = Json.encodeToString(it) }
+                stored[PreferenceKeys.INSTRUCTION_LIBRARY] = Json.encodeToString(preferences.instructionLibrary)
+                stored[PreferenceKeys.AGENT_SKILLS] = Json.encodeToString(preferences.agentSkills)
                 stored[PreferenceKeys.CONTINUE_LAST_CONVERSATION] = preferences.continueLastConversation
-                preferences.lastActiveConversationId?.let { stored[PreferenceKeys.LAST_ACTIVE_CONVERSATION_ID] = it }
                 stored[PreferenceKeys.PERSIST_SELECTED_MODEL] = preferences.persistSelectedModel
                 stored[PreferenceKeys.AUTO_SCROLL] = preferences.autoScroll
                 stored[PreferenceKeys.TTS_READ_CODE_BLOCKS] = preferences.ttsReadCodeBlocks
@@ -722,8 +826,6 @@ class AppPreferencesRepository(private val context: Context) {
                 stored[PreferenceKeys.MODEL_PICKER_COLLAPSED_GROUPS] = preferences.modelPickerCollapsedGroups
                 stored[PreferenceKeys.MODEL_PICKER_COLLAPSED_PROVIDERS] = preferences.modelPickerCollapsedProviders
                 stored[PreferenceKeys.MODEL_PICKER_SELECTED_TAB] = preferences.modelPickerSelectedTab
-                stored[PreferenceKeys.MCP_PRESETS_INITIALIZED] = preferences.mcpPresetsInitialized
-                stored[PreferenceKeys.CONTENT_API_PRESET_INITIALIZED] = preferences.contentApiPresetInitialized
                 stored[PreferenceKeys.LATEX_MODE] = preferences.latexMode
                 stored[PreferenceKeys.WORD_WRAP_MODE] = preferences.wordWrapMode.value
                 stored[PreferenceKeys.WORD_WRAP_COLUMN] = preferences.wordWrapColumn

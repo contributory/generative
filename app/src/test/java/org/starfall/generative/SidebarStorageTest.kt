@@ -131,9 +131,9 @@ class SidebarStorageTest {
         val saved = SidebarOrganization(listOf(ChatFolder("f", "Folder", true, false)), mapOf("chat" to "f"), setOf("chat"))
         try {
             repository.updateSidebar { saved }
-            assertEquals(saved, AppPreferencesRepository(context).appPreferencesFlow.first().sidebar)
+            assertEquals(saved, AppPreferencesRepository(context).appPreferencesFlow.first().chatRelations.sidebar)
             repository.updateSidebar { it.removeFolder("f") }
-            val updated = repository.appPreferencesFlow.first().sidebar
+            val updated = repository.appPreferencesFlow.first().chatRelations.sidebar
             assertTrue(updated.folders.isEmpty())
             assertTrue(updated.chatFolders.isEmpty())
             assertEquals(setOf("chat"), updated.pinnedChatIds)

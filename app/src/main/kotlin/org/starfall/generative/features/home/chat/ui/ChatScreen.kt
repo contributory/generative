@@ -54,6 +54,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import org.starfall.generative.features.home.chat.logic.SAVE_CONVERSATION_ERROR_PREFIX
 import org.starfall.generative.shared.model.ChatRole
+import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationSummaryProgress
 import org.starfall.generative.shared.model.ConversationSummaryRequest
@@ -73,6 +74,7 @@ import org.starfall.generative.shared.ui.text.PlatformTextSelectionRegion
 import org.starfall.generative.features.home.chat.logic.input.ChatInputEditDraft
 import org.starfall.generative.features.home.chat.logic.input.DirectMediaRequest
 import org.starfall.generative.shared.model.language.ModelType
+import org.starfall.generative.shared.model.defaultAgentSkills
 import org.starfall.generative.features.home.chat.logic.unansweredUserMessageIds
 import org.starfall.generative.features.home.chat.ui.input.UserInputArea
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
@@ -144,7 +146,8 @@ fun ChatScreen(
     onOpenFeatureToolsSettings: () -> Unit = {},
     onOpenMcpConnectorsSettings: () -> Unit = {},
     modifier: Modifier = Modifier,
-    activeStream: StateFlow<ActiveChatStreamState?>? = null
+    activeStream: StateFlow<ActiveChatStreamState?>? = null,
+    agentSkills: List<AgentSkill> = defaultAgentSkills()
 ) {
     val conversationKey = conversation?.id ?: "__empty_conversation__"
     // reverseLayout puts item 0 at the physical bottom. The list data is reversed below,
@@ -752,8 +755,9 @@ fun ChatScreen(
                  onEditProvider = onEditProvider,
                  onFetchOllamaModels = onFetchOllamaModels,
                  onOpenFeatureToolsSettings = onOpenFeatureToolsSettings,
-                 onOpenMcpConnectorsSettings = onOpenMcpConnectorsSettings
-             )
+                  onOpenMcpConnectorsSettings = onOpenMcpConnectorsSettings,
+                  agentSkills = agentSkills
+              )
         }
 
         }

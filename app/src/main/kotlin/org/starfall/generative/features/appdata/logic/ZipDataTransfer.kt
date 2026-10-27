@@ -10,7 +10,18 @@ import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import org.starfall.generative.features.appdata.model.AppDataBackup
 import org.starfall.generative.features.appdata.model.ZipAppDataBackup
 
@@ -88,6 +99,62 @@ fun writeZipBackup(
     }
 }
 
+/** Converts the previous flat AppPreferences snapshot to the grouped schema without losing state. */
+private fun migrateVersionTwoBackup(root: JsonObject): JsonObject {
+    val appState = root["appState"] as? JsonObject ?: return JsonObject(root + ("formatVersion" to JsonPrimitive(3)))
+    val state = appState.toMutableMap()
+
+    val sidebar = state.remove("sidebar") ?: buildJsonObject { }
+    val lastConversation = state.remove("lastActiveConversationId") ?: JsonNull
+    val mcpInitialized = state.remove("mcpPresetsInitialized") ?: JsonPrimitive(false)
+    val contentApiInitialized = state.remove("contentApiPresetInitialized") ?: JsonPrimitive(false)
+    state["chatRelations"] = buildJsonObject {
+        put("sidebar", sidebar)
+        put("lastActiveConversationId", lastConversation)
+        put("mcpPresetsInitialized", mcpInitialized)
+        put("contentApiPresetInitialized", contentApiInitialized)
+    }
+
+    state.remove("selectedProfileId")
+    val providerId = state.remove("selectedProviderId")?.jsonPrimitive?.contentOrNull ?: ""
+    val modelId = state.remove("selectedModelId")?.jsonPrimitive?.contentOrNull ?: ""
+    state["selectedModel"] = buildJsonObject {
+        put("providerId", JsonPrimitive(providerId))
+        put("modelId", JsonPrimitive(modelId))
+    }
+
+    val legacyPrompt = state.remove("defaultSystemPrompt")?.jsonPrimitive?.contentOrNull.orEmpty()
+    val savedLibrary = state["instructionLibrary"]
+    if (savedLibrary == null || savedLibrary == JsonNull) {
+        state["instructionLibrary"] = if (legacyPrompt.isBlank()) {
+            buildJsonObject {
+                put("prompts", JsonArray(emptyList()))
+                put("selectedIds", JsonArray(emptyList()))
+            }
+        } else {
+            buildJsonObject {
+                put("prompts", JsonArray(listOf(buildJsonObject {
+                    put("id", JsonPrimitive("legacy-system-prompt"))
+                    put("name", JsonPrimitive("Default system instruction"))
+                    put("content", JsonPrimitive(legacyPrompt))
+                    put("role", JsonPrimitive("system"))
+                })))
+                put("selectedIds", JsonArray(listOf(JsonPrimitive("legacy-system-prompt"))))
+            }
+        }
+    }
+
+    val oldSkills = state["agentSkills"]
+    if (oldSkills is JsonArray) {
+        state["agentSkills"] = buildJsonObject { put("skills", oldSkills) }
+    }
+
+    return JsonObject(root + mapOf(
+        "formatVersion" to JsonPrimitive(3),
+        "appState" to JsonObject(state)
+    ))
+}
+
 /** Extracts a ZIP backup into [directory] after validating all paths and size limits. */
 fun readZipBackup(input: InputStream, directory: File): ZipAppDataBackup {
     require(directory.mkdirs() || directory.isDirectory) { "Could not create backup staging directory." }
@@ -131,7 +198,12 @@ fun readZipBackup(input: InputStream, directory: File): ZipAppDataBackup {
                 }
             }
             when {
-                name == MANIFEST_ENTRY -> manifest = backupJson.decodeFromString(destination.readText(Charsets.UTF_8))
+                name == MANIFEST_ENTRY -> {
+                    val root = backupJson.parseToJsonElement(destination.readText(Charsets.UTF_8)).jsonObject
+                    val version = root["formatVersion"]?.jsonPrimitive?.intOrNull
+                    val compatibleRoot = if (version == 2) migrateVersionTwoBackup(root) else root
+                    manifest = backupJson.decodeFromJsonElement(compatibleRoot)
+                }
                 name.startsWith(ICON_PREFIX) -> iconFiles[relative] = destination
                 name.startsWith(FILE_PREFIX) -> toolFiles[relative] = destination
                 name.startsWith(IDENTITY_PREFIX) && relative.endsWith(".pub") ->

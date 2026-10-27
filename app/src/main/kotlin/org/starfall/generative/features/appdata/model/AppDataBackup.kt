@@ -17,7 +17,7 @@ import org.starfall.generative.shared.storage.preferences.AppPreferences
 /** Complete application snapshot stored in the manifest of a ZIP backup. */
 @Serializable
 data class AppDataBackup(
-    val formatVersion: Int = 2,
+    val formatVersion: Int = 3,
     val exportedAt: String,
     val type: String = "full_backup",
     val providers: List<ModelProvider> = emptyList(),
@@ -38,6 +38,6 @@ data class AppDataBackup(
     val modelConfigurationMemory: Map<String, JsonObject> = emptyMap()
 ) {
     companion object {
-        const val CURRENT_FORMAT_VERSION = 2
+        const val CURRENT_FORMAT_VERSION = 3
     }
 }

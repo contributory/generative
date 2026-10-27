@@ -32,7 +32,9 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       ├── 📄 HelperSettings.kt
 │   │       ├── 📄 InstructionsTab.kt
 │   │       ├── 📄 InstructionEditor.kt
-│   │       └── 📄 InstructionPreview.kt
+│   │       ├── 📄 InstructionPreview.kt
+│   │       ├── 📄 SkillEditor.kt
+│   │       └── 📄 SkillsTab.kt
 │   ├── 📁 icons/
 │   │   └── 📁 ui/
 │   │       └── 📄 IconsScreen.kt
@@ -187,6 +189,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   │   └── 📄 ContextWindowStatus.kt
 │   │   │   └── 📁 ui/
 │   │   │       ├── 📁 input/
+│   │   │       │   ├── 📄 AgentSkillsMenu.kt
 │   │   │       │   └── 📄 ChatInputAreaUi.kt
 │   │   │       ├── 📁 markdown/
 │   │   │       │   ├── 📄 ChunkedStreamingMarkdown.kt
@@ -418,6 +421,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   └── 📄 ProviderRootOrderItem.kt
 │   │   ├── 📄 ChatMessage.kt
 │   │   ├── 📄 ChatProfile.kt
+│   │   ├── 📄 AgentSkill.kt
 │   │   ├── 📄 ClaudeThinking.kt
 │   │   ├── 📄 ConversationListItem.kt
 │   │   ├── 📄 DefaultOptions.kt

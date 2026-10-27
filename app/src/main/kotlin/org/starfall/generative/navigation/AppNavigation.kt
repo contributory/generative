@@ -290,8 +290,8 @@ fun AppNavigation(
                                 ?: ModelType.TEXT_GENERATION) == ModelType.TEXT_GENERATION
                 }?.let { conversationProviderId to conversationModelId }
             }
-    val chatProviderId = conversationModel?.first ?: appPrefs.selectedProviderId
-    val chatModelId = conversationModel?.second ?: appPrefs.selectedModelId
+    val chatProviderId = conversationModel?.first ?: appPrefs.selectedModel.providerId
+    val chatModelId = conversationModel?.second ?: appPrefs.selectedModel.modelId
     LaunchedEffect(Unit) {
         org.starfall.generative.shared.storage.LocalWriteErrors.errors.collect {
             Toast.makeText(context, R.string.save_change_failed, Toast.LENGTH_LONG).show()
@@ -355,7 +355,7 @@ fun AppNavigation(
                     currentConversationId = currentConvId,
                     isOpen = drawerState.isOpen,
                     generatingConversationIds = generatingConversationIds,
-                    organization = appPrefs.sidebar,
+                    organization = appPrefs.chatRelations.sidebar,
                     onUpdateOrganization = settingsViewModel::updateSidebar,
                     onDeleteConversations = { ids ->
                         viewModel.deleteConversations(ids, chatAttachments.attachments.value)
@@ -436,9 +436,10 @@ fun AppNavigation(
                         onModelPickerCollapsedProvidersChange = settingsViewModel::setModelPickerCollapsedProviders,
                         modelPickerSelectedTab = appPrefs.modelPickerSelectedTab,
                         onModelPickerSelectedTabChange = settingsViewModel::setModelPickerSelectedTab,
-                        selectedProviderId = chatProviderId,
-                         selectedModelName = chatModelId,
-                         featuresLogoImage = appPrefs.featuresLogoImage,
+                         selectedProviderId = chatProviderId,
+                          selectedModelName = chatModelId,
+                         agentSkills = appPrefs.agentSkills.skills,
+                          featuresLogoImage = appPrefs.featuresLogoImage,
                         autoScroll = appPrefs.autoScroll,
                         onSendMedia = viewModel::sendMedia,
                         onMediaModeChange = viewModel::setComposerMedia,
@@ -753,8 +754,9 @@ fun AppNavigation(
                             initialTab = chatOptionsEntry.arguments?.getString("tab") ?: "helpers",
                             initialInstructionId = chatOptionsEntry.arguments?.getString("instructionId").orEmpty(),
                             instructionLibrary = appPrefs.instructionLibrary,
-                            defaultSystemPrompt = appPrefs.defaultSystemPrompt,
                             onInstructionLibraryChange = viewModel::setInstructionLibrary,
+                            agentSkills = appPrefs.agentSkills.skills,
+                            onAgentSkillsChange = viewModel::setAgentSkills,
                              providers = providers,
                              settings = toolSettings,
                              appPreferences = appPrefs,

@@ -13,6 +13,7 @@ import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.model.ConversationSummaryRequest
+import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.DEFAULT_TITLE_GENERATION_MIN_MESSAGES
 import org.starfall.generative.shared.model.DEFAULT_TITLE_GENERATION_MIN_WORDS
 import org.starfall.generative.shared.model.MIN_TITLE_GENERATION_MIN_MESSAGES
@@ -421,18 +422,18 @@ class ChatViewModel(
         restoreLastConversation()
     }
 
-    fun setDefaultSystemPrompt(prompt: String) {
-        if (isRestoreInProgress) return
-        viewModelScope.launch(LocalWriteErrors.handler) {
-            if (!isRestoreInProgress) prefsRepo.setDefaultSystemPrompt(prompt)
-        }
-    }
     fun setInstructionEnabled(instructionId: String, enabled: Boolean) =
         conversationCoordinator.setInstructionEnabled(instructionId, enabled)
     fun setInstructionLibrary(library: InstructionLibrary) {
         if (isRestoreInProgress) return
         viewModelScope.launch(LocalWriteErrors.handler) {
             if (!isRestoreInProgress) prefsRepo.setInstructionLibrary(library)
+        }
+    }
+    fun setAgentSkills(skills: List<AgentSkill>) {
+        if (isRestoreInProgress) return
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            if (!isRestoreInProgress) prefsRepo.setAgentSkills(skills)
         }
     }
 

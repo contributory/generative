@@ -259,7 +259,7 @@ internal class ChatConversationCoordinator(
                 return@launch
             }
 
-            val storedId = preferences.lastActiveConversationId
+            val storedId = preferences.chatRelations.lastActiveConversationId
             // An empty ID means the previous session was on a blank New Chat; null is a legacy install.
             if (storedId == "") return@launch
             val items = conversationRepo.conversationList.first()
@@ -515,10 +515,6 @@ internal class ChatConversationCoordinator(
         conversationRepo.conversationList.first().mapNotNull { conversationRepo.loadById(it.id) }
 
     fun deleteAllUserData(attachedFiles: Collection<String> = emptyList()) {
-        if (clearAllConversations(attachedFiles)) {
-            scope.launch(LocalWriteErrors.handler) {
-                if (!restoreInProgress) prefsRepo.setSelectedProfileId(null)
-            }
-        }
+        clearAllConversations(attachedFiles)
     }
 }

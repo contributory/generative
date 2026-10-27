@@ -49,13 +49,13 @@ class DefaultDataInitializer(
         }
 
         val prefs = prefsRepo.appPreferencesFlow.first()
-        if (!prefs.mcpPresetsInitialized) {
+        if (!prefs.chatRelations.mcpPresetsInitialized) {
             initDefaultMcpServers()
             prefsRepo.setMcpPresetsInitialized(true)
         }
         // This has its own migration marker so existing installations receive it exactly once.
         // Deleting the preset is respected because the marker remains set.
-        if (!prefs.contentApiPresetInitialized) {
+        if (!prefs.chatRelations.contentApiPresetInitialized) {
             val exists = mcpRepo.allServers.first().any { it.name.isContentApiName() }
             if (!exists) {
                 mcpRepo.saveServer(McpInfo(

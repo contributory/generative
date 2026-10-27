@@ -57,6 +57,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.starfall.generative.R
 import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.model.AgentSkill
+import org.starfall.generative.shared.model.defaultAgentSkills
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.DEFAULT_REASONING_EFFORTS
 import org.starfall.generative.shared.model.language.ModelType
@@ -81,6 +83,8 @@ import org.starfall.generative.features.home.chat.logic.input.canSendChatInput
 import org.starfall.generative.features.home.chat.logic.input.directMediaHint
 import org.starfall.generative.features.home.chat.logic.input.filterMediaProvidersForKind
 import org.starfall.generative.features.home.chat.ui.AttachmentStrip
+import org.starfall.generative.features.home.chat.ui.input.AgentSkillsMenu
+import org.starfall.generative.features.home.chat.ui.input.agentSkillMenuQuery
 import org.starfall.generative.features.home.chat.ui.ContextWindowBar
 import org.starfall.generative.features.home.chat.ui.ContextWindowRing
 import org.starfall.generative.features.home.BottomSheetsLink
@@ -125,7 +129,8 @@ fun UserInputArea(
     onOpenFeatureToolsSettings: () -> Unit = {},
     onOpenMcpConnectorsSettings: () -> Unit = {},
     chatModeRequest: Int = 0,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    agentSkills: List<AgentSkill> = defaultAgentSkills()
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue()) }
     // The field may only take focus after the user touches it. Returning from another page (for example the
@@ -238,6 +243,13 @@ fun UserInputArea(
     DisposableEffect(Unit) { onDispose { onMediaModeChange(null, "", "") } }
     val focusManager = LocalFocusManager.current
     val bottomSheets = remember { BottomSheetsLinkState() }
+    var skillsMenuOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(textState) {
+        skillsMenuOpen = if (textState.startsWith("/")) true else false
+    }
+    LaunchedEffect(bottomSheets.skillsMenuRequest) {
+        if (bottomSheets.skillsMenuRequest > 0) skillsMenuOpen = true
+    }
 
     val dynamicModelsMap = remember { mutableStateMapOf<String, List<String>>() }
     val dynamicModelEndpoints = remember { mutableMapOf<String, String>() }
@@ -294,6 +306,22 @@ fun UserInputArea(
             modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
+        if (skillsMenuOpen) {
+            AgentSkillsMenu(
+                skills = agentSkills,
+                query = agentSkillMenuQuery(textState),
+                onSelect = { skill ->
+                    val suffixStart = textState.indexOfFirst { it == ' ' || it == '\t' || it == '\n' }
+                    val suffix = suffixStart.takeIf { it >= 0 }
+                        ?.let { textState.substring(it).trimStart() }
+                        .orEmpty()
+                    val nextText = if (suffix.isBlank()) skill.content else skill.content + "\n\n" + suffix
+                    textFieldValue = TextFieldValue(nextText, TextRange(nextText.length))
+                    skillsMenuOpen = false
+                },
+                onDismiss = { skillsMenuOpen = false }
+            )
+        }
         Surface(
             modifier = Modifier
                 .widthIn(max = 720.dp)

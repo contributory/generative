@@ -28,10 +28,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
+import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.ToolSettings
+import org.starfall.generative.shared.model.defaultAgentSkills
 import java.util.UUID
 import kotlinx.coroutines.launch
 import org.starfall.generative.shared.model.language.ModelType
@@ -46,9 +48,10 @@ import org.starfall.generative.shared.ui.model.DefaultModelSelector
 import org.starfall.generative.shared.ui.model.ModelPickerSheet
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 
-private sealed interface InstructionPage {
-    data class Editor(val instructionId: String?) : InstructionPage
-    data class Preview(val instructionId: String) : InstructionPage
+private sealed interface ChatOptionsEditor {
+    data class InstructionEditor(val instructionId: String?) : ChatOptionsEditor
+    data class InstructionPreview(val instructionId: String) : ChatOptionsEditor
+    data class SkillEditor(val skillId: String?) : ChatOptionsEditor
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,9 +71,10 @@ fun ChatOptionsScreen(
     selectedTabKey: String = "default",
     onSelectedTabKeyChange: (String) -> Unit = {},
     onEditProvider: (providerId: String) -> Unit = {},
-    instructionLibrary: InstructionLibrary? = null,
-    defaultSystemPrompt: String = "",
+    instructionLibrary: InstructionLibrary = InstructionLibrary(),
     onInstructionLibraryChange: (InstructionLibrary) -> Unit = {},
+    agentSkills: List<AgentSkill> = defaultAgentSkills(),
+    onAgentSkillsChange: (List<AgentSkill>) -> Unit = {},
     initialTab: String = "helpers",
     initialInstructionId: String = "",
     onSave: (String, SystemToolConfig) -> Unit,
@@ -78,14 +82,22 @@ fun ChatOptionsScreen(
 ) {
     var choosing by remember { mutableStateOf<String?>(null) }
     var helperSettings by rememberSaveable { mutableStateOf<String?>(null) }
-    val initialPage = if (initialTab == "instructions") 1 else 0
-    val pager = rememberPagerState(initialPage = initialPage, pageCount = { 2 })
+    val initialPage = when (initialTab) {
+        "instructions" -> 1
+        "skills" -> 2
+        else -> 0
+    }
+    val pager = rememberPagerState(initialPage = initialPage, pageCount = { 3 })
     val coroutineScope = rememberCoroutineScope()
     var lastRequestedTab by rememberSaveable { mutableStateOf(initialTab) }
     LaunchedEffect(initialTab) {
         if (lastRequestedTab != initialTab) {
             lastRequestedTab = initialTab
-            val requestedPage = if (initialTab == "instructions") 1 else 0
+            val requestedPage = when (initialTab) {
+                "instructions" -> 1
+                "skills" -> 2
+                else -> 0
+            }
             pager.scrollToPage(requestedPage)
         }
     }
@@ -94,9 +106,9 @@ fun ChatOptionsScreen(
         mutableStateOf(initialInstructionId.takeIf(String::isNotBlank))
     }
     var previewingInstructionId by rememberSaveable { mutableStateOf<String?>(null) }
-    var library by remember(instructionLibrary, defaultSystemPrompt) {
-        mutableStateOf(instructionLibrary ?: InstructionLibrary.fromLegacy(defaultSystemPrompt))
-    }
+    var creatingSkill by rememberSaveable { mutableStateOf(false) }
+    var editingSkillId by rememberSaveable { mutableStateOf<String?>(null) }
+    var library by remember(instructionLibrary) { mutableStateOf(instructionLibrary) }
     fun updateLibrary(next: InstructionLibrary) {
         library = next
         onInstructionLibraryChange(next)
@@ -119,6 +131,27 @@ fun ChatOptionsScreen(
         return instruction
     }
 
+    var skills by remember(agentSkills) { mutableStateOf(agentSkills) }
+    fun saveSkillDraft(draft: AgentSkill): AgentSkill? {
+        if (draft.name.isBlank() || draft.content.isBlank()) return null
+        val skill = if (draft.id.isBlank()) {
+            draft.copy(id = UUID.randomUUID().toString())
+        } else {
+            draft
+        }
+        val exists = skills.any { it.id == skill.id }
+        val next = if (exists) skills.map { if (it.id == skill.id) skill else it } else skills + skill
+        skills = next
+        onAgentSkillsChange(next)
+        return skill
+    }
+
+    fun leaveSkillEditor(draft: AgentSkill? = null) {
+        draft?.let(::saveSkillDraft)
+        creatingSkill = false
+        editingSkillId = null
+    }
+
     fun leaveInstructionEditor(draft: SavedInstruction? = null) {
         draft?.let(::saveInstructionDraft)
         creatingInstruction = false
@@ -134,25 +167,29 @@ fun ChatOptionsScreen(
         previewingInstructionId = saved.id
     }
 
-    val instructionPage: InstructionPage? = when {
-        creatingInstruction || editingInstructionId != null -> InstructionPage.Editor(editingInstructionId)
-        previewingInstructionId != null -> InstructionPage.Preview(previewingInstructionId!!)
+    val editorPage: ChatOptionsEditor? = when {
+        creatingInstruction || editingInstructionId != null -> ChatOptionsEditor.InstructionEditor(editingInstructionId)
+        previewingInstructionId != null -> ChatOptionsEditor.InstructionPreview(previewingInstructionId!!)
+        creatingSkill || editingSkillId != null -> ChatOptionsEditor.SkillEditor(editingSkillId)
         else -> null
     }
 
     SlideScreenContent(
-        editor = instructionPage,
-        label = stringResource(R.string.instruction_details)
+        editor = editorPage,
+        label = stringResource(
+            if (editorPage is ChatOptionsEditor.SkillEditor) R.string.agent_skill_details
+            else R.string.instruction_details
+        )
     ) { editorPage ->
         when (editorPage) {
-            is InstructionPage.Editor -> {
+            is ChatOptionsEditor.InstructionEditor -> {
                 InstructionEditor(
                     instruction = editorPage.instructionId?.let { id -> library.instructions.firstOrNull { it.id == id } },
                     onPreview = ::openInstructionPreview,
                     onBack = ::leaveInstructionEditor
                 )
             }
-            is InstructionPage.Preview -> {
+            is ChatOptionsEditor.InstructionPreview -> {
                 val instruction = library.instructions.firstOrNull { it.id == editorPage.instructionId }
                 if (instruction == null) {
                     LaunchedEffect(editorPage.instructionId) { previewingInstructionId = null }
@@ -167,6 +204,12 @@ fun ChatOptionsScreen(
                     )
                 }
             }
+            is ChatOptionsEditor.SkillEditor -> {
+                SkillEditor(
+                    skill = editorPage.skillId?.let { id -> skills.firstOrNull { it.id == id } },
+                    onBack = ::leaveSkillEditor
+                )
+            }
             null -> {
             BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
             Scaffold(
@@ -179,8 +222,10 @@ fun ChatOptionsScreen(
                             }
                         },
                         actions = {
-                            if (pager.currentPage == 1) {
-                                IconButton(onClick = { creatingInstruction = true }) {
+                            if (pager.currentPage in 1..2) {
+                                IconButton(onClick = {
+                                    if (pager.currentPage == 1) creatingInstruction = true else creatingSkill = true
+                                }) {
                                     FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
                                 }
                             }
@@ -199,6 +244,11 @@ fun ChatOptionsScreen(
                             selected = pager.currentPage == 1,
                             onClick = { coroutineScope.launch { pager.animateScrollToPage(1) } },
                             text = { Text(stringResource(R.string.common_instructions)) }
+                        )
+                        Tab(
+                            selected = pager.currentPage == 2,
+                            onClick = { coroutineScope.launch { pager.animateScrollToPage(2) } },
+                            text = { Text(stringResource(R.string.chat_options_tab_skills)) }
                         )
                     }
                     HorizontalPager(
@@ -262,7 +312,7 @@ fun ChatOptionsScreen(
                                     }
                                 }
                             }
-                            else -> InstructionsTab(
+                            1 -> InstructionsTab(
                                 library = library,
                                 onEditInstruction = { editingInstructionId = it.id },
                                 onPreviewInstruction = { previewingInstructionId = it.id },
@@ -272,7 +322,16 @@ fun ChatOptionsScreen(
                                             instructions = library.instructions.filterNot { it.id == instruction.id },
                                             selectedIds = library.selectedIds - instruction.id
                                         )
-                                    )
+                                     )
+                                 }
+                             )
+                            2 -> SkillsTab(
+                                skills = skills,
+                                onEditSkill = { editingSkillId = it.id },
+                                onDeleteSkill = { skill ->
+                                    val next = skills.filterNot { it.id == skill.id }
+                                    skills = next
+                                    onAgentSkillsChange(next)
                                 }
                             )
                         }

@@ -56,10 +56,10 @@ internal class ChatModelContextCoordinator(
             }
         }
         val provider = conversationProvider ?: availableProviders.find {
-            it.id == preferences.selectedProviderId
+            it.id == preferences.selectedModel.providerId
         }
         val modelId = conversationProvider?.let { conversation.modelId }
-            ?: preferences.selectedModelId
+            ?: preferences.selectedModel.modelId
         val config = provider?.config?.modelConfigs?.get(modelId)
             ?: provider?.takeIf { modelId.isNotBlank() }?.let {
                 // Discovered/custom models may not have a persisted configuration yet.
@@ -99,7 +99,7 @@ internal class ChatModelContextCoordinator(
     ): ContextWindowStatus? {
         return contextEstimate.value?.takeIf {
             it.conversation === conversation && it.preferences == preferences && it.model == model &&
-                it.providerId == preferences.selectedProviderId && it.modelId == preferences.selectedModelId &&
+                it.providerId == preferences.selectedModel.providerId && it.modelId == preferences.selectedModel.modelId &&
                 it.toolSettings == toolSettings.value
         }?.status ?: if (incoming != null) {
             calculateContextWindowStatus(
@@ -107,8 +107,8 @@ internal class ChatModelContextCoordinator(
                 preferences.systemPromptFor(conversation),
                 model,
                 preferences.instructionRoleMessagesFor(conversation),
-                preferences.selectedProviderId,
-                preferences.selectedModelId,
+                preferences.selectedModel.providerId,
+                preferences.selectedModel.modelId,
                 toolSettings.value
             )
         } else {
@@ -149,8 +149,8 @@ internal class ChatModelContextCoordinator(
             preferences.persistSelectedModel && it.messages.isNotEmpty()
         }?.let(::conversationModelProvider)
         val provider = conversationProvider
-            ?: providers.value.find { it.id == preferences.selectedProviderId }
-        val modelId = if (conversationProvider != null) conversation.modelId else preferences.selectedModelId
+            ?: providers.value.find { it.id == preferences.selectedModel.providerId }
+        val modelId = if (conversationProvider != null) conversation.modelId else preferences.selectedModel.modelId
         return provider to modelId
     }
 
@@ -165,10 +165,10 @@ internal class ChatModelContextCoordinator(
     fun summaryTextModel(): Pair<ModelProvider, SystemToolConfig>? {
         configuredTextModel("chat_summary")?.let { return it }
         val preferences = appPreferences.value
-        val provider = providers.value.find { it.id == preferences.selectedProviderId } ?: return null
-        val model = provider.config.modelConfigs[preferences.selectedModelId] ?: return null
+        val provider = providers.value.find { it.id == preferences.selectedModel.providerId } ?: return null
+        val model = provider.config.modelConfigs[preferences.selectedModel.modelId] ?: return null
         if (model.modelType != ModelType.TEXT_GENERATION) return null
-        return provider to SystemToolConfig(providerId = provider.id, modelId = preferences.selectedModelId)
+        return provider to SystemToolConfig(providerId = provider.id, modelId = preferences.selectedModel.modelId)
     }
 
     fun helperContextWindowTokens(helper: Pair<ModelProvider, SystemToolConfig>): Int =

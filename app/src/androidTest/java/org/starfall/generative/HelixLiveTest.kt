@@ -85,7 +85,7 @@ class HelixLiveTest {
             chat.startNewChat()
         }
         compose.waitUntil(10_000) {
-            settings.preferences.value.selectedModelId == modelId && chat.toolSettings.value.system["title_generation"]?.modelId == modelId
+            settings.preferences.value.selectedModel.modelId == modelId && chat.toolSettings.value.system["title_generation"]?.modelId == modelId
         }
         try {
             val prompt = "My project is Cedar. Launch is Friday. The theme is blue. Remember these facts. Reply with only HELIX_CHAT_OK."

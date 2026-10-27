@@ -75,6 +75,8 @@ internal class BottomSheetsLinkState {
         private set
     var showFilesSheet by mutableStateOf(false)
         private set
+    var skillsMenuRequest by mutableStateOf(0)
+        private set
 
     val showInstructions: Boolean
         get() = showAddMenu && quickActionsPage == QuickActionsPage.INSTRUCTIONS
@@ -86,6 +88,10 @@ internal class BottomSheetsLinkState {
     fun openAddMenu() {
         quickActionsPage = null
         showAddMenu = true
+    }
+    fun openSkillsMenu() {
+        dismissAddMenu()
+        skillsMenuRequest++
     }
     fun openModelPicker() {
         pickerOpenedFromOverview = false
@@ -255,6 +261,9 @@ internal fun BottomSheetsLink(
                         },
                         onOpenInstructions = {
                             if (pageActive) sheets.openInstructions()
+                        },
+                        onOpenSkills = {
+                            if (pageActive) sheets.openSkillsMenu()
                         },
                         onOpenFeatureTools = {
                             if (pageActive) sheets.openFeatureTools()

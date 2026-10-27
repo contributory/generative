@@ -32,7 +32,8 @@ fun QuickActionsSheet(
     onOpenInstructions: () -> Unit,
     onOpenFeatureTools: () -> Unit,
     onOpenMcpConnectors: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onOpenSkills: () -> Unit = {}
 ) {
     AppSheet(
         onDismissRequest = onDismiss,
@@ -47,7 +48,8 @@ fun QuickActionsSheet(
             onOpenInstructions = onOpenInstructions,
             onOpenFeatureTools = onOpenFeatureTools,
             onOpenMcpConnectors = onOpenMcpConnectors,
-            onDismiss = onDismiss
+            onDismiss = onDismiss,
+            onOpenSkills = onOpenSkills
         )
     }
 }
@@ -62,7 +64,8 @@ internal fun QuickActionsSheetContent(
     onOpenInstructions: () -> Unit,
     onOpenFeatureTools: () -> Unit,
     onOpenMcpConnectors: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onOpenSkills: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -117,6 +120,12 @@ internal fun QuickActionsSheetContent(
             title = stringResource(R.string.common_video),
             subtitle = stringResource(R.string.quick_action_video_description),
             onClick = { onCreateVideo(); onDismiss() }
+        )
+        AddActionRow(
+            icon = Icons.Outlined.Lightbulb,
+            title = stringResource(R.string.common_skills),
+            subtitle = stringResource(R.string.quick_action_skills_description),
+            onClick = { onOpenSkills(); onDismiss() }
         )
         AddActionRow(
             icon = Icons.Outlined.DocumentSparkle,

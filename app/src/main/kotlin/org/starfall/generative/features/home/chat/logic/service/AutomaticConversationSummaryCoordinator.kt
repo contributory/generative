@@ -34,8 +34,8 @@ internal class AutomaticConversationSummaryCoordinator(
         val current = currentConversation.value ?: return false
         val preferences = appPreferences.value
         if (!preferences.autoSummaryEnabled) return false
-        val model = providers.value.find { it.id == preferences.selectedProviderId }
-            ?.config?.modelConfigs?.get(preferences.selectedModelId) ?: return false
+        val model = providers.value.find { it.id == preferences.selectedModel.providerId }
+            ?.config?.modelConfigs?.get(preferences.selectedModel.modelId) ?: return false
         val status = modelContext.statusFor(current, preferences, model, incoming) ?: return false
         val additional = incoming?.let { estimateMessageTokens(it, false) } ?: 0
         val projected = status.copy(
@@ -49,7 +49,7 @@ internal class AutomaticConversationSummaryCoordinator(
         val boundary = current.messages.lastOrNull()?.id ?: return false
         if (current.summary?.throughMessageId == boundary) return false
         val attempt = "${current.id}/$boundary/${current.summary?.id}/" +
-            "${preferences.selectedProviderId}/${preferences.selectedModelId}"
+            "${preferences.selectedModel.providerId}/${preferences.selectedModel.modelId}"
         if (lastAttempt == attempt) return false
 
         val helper = modelContext.summaryTextModel() ?: return false
@@ -70,6 +70,6 @@ internal class AutomaticConversationSummaryCoordinator(
         if (progress == null || current?.id != progress.conversationId) return
         // A manual cancellation must not immediately restart at the same boundary.
         lastAttempt = "${progress.conversationId}/${progress.throughMessageId}/${current.summary?.id}/" +
-            "${preferences.selectedProviderId}/${preferences.selectedModelId}"
+            "${preferences.selectedModel.providerId}/${preferences.selectedModel.modelId}"
     }
 }

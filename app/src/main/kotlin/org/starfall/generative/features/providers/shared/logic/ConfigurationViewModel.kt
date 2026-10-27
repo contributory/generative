@@ -145,9 +145,6 @@ class ConfigurationViewModel(
     fun deleteProfile(profileId: String) {
         viewModelScope.launch(LocalWriteErrors.handler) {
             profileRepo.deleteProfile(profileId)
-            if (appPreferences.value.selectedProfileId == profileId) {
-                prefsRepo.setSelectedProfileId(null)
-            }
         }
     }
 
@@ -223,7 +220,7 @@ class ConfigurationViewModel(
                 modelIds = modelIds
             )))
             val prefs = appPreferences.value
-            if (prefs.selectedProviderId == providerId && prefs.selectedModelId !in modelIds) {
+            if (prefs.selectedModel.providerId == providerId && prefs.selectedModel.modelId !in modelIds) {
                 prefsRepo.setSelectedModel(providerId, modelIds.firstOrNull().orEmpty())
             }
         }
@@ -234,7 +231,7 @@ class ConfigurationViewModel(
             modelRepo.saveProvider(provider)
             val prefs = appPreferences.value
             val modelIds = provider.config.modelIds
-            if (prefs.selectedProviderId == provider.id && modelIds != null && prefs.selectedModelId !in modelIds) {
+            if (prefs.selectedModel.providerId == provider.id && modelIds != null && prefs.selectedModel.modelId !in modelIds) {
                 prefsRepo.setSelectedModel(provider.id, modelIds.firstOrNull().orEmpty())
             }
         }
