@@ -225,9 +225,10 @@ fun PreferencesSettingsView(
                 }
                 if (!appPreferences.useSystemLanguage) {
                     var expanded by remember { mutableStateOf(false) }
+                    val selectedLanguage = AppLanguage.fromTag(appPreferences.selectedLanguage)
                     ExposedDropdownMenuBox(expanded, { expanded = !expanded }) {
                         SelectableOutlinedTextField(
-                            value = AppLanguage.fromTag(appPreferences.selectedLanguage).nativeName,
+                            value = stringResource(selectedLanguage.nameRes),
                             onValueChange = {}, readOnly = true,
                             label = { Text(stringResource(R.string.app_language)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
@@ -235,7 +236,20 @@ fun PreferencesSettingsView(
                         )
                         AppExposedDropdownMenu(expanded, { expanded = false }) {
                             AppLanguage.entries.forEach { language ->
-                                DropdownMenuItem(text = { Text(language.nativeName) }, onClick = {
+                                DropdownMenuItem(text = {
+                                    // The name in the app language leads, the native name supports it.
+                                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                                        Text(
+                                            stringResource(language.nameRes),
+                                            style = MaterialTheme.typography.titleMedium,
+                                        )
+                                        Text(
+                                            language.nativeName,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }, onClick = {
                                     onAppLanguageChange(false, language.tag)
                                     expanded = false
                                 })

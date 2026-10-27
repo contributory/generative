@@ -15,6 +15,7 @@ Strings are sent in batches joined by a symbol-only separator to keep the number
 
 Setup:   pip install googletrans==4.0.2
 Usage:   python3 scripts/translate_strings.py [--dry-run] [--langs de fr] [--min-words 3]
+         python3 scripts/translate_strings.py --check [--langs de fr]
 """
 import argparse
 import asyncio
@@ -188,6 +189,24 @@ def append_entries(path, lines):
             encoding="utf-8")
 
 
+def run_check(args):
+    """Validate the translations offline with scripts/localization_check.py.
+
+    The checker owns the coverage, placeholder and plural rules, so it is invoked as a
+    subprocess instead of duplicating them here. No network access and no writes.
+    """
+    import subprocess
+
+    checker = Path(__file__).resolve().parent / "localization_check.py"
+    command = [sys.executable, str(checker), "--res-dir", str(args.res_dir)]
+    if not args.langs:
+        return subprocess.call(command)
+    status = 0
+    for lang in args.langs:
+        status |= subprocess.call(command + ["--locale", lang.removeprefix("values-")])
+    return status
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--res-dir", type=Path, default=RES_DIR)
@@ -197,7 +216,13 @@ def main():
     parser.add_argument("--max-chars", type=int, default=3500, help="characters per request (default 3500)")
     parser.add_argument("--delay", type=float, default=1.0, help="seconds between requests (default 1.0)")
     parser.add_argument("--dry-run", action="store_true", help="list what would be translated; no network, no writes")
+    parser.add_argument("--check", action="store_true",
+                        help="validate the translations offline (coverage, placeholders, plurals); "
+                             "no network, no writes")
     args = parser.parse_args()
+
+    if args.check:
+        return run_check(args)
 
     source = read_source(args.res_dir / "values/strings.xml")
     eligible = {k: v for k, v in source.items() if word_run(v) >= args.min_words}
