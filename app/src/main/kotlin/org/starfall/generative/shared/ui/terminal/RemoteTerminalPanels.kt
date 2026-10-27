@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -23,8 +24,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -166,33 +167,51 @@ internal fun TerminalExtraKeys(bridge: RemoteTerminalBridge) {
             Modifier.fillMaxWidth().padding(vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                Modifier.weight(1f).horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                TerminalKey("ESC") { bridge.sendSpecial("\u001b") }
-                TerminalKey("TAB") { bridge.sendSpecial("\t") }
-                TerminalKey("CTRL", active = bridge.ctrlActive) { bridge.ctrlActive = !bridge.ctrlActive }
-                TerminalKey("ALT", active = bridge.altActive) { bridge.altActive = !bridge.altActive }
-                // Keep cursor navigation as a compact D-pad, with Up directly above Down.
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+            // Seven aligned columns, two rows. Keep the D-pad at columns 3-5 and allow
+            // horizontal scrolling only when the display is too narrow for usable keys.
+            BoxWithConstraints(Modifier.weight(1f)) {
+                val keyWidth = maxOf(42.dp, (maxWidth - 32.dp) / 7)
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    TerminalKey("↑", repeat = true) { bridge.sendSpecial("\u001b[A", forceRemote = true) }
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        TerminalKey("←", repeat = true) { bridge.sendSpecial("\u001b[D", forceRemote = true) }
-                        TerminalKey("↓", repeat = true) { bridge.sendSpecial("\u001b[B", forceRemote = true) }
-                        TerminalKey("→", repeat = true) { bridge.sendSpecial("\u001b[C", forceRemote = true) }
+                    @Composable
+                    fun KeyColumn(top: @Composable () -> Unit, bottom: @Composable () -> Unit) {
+                        Column(Modifier.width(keyWidth), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            top()
+                            bottom()
+                        }
                     }
+                    KeyColumn(
+                        { TerminalKey("Esc", Modifier.fillMaxWidth()) { bridge.sendSpecial("\u001b") } },
+                        { TerminalKey("Ctrl", Modifier.fillMaxWidth(), active = bridge.ctrlActive) { bridge.ctrlActive = !bridge.ctrlActive } }
+                    )
+                    KeyColumn(
+                        { TerminalKey("Tab", Modifier.fillMaxWidth()) { bridge.sendSpecial("\t") } },
+                        { TerminalKey("Alt", Modifier.fillMaxWidth(), active = bridge.altActive) { bridge.altActive = !bridge.altActive } }
+                    )
+                    KeyColumn(
+                        { TerminalKey("Shift", Modifier.fillMaxWidth(), active = bridge.shiftActive) { bridge.shiftActive = !bridge.shiftActive } },
+                        { TerminalKey("←", Modifier.fillMaxWidth(), repeat = true) { bridge.sendSpecial("\u001b[D", forceRemote = true) } }
+                    )
+                    KeyColumn(
+                        { TerminalKey("↑", Modifier.fillMaxWidth(), repeat = true) { bridge.sendSpecial("\u001b[A", forceRemote = true) } },
+                        { TerminalKey("↓", Modifier.fillMaxWidth(), repeat = true) { bridge.sendSpecial("\u001b[B", forceRemote = true) } }
+                    )
+                    KeyColumn(
+                        { TerminalKey("/", Modifier.fillMaxWidth()) { bridge.sendChar('/') } },
+                        { TerminalKey("→", Modifier.fillMaxWidth(), repeat = true) { bridge.sendSpecial("\u001b[C", forceRemote = true) } }
+                    )
+                    KeyColumn(
+                        { TerminalKey("P↑", Modifier.fillMaxWidth()) { bridge.sendSpecial("\u001b[5~", forceRemote = true) } },
+                        { TerminalKey("P↓", Modifier.fillMaxWidth()) { bridge.sendSpecial("\u001b[6~", forceRemote = true) } }
+                    )
+                    KeyColumn(
+                        { TerminalKey("Home", Modifier.fillMaxWidth()) { bridge.sendSpecial("\u001b[H", forceRemote = true) } },
+                        { TerminalKey("End", Modifier.fillMaxWidth()) { bridge.sendSpecial("\u001b[F", forceRemote = true) } }
+                    )
                 }
-                TerminalKey("HOME") { bridge.sendSpecial("\u001b[H", forceRemote = true) }
-                TerminalKey("END") { bridge.sendSpecial("\u001b[F", forceRemote = true) }
-                TerminalKey("PGUP") { bridge.sendSpecial("\u001b[5~", forceRemote = true) }
-                TerminalKey("PGDN") { bridge.sendSpecial("\u001b[6~", forceRemote = true) }
-            }
-            IconButton(onClick = { bridge.toggleKeyboard() }) {
-                FluentIcon(Icons.Outlined.Keyboard, stringResource(R.string.remote_machine_terminal_keyboard))
             }
         }
     }
@@ -201,6 +220,7 @@ internal fun TerminalExtraKeys(bridge: RemoteTerminalBridge) {
 @Composable
 private fun TerminalKey(
     label: String,
+    modifier: Modifier = Modifier,
     active: Boolean = false,
     repeat: Boolean = false,
     onPress: () -> Unit
@@ -208,7 +228,7 @@ private fun TerminalKey(
     val current by rememberUpdatedState(onPress)
     val keyShape = RoundedCornerShape(8.dp)
     Box(
-        Modifier
+        modifier
             .defaultMinSize(minWidth = 40.dp)
             .height(38.dp)
             .clip(keyShape)
@@ -243,13 +263,13 @@ private fun TerminalKey(
                     }
                 })
             }
-            .padding(horizontal = 10.dp),
+            .padding(horizontal = 3.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             label,
             color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelMedium,
             maxLines = 1
         )
     }

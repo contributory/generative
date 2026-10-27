@@ -38,7 +38,7 @@ internal class ConversationTitleGenerator(
     private val activeJobs = linkedMapOf<Job, String>()
 
     fun generate(conversation: Conversation, expectedFallbackTitle: String) {
-        if (isRestoreInProgress()) return
+        if (isRestoreInProgress() || conversation.isTemporary) return
         val configured = configuredTextModel("title_generation") ?: return
         val (provider, config) = configured
         val conversationId = conversation.id

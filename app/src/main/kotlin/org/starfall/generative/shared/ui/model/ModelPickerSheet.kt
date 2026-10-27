@@ -236,6 +236,9 @@ internal fun ModelPickerSheetContent(
     }
 
     Column(modifier = modifier.fillMaxWidth()
+        // Keep the footer above the keyboard on versions where the modal doesn't
+        // consume IME insets itself, matching the Fetch Models sheet.
+        .imePadding()
         .onGloballyPositioned { contentOrigin = it.positionInRoot() }
         // Observe taps before children consume them without interrupting scrolling or clicks.
         .pointerInput(searchBounds, contentOrigin, focusManager) {
@@ -258,26 +261,6 @@ internal fun ModelPickerSheetContent(
             }
         }
     ) {
-            ModelPickerToolbar(
-                query = query,
-                onQueryChange = { query = it },
-                toggleEnabled = providers.isNotEmpty() || providerGroups.isNotEmpty(),
-                allCollapsed = allCollapsed,
-                onToggleAllCollapsed = {
-                    expandSearchResults = false
-                    if (allCollapsed) {
-                        setCollapsedGroups(emptySet())
-                        setCollapsedProviders(emptySet())
-                    } else {
-                        setCollapsedProviders(providers.map { it.id }.toSet())
-                    }
-                },
-                selectedModelId = selectedModelId,
-                selectedModel = selectedModel,
-                onOpenSelectedModel = onOpenSelectedModel,
-                onSearchBoundsChange = { searchBounds = it }
-            )
-
             if (folderTabs.isNotEmpty()) {
                 ModelPickerTabRow(
                     tabs = folderTabs,
@@ -400,5 +383,27 @@ internal fun ModelPickerSheetContent(
                     }
                 }
             }
+            // Keep search and actions pinned below the list, as in Fetch Models.
+            // A stable footer does not change the sheet's top content when IME focus ends.
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            ModelPickerToolbar(
+                query = query,
+                onQueryChange = { query = it },
+                toggleEnabled = providers.isNotEmpty() || providerGroups.isNotEmpty(),
+                allCollapsed = allCollapsed,
+                onToggleAllCollapsed = {
+                    expandSearchResults = false
+                    if (allCollapsed) {
+                        setCollapsedGroups(emptySet())
+                        setCollapsedProviders(emptySet())
+                    } else {
+                        setCollapsedProviders(providers.map { it.id }.toSet())
+                    }
+                },
+                selectedModelId = selectedModelId,
+                selectedModel = selectedModel,
+                onOpenSelectedModel = onOpenSelectedModel,
+                onSearchBoundsChange = { searchBounds = it }
+            )
     }
 }

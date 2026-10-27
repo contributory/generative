@@ -52,9 +52,25 @@ class RemoteTerminalAppBarTest {
         compose.onNodeWithContentDescription("Terminal input mode: Local").performClick()
         compose.onNodeWithText("Remote").performClick()
         compose.onNodeWithContentDescription("Enable IME composition").assertIsOn()
+        compose.onNodeWithContentDescription("Mouse events · tap = click, drag = wheel").performClick().assertIsOn()
         compose.onNodeWithContentDescription("Show or hide terminal sessions").assertIsDisplayed()
         compose.onNodeWithContentDescription("Terminal font size").assertDoesNotExist()
         bridge.close()
+    }
+
+    @Test
+    fun appBarDoesNotHaveKeyboardDismissButton() {
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                TerminalAppBar(
+                    bridge = null, onToggleSessions = {}, onDisconnect = {},
+                    canUseRemoteInput = true, onInputModeChange = {},
+                    onToggleIme = {}, onToggleForceMouse = {}
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("Hide keyboard").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Show or hide terminal sessions").assertIsDisplayed()
     }
 
     @Test

@@ -1,6 +1,8 @@
 package org.starfall.generative.features.home.chat.logic
 
 import kotlinx.coroutines.*
+import kotlin.coroutines.EmptyCoroutineContext
+import org.starfall.generative.shared.files.TemporaryChatFiles
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -87,7 +89,10 @@ internal class ChatGeneration(
         _conversationId.value = conversation.id
         snapshot = conversation
         publish(conversation)
-        job = scope.launch(start = CoroutineStart.LAZY) {
+        job = scope.launch(
+            context = if (conversation.isTemporary) TemporaryChatFiles(conversation.id) else EmptyCoroutineContext,
+            start = CoroutineStart.LAZY
+        ) {
             suspend fun persist(
                 conversation: Conversation,
                 allowStoppedSnapshot: Boolean = false

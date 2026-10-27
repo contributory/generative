@@ -47,11 +47,12 @@ fun UserMessageCard(
     onResendFromMenu: (() -> Unit)? = null,
     resendEnabled: Boolean = true,
     modifier: Modifier = Modifier,
-    conversationId: String? = null
+    conversationId: String? = null,
+    cacheEnabled: Boolean = true
 ) {
     val context = LocalContext.current
-    val renderCacheIdentity = remember(conversationId, message.id) {
-        conversationId?.takeUnless { message.isQueued }?.let { MarkdownRenderCacheIdentity(it, message.id) }
+    val renderCacheIdentity = remember(conversationId, message.id, cacheEnabled) {
+        conversationId?.takeIf { cacheEnabled && !message.isQueued }?.let { MarkdownRenderCacheIdentity(it, message.id) }
     }
     var showMenu by remember { mutableStateOf(false) }
 

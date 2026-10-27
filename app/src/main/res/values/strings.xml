@@ -110,6 +110,8 @@
     <string name="sidebar_folders">Folders</string>
     <string name="sidebar_new_chat">New chat</string>
     <string name="chat_open_temporary_chat">Open temporary chat</string>
+    <string name="chat_temporary_title">Temporary Chat</string>
+    <string name="chat_temporary_description">This is a temporary chat. It won’t appear in your sidebar or be saved to chat history. Switching chats ends this session, cancels its requests, and removes its temporary files.</string>
     <string name="sidebar_search">Search</string>
     <string name="sidebar_menu">Generative</string>
     <string name="sidebar_clear_search">Clear search</string>
@@ -937,6 +939,7 @@
     <string name="remote_machine_terminal_disconnect_close" translatable="false">Disconnect and close terminal</string>
     <string name="remote_machine_terminal_ime" translatable="false">Enable IME composition</string>
     <string name="remote_machine_terminal_keyboard" translatable="false">Show or hide keyboard</string>
+    <string name="remote_machine_terminal_open_browser">Open in browser</string>
     <string name="remote_machine_terminal_input_settings" translatable="false">Terminal input mode</string>
     <string name="remote_machine_terminal_force_mouse" translatable="false">Mouse events · tap = click, drag = wheel</string>
     <string name="remote_machine_terminal_local_input_label" translatable="false">Local input</string>
@@ -1016,7 +1019,9 @@
     <string name="image_tool_discard_image_message">Your image settings have not been saved.</string>
     <string name="image_tool_range_hint">Range: %1$s – %2$s</string>
     <string name="common_discard">Discard</string>
-    <string name="media_api_type">API Type</string>
+    <string name="media_api_type">Profile</string>
+    <string name="media_image_profile">Image Profile</string>
+    <string name="media_video_profile">Video Profile</string>
     <string name="media_chain_custom">Custom</string>
     <string name="media_chain_edit_custom">Edit custom mapping</string>
     <string name="media_chain_custom_summary">Custom request chain is active.</string>
@@ -1027,39 +1032,51 @@
     <string name="media_chain_profiles_help">Manage reusable Default and Custom API profiles for your image/video models.</string>
     <string name="media_image_gen_profile">ImageGenProfile</string>
     <string name="media_video_gen_profile">VideoGenProfile</string>
-    <string name="media_image_gen_profiles">ImageGenProfiles</string>
-    <string name="media_video_gen_profiles">VideoGenProfiles</string>
+    <string name="media_image_gen_profiles">Image Profiles</string>
+    <string name="media_video_gen_profiles">Video Profiles</string>
     <string name="media_profile_default_hint">Uses the selected profile with the provider’s default generation API.</string>
     <string name="media_chain_profiles">Profiles</string>
+    <plurals name="media_chain_profile_steps">
+        <item quantity="one">%d step</item>
+        <item quantity="other">%d steps</item>
+    </plurals>
     <string name="media_chain_profile_step_count">%1$d request step(s)</string>
     <string name="media_chain_active_profile">Active profile</string>
     <string name="common_done">Done</string>
     <string name="media_chain_default_settings_hint">Default tool parameters and their visibility are managed in Image/Video settings.</string>
     <string name="media_chain_open_default_settings">Open Image/Video settings</string>
     <string name="media_chain_steps">Request steps</string>
-    <string name="media_chain_steps_help">Steps run in order. Use later steps for status polling or fetching a generated result.</string>
+    <string name="media_chain_steps_help">Requests run in order. Add a step to check status or fetch results.</string>
+    <string name="media_profile_no_model_hint">Select a model to edit provider-specific fields. JSON options remain available.</string>
+    <string name="media_chain_test_prompt">Test prompt</string>
+    <string name="media_chain_default_test_prompt">Test generation</string>
+    <string name="media_chain_test_step">Run through step %1$d</string>
+    <string name="media_chain_test_requires_model">Select a model in Feature Tools to run requests.</string>
+    <string name="media_chain_apply_media_path">Use media path: %1$s</string>
+    <string name="media_chain_apply_status_path">Use status path: %1$s</string>
+    <string name="media_chain_test_file_note">Test requests use the selected provider and may incur usage charges. File inputs are not available here.</string>
     <string name="media_chain_step">Step %1$d</string>
     <string name="media_chain_one_step_required">At least one request step is required.</string>
     <string name="media_chain_editing_step">Edit step %1$d</string>
     <string name="media_chain_endpoint">Endpoint URL or path</string>
-    <string name="media_chain_endpoint_help">Use a path relative to the model provider base URL, or a complete HTTP(S) URL. Variables such as {{model}} and {{step1.response.body.data.id}} are supported.</string>
+    <string name="media_chain_endpoint_help">Provider-relative path or HTTP(S) URL. Supports {{model}} and previous step values.</string>
     <string name="media_chain_method">HTTP method</string>
-    <string name="media_chain_headers">Headers Editor</string>
+    <string name="media_chain_headers">Headers</string>
     <string name="media_chain_headers_editor">Headers JSON</string>
     <string name="media_chain_headers_json_invalid">Enter a valid JSON object with string header values.</string>
-    <string name="media_chain_headers_help">Enter a JSON object. Header names and values support variables. Authorization: Bearer {{api_token}} is added by default when a token is configured.</string>
+    <string name="media_chain_headers_help">JSON object. Supports variables; configured provider authorization is used automatically.</string>
     <string name="media_chain_content_type">Content Type</string>
     <string name="media_chain_content_type_json">application/json</string>
     <string name="media_chain_content_type_form">multipart/form-data</string>
     <string name="media_chain_content_type_raw">Raw bytes</string>
     <string name="media_chain_custom_content_type">Custom content type</string>
-    <string name="media_chain_custom_content_type_help">Optional MIME override. Empty uses application/json, multipart/form-data, or the input file MIME type for raw bytes.</string>
+    <string name="media_chain_custom_content_type_help">Optional MIME type override. Leave blank for automatic selection.</string>
     <string name="media_chain_json">JSON</string>
     <string name="media_chain_file_transport">File transport</string>
     <string name="media_chain_file">File</string>
     <string name="media_chain_base64">Base64</string>
     <string name="media_chain_body_editor">Body Editor</string>
-    <string name="media_chain_request_body_help">JSON/Form bodies support {{prompt}}, {{model}}, {{api_token}}, {{input_files}}, {{input_file[0]}}, {{step1.response.body.path}} and {{step1.response.headers.someheaderkey}}. Raw mode can send {{input_file[0]}} as direct bytes.</string>
+    <string name="media_chain_request_body_help">Use {{prompt}}, {{model}}, {{input_files}} or previous step responses. Raw mode supports direct file bytes.</string>
     <string name="media_chain_response_type">Response type</string>
     <string name="media_chain_octet_stream">Binary file</string>
     <string name="media_chain_observer">Retry observer</string>
@@ -1068,7 +1085,7 @@
     <string name="media_chain_observer_path_exists">Path exists</string>
     <string name="media_chain_observer_read_value">Read values</string>
     <string name="media_chain_status_path">Status JSON path (optional)</string>
-    <string name="media_chain_status_path_help">Path exists succeeds when the path is present. Read values retries while the value is pending; any other response continues to the next step.</string>
+    <string name="media_chain_status_path_help">Retry until the path exists, or until its value is no longer pending.</string>
     <string name="media_chain_pending_values">Pending values</string>
     <string name="media_chain_values_help">Comma-separated, case-insensitive status values.</string>
     <string name="media_chain_retry_policy">Bounded retry policy</string>

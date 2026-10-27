@@ -111,6 +111,7 @@ fun ChatScreen(
     onStopGenerating: () -> Unit,
     onOpenDrawer: () -> Unit,
     onNewChat: () -> Unit,
+    onOpenTemporaryChat: () -> Unit = onNewChat,
     onOpenSettings: () -> Unit,
     featuresLogoImage: String? = null,
     backgroundImage: String? = null,
@@ -439,13 +440,16 @@ fun ChatScreen(
                     modifier = Modifier.padding(24.dp)
                 ) {
                     Text(
-                        text = stringResource(R.string.app_name),
+                        text = if (conversation?.isTemporary == true)
+                            stringResource(R.string.chat_temporary_title) else stringResource(R.string.app_name),
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = androidx.compose.ui.res.stringResource(org.starfall.generative.R.string.connect_providers_description),
+                        text = if (conversation?.isTemporary == true)
+                            stringResource(R.string.chat_temporary_description) else
+                            stringResource(R.string.connect_providers_description),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -508,6 +512,7 @@ fun ChatScreen(
                         UserMessageCard(
                             message = msg,
                             conversationId = conversation?.id,
+                            cacheEnabled = conversation?.isTemporary != true,
                             selectedImageAttachments = inputAttachments,
                             onToggleChatImage = toggleChatImage,
                             onResend = if (msg.id in unansweredMessages) ({
@@ -565,6 +570,7 @@ fun ChatScreen(
                             onToggleChatImage = toggleChatImage,
                             isStreaming = streamingHere && msg.id == streamingMessage?.id,
                             conversationId = conversation?.id,
+                            cacheEnabled = conversation?.isTemporary != true,
                             streamStateFlow = activeStream,
                             onCopy = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -709,7 +715,10 @@ fun ChatScreen(
                     }
                 }
             }
+            // Composer state must not escape a disposable chat when switching sessions.
+            key(if (conversation?.isTemporary == true) conversationKey else "regular_composer") {
             UserInputArea(
+                temporaryChatId = conversation?.takeIf { it.isTemporary }?.id,
                 attachments = inputAttachments,
                 onAttachmentsChange = { inputAttachments = it },
                 chatModeRequest = chatModeRequest,
@@ -775,6 +784,7 @@ fun ChatScreen(
                   onOpenSkillsSettings = onOpenSkillsSettings,
                  onModelSheetOpen = { minimapState.isOpen = false }
               )
+            }
         }
 
         }
@@ -786,9 +796,10 @@ fun ChatScreen(
                 onOpenDrawer()
             },
             onNewChat = onNewChat,
+            onOpenTemporaryChat = onOpenTemporaryChat,
             onOpenSettings = onOpenSettings,
             featuresLogoImage = featuresLogoImage,
-            isTemporaryChat = conversationMessages.isEmpty(),
+            isTemporaryChat = conversationMessages.isEmpty() && conversation?.isTemporary != true,
             onOpenModelPicker = {
                 minimapState.isOpen = false
                 modelPickerOpenRequest++

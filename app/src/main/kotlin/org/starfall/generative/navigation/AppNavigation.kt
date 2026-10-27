@@ -149,6 +149,11 @@ fun AppNavigation(
         navigate(AppDestination.CHAT)
     }
 
+    fun startTemporaryChat() {
+        viewModel.startTemporaryChat()
+        navigate(AppDestination.CHAT)
+    }
+
     fun openConfiguration(destination: AppDestination) {
         navController.navigate(destination.route) { launchSingleTop = true }
     }
@@ -481,6 +486,7 @@ fun AppNavigation(
                         onNewChat = {
                             startNewChat()
                         },
+                        onOpenTemporaryChat = { startTemporaryChat() },
                         onOpenSettings = {
                             navigate(AppDestination.FEATURES)
                         },

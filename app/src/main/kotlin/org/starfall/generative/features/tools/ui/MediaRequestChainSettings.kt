@@ -1,7 +1,5 @@
 package org.starfall.generative.features.tools.ui
 
-import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,7 +9,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import java.util.UUID
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.media.*
@@ -20,44 +21,40 @@ import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.layout.SettingsCard
-import java.util.UUID
+import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
+import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
+import org.starfall.generative.shared.ui.lists.AppListContainer
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu
+import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
 
-/** Library of ImageGenProfiles or VideoGenProfiles, with a protected built-in Default. */
+/** A reusable profile library. Selection belongs to the tool's model dropdown, not this list. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MediaRequestChainSettings(
-    provider: ModelProvider,
+    provider: ModelProvider?,
     config: SystemToolConfig,
-    onSave: (Map<String, MediaRequestProfile>, String) -> Unit,
-    onAutoSave: (Map<String, MediaRequestProfile>, String) -> Unit = { _, _ -> },
+    onAutoSave: (Map<String, MediaRequestProfile>, String) -> Unit,
     onBack: () -> Unit,
     video: Boolean
 ) {
-    val initialProfiles = remember(provider.id, video) { config.mediaProfiles(video) }
-    var profiles by remember(provider.id, video) { mutableStateOf(initialProfiles) }
-    val storedActiveId = provider.config.modelConfigs[config.modelId]?.mediaRequestProfileId
-        ?.takeIf { it in initialProfiles }
-        ?: if (video) config.activeVideoRequestProfileId else config.activeImageRequestProfileId
-    var activeId by remember(provider.id, video) {
-        mutableStateOf(storedActiveId.takeIf { it in initialProfiles } ?: initialProfiles.keys.first())
+    val initialProfiles = remember(video) { config.mediaProfiles(video) }
+    var profiles by remember(video) { mutableStateOf(initialProfiles) }
+    val protectedId = defaultMediaProfile(video).id
+    val storedActiveId = if (video) config.activeVideoRequestProfileId else config.activeImageRequestProfileId
+    var activeId by remember(video) {
+        mutableStateOf(storedActiveId.takeIf { it in initialProfiles } ?: protectedId)
     }
-    var baselineProfiles by remember(provider.id, video) { mutableStateOf(initialProfiles) }
-    var baselineActiveId by remember(provider.id, video) { mutableStateOf(activeId) }
     var editing by remember { mutableStateOf<MediaRequestProfile?>(null) }
     var deletingProfileId by remember { mutableStateOf<String?>(null) }
-    var confirmDiscard by remember { mutableStateOf(false) }
-    val protectedId = defaultMediaProfile(video).id
-    val dirty = profiles != baselineProfiles || activeId != baselineActiveId
 
-    fun saveProfiles() {
-        val normalized = profiles.withDefaultMediaProfile(video)
-        onSave(normalized, activeId.takeIf { it in normalized } ?: protectedId)
-        baselineProfiles = normalized
-        baselineActiveId = activeId
+    fun persist(updated: Map<String, MediaRequestProfile>) {
+        val normalized = updated.withDefaultMediaProfile(video)
+        val selectedId = activeId.takeIf { it in normalized } ?: protectedId
+        if (profiles == normalized && activeId == selectedId) return
+        profiles = normalized
+        activeId = selectedId
+        onAutoSave(normalized, selectedId)
     }
-    fun leave() { if (dirty) confirmDiscard = true else onBack() }
-    BackHandler(enabled = LocalScreenTransitionActive.current && editing == null) { leave() }
 
     editing?.let { profile ->
         MediaRequestProfileEditor(
@@ -65,71 +62,80 @@ fun MediaRequestChainSettings(
             config = config,
             profile = profile,
             video = video,
-            onSave = { updated ->
-                profiles = (profiles + (updated.id to updated)).withDefaultMediaProfile(video)
-                editing = null
-            },
-            // Nested step edits stay in the editor draft until its Save action.
-            onAutoSave = {},
+            onAutoSave = { updated -> persist(profiles + (updated.id to updated)) },
             onBack = { editing = null }
         )
         return
     }
 
+    BackHandler(enabled = LocalScreenTransitionActive.current) { onBack() }
     Scaffold(topBar = {
         TopAppBar(
             colors = edgeToEdgeTopAppBarColors(),
             title = { Text(stringResource(if (video) R.string.media_video_gen_profiles else R.string.media_image_gen_profiles)) },
-            navigationIcon = { IconButton(onClick = ::leave) {
-                FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-            } },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                }
+            },
             actions = {
-                IconButton(onClick = ::saveProfiles, enabled = dirty) {
-                    FluentIcon(Icons.Outlined.Save, stringResource(R.string.common_save))
+                IconButton(onClick = {
+                    editing = MediaRequestProfile(
+                        id = UUID.randomUUID().toString(), name = "", mode = MediaGenerationMode.DEFAULT
+                    )
+                }) {
+                    FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
                 }
             }
         )
     }) { padding ->
+        val ordered = profiles.values.sortedWith(compareBy<MediaRequestProfile> {
+            if (it.mode == MediaGenerationMode.DEFAULT) 0 else 1
+        }.thenBy { if (it.id == protectedId) 0 else 1 })
         LazyColumn(
-            Modifier.fillMaxSize().imePadding(),
-            contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 16.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.fillMaxSize().consumeWindowInsets(padding),
+            contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 12.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.media_chain_profiles), style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.weight(1f))
-                    IconButton(onClick = {
-                        editing = MediaRequestProfile(
-                            id = UUID.randomUUID().toString(),
-                            name = "",
-                            mode = MediaGenerationMode.DEFAULT
-                        )
-                    }) { FluentIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
-                }
-            }
-            // Default profiles are grouped first; the protected Default always appears at the top.
-            val ordered = profiles.values.sortedWith(compareBy<MediaRequestProfile> {
-                if (it.mode == MediaGenerationMode.DEFAULT) 0 else 1
-            }.thenBy { if (it.id == protectedId) 0 else 1 })
             items(ordered, key = { it.id }) { profile ->
-                val active = profile.id == activeId
                 val canDelete = profile.id != protectedId &&
-                    (profile.mode != MediaGenerationMode.DEFAULT || profiles.values.count { it.mode == MediaGenerationMode.DEFAULT } > 1)
-                SettingsCard {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = active, onClick = { activeId = profile.id })
+                    (profile.mode != MediaGenerationMode.DEFAULT ||
+                        profiles.values.count { it.mode == MediaGenerationMode.DEFAULT } > 1)
+                AppListContainer(isGrid = false, onClick = { editing = profile }) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 10.dp, bottom = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        FluentIcon(Icons.Outlined.FormatListBulleted, contentDescription = null)
                         Column(Modifier.weight(1f)) {
-                            Text(profile.name, style = MaterialTheme.typography.titleMedium)
-                            Text(stringResource(if (profile.mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom),
+                            Text(profile.name, style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                if (profile.mode == MediaGenerationMode.CUSTOM)
+                                    pluralStringResource(R.plurals.media_chain_profile_steps, profile.chain.steps.size, profile.chain.steps.size)
+                                else stringResource(R.string.common_default),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                        IconButton(onClick = { editing = profile }) {
-                            FluentIcon(Icons.Outlined.Edit, stringResource(R.string.common_edit))
-                        }
-                        IconButton(enabled = canDelete, onClick = { deletingProfileId = profile.id }) {
-                            FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove))
+                        var menuExpanded by remember { mutableStateOf(false) }
+                        Box {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                FluentIcon(Icons.Default.MoreVert, stringResource(R.string.common_more_options))
+                            }
+                            AppDropdownMenu(menuExpanded, { menuExpanded = false }) {
+                                RoundedDropdownMenuItem(
+                                    text = { Text(stringResource(R.string.common_edit)) },
+                                    leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) },
+                                    onClick = { menuExpanded = false; editing = profile }
+                                )
+                                if (canDelete) RoundedDropdownMenuItem(
+                                    text = { Text(stringResource(R.string.common_remove), color = MaterialTheme.colorScheme.error) },
+                                    leadingIcon = { FluentIcon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) },
+                                    onClick = { menuExpanded = false; deletingProfileId = profile.id }
+                                )
+                            }
                         }
                     }
                 }
@@ -141,28 +147,18 @@ fun MediaRequestChainSettings(
             onDismissRequest = { deletingProfileId = null },
             title = { Text(stringResource(R.string.dialog_remove_profile_title)) },
             text = { Text(stringResource(R.string.media_chain_remove_profile_message)) },
-            confirmButton = { TextButton(onClick = {
-                if (id != protectedId && profiles.values.count { it.mode == MediaGenerationMode.DEFAULT } >
-                    (if (profiles[id]?.mode == MediaGenerationMode.DEFAULT) 1 else 0)) {
-                    profiles = (profiles - id).withDefaultMediaProfile(video)
-                    if (activeId == id) activeId = protectedId
-                }
-                deletingProfileId = null
-            }) { Text(stringResource(R.string.common_remove)) } },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (id != protectedId && profiles.values.count { it.mode == MediaGenerationMode.DEFAULT } >
+                        (if (profiles[id]?.mode == MediaGenerationMode.DEFAULT) 1 else 0)) {
+                        persist(profiles - id)
+                    }
+                    deletingProfileId = null
+                }) { Text(stringResource(R.string.common_remove)) }
+            },
             dismissButton = { TextButton(onClick = { deletingProfileId = null }) {
                 Text(stringResource(R.string.common_cancel))
             } }
         )
     }
-    if (confirmDiscard) AlertDialog(
-        onDismissRequest = { confirmDiscard = false },
-        title = { Text(stringResource(R.string.common_discard_changes)) },
-        text = { Text(stringResource(R.string.media_chain_discard_message)) },
-        confirmButton = { TextButton(onClick = { confirmDiscard = false; onBack() }) {
-            Text(stringResource(R.string.common_discard))
-        } },
-        dismissButton = { TextButton(onClick = { confirmDiscard = false }) {
-            Text(stringResource(R.string.common_keep_editing))
-        } }
-    )
 }

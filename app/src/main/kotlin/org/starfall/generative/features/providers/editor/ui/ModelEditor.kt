@@ -65,7 +65,7 @@ fun ModelEditor(
     val contextWindow = contextWindowText.toIntOrNull()?.takeIf { it > 0 }
     var iconImporting by remember { mutableStateOf(false) }
     var typeExpanded by remember { mutableStateOf(false) }
-    var apiTypeExpanded by remember { mutableStateOf(false) }
+    var profileExpanded by remember { mutableStateOf(false) }
     var showSampling by remember { mutableStateOf(false) }
     var showModelTools by remember { mutableStateOf(false) }
     var showModelJsonDialog by remember { mutableStateOf(false) }
@@ -75,6 +75,7 @@ fun ModelEditor(
         .withDefaultMediaProfile(isVideoGen)
     val chosenMediaProfile = mediaProfiles[config.mediaRequestProfileId]
         ?: mediaProfiles.values.first { it.mode == MediaGenerationMode.DEFAULT }
+    val isMediaModel = config.modelType == ModelType.IMAGE_GENERATION || isVideoGen
     val modelJson = if (initialModelId.isNotBlank() && trimmedId == initialModelId) config.modelJson else JsonObject(emptyMap())
     val prettyJson = remember { Json { prettyPrint = true } }
     val modelJsonCode = remember(modelJson) { prettyJson.encodeToString(JsonObject.serializer(), modelJson) }
@@ -97,17 +98,18 @@ fun ModelEditor(
 
     fun saveAndBack() {
         if (idError == null && contextWindow != null) {
-            modelMemory.remember(trimmedId, config.copy(contextWindowTokens = contextWindow))
-            onSave(
-                trimmedId,
-                config.copy(
-                    contextWindowTokens = contextWindow,
-                    modelJson = modelJson,
-                    displayName = config.displayName.trim(),
-                    reasoningEffort = config.reasoningEffort?.trim()?.ifEmpty { null },
-                    reasoningEfforts = config.supportedReasoningEfforts
-                )
+            val updated = config.copy(
+                // API mode is derived from the selected profile, never configured separately.
+                mediaRequestProfileId = if (isMediaModel) chosenMediaProfile.id else config.mediaRequestProfileId,
+                mediaApiType = if (isMediaModel) chosenMediaProfile.mode else config.mediaApiType,
+                contextWindowTokens = contextWindow,
+                modelJson = modelJson,
+                displayName = config.displayName.trim(),
+                reasoningEffort = config.reasoningEffort?.trim()?.ifEmpty { null },
+                reasoningEfforts = config.supportedReasoningEfforts
             )
+            modelMemory.remember(trimmedId, updated)
+            onSave(trimmedId, updated)
             onBack()
         }
     }
@@ -192,7 +194,12 @@ fun ModelEditor(
                         DropdownMenuItem(
                             text = { Text(type.displayName) },
                             onClick = {
-                                config = config.copy(modelType = type)
+                                config = if (type != config.modelType &&
+                                    (type == ModelType.IMAGE_GENERATION || type == ModelType.VIDEO_GENERATION)) {
+                                    // Profiles belong to their generation type; don't reuse an ID from another library.
+                                    config.copy(modelType = type, mediaRequestProfileId = "", mediaApiType = MediaGenerationMode.DEFAULT)
+                                } else config.copy(modelType = type)
+                                profileExpanded = false
                                 typeExpanded = false
                             }
                         )
@@ -334,21 +341,21 @@ fun ModelEditor(
                         Text(stringResource(R.string.model_arguments), maxLines = 1)
                     }
                 }
-            } else if (config.modelType == ModelType.IMAGE_GENERATION || config.modelType == ModelType.VIDEO_GENERATION) {
+            } else if (isMediaModel) {
                 ExposedDropdownMenuBox(
-                    expanded = apiTypeExpanded,
-                    onExpandedChange = { apiTypeExpanded = !apiTypeExpanded }
+                    expanded = profileExpanded,
+                    onExpandedChange = { profileExpanded = !profileExpanded }
                 ) {
                     SelectableOutlinedTextField(
                         value = chosenMediaProfile.name,
                         onValueChange = {}, readOnly = true,
-                        label = { Text(stringResource(R.string.media_api_type)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(apiTypeExpanded) },
+                        label = { Text(stringResource(if (isVideoGen) R.string.media_video_profile else R.string.media_image_profile)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(profileExpanded) },
                         modifier = Modifier.menuAnchor(
                             ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true
-                        ).fillMaxWidth()
+                        ).fillMaxWidth().testTag("media-profile-selector")
                     )
-                    AppExposedDropdownMenu(apiTypeExpanded, { apiTypeExpanded = false }) {
+                    AppExposedDropdownMenu(profileExpanded, { profileExpanded = false }) {
                         mediaProfiles.values.forEach { profile ->
                             DropdownMenuItem(
                                 text = { Text(profile.name + " · " +
@@ -358,7 +365,7 @@ fun ModelEditor(
                                         mediaApiType = profile.mode,
                                         mediaRequestProfileId = profile.id
                                     )
-                                    apiTypeExpanded = false
+                                    profileExpanded = false
                                 }
                             )
                         }

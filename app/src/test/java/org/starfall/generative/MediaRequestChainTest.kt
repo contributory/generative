@@ -551,4 +551,50 @@ class MediaRequestChainTest {
             root.deleteRecursively()
         }
     }
+
+    @Test fun testThroughStepUsesActualProviderResponsesAndPreviousStepValues() = runBlocking {
+        val server = MockWebServer().apply { start() }
+        try {
+            server.enqueue(MockResponse().setBody("""{"task":{"id":"job-42"}}"""))
+            server.enqueue(MockResponse().setBody("""{"status":"completed","url":"https://example.test/p.png","secret":"token"}"""))
+            val provider = ModelProvider("p", "Preview", ModelApiType.OPENAI,
+                baseUrl = server.url("/v1").toString(), auth = Authorization(value = "token"))
+            val chain = MediaRequestChain(steps = listOf(
+                MediaRequestStep(endpoint = "/create", body = """{"prompt":"{{prompt}}"}"""),
+                MediaRequestStep(endpoint = "/jobs/{{step1.response.body.task.id}}", method = "GET")
+            ))
+            val preview = MediaRequestChainExecutor(ToolHttp()).testThroughStep(
+                chain, provider, "image-model", "draw", 1
+            )
+            assertEquals(200, preview.statusCode)
+            assertTrue(preview.body.contains("completed"))
+            assertTrue(preview.body.contains("[redacted]"))
+            assertTrue(!preview.body.contains("\"token\""))
+            assertEquals("/v1/create", server.takeRequest().path)
+            assertEquals("/v1/jobs/job-42", server.takeRequest().path)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test fun testThroughStepPreviewsBinaryResponseWithoutMediaStorage() = runBlocking {
+        val server = MockWebServer().apply { start() }
+        try {
+            server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody("binary"))
+            val provider = ModelProvider("p", "Preview", ModelApiType.OPENAI,
+                baseUrl = server.url("/v1").toString())
+            val chain = MediaRequestChain(
+                steps = listOf(MediaRequestStep(endpoint = "/render", method = "GET")),
+                finalResponse = MediaFinalResponse(type = MediaResponseType.IMAGE)
+            )
+            val preview = MediaRequestChainExecutor(ToolHttp()).testThroughStep(
+                chain, provider, "image-model", "draw", 0
+            )
+            assertEquals(200, preview.statusCode)
+            assertTrue(preview.body.contains("image/png"))
+            assertTrue(preview.body.contains("6"))
+        } finally {
+            server.shutdown()
+        }
+    }
 }

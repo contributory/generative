@@ -172,7 +172,7 @@ internal class ChatMessageActions(
                     {
                         _currentConversation.value = conv
                         viewModelScope.launch(LocalWriteErrors.handler) {
-                            if (!isRestoreInProgress()) prefsRepo.setLastActiveConversationId(conv.id)
+                            if (!isRestoreInProgress() && !conv.isTemporary) prefsRepo.setLastActiveConversationId(conv.id)
                         }
                     }
                 ) {
@@ -182,7 +182,7 @@ internal class ChatMessageActions(
 
             _currentConversation.value = conv
             viewModelScope.launch(LocalWriteErrors.handler) {
-                if (!isRestoreInProgress()) prefsRepo.setLastActiveConversationId(conv.id)
+                if (!isRestoreInProgress() && !conv.isTemporary) prefsRepo.setLastActiveConversationId(conv.id)
             }
 
             val provider = providerWithReasoning(requireNotNull(baseProvider), modelId, conv)
@@ -200,7 +200,7 @@ internal class ChatMessageActions(
                     prefs.instructionRoleMessagesFor(conv), toolSettings.value)
             )
             val titleSettings = toolSettings.value.system["title_generation"]
-            if (started && !conv.startedWithDirectMedia() && shouldGenerateConversationTitle(
+            if (started && !conv.isTemporary && !conv.startedWithDirectMedia() && shouldGenerateConversationTitle(
                     userText = userText,
                     messageCount = conv.messages.count { it.role == ChatRole.USER || it.role == ChatRole.MODEL },
                     minimumWords = titleSettings?.titleGenerationMinWords ?: DEFAULT_TITLE_GENERATION_MIN_WORDS,
@@ -243,7 +243,7 @@ internal class ChatMessageActions(
         )
         _currentConversation.value = conversation
         viewModelScope.launch(LocalWriteErrors.handler) {
-            if (!isRestoreInProgress()) prefsRepo.setLastActiveConversationId(conversation.id)
+            if (!isRestoreInProgress() && !conversation.isTemporary) prefsRepo.setLastActiveConversationId(conversation.id)
         }
         generationFor(conversation.id).startEvents(conversation, assistant.id,
             mediaEvents(provider, request.modelId, request.kind, request.prompt, request.attachments))

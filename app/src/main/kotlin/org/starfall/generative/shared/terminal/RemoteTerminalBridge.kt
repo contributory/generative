@@ -67,15 +67,32 @@ internal class RemoteTerminalBridge(
     var altActive: Boolean
         get() = input.altActive
         set(value) { input.altActive = value }
+    var shiftActive: Boolean
+        get() = input.shiftActive
+        set(value) { input.shiftActive = value }
     val inputMode: TerminalInputMode get() = input.inputMode
     val hasLocalDraft: Boolean get() = input.hasLocalDraft
 
+    val localInputForIme: String get() = input.localInput
+    val localCursorForIme: Int get() = input.localCursorPosition
+    fun updateLocalImeDraft(value: String, cursor: Int) = input.updateLocalDraftFromIme(value, cursor)
     fun sendImeText(value: String) = input.sendImeText(value)
-    fun sendImeKey(keyCode: Int, event: KeyEvent): Boolean = input.sendKey(keyCode, event)
+    fun sendImeKey(keyCode: Int, event: KeyEvent): Boolean {
+        val handled = input.sendKey(keyCode, event)
+        syncLocalImeDraft()
+        return handled
+    }
+
+    private fun syncLocalImeDraft() {
+        if (inputMode.usesLocalInput) inputView?.syncLocalImeDraft(input.localInput, input.localCursorPosition)
+    }
 
     fun updateImeEnabled(enabled: Boolean) {
         if (imeEnabled == enabled) return
         inputView?.finishImeComposition()
+        // Leaving the buffered editor explicitly switches back to streaming raw input.
+        // Flush any remote text first so subsequent raw keys do not overtake the draft.
+        if (!enabled) inputView?.flushRemoteImeDraft()
         imeEnabled = enabled
         inputView?.let { host ->
             val focused = host.hasFocus()
@@ -88,8 +105,12 @@ internal class RemoteTerminalBridge(
     }
 
     fun setInputMode(mode: TerminalInputMode): Boolean {
+        if (mode != inputMode && !inputMode.usesLocalInput && composingText.isNotEmpty()) return false
         inputView?.finishImeComposition()
-        return input.setInputMode(mode)
+        val oldMode = inputMode
+        val changed = input.setInputMode(mode)
+        if (changed && mode != oldMode) inputView?.restartImeConnection()
+        return changed
     }
 
     private var themeBackground: Int? = null
@@ -277,12 +298,16 @@ internal class RemoteTerminalBridge(
 
     private fun sendText(value: String) {
         inputView?.finishImeComposition()
+        inputView?.flushRemoteImeDraft()
         input.sendText(value)
+        syncLocalImeDraft()
     }
 
     fun sendChar(char: Char) {
         inputView?.finishImeComposition()
+        inputView?.flushRemoteImeDraft()
         input.sendChar(char)
+        syncLocalImeDraft()
     }
 
     /** Sends an escape sequence, adding xterm modifier parameters / application cursor mode. */
@@ -293,7 +318,9 @@ internal class RemoteTerminalBridge(
         forceRemote: Boolean = false
     ) {
         inputView?.finishImeComposition()
+        inputView?.flushRemoteImeDraft()
         input.sendSpecial(sequence, ctrl, alt, forceRemote)
+        syncLocalImeDraft()
     }
 
     private companion object {
@@ -400,20 +427,21 @@ internal class RemoteTerminalBridge(
         }
     }
 
+    fun hideKeyboard() {
+        val terminalView = inputView?.inputTarget ?: view ?: return
+        val window = windowFor(terminalView)
+        if (window != null) {
+            WindowCompat.getInsetsController(window, terminalView).hide(WindowInsetsCompat.Type.ime())
+        } else {
+            context.getSystemService(InputMethodManager::class.java)
+                ?.hideSoftInputFromWindow(terminalView.windowToken, 0)
+        }
+    }
+
     fun toggleKeyboard() {
         val terminalView = view ?: return
         val visible = ViewCompat.getRootWindowInsets(terminalView)?.isVisible(WindowInsetsCompat.Type.ime()) == true
-        if (visible) {
-            val window = windowFor(terminalView)
-            if (window != null) {
-                WindowCompat.getInsetsController(window, terminalView).hide(WindowInsetsCompat.Type.ime())
-            } else {
-                context.getSystemService(InputMethodManager::class.java)
-                    ?.hideSoftInputFromWindow(terminalView.windowToken, 0)
-            }
-        } else {
-            focusAndShowKeyboard()
-        }
+        if (visible) hideKeyboard() else focusAndShowKeyboard()
     }
 
     override fun onSingleTapUp(e: MotionEvent) { focusAndShowKeyboard() }

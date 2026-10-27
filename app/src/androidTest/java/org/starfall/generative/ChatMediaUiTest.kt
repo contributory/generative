@@ -351,6 +351,79 @@ class ChatMediaUiTest {
         } finally { store.delete(listOf(name)) }
     }
 
+    @Test fun runningMediaToolsShowSquarePlaceholdersAndFailuresRemoveThem() {
+        var version by mutableStateOf(MessageVersion(toolActivity = listOf(
+            ToolActivity("image-pending", "generate_image"),
+            ToolActivity("video-pending", "generate_video")
+        )))
+        var streaming by mutableStateOf(true)
+        compose.setContent { MaterialTheme {
+            AssistantMessageCard(
+                StoredMessage("assistant-pending", ChatRole.MODEL, listOf(version)),
+                streaming, {}, {}, {}, {}, {}, {}, onSwitchVersion = {}
+            )
+        } }
+
+        compose.onNodeWithTag("media-generation-placeholder_image-pending")
+            .assertExists().assertHeightIsAtLeast(100.dp)
+        compose.onNodeWithTag("media-generation-placeholder_video-pending")
+            .assertExists().assertHeightIsAtLeast(100.dp)
+        compose.onNodeWithContentDescription("Generating image").assertExists()
+        compose.onNodeWithContentDescription("Generating video").assertExists()
+
+        compose.runOnIdle {
+            version = version.copy(toolActivity = listOf(
+                ToolActivity("image-pending", "generate_image", status = "error", summary = "Failed"),
+                ToolActivity("video-pending", "generate_video")
+            ))
+        }
+        compose.onNodeWithTag("media-generation-placeholder_image-pending").assertDoesNotExist()
+        compose.onNodeWithTag("media-generation-placeholder_video-pending").assertExists()
+
+        compose.runOnIdle {
+            version = version.copy(toolActivity = version.toolActivity.map {
+                if (it.id == "video-pending") it.copy(status = "cancelled") else it
+            })
+        }
+        compose.onNodeWithTag("media-generation-placeholder_video-pending").assertDoesNotExist()
+
+        // A restored or stopped message must not resurrect placeholders for stale running calls.
+        compose.runOnIdle {
+            version = MessageVersion(toolActivity = listOf(ToolActivity("stale", "generate_image")))
+            streaming = false
+        }
+        compose.onNodeWithTag("media-generation-placeholder_stale").assertDoesNotExist()
+    }
+
+    @Test fun successfulMediaReplacesItsPendingPreview() {
+        val store = ToolFiles(context)
+        val bitmap = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
+        val bytes = ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+        bitmap.recycle()
+        val name = runBlocking { store.save(bytes.inputStream(), "image/png") }
+        try {
+            var version by mutableStateOf(MessageVersion(toolActivity = listOf(
+                ToolActivity("rendering", "generate_image")
+            )))
+            compose.setContent { MaterialTheme {
+                AssistantMessageCard(
+                    StoredMessage("assistant-rendering", ChatRole.MODEL, listOf(version)),
+                    true, {}, {}, {}, {}, {}, {}, onSwitchVersion = {}
+                )
+            } }
+            compose.onNodeWithTag("media-generation-placeholder_rendering").assertExists()
+            compose.runOnIdle {
+                version = version.copy(toolActivity = listOf(
+                    ToolActivity("rendering", "generate_image", status = "success", files = listOf(name))
+                ))
+            }
+            compose.onNodeWithTag("media-generation-placeholder_rendering").assertDoesNotExist()
+            compose.waitUntil(5_000) {
+                compose.onAllNodesWithContentDescription("Generated image").fetchSemanticsNodes().isNotEmpty()
+            }
+        } finally { store.delete(listOf(name)) }
+    }
+
     @Test fun generatedMediaStaysBetweenTextBeforeAndAfterToolCall() {
         val store = ToolFiles(context)
         val bitmap = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)

@@ -116,6 +116,68 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
         error("Media request chain did not produce a final response.")
     }
 
+    /** Run the same real HTTP requests as generation up through the selected step, without
+     * media extraction or creating an output file. Preview is intentionally file-free.
+     * Every request here is initiated explicitly by the user from the step editor.
+     */
+    suspend fun testThroughStep(
+        chain: MediaRequestChain,
+        provider: ModelProvider,
+        model: String,
+        prompt: String,
+        stepIndex: Int
+    ): MediaStepTestResult {
+        require(stepIndex in chain.steps.indices) { "Invalid step number." }
+        require(model.isNotBlank()) { "Select a model before testing the request." }
+        val responses = mutableListOf<JsonElement>()
+        val responseHeaders = mutableListOf<Map<String, String>>()
+        val steps = mutableListOf<MediaStepTemplateContext>()
+        for (index in 0..stepIndex) {
+            val step = chain.steps[index]
+            var attempt = 0
+            val start = System.currentTimeMillis()
+            var result: StepResult
+            do {
+                attempt++
+                result = executeStep(
+                    provider = provider,
+                    step = step,
+                    context = MediaTemplateContext(
+                        prompt = prompt,
+                        model = model,
+                        apiToken = provider.auth.token,
+                        inputFiles = emptyList(),
+                        responses = responses.toList(),
+                        responseHeaders = responseHeaders.toList(),
+                        steps = steps.toList()
+                    ),
+                    inputs = emptyList(),
+                    isFinal = index == chain.steps.lastIndex,
+                    finalResponseType = chain.finalResponse.type,
+                    preview = true
+                )
+                if (!shouldRetry(step, result.value)) break
+                val retry = step.observation.retry
+                val waitMillis = retry.delayMillis.coerceAtLeast(0)
+                check(attempt < retry.maxAttempts.coerceAtLeast(1) &&
+                    System.currentTimeMillis() - start + waitMillis <= retry.maxWaitMillis.coerceAtLeast(0)) {
+                    "Step ${index + 1} did not finish within the retry limit."
+                }
+                delay(waitMillis)
+            } while (true)
+            responses += result.value
+            responseHeaders += result.responseHeaders
+            steps += requireNotNull(result.step)
+        }
+        val response = steps.last()
+        val raw = responses.last().toString()
+        val token = provider.auth.token
+        return MediaStepTestResult(
+            statusCode = response.responseStatusCode,
+            body = (if (token.isBlank()) raw else raw.replace(token, "[redacted]")).take(12000)
+        )
+    }
+
     private fun resolveInputs(files: ToolFiles, references: List<String>): List<InputFile> = references.map { reference ->
         val name = files.nameOf(reference) ?: reference.removePrefix("tool-file:")
         val file = files.resolve(name) ?: error("Input file is no longer available.")
@@ -135,7 +197,8 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
         context: MediaTemplateContext,
         inputs: List<InputFile>,
         isFinal: Boolean,
-        finalResponseType: MediaResponseType
+        finalResponseType: MediaResponseType,
+        preview: Boolean = false
     ): StepResult {
         val endpoint = resolveEndpoint(provider, resolveText(step.endpoint, context))
         val headers = step.headers.entries.associate { (key, value) ->
@@ -190,8 +253,11 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
                             else -> "application/octet-stream"
                         }
                     }
-                    val name = http.requireFiles().save(response.body.byteStream(), mime)
-                    val responseBody = obj("file" to str("tool-file:$name"))
+                    val name = if (preview) null else http.requireFiles().save(response.body.byteStream(), mime)
+                    val responseBody = if (preview) obj(
+                        "mediaType" to str(mime),
+                        "contentLength" to str(response.body.contentLength().takeIf { it >= 0 }?.toString() ?: "unknown")
+                    ) else obj("file" to str("tool-file:$name"))
                     val headers = responseHeaders(response)
                     StepResult(
                         value = responseBody,
@@ -408,3 +474,6 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
         else -> "application/octet-stream"
     }
 }
+
+/** Sanitized, bounded real HTTP response for the step editor. */
+internal data class MediaStepTestResult(val statusCode: Int, val body: String)

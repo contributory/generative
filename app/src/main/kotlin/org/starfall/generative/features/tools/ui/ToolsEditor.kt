@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
@@ -77,28 +78,27 @@ fun ToolsEditor(
     fun openMediaSettings(name: String) { editingMedia = name }
 
     SlideScreenContent(
-        editor = editingMedia?.let { name -> mediaProvider?.let { Triple(name, it, mediaConfig) } },
+        editor = editingMedia?.let { name -> Triple(name, mediaProvider, mediaConfig) },
         label = stringResource(R.string.tool_settings_media_label)
     ) { page ->
         if (page != null) {
             MediaRequestChainSettings(
                 provider = page.second,
                 config = page.third,
-                onSave = { profiles, activeId ->
+                onAutoSave = { profiles, activeId ->
                     val video = page.first == "generate_video"
                     val updated = page.third.withMediaProfiles(video, profiles)
-                    val selected = updated.mediaProfile(video, activeId)
+                    val selectedId = activeId.takeIf { it in profiles }
+                        ?: updated.mediaProfile(video, "").id
                     val newConfig = if (video) updated.copy(
-                        activeVideoRequestProfileId = selected.id, videoGenerationMode = selected.mode
+                        activeVideoRequestProfileId = selectedId,
+                        videoGenerationMode = updated.mediaProfile(video, selectedId).mode
                     ) else updated.copy(
-                        activeImageRequestProfileId = selected.id, imageGenerationMode = selected.mode
+                        activeImageRequestProfileId = selectedId,
+                        imageGenerationMode = updated.mediaProfile(video, selectedId).mode
                     )
                     onSave(page.first, newConfig)
-                    page.second.config.modelConfigs[page.third.modelId]?.let { model ->
-                        onSaveModelConfiguration(page.third.providerId, page.third.modelId,
-                            model.copy(mediaApiType = selected.mode, mediaRequestProfileId = selected.id))
-                    }
-                    // Repair deleted profile references; preserve selections of every other model.
+                    // Repair only model references pointing to removed profiles.
                     val kind = if (video) ModelType.VIDEO_GENERATION else ModelType.IMAGE_GENERATION
                     providers.forEach { source ->
                         source.config.modelConfigs.forEach { (id, model) ->
@@ -111,7 +111,6 @@ fun ToolsEditor(
                             }
                         }
                     }
-                    editingMedia = null
                 },
                 onBack = { editingMedia = null },
                 video = page.first == "generate_video"
@@ -152,6 +151,7 @@ fun ToolsEditor(
                         val selectedProfile = config.selectedMediaProfile(!image, model)
                         val available = systemMediaToolAvailable(name, config, providers, selectedProfile.mode)
                         val profiles = config.mediaProfiles(!image)
+                        val hasModel = provider != null && config.modelId.isNotBlank() && model != null
                         var apiTypeExpanded by remember(name, config.providerId, config.modelId) {
                             mutableStateOf(false)
                         }
@@ -195,68 +195,66 @@ fun ToolsEditor(
                                     modifier = Modifier.padding(top = 8.dp)
                                 )
                             }
-                            if (config.enabled) {
-                                Spacer(Modifier.height(8.dp))
-                                HorizontalDivider()
-                                Spacer(Modifier.height(8.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    ExposedDropdownMenuBox(
-                                        expanded = apiTypeExpanded,
-                                        onExpandedChange = { apiTypeExpanded = !apiTypeExpanded },
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        SelectableOutlinedTextField(
-                                            value = selectedProfile.name,
-                                            onValueChange = {},
-                                            readOnly = true,
-                                            label = { Text(stringResource(R.string.media_api_type)) },
-                                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(apiTypeExpanded) },
-                                            modifier = Modifier.menuAnchor(
-                                                ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true
-                                            ).fillMaxWidth()
-                                        )
-                                        AppExposedDropdownMenu(apiTypeExpanded, { apiTypeExpanded = false }) {
-                                            profiles.values.forEach { profile ->
-                                                DropdownMenuItem(
-                                                    text = { Text(profile.name + " · " +
-                                                        stringResource(if (profile.mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom)) },
-                                                    onClick = {
-                                                        if (provider != null && config.modelId.isNotBlank()) {
-                                                            onSaveModelConfiguration(config.providerId, config.modelId,
-                                                                (model ?: ModelConfiguration()).copy(
-                                                                    mediaApiType = profile.mode,
-                                                                    mediaRequestProfileId = profile.id
-                                                                ))
-                                                        }
-                                                        onSave(name, if (image) config.copy(
-                                                            activeImageRequestProfileId = profile.id,
-                                                            imageGenerationMode = profile.mode
-                                                        ) else config.copy(
-                                                            activeVideoRequestProfileId = profile.id,
-                                                            videoGenerationMode = profile.mode
-                                                        ))
-                                                        apiTypeExpanded = false
+                            Spacer(Modifier.height(8.dp))
+                            HorizontalDivider()
+                            Spacer(Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                ExposedDropdownMenuBox(
+                                    expanded = apiTypeExpanded && hasModel,
+                                    onExpandedChange = { if (hasModel) apiTypeExpanded = !apiTypeExpanded },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    SelectableOutlinedTextField(
+                                        value = selectedProfile.name,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        enabled = hasModel,
+                                        label = { Text(stringResource(R.string.media_api_type)) },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(apiTypeExpanded) },
+                                        modifier = Modifier.menuAnchor(
+                                            ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = hasModel
+                                        ).fillMaxWidth().testTag("media_profile_picker_$name")
+                                    )
+                                    AppExposedDropdownMenu(apiTypeExpanded && hasModel, { apiTypeExpanded = false }) {
+                                        profiles.values.forEach { profile ->
+                                            DropdownMenuItem(
+                                                text = { Text(profile.name + " · " +
+                                                    stringResource(if (profile.mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom)) },
+                                                onClick = {
+                                                    if (provider != null && config.modelId.isNotBlank()) {
+                                                        onSaveModelConfiguration(config.providerId, config.modelId,
+                                                            (model ?: ModelConfiguration()).copy(
+                                                                mediaApiType = profile.mode,
+                                                                mediaRequestProfileId = profile.id
+                                                            ))
                                                     }
-                                                )
-                                            }
+                                                    onSave(name, if (image) config.copy(
+                                                        activeImageRequestProfileId = profile.id,
+                                                        imageGenerationMode = profile.mode
+                                                    ) else config.copy(
+                                                        activeVideoRequestProfileId = profile.id,
+                                                        videoGenerationMode = profile.mode
+                                                    ))
+                                                    apiTypeExpanded = false
+                                                }
+                                            )
                                         }
                                     }
-                                    IconButton(
-                                        onClick = { openMediaSettings(name) },
-                                        enabled = provider != null,
-                                        modifier = Modifier.padding(start = 6.dp)
-                                    ) {
-                                        FluentIcon(Icons.Outlined.FormatListBulleted,
-                                            stringResource(if (image) R.string.media_image_gen_profiles else R.string.media_video_gen_profiles))
-                                    }
                                 }
-                                Text(
-                                    stringResource(if (selectedProfile.mode == MediaGenerationMode.DEFAULT)
-                                        R.string.media_profile_default_hint else R.string.media_chain_custom_summary),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                IconButton(
+                                    onClick = { openMediaSettings(name) },
+                                    modifier = Modifier.padding(start = 6.dp).testTag("media_profile_library_$name")
+                                ) {
+                                    FluentIcon(Icons.Outlined.FormatListBulleted,
+                                        stringResource(if (image) R.string.media_image_gen_profiles else R.string.media_video_gen_profiles))
+                                }
                             }
+                            Text(
+                                stringResource(if (selectedProfile.mode == MediaGenerationMode.DEFAULT)
+                                    R.string.media_profile_default_hint else R.string.media_chain_custom_summary),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                     item {

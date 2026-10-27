@@ -54,6 +54,7 @@ fun ChatAppBar(
     modifier: Modifier = Modifier,
     featuresLogoImage: String? = null,
     isTemporaryChat: Boolean = false,
+    onOpenTemporaryChat: () -> Unit = onNewChat,
     onOpenModelPicker: () -> Unit = {},
     /** True while at least one remote machine holds a live connection. */
     showTerminalButton: Boolean = false,
@@ -175,7 +176,7 @@ fun ChatAppBar(
                 }
 
                 Surface(
-                    onClick = onNewChat,
+                    onClick = if (isTemporaryChat) onOpenTemporaryChat else onNewChat,
                     modifier = Modifier.size(48.dp),
                     shape = CircleShape,
                     color = buttonColor,

@@ -7,16 +7,28 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.contentOrNull
+import org.starfall.generative.integrations.media.MediaRequestChainExecutor
+import org.starfall.generative.shared.networking.ToolHttp
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.media.MediaGenerationMode
 import org.starfall.generative.shared.model.media.defaultMediaProfile
@@ -24,6 +36,7 @@ import org.starfall.generative.shared.ui.ToolSwitch
 import org.starfall.generative.shared.helpers.media.imageOptionFields
 import org.starfall.generative.shared.helpers.media.videoOptionFields
 import org.starfall.generative.shared.helpers.media.optionAt
+import org.starfall.generative.shared.helpers.media.selectMediaPath
 import org.starfall.generative.shared.helpers.media.withOption
 import org.starfall.generative.shared.helpers.media.validateImageOptions
 import org.starfall.generative.shared.helpers.media.validateVideoOptions
@@ -47,12 +60,11 @@ import org.starfall.generative.shared.ui.layout.nestedContainerColor
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MediaRequestProfileEditor(
-    provider: ModelProvider,
+    provider: ModelProvider?,
     profile: MediaRequestProfile,
     video: Boolean,
     config: SystemToolConfig = SystemToolConfig(),
-    onSave: (MediaRequestProfile) -> Unit,
-    onAutoSave: (MediaRequestProfile) -> Unit = {},
+    onAutoSave: (MediaRequestProfile) -> Unit,
     onBack: () -> Unit
 ) {
     var draft by remember(profile.id) { mutableStateOf(profile) }
@@ -62,48 +74,67 @@ internal fun MediaRequestProfileEditor(
     val parsedOptions = remember(optionsJson) {
         runCatching { Json.parseToJsonElement(optionsJson) as? JsonObject }.getOrNull()
     }
-    val optionsError = if (draft.mode == MediaGenerationMode.DEFAULT && parsedOptions != null) {
+    val optionsError = if (draft.mode == MediaGenerationMode.DEFAULT && parsedOptions != null &&
+        provider != null && config.modelId.isNotBlank()) {
         runCatching {
             if (video) validateVideoOptions(provider, config.modelId, parsedOptions)
             else validateImageOptions(provider, config.modelId, parsedOptions)
         }.exceptionOrNull()?.message
-    } else if (draft.mode == MediaGenerationMode.DEFAULT) stringResource(R.string.speech_json_invalid_hint) else null
+    } else if (draft.mode == MediaGenerationMode.DEFAULT && parsedOptions == null) {
+        stringResource(R.string.speech_json_invalid_hint)
+    } else null
     var editingStep by remember { mutableStateOf<Int?>(null) }
     var editingFinalResponse by remember { mutableStateOf(false) }
     var confirmDiscard by remember { mutableStateOf(false) }
+    val defaultTestPrompt = stringResource(R.string.media_chain_default_test_prompt)
+    var testPrompt by rememberSaveable(profile.id) { mutableStateOf(defaultTestPrompt) }
+    var testOutput by remember { mutableStateOf<String?>(null) }
+    var testResponse by remember { mutableStateOf<JsonElement?>(null) }
+    var testing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var testJob by remember { mutableStateOf<Job?>(null) }
+    val validName = draft.name.trim().isNotEmpty()
+    val canPersist = validName && (draft.mode != MediaGenerationMode.DEFAULT || optionsError == null)
     val dirty = draft != profile || (draft.mode == MediaGenerationMode.DEFAULT && parsedOptions != draft.options)
-
+    val saved by rememberUpdatedState(onAutoSave)
+    fun normalizedDraft() = draft.copy(name = draft.name.trim(), options = parsedOptions ?: draft.options)
+    // Debounce typing; flushing on Back prevents losing the last keystroke.
+    LaunchedEffect(draft, parsedOptions, optionsError) {
+        if (canPersist && normalizedDraft() != profile) {
+            delay(250)
+            saved(normalizedDraft())
+        }
+    }
     fun leave() {
-        if (dirty) confirmDiscard = true else onBack()
+        if (dirty && !canPersist) {
+            confirmDiscard = true
+        } else {
+            if (canPersist && dirty) saved(normalizedDraft())
+            onBack()
+        }
     }
-
-    fun preparedDraft() = draft.copy(name = draft.name.trim(), options = parsedOptions ?: draft.options)
-    fun autoSaveDraft() {
-        onAutoSave(preparedDraft())
-    }
-
     fun closeStepEditor() {
-        autoSaveDraft()
+        testJob?.cancel()
+        testJob = null
+        testing = false
+        testOutput = null
+        testResponse = null
         editingStep = null
     }
-
     fun removeStep(index: Int) {
         if (draft.chain.steps.size <= 1) return
-        val updated = draft.copy(
-            chain = draft.chain.copy(steps = draft.chain.steps.filterIndexed { stepIndex, _ -> stepIndex != index })
-        )
-        draft = updated
-        onAutoSave(updated.copy(name = updated.name.trim()))
-        editingStep = null
+        draft = draft.copy(chain = draft.chain.copy(
+            steps = draft.chain.steps.filterIndexed { stepIndex, _ -> stepIndex != index }
+        ))
+        closeStepEditor()
     }
-
     BackHandler(enabled = LocalScreenTransitionActive.current) { leave() }
     Scaffold(
         topBar = {
             TopAppBar(
                 colors = edgeToEdgeTopAppBarColors(),
                 title = {
-                    Text(stringResource(if (video) R.string.media_video_gen_profile else R.string.media_image_gen_profile))
+                    Text(draft.name.ifBlank { stringResource(R.string.profile_name) }, maxLines = 1)
                 },
                 navigationIcon = {
                     IconButton(onClick = ::leave) {
@@ -125,14 +156,6 @@ internal fun MediaRequestProfileEditor(
                             }
                         }
                     }
-                    IconButton(
-                        enabled = draft.name.isNotBlank() &&
-                            (draft.mode == MediaGenerationMode.DEFAULT && parsedOptions != null && optionsError == null ||
-                                draft.mode == MediaGenerationMode.CUSTOM && chainValidationError(draft.chain) == null),
-                        onClick = { onSave(preparedDraft()) }
-                    ) {
-                        FluentIcon(Icons.Outlined.Save, stringResource(R.string.common_save))
-                    }
                 }
             )
         }
@@ -150,20 +173,28 @@ internal fun MediaRequestProfileEditor(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Text(
-                    provider.name,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
+                if (provider != null) {
+                    Text(
+                        provider.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
             }
             if (draft.mode == MediaGenerationMode.DEFAULT) {
                 item {
                     Text(stringResource(R.string.image_tool_model_options_description), style = MaterialTheme.typography.bodySmall)
-                    Spacer(Modifier.height(10.dp))
-                    ToolSwitch(stringResource(R.string.image_tool_advanced_json), advancedOptions) { advancedOptions = it }
+                    if (provider == null || config.modelId.isBlank()) {
+                        Text(stringResource(R.string.media_profile_no_model_hint),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall)
+                    } else {
+                        Spacer(Modifier.height(10.dp))
+                        ToolSwitch(stringResource(R.string.image_tool_advanced_json), advancedOptions) { advancedOptions = it }
+                    }
                 }
-                if (advancedOptions) {
+                if (advancedOptions || provider == null || config.modelId.isBlank()) {
                     item {
                         SelectableOutlinedTextField(
                             value = optionsJson, onValueChange = { if (it.length <= 65536) optionsJson = it },
@@ -254,6 +285,12 @@ internal fun MediaRequestProfileEditor(
                     }
                 }
             }
+                chainValidationError(draft.chain)?.let { message ->
+                    item {
+                        Text(stringResource(message), color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                }
             }
         }
     }
@@ -277,9 +314,85 @@ internal fun MediaRequestProfileEditor(
                     ) {
                         FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove))
                     }
-                    IconButton(onClick = ::closeStepEditor) {
-                        FluentIcon(Icons.Outlined.Check, stringResource(R.string.common_done))
+                }
+                if (provider != null && config.modelId.isNotBlank()) {
+                    SelectableOutlinedTextField(
+                        value = testPrompt,
+                        onValueChange = { testPrompt = it },
+                        label = { Text(stringResource(R.string.media_chain_test_prompt)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = {
+                            testJob?.cancel()
+                            testOutput = null
+                            testResponse = null
+                            testing = true
+                            val currentProvider = provider
+                            val currentChain = draft.chain
+                            val currentPrompt = testPrompt
+                            testJob = scope.launch {
+                                try {
+                                    val result = withContext(Dispatchers.IO) {
+                                        MediaRequestChainExecutor(ToolHttp()).testThroughStep(
+                                            currentChain, currentProvider, config.modelId, currentPrompt, index
+                                        )
+                                    }
+                                    testOutput = "HTTP ${result.statusCode}\n${result.body}"
+                                    testResponse = runCatching { Json.parseToJsonElement(result.body) }.getOrNull()
+                                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                    throw cancelled
+                                } catch (error: Exception) {
+                                    val token = currentProvider.auth.token
+                                    val detail = error.message.orEmpty()
+                                    testOutput = if (token.isBlank()) detail else detail.replace(token, "[redacted]")
+                                } finally {
+                                    testing = false
+                                }
+                            }
+                        },
+                        enabled = !testing
+                    ) { Text(stringResource(R.string.media_chain_test_step, index + 1)) }
+                    Text(stringResource(R.string.media_chain_test_file_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (testing) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    testResponse?.let { response ->
+                        val mediaPath = findMediaResponsePath(response)
+                        if (mediaPath != null) {
+                            OutlinedButton(onClick = {
+                                draft = draft.copy(chain = draft.chain.copy(finalResponse =
+                                    draft.chain.finalResponse.copy(
+                                        type = org.starfall.generative.shared.model.media.MediaResponseType.JSON,
+                                        mediaPath = mediaPath,
+                                        sourceStep = index + 1
+                                    )
+                                ))
+                            }) { Text(stringResource(R.string.media_chain_apply_media_path, mediaPath)) }
+                        }
+                        val statusPath = findStatusResponsePath(response)
+                        if (statusPath != null) {
+                            OutlinedButton(onClick = {
+                                val step = draft.chain.steps[index]
+                                draft = draft.copy(chain = draft.chain.copy(steps = draft.chain.steps.toMutableList().apply {
+                                    set(index, step.copy(observation = step.observation.copy(
+                                        enabled = true, statusPath = statusPath
+                                    )))
+                                }))
+                            }) { Text(stringResource(R.string.media_chain_apply_status_path, statusPath)) }
+                        }
                     }
+                    testOutput?.let { output ->
+                        SelectionContainer {
+                            Text(output, fontFamily = FontFamily.Monospace,
+                                style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                } else {
+                    Text(stringResource(R.string.media_chain_test_requires_model),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 MediaRequestStepEditor(
                     stepNumber = index + 1,
@@ -310,9 +423,6 @@ internal fun MediaRequestProfileEditor(
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.weight(1f)
                     )
-                    IconButton(onClick = { editingFinalResponse = false }) {
-                        FluentIcon(Icons.Outlined.Check, stringResource(R.string.common_done))
-                    }
                 }
                 MediaFinalResponseEditor(
                     finalResponse = draft.chain.finalResponse,
@@ -348,3 +458,22 @@ private fun finalResponseSummary(response: MediaFinalResponse): String = when (r
         response.mediaPath.ifBlank { stringResource(R.string.media_chain_json_path_missing) }
     else -> response.type.name.lowercase().replace('_', '-')
 }
+
+/** Suggest only paths observed in a real response, never paths inferred from the provider name. */
+private fun findMediaResponsePath(response: JsonElement): String? =
+    listOf("data[0].url", "data.url", "output[0].url", "output.url", "images[0].url", "result.url", "url")
+        .firstOrNull { path ->
+            runCatching { selectMediaPath(response, path) }.getOrNull()?.any { value ->
+                (value as? JsonPrimitive)?.contentOrNull?.let {
+                    it.startsWith("https://") || it.startsWith("http://")
+                } == true
+            } == true
+        }
+
+private fun findStatusResponsePath(response: JsonElement): String? =
+    listOf("status", "data.status", "result.status", "state", "data.state")
+        .firstOrNull { path ->
+            runCatching { selectMediaPath(response, path) }.getOrNull()?.any {
+                (it as? JsonPrimitive)?.contentOrNull?.isNotBlank() == true
+            } == true
+        }

@@ -24,7 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -43,7 +43,6 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.providerInitials
 import org.starfall.generative.shared.ui.lists.ListViewToggle
-import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 /**
  * A folder shows its own logo when it has one (picked, or recognised from the folder name).
@@ -139,7 +138,7 @@ internal fun ProviderFolderOverlay(
             surfaces.folderGridOrigin = androidx.compose.ui.geometry.Offset.Zero
         }
     }
-    // Animating a single progress value keeps position, size, corner radius, and content in sync.
+    // Keep the detail expansion and full-screen backdrop fade on the same reversible timeline.
     // Starting with the actual card rect also works when the root list has been scrolled.
     val progress = remember { Animatable(if (animateEnter) 0f else 1f) }
     LaunchedEffect(visible, animateExitImmediately) {
@@ -161,8 +160,7 @@ internal fun ProviderFolderOverlay(
     val fraction = progress.value.coerceIn(0f, 1f)
     val contentAlpha = ((fraction - 0.72f) / 0.22f).coerceIn(0f, 1f)
     val start = originBounds?.translate(-hostOrigin)
-    val startColor = prominentContainerColor()
-    // The opened folder page is 60% opaque so the root list stays faintly visible behind it.
+    // A stationary translucent background fades in/out instead of growing from the tapped card.
     val endColor = MaterialTheme.colorScheme.background.copy(alpha = FolderPageOpacity)
     val currentOnDismiss by rememberUpdatedState(onDismiss)
 
@@ -180,6 +178,14 @@ internal fun ProviderFolderOverlay(
                 onClick = {}
             )
         )
+        // This backdrop never inherits the card's bounds, scale or rounded corners.
+        // Its opacity follows the same progress in both directions, including interrupted exits.
+        Box(
+            Modifier.fillMaxSize()
+                .graphicsLayer { alpha = fraction }
+                .background(endColor)
+        )
+        // Only the folder details expand/contract from the tapped tile.
         Surface(
             modifier = Modifier.fillMaxSize()
                 .graphicsLayer {
@@ -194,7 +200,7 @@ internal fun ProviderFolderOverlay(
                 }
                 .testTag("provider_folder_screen_${group.id}"),
             shape = shape,
-            color = lerp(startColor, endColor, fraction)
+            color = Color.Transparent
         ) {
             Box(
                 Modifier.fillMaxSize()

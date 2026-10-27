@@ -191,6 +191,15 @@ class ChatViewModel(
         }
     }
 
+    private fun releaseTemporaryGeneration(conversationId: String) {
+        synchronized(generationLock) {
+            generationObservers.remove(conversationId)?.cancel()
+            generations.remove(conversationId)
+        }
+        _generationStates.update { it - conversationId }
+        _activeStreams.update { it - conversationId }
+    }
+
     private fun existingGeneration(conversationId: String): ChatGeneration? =
         synchronized(generationLock) { generations[conversationId] }
 
@@ -287,7 +296,8 @@ class ChatViewModel(
         cancelSummary = { summaryJob?.cancelAndJoin() },
         cancelTitles = ::cancelAllTitleGenerations,
         cancelTitlesFor = ::cancelTitleGenerationsFor,
-        maybeStartAutomaticSummary = { automaticSummary.maybeStart() },
+        releaseTemporaryGeneration = ::releaseTemporaryGeneration,
+        maybeStartAutomaticSummary = { _currentConversation.value?.isTemporary != true && automaticSummary.maybeStart() },
         isGenerationReplacementActive = { replacingGeneration },
         isSummaryActive = { summaryJob?.isActive == true },
         sendMessage = { text, files, createSkill, skillName -> sendMessage(text, files, createSkill, skillName) },
@@ -336,7 +346,9 @@ class ChatViewModel(
         },
         saveEditedConversation = ::saveEditedConversation,
         drainQueuedMessages = ::drainQueuedMessages,
-        maybeStartAutomaticSummary = automaticSummary::maybeStart,
+        maybeStartAutomaticSummary = { incoming ->
+            _currentConversation.value?.isTemporary != true && automaticSummary.maybeStart(incoming)
+        },
     )
 
     private val messageRetryActions = ChatMessageRetryActions(
@@ -382,9 +394,22 @@ class ChatViewModel(
     fun editQueuedMessage(id: String, newContent: String, files: List<String>): Boolean =
         conversationCoordinator.editQueuedMessage(id, newContent, files)
     fun deleteQueuedMessage(id: String) = conversationCoordinator.deleteQueuedMessage(id)
-    fun selectConversation(conversation: Conversation) = conversationCoordinator.selectConversation(conversation)
-    fun selectConversation(conversationId: String) = conversationCoordinator.selectConversation(conversationId)
-    fun startNewChat() = conversationCoordinator.startNewChat()
+    fun selectConversation(conversation: Conversation) {
+        if (_currentConversation.value?.isTemporary == true) stopSpeaking()
+        conversationCoordinator.selectConversation(conversation)
+    }
+    fun selectConversation(conversationId: String) {
+        if (_currentConversation.value?.isTemporary == true) stopSpeaking()
+        conversationCoordinator.selectConversation(conversationId)
+    }
+    fun startNewChat() {
+        if (_currentConversation.value?.isTemporary == true) stopSpeaking()
+        conversationCoordinator.startNewChat()
+    }
+    fun startTemporaryChat() {
+        if (_currentConversation.value?.isTemporary == true) stopSpeaking()
+        conversationCoordinator.startTemporaryChat()
+    }
     fun deleteConversation(id: String) = conversationCoordinator.deleteConversation(id)
     fun deleteConversations(ids: Set<String>, attachedFiles: Collection<String> = emptyList()) =
         conversationCoordinator.deleteConversations(ids, attachedFiles)
@@ -556,7 +581,7 @@ class ChatViewModel(
                 return@withRestoreGuard false
             }
             val conversation = _currentConversation.value ?: return@withRestoreGuard false
-            if (conversation.messages.isEmpty()) return@withRestoreGuard false
+            if (conversation.messages.isEmpty() || conversation.isTemporary) return@withRestoreGuard false
             val configured = modelContext.summaryTextModel() ?: return@withRestoreGuard false
             val (provider, config) = configured
             summaryJob = viewModelScope.launch {

@@ -58,6 +58,8 @@ class ConversationRepository(private val db: AppDatabase) {
     }
 
     suspend fun saveConversation(conversation: Conversation) {
+        // Central persistence boundary, including streaming checkpoints and tool updates.
+        if (conversation.isTemporary) return
         val persisted = conversation.pruningEmptyResponses()
         withContext(Dispatchers.IO) {
             writeLock.withLock {

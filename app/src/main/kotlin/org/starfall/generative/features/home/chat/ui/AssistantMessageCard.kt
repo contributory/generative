@@ -68,7 +68,8 @@ fun AssistantMessageCard(
     modelIcon: String? = null,
     modifier: Modifier = Modifier,
     conversationId: String? = null,
-    streamStateFlow: StateFlow<ActiveChatStreamState?>? = null
+    streamStateFlow: StateFlow<ActiveChatStreamState?>? = null,
+    cacheEnabled: Boolean = true
 ) {
     val context = LocalContext.current
     SideEffect { ChatRenderMetrics.recordMessageCardRecomposition() }
@@ -87,8 +88,8 @@ fun AssistantMessageCard(
     // Keep the exact incremental Markdown tree mounted after Stop instead of switching to the
     // persisted String and parsing the whole answer again.
     val keepStreamRendererMounted = isStreaming || stoppedStreamForMessage != null
-    val renderCacheIdentity = remember(conversationId, message.id) {
-        conversationId?.let { MarkdownRenderCacheIdentity(it, message.id) }
+    val renderCacheIdentity = remember(conversationId, message.id, cacheEnabled) {
+        conversationId?.takeIf { cacheEnabled }?.let { MarkdownRenderCacheIdentity(it, message.id) }
     }
     // Stream state is consumed by the content subtree below. The card shell keeps its stable
     // version so the toolbar, media actions and tool sheet do not invalidate on every chunk.
@@ -120,6 +121,7 @@ fun AssistantMessageCard(
         // resetting its expanded/visibility state and making it snap closed and animate open again.
         CompletedAssistantContent(
             version = activeVersion,
+            isStreaming = isStreaming,
             processingDurationMillis = processingDurationMillis.takeUnless { isStreaming },
             animateStreamingContent = keepStreamRendererMounted,
             selectedImageAttachments = selectedImageAttachments,
@@ -469,9 +471,15 @@ private data class ProcessingBlock(
     val items: List<ProcessingDropdownItem>
 )
 
+private sealed interface MediaPreviewItem {
+    data class File(val name: String) : MediaPreviewItem
+    data class Pending(val activity: ToolActivity) : MediaPreviewItem
+}
+
 @Composable
 private fun CompletedAssistantContent(
     version: MessageVersion,
+    isStreaming: Boolean,
     processingDurationMillis: Long?,
     animateStreamingContent: Boolean,
     selectedImageAttachments: List<String>,
@@ -569,28 +577,42 @@ private fun CompletedAssistantContent(
                         }
                         .map { it.removePrefix("tool-file:") }
                         .filter { shownFiles.add(it) }
-                    if (files.isNotEmpty()) {
-                        SelectionOnlyPlaceholder("[MediaBlock]")
+                    // A running media tool reserves its preview position immediately. Failed,
+                    // cancelled and historical calls must never leave an empty media tile behind.
+                    val pendingMedia = if (isStreaming) block.items
+                        .filterIsInstance<ProcessingDropdownItem.Tool>()
+                        .map { it.activity }
+                        .filter { it.status == "running" && it.name in setOf("generate_image", "generate_video") }
+                    else emptyList()
+                    val mediaItems = files.map { MediaPreviewItem.File(it) } +
+                        pendingMedia.map { MediaPreviewItem.Pending(it) }
+                    if (mediaItems.isNotEmpty()) {
+                        if (files.isNotEmpty()) SelectionOnlyPlaceholder("[MediaBlock]")
                         DisableSelection {
                             val columns = when {
-                                files.size == 1 -> 1
-                                files.size <= 6 -> 2
+                                mediaItems.size == 1 -> 1
+                                mediaItems.size <= 6 -> 2
                                 else -> 3
                             }
                             Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                files.chunked(columns).forEach { rowFiles ->
+                                mediaItems.chunked(columns).forEach { rowItems ->
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        rowFiles.forEach { name ->
+                                        rowItems.forEach { item ->
                                             Box(Modifier.weight(1f)) {
-                                                key(name) {
-                                                    MediaFileCard(store, name, imageOnly = true,
-                                                        selectedForChat = store.resolve(name)?.path in selectedImageAttachments,
-                                                        onToggleChatImage = onToggleChatImage,
-                                                        playVideoInline = columns == 1)
+                                                when (item) {
+                                                    is MediaPreviewItem.File -> key(item.name) {
+                                                        MediaFileCard(store, item.name, imageOnly = true,
+                                                            selectedForChat = store.resolve(item.name)?.path in selectedImageAttachments,
+                                                            onToggleChatImage = onToggleChatImage,
+                                                            playVideoInline = columns == 1)
+                                                    }
+                                                    is MediaPreviewItem.Pending -> key(item.activity.id) {
+                                                        GeneratedMediaPlaceholder(item.activity)
+                                                    }
                                                 }
                                             }
                                         }
-                                        repeat(columns - rowFiles.size) { Spacer(Modifier.weight(1f)) }
+                                        repeat(columns - rowItems.size) { Spacer(Modifier.weight(1f)) }
                                     }
                                 }
                             }

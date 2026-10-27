@@ -4,6 +4,10 @@ import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.CancellationException
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.flow.update
 import java.io.*
 import java.security.MessageDigest
@@ -11,9 +15,24 @@ import java.util.UUID
 import kotlin.coroutines.coroutineContext
 import org.starfall.generative.shared.networking.text
 
+/** Marks media created by a temporary chat. Preserved across coroutine dispatcher switches. */
+class TemporaryChatFiles(val conversationId: String) : AbstractCoroutineContextElement(Key) {
+    companion object Key : CoroutineContext.Key<TemporaryChatFiles>
+}
+
 /** App-private files only; database rows never contain binary data. */
 class ToolFiles(val directory: File) {
-    constructor(context: Context): this(appStorageDirectory(context))
+    constructor(context: Context): this(appStorageDirectory(context)) {
+        val root = File(context.cacheDir, "temporary_chat_media")
+        synchronized(initialized) {
+            if (initializedTemporaryRoots.add(directory.canonicalPath)) {
+                // Discard files left by a process that died during a temporary session.
+                root.deleteRecursively()
+                root.mkdirs()
+            }
+            cacheRoots[directory.canonicalPath] = root
+        }
+    }
     init {
         directory.mkdirs()
         synchronized(initialized) {
@@ -34,15 +53,58 @@ class ToolFiles(val directory: File) {
         val revision = kotlinx.coroutines.flow.MutableStateFlow(0L)
         private val initialized = mutableSetOf<String>()
         private val indexes = mutableMapOf<String, DirectoryIndex>()
+        private val initializedTemporaryRoots = mutableSetOf<String>()
+        private val cacheRoots = mutableMapOf<String, File>()
+        private val temporarySessions = mutableMapOf<String, MutableMap<String, ToolFiles>>()
     }
     private val index = synchronized(initialized) {
         indexes.getOrPut(directory.canonicalPath) { DirectoryIndex() }
     }
-    private val limit = 256L * 1024 * 1024
-    fun resolve(name: String): File? = name.takeIf { it.matches(Regex("[a-zA-Z0-9._-]+")) }
-        ?.let { File(directory, it) }?.takeIf {
-            it.isFile && !it.name.endsWith(".part") && it.canonicalFile.parentFile == directory.canonicalFile
+    /** Temporary media lives only in cache and never appears in Media Storage. */
+    fun openTemporarySession(id: String, cacheDirectory: File? = null) {
+        require(id.matches(Regex("[a-zA-Z0-9-]+"))) { "Invalid temporary session ID" }
+        synchronized(initialized) {
+            val root = cacheDirectory ?: cacheRoots[directory.canonicalPath]
+                ?: error("Temporary media cache is not configured")
+            cacheRoots[directory.canonicalPath] = root
+            root.mkdirs()
+            val sessions = temporarySessions.getOrPut(directory.canonicalPath) { mutableMapOf() }
+            check(id !in sessions) { "Temporary session already exists" }
+            sessions[id] = ToolFiles(File(root, id))
         }
+    }
+
+    suspend fun closeTemporarySession(id: String) {
+        val session = synchronized(initialized) { temporarySessions[directory.canonicalPath]?.remove(id) }
+        if (session != null) withContext(Dispatchers.IO) {
+            session.directory.deleteRecursively()
+            revision.update { it + 1 }
+        }
+    }
+
+    private suspend fun currentTemporaryFiles(): ToolFiles? {
+        val id = currentCoroutineContext()[TemporaryChatFiles]?.conversationId ?: return null
+        // This is already the cache-backed ToolFiles instance, not the permanent store.
+        val isCacheInstance = synchronized(initialized) {
+            cacheRoots.values.any { directory.canonicalFile.parentFile == it.canonicalFile }
+        }
+        if (isCacheInstance) return null
+        // Do not fall back to permanent storage if a cancelled chat writes late.
+        return synchronized(initialized) { temporarySessions[directory.canonicalPath]?.get(id) }
+            ?: throw CancellationException("Temporary chat was discarded")
+    }
+
+    private val limit = 256L * 1024 * 1024
+    fun resolve(name: String): File? {
+        if (!name.matches(Regex("[a-zA-Z0-9._-]+")) || name.endsWith(".part")) return null
+        val temporary = synchronized(initialized) {
+            temporarySessions[directory.canonicalPath]?.values?.toList().orEmpty()
+        }
+        return (temporary.map { File(it.directory, name) } + File(directory, name)).firstOrNull {
+            it.isFile && it.canonicalFile.parentFile in
+                (temporary.map { session -> session.directory.canonicalFile } + directory.canonicalFile)
+        }
+    }
     /**
      * Name of the app-private file a stored reference points at, whether it is saved as `tool-file:<name>`,
      * a bare name, an absolute path or a `file:` URI. Returns null for anything outside this directory,
@@ -56,7 +118,10 @@ class ToolFiles(val directory: File) {
         val name = if ('/' in path) {
             val file = File(path)
             val parent = runCatching { file.canonicalFile.parentFile }.getOrNull()
-            if (parent != directory.canonicalFile) return null
+            val temporaryDirectories = synchronized(initialized) {
+                temporarySessions[directory.canonicalPath]?.values?.map { it.directory.canonicalFile }.orEmpty()
+            }
+            if (parent != directory.canonicalFile && parent !in temporaryDirectories) return null
             file.name
         } else path
         return name.takeIf { it.matches(Regex("[a-zA-Z0-9._-]+")) && !it.endsWith(".part") && !it.endsWith(".spill") }
@@ -106,8 +171,10 @@ class ToolFiles(val directory: File) {
         }
     }
     private fun checkSpace() { check(directory.usableSpace > 64L * 1024 * 1024) { "Not enough storage. Free space in Storage." } }
-    suspend fun save(input: InputStream, mime: String? = null, maxBytes: Long = limit): String =
-        saveInternal(input, mime, maxBytes)
+    suspend fun save(input: InputStream, mime: String? = null, maxBytes: Long = limit): String {
+        val target = currentTemporaryFiles()
+        return if (target != null) target.save(input, mime, maxBytes) else saveInternal(input, mime, maxBytes)
+    }
 
     private suspend fun saveInternal(
         input: InputStream,
@@ -207,7 +274,13 @@ class ToolFiles(val directory: File) {
         java.util.Base64.getMimeDecoder().wrap(source).use { save(it) }
     }
     /** Streaming JSON scanner; media payloads are spooled, while text content is preserved in full. */
-    suspend fun sanitize(reader: Reader): String = withContext(Dispatchers.IO) {
+    suspend fun sanitize(reader: Reader): String {
+        val target = currentTemporaryFiles()
+        if (target != null) return target.sanitize(reader)
+        return sanitizeInternal(reader)
+    }
+
+    private suspend fun sanitizeInternal(reader: Reader): String = withContext(Dispatchers.IO) {
         val input = PushbackReader(BufferedReader(reader), 2)
         val output = StringBuilder()
         var lastKey = ""

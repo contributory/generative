@@ -15,6 +15,7 @@ internal class RemoteTerminalInput(
 ) {
     var ctrlActive by mutableStateOf(false)
     var altActive by mutableStateOf(false)
+    var shiftActive by mutableStateOf(false)
     var inputMode by mutableStateOf(initialInputMode)
         private set
     var localInput by mutableStateOf("")
@@ -28,6 +29,16 @@ internal class RemoteTerminalInput(
     private var historyDraft = ""
 
     val hasLocalDraft: Boolean get() = localInput.isNotEmpty()
+    val localCursorPosition: Int get() = localCursor
+
+    /** The IME keeps the full editable line, including committed text, so Vietnamese
+     * keyboards can replace previous syllables instead of appending their corrections. */
+    fun updateLocalDraftFromIme(text: String, cursor: Int) {
+        if (!inputMode.usesLocalInput) return
+        localInput = text
+        localCursor = cursor.coerceIn(0, text.length)
+        historyIndex = commandHistory.size
+    }
 
     fun setInputMode(mode: TerminalInputMode): Boolean {
         if (!mode.usesLocalInput && hasLocalDraft) return false
@@ -78,7 +89,8 @@ internal class RemoteTerminalInput(
         sequence: String,
         ctrl: Boolean = ctrlActive,
         alt: Boolean = altActive,
-        forceRemote: Boolean = false
+        forceRemote: Boolean = false,
+        shift: Boolean = shiftActive
     ) {
         snapToBottom()
         if (!forceRemote && inputMode.usesLocalInput && sequence in setOf("\r", "\n")) {
@@ -106,9 +118,9 @@ internal class RemoteTerminalInput(
         }
         val match = Regex("^\u001b\\[(\\d*)([A-Za-z~])$").matchEntire(sequence)
         val output = when {
-            match != null && (ctrl || alt) -> {
+            match != null && (ctrl || alt || shift) -> {
                 val number = match.groupValues[1].ifEmpty { "1" }
-                val modifier = 1 + (if (alt) 2 else 0) + (if (ctrl) 4 else 0)
+                val modifier = 1 + (if (shift) 1 else 0) + (if (alt) 2 else 0) + (if (ctrl) 4 else 0)
                 "\u001b[$number;$modifier${match.groupValues[2]}"
             }
             match != null && match.groupValues[1].isEmpty() && match.groupValues[2] in "ABCD" &&
@@ -122,6 +134,11 @@ internal class RemoteTerminalInput(
 
     fun sendCodePoint(codePoint: Int, ctrl: Boolean, alt: Boolean) {
         snapToBottom()
+        val shiftedPoint = when {
+            shiftActive && codePoint in 'a'.code..'z'.code -> codePoint - 32
+            shiftActive && codePoint == '/'.code -> '?'.code
+            else -> codePoint
+        }
         if (inputMode.usesLocalInput) {
             if (ctrl) {
                 handleLocalControl(codePoint, alt)
@@ -132,12 +149,12 @@ internal class RemoteTerminalInput(
                 '\n'.code, '\r'.code -> submitLocalInput()
                 '\b'.code, 0x7f -> deleteLocalPrevious()
                 0x1b -> clearLocalInput()
-                else -> insertLocalText(String(Character.toChars(codePoint)))
+                else -> insertLocalText(String(Character.toChars(shiftedPoint)))
             }
             clearModifiers()
             return
         }
-        sendRemote(codePointBytes(codePoint, ctrl, alt))
+        sendRemote(codePointBytes(shiftedPoint, ctrl, alt))
     }
 
     fun sendKey(keyCode: Int, event: KeyEvent): Boolean {
@@ -174,6 +191,7 @@ internal class RemoteTerminalInput(
     fun clearModifiers() {
         ctrlActive = false
         altActive = false
+        shiftActive = false
     }
 
     private fun insertLocalText(value: String) {

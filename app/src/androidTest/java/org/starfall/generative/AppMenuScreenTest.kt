@@ -160,10 +160,12 @@ class AppMenuScreenTest {
     }
 
     @Test fun emptyChatToolbarShowsTemporaryChatAction() {
-        var opened = 0
+        var temporaryOpened = 0
+        var regularOpened = 0
         compose.setContent {
             MaterialTheme {
-                ChatAppBar("Selected model", "Provider", {}, { opened++ }, {}, isTemporaryChat = true)
+                ChatAppBar("Selected model", "Provider", {}, { regularOpened++ }, {},
+                    isTemporaryChat = true, onOpenTemporaryChat = { temporaryOpened++ })
             }
         }
 
@@ -171,6 +173,9 @@ class AppMenuScreenTest {
             .assertIsDisplayed()
             .performClick()
         compose.onNodeWithContentDescription("New chat").assertDoesNotExist()
-        compose.runOnIdle { assertEquals(1, opened) }
+        compose.runOnIdle {
+            assertEquals(1, temporaryOpened)
+            assertEquals(0, regularOpened)
+        }
     }
 }

@@ -133,6 +133,7 @@ fun UserInputArea(
     onOpenFeatureToolsSettings: () -> Unit = {},
     onOpenMcpConnectorsSettings: () -> Unit = {},
     chatModeRequest: Int = 0,
+    temporaryChatId: String? = null,
     modifier: Modifier = Modifier,
     agentSkills: List<AgentSkill> = defaultAgentSkills(),
     onSendMessageWithSkill: (String, List<String>, Boolean, String?) -> Boolean = { text, files, _, _ -> onSendMessage(text, files) },
@@ -153,6 +154,7 @@ fun UserInputArea(
     val toolFiles = remember(context) { ToolFiles(context) }
     val latestAttachments by rememberUpdatedState(attachments)
     val latestOnAttachmentsChange by rememberUpdatedState(onAttachmentsChange)
+    val latestTemporaryChatId by rememberUpdatedState(temporaryChatId)
     val clipboardContentListener = remember(context, toolFiles, coroutineScope) {
         ReceiveContentListener { content ->
             val clipData = content.clipEntry.clipData
@@ -171,7 +173,10 @@ fun UserInputArea(
                 imageItems.forEach { item ->
                     val uri = item.uri ?: return@forEach
                     coroutineScope.launch {
-                        val reference = withContext(Dispatchers.IO) {
+                        val sessionId = latestTemporaryChatId
+                        val fileContext = sessionId?.let { org.starfall.generative.shared.files.TemporaryChatFiles(it) }
+                            ?: kotlin.coroutines.EmptyCoroutineContext
+                        val reference = withContext(Dispatchers.IO + fileContext) {
                             runCatching {
                                 val mimeType = context.contentResolver.getType(uri)
                                 context.contentResolver.openInputStream(uri)?.use { input ->
@@ -180,7 +185,7 @@ fun UserInputArea(
                                 }
                             }.getOrNull()
                         }
-                        reference?.let {
+                        reference?.takeIf { latestTemporaryChatId == sessionId }?.let {
                             latestOnAttachmentsChange((latestAttachments + it).distinct())
                         }
                     }

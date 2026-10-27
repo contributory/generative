@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -52,9 +53,13 @@ internal fun TerminalAppBar(
             val imeDescription = stringResource(R.string.remote_machine_terminal_ime)
             IconToggleButton(
                 checked = bridge?.imeEnabled == true,
+                colors = IconButtonDefaults.iconToggleButtonColors(
+                    checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                modifier = Modifier.semantics { contentDescription = imeDescription },
                 onCheckedChange = { onToggleIme() },
-                enabled = bridge != null,
-                modifier = Modifier.semantics { contentDescription = imeDescription }
+                enabled = bridge != null
             ) {
                 Text(stringResource(R.string.remote_machine_terminal_input_ime_short),
                     style = MaterialTheme.typography.labelMedium)
@@ -76,7 +81,8 @@ internal fun TerminalAppBar(
                             leadingIcon = {
                                 if (option == mode) FluentIcon(Icons.Default.Check, null)
                             },
-                            enabled = bridge != null && (option.usesLocalInput || canUseRemoteInput),
+                            // Do not switch away while either editor has an unsent draft.
+                            enabled = bridge != null && (option == mode || canUseRemoteInput),
                             onClick = { onInputModeChange(option); inputMenuOpen = false }
                         )
                     }
@@ -84,6 +90,10 @@ internal fun TerminalAppBar(
             }
             IconToggleButton(
                 checked = bridge?.forceMouse == true,
+                colors = IconButtonDefaults.iconToggleButtonColors(
+                    checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
                 onCheckedChange = { onToggleForceMouse() },
                 enabled = bridge != null
             ) {

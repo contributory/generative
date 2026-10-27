@@ -101,5 +101,7 @@ data class Conversation(
     /** Instructions switched on for this chat; null until chosen, then the library default applies. */
     @SerialName("selected_prompt_ids") val selectedInstructionIds: Set<String>? = null,
     /** Process-local list-structure epoch; serialized conversations always restore at revision zero. */
-    @kotlinx.serialization.Transient val structuralRevision: Long = 0L
+    @kotlinx.serialization.Transient val structuralRevision: Long = 0L,
+    /** Memory-only session: it must never be added to history, backups, or persistent storage. */
+    @kotlinx.serialization.Transient val isTemporary: Boolean = false
 )

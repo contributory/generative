@@ -37,9 +37,9 @@ class RemoteTerminalExtraKeysTest {
                 }
             }
 
-            listOf("ESC", "TAB", "CTRL", "ALT", "HOME", "END", "PGUP", "PGDN")
+            listOf("Esc", "Tab", "Shift", "Ctrl", "Alt", "Home", "End", "P↑", "P↓", "/")
                 .forEach { compose.onNodeWithText(it).assertExists() }
-            listOf("|", "~", "-", "/", "\\", "_", "$", "&", "*", "<", ">")
+            listOf("|", "~", "-", "\\", "_", "$", "&", "*", "<", ">")
                 .forEach { compose.onNodeWithText(it).assertDoesNotExist() }
 
             val up = compose.onNodeWithText("↑").getUnclippedBoundsInRoot()
@@ -52,6 +52,24 @@ class RemoteTerminalExtraKeysTest {
             assertEquals(right.center.y, down.center.y, 1f)
             assertTrue(left.right <= down.left)
             assertTrue(down.right <= right.left)
+            val shift = compose.onNodeWithText("Shift").getUnclippedBoundsInRoot()
+            val esc = compose.onNodeWithText("Esc").getUnclippedBoundsInRoot()
+            val ctrl = compose.onNodeWithText("Ctrl").getUnclippedBoundsInRoot()
+            val tab = compose.onNodeWithText("Tab").getUnclippedBoundsInRoot()
+            val alt = compose.onNodeWithText("Alt").getUnclippedBoundsInRoot()
+            val slash = compose.onNodeWithText("/").getUnclippedBoundsInRoot()
+            val pageUp = compose.onNodeWithText("P↑").getUnclippedBoundsInRoot()
+            val pageDown = compose.onNodeWithText("P↓").getUnclippedBoundsInRoot()
+            val home = compose.onNodeWithText("Home").getUnclippedBoundsInRoot()
+            val end = compose.onNodeWithText("End").getUnclippedBoundsInRoot()
+            assertEquals(esc.center.x, ctrl.center.x, 1f)
+            assertEquals(tab.center.x, alt.center.x, 1f)
+            assertEquals(shift.center.x, left.center.x, 1f)
+            assertEquals(slash.center.x, right.center.x, 1f)
+            assertEquals(pageUp.center.x, pageDown.center.x, 1f)
+            assertEquals(home.center.x, end.center.x, 1f)
+            assertEquals(esc.center.y, home.center.y, 1f)
+            assertEquals(ctrl.center.y, end.center.y, 1f)
         } finally {
             bridge.close()
         }

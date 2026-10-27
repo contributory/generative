@@ -249,7 +249,7 @@ internal fun RemoteTerminalScreen(
                 onDismiss()
             },
             canUseRemoteInput = terminalSlots.none {
-                it.bridge.hasLocalDraft || (it.bridge.inputMode.usesLocalInput && it.bridge.composingText.isNotEmpty())
+                it.bridge.hasLocalDraft || it.bridge.composingText.isNotEmpty()
             },
             onInputModeChange = { mode ->
                 // Input mode is a per-machine preference: apply it to every

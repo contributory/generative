@@ -49,6 +49,7 @@ internal class ChatConversationCoordinator(
     private val cancelSummary: suspend () -> Unit,
     private val cancelTitles: suspend () -> Unit = {},
     private val cancelTitlesFor: suspend (Set<String>) -> Unit = {},
+    private val releaseTemporaryGeneration: (String) -> Unit = {},
     private val maybeStartAutomaticSummary: () -> Boolean,
     private val isGenerationReplacementActive: () -> Boolean,
     private val isSummaryActive: () -> Boolean,
@@ -303,6 +304,7 @@ internal class ChatConversationCoordinator(
     }
 
     private fun applySelectedConversation(conversation: Conversation) {
+        discardTemporaryOnExit(conversation.id)
         val selected = existingGeneration(conversation.id)?.snapshot ?: conversation
         PersistentMarkdownAstCache.authorizeConversation(selected.id, selected.messages.map { it.id })
         if (selected.id != currentConversation.value?.id) disconnectRemoteMachines()
@@ -318,16 +320,47 @@ internal class ChatConversationCoordinator(
         drainQueuedMessages()
     }
 
-    fun startNewChat() = withRestoreGuard(onRejected = {}) {
+    fun startNewChat() = startBlankChat(temporary = false)
+
+    fun startTemporaryChat() = startBlankChat(temporary = true)
+
+    /** Cancel a temporary response before navigating away; discard cache files after its jobs finish. */
+    private fun discardTemporaryOnExit(nextId: String) {
+        val old = currentConversation.value?.takeIf { it.isTemporary && it.id != nextId } ?: return
+        existingGeneration(old.id)?.stop()
+        queuedMessagesByConversation.update { it - old.id }
+        scope.launch(LocalWriteErrors.handler) {
+            try {
+                cancelTitlesFor(setOf(old.id))
+                if (summaryConversationId() == old.id) cancelSummary()
+            } finally {
+                // Cleanup must finish even if an active request is being cancelled.
+                withContext(kotlinx.coroutines.NonCancellable) { disposeTemporarySession(old.id) }
+            }
+        }
+    }
+
+    private suspend fun disposeTemporarySession(id: String) {
+        generationsFor(setOf(id)).forEach { it.stopAndJoin() }
+        releaseTemporaryGeneration(id)
+        toolFiles.closeTemporarySession(id)
+        PersistentMarkdownAstCache.invalidateConversation(id)
+    }
+
+    private fun startBlankChat(temporary: Boolean) = withRestoreGuard(onRejected = {}) {
         // A selection read started earlier must not replace this blank draft when it completes.
         conversationSelectionToken++
+        discardTemporaryOnExit("")
         disconnectRemoteMachines()
         val now = System.currentTimeMillis()
+        val id = java.util.UUID.randomUUID().toString()
+        if (temporary) toolFiles.openTemporarySession(id)
         currentConversation.value = Conversation(
-            id = java.util.UUID.randomUUID().toString(),
-            title = "New Chat",
+            id = id,
+            title = if (temporary) "Temporary Chat" else "New Chat",
             createdAt = now,
-            updatedAt = now
+            updatedAt = now,
+            isTemporary = temporary
         )
         scope.launch(LocalWriteErrors.handler) {
             if (!restoreInProgress) prefsRepo.setLastActiveConversationId(null)
@@ -475,6 +508,7 @@ internal class ChatConversationCoordinator(
                 cancelTitles()
                 cancelSummary()
                 allGenerations().forEach { it.stopAndJoin() }
+                previous?.takeIf { it.isTemporary }?.let { disposeTemporarySession(it.id) }
                 val uploads = conversationRepo.allFileReferences().mapNotNull(toolFiles::nameOf).toSet() +
                     uploadsOf(listOfNotNull(previous))
                 conversationRepo.deleteAll()
@@ -504,6 +538,7 @@ internal class ChatConversationCoordinator(
             cancelTitles()
             cancelSummary()
             allGenerations().forEach { it.stopAndJoin() }
+            currentConversation.value?.takeIf { it.isTemporary }?.let { disposeTemporarySession(it.id) }
             currentConversation.value = null
             queuedMessagesByConversation.value = emptyMap()
             deletingConversations.value = emptySet()

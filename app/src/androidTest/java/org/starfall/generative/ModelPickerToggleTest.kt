@@ -3,6 +3,7 @@ package org.starfall.generative
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import org.junit.Assert.assertEquals
@@ -94,6 +95,38 @@ class ModelPickerToggleTest {
         compose.onNodeWithTag("model-picker-tab_folder_folder").assertDoesNotExist()
         compose.onNodeWithTag("model-picker-tab_ungrouped").assertIsDisplayed()
         compose.onNodeWithTag("model-picker-model_root_gamma").assertIsDisplayed()
+    }
+
+    @Test fun searchToolbarStaysAtTheBottomWhenFocusChanges() {
+        val provider = ModelProvider("p", "Primary", ModelApiType.OPENAI, baseUrl = "",
+            config = ProviderConfiguration(modelIds = listOf("alpha", "beta")))
+        lateinit var focusManager: androidx.compose.ui.focus.FocusManager
+        compose.setContent {
+            focusManager = LocalFocusManager.current
+            MaterialTheme {
+                ModelPickerSheet(
+                    providers = listOf(provider), selectedProviderId = "", selectedModelId = "",
+                    conversationReasoningEffort = null, onSelectModel = { _, _ -> },
+                    onSetReasoningEffort = {}, onDismiss = {}
+                )
+            }
+        }
+        fun assertFooterBelowList() {
+            val listBottom = compose.onNodeWithTag("model-picker-list").getUnclippedBoundsInRoot().bottom
+            val footerTop = compose.onNodeWithTag("model-picker-toolbar").getUnclippedBoundsInRoot().top
+            assertTrue("Search toolbar must be below the scrollable model list", footerTop >= listBottom)
+        }
+        assertFooterBelowList()
+        compose.onNodeWithTag("model-picker-search-button").performClick()
+        compose.onNodeWithTag("model-picker-search").assertIsFocused().performTextInput("alpha")
+        assertFooterBelowList()
+        compose.runOnIdle { focusManager.clearFocus(force = true) }
+        // Focus may leave before the system finishes animating the IME closed.
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithTag("model-picker-search-button").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("model-picker-search-button").assertIsDisplayed()
+        assertFooterBelowList()
     }
 
     @Test fun searchLosesFocusOnOutsideTapAndImeAction() {
