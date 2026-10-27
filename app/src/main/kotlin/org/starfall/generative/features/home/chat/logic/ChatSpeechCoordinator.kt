@@ -8,6 +8,8 @@ import org.starfall.generative.shared.media.SpeechSynthesisService
 import org.starfall.generative.shared.media.TtsHelper
 import org.starfall.generative.shared.media.speechText
 import org.starfall.generative.shared.model.SpeechService
+import org.starfall.generative.shared.model.SpeechEngine
+import org.starfall.generative.integrations.speech.StandaloneSpeechClient
 import org.starfall.generative.shared.model.effectiveTtsProviderId
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
@@ -42,12 +44,18 @@ internal class ChatSpeechCoordinator(
                 activeTestService.value = null
             }
         }
-        if (service.provider.equals("system", ignoreCase = true)) {
+        if (service.engine == SpeechEngine.SYSTEM) {
             tts.speak(plainText, service.speed, service.pitch, service.voice, onFinished)
             return
         }
         job = scope.launch {
             try {
+                if (service.engine.standalone) {
+                    val audio = StandaloneSpeechClient().synthesize(service, plainText)
+                    ensureActive()
+                    player.play(audio, onFinished, onError = { tts.reportError(R.string.speech_playback_failed) })
+                    return@launch
+                }
                 val provider = providers.value.find { it.id == service.provider }
                 if (provider == null) {
                     tts.reportError(R.string.speech_provider_missing)

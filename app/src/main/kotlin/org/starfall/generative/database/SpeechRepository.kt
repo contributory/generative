@@ -9,7 +9,8 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.*
+import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.database.AppDatabase
 import org.starfall.generative.integrations.security.SecretCipher
@@ -56,6 +57,10 @@ class SpeechRepository(private val db: AppDatabase) {
                 languageCode = service.languageCode,
                 authId = authId
             ))
+            structured.replaceDocument(StructuredJsonDocument("speech_service", service.id, "engine_settings", buildJsonObject {
+                put("engine", service.engine.name)
+                put("voiceName", service.voiceName)
+            }))
             val old = structured.getDocument("speech_service", service.id, "extra_body")
             if (service.extraBody.isNotEmpty()) structured.replaceDocument(StructuredJsonDocument("speech_service", service.id, "extra_body", service.extraBody))
             else old?.let { structured.deleteDocument(it.id) }
@@ -66,7 +71,9 @@ class SpeechRepository(private val db: AppDatabase) {
         db.withTransaction {
             dao.getServiceById(id)?.authId?.let { dao.deleteAuth(it) }
             dao.deleteById(id)
-            structured.getDocument("speech_service", id, "extra_body")?.let { structured.deleteDocument(it.id) }
+            listOf("extra_body", "engine_settings").forEach { kind ->
+                structured.getDocument("speech_service", id, kind)?.let { structured.deleteDocument(it.id) }
+            }
         }
     }
 
@@ -82,6 +89,10 @@ class SpeechRepository(private val db: AppDatabase) {
             SecretCipher.decryptStrict(auth.encryptedApiKey)
         }.orEmpty()
         val extraBody = structured.readDocument("speech_service", entity.id, "extra_body") as? JsonObject ?: JsonObject(emptyMap())
+        val settings = structured.readDocument("speech_service", entity.id, "engine_settings") as? JsonObject
+        val engine = settings?.get("engine")?.jsonPrimitive?.contentOrNull?.let { value ->
+            SpeechEngine.entries.firstOrNull { it.name == value }
+        } ?: if (entity.provider.equals("system", true)) SpeechEngine.SYSTEM else SpeechEngine.PROVIDER
         return SpeechService(
             id = entity.id,
             name = entity.name,
@@ -96,6 +107,8 @@ class SpeechRepository(private val db: AppDatabase) {
             instructions = entity.instructions,
             responseFormat = entity.responseFormat,
             languageCode = entity.languageCode,
+            engine = engine,
+            voiceName = settings?.get("voiceName")?.jsonPrimitive?.contentOrNull.orEmpty(),
             extraBody = extraBody
         )
     }

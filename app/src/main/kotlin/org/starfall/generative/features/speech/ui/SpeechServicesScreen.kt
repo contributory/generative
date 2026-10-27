@@ -148,7 +148,8 @@ fun SpeechServicesScreen(
                         itemsIndexed(orderedServices, key = { _, item -> item.id }) { _, service ->
                             ReorderableItem(reorderState, key = service.id) { _ ->
                                 val providerName = when {
-                                    service.provider.equals("system", ignoreCase = true) -> stringResource(R.string.speech_system_tts)
+                                    service.engine == org.starfall.generative.shared.model.SpeechEngine.SYSTEM -> stringResource(R.string.speech_system_tts)
+                                    service.engine.standalone -> speechEngineLabel(service.engine)
                                     else -> providersById[service.provider]?.name ?: service.provider
                                 }
                                 val provider = providersById[service.provider]

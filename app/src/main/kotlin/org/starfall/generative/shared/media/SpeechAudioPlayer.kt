@@ -19,7 +19,10 @@ class SpeechAudioPlayer(private val context: Context) {
             var ownedPlayer: ExoPlayer? = null
             try {
                 withContext(Dispatchers.IO) {
-                    file = File.createTempFile("generative_tts_", ".mp3", context.cacheDir)
+                    val extension = when (audioMime(audio)) {
+                        "audio/wav" -> ".wav"; "audio/aac" -> ".aac"; "audio/ogg" -> ".ogg"; "audio/flac" -> ".flac"; else -> ".mp3"
+                    }
+                    file = File.createTempFile("generative_tts_", extension, context.cacheDir)
                     file!!.writeBytes(audio)
                 }
                 val preparedFile = file!!

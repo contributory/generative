@@ -4,6 +4,11 @@ import kotlinx.serialization.Serializable
 import org.starfall.generative.shared.model.provider.ModelProvider
 
 @Serializable
+enum class SpeechEngine { SYSTEM, PROVIDER, ELEVENLABS, FISH_AUDIO, CARTESIA;
+    val standalone: Boolean get() = this !in listOf(SYSTEM, PROVIDER)
+}
+
+@Serializable
 data class SpeechService(
     val id: String,
     val name: String,
@@ -18,11 +23,13 @@ data class SpeechService(
     val instructions: String = "",
     val responseFormat: String = "mp3",
     val languageCode: String = "",
+    val engine: SpeechEngine = if (provider.equals("system", true)) SpeechEngine.SYSTEM else SpeechEngine.PROVIDER,
+    val voiceName: String = "",
     val extraBody: kotlinx.serialization.json.JsonObject = kotlinx.serialization.json.JsonObject(emptyMap())
 )
 
 /** Returns the configured TTS service, falling back to Android System TTS and then the first service. */
 fun List<SpeechService>.effectiveTtsProviderId(selectedSpeechServiceId: String?): String? =
     firstOrNull { it.id == selectedSpeechServiceId }?.id
-        ?: firstOrNull { it.provider.equals("system", ignoreCase = true) }?.id
+        ?: firstOrNull { it.engine == SpeechEngine.SYSTEM }?.id
         ?: firstOrNull()?.id
