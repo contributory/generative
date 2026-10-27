@@ -176,7 +176,7 @@
     <string name="provider_antigravity_changelist_invalid">Enter digits only, or leave empty to use the version-aware default.</string>
     <string name="provider_antigravity_project_id">Antigravity project ID (optional)</string>
     <string name="http_unencrypted_provider_warning">HTTP is unencrypted. API keys, headers and messages can be read on the network. Use HTTPS outside a trusted local network.</string>
-    <string name="stream" translatable="false">Stream Response</string>
+    <string name="stream">Stream Response</string>
     <string name="custom_headers">Custom Headers</string>
     <string name="open_model_catalog">Open model catalog</string>
     <string name="test_connection">Test connection</string>
@@ -618,6 +618,20 @@
     <string name="use_system_language">Use system language</string>
     <string name="use_system_language_desc">Follow the device language. Turn off to choose a language for this app.</string>
     <string name="app_language">App language</string>
+    <string name="language_name_en">English</string>
+    <string name="language_name_vi">Vietnamese</string>
+    <string name="language_name_fr">French</string>
+    <string name="language_name_de">German</string>
+    <string name="language_name_ja">Japanese</string>
+    <string name="language_name_ko">Korean</string>
+    <string name="language_name_zh_cn">Chinese (Simplified)</string>
+    <string name="language_name_zh_tw">Chinese (Traditional)</string>
+    <string name="language_name_es">Spanish</string>
+    <string name="language_name_pt_br">Portuguese (Brazil)</string>
+    <string name="language_name_ru">Russian</string>
+    <string name="language_name_it">Italian</string>
+    <string name="language_name_th">Thai</string>
+    <string name="language_name_id">Indonesian</string>
 
     <string name="settings_group_external_services">External Services</string>
     <string name="settings_group_data_caching">Data &amp; Caching</string>
@@ -689,9 +703,9 @@
     <string name="settings_mcp_manage_description">Tool servers &amp; integrations</string>
     <string name="settings_speech_services_description">Text-to-speech models &amp; voices</string>
     <string name="settings_storage">Media Storage</string>
-    <string name="storage_short_title" translatable="false">Media</string>
+    <string name="storage_short_title">Media</string>
     <string name="settings_storage_description">Files created by your tools</string>
-    <string name="storage_open_in_files" translatable="false">Open in Files</string>
+    <string name="storage_open_in_files">Open in Files</string>
     <string name="storage_open_in_files_failed">Could not open the system file manager.</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_theme_description">Choose Light, Dark, or follow your system theme.</string>
@@ -808,155 +822,155 @@
     <string name="settings_up_to_date">Up to date (%1$s)</string>
     <string name="settings_open_github_release">Open GitHub Release Page</string>
     <string name="settings_find_latest_release">Find the latest Generative release on GitHub.</string>
-    <string name="remote_machines_title" translatable="false">Remote Machines</string>
-    <string name="remote_machine_short_title" translatable="false">Remote</string>
-    <string name="remote_machine_counts" translatable="false">Configured: %1$d • Enabled: %2$d</string>
-    <string name="remote_machines_description" translatable="false">SSH and Google Cloud Shell connections</string>
-    <string name="remote_machine_settings" translatable="false">Remote Settings</string>
-    <string name="remote_machine_settings_description" translatable="false">OAuth clients and SSH keys used by your machines</string>
-    <string name="remote_machine_empty" translatable="false">No remote machines</string>
-    <string name="remote_machine_empty_hint" translatable="false">Add an SSH or Google Cloud Shell connection to open a terminal.</string>
-    <string name="remote_machine_unnamed" translatable="false">Unnamed machine</string>
-    <string name="remote_machine_type_ssh" translatable="false">SSH</string>
-    <string name="remote_machine_type_gcloud" translatable="false">GCloud Shell</string>
-    <string name="remote_machine_open_terminal" translatable="false">Open terminal</string>
-    <string name="remote_machine_delete_message" translatable="false">Delete “%1$s”? Saved credentials and its local identity reference will be removed.</string>
-    <string name="remote_machine_editor_title" translatable="false">Machine Editor</string>
-    <string name="remote_machine_basic_section" translatable="false">Basic information</string>
-    <string name="remote_machine_connection_section" translatable="false">Connection</string>
-    <string name="remote_machine_sftp_section" translatable="false">SFTP files</string>
-    <string name="remote_machine_sftp_section_help" translatable="false">The Files action in this machine’s menu browses this folder over SFTP. The session starts only when needed.</string>
-    <string name="remote_machine_sftp_directory" translatable="false">SFTP Directory</string>
-    <string name="remote_machine_sftp_directory_help" translatable="false">Root folder for Files. Defaults to $HOME; ~ and absolute paths are also supported.</string>
+    <string name="remote_machines_title">Remote Machines</string>
+    <string name="remote_machine_short_title">Remote</string>
+    <string name="remote_machine_counts">Configured: %1$d • Enabled: %2$d</string>
+    <string name="remote_machines_description">SSH and Google Cloud Shell connections</string>
+    <string name="remote_machine_settings">Remote Settings</string>
+    <string name="remote_machine_settings_description">OAuth clients and SSH keys used by your machines</string>
+    <string name="remote_machine_empty">No remote machines</string>
+    <string name="remote_machine_empty_hint">Add an SSH or Google Cloud Shell connection to open a terminal.</string>
+    <string name="remote_machine_unnamed">Unnamed machine</string>
+    <string name="remote_machine_type_ssh">SSH</string>
+    <string name="remote_machine_type_gcloud">GCloud Shell</string>
+    <string name="remote_machine_open_terminal">Open terminal</string>
+    <string name="remote_machine_delete_message">Delete “%1$s”? Saved credentials and its local identity reference will be removed.</string>
+    <string name="remote_machine_editor_title">Machine Editor</string>
+    <string name="remote_machine_basic_section">Basic information</string>
+    <string name="remote_machine_connection_section">Connection</string>
+    <string name="remote_machine_sftp_section">SFTP files</string>
+    <string name="remote_machine_sftp_section_help">The Files action in this machine’s menu browses this folder over SFTP. The session starts only when needed.</string>
+    <string name="remote_machine_sftp_directory">SFTP Directory</string>
+    <string name="remote_machine_sftp_directory_help">Root folder for Files. Defaults to $HOME; ~ and absolute paths are also supported.</string>
     <string name="remote_machine_sftp_root_summary" translatable="false">%1$s@%2$s · %3$s</string>
-    <string name="remote_machine_start_port_forward" translatable="false">Start Port Forward</string>
-    <string name="remote_machine_port_forward_started" translatable="false">Port forwarding started. Open terminals reuse this connection.</string>
-    <string name="remote_machine_type_label" translatable="false">Machine type</string>
-    <string name="remote_machine_host" translatable="false">Host</string>
-    <string name="remote_machine_port" translatable="false">Port</string>
-    <string name="remote_machine_ip" translatable="false">Shell IP</string>
-    <string name="remote_machine_get_ip" translatable="false">Get IP</string>
-    <string name="remote_machine_environment" translatable="false">Cloud Shell environment</string>
-    <string name="remote_machine_username" translatable="false">Username</string>
-    <string name="remote_machine_authentication" translatable="false">Authentication</string>
-    <string name="remote_machine_private_key" translatable="false">Private key</string>
-    <string name="remote_machine_password" translatable="false">Password</string>
-    <string name="remote_machine_show_password" translatable="false">Show password</string>
-    <string name="remote_machine_hide_password" translatable="false">Hide password</string>
-    <string name="remote_machine_keyboard_interactive" translatable="false">Use keyboard-interactive authentication</string>
-    <string name="remote_machine_keyboard_interactive_help" translatable="false">Use PAM or interactive SSH prompts. With an empty password, you are prompted only if the server requests one.</string>
-    <string name="remote_machine_password_help" translatable="false">Optional. Leave empty if the server needs no password, or to be prompted only when it asks for one.</string>
-    <string name="remote_machine_choose_key" translatable="false">Choose uploaded key</string>
-    <string name="remote_machine_identity_file" translatable="false">IdentityFile</string>
+    <string name="remote_machine_start_port_forward">Start Port Forward</string>
+    <string name="remote_machine_port_forward_started">Port forwarding started. Open terminals reuse this connection.</string>
+    <string name="remote_machine_type_label">Machine type</string>
+    <string name="remote_machine_host">Host</string>
+    <string name="remote_machine_port">Port</string>
+    <string name="remote_machine_ip">Shell IP</string>
+    <string name="remote_machine_get_ip">Get IP</string>
+    <string name="remote_machine_environment">Cloud Shell environment</string>
+    <string name="remote_machine_username">Username</string>
+    <string name="remote_machine_authentication">Authentication</string>
+    <string name="remote_machine_private_key">Private key</string>
+    <string name="remote_machine_password">Password</string>
+    <string name="remote_machine_show_password">Show password</string>
+    <string name="remote_machine_hide_password">Hide password</string>
+    <string name="remote_machine_keyboard_interactive">Use keyboard-interactive authentication</string>
+    <string name="remote_machine_keyboard_interactive_help">Use PAM or interactive SSH prompts. With an empty password, you are prompted only if the server requests one.</string>
+    <string name="remote_machine_password_help">Optional. Leave empty if the server needs no password, or to be prompted only when it asks for one.</string>
+    <string name="remote_machine_choose_key">Choose uploaded key</string>
+    <string name="remote_machine_identity_file">IdentityFile</string>
     <string name="remote_machine_identity_file_help">Path to the private key, or the name of a key uploaded in Remote Settings. The key is never stored on the machine. Leave empty if not needed.</string>
-    <string name="remote_machine_no_uploaded_keys" translatable="false">No keys uploaded yet</string>
-    <string name="remote_machine_ssh_keys" translatable="false">SSH keys</string>
-    <string name="remote_machine_ssh_keys_help" translatable="false">Upload a private key once and reuse it across machines through IdentityFile. Google Cloud Shell also needs the matching public key (.pub); upload it with the button on each key.</string>
-    <string name="remote_machine_upload_ssh_key" translatable="false">Upload SSH key file</string>
-    <string name="remote_machine_upload_public_key" translatable="false">Upload public key</string>
-    <string name="remote_machine_public_key_uploaded" translatable="false">Public key uploaded</string>
-    <string name="remote_machine_public_key_missing" translatable="false">No public key (needed for Cloud Shell)</string>
-    <string name="remote_machine_ssh_key_used_by" translatable="false">Used by %1$d machine(s)</string>
-    <string name="remote_machine_key_passphrase" translatable="false">Key passphrase</string>
-    <string name="remote_connection_channel_name" translatable="false">Remote machine connections</string>
-    <string name="remote_connection_channel_description" translatable="false">Connected remote machines, with a button to disconnect.</string>
-    <string name="remote_connection_notification_title" translatable="false">Connected to %1$s</string>
-    <string name="remote_connection_notification_text" translatable="false">SSH connection is open.</string>
-    <string name="remote_connection_notification_forwarding" translatable="false">Forwarding %1$s</string>
-    <string name="remote_machine_port_forwarding_section" translatable="false">Port forwarding</string>
-    <string name="remote_machine_port_forwarding_help" translatable="false">Forwards start when the SSH session connects and stop when it disconnects. A machine with an active forward is not disconnected when idle.</string>
-    <string name="remote_machine_forward_type" translatable="false">Forward type</string>
-    <string name="remote_machine_forward_local" translatable="false">Local forward</string>
-    <string name="remote_machine_forward_local_help" translatable="false">Opens a port on this device that forwards to a port on the machine.</string>
-    <string name="remote_machine_forward_local_rules" translatable="false">Local forwards</string>
-    <string name="remote_machine_forward_local_hint" translatable="false">One per line: 8080 (same port) or 8080:10808 (device 8080 → machine 10808)</string>
-    <string name="remote_machine_forward_remote" translatable="false">Remote forward</string>
-    <string name="remote_machine_forward_remote_help" translatable="false">Opens a port on the machine that forwards to a port on this device.</string>
-    <string name="remote_machine_forward_remote_rules" translatable="false">Remote forwards</string>
-    <string name="remote_machine_forward_remote_hint" translatable="false">One per line: 8080 (same port) or 8080:10808 (machine 8080 → device 10808)</string>
-    <string name="remote_machine_forward_dynamic" translatable="false">Dynamic forward (SOCKS5)</string>
-    <string name="remote_machine_forward_dynamic_help" translatable="false">Runs a SOCKS5 proxy on this device that connects through the machine.</string>
-    <string name="remote_machine_forward_dynamic_ports" translatable="false">SOCKS ports</string>
-    <string name="remote_machine_forward_dynamic_hint" translatable="false">Comma-separated local ports, e.g. 1080</string>
-    <string name="remote_machine_ssh_options" translatable="false">SSH options</string>
-    <string name="remote_machine_ssh_options_help" translatable="false">Add JSch options only when needed. Unknown or reserved options are rejected on save.</string>
-    <string name="remote_machine_advanced_ssh_options" translatable="false">Additional SSH options</string>
-    <string name="remote_machine_ssh_option_name" translatable="false">Option name</string>
-    <string name="remote_machine_ssh_option_value" translatable="false">Option value</string>
-    <string name="remote_machine_proxy_machine" translatable="false">Proxy machine</string>
-    <string name="remote_machine_websocket_proxy" translatable="false">Websocket Proxy</string>
-    <string name="remote_machine_websocket_url" translatable="false">WebSocket full URL</string>
-    <string name="remote_machine_websocket_headers" translatable="false">Headers (one Header: value per line)</string>
-    <string name="remote_machine_websocket_connect_timeout" translatable="false">Connect timeout (seconds)</string>
-    <string name="remote_machine_websocket_skip_certificates" translatable="false">Skip certificate verification</string>
-    <string name="remote_machine_websocket_show_advanced" translatable="false">Advanced WebSocket settings</string>
-    <string name="remote_machine_websocket_hide_advanced" translatable="false">Hide advanced WebSocket settings</string>
-    <string name="remote_machine_websocket_ca_certificate" translatable="false">CA certificate (PEM, optional)</string>
-    <string name="remote_machine_websocket_handshake_timeout" translatable="false">Handshake timeout (seconds)</string>
-    <string name="remote_machine_websocket_read_timeout" translatable="false">Read timeout (seconds, 0 = unlimited)</string>
-    <string name="remote_machine_websocket_write_timeout" translatable="false">Write timeout (seconds, 0 = unlimited)</string>
-    <string name="remote_machine_websocket_close_timeout" translatable="false">Close timeout (seconds)</string>
-    <string name="remote_machine_websocket_subprotocols" translatable="false">Sub-protocols (comma separated)</string>
-    <string name="remote_machine_timeout" translatable="false">Connection timeout (seconds)</string>
-    <string name="remote_machine_keep_alive" translatable="false">Server keep-alive (seconds)</string>
-    <string name="remote_machine_strict_host_key" translatable="false">Strict host-key checking</string>
-    <string name="remote_machine_compression" translatable="false">Enable compression</string>
-    <string name="remote_machine_websocket_url_help" translatable="false">Use ws:// or wss://. %h and %p are replaced with the SSH host and port.</string>
-    <string name="remote_machine_google_section" translatable="false">Google Cloud OAuth</string>
-    <string name="remote_machine_oauth_client" translatable="false">OAuth client</string>
-    <string name="remote_machine_select_oauth" translatable="false">Select an OAuth client</string>
-    <string name="remote_machine_oauth_sign_in" translatable="false">Sign in with Google</string>
-    <string name="remote_machine_username_auto" translatable="false">Fetched automatically from the Google Cloud Shell API once Google is authorized.</string>
-    <string name="remote_machine_oauth_authorized" translatable="false">Google account connected</string>
-    <string name="remote_machine_add_oauth_hint" translatable="false">Add an OAuth client in Remote Settings, select it here, and sign in before connecting.</string>
-    <string name="remote_machine_tools_section" translatable="false">Machine Tools</string>
+    <string name="remote_machine_no_uploaded_keys">No keys uploaded yet</string>
+    <string name="remote_machine_ssh_keys">SSH keys</string>
+    <string name="remote_machine_ssh_keys_help">Upload a private key once and reuse it across machines through IdentityFile. Google Cloud Shell also needs the matching public key (.pub); upload it with the button on each key.</string>
+    <string name="remote_machine_upload_ssh_key">Upload SSH key file</string>
+    <string name="remote_machine_upload_public_key">Upload public key</string>
+    <string name="remote_machine_public_key_uploaded">Public key uploaded</string>
+    <string name="remote_machine_public_key_missing">No public key (needed for Cloud Shell)</string>
+    <string name="remote_machine_ssh_key_used_by">Used by %1$d machine(s)</string>
+    <string name="remote_machine_key_passphrase">Key passphrase</string>
+    <string name="remote_connection_channel_name">Remote machine connections</string>
+    <string name="remote_connection_channel_description">Connected remote machines, with a button to disconnect.</string>
+    <string name="remote_connection_notification_title">Connected to %1$s</string>
+    <string name="remote_connection_notification_text">SSH connection is open.</string>
+    <string name="remote_connection_notification_forwarding">Forwarding %1$s</string>
+    <string name="remote_machine_port_forwarding_section">Port forwarding</string>
+    <string name="remote_machine_port_forwarding_help">Forwards start when the SSH session connects and stop when it disconnects. A machine with an active forward is not disconnected when idle.</string>
+    <string name="remote_machine_forward_type">Forward type</string>
+    <string name="remote_machine_forward_local">Local forward</string>
+    <string name="remote_machine_forward_local_help">Opens a port on this device that forwards to a port on the machine.</string>
+    <string name="remote_machine_forward_local_rules">Local forwards</string>
+    <string name="remote_machine_forward_local_hint">One per line: 8080 (same port) or 8080:10808 (device 8080 → machine 10808)</string>
+    <string name="remote_machine_forward_remote">Remote forward</string>
+    <string name="remote_machine_forward_remote_help">Opens a port on the machine that forwards to a port on this device.</string>
+    <string name="remote_machine_forward_remote_rules">Remote forwards</string>
+    <string name="remote_machine_forward_remote_hint">One per line: 8080 (same port) or 8080:10808 (machine 8080 → device 10808)</string>
+    <string name="remote_machine_forward_dynamic">Dynamic forward (SOCKS5)</string>
+    <string name="remote_machine_forward_dynamic_help">Runs a SOCKS5 proxy on this device that connects through the machine.</string>
+    <string name="remote_machine_forward_dynamic_ports">SOCKS ports</string>
+    <string name="remote_machine_forward_dynamic_hint">Comma-separated local ports, e.g. 1080</string>
+    <string name="remote_machine_ssh_options">SSH options</string>
+    <string name="remote_machine_ssh_options_help">Add JSch options only when needed. Unknown or reserved options are rejected on save.</string>
+    <string name="remote_machine_advanced_ssh_options">Additional SSH options</string>
+    <string name="remote_machine_ssh_option_name">Option name</string>
+    <string name="remote_machine_ssh_option_value">Option value</string>
+    <string name="remote_machine_proxy_machine">Proxy machine</string>
+    <string name="remote_machine_websocket_proxy">Websocket Proxy</string>
+    <string name="remote_machine_websocket_url">WebSocket full URL</string>
+    <string name="remote_machine_websocket_headers">Headers (one Header: value per line)</string>
+    <string name="remote_machine_websocket_connect_timeout">Connect timeout (seconds)</string>
+    <string name="remote_machine_websocket_skip_certificates">Skip certificate verification</string>
+    <string name="remote_machine_websocket_show_advanced">Advanced WebSocket settings</string>
+    <string name="remote_machine_websocket_hide_advanced">Hide advanced WebSocket settings</string>
+    <string name="remote_machine_websocket_ca_certificate">CA certificate (PEM, optional)</string>
+    <string name="remote_machine_websocket_handshake_timeout">Handshake timeout (seconds)</string>
+    <string name="remote_machine_websocket_read_timeout">Read timeout (seconds, 0 = unlimited)</string>
+    <string name="remote_machine_websocket_write_timeout">Write timeout (seconds, 0 = unlimited)</string>
+    <string name="remote_machine_websocket_close_timeout">Close timeout (seconds)</string>
+    <string name="remote_machine_websocket_subprotocols">Sub-protocols (comma separated)</string>
+    <string name="remote_machine_timeout">Connection timeout (seconds)</string>
+    <string name="remote_machine_keep_alive">Server keep-alive (seconds)</string>
+    <string name="remote_machine_strict_host_key">Strict host-key checking</string>
+    <string name="remote_machine_compression">Enable compression</string>
+    <string name="remote_machine_websocket_url_help" formatted="false">Use ws:// or wss://. %h and %p are replaced with the SSH host and port.</string>
+    <string name="remote_machine_google_section">Google Cloud OAuth</string>
+    <string name="remote_machine_oauth_client">OAuth client</string>
+    <string name="remote_machine_select_oauth">Select an OAuth client</string>
+    <string name="remote_machine_oauth_sign_in">Sign in with Google</string>
+    <string name="remote_machine_username_auto">Fetched automatically from the Google Cloud Shell API once Google is authorized.</string>
+    <string name="remote_machine_oauth_authorized">Google account connected</string>
+    <string name="remote_machine_add_oauth_hint">Add an OAuth client in Remote Settings, select it here, and sign in before connecting.</string>
+    <string name="remote_machine_tools_section">Machine Tools</string>
     <string name="remote_machine_enable_action">Enable</string>
     <string name="remote_machine_disable_action">Disable</string>
-    <string name="remote_machine_tool_execute" translatable="false">Execute commands</string>
-    <string name="remote_machine_update_ip" translatable="false">Update IP</string>
-    <string name="remote_machine_tool_close_terminal" translatable="false">Close terminal</string>
-    <string name="remote_machine_tool_list_terminal" translatable="false">List terminals</string>
-    <string name="remote_machine_tool_read_terminal" translatable="false">Read terminal</string>
-    <string name="remote_machine_disconnect" translatable="false">Disconnect</string>
-    <string name="remote_machine_tool_update_ip_help" translatable="false">Use only if connecting to this machine fails.</string>
-    <string name="remote_machine_update_ip_title" translatable="false">Cloud Shell IP · %1$s</string>
-    <string name="remote_machine_tools_choose" translatable="false">Choose which tools the language model may use on this machine.</string>
-    <string name="remote_machine_oauth_clients" translatable="false">Google OAuth clients</string>
-    <string name="remote_machine_oauth_clients_help" translatable="false">Import the JSON downloaded from Google Cloud, or add a client manually. Desktop clients also need a client secret.</string>
-    <string name="remote_machine_no_oauth_clients" translatable="false">No OAuth clients added yet.</string>
-    <string name="remote_machine_import_oauth_json" translatable="false">Import OAuth client JSON</string>
+    <string name="remote_machine_tool_execute">Execute commands</string>
+    <string name="remote_machine_update_ip">Update IP</string>
+    <string name="remote_machine_tool_close_terminal">Close terminal</string>
+    <string name="remote_machine_tool_list_terminal">List terminals</string>
+    <string name="remote_machine_tool_read_terminal">Read terminal</string>
+    <string name="remote_machine_disconnect">Disconnect</string>
+    <string name="remote_machine_tool_update_ip_help">Use only if connecting to this machine fails.</string>
+    <string name="remote_machine_update_ip_title">Cloud Shell IP · %1$s</string>
+    <string name="remote_machine_tools_choose">Choose which tools the language model may use on this machine.</string>
+    <string name="remote_machine_oauth_clients">Google OAuth clients</string>
+    <string name="remote_machine_oauth_clients_help">Import the JSON downloaded from Google Cloud, or add a client manually. Desktop clients also need a client secret.</string>
+    <string name="remote_machine_no_oauth_clients">No OAuth clients added yet.</string>
+    <string name="remote_machine_import_oauth_json">Import OAuth client JSON</string>
     <string name="remote_machine_oauth_client_type">OAuth client type</string>
     <string name="remote_machine_oauth_type_desktop">Desktop app</string>
     <string name="remote_machine_oauth_type_android">Android app</string>
     <string name="remote_machine_google_no_access_token">Google did not return an access token.</string>
     <string name="remote_machine_google_missing_resolution">Google authorization requires interaction, but no resolution was returned.</string>
-    <string name="remote_machine_terminal_connecting" translatable="false">Connecting to remote shell…</string>
-    <string name="remote_machine_terminal_connection_error" translatable="false">Could not connect to the remote shell</string>
-    <string name="remote_machine_terminal_password_title" translatable="false">Enter SSH password</string>
-    <string name="remote_machine_terminal_password_help" translatable="false">The server requests a secret that is not saved for this machine. It is used for this connection only.</string>
-    <string name="remote_machine_terminal_passphrase_title" translatable="false">Enter key passphrase</string>
-    <string name="remote_machine_terminal_connect" translatable="false">Connect</string>
-    <string name="remote_machine_terminal_disconnect_close" translatable="false">Disconnect and close terminal</string>
-    <string name="remote_machine_terminal_ime" translatable="false">Enable IME composition</string>
-    <string name="remote_machine_terminal_keyboard" translatable="false">Show or hide keyboard</string>
+    <string name="remote_machine_terminal_connecting">Connecting to remote shell…</string>
+    <string name="remote_machine_terminal_connection_error">Could not connect to the remote shell</string>
+    <string name="remote_machine_terminal_password_title">Enter SSH password</string>
+    <string name="remote_machine_terminal_password_help">The server requests a secret that is not saved for this machine. It is used for this connection only.</string>
+    <string name="remote_machine_terminal_passphrase_title">Enter key passphrase</string>
+    <string name="remote_machine_terminal_connect">Connect</string>
+    <string name="remote_machine_terminal_disconnect_close">Disconnect and close terminal</string>
+    <string name="remote_machine_terminal_ime">Enable IME composition</string>
+    <string name="remote_machine_terminal_keyboard">Show or hide keyboard</string>
     <string name="remote_machine_terminal_open_browser">Open in browser</string>
-    <string name="remote_machine_terminal_input_settings" translatable="false">Terminal input mode</string>
-    <string name="remote_machine_terminal_force_mouse" translatable="false">Mouse events · tap = click, drag = wheel</string>
-    <string name="remote_machine_terminal_local_input_label" translatable="false">Local input</string>
-    <string name="remote_machine_terminal_add" translatable="false">Open another terminal</string>
-    <string name="remote_machine_terminal_tab" translatable="false">Terminal %1$d</string>
-    <string name="remote_machine_terminal_sessions" translatable="false">Sessions</string>
-    <string name="remote_machine_terminal_toggle_sessions" translatable="false">Show or hide terminal sessions</string>
+    <string name="remote_machine_terminal_input_settings">Terminal input mode</string>
+    <string name="remote_machine_terminal_force_mouse">Mouse events · tap = click, drag = wheel</string>
+    <string name="remote_machine_terminal_local_input_label">Local input</string>
+    <string name="remote_machine_terminal_add">Open another terminal</string>
+    <string name="remote_machine_terminal_tab">Terminal %1$d</string>
+    <string name="remote_machine_terminal_sessions">Sessions</string>
+    <string name="remote_machine_terminal_toggle_sessions">Show or hide terminal sessions</string>
     <string name="remote_machine_terminal_connected">Connected</string>
     <string name="remote_machine_terminal_disconnected">Disconnected</string>
-    <string name="remote_machine_terminal_no_sessions" translatable="false">No terminal sessions</string>
+    <string name="remote_machine_terminal_no_sessions">No terminal sessions</string>
     <string name="remote_machine_terminal_no_sessions_hint">This machine disconnects when its last terminal session closes. Open a new session to reconnect.</string>
-    <string name="remote_machine_terminal_close_session" translatable="false">Close this session</string>
-    <string name="remote_machine_terminal_input_local_short" translatable="false">Local</string>
-    <string name="remote_machine_terminal_input_remote_short" translatable="false">Remote</string>
-    <string name="remote_machine_terminal_mouse_short" translatable="false">Mouse</string>
-    <string name="remote_machine_terminal_input_ime_short" translatable="false">IME</string>
-    <string name="remote_machine_terminal_choose_machine" translatable="false">Running machines</string>
+    <string name="remote_machine_terminal_close_session">Close this session</string>
+    <string name="remote_machine_terminal_input_local_short">Local</string>
+    <string name="remote_machine_terminal_input_remote_short">Remote</string>
+    <string name="remote_machine_terminal_mouse_short">Mouse</string>
+    <string name="remote_machine_terminal_input_ime_short">IME</string>
+    <string name="remote_machine_terminal_choose_machine">Running machines</string>
     <string name="remote_machine_terminal_connection_lost">Connection lost</string>
     <string name="remote_machine_not_configured">Not configured</string>
     <string name="settings_version">Version %1$s (%2$d)</string>
@@ -970,10 +984,10 @@
     <string name="quick_action_image_description">Send directly to an image generation model</string>
     <string name="quick_action_video_description">Send directly to a video generation model</string>
     <string name="quick_action_remote_machines_description">Choose which machines the language model may use</string>
-    <string name="remote_machine_none_configured" translatable="false">No remote machines configured</string>
-    <string name="remote_machine_name_required" translatable="false">Machine name is required.</string>
-    <string name="remote_machine_host_required" translatable="false">Host is required for SSH machines.</string>
-    <string name="remote_machine_identity_required" translatable="false">IdentityFile is required for private-key authentication.</string>
+    <string name="remote_machine_none_configured">No remote machines configured</string>
+    <string name="remote_machine_name_required">Machine name is required.</string>
+    <string name="remote_machine_host_required">Host is required for SSH machines.</string>
+    <string name="remote_machine_identity_required">IdentityFile is required for private-key authentication.</string>
     <string name="tool_settings_media_label">Media tool settings</string>
     <string name="tool_settings_media_tools_title">Media tools</string>
     <string name="tool_settings_other_tools_title">Other tools</string>
@@ -1187,7 +1201,7 @@
     <string name="context_window_api_breakdown">Input: %1$s · Output: %2$s tokens</string>
     <string name="context_window_api_input_only">Input: %1$s tokens · Output usage unavailable</string>
     <string name="context_window_percent_used">Context window %1$d%% used</string>
-    <string name="headers" translatable="false">Headers</string>
+    <string name="headers">Headers</string>
     <string name="mcp_enable">Enable</string>
     <string name="mcp_enabled">Enabled</string>
     <string name="drag_to_exit_folder_hint">Drag up to the app bar or down to the navigation bar to leave the folder</string>
@@ -1198,4 +1212,23 @@
     <string name="chat_minimap_navigate">Conversation minimap. Tap a position to jump there.</string>
     <string name="tool_agent_skills_search_title">Agent Skills Search</string>
     <string name="tool_agent_skills_search_description">Let the AI find and load skills on demand</string>
+    <string name="user_profile_title">User Profile</string>
+    <string name="user_profile_photo_options">Profile photo options</string>
+    <string name="user_profile_photo_title">Profile Photo</string>
+    <string name="user_profile_photo_description">Choose the photo used across the app</string>
+    <string name="user_profile_background_chat">Chat Screen Background</string>
+    <string name="user_profile_background_drawer">Side Drawer Background</string>
+    <string name="user_profile_background_menu">Menu Screen Background</string>
+    <string name="user_profile_background_bottom_sheet">Bottom Sheet Background</string>
+    <string name="user_profile_background_dialog">Dialog Background</string>
+    <string name="user_profile_background_options">%1$s options</string>
+    <string name="user_profile_background_unavailable">%1$s (unavailable)</string>
+    <string name="user_profile_image_error">Unable to use image</string>
+    <string name="user_profile_photos_gallery">Photos Gallery</string>
+    <string name="user_profile_search_photos">Search photos</string>
+    <string name="user_profile_no_photos">No photos in Media Storage</string>
+    <string name="tool_search_tools_title">Search Tools</string>
+    <string name="tool_search_tools_description">Find tool names and enabled states</string>
+    <string name="ollama_error_text">[Error: %1$s]</string>
+    <string name="ollama_network_error">Network error</string>
 </resources>

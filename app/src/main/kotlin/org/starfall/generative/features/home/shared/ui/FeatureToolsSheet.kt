@@ -157,8 +157,8 @@ internal fun FeatureToolsSheetContent(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.size(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Search Tools", style = MaterialTheme.typography.titleSmall)
-                        Text("Find tool names and enabled states", style = MaterialTheme.typography.bodySmall,
+                        Text(stringResource(R.string.tool_search_tools_title), style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.tool_search_tools_description), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Switch(checked = controls.settings.searchToolsEnabled,

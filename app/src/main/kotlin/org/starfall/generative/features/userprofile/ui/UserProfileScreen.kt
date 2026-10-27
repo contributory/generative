@@ -86,7 +86,7 @@ fun UserProfileScreen(
         topBar = {
             TopAppBar(
                 colors = edgeToEdgeTopAppBarColors(),
-                title = { Text("User Profile", fontWeight = FontWeight.SemiBold) },
+                title = { Text(stringResource(R.string.user_profile_title), fontWeight = FontWeight.SemiBold) },
                 navigationIcon = { IconButton(onClick = onBack) {
                     FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                 } }
@@ -113,7 +113,7 @@ fun UserProfileScreen(
                                 FilledTonalIconButton(
                                     onClick = { openMenu(UserProfileImageSlot.PHOTO) },
                                     modifier = Modifier.size(42.dp)
-                                ) { FluentIcon(Icons.Default.MoreVert, "Profile photo options") }
+                                ) { FluentIcon(Icons.Default.MoreVert, stringResource(R.string.user_profile_photo_options)) }
                                 SlotMenu(
                                     expanded = menuFor == UserProfileImageSlot.PHOTO,
                                     hasImage = profile.photo != null,
@@ -128,21 +128,21 @@ fun UserProfileScreen(
                                 )
                             }
                         }
-                        Text("Profile Photo", style = MaterialTheme.typography.titleMedium,
+                        Text(stringResource(R.string.user_profile_photo_title), style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold)
-                        Text("Choose the photo used across the app", style = MaterialTheme.typography.bodySmall,
+                        Text(stringResource(R.string.user_profile_photo_description), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
-            item { Text("Appearance", modifier = Modifier.padding(top = 10.dp, start = 4.dp),
+            item { Text(stringResource(R.string.settings_tab_appearances), modifier = Modifier.padding(top = 10.dp, start = 4.dp),
                 style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold) }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     listOf(
-                        Triple(UserProfileImageSlot.CHAT, "Chat Screen Background", profile.chatBackground),
-                        Triple(UserProfileImageSlot.DRAWER, "Side Drawer Background", profile.drawerBackground),
-                        Triple(UserProfileImageSlot.MENU, "Menu Screen Background", profile.menuBackground)
+                        Triple(UserProfileImageSlot.CHAT, stringResource(R.string.user_profile_background_chat), profile.chatBackground),
+                        Triple(UserProfileImageSlot.DRAWER, stringResource(R.string.user_profile_background_drawer), profile.drawerBackground),
+                        Triple(UserProfileImageSlot.MENU, stringResource(R.string.user_profile_background_menu), profile.menuBackground)
                     ).forEachIndexed { index, (slot, label, image) ->
                         Surface(shape = if (index == 0) RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp,
                             bottomStart = 6.dp, bottomEnd = 6.dp) else RoundedCornerShape(6.dp),
@@ -155,7 +155,7 @@ fun UserProfileScreen(
                                 Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                                 Box {
                                     IconButton(onClick = { openMenu(slot) }) {
-                                        FluentIcon(Icons.Default.MoreVert, "$label options")
+                                        FluentIcon(Icons.Default.MoreVert, stringResource(R.string.user_profile_background_options, label))
                                     }
                                     SlotMenu(
                                         expanded = menuFor == slot,
@@ -172,7 +172,8 @@ fun UserProfileScreen(
                             }
                         }
                     }
-                    listOf("Bottom Sheet Background", "Dialog Background").forEachIndexed { index, label ->
+                    listOf(stringResource(R.string.user_profile_background_bottom_sheet),
+                        stringResource(R.string.user_profile_background_dialog)).forEachIndexed { index, label ->
                         Surface(shape = if (index == 1) RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp,
                             bottomStart = 22.dp, bottomEnd = 22.dp) else RoundedCornerShape(6.dp),
                             color = prominentContainerColor()) {
@@ -186,7 +187,7 @@ fun UserProfileScreen(
                                 Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
                                 IconButton(enabled = false, onClick = {}) {
-                                    FluentIcon(Icons.Default.MoreVert, "$label (unavailable)")
+                                    FluentIcon(Icons.Default.MoreVert, stringResource(R.string.user_profile_background_unavailable, label))
                                 }
                             }
                         }
@@ -211,9 +212,9 @@ fun UserProfileScreen(
     if (busy) Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f)),
         contentAlignment = Alignment.Center) { CircularProgressIndicator() }
     error?.let { message -> AlertDialog(
-        onDismissRequest = { error = null }, title = { Text("Unable to use image") },
+        onDismissRequest = { error = null }, title = { Text(stringResource(R.string.user_profile_image_error)) },
         text = { Text(message) },
-        confirmButton = { TextButton(onClick = { error = null }) { Text("OK") } }
+        confirmButton = { TextButton(onClick = { error = null }) { Text(stringResource(R.string.common_ok)) } }
     ) }
 }
 
@@ -221,11 +222,11 @@ fun UserProfileScreen(
 private fun SlotMenu(expanded: Boolean, hasImage: Boolean, onDismiss: () -> Unit,
                      onGallery: () -> Unit, onStorage: () -> Unit, onRemove: () -> Unit) {
     AppDropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
-        RoundedDropdownMenuItem(text = { Text("Photos Gallery") }, onClick = onGallery,
+        RoundedDropdownMenuItem(text = { Text(stringResource(R.string.user_profile_photos_gallery)) }, onClick = onGallery,
             leadingIcon = { FluentIcon(Icons.Outlined.Image, null) })
-        RoundedDropdownMenuItem(text = { Text("Media Storage") }, onClick = onStorage,
+        RoundedDropdownMenuItem(text = { Text(stringResource(R.string.settings_storage)) }, onClick = onStorage,
             leadingIcon = { FluentIcon(Icons.Outlined.Folder, null) })
-        RoundedDropdownMenuItem(text = { Text("Remove") }, enabled = hasImage, onClick = onRemove,
+        RoundedDropdownMenuItem(text = { Text(stringResource(R.string.common_remove)) }, enabled = hasImage, onClick = onRemove,
             leadingIcon = { FluentIcon(Icons.Outlined.Delete, null) })
     }
 }
@@ -258,20 +259,20 @@ private fun MediaStoragePhotoSheet(onDismiss: () -> Unit, onSelected: (File) -> 
     AppSheet(onDismissRequest = onDismiss, fixedHeightFraction = 0.82f) {
         Column(Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 16.dp)) {
             Box(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-                Text("Media Storage", style = MaterialTheme.typography.titleLarge,
+                Text(stringResource(R.string.settings_storage), style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.align(Alignment.CenterStart), fontWeight = FontWeight.SemiBold)
                 IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.CenterEnd)) {
-                    FluentIcon(Icons.Default.Close, "Close")
+                    FluentIcon(Icons.Default.Close, stringResource(R.string.common_close))
                 }
             }
             OutlinedTextField(value = search, onValueChange = { search = it }, singleLine = true,
-                placeholder = { Text("Search photos") }, modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(stringResource(R.string.user_profile_search_photos)) }, modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(28.dp))
             Spacer(Modifier.height(12.dp))
             val filtered = photos.filter { it.name.contains(search, ignoreCase = true) }
             if (filtered.isEmpty()) {
                 Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                    Text("No photos in Media Storage", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.user_profile_no_photos), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.weight(1f).fillMaxWidth(),
