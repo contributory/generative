@@ -23,6 +23,7 @@ enum class MediaResponseType {
     @SerialName("json") JSON,
     @SerialName("image") IMAGE,
     @SerialName("video") VIDEO,
+    @SerialName("audio") AUDIO,
     @SerialName("octet-stream") OCTET_STREAM
 }
 
@@ -104,7 +105,9 @@ data class MediaRequestProfile(
     /** Default uses the provider's built-in API; Custom executes [chain]. */
     val mode: MediaGenerationMode = MediaGenerationMode.CUSTOM,
     val options: JsonObject = JsonObject(emptyMap()),
-    val disabledParams: Set<String> = emptySet()
+    val disabledParams: Set<String> = emptySet(),
+    /** Android-keystore encrypted; backups on another installation require re-entering the key. */
+    val encryptedCredential: String = ""
 )
 
 /** Domain-specific profile names; both use the same serialized shape for backwards compatibility. */
@@ -129,3 +132,29 @@ fun Map<String, MediaRequestProfile>.withDefaultMediaProfile(video: Boolean): Ma
         putAll(this@withDefaultMediaProfile.filterKeys { it != builtIn.id })
     }
 }
+
+/** Music has a separate Custom-only library; it never receives a synthetic Default. */
+enum class MediaKind(val toolName: String) {
+    IMAGE("generate_image"), VIDEO("generate_video"), MUSIC("generate_music")
+}
+
+fun MediaRequestProfile.hasUnsafeMusicHeaders(): Boolean = chain.steps.any { step ->
+    step.headers.any { (name, value) ->
+        val sensitive = name.lowercase().let {
+            it.contains("authorization") || it.contains("api-key") || it.contains("api_key") || it.contains("token") || it == "cookie"
+        }
+        sensitive && !Regex("(?i)(?:Bearer |Basic )?\\{\\{\\s*api_token\\s*\\}\\}").matches(value.trim())
+    }
+}
+
+fun MediaRequestProfile.validMusicProfile(): Boolean = mode == MediaGenerationMode.CUSTOM &&
+    (encryptedCredential.isBlank() || encryptedCredential.startsWith("keystore:v1:")) &&
+    (encryptedCredential.isNotBlank() || chain.steps.none { step ->
+        (step.headers.values + step.endpoint + step.body).any { Regex("\\{\\{\\s*api_token\\s*\\}\\}").containsMatchIn(it) }
+    }) && name.isNotBlank() && chain.steps.isNotEmpty() && chain.steps.size <= 20 && !hasUnsafeMusicHeaders() &&
+    chain.steps.all { step ->
+        val endpoint = step.endpoint.replace(Regex("\\{\\{[^{}]+\\}\\}"), "template-value")
+        endpoint.startsWith("https://") &&
+        runCatching { java.net.URI(endpoint).let { it.host != null && it.userInfo == null && it.fragment == null } }.getOrDefault(false)
+    } && chain.finalResponse.type in setOf(MediaResponseType.AUDIO, MediaResponseType.JSON) &&
+    (chain.finalResponse.type != MediaResponseType.JSON || chain.finalResponse.mediaPath.isNotBlank())

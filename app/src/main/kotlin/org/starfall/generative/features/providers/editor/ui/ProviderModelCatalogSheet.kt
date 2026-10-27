@@ -179,7 +179,7 @@ internal fun ProviderModelCatalogSheet(
                     .fillMaxWidth()
                     .testTag("provider-model-catalog-list"),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (visibleModels.isEmpty() && !loading && loadError == null) {
                     item { Text(stringResource(if (query.isBlank()) R.string.no_models_returned else R.string.no_matching_models), modifier = Modifier.padding(16.dp)) }
                 }
@@ -192,7 +192,7 @@ internal fun ProviderModelCatalogSheet(
                     Surface(
                         onClick = { expanded = !expanded },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
+                        shape = RoundedCornerShape(12.dp),
                         color = if (added) {
                             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
                         } else {
@@ -205,19 +205,19 @@ internal fun ProviderModelCatalogSheet(
                         }
                     ) {
                         Column {
-                        Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            EntityIcon(provider.config.modelConfigs[id]?.icon, Modifier.size(36.dp),
+                        Row(Modifier.padding(7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            EntityIcon(provider.config.modelConfigs[id]?.icon, Modifier.size(32.dp),
                                 text = id.substringAfterLast('/').take(1).uppercase(), matchName = title, fallbackMatchName = id, model = true)
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
-                                    maxLines = if (expanded) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
-                                if (title != id) Text(id, style = MaterialTheme.typography.bodySmall,
+                                Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                                    maxLines = if (expanded) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
+                                if (title != id) Text(id, style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = if (expanded) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
                             }
                              FluentIcon(if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                                  stringResource(if (expanded) R.string.collapse else R.string.expand), modifier = Modifier.size(20.dp),
                                  tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                             Checkbox(checked = added, onCheckedChange = { onToggle(id) }, modifier = Modifier.semantics {
+                             Checkbox(checked = added, onCheckedChange = { onToggle(id) }, modifier = Modifier.size(32.dp).semantics {
                                  contentDescription = modelSelectionDescription
                              })
                         }

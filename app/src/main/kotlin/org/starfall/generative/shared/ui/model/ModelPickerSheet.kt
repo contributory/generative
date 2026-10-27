@@ -1,9 +1,9 @@
 package org.starfall.generative.shared.ui.model
 
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.drop
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -25,7 +25,6 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.language.ModelConfiguration
@@ -42,8 +41,6 @@ fun ModelPickerSheet(
     collapsedProviderIdsState: Set<String> = emptySet(),
     onCollapsedGroupIdsChange: (Set<String>) -> Unit = {},
     onCollapsedProviderIdsChange: (Set<String>) -> Unit = {},
-    selectedTabKeyState: String = "default",
-    onSelectedTabKeyChange: (String) -> Unit = {},
     selectedProviderId: String,
     selectedModelId: String,
     conversationReasoningEffort: String?,
@@ -55,10 +52,9 @@ fun ModelPickerSheet(
     onEditProvider: (providerId: String) -> Unit = {},
     onDismiss: () -> Unit
 ) {
-    AppSheet(
-        onDismissRequest = onDismiss,
-        fixedHeightFraction = 1f
-    ) {
+    // Match Fetch Models: let list content determine the initial height, while AppSheet
+    // continues to support handle dragging up to the top safe inset.
+    AppSheet(onDismissRequest = onDismiss) {
         ModelPickerSheetContent(
             providers = providers,
             providerGroups = providerGroups,
@@ -66,8 +62,6 @@ fun ModelPickerSheet(
             collapsedProviderIdsState = collapsedProviderIdsState,
             onCollapsedGroupIdsChange = onCollapsedGroupIdsChange,
             onCollapsedProviderIdsChange = onCollapsedProviderIdsChange,
-            selectedTabKeyState = selectedTabKeyState,
-            onSelectedTabKeyChange = onSelectedTabKeyChange,
             selectedProviderId = selectedProviderId,
             selectedModelId = selectedModelId,
             conversationReasoningEffort = conversationReasoningEffort,
@@ -94,8 +88,6 @@ internal fun ModelPickerSheetContent(
     collapsedProviderIdsState: Set<String> = emptySet(),
     onCollapsedGroupIdsChange: (Set<String>) -> Unit = {},
     onCollapsedProviderIdsChange: (Set<String>) -> Unit = {},
-    selectedTabKeyState: String = "default",
-    onSelectedTabKeyChange: (String) -> Unit = {},
     selectedProviderId: String,
     selectedModelId: String,
     conversationReasoningEffort: String?,
@@ -119,12 +111,6 @@ internal fun ModelPickerSheetContent(
     var collapsedGroupIds by remember { mutableStateOf(collapsedGroupIdsState) }
     var collapsedProviderIds by remember { mutableStateOf(collapsedProviderIdsState) }
     val ungroupedTabLabel = stringResource(R.string.ungrouped)
-    var selectedTabKey by remember { mutableStateOf(selectedTabKeyState) }
-    val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-    var initialized by remember { mutableStateOf(false) }
-    var scrollingToTab by remember { mutableStateOf(false) }
-    var scrollRequest by remember { mutableIntStateOf(0) }
     var positionBeforeSearch by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     LaunchedEffect(collapsedGroupIdsState) {
         collapsedGroupIds = collapsedGroupIdsState
@@ -165,56 +151,37 @@ internal fun ModelPickerSheetContent(
             collapsedProviderIds = collapsedProviderIds,
             modelFilter = modelFilter
         ).let { items ->
-            // Without any folder there is no boundary to mark, so skip the "Ungrouped" header
-            // (and its lone tab) instead of showing a divider above the only section.
+            // Do not add a redundant "Ungrouped" divider when there are no folders.
             if (providerGroups.isEmpty()) items.filterNot { it is ModelPickerItem.Ungrouped } else items
         }
     }
 
-    val folderTabs = remember(flatItems, ungroupedTabLabel) {
-        computeModelPickerTabs(flatItems, ungroupedTabLabel)
-    }
+    // Start at the selected model immediately, before the first list composition/layout.
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = initialModelPickerItemIndex(flatItems, selectedProviderId, selectedModelId)
+    )
+
+    // Folder tabs are local navigation shortcuts. No tab selection or scroll position is persisted.
+    val folderTabs = remember(flatItems, ungroupedTabLabel) { computeModelPickerTabs(flatItems, ungroupedTabLabel) }
     val sectionIndexes = remember(flatItems) {
         flatItems.mapIndexedNotNull { index, item -> item.sectionKey?.let { it to index } }.toMap()
     }
-    val selectedTabIndex = folderTabs.indexOfFirst { it.key == selectedTabKey }.coerceAtLeast(0)
-    val centerTopPaddingPx = with(LocalDensity.current) { 10.dp.roundToPx() }
+    val visibleSectionKey by remember(listState, sectionIndexes) {
+        derivedStateOf {
+            sectionIndexes.entries.lastOrNull { it.value <= listState.firstVisibleItemIndex }?.key
+        }
+    }
+    var clickedTabKey by remember { mutableStateOf<String?>(null) }
+    val selectedTabIndex = folderTabs.indexOfFirst { it.key == (clickedTabKey ?: visibleSectionKey) }
+        .coerceAtLeast(0)
+    val scope = rememberCoroutineScope()
+    // After tapping a short final section, preserve its highlight until the user scrolls again.
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress }.collect { scrolling ->
+            if (scrolling) clickedTabKey = null
+        }
+    }
 
-    LaunchedEffect(flatItems) {
-        if (!initialized && flatItems.isNotEmpty()) {
-            val restoredIndex = sectionIndexes[selectedTabKeyState]
-            val selectedIndex = flatItems.indexOfFirst { it is ModelPickerItem.Model && it.isSelected }
-            val targetIndex = restoredIndex ?: selectedIndex.coerceAtLeast(0)
-            listState.scrollToItem(targetIndex)
-            if (restoredIndex == null && selectedIndex > 0) {
-                val info = listState.layoutInfo
-                val itemSize = info.visibleItemsInfo.firstOrNull { it.index == targetIndex }?.size
-                if (itemSize != null) {
-                    val centerDelta = ((info.viewportSize.height - itemSize) / 2 - centerTopPaddingPx)
-                        .coerceAtLeast(0)
-                    listState.scrollToItem(targetIndex, -centerDelta)
-                }
-            }
-            selectedTabKey = sectionIndexes.entries.lastOrNull { it.value <= targetIndex }?.key
-                ?: folderTabs.firstOrNull()?.key.orEmpty()
-            initialized = true
-        }
-    }
-    // Manual scrolling moves the tab indicator; a tab click retains its target even if the
-    // final section is too short for its header to reach the top of the viewport.
-    LaunchedEffect(listState, flatItems, initialized) {
-        if (initialized) {
-            snapshotFlow { listState.firstVisibleItemIndex }.drop(1).collect { index ->
-                if (!scrollingToTab) {
-                    val key = sectionIndexes.entries.lastOrNull { it.value <= index }?.key
-                    if (key != null && key != selectedTabKey) {
-                        selectedTabKey = key
-                        onSelectedTabKeyChange(key)
-                    }
-                }
-            }
-        }
-    }
     LaunchedEffect(query) {
         if (query.isNotBlank()) {
             if (positionBeforeSearch == null) {
@@ -236,8 +203,7 @@ internal fun ModelPickerSheetContent(
     }
 
     Column(modifier = modifier.fillMaxWidth()
-        // Keep the footer above the keyboard on versions where the modal doesn't
-        // consume IME insets itself, matching the Fetch Models sheet.
+        // Match Fetch Models: follow the IME without imposing a fixed sheet height.
         .imePadding()
         .onGloballyPositioned { contentOrigin = it.positionInRoot() }
         // Observe taps before children consume them without interrupting scrolling or clicks.
@@ -261,24 +227,36 @@ internal fun ModelPickerSheetContent(
             }
         }
     ) {
+            // Search and section controls are the header, above the model list.
+            ModelPickerToolbar(
+                query = query,
+                onQueryChange = { query = it },
+                toggleEnabled = providers.isNotEmpty() || providerGroups.isNotEmpty(),
+                allCollapsed = allCollapsed,
+                onToggleAllCollapsed = {
+                    expandSearchResults = false
+                    if (allCollapsed) {
+                        setCollapsedGroups(emptySet())
+                        setCollapsedProviders(emptySet())
+                    } else {
+                        setCollapsedProviders(providers.map { it.id }.toSet())
+                    }
+                },
+                selectedModelId = selectedModelId,
+                selectedModel = selectedModel,
+                onOpenSelectedModel = onOpenSelectedModel,
+                onSearchBoundsChange = { searchBounds = it }
+            )
             if (folderTabs.isNotEmpty()) {
                 ModelPickerTabRow(
                     tabs = folderTabs,
                     selectedIndex = selectedTabIndex,
                     onSelectTab = { tab ->
-                        val index = sectionIndexes[tab.key]
-                        if (index != null) {
-                            selectedTabKey = tab.key
-                            onSelectedTabKeyChange(tab.key)
-                            scrollRequest++
-                            val request = scrollRequest
-                            scrollingToTab = true
+                        sectionIndexes[tab.key]?.let { index ->
                             scope.launch {
-                                try {
-                                    listState.animateScrollToItem(index)
-                                } finally {
-                                    if (request == scrollRequest) scrollingToTab = false
-                                }
+                                // Jump directly even across long lists; do not animate through every model.
+                                listState.scrollToItem(index)
+                                clickedTabKey = tab.key
                             }
                         }
                     }
@@ -289,7 +267,7 @@ internal fun ModelPickerSheetContent(
                 state = listState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
+                    .weight(1f, fill = false)
                     .testTag("model-picker-list"),
                 contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -383,27 +361,5 @@ internal fun ModelPickerSheetContent(
                     }
                 }
             }
-            // Keep search and actions pinned below the list, as in Fetch Models.
-            // A stable footer does not change the sheet's top content when IME focus ends.
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-            ModelPickerToolbar(
-                query = query,
-                onQueryChange = { query = it },
-                toggleEnabled = providers.isNotEmpty() || providerGroups.isNotEmpty(),
-                allCollapsed = allCollapsed,
-                onToggleAllCollapsed = {
-                    expandSearchResults = false
-                    if (allCollapsed) {
-                        setCollapsedGroups(emptySet())
-                        setCollapsedProviders(emptySet())
-                    } else {
-                        setCollapsedProviders(providers.map { it.id }.toSet())
-                    }
-                },
-                selectedModelId = selectedModelId,
-                selectedModel = selectedModel,
-                onOpenSelectedModel = onOpenSelectedModel,
-                onSearchBoundsChange = { searchBounds = it }
-            )
     }
 }

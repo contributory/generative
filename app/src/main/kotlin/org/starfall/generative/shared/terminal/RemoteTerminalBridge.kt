@@ -60,7 +60,6 @@ internal class RemoteTerminalBridge(
     var forceMouse by mutableStateOf(false)
     var imeEnabled by mutableStateOf(false)
         private set
-    var composingText by mutableStateOf("")
     var ctrlActive: Boolean
         get() = input.ctrlActive
         set(value) { input.ctrlActive = value }
@@ -88,12 +87,11 @@ internal class RemoteTerminalBridge(
     }
 
     fun updateImeEnabled(enabled: Boolean) {
-        if (imeEnabled == enabled) return
+        // Composition is a Local Input feature only; Remote always uses Termux raw keys.
+        val localImeEnabled = enabled && inputMode.usesLocalInput
+        if (imeEnabled == localImeEnabled) return
         inputView?.finishImeComposition()
-        // Leaving the buffered editor explicitly switches back to streaming raw input.
-        // Flush any remote text first so subsequent raw keys do not overtake the draft.
-        if (!enabled) inputView?.flushRemoteImeDraft()
-        imeEnabled = enabled
+        imeEnabled = localImeEnabled
         inputView?.let { host ->
             val focused = host.hasFocus()
             host.updateInputMode()
@@ -105,11 +103,17 @@ internal class RemoteTerminalBridge(
     }
 
     fun setInputMode(mode: TerminalInputMode): Boolean {
-        if (mode != inputMode && !inputMode.usesLocalInput && composingText.isNotEmpty()) return false
         inputView?.finishImeComposition()
         val oldMode = inputMode
         val changed = input.setInputMode(mode)
-        if (changed && mode != oldMode) inputView?.restartImeConnection()
+        if (changed && mode != oldMode) {
+            if (!mode.usesLocalInput && imeEnabled) {
+                // Disable composition before the view can create an IME connection in Remote mode.
+                updateImeEnabled(false)
+            } else {
+                inputView?.restartImeConnection()
+            }
+        }
         return changed
     }
 
@@ -298,14 +302,12 @@ internal class RemoteTerminalBridge(
 
     private fun sendText(value: String) {
         inputView?.finishImeComposition()
-        inputView?.flushRemoteImeDraft()
         input.sendText(value)
         syncLocalImeDraft()
     }
 
     fun sendChar(char: Char) {
         inputView?.finishImeComposition()
-        inputView?.flushRemoteImeDraft()
         input.sendChar(char)
         syncLocalImeDraft()
     }
@@ -318,7 +320,6 @@ internal class RemoteTerminalBridge(
         forceRemote: Boolean = false
     ) {
         inputView?.finishImeComposition()
-        inputView?.flushRemoteImeDraft()
         input.sendSpecial(sequence, ctrl, alt, forceRemote)
         syncLocalImeDraft()
     }

@@ -171,15 +171,16 @@ class ToolFiles(val directory: File) {
         }
     }
     private fun checkSpace() { check(directory.usableSpace > 64L * 1024 * 1024) { "Not enough storage. Free space in Storage." } }
-    suspend fun save(input: InputStream, mime: String? = null, maxBytes: Long = limit): String {
+    suspend fun save(input: InputStream, mime: String? = null, maxBytes: Long = limit, audioOnly: Boolean = false): String {
         val target = currentTemporaryFiles()
-        return if (target != null) target.save(input, mime, maxBytes) else saveInternal(input, mime, maxBytes)
+        return if (target != null) target.save(input, mime, maxBytes, audioOnly) else saveInternal(input, mime, maxBytes, audioOnly)
     }
 
     private suspend fun saveInternal(
         input: InputStream,
         mime: String?,
-        maxBytes: Long
+        maxBytes: Long,
+        audioOnly: Boolean = false
     ): String = withContext(Dispatchers.IO) {
         checkSpace()
         val temp = File(directory, "${UUID.randomUUID()}.part")
@@ -202,6 +203,7 @@ class ToolFiles(val directory: File) {
             check(temp.length() > 0) { "Empty media response" }
             val header = ByteArray(16)
             temp.inputStream().use { it.read(header) }
+            if (audioOnly) require(org.starfall.generative.shared.media.audioMime(header) != null) { "Response is not supported audio." }
             val ext = when {
                 header[0] == 0x89.toByte() && header[1] == 0x50.toByte() -> "png"
                 header[0] == 0xff.toByte() && header[1] == 0xd8.toByte() -> "jpg"
@@ -256,7 +258,7 @@ class ToolFiles(val directory: File) {
                     } catch (_: IOException) { return@firstOrNull false }
                     fingerprint.digest == hash
                 }
-                if (existing != null) existing.name else {
+                if (existing != null && context[ToolFileBatch] == null) existing.name else {
                     context.ensureActive()
                     // Never overwrite an existing referenced file, even if a
                     // hash-named file was externally changed or is a symlink.
@@ -264,6 +266,7 @@ class ToolFiles(val directory: File) {
                     val dest = if (canonical.exists()) File(directory, "${UUID.randomUUID()}.$ext") else canonical
                     check(temp.renameTo(dest)) { "Could not save media" }
                     index.hashes[dest.name] = CachedHash(dest.length(), dest.lastModified(), hash)
+                    context[ToolFileBatch]?.record(this@ToolFiles, dest.name)
                     revision.update { it + 1 }
                     dest.name
                 }

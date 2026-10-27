@@ -96,7 +96,9 @@ internal fun ModelPickerCard(
     onClick: () -> Unit = {},
     onPreviewTierChange: (Int) -> Unit = {},
     embedded: Boolean = false,
-    drawBackground: Boolean = true
+    drawBackground: Boolean = true,
+    modifier: Modifier = Modifier,
+    trailingContent: (@Composable () -> Unit)? = null
 ) {
     val supportedEfforts = config.supportedReasoningEfforts
     val reasoningLabels = localizedReasoningEffortLabels()
@@ -126,7 +128,7 @@ internal fun ModelPickerCard(
     var cardOrigin by remember { mutableStateOf(Offset.Zero) }
     val cardContentColor = if (!embedded && enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
     val cardGesture = Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
-    val cardModifier = Modifier.fillMaxWidth().then(
+    val cardModifier = modifier.fillMaxWidth().then(
         if (embedded) Modifier else Modifier.clip(cardShape).then(cardGesture)
     )
     val cardContentModifier = Modifier
@@ -233,6 +235,10 @@ internal fun ModelPickerCard(
                             )
                         }
                     }
+                }
+                trailingContent?.let {
+                    Spacer(Modifier.width(6.dp))
+                    it()
                 }
             }
 

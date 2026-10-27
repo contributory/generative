@@ -63,10 +63,9 @@ fun ToolsEditor(
     onCollapsedGroupIdsChange: (Set<String>) -> Unit = {},
     onCollapsedProviderIdsChange: (Set<String>) -> Unit = {},
     onSaveModelConfiguration: (String, String, ModelConfiguration) -> Unit = { _, _, _ -> },
-    selectedTabKey: String = "default",
-    onSelectedTabKeyChange: (String) -> Unit = {},
     onEditProvider: (providerId: String) -> Unit = {},
     onOpenMediaProfiles: (Boolean) -> Unit = {},
+    onOpenMusicProfiles: () -> Unit = {},
     onBack: () -> Unit
 ) {
     var choosing by remember { mutableStateOf<String?>(null) }
@@ -98,6 +97,10 @@ fun ToolsEditor(
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold
                 )
+            }
+            item {
+                MusicToolSettings(settings.system["generate_music"] ?: SystemToolConfig(),
+                    onChange = { onSave("generate_music", it) }, onOpenProfiles = onOpenMusicProfiles)
             }
             items(listOf("generate_image", "generate_video")) { name ->
                 val config = settings.system[name] ?: SystemToolConfig()
@@ -287,8 +290,6 @@ fun ToolsEditor(
             collapsedProviderIdsState = collapsedProviderIds,
             onCollapsedGroupIdsChange = onCollapsedGroupIdsChange,
             onCollapsedProviderIdsChange = onCollapsedProviderIdsChange,
-            selectedTabKeyState = selectedTabKey,
-            onSelectedTabKeyChange = onSelectedTabKeyChange,
             selectedProviderId = current.providerId,
             selectedModelId = current.modelId,
             conversationReasoningEffort = null,

@@ -49,7 +49,6 @@ import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.model.ModelPickerSheetContent
 import org.starfall.generative.shared.ui.model.chatModelPickerFilter
 import org.starfall.generative.shared.ui.sheets.AppSheet
-import org.starfall.generative.shared.ui.sheets.LocalBottomSheetMaxContentHeight
 import org.starfall.generative.shared.ui.sheets.SlideSheetContent
 
 internal enum class QuickActionsPage {
@@ -168,8 +167,6 @@ internal fun BottomSheetsLink(
     modelPickerCollapsedProviders: Set<String>,
     onModelPickerCollapsedGroupsChange: (Set<String>) -> Unit,
     onModelPickerCollapsedProvidersChange: (Set<String>) -> Unit,
-    modelPickerSelectedTab: String,
-    onModelPickerSelectedTabChange: (String) -> Unit,
     modelPickerOpenRequest: Int,
     dynamicModelsMap: Map<String, List<String>>,
     mediaProviders: List<ModelProvider>,
@@ -331,7 +328,6 @@ internal fun BottomSheetsLink(
         val effectiveReasoningEffort = conversationReasoningEffort ?: selectedConfig.reasoningEffort
         val previewTier = rememberPreviewTier(selectedConfig, effectiveReasoningEffort)
         val style = selectedModelSheetStyle(modelSheetPage == ModelSheetPage.SELECTED_MODEL && previewTier.intValue == 6 && selectedConfig.supportsThinking)
-        val maxContentHeight = LocalBottomSheetMaxContentHeight
         CompositionLocalProvider(LocalThinkingScreenBurst provides selectedModelScreenBurst) {
             ThinkingScreenBurstLayer(selectedModelScreenBurst)
             // One sheet for all pages: switching slides the content and animates the height in place.
@@ -368,8 +364,6 @@ internal fun BottomSheetsLink(
                             collapsedProviderIdsState = modelPickerCollapsedProviders,
                             onCollapsedGroupIdsChange = onModelPickerCollapsedGroupsChange,
                             onCollapsedProviderIdsChange = onModelPickerCollapsedProvidersChange,
-                            selectedTabKeyState = modelPickerSelectedTab,
-                            onSelectedTabKeyChange = onModelPickerSelectedTabChange,
                             selectedProviderId = if (mediaKind != null) mediaProviderId else selectedProviderId,
                             selectedModelId = if (mediaKind != null) mediaModelId else selectedModelName,
                             conversationReasoningEffort = null,
@@ -385,8 +379,7 @@ internal fun BottomSheetsLink(
                             onOpenSelectedModel = if (mediaKind == null) {
                                 { if (pageActive) sheets.openSelectedModelOverview() }
                             } else null,
-                            // Fill the available sheet height while preserving the transition from the overview.
-                            modifier = Modifier.height(maxContentHeight.current),
+                            // Allow the picker to wrap short results; its scrollable list handles long results.
                             onDismiss = { sheets.dismissModelSheet() }
                         )
                     } else if (target == ModelSheetPage.SUMMARY) {

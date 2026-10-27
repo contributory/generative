@@ -61,8 +61,6 @@ class ModelSheetTransitionTest {
                 modelPickerCollapsedProviders = emptySet(),
                 onModelPickerCollapsedGroupsChange = {},
                 onModelPickerCollapsedProvidersChange = {},
-                modelPickerSelectedTab = "default",
-                onModelPickerSelectedTabChange = {},
                 modelPickerOpenRequest = 0,
                 dynamicModelsMap = emptyMap(),
                 mediaProviders = emptyList(),

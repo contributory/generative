@@ -285,7 +285,8 @@ private fun boundedNumberText(value: String, minimum: Long, maximum: Long): Stri
 internal fun MediaFinalResponseEditor(
     finalResponse: MediaFinalResponse,
     stepCount: Int,
-    onChange: (MediaFinalResponse) -> Unit
+    onChange: (MediaFinalResponse) -> Unit,
+    music: Boolean = false
 ) {
     SettingsCard {
         Text(stringResource(R.string.media_chain_final_response), style = MaterialTheme.typography.titleMedium)
@@ -300,7 +301,7 @@ internal fun MediaFinalResponseEditor(
         MediaChoiceField(
             label = stringResource(R.string.media_chain_response_type),
             selected = responseTypeLabel(finalResponse.type),
-            options = MediaResponseType.entries,
+            options = if (music) listOf(MediaResponseType.JSON, MediaResponseType.AUDIO) else MediaResponseType.entries,
             optionLabel = { type -> responseTypeLabel(type) },
             onSelect = { type ->
                 onChange(finalResponse.copy(
@@ -375,6 +376,7 @@ private fun responseTypeLabel(type: MediaResponseType) = stringResource(
         MediaResponseType.JSON -> R.string.media_chain_json
         MediaResponseType.IMAGE -> R.string.common_image
         MediaResponseType.VIDEO -> R.string.common_video
+        MediaResponseType.AUDIO -> R.string.music_audio
         MediaResponseType.OCTET_STREAM -> R.string.media_chain_octet_stream
     }
 )

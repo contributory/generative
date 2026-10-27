@@ -4,6 +4,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
@@ -22,12 +23,13 @@ fun ItemContextMenu(
     onFirstAction: (() -> Unit)? = null,
     enabled: Boolean = true,
     showEdit: Boolean = true,
-    showDelete: Boolean = true
+    showDelete: Boolean = true,
+    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     Box {
-        IconButton(enabled = enabled, onClick = { expanded = true }) {
+        IconButton(enabled = enabled, onClick = { expanded = true }, modifier = modifier) {
             FluentIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.common_more_options))
         }
 

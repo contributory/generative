@@ -132,7 +132,6 @@ data class AppPreferences(
     val providersCollapsedSections: Set<String> = emptySet(),
     val modelPickerCollapsedGroups: Set<String> = emptySet(),
     val modelPickerCollapsedProviders: Set<String> = emptySet(),
-    val modelPickerSelectedTab: String = "default",
     val latexMode: String = "AUTO", // OFF, AUTO
     val wordWrapMode: WordWrapMode = WordWrapMode.OFF,
     val wordWrapColumn: Int = DEFAULT_WORD_WRAP_COLUMN,
@@ -210,7 +209,6 @@ class AppPreferencesRepository(private val context: Context) {
         val PROVIDERS_COLLAPSED_SECTIONS = stringSetPreferencesKey("providers_collapsed_sections")
         val MODEL_PICKER_COLLAPSED_GROUPS = stringSetPreferencesKey("model_picker_collapsed_groups")
         val MODEL_PICKER_COLLAPSED_PROVIDERS = stringSetPreferencesKey("model_picker_collapsed_providers")
-        val MODEL_PICKER_SELECTED_TAB = stringPreferencesKey("model_picker_selected_tab")
         val LATEX_MODE = stringPreferencesKey("latex_mode")
         val WORD_WRAP_MODE = stringPreferencesKey("word_wrap_mode")
         val WORD_WRAP_COLUMN = intPreferencesKey("word_wrap_column")
@@ -287,7 +285,6 @@ class AppPreferencesRepository(private val context: Context) {
                 providersCollapsedSections = preferences[PreferenceKeys.PROVIDERS_COLLAPSED_SECTIONS].orEmpty(),
                 modelPickerCollapsedGroups = preferences[PreferenceKeys.MODEL_PICKER_COLLAPSED_GROUPS].orEmpty(),
                 modelPickerCollapsedProviders = preferences[PreferenceKeys.MODEL_PICKER_COLLAPSED_PROVIDERS].orEmpty(),
-                modelPickerSelectedTab = preferences[PreferenceKeys.MODEL_PICKER_SELECTED_TAB] ?: "default",
                 latexMode = preferences[PreferenceKeys.LATEX_MODE]?.takeIf { it == "OFF" } ?: "AUTO", // legacy "ON" now means AUTO
                 wordWrapMode = WordWrapMode.fromValue(preferences[PreferenceKeys.WORD_WRAP_MODE]),
                 wordWrapColumn = preferences[PreferenceKeys.WORD_WRAP_COLUMN]?.takeIf { it > 0 } ?: DEFAULT_WORD_WRAP_COLUMN,
@@ -727,15 +724,6 @@ class AppPreferencesRepository(private val context: Context) {
         }
     }
 
-    suspend fun setModelPickerSelectedTab(tabKey: String) {
-        val normalized = tabKey.ifBlank { "default" }
-        state.mutate({ it.copy(modelPickerSelectedTab = normalized) }) {
-            context.dataStore.edit { preferences ->
-                preferences[PreferenceKeys.MODEL_PICKER_SELECTED_TAB] = normalized
-            }
-        }
-    }
-
     suspend fun setMcpPresetsInitialized(initialized: Boolean) {
         updateChatRelations { it.copy(mcpPresetsInitialized = initialized) }
     }
@@ -917,7 +905,6 @@ class AppPreferencesRepository(private val context: Context) {
                 stored[PreferenceKeys.PROVIDERS_COLLAPSED_SECTIONS] = preferences.providersCollapsedSections
                 stored[PreferenceKeys.MODEL_PICKER_COLLAPSED_GROUPS] = preferences.modelPickerCollapsedGroups
                 stored[PreferenceKeys.MODEL_PICKER_COLLAPSED_PROVIDERS] = preferences.modelPickerCollapsedProviders
-                stored[PreferenceKeys.MODEL_PICKER_SELECTED_TAB] = preferences.modelPickerSelectedTab
                 stored[PreferenceKeys.LATEX_MODE] = preferences.latexMode
                 stored[PreferenceKeys.WORD_WRAP_MODE] = preferences.wordWrapMode.value
                 stored[PreferenceKeys.WORD_WRAP_COLUMN] = preferences.wordWrapColumn

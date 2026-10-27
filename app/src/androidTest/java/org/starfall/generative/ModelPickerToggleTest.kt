@@ -58,7 +58,7 @@ class ModelPickerToggleTest {
         compose.onNodeWithText("Default").assertIsDisplayed()
     }
 
-    @Test fun folderTabsScrollTheSameListAndSearchFiltersSections() {
+    @Test fun folderTabsJumpWithinOneListAndSearchFiltersSections() {
         val group = ProviderGroup("folder", "Work", 0)
         fun provider(id: String, groupId: String?, models: List<String>) = ModelProvider(
             id = id, name = "Provider $id", type = ModelApiType.OPENAI, baseUrl = "",
@@ -75,7 +75,6 @@ class ModelPickerToggleTest {
                 )
             }
         }
-        compose.onNodeWithTag("model-picker-tab_default").assertDoesNotExist()
         compose.onNodeWithTag("model-picker-tab_folder_folder").assertIsDisplayed()
         compose.onNodeWithTag("model-picker-tab_ungrouped").performClick()
         compose.onNodeWithTag("model-picker-group_ungrouped").assertIsDisplayed()
@@ -97,7 +96,48 @@ class ModelPickerToggleTest {
         compose.onNodeWithTag("model-picker-model_root_gamma").assertIsDisplayed()
     }
 
-    @Test fun searchToolbarStaysAtTheBottomWhenFocusChanges() {
+    @Test fun openingPickerAlreadyDisplaysSelectedModelInALongList() {
+        val first = ModelProvider("first", "First", ModelApiType.OPENAI, baseUrl = "",
+            groupId = "early", config = ProviderConfiguration(modelIds = (0..40).map { "other-$it" }))
+        val selected = ModelProvider("selected", "Chosen", ModelApiType.OPENAI, baseUrl = "",
+            groupId = "later", config = ProviderConfiguration(modelIds = listOf("target", "another")))
+        compose.setContent {
+            MaterialTheme {
+                ModelPickerSheet(
+                    providers = listOf(first, selected),
+                    providerGroups = listOf(ProviderGroup("early", "Early", 0), ProviderGroup("later", "Later", 1)),
+                    selectedProviderId = selected.id, selectedModelId = "target",
+                    conversationReasoningEffort = null, onSelectModel = { _, _ -> },
+                    onSetReasoningEffort = {}, onDismiss = {}
+                )
+            }
+        }
+        // The selected item must be in the initial viewport, without an on-open scroll effect.
+        compose.onNodeWithTag("model-picker-model_selected_target").assertIsDisplayed()
+    }
+
+    @Test fun openingPickerTargetsSelectedProviderWhenItsModelsAreCollapsed() {
+        val first = ModelProvider("first", "First", ModelApiType.OPENAI, baseUrl = "",
+            groupId = "early", config = ProviderConfiguration(modelIds = (0..30).map { "other-$it" }))
+        val selected = ModelProvider("selected", "Chosen", ModelApiType.OPENAI, baseUrl = "",
+            groupId = "later", config = ProviderConfiguration(modelIds = listOf("target")))
+        compose.setContent {
+            MaterialTheme {
+                ModelPickerSheet(
+                    providers = listOf(first, selected),
+                    providerGroups = listOf(ProviderGroup("early", "Early", 0), ProviderGroup("later", "Later", 1)),
+                    collapsedProviderIdsState = setOf(selected.id),
+                    selectedProviderId = selected.id, selectedModelId = "target",
+                    conversationReasoningEffort = null, onSelectModel = { _, _ -> },
+                    onSetReasoningEffort = {}, onDismiss = {}
+                )
+            }
+        }
+        compose.onNodeWithTag("model-picker-provider_selected").assertIsDisplayed()
+        compose.onNodeWithTag("model-picker-model_selected_target").assertDoesNotExist()
+    }
+
+    @Test fun searchToolbarStaysAboveTheListWhenFocusChanges() {
         val provider = ModelProvider("p", "Primary", ModelApiType.OPENAI, baseUrl = "",
             config = ProviderConfiguration(modelIds = listOf("alpha", "beta")))
         lateinit var focusManager: androidx.compose.ui.focus.FocusManager
@@ -111,22 +151,42 @@ class ModelPickerToggleTest {
                 )
             }
         }
-        fun assertFooterBelowList() {
-            val listBottom = compose.onNodeWithTag("model-picker-list").getUnclippedBoundsInRoot().bottom
-            val footerTop = compose.onNodeWithTag("model-picker-toolbar").getUnclippedBoundsInRoot().top
-            assertTrue("Search toolbar must be below the scrollable model list", footerTop >= listBottom)
+        fun assertHeaderAboveList() {
+            val listTop = compose.onNodeWithTag("model-picker-list").getUnclippedBoundsInRoot().top
+            val toolbarBottom = compose.onNodeWithTag("model-picker-toolbar").getUnclippedBoundsInRoot().bottom
+            assertTrue("Search toolbar must remain above the model list", toolbarBottom <= listTop)
         }
-        assertFooterBelowList()
+        assertHeaderAboveList()
         compose.onNodeWithTag("model-picker-search-button").performClick()
         compose.onNodeWithTag("model-picker-search").assertIsFocused().performTextInput("alpha")
-        assertFooterBelowList()
+        assertHeaderAboveList()
         compose.runOnIdle { focusManager.clearFocus(force = true) }
         // Focus may leave before the system finishes animating the IME closed.
         compose.waitUntil(5_000) {
             compose.onAllNodesWithTag("model-picker-search-button").fetchSemanticsNodes().isNotEmpty()
         }
         compose.onNodeWithTag("model-picker-search-button").assertIsDisplayed()
-        assertFooterBelowList()
+        assertHeaderAboveList()
+    }
+
+    @Test fun shortModelListUsesContentHeightRatherThanFillingTheDisplay() {
+        val provider = ModelProvider("p", "Primary", ModelApiType.OPENAI, baseUrl = "",
+            config = ProviderConfiguration(modelIds = listOf("alpha")))
+        compose.setContent {
+            MaterialTheme {
+                ModelPickerSheet(
+                    providers = listOf(provider), selectedProviderId = "", selectedModelId = "",
+                    conversationReasoningEffort = null, onSelectModel = { _, _ -> },
+                    onSetReasoningEffort = {}, onDismiss = {}
+                )
+            }
+        }
+        compose.waitForIdle()
+        val sheetHeight = compose.onNodeWithTag("bottom-sheet-window").getUnclippedBoundsInRoot().height.value
+        val screenHeight = compose.activity.resources.configuration.screenHeightDp.toFloat()
+        assertTrue("Short model lists must not force the sheet to full height", sheetHeight < screenHeight * 0.85f)
+        compose.onNodeWithTag("model-picker-toolbar").assertIsDisplayed()
+        compose.onNodeWithTag("model-picker-model_p_alpha").assertIsDisplayed()
     }
 
     @Test fun searchLosesFocusOnOutsideTapAndImeAction() {

@@ -56,12 +56,12 @@ internal fun FeatureToolsSheetContent(
                 )
             }
         )
-            listOf("generate_image", "generate_video").forEach { name ->
+            listOf("generate_image", "generate_video", "generate_music").forEach { name ->
                 val config = controls.settings.system[name] ?: SystemToolConfig()
-                val provider = controls.providers.firstOrNull { it.id == config.providerId }
+                val provider = if (name == "generate_music") null else controls.providers.firstOrNull { it.id == config.providerId }
                 val model = provider?.config?.modelConfigs?.get(config.modelId)
-                val modelName = model?.displayName?.ifBlank { config.modelId }?.takeIf(String::isNotBlank)
-                val icon = if (name == "generate_image") Icons.Outlined.Image else Icons.Outlined.Videocam
+                val modelName = if (name == "generate_music") config.musicRequestProfiles[config.activeMusicRequestProfileId]?.name else model?.displayName?.ifBlank { config.modelId }?.takeIf(String::isNotBlank)
+                val icon = if (name == "generate_music") Icons.Outlined.Audiotrack else if (name == "generate_image") Icons.Outlined.Image else Icons.Outlined.Videocam
                 SettingsCard {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         if (model != null && modelName != null) {
@@ -81,7 +81,8 @@ internal fun FeatureToolsSheetContent(
                         Column(Modifier.weight(1f)) {
                             Text(
                                 stringResource(
-                                    if (name == "generate_image") R.string.tool_image_generation_title
+                                    if (name == "generate_music") R.string.tool_music_generation_title
+                                    else if (name == "generate_image") R.string.tool_image_generation_title
                                     else R.string.tool_video_generation_title
                                 ),
                                 style = MaterialTheme.typography.titleSmall,

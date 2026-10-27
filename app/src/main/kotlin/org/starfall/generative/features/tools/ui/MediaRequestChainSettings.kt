@@ -37,16 +37,18 @@ fun MediaRequestChainSettings(
     onOpenProfile: (String) -> Unit,
     onAddProfile: () -> Unit,
     onBack: () -> Unit,
-    video: Boolean
+    video: Boolean,
+    kind: MediaKind = if (video) MediaKind.VIDEO else MediaKind.IMAGE
 ) {
-    val profiles = config.mediaProfiles(video)
-    val protectedId = defaultMediaProfile(video).id
-    val storedActiveId = if (video) config.activeVideoRequestProfileId else config.activeImageRequestProfileId
+    val music = kind == MediaKind.MUSIC
+    val profiles = config.profiles(kind)
+    val protectedId = if (music) "" else defaultMediaProfile(video).id
+    val storedActiveId = if (music) config.activeMusicRequestProfileId else if (video) config.activeVideoRequestProfileId else config.activeImageRequestProfileId
     val activeId = storedActiveId.takeIf { it in profiles } ?: protectedId
     var deletingProfileId by remember { mutableStateOf<String?>(null) }
 
     fun persist(updated: Map<String, MediaRequestProfile>) {
-        val normalized = updated.withDefaultMediaProfile(video)
+        val normalized = if (music) updated.filterValues { it.mode == MediaGenerationMode.CUSTOM } else updated.withDefaultMediaProfile(video)
         onAutoSave(normalized, activeId.takeIf { it in normalized } ?: protectedId)
     }
 
@@ -54,7 +56,7 @@ fun MediaRequestChainSettings(
     Scaffold(modifier = Modifier.testTag("media-profiles-screen"), topBar = {
         TopAppBar(
             colors = edgeToEdgeTopAppBarColors(),
-            title = { Text(stringResource(if (video) R.string.media_video_gen_profiles else R.string.media_image_gen_profiles)) },
+            title = { Text(stringResource(if (music) R.string.music_profiles else if (video) R.string.media_video_gen_profiles else R.string.media_image_gen_profiles)) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
@@ -112,6 +114,15 @@ fun MediaRequestChainSettings(
                                     leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) },
                                     onClick = { menuExpanded = false; onOpenProfile(profile.id) }
                                 )
+                                if (music) RoundedDropdownMenuItem(
+                                    text = { Text(stringResource(R.string.music_duplicate_profile)) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        val id = java.util.UUID.randomUUID().toString()
+                                        persist(profiles + (id to profile.copy(id = id, name = "${profile.name} (copy)")))
+                                        onOpenProfile(id)
+                                    }
+                                )
                                 if (canDelete) RoundedDropdownMenuItem(
                                     text = { Text(stringResource(R.string.common_remove), color = MaterialTheme.colorScheme.error) },
                                     leadingIcon = { FluentIcon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) },
@@ -131,8 +142,8 @@ fun MediaRequestChainSettings(
             text = { Text(stringResource(R.string.media_chain_remove_profile_message)) },
             confirmButton = {
                 TextButton(onClick = {
-                    if (id != protectedId && profiles.values.count { it.mode == MediaGenerationMode.DEFAULT } >
-                        (if (profiles[id]?.mode == MediaGenerationMode.DEFAULT) 1 else 0)) {
+                    if (music || (id != protectedId && profiles.values.count { it.mode == MediaGenerationMode.DEFAULT } >
+                        (if (profiles[id]?.mode == MediaGenerationMode.DEFAULT) 1 else 0))) {
                         persist(profiles - id)
                     }
                     deletingProfileId = null

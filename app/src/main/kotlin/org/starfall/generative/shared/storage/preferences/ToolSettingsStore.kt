@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.starfall.generative.shared.model.ToolSettings
+import org.starfall.generative.shared.model.validateMusicSecrets
 import org.starfall.generative.shared.storage.ImmediateState
 
 private val Context.toolDataStore by preferencesDataStore(name = "tool_settings")
@@ -23,15 +24,16 @@ class ToolSettingsStore(context: Context) {
     suspend fun snapshot(): ToolSettings = settings.first()
 
     suspend fun update(transform: (ToolSettings) -> ToolSettings) {
-        state.mutate(transform) {
+        state.mutate({ transform(it).validateMusicSecrets() }) {
             store.edit { p ->
                 val old = runCatching { json.decodeFromString<ToolSettings>(p[key] ?: "{}") }.getOrDefault(ToolSettings())
-                p[key] = json.encodeToString(transform(old))
+                p[key] = json.encodeToString(transform(old).validateMusicSecrets())
             }
         }
     }
 
     suspend fun replace(settings: ToolSettings) {
+        settings.validateMusicSecrets()
         state.mutate({ settings }) {
             store.edit { preferences ->
                 preferences.clear()

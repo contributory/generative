@@ -75,6 +75,7 @@ import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.media.MediaGenerationMode
 import org.starfall.generative.shared.model.media.MediaRequestProfile
+import org.starfall.generative.shared.model.media.MediaKind
 import org.starfall.generative.shared.model.media.defaultMediaProfile
 import org.starfall.generative.shared.model.media.withDefaultMediaProfile
 import org.starfall.generative.shared.model.provider.ModelProvider
@@ -99,6 +100,8 @@ private enum class RemoteMachineSettingsPage { SETTINGS }
 internal object MediaProfileRoutes {
     const val LIBRARY = "system_tools/profiles/{kind}"
     const val EDITOR = "system_tools/profiles/{kind}/edit/{profileId}"
+    fun library(kind: MediaKind) = "system_tools/profiles/${kind.name.lowercase()}"
+    fun editor(kind: MediaKind, profileId: String) = "${library(kind)}/edit/${Uri.encode(profileId)}"
     fun library(video: Boolean) = "system_tools/profiles/${if (video) "video" else "image"}"
     fun editor(video: Boolean, profileId: String) =
         "${library(video)}/edit/${Uri.encode(profileId)}"
@@ -235,6 +238,11 @@ fun AppNavigation(
     }
 
     val toolSettings by viewModel.toolSettings.collectAsStateWithLifecycle()
+
+    fun persistMusicProfiles(profiles: Map<String, MediaRequestProfile>, preferredId: String) {
+        val latest = toolSettings.system["generate_music"] ?: SystemToolConfig()
+        viewModel.setSystemTool("generate_music", latest.withMusicProfiles(profiles, preferredId))
+    }
 
     fun persistMediaProfiles(video: Boolean, updatedProfiles: Map<String, MediaRequestProfile>, preferredId: String) {
         val toolName = if (video) "generate_video" else "generate_image"
@@ -510,8 +518,6 @@ fun AppNavigation(
                         modelPickerCollapsedProviders = appPrefs.modelPickerCollapsedProviders,
                         onModelPickerCollapsedGroupsChange = settingsViewModel::setModelPickerCollapsedGroups,
                         onModelPickerCollapsedProvidersChange = settingsViewModel::setModelPickerCollapsedProviders,
-                        modelPickerSelectedTab = appPrefs.modelPickerSelectedTab,
-                        onModelPickerSelectedTabChange = settingsViewModel::setModelPickerSelectedTab,
                          selectedProviderId = chatProviderId,
                           selectedModelName = chatModelId,
                          agentSkills = appPrefs.agentSkills.skills,
@@ -879,8 +885,6 @@ fun AppNavigation(
                             onCollapsedGroupIdsChange = settingsViewModel::setModelPickerCollapsedGroups,
                             onCollapsedProviderIdsChange = settingsViewModel::setModelPickerCollapsedProviders,
                             onSave = viewModel::setSystemTool,
-                            selectedTabKey = appPrefs.modelPickerSelectedTab,
-                            onSelectedTabKeyChange = settingsViewModel::setModelPickerSelectedTab,
                             onEditProvider = { providerId ->
                                 navController.navigate("providers/edit/${Uri.encode(providerId)}") {
                                     launchSingleTop = true
@@ -903,13 +907,12 @@ fun AppNavigation(
                             onCollapsedGroupIdsChange = settingsViewModel::setModelPickerCollapsedGroups,
                             onCollapsedProviderIdsChange = settingsViewModel::setModelPickerCollapsedProviders,
                             onSaveModelConfiguration = configurationViewModel::saveModelConfiguration,
-                            selectedTabKey = appPrefs.modelPickerSelectedTab,
-                            onSelectedTabKeyChange = settingsViewModel::setModelPickerSelectedTab,
                             onEditProvider = { providerId ->
                                 navController.navigate("providers/edit/${Uri.encode(providerId)}") {
                                     launchSingleTop = true
                                 }
                             },
+                            onOpenMusicProfiles = { navController.navigate(MediaProfileRoutes.library(MediaKind.MUSIC)) },
                             onOpenMediaProfiles = { video ->
                                 navController.navigate(MediaProfileRoutes.library(video)) { launchSingleTop = true }
                             },
@@ -920,17 +923,19 @@ fun AppNavigation(
                         route = MediaProfileRoutes.LIBRARY,
                         arguments = listOf(navArgument("kind") { type = NavType.StringType })
                     ) { entry ->
-                        val video = entry.arguments?.getString("kind") == "video"
-                        val toolName = if (video) "generate_video" else "generate_image"
+                        val kind = MediaKind.entries.firstOrNull { it.name.equals(entry.arguments?.getString("kind"), true) } ?: MediaKind.IMAGE
+                        val video = kind == MediaKind.VIDEO
+                        val music = kind == MediaKind.MUSIC
+                        val toolName = kind.toolName
                         val config = toolSettings.system[toolName] ?: SystemToolConfig()
                         MediaRequestChainSettings(
-                            provider = providers.firstOrNull { it.id == config.providerId },
+                            provider = if (music) null else providers.firstOrNull { it.id == config.providerId },
                             config = config,
-                            onAutoSave = { profiles, activeId -> persistMediaProfiles(video, profiles, activeId) },
-                            onOpenProfile = { id -> navController.navigate(MediaProfileRoutes.editor(video, id)) },
-                            onAddProfile = { navController.navigate(MediaProfileRoutes.editor(video, "new")) },
+                            onAutoSave = { profiles, activeId -> if (music) persistMusicProfiles(profiles, activeId) else persistMediaProfiles(video, profiles, activeId) },
+                            onOpenProfile = { id -> navController.navigate(MediaProfileRoutes.editor(kind, id)) },
+                            onAddProfile = { navController.navigate(MediaProfileRoutes.editor(kind, "new")) },
                             onBack = { navController.popBackStack() },
-                            video = video
+                            video = video, kind = kind
                         )
                     }
                     composable(
@@ -940,32 +945,35 @@ fun AppNavigation(
                             navArgument("profileId") { type = NavType.StringType }
                         )
                     ) { entry ->
-                        val video = entry.arguments?.getString("kind") == "video"
+                        val kind = MediaKind.entries.firstOrNull { it.name.equals(entry.arguments?.getString("kind"), true) } ?: MediaKind.IMAGE
+                        val video = kind == MediaKind.VIDEO
+                        val music = kind == MediaKind.MUSIC
                         val profileId = entry.arguments?.getString("profileId").orEmpty()
-                        val toolName = if (video) "generate_video" else "generate_image"
+                        val toolName = kind.toolName
                         val config = toolSettings.system[toolName] ?: SystemToolConfig()
                         val profile = if (profileId == "new") {
                             val id = rememberSaveable { UUID.randomUUID().toString() }
                             // Empty profiles are not inserted until a valid name can be auto-saved.
-                            remember(id) { MediaRequestProfile(id = id, name = "", mode = MediaGenerationMode.DEFAULT) }
+                            remember(id) { MediaRequestProfile(id = id, name = "", mode = if (music) MediaGenerationMode.CUSTOM else MediaGenerationMode.DEFAULT) }
                         } else {
-                            remember(profileId) { config.mediaProfiles(video)[profileId] }
+                            remember(profileId) { config.profiles(kind)[profileId] }
                         }
                         if (profile == null) {
                             LaunchedEffect(profileId) { navController.popBackStack() }
                         } else {
                             key(profile.id) {
                                 MediaRequestProfileEditor(
-                                    provider = providers.firstOrNull { it.id == config.providerId },
+                                    provider = if (music) null else providers.firstOrNull { it.id == config.providerId },
                                     config = config,
                                     profile = profile,
-                                    video = video,
+                                    video = video, kind = kind,
                                     onAutoSave = { updated ->
                                         val latest = toolSettings.system[toolName] ?: SystemToolConfig()
-                                        val current = latest.mediaProfiles(video)
-                                        val selected = if (video) latest.activeVideoRequestProfileId
+                                        val current = latest.profiles(kind)
+                                        val selected = if (music) latest.activeMusicRequestProfileId else if (video) latest.activeVideoRequestProfileId
                                             else latest.activeImageRequestProfileId
-                                        persistMediaProfiles(video, current + (updated.id to updated), selected)
+                                        if (music) persistMusicProfiles(current + (updated.id to updated), selected)
+                                        else persistMediaProfiles(video, current + (updated.id to updated), selected)
                                     },
                                     onBack = { navController.popBackStack() }
                                 )

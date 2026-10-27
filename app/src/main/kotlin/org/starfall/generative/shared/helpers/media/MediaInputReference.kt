@@ -145,7 +145,7 @@ internal fun mediaToolSchema(
 ): JsonObject = obj(
     "type" to str("object"),
     "properties" to buildJsonObject {
-        put("prompt", obj("type" to str("string"), "description" to str("Detailed instructions for the image or video to generate.")))
+        put("prompt", obj("type" to str("string"), "description" to str(if (name == "generate_music") "Describe the music to generate, including desired style, mood and lyrics when appropriate." else "Detailed instructions for the image or video to generate.")))
         if (name == "generate_video" && "input_image" !in disabledParams) put("input_image", obj(
             "type" to str("string"),
             "description" to str("Optional tool-file: URI of an attached image to animate. Reuse it directly.")

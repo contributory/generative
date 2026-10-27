@@ -24,8 +24,10 @@ internal fun SharedPreferences.remoteTerminalInputPreferences(machineId: String)
         edit().putString(remoteTerminalInputModePreferenceKey(machineId), mode.name)
             .putBoolean(remoteTerminalImePreferenceKey(machineId), true).apply()
     }
+    // Keep the saved Local IME choice even when the user switches to Remote, but never
+    // activate it while Remote is selected (including preferences saved by older versions).
     return RemoteTerminalInputPreferences(
         mode,
-        getBoolean(remoteTerminalImePreferenceKey(machineId), mode == TerminalInputMode.LOCAL)
+        mode.usesLocalInput && getBoolean(remoteTerminalImePreferenceKey(machineId), true)
     )
 }

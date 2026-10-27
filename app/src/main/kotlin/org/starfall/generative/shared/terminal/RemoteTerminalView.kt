@@ -15,7 +15,7 @@ import com.termux.view.TerminalView
 /** Uses Termux's raw key input or a composing Android editor, independently of Local/Remote. */
 internal class RemoteTerminalView(context: Context, private val bridge: RemoteTerminalBridge) : FrameLayout(context) {
     val terminalView = TerminalView(context, null)
-    val inputTarget: View get() = if (bridge.imeEnabled) this else terminalView
+    val inputTarget: View get() = if (bridge.imeEnabled && bridge.inputMode.usesLocalInput) this else terminalView
     private var composingConnection: RemoteTerminalInputConnection? = null
 
     init {
@@ -52,39 +52,36 @@ internal class RemoteTerminalView(context: Context, private val bridge: RemoteTe
     }
 
     fun updateInputMode() {
-        terminalView.isFocusable = !bridge.imeEnabled
-        terminalView.isFocusableInTouchMode = !bridge.imeEnabled
+        val useIme = bridge.imeEnabled && bridge.inputMode.usesLocalInput
+        terminalView.isFocusable = !useIme
+        terminalView.isFocusableInTouchMode = !useIme
     }
 
-    override fun onCheckIsTextEditor(): Boolean = bridge.imeEnabled
+    override fun onCheckIsTextEditor(): Boolean = bridge.imeEnabled && bridge.inputMode.usesLocalInput
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? {
         finishImeComposition()
         composingConnection = null
-        if (!bridge.imeEnabled) return null
+        if (!onCheckIsTextEditor()) return null
         // Single-line editor + Send action: some keyboards do not emit Enter for multiline text.
         outAttrs.inputType = InputType.TYPE_CLASS_TEXT
         outAttrs.imeOptions = EditorInfo.IME_ACTION_SEND or
             EditorInfo.IME_FLAG_NO_EXTRACT_UI or EditorInfo.IME_FLAG_NO_FULLSCREEN
-        val local = bridge.inputMode.usesLocalInput
-        outAttrs.initialSelStart = if (local) bridge.localCursorForIme else bridge.composingText.length
+        outAttrs.initialSelStart = bridge.localCursorForIme
         outAttrs.initialSelEnd = outAttrs.initialSelStart
         return RemoteTerminalInputConnection(
             this,
-            onCommit = bridge::sendImeText,
             onEdit = bridge::updateLocalImeDraft,
             onKey = bridge::sendImeKey,
-            onComposition = { bridge.composingText = it },
-            isLocal = local,
-            initialText = if (local) bridge.localInputForIme else bridge.composingText,
-            initialCursor = if (local) bridge.localCursorForIme else bridge.composingText.length
+            initialText = bridge.localInputForIme,
+            initialCursor = bridge.localCursorForIme
         ).also { composingConnection = it }
     }
 
     fun restartImeConnection() {
         finishImeComposition()
         composingConnection = null
-        if (bridge.imeEnabled && hasFocus()) {
+        if (onCheckIsTextEditor() && hasFocus()) {
             context.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
                 ?.restartInput(this)
         }
@@ -94,16 +91,12 @@ internal class RemoteTerminalView(context: Context, private val bridge: RemoteTe
         composingConnection?.finishComposingText()
     }
 
-    fun flushRemoteImeDraft() {
-        composingConnection?.flushRemoteDraft()
-    }
-
     fun syncLocalImeDraft(text: String, cursor: Int) {
         composingConnection?.syncLocalDraft(text, cursor)
     }
 
     fun sendKeyToIme(event: KeyEvent): Boolean? =
-        if (bridge.imeEnabled) composingConnection?.sendKeyEvent(event) else null
+        if (onCheckIsTextEditor()) composingConnection?.sendKeyEvent(event) else null
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK) return super.onKeyDown(keyCode, event)

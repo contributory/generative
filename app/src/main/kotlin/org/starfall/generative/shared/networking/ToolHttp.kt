@@ -111,15 +111,15 @@ class ToolHttp(
         val detail = safeError((body0 as? JsonObject)?.get("error") ?: body0, requestSecrets(response.request), body)
         error("HTTP ${response.code}: $detail")
     }
-    internal suspend fun readJson(response: Response): String {
+    internal suspend fun readJson(response: Response, sanitizeMedia: Boolean = true, maxChars: Int = 2 * 1024 * 1024): String {
         val body = response.body
         return body.charStream().use { reader ->
-            files?.sanitize(reader) ?: run {
+            files?.takeIf { sanitizeMedia }?.sanitize(reader) ?: run {
                 val buffer = CharArray(8192); val out = StringBuilder()
                 while (true) {
                     currentCoroutineContext().ensureActive()
                     val n = reader.read(buffer); if (n < 0) break
-                    check(out.length + n <= 2 * 1024 * 1024) { "Response exceeds 2 MB metadata limit" }
+                    check(out.length + n <= maxChars) { "Response exceeds metadata size limit" }
                     out.append(buffer, 0, n)
                 }
                 out.toString()
@@ -128,7 +128,7 @@ class ToolHttp(
     }
     suspend fun post(url: String, data: JsonObject, provider: ModelProvider? = null) =
         json(request(url, provider).post(data.toString().toRequestBody("application/json".toMediaType())).build())
-    suspend fun download(url: String, provider: ModelProvider? = null): String = withContext(Dispatchers.IO) {
+    suspend fun download(url: String, provider: ModelProvider? = null, audioOnly: Boolean = false): String = withContext(Dispatchers.IO) {
         var request = request(url, provider).header("Accept", "image/*, video/*, audio/*, application/octet-stream").get().build()
         repeat(5) {
             val downloaded = withResponse(request) { response ->
@@ -143,7 +143,7 @@ class ToolHttp(
                     val mime = response.header("Content-Type").orEmpty().substringBefore(';').lowercase()
                     check(mime.isEmpty() || mime.startsWith("image/") || mime.startsWith("video/") || mime.startsWith("audio/") || mime == "application/octet-stream") { "Download did not return media content" }
                     val store = requireFiles()
-                    val name = store.save(response.body.byteStream(), mime)
+                    val name = store.save(response.body.byteStream(), mime, audioOnly = audioOnly)
                     if (name.endsWith(".bin")) { store.delete(listOf(name)); error("Downloaded content is not supported media") }
                     name
                 }

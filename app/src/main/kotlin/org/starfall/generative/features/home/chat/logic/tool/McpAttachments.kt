@@ -36,11 +36,11 @@ internal class McpAttachments(private val entries: List<Entry>, private val sett
         val serverId: String,
         val name: String,
         val tools: List<ToolDefinition>,
-        /** Web Search Provider is always attached and never participates in the on-demand thresholds. */
+        /** Web Search Service is always attached and never participates in the on-demand thresholds. */
         val alwaysAttached: Boolean = false
     )
 
-    /** MCPs pinned outside Dynamic, such as the selected Web Search Provider. */
+    /** MCPs pinned outside Dynamic, such as the selected Web Search Service. */
     private val alwaysAttachedEntries: List<Entry>
     /** MCPs attached classically while Dynamic is active: those below the minimum with the Overflow strategy. */
     private val classicEntries: List<Entry>

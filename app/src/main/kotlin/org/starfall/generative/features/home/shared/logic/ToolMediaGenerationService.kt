@@ -30,6 +30,9 @@ internal class ToolMediaGenerationService(
     private val http: ToolHttp,
     private val aiService: AiService
 ) {
+    suspend fun executeMusicTool(profile: org.starfall.generative.shared.model.media.MediaRequestProfile, prompt: String): JsonObject =
+        org.starfall.generative.integrations.media.MusicGenerationClient(http).generate(profile, prompt)
+
     suspend fun executeConfiguredTool(
         name: String,
         provider: ModelProvider,

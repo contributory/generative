@@ -29,44 +29,38 @@ class RemoteTerminalInputTest {
     private class Terminal(mode: TerminalInputMode, context: Context) {
         val output = ByteArrayOutputStream()
         val input = RemoteTerminalInput(mode, output::write, {}, { false })
-        var preedit = ""
         val connection = RemoteTerminalInputConnection(
-            View(context), input::sendImeText, input::updateLocalDraftFromIme,
-            input::sendKey, { preedit = it }, mode == TerminalInputMode.LOCAL
+            View(context), input::updateLocalDraftFromIme, input::sendKey
         )
         fun text() = output.toString("UTF-8")
     }
 
     @Test
-    fun composingVietnameseCommitsOnceAndRoutesAccordingToMode() {
-        TerminalInputMode.entries.forEach { mode ->
-            val terminal = Terminal(mode, context)
-            terminal.connection.setComposingText("tieng", 1)
-            terminal.connection.setComposingText("tiếng", 1)
-            assertEquals("", terminal.text())
-            if (mode == TerminalInputMode.LOCAL) {
-                assertEquals("tiếng", terminal.input.localInput)
-                assertEquals("", terminal.preedit)
-            } else {
-                assertEquals("tiếng", terminal.preedit)
-                assertEquals("", terminal.input.localInput)
-            }
+    fun localImeComposesVietnameseUntilEnter() {
+        val terminal = Terminal(TerminalInputMode.LOCAL, context)
+        terminal.connection.setComposingText("tieng", 1)
+        terminal.connection.setComposingText("tiếng", 1)
+        assertEquals("", terminal.text())
+        assertEquals("tiếng", terminal.input.localInput)
 
-            terminal.connection.commitText("tiếng Việt 🎉", 1)
-            terminal.connection.finishComposingText()
-            if (mode == TerminalInputMode.LOCAL) {
-                assertEquals("", terminal.text())
-                assertEquals("tiếng Việt 🎉", terminal.input.localInput)
-                assertEquals("", terminal.preedit)
-            } else {
-                assertEquals("tiếng Việt ", terminal.text())
-                assertEquals("🎉", terminal.preedit)
-                assertEquals("", terminal.input.localInput)
-            }
-            terminal.connection.performEditorAction(EditorInfo.IME_ACTION_SEND)
-            assertEquals("tiếng Việt 🎉\r", terminal.text())
-            assertEquals("", terminal.input.localInput)
-        }
+        terminal.connection.commitText("tiếng Việt 🎉", 1)
+        terminal.connection.finishComposingText()
+        assertEquals("", terminal.text())
+        assertEquals("tiếng Việt 🎉", terminal.input.localInput)
+        terminal.connection.performEditorAction(EditorInfo.IME_ACTION_SEND)
+        assertEquals("tiếng Việt 🎉\r", terminal.text())
+        assertEquals("", terminal.input.localInput)
+    }
+
+    @Test
+    fun localImeCanCommitChinesePinyinCandidate() {
+        val terminal = Terminal(TerminalInputMode.LOCAL, context)
+        terminal.connection.setComposingText("nihao", 1)
+        terminal.connection.commitText("你好", 1)
+        assertEquals("你好", terminal.input.localInput)
+        assertEquals("", terminal.text())
+        terminal.connection.performEditorAction(EditorInfo.IME_ACTION_SEND)
+        assertEquals("你好\r", terminal.text())
     }
 
     @Test
@@ -75,129 +69,76 @@ class RemoteTerminalInputTest {
         terminal.connection.setComposingText("echo chào", 1)
         terminal.connection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
         assertEquals("echo chào\r", terminal.text())
-        assertEquals("", terminal.preedit)
     }
 
     @Test
-    fun backspaceEditsCompositionWithoutDeletingRemoteTextOrSplittingEmoji() {
-        val terminal = Terminal(TerminalInputMode.REMOTE, context)
+    fun localImeBackspaceDoesNotSplitEmoji() {
+        val terminal = Terminal(TerminalInputMode.LOCAL, context)
         terminal.connection.setComposingText("á🎉", 1)
-        terminal.connection.deleteSurroundingText(1, 0)
-        assertEquals("á", terminal.preedit)
-        assertEquals("", terminal.text())
-        terminal.connection.setComposingText("ấ🎉", 1)
         terminal.connection.deleteSurroundingTextInCodePoints(1, 0)
-        assertEquals("ấ", terminal.preedit)
-        terminal.connection.finishComposingText()
+        assertEquals("á", terminal.input.localInput)
         assertEquals("", terminal.text())
-        terminal.connection.deleteSurroundingText(1, 0)
-        assertEquals("", terminal.text())
-        assertEquals("", terminal.preedit)
         terminal.connection.performEditorAction(EditorInfo.IME_ACTION_SEND)
-        assertEquals("\r", terminal.text())
+        assertEquals("á\r", terminal.text())
     }
 
     @Test
-    fun imeToggleChangesTheRealEditorTypeInBothModes() {
-        TerminalInputMode.entries.forEach { mode ->
-            val bridge = RemoteTerminalBridge(context, mode)
-            val view = RemoteTerminalView(context, bridge)
-            view.terminalView.setTerminalViewClient(bridge)
-            bridge.view = view.terminalView
-            bridge.inputView = view
-            val raw = EditorInfo()
-            view.inputTarget.onCreateInputConnection(raw)
-            assertEquals(InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
-                raw.inputType and InputType.TYPE_MASK_VARIATION)
+    fun remoteModeRejectsImeEvenWhenExplicitlyEnabled() {
+        val bridge = RemoteTerminalBridge(context, TerminalInputMode.REMOTE)
+        val view = RemoteTerminalView(context, bridge)
+        view.terminalView.setTerminalViewClient(bridge)
+        bridge.view = view.terminalView
+        bridge.inputView = view
 
-            bridge.updateImeEnabled(true)
-            val composing = EditorInfo()
-            val connection = requireNotNull(view.onCreateInputConnection(composing))
-            assertEquals(InputType.TYPE_CLASS_TEXT, composing.inputType and InputType.TYPE_MASK_CLASS)
-            assertEquals(0, composing.inputType and InputType.TYPE_MASK_VARIATION)
-            connection.setComposingText("xin chào", 1)
-            if (mode == TerminalInputMode.LOCAL) {
-                assertEquals("xin chào", bridge.localInputForIme)
-                assertEquals("", bridge.composingText)
-            } else {
-                assertEquals("chào", bridge.composingText)
-            }
-            bridge.updateImeEnabled(false)
-            assertEquals("", bridge.composingText)
-            assertEquals(mode, bridge.inputMode)
-            bridge.close()
-        }
+        bridge.updateImeEnabled(true)
+        assertFalse(bridge.imeEnabled)
+        assertFalse(view.onCheckIsTextEditor())
+        assertSame(view.terminalView, view.inputTarget)
+        assertNull(view.onCreateInputConnection(EditorInfo()))
+        bridge.close()
     }
 
     @Test
-    fun imeCanReplaceAlreadyCommittedVietnameseSyllablesWithoutDuplication() {
-        TerminalInputMode.entries.forEach { mode ->
-            val terminal = Terminal(mode, context)
-            terminal.connection.commitText("cha", 1)
-            terminal.connection.deleteSurroundingText(1, 0)
-            terminal.connection.setComposingText("ào", 1)
-            terminal.connection.commitText("ào", 1)
-            assertEquals("", terminal.text())
-            if (mode.usesLocalInput) assertEquals("chào", terminal.input.localInput)
-            else assertEquals("chào", terminal.preedit)
-            terminal.connection.performEditorAction(EditorInfo.IME_ACTION_SEND)
-            assertEquals("chào\r", terminal.text())
-        }
+    fun switchingLocalImeToRemoteDisablesCompositionAndRestoresRawTerminalInput() {
+        val bridge = RemoteTerminalBridge(context, TerminalInputMode.LOCAL)
+        val view = RemoteTerminalView(context, bridge)
+        view.terminalView.setTerminalViewClient(bridge)
+        bridge.view = view.terminalView
+        bridge.inputView = view
+        bridge.updateImeEnabled(true)
+        assertTrue(bridge.imeEnabled)
+        assertTrue(view.onCheckIsTextEditor())
+        assertSame(view, view.inputTarget)
+        val composing = EditorInfo()
+        assertNotNull(view.onCreateInputConnection(composing))
+        assertEquals(InputType.TYPE_CLASS_TEXT, composing.inputType and InputType.TYPE_MASK_CLASS)
+
+        assertTrue(bridge.setInputMode(TerminalInputMode.REMOTE))
+        assertFalse(bridge.imeEnabled)
+        assertFalse(view.onCheckIsTextEditor())
+        assertSame(view.terminalView, view.inputTarget)
+        assertNull(view.onCreateInputConnection(EditorInfo()))
+        bridge.updateImeEnabled(true)
+        assertFalse(bridge.imeEnabled)
+
+        assertTrue(bridge.setInputMode(TerminalInputMode.LOCAL))
+        bridge.updateImeEnabled(true)
+        assertTrue(bridge.imeEnabled)
+        assertSame(view, view.inputTarget)
+        bridge.close()
     }
 
     @Test
-    fun remoteImeHoldsUnfinishedWordAndEditsUntilEnter() {
-        val terminal = Terminal(TerminalInputMode.REMOTE, context)
-        terminal.connection.commitText("echo cha", 1)
+    fun localImeCanReplaceAlreadyCommittedVietnameseSyllablesWithoutDuplication() {
+        val terminal = Terminal(TerminalInputMode.LOCAL, context)
+        terminal.connection.commitText("cha", 1)
         terminal.connection.deleteSurroundingText(1, 0)
+        terminal.connection.setComposingText("ào", 1)
         terminal.connection.commitText("ào", 1)
-        assertEquals("echo ", terminal.text())
-        assertEquals("chào", terminal.preedit)
-        terminal.connection.performEditorAction(EditorInfo.IME_ACTION_SEND)
-        assertEquals("echo chào\r", terminal.text())
-        assertEquals("", terminal.preedit)
-    }
-
-    @Test
-    fun remoteSpaceCommitsWordAndSpaceUsingTheSameImeConnection() {
-        val terminal = Terminal(TerminalInputMode.REMOTE, context)
-        terminal.connection.setComposingText("chao", 1)
-        terminal.connection.setComposingText("chào", 1)
         assertEquals("", terminal.text())
-        terminal.connection.commitText("chào", 1)
-        terminal.connection.commitText(" ", 1)
-        assertEquals("chào ", terminal.text())
-        assertEquals("", terminal.preedit)
-        // Keep using this same InputConnection after space: the editor must not restart the IME.
-        terminal.connection.setComposingText("bạn", 1)
-        terminal.connection.commitText("bạn", 1)
-        assertEquals("chào ", terminal.text())
-        terminal.connection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SPACE))
-        assertEquals("chào bạn ", terminal.text())
-        assertEquals("", terminal.preedit)
+        assertEquals("chào", terminal.input.localInput)
         terminal.connection.performEditorAction(EditorInfo.IME_ACTION_SEND)
-        assertEquals("chào bạn \r", terminal.text())
-    }
-
-    @Test
-    fun remoteImeProcessesSpacesInPastedTextAndKeepsTheUnfinishedWord() {
-        val terminal = Terminal(TerminalInputMode.REMOTE, context)
-        terminal.connection.commitText("echo hello world", 1)
-        assertEquals("echo hello ", terminal.text())
-        assertEquals("world", terminal.preedit)
-        terminal.connection.commitText(" ", 1)
-        assertEquals("echo hello world ", terminal.text())
-        assertEquals("", terminal.preedit)
-    }
-
-    @Test
-    fun remoteSpaceInComposingTextAlsoCommitsWithoutRestartingIme() {
-        val terminal = Terminal(TerminalInputMode.REMOTE, context)
-        terminal.connection.setComposingText("xin ", 1)
-        assertEquals("xin ", terminal.text())
-        assertEquals("", terminal.preedit)
-        terminal.connection.setComposingText("chào", 1)
-        assertEquals("chào", terminal.preedit)
+        assertEquals("chào\r", terminal.text())
     }
 
     @Test
@@ -248,7 +189,7 @@ class RemoteTerminalInputTest {
     }
 
     @Test
-    fun preferencesPreserveLegacyImeAndKeepNewImeIndependentOfRouting() {
+    fun preferencesKeepLocalImeChoiceButNeverActivateImeInRemoteMode() {
         val preferences = context.getSharedPreferences("terminal_test", Context.MODE_PRIVATE)
         val modeKey = remoteTerminalInputModePreferenceKey("machine")
         val imeKey = remoteTerminalImePreferenceKey("machine")
@@ -260,6 +201,10 @@ class RemoteTerminalInputTest {
         assertFalse(preferences.remoteTerminalInputPreferences("machine").imeEnabled)
         preferences.edit().putString(modeKey, "REMOTE").putBoolean(imeKey, true).commit()
         assertEquals(TerminalInputMode.REMOTE, preferences.remoteTerminalInputPreferences("machine").mode)
+        assertFalse(preferences.remoteTerminalInputPreferences("machine").imeEnabled)
+        // The Local IME preference survives the Remote mode change.
+        assertTrue(preferences.getBoolean(imeKey, false))
+        preferences.edit().putString(modeKey, "LOCAL").commit()
         assertTrue(preferences.remoteTerminalInputPreferences("machine").imeEnabled)
     }
 }

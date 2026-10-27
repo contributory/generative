@@ -38,7 +38,7 @@ import org.starfall.generative.shared.networking.str
 import java.io.File
 import java.util.Locale
 
-internal class MediaRequestChainExecutor(private val http: ToolHttp) {
+internal class MediaRequestChainExecutor(private val http: ToolHttp, private val music: Boolean = false, private val credential: String = "") {
     private val json = Json { isLenient = true; ignoreUnknownKeys = true }
 
     private data class InputFile(
@@ -55,7 +55,7 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
 
     suspend fun execute(
         chain: MediaRequestChain,
-        provider: ModelProvider,
+        provider: ModelProvider?,
         model: String,
         prompt: String,
         inputReferences: List<String>
@@ -76,7 +76,7 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
                     val context = MediaTemplateContext(
                         prompt = prompt,
                         model = model,
-                        apiToken = provider.auth.token,
+                        apiToken = (provider?.auth?.token ?: credential),
                         inputFiles = inputs.map { it.template },
                         responses = responses.toList(),
                         responseHeaders = responseHeaders.toList(),
@@ -122,13 +122,13 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
      */
     suspend fun testThroughStep(
         chain: MediaRequestChain,
-        provider: ModelProvider,
+        provider: ModelProvider?,
         model: String,
         prompt: String,
         stepIndex: Int
     ): MediaStepTestResult {
         require(stepIndex in chain.steps.indices) { "Invalid step number." }
-        require(model.isNotBlank()) { "Select a model before testing the request." }
+        require(music || model.isNotBlank()) { "Select a model before testing the request." }
         val responses = mutableListOf<JsonElement>()
         val responseHeaders = mutableListOf<Map<String, String>>()
         val steps = mutableListOf<MediaStepTemplateContext>()
@@ -145,7 +145,7 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
                     context = MediaTemplateContext(
                         prompt = prompt,
                         model = model,
-                        apiToken = provider.auth.token,
+                        apiToken = (provider?.auth?.token ?: credential),
                         inputFiles = emptyList(),
                         responses = responses.toList(),
                         responseHeaders = responseHeaders.toList(),
@@ -171,7 +171,7 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
         }
         val response = steps.last()
         val raw = responses.last().toString()
-        val token = provider.auth.token
+        val token = (provider?.auth?.token ?: credential)
         return MediaStepTestResult(
             statusCode = response.responseStatusCode,
             body = (if (token.isBlank()) raw else raw.replace(token, "[redacted]")).take(12000)
@@ -192,7 +192,7 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
     }
 
     private suspend fun executeStep(
-        provider: ModelProvider,
+        provider: ModelProvider?,
         step: MediaRequestStep,
         context: MediaTemplateContext,
         inputs: List<InputFile>,
@@ -226,15 +226,15 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
             endpoint,
             provider,
             headers,
-            provider.auth.token.takeIf { it.isNotBlank() }
+            provider?.auth?.token?.takeIf { it.isNotBlank() }
         )
         val request = applyMethod(builder, step.method, requestBody).build()
         val responseType = if (isFinal) finalResponseType else MediaResponseType.JSON
         return when (responseType) {
             MediaResponseType.JSON -> http.withResponse(request) { response ->
                 http.requireSuccess(response)
-                val text = response.body.string()
-                require(text.length <= 8 * 1024 * 1024) { "Media API JSON response exceeds 8 MB." }
+                val text = http.readJson(response, sanitizeMedia = false, maxChars = if (music) 64 * 1024 * 1024 else 8 * 1024 * 1024)
+                require(text.length <= (if (music) 64 else 8) * 1024 * 1024) { "Media API JSON response exceeds 8 MB." }
                 val responseBody = json.parseToJsonElement(text)
                 val headers = responseHeaders(response)
                 StepResult(
@@ -243,17 +243,31 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
                     step = stepContext(request, resolved, response, responseBody, headers)
                 )
             }
-            MediaResponseType.IMAGE, MediaResponseType.VIDEO, MediaResponseType.OCTET_STREAM ->
+            MediaResponseType.IMAGE, MediaResponseType.VIDEO, MediaResponseType.AUDIO, MediaResponseType.OCTET_STREAM ->
                 http.withResponse(request) { response ->
                     http.requireSuccess(response)
                     val mime = response.header("Content-Type").orEmpty().substringBefore(';').ifBlank {
                         when (responseType) {
                             MediaResponseType.IMAGE -> "image/*"
                             MediaResponseType.VIDEO -> "video/*"
+                            MediaResponseType.AUDIO -> "audio/*"
                             else -> "application/octet-stream"
                         }
                     }
-                    val name = if (preview) null else http.requireFiles().save(response.body.byteStream(), mime)
+                    val source = response.body.byteStream().buffered()
+                    val verifiedMime = if (music || responseType == MediaResponseType.AUDIO) {
+                        source.mark(32)
+                        val header = ByteArray(16)
+                        var offset = 0
+                        while (offset < header.size) {
+                            val count = source.read(header, offset, header.size - offset)
+                            if (count < 0) break
+                            offset += count
+                        }
+                        source.reset()
+                        org.starfall.generative.shared.media.audioMime(header) ?: error("Response is not supported audio.")
+                    } else mime
+                    val name = if (preview) null else http.requireFiles().save(source, verifiedMime, audioOnly = music)
                     val responseBody = if (preview) obj(
                         "mediaType" to str(mime),
                         "contentLength" to str(response.body.contentLength().takeIf { it >= 0 }?.toString() ?: "unknown")
@@ -367,6 +381,7 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
         if (step.observation.mode == MediaResponseObservationMode.PATH_EXISTS) return false
         val values = selected.mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.lowercase() }
         if (values.isEmpty()) return true
+        if (music) check(values.none { it in step.observation.errorValues.map(String::lowercase) }) { "Media API reported a failed generation." }
         val pending = step.observation.pendingValues.map(String::lowercase)
         return values.any { it in pending }
     }
@@ -374,7 +389,7 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
     private suspend fun finish(
         chain: MediaRequestChain,
         results: List<StepResult>,
-        provider: ModelProvider
+        provider: ModelProvider?
     ): JsonObject {
         val sourceStepNumber = chain.finalResponse.sourceStep ?: results.size
         return try {
@@ -394,30 +409,31 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
     private suspend fun finishFromResult(
         chain: MediaRequestChain,
         result: StepResult,
-        provider: ModelProvider
+        provider: ModelProvider?
     ): JsonObject {
         val files = http.requireFiles()
         val names = when (chain.finalResponse.type) {
-            MediaResponseType.IMAGE, MediaResponseType.VIDEO, MediaResponseType.OCTET_STREAM ->
+            MediaResponseType.IMAGE, MediaResponseType.VIDEO, MediaResponseType.AUDIO, MediaResponseType.OCTET_STREAM ->
                 result.rawFile?.let(::listOf) ?: error("Final response is configured as media but the last response was not raw media.")
             MediaResponseType.JSON -> {
                 val path = chain.finalResponse.mediaPath.trim()
                 require(path.isNotBlank()) { "A JSON final response requires a configurable media path." }
                 val values = selectMediaPath(result.value, path)
+                require(!music || values.size == 1) { "A music response must contain exactly one audio value." }
                 require(values.size <= 10) { "A response may contain at most 10 media values." }
                 values.map { value ->
                     val text = (value as? JsonPrimitive)?.contentOrNull.orEmpty()
                     require(text.isNotBlank()) { "The configured JSON media path must contain string values." }
                     when (chain.finalResponse.valueKind) {
                         MediaValueKind.LINK -> {
-                            require(text.startsWith("https://") || text.startsWith("http://")) {
+                            require(text.startsWith("https://") || (!music && text.startsWith("http://"))) {
                                 "The configured JSON media value is not an HTTP(S) link."
                             }
-                            http.download(text, if (sameOrigin(text, providerBase(provider))) provider else null)
+                            http.download(text, if (provider != null && sameOrigin(text, providerBase(provider))) provider else null, audioOnly = music)
                         }
                         MediaValueKind.BASE64 -> files.save(
                             decodeMediaBase64(text).inputStream(),
-                            dataUrlMime(text)
+                            dataUrlMime(text), audioOnly = music
                         )
                     }
                 }
@@ -436,7 +452,7 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
         return element.content
     }
 
-    private fun resolveEndpoint(provider: ModelProvider, endpoint: String): String {
+    private fun resolveEndpoint(provider: ModelProvider?, endpoint: String): String {
         val trimmed = endpoint.trim()
         require(isValidMediaEndpointTemplate(trimmed)) {
             "Media request endpoints must be provider-relative paths or complete HTTP(S) URLs without credentials or fragments."
@@ -445,6 +461,7 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
             return trimmed.toHttpUrlOrNull()?.toString()
                 ?: error("Media request endpoint is not a valid HTTP(S) URL.")
         }
+        require(provider != null) { "Music steps require complete HTTPS endpoints." }
         return providerBase(provider).trimEnd('/') + "/" + trimmed.trimStart('/')
     }
 
@@ -454,9 +471,9 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp) {
         left.scheme == right.scheme && left.host == right.host && left.port == right.port
     }.getOrDefault(false)
 
-    private fun safeResponse(value: JsonElement, provider: ModelProvider): String {
+    private fun safeResponse(value: JsonElement, provider: ModelProvider?): String {
         val raw = value.toString()
-        val redacted = provider.auth.token.takeIf { it.isNotBlank() }
+        val redacted = (provider?.auth?.token ?: credential).takeIf { it.isNotBlank() }
             ?.let { raw.replace(it, "[redacted]") } ?: raw
         return redacted.filter { it >= ' ' }.take(2_000)
     }

@@ -59,7 +59,7 @@ internal fun TerminalAppBar(
                 ),
                 modifier = Modifier.semantics { contentDescription = imeDescription },
                 onCheckedChange = { onToggleIme() },
-                enabled = bridge != null
+                enabled = bridge?.inputMode?.usesLocalInput == true
             ) {
                 Text(stringResource(R.string.remote_machine_terminal_input_ime_short),
                     style = MaterialTheme.typography.labelMedium)

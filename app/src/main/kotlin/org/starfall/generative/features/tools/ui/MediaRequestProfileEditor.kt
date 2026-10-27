@@ -29,6 +29,9 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.contentOrNull
 import org.starfall.generative.integrations.media.MediaRequestChainExecutor
+import org.starfall.generative.integrations.media.MusicGenerationClient
+import org.starfall.generative.shared.model.media.MediaKind
+import org.starfall.generative.shared.model.media.hasUnsafeMusicHeaders
 import org.starfall.generative.shared.networking.ToolHttp
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.media.MediaGenerationMode
@@ -66,9 +69,11 @@ fun MediaRequestProfileEditor(
     video: Boolean,
     config: SystemToolConfig = SystemToolConfig(),
     onAutoSave: (MediaRequestProfile) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    kind: MediaKind = if (video) MediaKind.VIDEO else MediaKind.IMAGE
 ) {
-    var draft by remember(profile.id) { mutableStateOf(profile) }
+    val music = kind == MediaKind.MUSIC
+    var draft by remember(profile.id) { mutableStateOf(if (music) profile.copy(mode = MediaGenerationMode.CUSTOM) else profile) }
     var modeMenu by remember { mutableStateOf(false) }
     var advancedOptions by remember { mutableStateOf(false) }
     var optionsJson by remember(profile.id) { mutableStateOf(profile.options.toString()) }
@@ -94,11 +99,14 @@ fun MediaRequestProfileEditor(
     var testing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     var testJob by remember { mutableStateOf<Job?>(null) }
+    DisposableEffect(Unit) { onDispose { testJob?.cancel() } }
     val validName = draft.name.trim().isNotEmpty()
-    val canPersist = validName && (draft.mode != MediaGenerationMode.DEFAULT || optionsError == null)
+    val canPersist = validName && (!music || !draft.hasUnsafeMusicHeaders()) && (draft.mode != MediaGenerationMode.DEFAULT || optionsError == null)
     val dirty = draft != profile || (draft.mode == MediaGenerationMode.DEFAULT && parsedOptions != draft.options)
     val saved by rememberUpdatedState(onAutoSave)
-    fun normalizedDraft() = draft.copy(name = draft.name.trim(), options = parsedOptions ?: draft.options)
+    fun normalizedDraft() = draft.copy(name = draft.name.trim(), options = parsedOptions ?: draft.options,
+        mode = if (music) MediaGenerationMode.CUSTOM else draft.mode,
+        encryptedCredential = draft.encryptedCredential)
     // Debounce typing; flushing on Back prevents losing the last keystroke.
     LaunchedEffect(draft, parsedOptions, optionsError) {
         if (canPersist && normalizedDraft() != profile) {
@@ -144,7 +152,7 @@ fun MediaRequestProfileEditor(
                     }
                 },
                 actions = {
-                    Box {
+                    if (!music) Box {
                         TextButton(onClick = { modeMenu = true }, enabled = profile.id != defaultMediaProfile(video).id) {
                             Text(stringResource(if (draft.mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom))
                             FluentIcon(Icons.Default.ArrowDropDown, null)
@@ -182,6 +190,14 @@ fun MediaRequestProfileEditor(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 6.dp)
                     )
+                }
+            }
+            if (music && draft.hasUnsafeMusicHeaders()) item {
+                Text(stringResource(R.string.music_unsafe_headers), color = MaterialTheme.colorScheme.error)
+            }
+            if (music) item {
+                MusicProfileCredentialField(draft.id, draft.encryptedCredential) {
+                    draft = draft.copy(encryptedCredential = it)
                 }
             }
             if (draft.mode == MediaGenerationMode.DEFAULT) {
@@ -317,7 +333,7 @@ fun MediaRequestProfileEditor(
                         FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove))
                     }
                 }
-                if (provider != null && config.modelId.isNotBlank()) {
+                if (music || (provider != null && config.modelId.isNotBlank())) {
                     SelectableOutlinedTextField(
                         value = testPrompt,
                         onValueChange = { testPrompt = it },
@@ -337,8 +353,9 @@ fun MediaRequestProfileEditor(
                             testJob = scope.launch {
                                 try {
                                     val result = withContext(Dispatchers.IO) {
-                                        MediaRequestChainExecutor(ToolHttp()).testThroughStep(
-                                            currentChain, currentProvider, config.modelId, currentPrompt, index
+                                        if (music) MusicGenerationClient(ToolHttp()).test(draft.copy(chain = currentChain), currentPrompt, index)
+                                        else MediaRequestChainExecutor(ToolHttp()).testThroughStep(
+                                            currentChain, requireNotNull(currentProvider), config.modelId, currentPrompt, index
                                         )
                                     }
                                     testOutput = "HTTP ${result.statusCode}\n${result.body}"
@@ -346,7 +363,7 @@ fun MediaRequestProfileEditor(
                                 } catch (cancelled: kotlinx.coroutines.CancellationException) {
                                     throw cancelled
                                 } catch (error: Exception) {
-                                    val token = currentProvider.auth.token
+                                    val token = currentProvider?.auth?.token.orEmpty()
                                     val detail = error.message.orEmpty()
                                     testOutput = if (token.isBlank()) detail else detail.replace(token, "[redacted]")
                                 } finally {
@@ -429,6 +446,7 @@ fun MediaRequestProfileEditor(
                 MediaFinalResponseEditor(
                     finalResponse = draft.chain.finalResponse,
                     stepCount = draft.chain.steps.size,
+                    music = music,
                     onChange = { updated ->
                         draft = draft.copy(chain = draft.chain.copy(finalResponse = updated))
                     }

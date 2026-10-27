@@ -261,6 +261,7 @@ class ToolChatViewModel internal constructor(
             searchable += listOf(
                 SearchableTool("generate_image", settings().system["generate_image"]?.enabled == true),
                 SearchableTool("generate_video", settings().system["generate_video"]?.enabled == true),
+                SearchableTool("generate_music", settings().system["generate_music"]?.let { it.enabled && it.activeMusicRequestProfile != null } == true),
                 SearchableTool(SEND_FILE_TOOL_NAME, settings().sendFileEnabled),
                 SearchableTool(SEARCH_TOOLS_TOOL_NAME, settings().searchToolsEnabled)
             )
@@ -283,6 +284,10 @@ class ToolChatViewModel internal constructor(
                 }
             }
             if (settings().searchToolsEnabled) tools += searchToolsDefinition
+            settings().system["generate_music"]?.takeIf { it.enabled && it.activeMusicRequestProfile != null }?.let {
+                tools += ToolDefinition("generate_music", "Generate music from a detailed prompt. The app saves and plays the resulting audio.",
+                    mediaToolSchema("generate_music"))
+            }
             listOf("generate_image", "generate_video").forEach { name ->
                 val config = settings().system[name]
                 if (config?.enabled == true) {
@@ -503,7 +508,7 @@ class ToolChatViewModel internal constructor(
                         servers.find { it.id == serverId }?.isContentApiPreset()
                     } == true
                     val mediaTool = tool != null && tool.serverId == null && tool.remoteMachineId == null &&
-                        name in setOf("generate_image", "generate_video")
+                        name in setOf("generate_image", "generate_video", "generate_music")
                     val mcpAttachmentTool = tool != null && tool.serverId == null && tool.remoteMachineId == null &&
                         name in mcpDynamicToolNames
                     send(GenerationEvent.Tool(activity))
@@ -587,6 +592,11 @@ class ToolChatViewModel internal constructor(
                         } else if (name == SEND_FILE_TOOL_NAME) {
                             check(settings().sendFileEnabled) { "Send File tool disabled" }
                             fileSender.execute(args)
+                        } else if (name == "generate_music") {
+                            val cfg = settings().system[name] ?: error("Music tool is not configured")
+                            check(cfg.enabled) { "Music tool disabled" }
+                            val profile = cfg.activeMusicRequestProfile ?: error("Select a valid Custom music profile")
+                            mediaGeneration.executeMusicTool(profile, args.text("prompt"))
                         } else {
                             val cfg = settings().system[name] ?: error("System tool is not configured")
                             check(cfg.enabled) { "System tool disabled" }
@@ -639,7 +649,7 @@ class ToolChatViewModel internal constructor(
                         result = summary.content
                         if (mediaTool) {
                             // The model only learns that the media exists; file names and locations stay in the app.
-                            val noun = if (name == "generate_image") "image" else "video"
+                            val noun = if (name == "generate_music") "audio track" else if (name == "generate_image") "image" else "video"
                             result = obj(
                                 "status" to str("success"),
                                 "message" to str("Generated ${summary.files.size} $noun(s) and displayed them to the user in chat.")
@@ -666,7 +676,7 @@ class ToolChatViewModel internal constructor(
                                         name == SEND_FILE_TOOL_NAME -> sentFileNames(result)
                                         else -> summary.files
                                     },
-                                    inlineMedia = contentApiMedia?.files?.isNotEmpty() == true ||
+                                    inlineMedia = (mediaTool && name == "generate_music") || contentApiMedia?.files?.isNotEmpty() == true ||
                                         tool.serverId == null && name == SEND_FILE_TOOL_NAME,
                                     responsePreviewLimit = if (contentApi || mediaTool) 0 else 6_000,
                                     response = completeResponse

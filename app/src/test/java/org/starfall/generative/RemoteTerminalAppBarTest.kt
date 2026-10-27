@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -27,7 +29,7 @@ class RemoteTerminalAppBarTest {
     @get:Rule val compose = createComposeRule()
 
     @Test
-    fun inputModeOpensMenuAndImeIsAnIndependentAppBarToggle() {
+    fun inputModeOpensMenuAndImeIsOnlyAvailableInLocalMode() {
         val bridge = RemoteTerminalBridge(ApplicationProvider.getApplicationContext<Context>(), TerminalInputMode.REMOTE)
         var modeChanges = 0
         compose.setContent {
@@ -43,6 +45,7 @@ class RemoteTerminalAppBarTest {
                 )
             }
         }
+        compose.onNodeWithContentDescription("Enable IME composition").assertIsNotEnabled().assertIsOff()
         compose.onNodeWithContentDescription("Terminal input mode: Remote").performClick()
         compose.runOnIdle { assertEquals(0, modeChanges) }
         compose.onNodeWithText("Local").assertIsDisplayed().performClick()
@@ -51,7 +54,11 @@ class RemoteTerminalAppBarTest {
         compose.runOnIdle { assertEquals(TerminalInputMode.LOCAL, bridge.inputMode) }
         compose.onNodeWithContentDescription("Terminal input mode: Local").performClick()
         compose.onNodeWithText("Remote").performClick()
-        compose.onNodeWithContentDescription("Enable IME composition").assertIsOn()
+        compose.onNodeWithContentDescription("Enable IME composition").assertIsNotEnabled().assertIsOff()
+        compose.runOnIdle { assertEquals(false, bridge.imeEnabled) }
+        compose.onNodeWithContentDescription("Terminal input mode: Remote").performClick()
+        compose.onNodeWithText("Local").performClick()
+        compose.onNodeWithContentDescription("Enable IME composition").assertIsEnabled().assertIsOff()
         compose.onNodeWithContentDescription("Mouse events · tap = click, drag = wheel").performClick().assertIsOn()
         compose.onNodeWithContentDescription("Show or hide terminal sessions").assertIsDisplayed()
         compose.onNodeWithContentDescription("Terminal font size").assertDoesNotExist()

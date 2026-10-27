@@ -6,19 +6,12 @@ import android.view.View
 import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
 
-/**
- * Keep the entire editable line, including committed characters, so Vietnamese IMEs can revise
- * previously committed syllables instead of appending a duplicate. Local edits update the local
- * draft continuously; remote edits are sent at word boundaries (space), on Enter, or before
- * an explicit terminal control key. A space keeps the same IME connection and keyboard.
- */
+/** Local-only IME editor. Keeps committed text editable so keyboards can revise syllables
+ * and select Pinyin candidates without duplicating characters in the terminal draft. */
 internal class RemoteTerminalInputConnection(
     view: View,
-    private val onCommit: (String) -> Unit,
     private val onEdit: (String, Int) -> Unit,
     private val onKey: (Int, KeyEvent) -> Boolean,
-    private val onComposition: (String) -> Unit,
-    private val isLocal: Boolean,
     initialText: String = "",
     initialCursor: Int = initialText.length
 ) : BaseInputConnection(view, true) {
@@ -34,35 +27,8 @@ internal class RemoteTerminalInputConnection(
     private fun publish() {
         if (syncingExternal) return
         val buffer = editable ?: return
-        if (isLocal) {
-            val text = buffer.toString()
-            onEdit(text, Selection.getSelectionEnd(buffer).coerceIn(0, text.length))
-            return
-        }
-
-        // A Vietnamese IME may supply the space via commitText or setComposingText. Keep the
-        // text editable until that boundary, then send the completed words WITH their spaces,
-        // never a carriage return (the shell command must still run only when Enter is pressed).
-        val pending = buffer.toString()
-        val boundary = pending.lastIndexOf(' ')
-        if (boundary >= 0) {
-            super.finishComposingText()
-            val cursor = Selection.getSelectionEnd(buffer).coerceIn(0, buffer.length)
-            val complete = pending.substring(0, boundary + 1)
-            buffer.delete(0, boundary + 1)
-            Selection.setSelection(buffer, (cursor - boundary - 1).coerceIn(0, buffer.length))
-            onComposition(buffer.toString())
-            // Consecutive spaces and pasted multi-word text must preserve every separator.
-            var from = 0
-            for (i in complete.indices) {
-                if (complete[i] == ' ') {
-                    onCommit(complete.substring(from, i + 1))
-                    from = i + 1
-                }
-            }
-        } else {
-            onComposition(pending)
-        }
+        val text = buffer.toString()
+        onEdit(text, Selection.getSelectionEnd(buffer).coerceIn(0, text.length))
     }
 
     override fun setComposingText(text: CharSequence?, newCursorPosition: Int): Boolean {
@@ -101,7 +67,6 @@ internal class RemoteTerminalInputConnection(
 
     /** Mirrors external local changes (extra keys, history navigation and paste) into the IME. */
     fun syncLocalDraft(text: String, cursor: Int) {
-        if (!isLocal) return
         val buffer = editable ?: return
         val position = cursor.coerceIn(0, text.length)
         if (buffer.toString() == text && Selection.getSelectionEnd(buffer) == position) return
@@ -114,21 +79,8 @@ internal class RemoteTerminalInputConnection(
         }
     }
 
-    /** Flush before a special remote key so controls keep their correct input ordering. */
-    fun flushRemoteDraft() {
-        if (isLocal) return
-        finishComposingText()
-        val buffer = editable ?: return
-        val text = buffer.toString()
-        buffer.clear()
-        Selection.setSelection(buffer, 0)
-        onComposition("")
-        if (text.isNotEmpty()) onCommit(text)
-    }
-
     private fun submit() {
         finishComposingText()
-        if (!isLocal) flushRemoteDraft()
         onKey(KeyEvent.KEYCODE_ENTER, KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
         val buffer = editable ?: return
         buffer.clear()
@@ -179,7 +131,6 @@ internal class RemoteTerminalInputConnection(
             KeyEvent.KEYCODE_SPACE -> {
                 if (event.isCtrlPressed || event.isAltPressed) {
                     finishComposingText()
-                    flushRemoteDraft()
                     onKey(event.keyCode, event)
                 } else {
                     // Some keyboards dispatch the space as a hardware key rather than commitText.
@@ -188,7 +139,6 @@ internal class RemoteTerminalInputConnection(
             }
             else -> {
                 finishComposingText()
-                flushRemoteDraft()
                 onKey(event.keyCode, event)
             }
         }

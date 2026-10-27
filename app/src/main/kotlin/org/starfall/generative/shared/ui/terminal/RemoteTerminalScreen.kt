@@ -52,10 +52,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -248,15 +244,18 @@ internal fun RemoteTerminalScreen(
                 disconnect(machine.id)
                 onDismiss()
             },
-            canUseRemoteInput = terminalSlots.none {
-                it.bridge.hasLocalDraft || it.bridge.composingText.isNotEmpty()
-            },
+            canUseRemoteInput = terminalSlots.none { it.bridge.hasLocalDraft },
             onInputModeChange = { mode ->
                 // Input mode is a per-machine preference: apply it to every
                 // session, not just the visible one.
                 if (activeBridge?.setInputMode(mode) == true) {
+                    // IME is a Local-only preference; restore it upon returning to Local.
+                    val localImeEnabled = mode.usesLocalInput && terminalPrefs.getBoolean(
+                        remoteTerminalImePreferenceKey(machine.id), true
+                    )
                     terminalSlots.forEach { slot ->
                         if (slot.bridge !== activeBridge) slot.bridge.setInputMode(mode)
+                        slot.bridge.updateImeEnabled(localImeEnabled)
                     }
                     terminalPrefs.edit()
                         .putString(remoteTerminalInputModePreferenceKey(machine.id), mode.name)
@@ -264,7 +263,7 @@ internal fun RemoteTerminalScreen(
                 }
             },
             onToggleIme = {
-                activeBridge?.let { bridge ->
+                activeBridge?.takeIf { it.inputMode.usesLocalInput }?.let { bridge ->
                     val enabled = !bridge.imeEnabled
                     terminalSlots.forEach { it.bridge.updateImeEnabled(enabled) }
                     terminalPrefs.edit().putBoolean(remoteTerminalImePreferenceKey(machine.id), enabled).apply()
@@ -331,8 +330,7 @@ internal fun RemoteTerminalScreen(
                             }
                         }
                         val draft = activeBridge?.localDraftForDisplay().orEmpty()
-                        val composing = activeBridge?.composingText.orEmpty()
-                        if (draft.isNotEmpty() || composing.isNotEmpty()) {
+                        if (draft.isNotEmpty()) {
                             Surface(
                                 Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(8.dp),
                                 shape = RoundedCornerShape(12.dp),
@@ -340,12 +338,9 @@ internal fun RemoteTerminalScreen(
                                 border = prominentContainerBorder()
                             ) {
                                 val draftScroll = rememberScrollState()
-                                LaunchedEffect(draft, composing) { draftScroll.scrollTo(draftScroll.maxValue) }
+                                LaunchedEffect(draft) { draftScroll.scrollTo(draftScroll.maxValue) }
                                 Text(
-                                    buildAnnotatedString {
-                                        append(draft)
-                                        withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) { append(composing) }
-                                    },
+                                    draft,
                                     fontFamily = FontFamily.Monospace,
                                     softWrap = true,
                                     modifier = Modifier.heightIn(max = 140.dp)

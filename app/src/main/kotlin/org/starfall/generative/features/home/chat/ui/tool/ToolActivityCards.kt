@@ -111,6 +111,7 @@ private fun ToolActivityLabel(
     val color = MaterialTheme.colorScheme.onSurface
     val displayName = when (activity.name) {
         "generate_image" -> stringResource(if (running) R.string.tool_generating_image else R.string.tool_generate_image)
+        "generate_music" -> stringResource(if (running) R.string.tool_generating_music else R.string.tool_generate_music)
         "generate_video" -> stringResource(if (running) R.string.tool_generating_video else R.string.tool_generate_video)
         else -> activity.name.replace('_', ' ')
     }

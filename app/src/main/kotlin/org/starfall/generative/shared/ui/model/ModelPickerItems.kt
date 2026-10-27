@@ -48,6 +48,25 @@ internal val ModelPickerItem.sectionKey: String?
 
 internal data class ModelPickerTab(val key: String, val label: String)
 
+/** Initial position is based on the current selection, never a previously saved folder. */
+internal fun initialModelPickerItemIndex(
+    items: List<ModelPickerItem>,
+    selectedProviderId: String,
+    selectedModelId: String
+): Int {
+    if (selectedProviderId.isBlank()) return 0
+    if (selectedModelId.isNotBlank()) {
+        val modelIndex = items.indexOfFirst {
+            it is ModelPickerItem.Model && it.provider.id == selectedProviderId && it.modelId == selectedModelId
+        }
+        if (modelIndex >= 0) return modelIndex
+    }
+    // A collapsed provider hides its models but remains the correct navigation target.
+    return items.indexOfFirst {
+        it is ModelPickerItem.Provider && it.provider.id == selectedProviderId
+    }.coerceAtLeast(0)
+}
+
 internal val chatModelPickerFilter: (ModelProvider, String, ModelConfiguration) -> Boolean = { _, _, config ->
     config.modelType == org.starfall.generative.shared.model.language.ModelType.TEXT_GENERATION
 }
@@ -174,7 +193,7 @@ private fun providerModels(
 
 internal fun defaultProviderModels(type: ModelApiType): List<String> = emptyList()
 
-/** Tabs point to section headers in the same filtered list that the user scrolls. */
+/** Tabs navigate to section headers in the currently filtered model list. */
 internal fun computeModelPickerTabs(items: List<ModelPickerItem>, ungroupedLabel: String): List<ModelPickerTab> =
     items.mapNotNull { item ->
         when (item) {

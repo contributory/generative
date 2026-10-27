@@ -12,6 +12,8 @@ import org.starfall.generative.shared.model.media.MediaRequestProfile
 import org.starfall.generative.shared.model.media.ImageGenProfile
 import org.starfall.generative.shared.model.media.VideoGenProfile
 import org.starfall.generative.shared.model.media.withDefaultMediaProfile
+import org.starfall.generative.shared.model.media.validMusicProfile
+import org.starfall.generative.shared.model.media.hasUnsafeMusicHeaders
 
 @Serializable
 data class McpAccess(val enabled: Boolean = false, val tools: Map<String, Boolean> = emptyMap())
@@ -34,9 +36,25 @@ data class SystemToolConfig(
     val videoRequestProfiles: Map<String, MediaRequestProfile> = emptyMap(),
     val activeImageRequestProfileId: String = "",
     val activeVideoRequestProfileId: String = "",
+    val musicRequestProfiles: Map<String, MediaRequestProfile> = emptyMap(),
+    val activeMusicRequestProfileId: String = "",
     /** Optional media-tool parameters hidden from the model and ignored if it passes them anyway. */
     val disabledParams: Set<String> = emptySet()
 ) {
+    val activeMusicRequestProfile: MediaRequestProfile?
+        get() = musicRequestProfiles[activeMusicRequestProfileId]?.takeIf { it.validMusicProfile() }
+
+    fun profiles(kind: org.starfall.generative.shared.model.media.MediaKind): Map<String, MediaRequestProfile> =
+        if (kind == org.starfall.generative.shared.model.media.MediaKind.MUSIC) musicRequestProfiles.filterValues { it.mode == MediaGenerationMode.CUSTOM }.mapValues { (id, profile) -> profile.copy(id = id) }
+        else mediaProfiles(kind == org.starfall.generative.shared.model.media.MediaKind.VIDEO)
+
+    fun withMusicProfiles(profiles: Map<String, MediaRequestProfile>, activeId: String): SystemToolConfig {
+        val custom = profiles.filterValues { it.mode == MediaGenerationMode.CUSTOM }.mapValues { (id, profile) -> profile.copy(id = id) }
+        val selected = activeId.takeIf { it in custom }.orEmpty()
+        return copy(musicRequestProfiles = custom, activeMusicRequestProfileId = selected,
+            enabled = enabled && selected.isNotBlank())
+    }
+
     val imageOptions: JsonObject
         get() = imageOptionsByModel["$providerId/$modelId"] ?: JsonObject(emptyMap())
 
@@ -250,6 +268,7 @@ fun systemMediaToolAvailable(
     providers: List<ModelProvider>,
     mode: MediaGenerationMode = if (name == "generate_image") config.imageGenerationMode else config.videoGenerationMode
 ): Boolean {
+    if (name == "generate_music") return config.activeMusicRequestProfile != null
     if (config.providerId.isBlank() || config.modelId.isBlank()) return false
     val requiredType = when (name) {
         "generate_image" -> ModelType.IMAGE_GENERATION
@@ -301,3 +320,14 @@ const val MAX_TITLE_GENERATION_MIN_MESSAGES = 50
 const val DEFAULT_TITLE_GENERATION_MIN_WORDS = 10
 const val MIN_TITLE_GENERATION_MIN_WORDS = 0
 const val MAX_TITLE_GENERATION_MIN_WORDS = 1000
+
+/** Reject unsafe music imports before any plaintext credentials reach persisted settings. */
+fun ToolSettings.validateMusicSecrets(): ToolSettings = also {
+    system["generate_music"]?.musicRequestProfiles?.values?.forEach { profile ->
+        require(profile.mode == MediaGenerationMode.CUSTOM) { "Music imports must contain Custom profiles only." }
+        require(!profile.hasUnsafeMusicHeaders()) { "Music authentication headers must reference the protected profile credential." }
+        require(profile.encryptedCredential.isBlank() || profile.encryptedCredential.startsWith("keystore:v1:")) {
+            "Music credentials must use a protected credential envelope. Enter the API key in the profile editor."
+        }
+    }
+}
