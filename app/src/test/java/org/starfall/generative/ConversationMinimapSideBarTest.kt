@@ -75,6 +75,18 @@ class ConversationMinimapSideBarTest {
             click(Offset(width / 2f, height * 0.02f))
         }
         compose.waitForIdle()
+        assertTrue("Tapping the top reaches older messages", list.firstVisibleItemIndex >= 18)
+        compose.onNodeWithTag("chat-minimap-map").performTouchInput {
+            click(Offset(width / 2f, height * 0.98f))
+        }
+        compose.waitForIdle()
+        assertTrue("Tapping the bottom reaches newer messages", list.firstVisibleItemIndex <= 1)
+        val beforeDrag = compose.onNodeWithTag("chat-minimap-map").getUnclippedBoundsInRoot()
+        compose.onNodeWithTag("chat-minimap-map").performTouchInput {
+            swipe(Offset(width / 2f, height * 0.95f), Offset(width / 2f, height * 0.03f), 700)
+        }
+        compose.waitForIdle()
+        assertEquals(beforeDrag, compose.onNodeWithTag("chat-minimap-map").getUnclippedBoundsInRoot())
         assertTrue(navigated)
         assertTrue("The oldest messages are at the high indices of the reverse list", list.firstVisibleItemIndex >= 18)
         compose.onNodeWithTag("outside-action").performTouchInput { click() }

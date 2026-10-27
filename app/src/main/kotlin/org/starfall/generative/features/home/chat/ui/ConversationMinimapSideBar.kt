@@ -6,9 +6,9 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -130,11 +130,7 @@ internal fun ConversationMinimapSideBar(
                         },
                     contentAlignment = AbsoluteAlignment.CenterRight
                 ) {
-                    Box(Modifier.width(24.dp).height(160.dp).systemGestureExclusion(),
-                        contentAlignment = AbsoluteAlignment.CenterRight) {
-                        Box(Modifier.width(3.dp).height(40.dp)
-                            .background(MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(3.dp)))
-                    }
+                    Box(Modifier.width(24.dp).height(160.dp).systemGestureExclusion())
                 }
             }
             AnimatedVisibility(
@@ -214,19 +210,24 @@ private fun ConversationMinimap(
                 }
             }
     }
-    val measured = heights.toMap()
-    val spans = remember(entries, measured) {
-        minimapSpans(entries.map { it.id to (measured[it.id]?.toFloat() ?: it.estimatedHeight) })
+    // Keep the full conversation fitted to the rail. Measurements collected during scrolling
+    // are used on the next content change rather than shifting the map under the user's finger.
+    val spans = remember(entries) {
+        minimapSpans(entries.map { it.id to (heights[it.id]?.toFloat() ?: it.estimatedHeight) })
     }
+    // Keep the map fixed under the finger while newly visited messages are measured.
+    var draggingSpans by remember { mutableStateOf<List<MinimapSpan>?>(null) }
+    val displayedSpans = draggingSpans ?: spans
+    val latestSpans by rememberUpdatedState(spans)
     val layout = listState.layoutInfo
     val viewport = minimapViewport(
-        spans,
+        displayedSpans,
         layout.visibleItemsInfo.mapNotNull { item -> (item.key as? String)?.let { MinimapVisibleItem(it, item.offset, item.size) } },
         layout.viewportStartOffset + bottomObscuredPx,
         layout.viewportEndOffset - topObscuredPx
     )
     val navigate: (Float) -> Unit = { position ->
-        minimapTarget(spans, position)?.let { target ->
+        minimapTarget(displayedSpans, position)?.let { target ->
             latestOnNavigate()
             navigationJob?.cancel()
             navigationJob = scope.launch {
@@ -258,11 +259,27 @@ private fun ConversationMinimap(
             setProgress { currentNavigate(it); true }
         }
         .pointerInput(Unit) { detectTapGestures { currentNavigate(it.y / size.height.coerceAtLeast(1)) } }
+        .pointerInput(Unit) {
+            detectVerticalDragGestures(
+                onDragStart = { point ->
+                    draggingSpans = latestSpans
+                    currentNavigate(point.y / size.height.coerceAtLeast(1))
+                },
+                onVerticalDrag = { change, _ ->
+                    change.consume()
+                    currentNavigate(change.position.y / size.height.coerceAtLeast(1))
+                },
+                onDragEnd = { draggingSpans = null },
+                onDragCancel = { draggingSpans = null }
+            )
+        }
     ) {
-        spans.forEachIndexed { index, span ->
+        displayedSpans.forEachIndexed { index, span ->
             val entry = entries[index]
             val y = span.start * size.height
-            val height = ((span.end - span.start) * size.height - 2.dp.toPx()).coerceAtLeast(1f)
+            val spanHeight = (span.end - span.start) * size.height
+            if (spanHeight <= 0f) return@forEachIndexed
+            val height = (spanHeight - minOf(2.dp.toPx(), spanHeight * 0.2f)).coerceAtLeast(0f)
             val blockWidth = size.width * if (entry.user) 0.72f else 0.90f
             val left = if (entry.user) size.width - blockWidth else 0f
             val color = if (entry.user) userColor else modelColor
