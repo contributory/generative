@@ -23,6 +23,7 @@ from collections import Counter
 from pathlib import Path
 
 RES_DIR = Path(__file__).resolve().parent.parent / "app/src/main/res"
+KOTLIN_DIR = Path(__file__).resolve().parent.parent / "app/src/main/kotlin"
 SOURCE_DIR = "values"
 
 # Locale folder suffix -> BCP-47 language tag used by AppLanguage.
@@ -51,10 +52,23 @@ DEFAULT_PLURAL_CATEGORIES = {"one", "other"}
 SINGULAR_ONLY_PLURAL_CATEGORIES = {"other"}
 
 # Printf-style conversion specifiers and Android escapes.
-FORMAT_SPECIFIER = re.compile(r"%(?:\d+\$)?[-#+ 0,(]*\d*(?:\.\d+)?[a-zA-Z%]")
-POSITIONAL_SPECIFIER = re.compile(r"%\d+\$[a-zA-Z]")
+FORMAT_SPECIFIER = re.compile(r"%(?:[0-9]+\$)?[-#+ 0,(]*[0-9]*(?:\.[0-9]+)?[a-zA-Z%]")
 ANDROID_ESCAPE = re.compile(r"\\(?:n|t|'|\"|\\|u[0-9a-fA-F]{4})")
 APOSTROPHE, QUOTE, BACKSLASH = chr(39), chr(34), chr(92)
+
+# Conversion characters that turn a string into a Time.format() pattern; aapt2 accepts
+# those as they are, so they end the format check right away.
+TIME_FORMAT_CONVERSIONS = set("DFKMWZkmwyz")
+
+# Compose call sites that render user visible text. A literal at one of these places stays
+# English under every locale, so it has to live in a string resource instead.
+UI_TEXT_SITES = (
+    re.compile(r"\bText\(\s*(?:text\s*=\s*)?\"((?:[^\"\\]|\\.)*)\""),
+    re.compile(r"\bcontentDescription\s*=\s*\"((?:[^\"\\]|\\.)*)\""),
+)
+# Template expressions such as "${count}" are runtime values, not hardcoded copy; the scan
+# strips them before it looks for words. Vendored icon sources carry licence headers only.
+SKIPPED_KOTLIN_FOLDERS = ("icons/fluentui",)
 
 
 def has_unescaped_quote(text):
@@ -100,6 +114,50 @@ def parse_xml(path):
     return tree
 
 
+def verify_java_string_format(text):
+    """Port of aapt2's VerifyJavaStringFormat: is the string a valid format string?
+
+    aapt2 refuses a translatable string that carries more than one substitution and at least one
+    non-positional argument, because a translation may reorder the arguments. The check only
+    applies to strings that are translatable and not marked formatted="false".
+    """
+    index, length = 0, len(text)
+    arg_count = 0
+    nonpositional = False
+    while index < length:
+        if text[index] == "%" and index + 1 < length:
+            index += 1
+            char = text[index]
+            if char == "%" or char == "n":
+                index += 1
+                continue
+            arg_count += 1
+            digits = 0
+            while index < length and text[index].isdigit():
+                index += 1
+                digits += 1
+            if digits > 0:
+                if index != length and text[index] != "$":
+                    # The digits were a size, not a positional argument.
+                    nonpositional = True
+            elif index < length and text[index] == "<":
+                # Reusing the last argument breaks when a translation reorders the arguments.
+                nonpositional = True
+                index += 1
+                if index != length and text[index] == "$":
+                    index += 1
+            else:
+                nonpositional = True
+            # Ignore size, width and flags.
+            while index < length and (text[index] in "-#+ ,(" or text[index].isdigit()):
+                index += 1
+            if index != length and text[index] in TIME_FORMAT_CONVERSIONS:
+                return True
+        if index < length:
+            index += 1
+    return not (arg_count > 1 and nonpositional)
+
+
 def parse_resources(path):
     """Parse a strings.xml file into (strings, plurals, problems).
 
@@ -124,7 +182,14 @@ def parse_resources(path):
         if element.tag == "string":
             if name in strings:
                 problems.append(Problem("error", "duplicate", name, "duplicate string key"))
-            strings[name] = element.text or ""
+            text = element.text or ""
+            strings[name] = text
+            if (element.get("translatable") != "false" and element.get("formatted") != "false"
+                    and not verify_java_string_format(text)):
+                problems.append(Problem(
+                    "error", "format", name,
+                    "aapt2 rejects this string: several substitutions in non-positional format; "
+                    "use positional arguments (%1$s) or add formatted=\"false\""))
         elif element.tag == "plurals":
             if name in plurals:
                 problems.append(Problem("error", "duplicate", name, "duplicate plurals key"))
@@ -139,6 +204,126 @@ def parse_resources(path):
         else:
             problems.append(Problem("error", "xml", name, f"unsupported element <{element.tag}>"))
     return strings, plurals, invariant, problems
+
+
+def strip_kotlin_comments(source):
+    """Blank out Kotlin comments while keeping the string literals and the line count intact."""
+    out = []
+    index, length = 0, len(source)
+    in_line, in_block = False, False
+    while index < length:
+        char = source[index]
+        if in_line:
+            if char == "\n":
+                in_line = False
+                out.append(char)
+            else:
+                out.append(" ")
+            index += 1
+            continue
+        if in_block:
+            if char == "*" and index + 1 < length and source[index + 1] == "/":
+                out.append("  ")
+                index += 2
+                in_block = False
+                continue
+            out.append("\n" if char == "\n" else " ")
+            index += 1
+            continue
+        if char == '"':
+            end = index + 1
+            while end < length:
+                if source[end] == "\\":
+                    end += 2
+                    continue
+                if source[end] == '"':
+                    end += 1
+                    break
+                end += 1
+            out.append(source[index:end])
+            index = end
+            continue
+        if char == "/" and index + 1 < length and source[index + 1] == "/":
+            in_line = True
+            out.append("  ")
+            index += 2
+            continue
+        if char == "/" and index + 1 < length and source[index + 1] == "*":
+            in_block = True
+            out.append("  ")
+            index += 2
+            continue
+        out.append(char)
+        index += 1
+    return "".join(out)
+
+
+def strip_template_expressions(literal):
+    """Remove Kotlin string templates, including nested braces, from a literal."""
+    out = []
+    index, length = 0, len(literal)
+    while index < length:
+        char = literal[index]
+        if char == "$" and index + 1 < length and literal[index + 1] == "{":
+            depth = 1
+            index += 2
+            while index < length and depth:
+                if literal[index] == "{":
+                    depth += 1
+                elif literal[index] == "}":
+                    depth -= 1
+                index += 1
+            continue
+        if char == "$" and index + 1 < length and (literal[index + 1].isalpha() or literal[index + 1] == "_"):
+            index += 1
+            while index < length and (literal[index].isalnum() or literal[index] == "_"):
+                index += 1
+            continue
+        out.append(char)
+        index += 1
+    return "".join(out)
+
+
+def looks_like_prose(literal):
+    """True when a literal carries words that have to be translated.
+
+    Only the static part of the literal counts: template expressions hold runtime values.
+    Symbols, file names and identifiers stay out of scope, so a literal is only reported when it
+    contains a lowercase word of at least four letters.
+    """
+    if "://" in literal:
+        return False
+    static = strip_template_expressions(literal).replace("\\", "")
+    for word in re.findall(r"[A-Za-z]{4,}", static):
+        if any(char.islower() for char in word):
+            return True
+    return False
+
+
+def check_hardcoded_ui_text(source_dir, problems):
+    """Report user visible text that is hardcoded in Kotlin instead of localized."""
+    if not source_dir or not source_dir.exists():
+        return
+    root = Path(__file__).resolve().parent.parent
+    for path in sorted(Path(source_dir).rglob("*.kt")):
+        if any(folder in path.as_posix() for folder in SKIPPED_KOTLIN_FOLDERS):
+            continue
+        source = path.read_text(encoding="utf-8", errors="replace")
+        masked = strip_kotlin_comments(source)
+        for pattern in UI_TEXT_SITES:
+            for match in pattern.finditer(masked):
+                literal = match.group(1)
+                if not looks_like_prose(literal):
+                    continue
+                line = source.count("\n", 0, match.start()) + 1
+                try:
+                    location = path.relative_to(root).as_posix()
+                except ValueError:
+                    location = path.as_posix()
+                problems.append(Problem(
+                    "error", "hardcoded", f"{location}:{line}",
+                    f'hardcoded user visible text "{literal}"; move it to a string resource '
+                    "(R.string.*) and translate it"))
 
 
 def format_specifiers(text):
@@ -171,22 +356,6 @@ def check_escaping(key, text, problems):
                                 "text starts with '@' or '?'; escape it as \\@ or \\?"))
     if "\n" in text or "\r" in text:
         problems.append(Problem("error", "escape", key, "raw newline in a string resource"))
-
-
-def check_non_positional(key, text, source, problems):
-    """Android rejects several unindexed substitutions in one string.
-
-    The English source is the reference: a source that already uses unindexed arguments (such as
-    the `%h` and `%p` placeholders of the WebSocket help) is not reported.
-    """
-    conversions = [m.group(0) for m in FORMAT_SPECIFIER.finditer(text) if m.group(0) != "%%"]
-    source_conversions = [m.group(0) for m in FORMAT_SPECIFIER.finditer(source)
-                          if m.group(0) != "%%"]
-    if len(source_conversions) > 1:
-        return
-    if len(conversions) > 1 and not any(POSITIONAL_SPECIFIER.fullmatch(s) for s in conversions):
-        problems.append(Problem("error", "format", key,
-                                "several substitutions need positional arguments (%1$s)"))
 
 
 def compare_with_source(key, source, translation, problems):
@@ -244,7 +413,6 @@ def check_locale(locale, folder, source_strings, source_plurals, required):
         if source is None:
             continue
         check_escaping(key, text, problems)
-        check_non_positional(key, text, source, problems)
         compare_with_source(key, source, text, problems)
 
     for key, items in plurals.items():
@@ -259,7 +427,6 @@ def check_locale(locale, folder, source_strings, source_plurals, required):
         for quantity, text in items.items():
             check_escaping(key, text, problems)
             origin = source_items.get(quantity) or next(iter(source_items.values()))
-            check_non_positional(key, text, origin, problems)
             compare_with_source(key, origin, text, problems)
 
     return {"strings": strings, "plurals": plurals}, problems
@@ -269,6 +436,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--res-dir", type=Path, default=RES_DIR)
+    parser.add_argument("--kotlin-dir", type=Path, default=KOTLIN_DIR,
+                        help="Kotlin sources scanned for hardcoded user visible text")
     parser.add_argument("--locale", help="only this locale (folder qualifier or language tag)")
     parser.add_argument("--format", choices=["text", "json"], default="text")
     parser.add_argument("--strict", action="store_true",
@@ -315,6 +484,13 @@ def main():
             "errors": [p.as_dict() for p in errors],
             "warnings": [p.as_dict() for p in warnings],
         }
+
+    hardcoded = []
+    check_hardcoded_ui_text(args.kotlin_dir, hardcoded)
+    for problem in hardcoded:
+        print(f"{problem}", file=sys.stderr)
+    if hardcoded:
+        failed = True
 
     if args.format == "json":
         print(json.dumps(report, indent=2, ensure_ascii=False))

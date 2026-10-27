@@ -908,7 +908,7 @@
     <string name="remote_machine_keep_alive">Keep-alive của máy chủ (giây)</string>
     <string name="remote_machine_strict_host_key">Kiểm tra khoá máy chủ nghiêm ngặt</string>
     <string name="remote_machine_compression">Bật nén</string>
-    <string name="remote_machine_websocket_url_help">Dùng ws:// hoặc wss://. %h và %p sẽ được thay bằng máy chủ và cổng SSH.</string>
+    <string name="remote_machine_websocket_url_help" formatted="false">Dùng ws:// hoặc wss://. %h và %p sẽ được thay bằng máy chủ và cổng SSH.</string>
     <string name="remote_machine_google_section">OAuth Google Cloud</string>
     <string name="remote_machine_oauth_client">Ứng dụng OAuth</string>
     <string name="remote_machine_select_oauth">Chọn ứng dụng OAuth</string>
@@ -1204,4 +1204,23 @@
     <plurals name="media_chain_profile_steps">
         <item quantity="other">%d bước</item>
     </plurals>
+    <string name="user_profile_title">Hồ sơ người dùng</string>
+    <string name="user_profile_photo_options">Tùy chọn ảnh hồ sơ</string>
+    <string name="user_profile_photo_title">Ảnh hồ sơ</string>
+    <string name="user_profile_photo_description">Chọn ảnh dùng trong toàn bộ ứng dụng</string>
+    <string name="user_profile_background_chat">Nền màn hình trò chuyện</string>
+    <string name="user_profile_background_drawer">Nền ngăn kéo bên</string>
+    <string name="user_profile_background_menu">Nền màn hình menu</string>
+    <string name="user_profile_background_bottom_sheet">Nền bảng trượt dưới</string>
+    <string name="user_profile_background_dialog">Nền hộp thoại</string>
+    <string name="user_profile_background_options">Tùy chọn %1$s</string>
+    <string name="user_profile_background_unavailable">%1$s (không dùng được)</string>
+    <string name="user_profile_image_error">Không thể dùng ảnh này</string>
+    <string name="user_profile_photos_gallery">Thư viện ảnh</string>
+    <string name="user_profile_search_photos">Tìm ảnh</string>
+    <string name="user_profile_no_photos">Không có ảnh nào trong Bộ nhớ media</string>
+    <string name="tool_search_tools_title">Tìm kiếm công cụ</string>
+    <string name="tool_search_tools_description">Tìm tên công cụ và trạng thái đã bật</string>
+    <string name="ollama_error_text">[Lỗi: %1$s]</string>
+    <string name="ollama_network_error">Lỗi mạng</string>
 </resources>

@@ -908,7 +908,7 @@
     <string name="remote_machine_keep_alive">Keep-alive ของเซิร์ฟเวอร์ (วินาที)</string>
     <string name="remote_machine_strict_host_key">ตรวจสอบคีย์โฮสต์แบบเข้มงวด</string>
     <string name="remote_machine_compression">เปิดการบีบอัด</string>
-    <string name="remote_machine_websocket_url_help">ใช้ ws:// หรือ wss:// %h และ %p จะถูกแทนที่ด้วยโฮสต์และพอร์ตของ SSH</string>
+    <string name="remote_machine_websocket_url_help" formatted="false">ใช้ ws:// หรือ wss:// %h และ %p จะถูกแทนที่ด้วยโฮสต์และพอร์ตของ SSH</string>
     <string name="remote_machine_google_section">OAuth ของ Google Cloud</string>
     <string name="remote_machine_oauth_client">ไคลเอนต์ OAuth</string>
     <string name="remote_machine_select_oauth">เลือกไคลเอนต์ OAuth</string>
@@ -1204,4 +1204,23 @@
     <plurals name="media_chain_profile_steps">
         <item quantity="other">%d ขั้นตอน</item>
     </plurals>
+    <string name="user_profile_title">โปรไฟล์ผู้ใช้</string>
+    <string name="user_profile_photo_options">ตัวเลือกรูปโปรไฟล์</string>
+    <string name="user_profile_photo_title">รูปโปรไฟล์</string>
+    <string name="user_profile_photo_description">เลือกรูปที่ใช้ทั้งแอป</string>
+    <string name="user_profile_background_chat">พื้นหลังหน้าจอแชท</string>
+    <string name="user_profile_background_drawer">พื้นหลังแถบด้านข้าง</string>
+    <string name="user_profile_background_menu">พื้นหลังหน้าจอเมนู</string>
+    <string name="user_profile_background_bottom_sheet">พื้นหลังแผงด้านล่าง</string>
+    <string name="user_profile_background_dialog">พื้นหลังกล่องโต้ตอบ</string>
+    <string name="user_profile_background_options">ตัวเลือก %1$s</string>
+    <string name="user_profile_background_unavailable">%1$s (ใช้ไม่ได้)</string>
+    <string name="user_profile_image_error">ไม่สามารถใช้รูปนี้ได้</string>
+    <string name="user_profile_photos_gallery">แกลเลอรีรูปภาพ</string>
+    <string name="user_profile_search_photos">ค้นหารูปภาพ</string>
+    <string name="user_profile_no_photos">ไม่มีรูปภาพในที่จัดเก็บสื่อ</string>
+    <string name="tool_search_tools_title">ค้นหาเครื่องมือ</string>
+    <string name="tool_search_tools_description">ค้นหาชื่อเครื่องมือและสถานะการเปิดใช้งาน</string>
+    <string name="ollama_error_text">[ข้อผิดพลาด: %1$s]</string>
+    <string name="ollama_network_error">ข้อผิดพลาดเครือข่าย</string>
 </resources>

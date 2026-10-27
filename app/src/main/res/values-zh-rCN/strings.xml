@@ -908,7 +908,7 @@
     <string name="remote_machine_keep_alive">服务器 Keep-Alive（秒）</string>
     <string name="remote_machine_strict_host_key">严格主机密钥校验</string>
     <string name="remote_machine_compression">启用压缩</string>
-    <string name="remote_machine_websocket_url_help">请使用 ws:// 或 wss://。%h 和 %p 会替换为 SSH 主机和端口。</string>
+    <string name="remote_machine_websocket_url_help" formatted="false">请使用 ws:// 或 wss://。%h 和 %p 会替换为 SSH 主机和端口。</string>
     <string name="remote_machine_google_section">Google Cloud OAuth</string>
     <string name="remote_machine_oauth_client">OAuth 客户端</string>
     <string name="remote_machine_select_oauth">选择 OAuth 客户端</string>
@@ -1204,4 +1204,23 @@
     <plurals name="media_chain_profile_steps">
         <item quantity="other">%d 个步骤</item>
     </plurals>
+    <string name="user_profile_title">用户资料</string>
+    <string name="user_profile_photo_options">头像选项</string>
+    <string name="user_profile_photo_title">头像</string>
+    <string name="user_profile_photo_description">选择在应用中使用的头像</string>
+    <string name="user_profile_background_chat">聊天界面背景</string>
+    <string name="user_profile_background_drawer">侧边栏背景</string>
+    <string name="user_profile_background_menu">菜单界面背景</string>
+    <string name="user_profile_background_bottom_sheet">底部面板背景</string>
+    <string name="user_profile_background_dialog">对话框背景</string>
+    <string name="user_profile_background_options">%1$s 选项</string>
+    <string name="user_profile_background_unavailable">%1$s（不可用）</string>
+    <string name="user_profile_image_error">无法使用该图片</string>
+    <string name="user_profile_photos_gallery">图库</string>
+    <string name="user_profile_search_photos">搜索图片</string>
+    <string name="user_profile_no_photos">媒体存储中没有图片</string>
+    <string name="tool_search_tools_title">搜索工具</string>
+    <string name="tool_search_tools_description">查找工具名称和启用状态</string>
+    <string name="ollama_error_text">[错误：%1$s]</string>
+    <string name="ollama_network_error">网络错误</string>
 </resources>

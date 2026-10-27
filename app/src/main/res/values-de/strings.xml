@@ -908,7 +908,7 @@
     <string name="remote_machine_keep_alive">Server-Keep-Alive (Sekunden)</string>
     <string name="remote_machine_strict_host_key">Strenge Host-Key-Prüfung</string>
     <string name="remote_machine_compression">Kompression aktivieren</string>
-    <string name="remote_machine_websocket_url_help">Verwende ws:// oder wss://. %h und %p werden durch SSH-Host und -Port ersetzt.</string>
+    <string name="remote_machine_websocket_url_help" formatted="false">Verwende ws:// oder wss://. %h und %p werden durch SSH-Host und -Port ersetzt.</string>
     <string name="remote_machine_google_section">Google Cloud OAuth</string>
     <string name="remote_machine_oauth_client">OAuth-Client</string>
     <string name="remote_machine_select_oauth">OAuth-Client auswählen</string>
@@ -1205,4 +1205,23 @@
         <item quantity="one">%d Schritt</item>
         <item quantity="other">%d Schritte</item>
     </plurals>
+    <string name="user_profile_title">Benutzerprofil</string>
+    <string name="user_profile_photo_options">Optionen für das Profilfoto</string>
+    <string name="user_profile_photo_title">Profilfoto</string>
+    <string name="user_profile_photo_description">Wähle das Foto, das in der gesamten App verwendet wird</string>
+    <string name="user_profile_background_chat">Hintergrund des Chat-Bildschirms</string>
+    <string name="user_profile_background_drawer">Hintergrund der seitlichen Schublade</string>
+    <string name="user_profile_background_menu">Hintergrund des Menübildschirms</string>
+    <string name="user_profile_background_bottom_sheet">Hintergrund des unteren Blattes</string>
+    <string name="user_profile_background_dialog">Hintergrund von Dialogfeldern</string>
+    <string name="user_profile_background_options">Optionen für %1$s</string>
+    <string name="user_profile_background_unavailable">%1$s (nicht verfügbar)</string>
+    <string name="user_profile_image_error">Bild kann nicht verwendet werden</string>
+    <string name="user_profile_photos_gallery">Fotogalerie</string>
+    <string name="user_profile_search_photos">Fotos suchen</string>
+    <string name="user_profile_no_photos">Keine Fotos im Medienspeicher</string>
+    <string name="tool_search_tools_title">Tools durchsuchen</string>
+    <string name="tool_search_tools_description">Tool-Namen und Aktivierungsstatus finden</string>
+    <string name="ollama_error_text">[Fehler: %1$s]</string>
+    <string name="ollama_network_error">Netzwerkfehler</string>
 </resources>

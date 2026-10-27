@@ -908,7 +908,7 @@
     <string name="remote_machine_keep_alive">Keep-alive du serveur (secondes)</string>
     <string name="remote_machine_strict_host_key">Vérification stricte de la clé d’hôte</string>
     <string name="remote_machine_compression">Activer la compression</string>
-    <string name="remote_machine_websocket_url_help">Utilisez ws:// ou wss://. %h et %p sont remplacés par l’hôte et le port SSH.</string>
+    <string name="remote_machine_websocket_url_help" formatted="false">Utilisez ws:// ou wss://. %h et %p sont remplacés par l’hôte et le port SSH.</string>
     <string name="remote_machine_google_section">OAuth Google Cloud</string>
     <string name="remote_machine_oauth_client">Client OAuth</string>
     <string name="remote_machine_select_oauth">Sélectionner un client OAuth</string>
@@ -1205,4 +1205,23 @@
         <item quantity="one">%d étape</item>
         <item quantity="other">%d étapes</item>
     </plurals>
+    <string name="user_profile_title">Profil utilisateur</string>
+    <string name="user_profile_photo_options">Options de la photo de profil</string>
+    <string name="user_profile_photo_title">Photo de profil</string>
+    <string name="user_profile_photo_description">Choisissez la photo utilisée dans toute l’application</string>
+    <string name="user_profile_background_chat">Arrière-plan de l’écran de discussion</string>
+    <string name="user_profile_background_drawer">Arrière-plan du tiroir latéral</string>
+    <string name="user_profile_background_menu">Arrière-plan de l’écran de menu</string>
+    <string name="user_profile_background_bottom_sheet">Arrière-plan de la feuille inférieure</string>
+    <string name="user_profile_background_dialog">Arrière-plan des boîtes de dialogue</string>
+    <string name="user_profile_background_options">Options de %1$s</string>
+    <string name="user_profile_background_unavailable">%1$s (indisponible)</string>
+    <string name="user_profile_image_error">Impossible d’utiliser cette image</string>
+    <string name="user_profile_photos_gallery">Galerie de photos</string>
+    <string name="user_profile_search_photos">Rechercher des photos</string>
+    <string name="user_profile_no_photos">Aucune photo dans le Stockage des médias</string>
+    <string name="tool_search_tools_title">Rechercher des outils</string>
+    <string name="tool_search_tools_description">Trouvez les noms d’outils et leur état d’activation</string>
+    <string name="ollama_error_text">[Erreur : %1$s]</string>
+    <string name="ollama_network_error">Erreur réseau</string>
 </resources>

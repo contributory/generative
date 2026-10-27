@@ -908,7 +908,7 @@
     <string name="remote_machine_keep_alive">Keep-alive del servidor (segundos)</string>
     <string name="remote_machine_strict_host_key">Comprobación estricta de la clave del host</string>
     <string name="remote_machine_compression">Activar la compresión</string>
-    <string name="remote_machine_websocket_url_help">Usa ws:// o wss://. %h y %p se sustituyen por el host y el puerto SSH.</string>
+    <string name="remote_machine_websocket_url_help" formatted="false">Usa ws:// o wss://. %h y %p se sustituyen por el host y el puerto SSH.</string>
     <string name="remote_machine_google_section">OAuth de Google Cloud</string>
     <string name="remote_machine_oauth_client">Cliente OAuth</string>
     <string name="remote_machine_select_oauth">Elegir un cliente OAuth</string>
@@ -1205,4 +1205,23 @@
         <item quantity="one">%d paso</item>
         <item quantity="other">%d pasos</item>
     </plurals>
+    <string name="user_profile_title">Perfil de usuario</string>
+    <string name="user_profile_photo_options">Opciones de la foto de perfil</string>
+    <string name="user_profile_photo_title">Foto de perfil</string>
+    <string name="user_profile_photo_description">Elige la foto que se usa en toda la aplicación</string>
+    <string name="user_profile_background_chat">Fondo de la pantalla de chat</string>
+    <string name="user_profile_background_drawer">Fondo del panel lateral</string>
+    <string name="user_profile_background_menu">Fondo de la pantalla de menú</string>
+    <string name="user_profile_background_bottom_sheet">Fondo de la hoja inferior</string>
+    <string name="user_profile_background_dialog">Fondo de los diálogos</string>
+    <string name="user_profile_background_options">Opciones de %1$s</string>
+    <string name="user_profile_background_unavailable">%1$s (no disponible)</string>
+    <string name="user_profile_image_error">No se puede usar la imagen</string>
+    <string name="user_profile_photos_gallery">Galería de fotos</string>
+    <string name="user_profile_search_photos">Buscar fotos</string>
+    <string name="user_profile_no_photos">No hay fotos en el Almacenamiento multimedia</string>
+    <string name="tool_search_tools_title">Buscar herramientas</string>
+    <string name="tool_search_tools_description">Encuentra nombres de herramientas y su estado de activación</string>
+    <string name="ollama_error_text">[Error: %1$s]</string>
+    <string name="ollama_network_error">Error de red</string>
 </resources>

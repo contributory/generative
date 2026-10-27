@@ -908,7 +908,7 @@
     <string name="remote_machine_keep_alive">Keep-alive server (detik)</string>
     <string name="remote_machine_strict_host_key">Pemeriksaan kunci host ketat</string>
     <string name="remote_machine_compression">Aktifkan kompresi</string>
-    <string name="remote_machine_websocket_url_help">Gunakan ws:// atau wss://. %h dan %p diganti dengan host dan porta SSH.</string>
+    <string name="remote_machine_websocket_url_help" formatted="false">Gunakan ws:// atau wss://. %h dan %p diganti dengan host dan porta SSH.</string>
     <string name="remote_machine_google_section">OAuth Google Cloud</string>
     <string name="remote_machine_oauth_client">Klien OAuth</string>
     <string name="remote_machine_select_oauth">Pilih klien OAuth</string>
@@ -1205,4 +1205,23 @@
         <item quantity="one">%d langkah</item>
         <item quantity="other">%d langkah</item>
     </plurals>
+    <string name="user_profile_title">Profil pengguna</string>
+    <string name="user_profile_photo_options">Opsi foto profil</string>
+    <string name="user_profile_photo_title">Foto Profil</string>
+    <string name="user_profile_photo_description">Pilih foto yang dipakai di seluruh aplikasi</string>
+    <string name="user_profile_background_chat">Latar Layar Obrolan</string>
+    <string name="user_profile_background_drawer">Latar Panel Samping</string>
+    <string name="user_profile_background_menu">Latar Layar Menu</string>
+    <string name="user_profile_background_bottom_sheet">Latar Lembar Bawah</string>
+    <string name="user_profile_background_dialog">Latar Dialog</string>
+    <string name="user_profile_background_options">Opsi %1$s</string>
+    <string name="user_profile_background_unavailable">%1$s (tidak tersedia)</string>
+    <string name="user_profile_image_error">Tidak dapat memakai gambar ini</string>
+    <string name="user_profile_photos_gallery">Galeri Foto</string>
+    <string name="user_profile_search_photos">Cari foto</string>
+    <string name="user_profile_no_photos">Tidak ada foto di Penyimpanan Media</string>
+    <string name="tool_search_tools_title">Cari Alat</string>
+    <string name="tool_search_tools_description">Temukan nama alat dan status aktifnya</string>
+    <string name="ollama_error_text">[Kesalahan: %1$s]</string>
+    <string name="ollama_network_error">Kesalahan jaringan</string>
 </resources>

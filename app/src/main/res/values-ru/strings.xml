@@ -908,7 +908,7 @@
     <string name="remote_machine_keep_alive">Keep-alive сервера (секунды)</string>
     <string name="remote_machine_strict_host_key">Строгая проверка ключа хоста</string>
     <string name="remote_machine_compression">Включить сжатие</string>
-    <string name="remote_machine_websocket_url_help">Используйте ws:// или wss://. %h и %p заменяются на хост и порт SSH.</string>
+    <string name="remote_machine_websocket_url_help" formatted="false">Используйте ws:// или wss://. %h и %p заменяются на хост и порт SSH.</string>
     <string name="remote_machine_google_section">OAuth Google Cloud</string>
     <string name="remote_machine_oauth_client">OAuth-клиент</string>
     <string name="remote_machine_select_oauth">Выбрать OAuth-клиент</string>
@@ -1207,4 +1207,23 @@
         <item quantity="many">%d шагов</item>
         <item quantity="other">%d шага</item>
     </plurals>
+    <string name="user_profile_title">Профиль пользователя</string>
+    <string name="user_profile_photo_options">Параметры фото профиля</string>
+    <string name="user_profile_photo_title">Фото профиля</string>
+    <string name="user_profile_photo_description">Выберите фото, используемое во всём приложении</string>
+    <string name="user_profile_background_chat">Фон экрана чата</string>
+    <string name="user_profile_background_drawer">Фон боковой панели</string>
+    <string name="user_profile_background_menu">Фон экрана меню</string>
+    <string name="user_profile_background_bottom_sheet">Фон нижней панели</string>
+    <string name="user_profile_background_dialog">Фон диалоговых окон</string>
+    <string name="user_profile_background_options">Параметры: %1$s</string>
+    <string name="user_profile_background_unavailable">%1$s (недоступно)</string>
+    <string name="user_profile_image_error">Не удалось использовать изображение</string>
+    <string name="user_profile_photos_gallery">Галерея фотографий</string>
+    <string name="user_profile_search_photos">Поиск фотографий</string>
+    <string name="user_profile_no_photos">В Хранилище медиа нет фотографий</string>
+    <string name="tool_search_tools_title">Поиск инструментов</string>
+    <string name="tool_search_tools_description">Найдите названия инструментов и их состояние</string>
+    <string name="ollama_error_text">[Ошибка: %1$s]</string>
+    <string name="ollama_network_error">Ошибка сети</string>
 </resources>

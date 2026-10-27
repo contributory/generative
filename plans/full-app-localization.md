@@ -237,33 +237,65 @@ translates, so a Vietnamese speaker reads *Tiếng Ý · Italiano* while a Germa
 | `language_name_th` | Thai | Thai |
 | `language_name_id` | Indonesian | Indonesian |
 
+## Review follow-up (2026-10-28)
+
+The pull request review raised two findings on the localization work; both are fixed on the same branch.
+
+### P0 — `aapt2` refused the resource set (blocking)
+
+`remote_machine_websocket_url_help` carries the literal substitutions `%h` and `%p` without `formatted="false"`.
+`aapt2 compile` rejects a translatable string that mixes several substitutions in a non-positional format
+(*“multiple substitutions specified in non-positional format; did you mean to add the `formatted="false"`
+attribute?”*), so the resource set of this branch did not compile.
+
+* `formatted="false"` was added to that string in the English source **and in all 13 locales**.
+* `scripts/localization_check.py` now contains a port of AOSP `aapt2`'s `util::VerifyJavaStringFormat`
+  (`tools/aapt2/util/Util.cpp`) and reports the same failure for every translatable string that is not marked
+  `formatted="false"`. Removing the attribute from the English source or from any locale now makes the checker
+  fail with exit code 1 instead of reporting zero errors.
+
+### P1 — user-visible copy was still hardcoded in Kotlin
+
+The review listed the remaining hardcoded strings; all of them now live in string resources and are translated in
+every locale:
+
+| Was hardcoded in | Now |
+|---|---|
+| `UserProfileScreen.kt` — “User Profile”, “Profile photo options”, “Profile Photo”, “Choose the photo used across the app”, “Chat/Side Drawer/Menu Screen Background”, “Bottom Sheet Background”, “Dialog Background”, “%s options”, “%s (unavailable)”, “Unable to use image”, “OK”, “Photos Gallery”, “Media Storage”, “Remove”, “Close”, “Search photos”, “No photos in Media Storage” | `user_profile_*` resources (17 new keys); “Appearance”, “Media Storage”, “Remove”, “Close” and “OK” reuse the already translated `settings_tab_appearances`, `settings_storage`, `common_remove`, `common_close` and `common_ok`. |
+| `ToolsEditor.kt` and `FeatureToolsSheet.kt` — “Search Tools”, “Find tool names and enabled states” | `tool_search_tools_title`, `tool_search_tools_description` (same pattern as the sibling `tool_agent_skills_search_*`). |
+| `OllamaAdapter.kt` — the chat error prefix “ [Error: … ]” and its “Network error” fallback | `ollama_error_text`, `ollama_network_error`, resolved through the application context. |
+
+The checker gained a third rule, `check_hardcoded_ui_text`, which scans `app/src/main/kotlin` and fails on user
+visible copy that is still hardcoded, so the finding cannot come back unnoticed.
+
 ## Verification record
 
 Run on 2026-10-27 from the repository root.
 
 ### Coverage — `python3 scripts/localization_check.py` (exit code 0)
 
-Source inventory: **1,202 `<string>`** entries = **1,201 translatable** + **1 invariant** (`remote_machine_sftp_root_summary`),
+Source inventory: **1,221 `<string>`** entries = **1,220 translatable** + **1 invariant** (`remote_machine_sftp_root_summary`),
 plus **1 `<plurals>`** resource (`media_chain_profile_steps`).
 
 | Folder | Tag | Required | Translated | Coverage | Errors | Warnings (identical-to-English, reviewed) |
 |---|---|---|---|---|---|---|
-| `values-de` | de | 1201 | 1201 | 100.0% | 0 | 4 |
-| `values-es` | es | 1201 | 1201 | 100.0% | 0 | 3 |
-| `values-fr` | fr | 1201 | 1201 | 100.0% | 0 | 5 |
-| `values-in` | id | 1201 | 1201 | 100.0% | 0 | 2 |
-| `values-it` | it | 1201 | 1201 | 100.0% | 0 | 2 |
-| `values-ja` | ja | 1201 | 1201 | 100.0% | 0 | 3 |
-| `values-ko` | ko | 1201 | 1201 | 100.0% | 0 | 4 |
-| `values-pt-rBR` | pt-BR | 1201 | 1201 | 100.0% | 0 | 3 |
-| `values-ru` | ru | 1201 | 1201 | 100.0% | 0 | 2 |
-| `values-th` | th | 1201 | 1201 | 100.0% | 0 | 2 |
-| `values-vi` | vi | 1201 | 1201 | 100.0% | 0 | 2 |
-| `values-zh-rCN` | zh-CN | 1201 | 1201 | 100.0% | 0 | 4 |
-| `values-zh-rTW` | zh-TW | 1201 | 1201 | 100.0% | 0 | 4 |
+| `values-de` | de | 1220 | 1220 | 100.0% | 0 | 4 |
+| `values-es` | es | 1220 | 1220 | 100.0% | 0 | 3 |
+| `values-fr` | fr | 1220 | 1220 | 100.0% | 0 | 5 |
+| `values-in` | id | 1220 | 1220 | 100.0% | 0 | 2 |
+| `values-it` | it | 1220 | 1220 | 100.0% | 0 | 2 |
+| `values-ja` | ja | 1220 | 1220 | 100.0% | 0 | 3 |
+| `values-ko` | ko | 1220 | 1220 | 100.0% | 0 | 4 |
+| `values-pt-rBR` | pt-BR | 1220 | 1220 | 100.0% | 0 | 3 |
+| `values-ru` | ru | 1220 | 1220 | 100.0% | 0 | 2 |
+| `values-th` | th | 1220 | 1220 | 100.0% | 0 | 2 |
+| `values-vi` | vi | 1220 | 1220 | 100.0% | 0 | 2 |
+| `values-zh-rCN` | zh-CN | 1220 | 1220 | 100.0% | 0 | 4 |
+| `values-zh-rTW` | zh-TW | 1220 | 1220 | 100.0% | 0 | 4 |
 
 **Totals: zero missing required keys, zero unexpected obsolete keys, zero duplicate keys, zero broken format
-arguments, zero broken Android escapes, zero invalid XML, correct plural categories everywhere.**
+arguments, zero broken Android escapes, zero invalid XML, zero strings aapt2 would refuse, zero hardcoded
+user-visible strings in Kotlin, correct plural categories everywhere.**
 Every locale also emits the `media_chain_profile_steps` plural with the categories its CLDR rules require:
 `one`+`other` (de/es/fr/id/it/pt-BR), `one`+`few`+`many`+`other` (ru), `other` only (ja/ko/th/vi/zh-CN/zh-TW).
 
@@ -275,6 +307,16 @@ fails on: missing required keys, keys that no longer exist in the source, duplic
 plural categories, and malformed XML. It deliberately does **not** treat an English fallback as coverage — a key that
 is absent from the locale file is reported as missing. `scripts/translate_strings.py --check` is the same check behind
 the existing script, so it can be run without `googletrans` installed.
+
+Two further rules were added after the pull request review:
+
+| Rule | What it refuses | Why |
+|---|---|---|
+| `verify_java_string_format` | A translatable string that is not marked `formatted="false"` and that carries more than one argument with at least one non-positional argument (`%h`, `%p`, `%s`, …). | It is a port of AOSP `aapt2`'s `util::VerifyJavaStringFormat` (`tools/aapt2/util/Util.cpp`), which rejects exactly this shape with *“multiple substitutions specified in non-positional format”*. Without the rule the checker reported zero errors on a resource set that `aapt2 compile` refuses. |
+| `check_hardcoded_ui_text` | User-visible copy hardcoded in Kotlin (`Text("…")`, `contentDescription = "…"`) that still contains translatable words. | Such a literal stays English under every locale, so it defeats the whole plan. The scan ignores comments, template expressions, symbols and identifiers, so only real copy is reported. |
+
+The XML parser behind the checker also refuses documents that declare a document type or an entity, so no
+resource file can expand an external or internal entity while the checker reads it.
 
 ### Added tests
 
@@ -306,6 +348,8 @@ normalizes both spellings to the same entry, and the tests assert the folder is 
 | Android lint | **not run** | Same reason — lint needs the Android SDK and Gradle. |
 | JVM unit tests (`AppLanguageSelectionTest`) | **not run** | Same reason — no JDK/Gradle to execute JUnit/Robolectric. The test file is committed and ready to run in a normal environment. |
 | Device/emulator UI QA | **not run** | No emulator image or device available. Narrow-phone widths, large font scale, Thai wrapping, CJK truncation and accessibility labels still need a manual pass. |
+| `aapt2 compile` / `aapt2 link` | **not run** | No Android SDK in this sandbox. The `formatted="false"` fix and the checker's `aapt2` rule are derived from the AOSP source of `util::VerifyJavaStringFormat` and from the reviewer's own `aapt2` run. |
+| `aapt2` rule of the checker | **executed** | The port of `util::VerifyJavaStringFormat` was run over all 14 resource files and over deliberately broken copies (attribute removed from the English source and from `values-vi`): the checker exits 1 with the expected diagnostic and exits 0 with the attribute in place. |
 
 ### Manual follow-up still recommended
 
@@ -320,11 +364,15 @@ normalizes both spellings to the same entry, and the tests assert the folder is 
 | Path | Change |
 |---|---|
 | `app/src/main/res/values/strings.xml` | Removed the `translatable="false"` flags from user-facing strings; only `remote_machine_sftp_root_summary` stays invariant. |
-| `app/src/main/res/values-{de,es,fr,ja,ko,pt-rBR,ru,vi,zh-rCN,zh-rTW}/strings.xml` | Completed to 1,201/1,201 keys and the plural; existing entries reviewed. |
-| `app/src/main/res/values-{it,th,in}/strings.xml` | New locales, 1,201/1,201 keys and the plural. |
+| `app/src/main/res/values-{de,es,fr,ja,ko,pt-rBR,ru,vi,zh-rCN,zh-rTW}/strings.xml` | Completed to 1,220/1,220 keys and the plural; existing entries reviewed. |
+| `app/src/main/res/values-{it,th,in}/strings.xml` | New locales, 1,220/1,220 keys and the plural. |
 | `app/src/main/kotlin/org/starfall/generative/shared/storage/preferences/AppLanguage.kt` | 14 languages (added Italian, Thai, Indonesian and Russian), `resourceQualifier`, `id`/`in` normalization. |
 | `app/src/test/java/org/starfall/generative/AppLanguageSelectionTest.kt` | New targeted tests for locale selection, resource resolution and plural safety. |
 | `app/src/main/res/values*/strings.xml` | Added the 14 `language_name_*` strings to the English source and to every locale. |
+| `app/src/main/res/values*/strings.xml` | Added `formatted="false"` to `remote_machine_websocket_url_help` and the 19 new `user_profile_*`, `tool_search_tools_*` and `ollama_*` strings to the English source and to every locale. |
 | `app/src/main/kotlin/org/starfall/generative/features/settings/ui/AppSettings.kt` | The language picker shows the name in the app language above the native name. |
-| `scripts/localization_check.py` | New offline coverage/validation CLI. |
+| `app/src/main/kotlin/org/starfall/generative/features/userprofile/ui/UserProfileScreen.kt` | Hardcoded profile copy replaced with string resources. |
+| `app/src/main/kotlin/org/starfall/generative/features/tools/ui/ToolsEditor.kt`, `features/home/shared/ui/FeatureToolsSheet.kt` | Hardcoded “Search Tools” copy replaced with string resources. |
+| `app/src/main/kotlin/org/starfall/generative/integrations/modelapis/ollama/OllamaAdapter.kt` | The chat error prefix and its network-error fallback come from string resources. |
+| `scripts/localization_check.py` | New offline coverage/validation CLI, hardened against XML entity attacks, extended with the `aapt2` format rule and the hardcoded-Kotlin-text rule. |
 | `scripts/translate_strings.py` | `--check` delegates to the new checker (offline, no `googletrans` needed). |

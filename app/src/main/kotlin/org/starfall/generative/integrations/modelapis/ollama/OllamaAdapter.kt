@@ -9,6 +9,7 @@ import io.ktor.utils.io.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.*
+import org.starfall.generative.R
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.shared.model.api.*
 import org.starfall.generative.shared.model.auth.*
@@ -25,7 +26,7 @@ import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.ConcurrentHashMap
 
 internal class OllamaAdapter(
-    context: Context,
+    private val context: Context,
     private val httpClient: HttpClient,
     private val attachments: AttachmentResolver,
     private val json: Json
@@ -138,7 +139,8 @@ internal class OllamaAdapter(
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
             throw cancelled
         } catch (e: Exception) {
-            emit(GenerationEvent.Text(" [Error: ${e.localizedMessage ?: "Network error"}]"))
+            val detail = e.localizedMessage ?: context.getString(R.string.ollama_network_error)
+            emit(GenerationEvent.Text(" " + context.getString(R.string.ollama_error_text, detail)))
         }
     }
 

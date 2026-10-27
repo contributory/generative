@@ -908,7 +908,7 @@
     <string name="remote_machine_keep_alive">サーバーの Keep-Alive (秒)</string>
     <string name="remote_machine_strict_host_key">厳格なホストキー検証</string>
     <string name="remote_machine_compression">圧縮を有効にする</string>
-    <string name="remote_machine_websocket_url_help">ws:// または wss:// を使います。%h と %p は SSH のホストとポートに置き換えられます。</string>
+    <string name="remote_machine_websocket_url_help" formatted="false">ws:// または wss:// を使います。%h と %p は SSH のホストとポートに置き換えられます。</string>
     <string name="remote_machine_google_section">Google Cloud OAuth</string>
     <string name="remote_machine_oauth_client">OAuth クライアント</string>
     <string name="remote_machine_select_oauth">OAuth クライアントを選択</string>
@@ -1204,4 +1204,23 @@
     <plurals name="media_chain_profile_steps">
         <item quantity="other">%d ステップ</item>
     </plurals>
+    <string name="user_profile_title">ユーザープロファイル</string>
+    <string name="user_profile_photo_options">プロフィール写真のオプション</string>
+    <string name="user_profile_photo_title">プロフィール写真</string>
+    <string name="user_profile_photo_description">アプリ全体で使う写真を選択します</string>
+    <string name="user_profile_background_chat">チャット画面の背景</string>
+    <string name="user_profile_background_drawer">サイドドロワーの背景</string>
+    <string name="user_profile_background_menu">メニュー画面の背景</string>
+    <string name="user_profile_background_bottom_sheet">ボトムシートの背景</string>
+    <string name="user_profile_background_dialog">ダイアログの背景</string>
+    <string name="user_profile_background_options">%1$s のオプション</string>
+    <string name="user_profile_background_unavailable">%1$s（利用不可）</string>
+    <string name="user_profile_image_error">この画像は使用できません</string>
+    <string name="user_profile_photos_gallery">写真ギャラリー</string>
+    <string name="user_profile_search_photos">写真を検索</string>
+    <string name="user_profile_no_photos">メディアストレージに写真はありません</string>
+    <string name="tool_search_tools_title">ツールを検索</string>
+    <string name="tool_search_tools_description">ツール名と有効状態を確認します</string>
+    <string name="ollama_error_text">[エラー: %1$s]</string>
+    <string name="ollama_network_error">ネットワークエラー</string>
 </resources>

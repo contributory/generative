@@ -908,7 +908,7 @@
     <string name="remote_machine_keep_alive">서버 Keep-Alive (초)</string>
     <string name="remote_machine_strict_host_key">엄격한 호스트 키 확인</string>
     <string name="remote_machine_compression">압축 사용</string>
-    <string name="remote_machine_websocket_url_help">ws:// 또는 wss://를 사용하세요. %h와 %p는 SSH 호스트와 포트로 대체됩니다.</string>
+    <string name="remote_machine_websocket_url_help" formatted="false">ws:// 또는 wss://를 사용하세요. %h와 %p는 SSH 호스트와 포트로 대체됩니다.</string>
     <string name="remote_machine_google_section">Google Cloud OAuth</string>
     <string name="remote_machine_oauth_client">OAuth 클라이언트</string>
     <string name="remote_machine_select_oauth">OAuth 클라이언트 선택</string>
@@ -1204,4 +1204,23 @@
     <plurals name="media_chain_profile_steps">
         <item quantity="other">%d단계</item>
     </plurals>
+    <string name="user_profile_title">사용자 프로필</string>
+    <string name="user_profile_photo_options">프로필 사진 옵션</string>
+    <string name="user_profile_photo_title">프로필 사진</string>
+    <string name="user_profile_photo_description">앱 전체에서 사용할 사진을 선택하세요</string>
+    <string name="user_profile_background_chat">채팅 화면 배경</string>
+    <string name="user_profile_background_drawer">사이드 서랍 배경</string>
+    <string name="user_profile_background_menu">메뉴 화면 배경</string>
+    <string name="user_profile_background_bottom_sheet">바텀시트 배경</string>
+    <string name="user_profile_background_dialog">대화상자 배경</string>
+    <string name="user_profile_background_options">%1$s 옵션</string>
+    <string name="user_profile_background_unavailable">%1$s(사용 불가)</string>
+    <string name="user_profile_image_error">이미지를 사용할 수 없습니다</string>
+    <string name="user_profile_photos_gallery">사진 갤러리</string>
+    <string name="user_profile_search_photos">사진 검색</string>
+    <string name="user_profile_no_photos">미디어 저장소에 사진이 없습니다</string>
+    <string name="tool_search_tools_title">도구 검색</string>
+    <string name="tool_search_tools_description">도구 이름과 사용 상태를 찾습니다</string>
+    <string name="ollama_error_text">[오류: %1$s]</string>
+    <string name="ollama_network_error">네트워크 오류</string>
 </resources>

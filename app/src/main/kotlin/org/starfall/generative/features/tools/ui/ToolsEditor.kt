@@ -269,8 +269,8 @@ fun ToolsEditor(
                         SettingsCard {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
-                                    Text("Search Tools", style = MaterialTheme.typography.titleMedium)
-                                    Text("Find tool names and enabled states",
+                                    Text(stringResource(R.string.tool_search_tools_title), style = MaterialTheme.typography.titleMedium)
+                                    Text(stringResource(R.string.tool_search_tools_description),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }

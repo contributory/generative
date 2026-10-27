@@ -915,7 +915,7 @@
     <string name="remote_machine_keep_alive">Server keep-alive (seconds)</string>
     <string name="remote_machine_strict_host_key">Strict host-key checking</string>
     <string name="remote_machine_compression">Enable compression</string>
-    <string name="remote_machine_websocket_url_help">Use ws:// or wss://. %h and %p are replaced with the SSH host and port.</string>
+    <string name="remote_machine_websocket_url_help" formatted="false">Use ws:// or wss://. %h and %p are replaced with the SSH host and port.</string>
     <string name="remote_machine_google_section">Google Cloud OAuth</string>
     <string name="remote_machine_oauth_client">OAuth client</string>
     <string name="remote_machine_select_oauth">Select an OAuth client</string>
@@ -1212,4 +1212,23 @@
     <string name="chat_minimap_navigate">Conversation minimap. Tap a position to jump there.</string>
     <string name="tool_agent_skills_search_title">Agent Skills Search</string>
     <string name="tool_agent_skills_search_description">Let the AI find and load skills on demand</string>
+    <string name="user_profile_title">User Profile</string>
+    <string name="user_profile_photo_options">Profile photo options</string>
+    <string name="user_profile_photo_title">Profile Photo</string>
+    <string name="user_profile_photo_description">Choose the photo used across the app</string>
+    <string name="user_profile_background_chat">Chat Screen Background</string>
+    <string name="user_profile_background_drawer">Side Drawer Background</string>
+    <string name="user_profile_background_menu">Menu Screen Background</string>
+    <string name="user_profile_background_bottom_sheet">Bottom Sheet Background</string>
+    <string name="user_profile_background_dialog">Dialog Background</string>
+    <string name="user_profile_background_options">%1$s options</string>
+    <string name="user_profile_background_unavailable">%1$s (unavailable)</string>
+    <string name="user_profile_image_error">Unable to use image</string>
+    <string name="user_profile_photos_gallery">Photos Gallery</string>
+    <string name="user_profile_search_photos">Search photos</string>
+    <string name="user_profile_no_photos">No photos in Media Storage</string>
+    <string name="tool_search_tools_title">Search Tools</string>
+    <string name="tool_search_tools_description">Find tool names and enabled states</string>
+    <string name="ollama_error_text">[Error: %1$s]</string>
+    <string name="ollama_network_error">Network error</string>
 </resources>
