@@ -19,7 +19,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupPositionProvider
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.ui.icons.FluentIcon
@@ -30,7 +35,8 @@ internal fun AgentSkillsMenu(
     skills: List<AgentSkill>,
     query: String,
     onSelect: (AgentSkill) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier.fillMaxWidth()
 ) {
     val normalizedQuery = query.trim()
     val matchingSkills = skills.filter { skill ->
@@ -40,8 +46,7 @@ internal fun AgentSkillsMenu(
     }
 
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .heightIn(max = 280.dp)
             .testTag("agent-skills-menu"),
         shape = MaterialTheme.shapes.large,
@@ -112,3 +117,30 @@ internal fun AgentSkillsMenu(
 
 internal fun agentSkillMenuQuery(text: String): String =
     text.removePrefix("/").takeWhile { !it.isWhitespace() }
+
+internal class AgentSkillsMenuPositionProvider(
+    private val verticalGapPx: Int
+) : PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize
+    ): IntOffset {
+        val left = when (layoutDirection) {
+            LayoutDirection.Ltr -> anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2
+            LayoutDirection.Rtl -> anchorBounds.right - popupContentSize.width -
+                (anchorBounds.width - popupContentSize.width) / 2
+        }
+        val preferredTop = anchorBounds.top - popupContentSize.height - verticalGapPx
+        val top = if (preferredTop >= 0) {
+            preferredTop
+        } else {
+            anchorBounds.bottom + verticalGapPx
+        }
+        return IntOffset(
+            x = left.coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
+            y = top.coerceIn(0, (windowSize.height - popupContentSize.height).coerceAtLeast(0))
+        )
+    }
+}

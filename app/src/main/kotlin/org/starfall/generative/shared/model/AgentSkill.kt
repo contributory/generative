@@ -21,7 +21,7 @@ const val DEFAULT_AGENT_SKILL_ID = "create-skill"
 val DEFAULT_AGENT_SKILL = AgentSkill(
     id = DEFAULT_AGENT_SKILL_ID,
     name = "Create Skill",
-    content = "Create a reusable agent skill. Define its purpose, instructions, inputs, outputs, constraints, and examples."
+    content = "Create a reusable skill with clear instructions."
 )
 
 fun defaultAgentSkills(): List<AgentSkill> = listOf(DEFAULT_AGENT_SKILL)

@@ -118,9 +118,7 @@ internal fun ProcessingDropdown(
     durationMillis: Long?,
     startNumber: Int,
     modifier: Modifier = Modifier,
-    isStreaming: Boolean = false,
-    /** While collapsed, keep the newest [previewCount] items visible outside the dropdown. */
-    previewCount: Int = 0
+    isStreaming: Boolean = false
 ) {
     var expanded by remember { mutableStateOf(false) }
     // Keep running tool calls in the timeline too. Filtering them out here could leave the
@@ -176,8 +174,7 @@ internal fun ProcessingDropdown(
             }
         }
 
-        // One list for both states: collapsed shows only the newest `previewCount` items, expanded
-        // shows all. New items slide up; older ones shrink and fade into the dropdown.
+        // A collapsed timeline shows only running tools; expanding it shows every item.
         Box(Modifier.fillMaxWidth()) {
             // Draw one continuous connector behind every numbered action. Individual
             // short segments were laid out between rows, so row padding made them look
@@ -202,13 +199,10 @@ internal fun ProcessingDropdown(
                         is ProcessingDropdownItem.Tool -> item.activity.id
                     }
                     key(itemKey) {
-                        // A running tool stays visible while collapsed; otherwise, once enough entries
-                        // pile up, it hides among older items and looks as if it stopped executing.
-                        val runningTool = previewCount > 0 && item is ProcessingDropdownItem.Tool &&
-                            item.activity.status == "running"
-                        val shown = expanded || index >= visibleItems.size - previewCount || runningTool
-                        // Items added while streaming start hidden so they animate in.
-                        val visibility = remember { MutableTransitionState(previewCount == 0 && shown) }
+                        val runningTool = item is ProcessingDropdownItem.Tool && item.activity.status == "running"
+                        val shown = expanded || runningTool
+                        // Running items animate in during a live stream.
+                        val visibility = remember { MutableTransitionState(!isStreaming && shown) }
                         visibility.targetState = shown
                         AnimatedVisibility(
                             visibleState = visibility,

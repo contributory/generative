@@ -490,7 +490,7 @@ private fun CompletedAssistantContent(
 
     GatedSelectionContainer {
         Column {
-            if (animateStreamingContent && streamStateFlow != null) {
+            if (blocks.isEmpty() && animateStreamingContent && streamStateFlow != null) {
                 StreamingAssistantText(
                     streamStateFlow = streamStateFlow,
                     conversationId = streamConversationId,
@@ -548,8 +548,7 @@ private fun CompletedAssistantContent(
                                 durationMillis = processingDurationMillis.takeIf { blocks.size == 1 },
                                 startNumber = nextItemNumber,
                                 modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
-                                isStreaming = live,
-                                previewCount = if (live) 2 else 0
+                                isStreaming = live
                             )
                         }
                     }

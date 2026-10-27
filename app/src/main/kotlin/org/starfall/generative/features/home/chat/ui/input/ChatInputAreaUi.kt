@@ -55,6 +55,8 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import org.starfall.generative.R
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.model.AgentSkill
@@ -244,6 +246,7 @@ fun UserInputArea(
     val focusManager = LocalFocusManager.current
     val bottomSheets = remember { BottomSheetsLinkState() }
     var skillsMenuOpen by remember { mutableStateOf(false) }
+    var inputBoxWidthPx by remember { mutableIntStateOf(0) }
     LaunchedEffect(textState) {
         skillsMenuOpen = if (textState.startsWith("/")) true else false
     }
@@ -302,26 +305,12 @@ fun UserInputArea(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        Box(
+            modifier = Modifier
+                .widthIn(max = 720.dp)
+                .fillMaxWidth()
+                .onSizeChanged { inputBoxWidthPx = it.width }
         ) {
-        if (skillsMenuOpen) {
-            AgentSkillsMenu(
-                skills = agentSkills,
-                query = agentSkillMenuQuery(textState),
-                onSelect = { skill ->
-                    val suffixStart = textState.indexOfFirst { it == ' ' || it == '\t' || it == '\n' }
-                    val suffix = suffixStart.takeIf { it >= 0 }
-                        ?.let { textState.substring(it).trimStart() }
-                        .orEmpty()
-                    val nextText = if (suffix.isBlank()) skill.content else skill.content + "\n\n" + suffix
-                    textFieldValue = TextFieldValue(nextText, TextRange(nextText.length))
-                    skillsMenuOpen = false
-                },
-                onDismiss = { skillsMenuOpen = false }
-            )
-        }
         Surface(
             modifier = Modifier
                 .widthIn(max = 720.dp)
@@ -627,6 +616,41 @@ fun UserInputArea(
                         Row(verticalAlignment = Alignment.CenterVertically) { actionButtons() }
                     }
                 }
+            }
+        }
+        if (skillsMenuOpen) {
+            Popup(
+                popupPositionProvider = AgentSkillsMenuPositionProvider(
+                    verticalGapPx = with(density) { 4.dp.roundToPx() }
+                ),
+                onDismissRequest = { skillsMenuOpen = false },
+                properties = PopupProperties(
+                    focusable = false,
+                    dismissOnBackPress = false,
+                    dismissOnClickOutside = false,
+                    usePlatformDefaultWidth = false,
+                    clippingEnabled = false
+                )
+            ) {
+                AgentSkillsMenu(
+                    skills = agentSkills,
+                    query = agentSkillMenuQuery(textState),
+                    modifier = if (inputBoxWidthPx > 0) {
+                        Modifier.width(with(density) { inputBoxWidthPx.toDp() })
+                    } else {
+                        Modifier.widthIn(max = 720.dp).fillMaxWidth()
+                    },
+                    onSelect = { skill ->
+                        val suffixStart = textState.indexOfFirst { it == ' ' || it == '\t' || it == '\n' }
+                        val suffix = suffixStart.takeIf { it >= 0 }
+                            ?.let { textState.substring(it).trimStart() }
+                            .orEmpty()
+                        val nextText = if (suffix.isBlank()) skill.content else skill.content + "\n\n" + suffix
+                        textFieldValue = TextFieldValue(nextText, TextRange(nextText.length))
+                        skillsMenuOpen = false
+                    },
+                    onDismiss = { skillsMenuOpen = false }
+                )
             }
         }
         }

@@ -49,8 +49,7 @@ internal fun ConversationItem(
     onPin: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit, onMove: () -> Unit,
     showContextMenu: Boolean, onContextMenuDismiss: () -> Unit,
     modifier: Modifier = Modifier,
-    modelIcon: ConversationModelIcon? = null,
-    backdrop: DrawerBackdrop? = null
+    modelIcon: ConversationModelIcon? = null
 ) {
     val menu = showContextMenu
     val active = chat.id == currentId

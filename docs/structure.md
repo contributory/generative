@@ -233,7 +233,6 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   └── 📁 ui/
 │   │   │       ├── 📄 ConversationItem.kt
 │   │   │       ├── 📄 ConversationSideDrawer.kt
-│   │   │       ├── 📄 DrawerBackdrop.kt
 │   │   │       └── 📄 DrawerQuickShortcuts.kt
 │   │   ├── 📁 shared/
 │   │   │   ├── 📁 logic/

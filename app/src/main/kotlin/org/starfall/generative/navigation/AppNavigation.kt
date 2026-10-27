@@ -62,8 +62,6 @@ import org.starfall.generative.features.home.chat.logic.contextWindowStatus
 import org.starfall.generative.features.home.chat.ui.ChatScreen
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.features.home.drawer.ui.ConversationSideDrawer
-import org.starfall.generative.features.home.drawer.ui.recordDrawerBackdrop
-import org.starfall.generative.features.home.drawer.ui.rememberDrawerBackdrop
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.model.McpInfo
@@ -342,14 +340,12 @@ fun AppNavigation(
         )
     ) {
         val drawerScrim = modalScrimColor(DrawerDefaults.scrimColor)
-        val drawerBackdrop = rememberDrawerBackdrop(drawerState, drawerScrim)
         ModalNavigationDrawer(
             drawerState = drawerState,
             gesturesEnabled = chatOnTop,
             scrimColor = drawerScrim,
             drawerContent = {
                 ConversationSideDrawer(
-                    backdrop = drawerBackdrop,
                     conversations = conversations,
                     providers = providers,
                     currentConversationId = currentConvId,
@@ -407,7 +403,7 @@ fun AppNavigation(
             LaunchedEffect(chatOnTop) {
                 if (!chatOnTop) focusManager.clearFocus(force = true)
             }
-            Box(modifier = Modifier.fillMaxSize().recordDrawerBackdrop(drawerBackdrop)) {
+            Box(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
