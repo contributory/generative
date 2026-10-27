@@ -12,6 +12,7 @@ import org.starfall.generative.shared.model.provider.ProviderConfiguration
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.model.ModelPickerItem
 import org.starfall.generative.shared.ui.model.computeModelPickerItems
+import org.starfall.generative.shared.ui.model.computeModelPickerTabs
 import org.starfall.generative.shared.model.language.withConversationReasoning
 
 class ModelPickerSelectionVisibilityTest {
@@ -30,9 +31,13 @@ class ModelPickerSelectionVisibilityTest {
                     collapsedGroupIds = if (folderCollapsed) setOf(group.id) else emptySet(),
                     collapsedProviderIds = if (providerCollapsed) setOf(selected.id) else emptySet(),
                     selectedFolderId = group.id)
-                assertTrue(items.none { it is ModelPickerItem.Group })
-                val provider = items[0] as ModelPickerItem.Provider
-                val model = items[1] as ModelPickerItem.Model
+                assertTrue(items.any { it is ModelPickerItem.Group && it.group.id == group.id })
+                val providerIndex = items.indexOfFirst {
+                    it is ModelPickerItem.Provider && it.provider.id == selected.id
+                }
+                assertTrue(providerIndex >= 0)
+                val provider = items[providerIndex] as ModelPickerItem.Provider
+                val model = items[providerIndex + 1] as ModelPickerItem.Model
                 assertEquals(selected.id, provider.provider.id)
                 assertEquals(group.id, provider.provider.groupId)
                 assertEquals(0, provider.depth)
@@ -43,19 +48,61 @@ class ModelPickerSelectionVisibilityTest {
                     assertEquals(listOf("alpha"), items.filterIsInstance<ModelPickerItem.Model>()
                         .filter { it.provider.id == selected.id }.map { it.modelId })
                 }
-                assertEquals(if (providerCollapsed) 5 else 6, items.size)
+                assertEquals(if (providerCollapsed) 6 else 7, items.size)
             }
         }
+    }
+
+    @Test fun selectingAModelDoesNotReorderProvidersInAnyTab() {
+        val first = selected.copy(id = "first", sortOrder = 0)
+        val last = selected.copy(id = "last", sortOrder = 1)
+        val rootFirst = first.copy(id = "root-first", groupId = null)
+        val rootLast = last.copy(id = "root-last", groupId = null)
+        val providers = listOf(last, rootLast, first, rootFirst)
+
+        fun providerIds(selectedId: String, folderId: String? = null, ungrouped: Boolean = false) =
+            computeModelPickerItems(
+                providers, listOf(group), emptyMap(), selectedId, "alpha",
+                selectedFolderId = folderId, ungroupedOnly = ungrouped
+            ).filterIsInstance<ModelPickerItem.Provider>().map { it.provider.id }
+
+        assertEquals(listOf("first", "last", "root-first", "root-last"), providerIds(last.id))
+        assertEquals(providerIds(first.id), providerIds(last.id))
+        assertEquals(listOf("first", "last"), providerIds(last.id, folderId = group.id))
+        assertEquals(listOf("root-first", "root-last"), providerIds(rootLast.id, ungrouped = true))
+    }
+
+    @Test fun sectionsAndTabsMatchTheVisibleProvidersInOneList() {
+        val second = ProviderGroup("second", "Second", sortOrder = 2)
+        val first = group.copy(sortOrder = 1)
+        val firstProvider = selected.copy(id = "first", groupId = first.id)
+        val secondProvider = selected.copy(id = "second", groupId = second.id)
+        val ungrouped = selected.copy(id = "root", groupId = "missing")
+        val providers = listOf(ungrouped, secondProvider, firstProvider)
+
+        fun items(query: String = "") = computeModelPickerItems(
+            providers, listOf(second, first), emptyMap(), "second", "alpha", query = query
+        )
+
+        val rows = items()
+        assertEquals(listOf("first", "second", "root"),
+            rows.filterIsInstance<ModelPickerItem.Provider>().map { it.provider.id })
+        assertEquals(listOf("folder_folder", "folder_second", "ungrouped"),
+            computeModelPickerTabs(rows, "Ungrouped").map { it.key })
+        assertEquals(listOf("folder_second"),
+            computeModelPickerTabs(items("Second"), "Ungrouped").map { it.key })
+        assertTrue(computeModelPickerTabs(items("no match"), "Ungrouped").isEmpty())
     }
 
     @Test fun collapsedRootProviderRetainsOnlySelectedModelAndExpansionRestoresOthers() {
         val root = selected.copy(groupId = null)
         val items = computeModelPickerItems(listOf(root), emptyList(), emptyMap(), root.id, "beta",
             collapsedProviderIds = setOf(root.id))
-        assertEquals(0, (items[0] as ModelPickerItem.Provider).depth)
-        assertEquals("beta", (items[1] as ModelPickerItem.Model).modelId)
-        assertEquals(1, (items[1] as ModelPickerItem.Model).depth)
-        assertEquals(2, items.size)
+        assertTrue(items[0] is ModelPickerItem.Ungrouped)
+        assertEquals(0, (items[1] as ModelPickerItem.Provider).depth)
+        assertEquals("beta", (items[2] as ModelPickerItem.Model).modelId)
+        assertEquals(1, (items[2] as ModelPickerItem.Model).depth)
+        assertEquals(3, items.size)
         val expanded = computeModelPickerItems(listOf(root), emptyList(), emptyMap(), root.id, "beta")
         assertEquals(listOf("alpha", "beta"), expanded.filterIsInstance<ModelPickerItem.Model>().map { it.modelId })
     }

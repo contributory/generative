@@ -21,6 +21,8 @@ sealed interface ModelPickerItem {
         val providerCount: Int
     ) : ModelPickerItem
 
+    data object Ungrouped : ModelPickerItem
+
     data class Provider(
         val provider: ModelProvider,
         val modelCount: Int,
@@ -37,19 +39,14 @@ sealed interface ModelPickerItem {
     ) : ModelPickerItem
 }
 
-internal val ModelPickerItem.folderId: String?
+internal val ModelPickerItem.sectionKey: String?
     get() = when (this) {
-        is ModelPickerItem.Group -> group.id
-        is ModelPickerItem.Provider -> provider.groupId.takeIf { depth == 1 }
-        is ModelPickerItem.Model -> provider.groupId.takeIf { depth == 2 }
+        is ModelPickerItem.Group -> "folder_${group.id}"
+        ModelPickerItem.Ungrouped -> "ungrouped"
+        else -> null
     }
 
-internal data class ModelPickerTab(
-    val key: String,
-    val folderId: String?,
-    val label: String,
-    val ungroupedOnly: Boolean = false
-)
+internal data class ModelPickerTab(val key: String, val label: String)
 
 internal val chatModelPickerFilter: (ModelProvider, String, ModelConfiguration) -> Boolean = { _, _, config ->
     config.modelType == org.starfall.generative.shared.model.language.ModelType.TEXT_GENERATION
@@ -75,8 +72,7 @@ fun computeModelPickerItems(
     val defaultConfig = ModelConfiguration()
     val normalizedQuery = query.trim()
     val groupById = providerGroups.associateBy { it.id }
-    val providerOrder = compareBy<ModelProvider> { it.id != selectedProviderId }
-        .thenBy { it.sortOrder }
+    val providerOrder = compareBy<ModelProvider> { it.sortOrder }
         .thenBy { it.id }
     val orderedProviders = when {
         selectedFolderId != null -> providers
@@ -135,8 +131,20 @@ fun computeModelPickerItems(
             ModelPickerItem.Model(node.provider, modelId, config, isSelected, depth)
         }
 
+    val groupCounts = visibleProviders.groupingBy { it.provider.groupId }.eachCount()
     return buildList {
+        var previousSection: String? = null
         visibleProviders.forEach { node ->
+            val group = node.provider.groupId?.let(groupById::get)
+            val section = group?.let { "folder_${it.id}" } ?: "ungrouped"
+            if (section != previousSection) {
+                if (group != null) {
+                    add(ModelPickerItem.Group(group, groupCounts[group.id] ?: 0))
+                } else {
+                    add(ModelPickerItem.Ungrouped)
+                }
+                previousSection = section
+            }
             val models = modelItems(node, depth = 1)
             add(ModelPickerItem.Provider(
                 node.provider,
@@ -169,29 +177,12 @@ private fun providerModels(
 
 internal fun defaultProviderModels(type: ModelApiType): List<String> = emptyList()
 
-/** Folder tabs for the picker: default, one per folder that has providers, then ungrouped when needed. */
-internal fun computeModelPickerTabs(
-    providers: List<ModelProvider>,
-    providerGroups: List<ProviderGroup>,
-    defaultLabel: String,
-    ungroupedLabel: String
-): List<ModelPickerTab> {
-    val groupsById = providerGroups.associateBy { it.id }
-    val providerGroupIds = providers.mapNotNull { it.groupId }.filter { it in groupsById }.toSet()
-    val hasUngroupedProviders = providers.any { provider ->
-        provider.groupId == null || provider.groupId !in groupsById
-    }
-    return buildList {
-        add(ModelPickerTab(key = "default", folderId = null, label = defaultLabel))
-        providerGroups
-            .asSequence()
-            .filter { it.id in providerGroupIds }
-            .sortedWith(compareBy<ProviderGroup> { it.sortOrder }.thenBy { it.name.lowercase() })
-            .forEach { group ->
-                add(ModelPickerTab(key = "folder_${group.id}", folderId = group.id, label = group.name))
-            }
-        if (hasUngroupedProviders) {
-            add(ModelPickerTab(key = "ungrouped", folderId = null, label = ungroupedLabel, ungroupedOnly = true))
+/** Tabs point to section headers in the same filtered list that the user scrolls. */
+internal fun computeModelPickerTabs(items: List<ModelPickerItem>, ungroupedLabel: String): List<ModelPickerTab> =
+    items.mapNotNull { item ->
+        when (item) {
+            is ModelPickerItem.Group -> ModelPickerTab("folder_${item.group.id}", item.group.name)
+            ModelPickerItem.Ungrouped -> ModelPickerTab("ungrouped", ungroupedLabel)
+            else -> null
         }
     }
-}

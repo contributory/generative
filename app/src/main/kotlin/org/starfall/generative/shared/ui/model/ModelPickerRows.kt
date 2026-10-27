@@ -4,6 +4,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -13,11 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -29,37 +26,23 @@ import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 
-// Each lazy row draws its part of one continuous folder outline, including the
-// spacing between rows. Keeping rows lazy preserves scrolling to selected models.
-internal fun Modifier.folderOutline(first: Boolean, last: Boolean, color: Color): Modifier = drawBehind {
-    val stroke = 1.dp.toPx()
-    val left = stroke / 2
-    val right = size.width - stroke / 2
-    val top = if (first) stroke / 2 else -4.dp.toPx()
-    val bottom = if (last) size.height - stroke / 2 else size.height + 4.dp.toPx()
-    val radius = 18.dp.toPx().coerceAtMost((bottom - top) / 2)
-    // Draw the two sides independently. Joining the open segments with moveTo()
-    // makes visible diagonal/kinked corners when LazyColumn spacing is present.
-    drawLine(color, Offset(left, top + if (first) radius else 0f),
-        Offset(left, bottom - if (last) radius else 0f), strokeWidth = stroke)
-    drawLine(color, Offset(right, top + if (first) radius else 0f),
-        Offset(right, bottom - if (last) radius else 0f), strokeWidth = stroke)
-    if (first || last) {
-        val path = Path().apply {
-            if (first) {
-                moveTo(left, top + radius)
-                quadraticTo(left, top, left + radius, top)
-                lineTo(right - radius, top)
-                quadraticTo(right, top, right, top + radius)
-            }
-            if (last) {
-                moveTo(left, bottom - radius)
-                quadraticTo(left, bottom, left + radius, bottom)
-                lineTo(right - radius, bottom)
-                quadraticTo(right, bottom, right, bottom - radius)
-            }
-        }
-        drawPath(path, color, style = Stroke(stroke))
+/** Muted divider between the folder sections in the shared picker list. */
+@Composable
+internal fun ModelPickerSection(label: String, tag: String) {
+    Box(
+        modifier = Modifier.fillMaxWidth()
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.035f), RoundedCornerShape(8.dp))
+            .padding(horizontal = 12.dp, vertical = 9.dp)
+            .testTag(tag),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

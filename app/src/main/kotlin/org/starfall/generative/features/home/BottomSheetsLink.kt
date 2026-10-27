@@ -384,9 +384,8 @@ internal fun BottomSheetsLink(
                             onOpenSelectedModel = if (mediaKind == null) {
                                 { if (pageActive) sheets.openSelectedModelOverview() }
                             } else null,
-                            // The picker keeps the tall size it had as its own sheet; the height animates
-                            // from the overview's size because this page's size is what the sheet adopts.
-                            modifier = Modifier.height(maxContentHeight.current * 0.9f),
+                            // Fill the available sheet height while preserving the transition from the overview.
+                            modifier = Modifier.height(maxContentHeight.current),
                             onDismiss = { sheets.dismissModelSheet() }
                         )
                     } else if (target == ModelSheetPage.SUMMARY) {

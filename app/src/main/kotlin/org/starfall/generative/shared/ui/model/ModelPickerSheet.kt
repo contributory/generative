@@ -1,11 +1,12 @@
 package org.starfall.generative.shared.ui.model
 
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.drop
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -45,7 +46,7 @@ fun ModelPickerSheet(
 ) {
     AppSheet(
         onDismissRequest = onDismiss,
-        fixedHeightFraction = 0.9f
+        fixedHeightFraction = 1f
     ) {
         ModelPickerSheetContent(
             providers = providers,
@@ -102,44 +103,14 @@ internal fun ModelPickerSheetContent(
     val forceExpanded = query.isNotBlank() && expandSearchResults
     var collapsedGroupIds by remember { mutableStateOf(collapsedGroupIdsState) }
     var collapsedProviderIds by remember { mutableStateOf(collapsedProviderIdsState) }
-    val defaultTabLabel = stringResource(R.string.common_default)
     val ungroupedTabLabel = stringResource(R.string.ungrouped)
-    val folderTabs = remember(providers, providerGroups, defaultTabLabel, ungroupedTabLabel) {
-        computeModelPickerTabs(providers, providerGroups, defaultTabLabel, ungroupedTabLabel)
-    }
-    var selectedTabKey by remember { mutableStateOf(selectedTabKeyState.ifBlank { "default" }) }
-    // Keep a separate LazyListState for every tab. Reusing one state here makes
-    // Compose restore the previous tab's position (or jump to its initial row)
-    // whenever the tab content is replaced.
-    val tabListStates = remember { mutableMapOf<String, LazyListState>() }
-    val initializedTabKeys = remember { mutableSetOf<String>() }
-    val tabPositionsBeforeSearch = remember { mutableMapOf<String, Pair<Int, Int>>() }
-    // Switching tabs replaces most rows at once while the list is also repositioned. Fading the old
-    // rows out during that jump can leave them stuck on screen, so rows are swapped instantly.
-    var instantTabSwap by remember { mutableStateOf(false) }
-    val selectedTabIndex = folderTabs.indexOfFirst { it.key == selectedTabKey }.coerceAtLeast(0)
-    LaunchedEffect(selectedTabIndex) {
-        if (instantTabSwap) {
-            delay(400)
-            instantTabSwap = false
-        }
-    }
-    LaunchedEffect(folderTabs) {
-        if (folderTabs.none { it.key == selectedTabKey }) {
-            val fallback = folderTabs.firstOrNull()?.key ?: "default"
-            selectedTabKey = fallback
-            onSelectedTabKeyChange(fallback)
-        }
-    }
-    LaunchedEffect(selectedTabKeyState) {
-        val requested = selectedTabKeyState.ifBlank { "default" }
-        if (requested != selectedTabKey && folderTabs.any { it.key == requested }) {
-            selectedTabKey = requested
-        }
-    }
-    val selectedTab = folderTabs.getOrNull(selectedTabIndex)
-    val selectedFolderId = selectedTab?.folderId
-    val ungroupedOnly = selectedTab?.ungroupedOnly == true
+    var selectedTabKey by remember { mutableStateOf(selectedTabKeyState) }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    var initialized by remember { mutableStateOf(false) }
+    var scrollingToTab by remember { mutableStateOf(false) }
+    var scrollRequest by remember { mutableIntStateOf(0) }
+    var positionBeforeSearch by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     LaunchedEffect(collapsedGroupIdsState) {
         collapsedGroupIds = collapsedGroupIdsState
     }
@@ -165,8 +136,6 @@ internal fun ModelPickerSheetContent(
         expandSearchResults,
         collapsedGroupIds,
         collapsedProviderIds,
-        selectedFolderId,
-        ungroupedOnly,
         modelFilter
     ) {
         computeModelPickerItems(
@@ -179,49 +148,73 @@ internal fun ModelPickerSheetContent(
             expandSearchResults = expandSearchResults,
             collapsedGroupIds = collapsedGroupIds,
             collapsedProviderIds = collapsedProviderIds,
-            selectedFolderId = selectedFolderId,
-            ungroupedOnly = ungroupedOnly,
             modelFilter = modelFilter
         )
     }
 
-    // The selected model is centered in the list. Near the top of the list the scroll position
-    // simply clamps to 0, so it only sits at the very top when nothing is above it.
-    val targetIndex = remember(flatItems, selectedProviderId, selectedModelId) {
-        flatItems.indexOfFirst { it is ModelPickerItem.Model && it.isSelected }.coerceAtLeast(0)
+    val folderTabs = remember(flatItems, ungroupedTabLabel) {
+        computeModelPickerTabs(flatItems, ungroupedTabLabel)
     }
-    val listState = remember(selectedTabKey) {
-        tabListStates.getOrPut(selectedTabKey) { LazyListState((targetIndex - 3).coerceAtLeast(0)) }
+    val sectionIndexes = remember(flatItems) {
+        flatItems.mapIndexedNotNull { index, item -> item.sectionKey?.let { it to index } }.toMap()
     }
+    val selectedTabIndex = folderTabs.indexOfFirst { it.key == selectedTabKey }.coerceAtLeast(0)
     val centerTopPaddingPx = with(LocalDensity.current) { 10.dp.roundToPx() }
-    LaunchedEffect(selectedTabKey, flatItems, query, targetIndex) {
-        if (query.isBlank() && flatItems.isNotEmpty() &&
-            initializedTabKeys.add(selectedTabKey) && !listState.isScrollInProgress
-        ) {
+
+    LaunchedEffect(flatItems) {
+        if (!initialized && flatItems.isNotEmpty()) {
+            val restoredIndex = sectionIndexes[selectedTabKeyState]
+            val selectedIndex = flatItems.indexOfFirst { it is ModelPickerItem.Model && it.isSelected }
+            val targetIndex = restoredIndex ?: selectedIndex.coerceAtLeast(0)
             listState.scrollToItem(targetIndex)
-            val info = listState.layoutInfo
-            val itemSize = info.visibleItemsInfo.firstOrNull { it.index == targetIndex }?.size
-            if (itemSize != null && targetIndex > 0) {
-                val centerDelta = ((info.viewportSize.height - itemSize) / 2 - centerTopPaddingPx)
-                    .coerceAtLeast(0)
-                listState.scrollToItem(targetIndex, -centerDelta)
+            if (restoredIndex == null && selectedIndex > 0) {
+                val info = listState.layoutInfo
+                val itemSize = info.visibleItemsInfo.firstOrNull { it.index == targetIndex }?.size
+                if (itemSize != null) {
+                    val centerDelta = ((info.viewportSize.height - itemSize) / 2 - centerTopPaddingPx)
+                        .coerceAtLeast(0)
+                    listState.scrollToItem(targetIndex, -centerDelta)
+                }
+            }
+            selectedTabKey = sectionIndexes.entries.lastOrNull { it.value <= targetIndex }?.key
+                ?: folderTabs.firstOrNull()?.key.orEmpty()
+            initialized = true
+        }
+    }
+    // Manual scrolling moves the tab indicator; a tab click retains its target even if the
+    // final section is too short for its header to reach the top of the viewport.
+    LaunchedEffect(listState, flatItems, initialized) {
+        if (initialized) {
+            snapshotFlow { listState.firstVisibleItemIndex }.drop(1).collect { index ->
+                if (!scrollingToTab) {
+                    val key = sectionIndexes.entries.lastOrNull { it.value <= index }?.key
+                    if (key != null && key != selectedTabKey) {
+                        selectedTabKey = key
+                        onSelectedTabKeyChange(key)
+                    }
+                }
             }
         }
     }
-    LaunchedEffect(query, selectedTabKey) {
+    LaunchedEffect(query) {
         if (query.isNotBlank()) {
-            tabPositionsBeforeSearch.putIfAbsent(
-                selectedTabKey,
-                listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
-            )
+            if (positionBeforeSearch == null) {
+                positionBeforeSearch = listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+            }
             listState.scrollToItem(0)
         } else {
-            tabPositionsBeforeSearch.remove(selectedTabKey)?.let { (index, offset) ->
-                listState.scrollToItem(index, offset)
+            positionBeforeSearch?.let { (index, offset) ->
+                listState.scrollToItem(index.coerceAtMost((flatItems.size - 1).coerceAtLeast(0)), offset)
             }
+            positionBeforeSearch = null
         }
     }
     val allCollapsed = !forceExpanded && providers.all { it.id in collapsedProviderIds }
+    val selectedModel = selectedModelId.takeIf { it.isNotBlank() }?.let { modelId ->
+        providers.firstOrNull { it.id == selectedProviderId }?.config?.modelConfigs?.let { configs ->
+            configs[modelId] ?: configs.values.firstOrNull { it.displayName == modelId }
+        }
+    }
 
     Column(modifier = modifier.fillMaxWidth()) {
             ModelPickerToolbar(
@@ -238,17 +231,31 @@ internal fun ModelPickerSheetContent(
                         setCollapsedProviders(providers.map { it.id }.toSet())
                     }
                 },
+                selectedModelId = selectedModelId,
+                selectedModel = selectedModel,
                 onOpenSelectedModel = onOpenSelectedModel
             )
 
-            if (folderTabs.size > 1) {
+            if (folderTabs.isNotEmpty()) {
                 ModelPickerTabRow(
                     tabs = folderTabs,
                     selectedIndex = selectedTabIndex,
                     onSelectTab = { tab ->
-                        if (selectedTabKey != tab.key) instantTabSwap = true
-                        selectedTabKey = tab.key
-                        onSelectedTabKeyChange(tab.key)
+                        val index = sectionIndexes[tab.key]
+                        if (index != null) {
+                            selectedTabKey = tab.key
+                            onSelectedTabKeyChange(tab.key)
+                            scrollRequest++
+                            val request = scrollRequest
+                            scrollingToTab = true
+                            scope.launch {
+                                try {
+                                    listState.animateScrollToItem(index)
+                                } finally {
+                                    if (request == scrollRequest) scrollingToTab = false
+                                }
+                            }
+                        }
                     }
                 )
             }
@@ -281,36 +288,33 @@ internal fun ModelPickerSheetContent(
                         key = { _, item ->
                                 when (item) {
                                     is ModelPickerItem.Group -> "group_${item.group.id}"
+                                    ModelPickerItem.Ungrouped -> "ungrouped"
                                     is ModelPickerItem.Provider -> "provider_${item.provider.id}"
                                     is ModelPickerItem.Model -> "model_${item.provider.id}_${item.modelId}"
                                 }
                             }
                         ) { index, item ->
-                            val folderId = item.folderId
-                            val first = folderId != null && flatItems.getOrNull(index - 1)?.folderId != folderId
-                            val last = folderId != null && flatItems.getOrNull(index + 1)?.folderId != folderId
                         Box(
                             Modifier.fillMaxWidth()
                                 .animateItem(
-                                    fadeInSpec = if (instantTabSwap) null else spring<Float>(stiffness = Spring.StiffnessMediumLow),
+                                    fadeInSpec = spring<Float>(stiffness = Spring.StiffnessMediumLow),
                                     placementSpec = spring(
                                         dampingRatio = Spring.DampingRatioNoBouncy,
                                         stiffness = Spring.StiffnessMediumLow
                                     ),
-                                    fadeOutSpec = if (instantTabSwap) null else spring<Float>(stiffness = Spring.StiffnessMediumLow)
+                                    fadeOutSpec = spring<Float>(stiffness = Spring.StiffnessMediumLow)
                                 )
                                 .testTag("model-picker-frame_$index")
-                                    .then(if (folderId != null) Modifier.folderOutline(
-                                        first, last, MaterialTheme.colorScheme.outline
-                                    ) else Modifier)
-                                    .padding(
-                                        start = 6.dp, end = 6.dp,
-                                        top = if (first) 6.dp else 0.dp,
-                                        bottom = if (last) 6.dp else 0.dp
-                                    )
-                            ) {
+                        ) {
                             when (item) {
-                                is ModelPickerItem.Group -> Unit
+                                is ModelPickerItem.Group -> ModelPickerSection(
+                                    label = item.group.name,
+                                    tag = "model-picker-group_${item.group.id}"
+                                )
+                                ModelPickerItem.Ungrouped -> ModelPickerSection(
+                                    label = ungroupedTabLabel,
+                                    tag = "model-picker-group_ungrouped"
+                                )
 
                                 is ModelPickerItem.Provider -> {
                                     val collapsed = item.provider.id in collapsedProviderIds &&
