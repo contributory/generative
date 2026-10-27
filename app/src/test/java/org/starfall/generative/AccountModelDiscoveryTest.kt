@@ -5,6 +5,7 @@ import org.starfall.generative.integrations.modelapis.account.*
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.json.*
 import okhttp3.mockwebserver.*
 import org.junit.Assert.*
@@ -39,6 +40,7 @@ import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.language.ModelConfiguration
+import org.starfall.generative.shared.model.generation.GenerationEvent
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -97,6 +99,35 @@ class AccountModelDiscoveryTest {
             val normalized = adapter.normalizeToolRequest(selected, wire, obj("model" to str("opaque-M7")), "")
             assertEquals("wire-model-a", normalized.text("model"))
             assertEquals("project-a", normalized.text("project"))
+        }
+    }
+
+    @Test fun antigravityUsesCatalogKeysInsteadOfPlaceholderEnumsForChat() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(json("""{"models":{
+                "gemini-3.8-flash-medium":{"displayName":"Gemini 3.8 Flash (Medium)","model":"MODEL_PLACEHOLDER_M319"},
+                "claude-sonnet-4-6":{"displayName":"Claude Sonnet 4.6","model":"MODEL_PLACEHOLDER_M26"}}}"""))
+            val response = """{"response":{"candidates":[{"content":{"parts":[{"text":"hello"}]}}]}}"""
+            repeat(2) { server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream")
+                .setBody("data: $response\n\n")) }
+            val store = AccountTokenStore(context, "antigravity")
+            store.save("catalog-enums", AccountTokenState("access", "refresh", projectId = "aicode-consumers"))
+            val source = provider(ModelApiType.ANTIGRAVITY, server, "catalog-enums")
+            val adapter = AntigravityAdapter(context, AttachmentResolver(context))
+            val catalog = adapter.fetchModelCatalog(source)
+            server.takeRequest(5, TimeUnit.SECONDS)!!
+            val selected = source.copy(config = source.config.copy(
+                supportStream = true, modelConfigs = catalog.associate { it.id to it.configuration() }))
+            for (model in catalog.map { it.id }) {
+                val events = adapter.streamEvents(selected, model,
+                    listOf(StoredMessage("u", ChatRole.USER, listOf(MessageVersion("hi")))), "", 4000).toList()
+                assertEquals("hello", events.filterIsInstance<GenerationEvent.Text>().joinToString("") { it.text })
+                val request = server.takeRequest(5, TimeUnit.SECONDS)!!
+                assertEquals("/v1internal:streamGenerateContent?alt=sse", request.path)
+                val body = Json.parseToJsonElement(request.body.readUtf8()).jsonObject
+                assertEquals(model, body.text("model"))
+                assertEquals("aicode-consumers", body.text("project"))
+            }
         }
     }
 

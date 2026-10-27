@@ -8,15 +8,19 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.AgentSkills
+import org.starfall.generative.shared.model.DEFAULT_AGENT_SKILL_ID
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SidebarOrganization
+import org.starfall.generative.shared.model.normalizeAgentSkillName
+import org.starfall.generative.shared.files.AgentSkillsStore
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.storage.ImmediateState
 
@@ -166,6 +170,15 @@ data class AppPreferences(
 
 class AppPreferencesRepository(private val context: Context) {
 
+    private val agentSkillsStore = AgentSkillsStore(context)
+    // Bundled SKILL.md is the single source of truth; never write or remove it in user storage.
+    private val bundledCreateSkill = agentSkillsStore.readBundledCreateSkill(context)
+
+    private fun skillsWithBundledDefault(userSkills: List<AgentSkill>): AgentSkills =
+        AgentSkills(listOf(bundledCreateSkill) + userSkills.filterNot {
+            it.id == DEFAULT_AGENT_SKILL_ID || it.name == DEFAULT_AGENT_SKILL_ID
+        })
+
     private object PreferenceKeys {
         val CHAT_RELATIONS = stringPreferencesKey("chat_relations")
         val SELECTED_MODEL = stringPreferencesKey("selected_model")
@@ -233,7 +246,10 @@ class AppPreferencesRepository(private val context: Context) {
     @Volatile private var legacySchemaMigrated = false
 
     private val storedPreferences: Flow<AppPreferences> = context.dataStore.data
-        .onStart { migrateLegacyPreferenceSchema() }
+        .onStart {
+            migrateLegacyPreferenceSchema()
+            migrateLegacyAgentSkills()
+        }
         .map { preferences ->
             val storedThemeMode = preferences[PreferenceKeys.THEME_MODE] ?: "SYSTEM"
             val legacyAmoled = storedThemeMode == "AMOLED"
@@ -246,7 +262,7 @@ class AppPreferencesRepository(private val context: Context) {
                 useDynamicColor = preferences[PreferenceKeys.USE_DYNAMIC_COLOR] ?: true,
                 colorSchemeName = preferences[PreferenceKeys.COLOR_SCHEME_NAME] ?: "DEFAULT",
                 instructionLibrary = decodeInstructionLibrary(preferences),
-                agentSkills = decodeAgentSkills(preferences[PreferenceKeys.AGENT_SKILLS]),
+                agentSkills = agentSkillsFromFiles(),
                 continueLastConversation = preferences[PreferenceKeys.CONTINUE_LAST_CONVERSATION] ?: false,
                 persistSelectedModel = preferences[PreferenceKeys.PERSIST_SELECTED_MODEL] ?: true,
                 autoScroll = preferences[PreferenceKeys.AUTO_SCROLL] ?: false,
@@ -360,6 +376,37 @@ class AppPreferencesRepository(private val context: Context) {
             mcpPresetsInitialized = preferences[LegacyPreferenceKeys.MCP_PRESETS_INITIALIZED] ?: false,
             contentApiPresetInitialized = preferences[LegacyPreferenceKeys.CONTENT_API_PRESET_INITIALIZED] ?: false
         )
+    }
+
+    private fun agentSkillsFromFiles(): AgentSkills {
+        val stored = agentSkillsStore.readBlocking()
+            .filterNot { it.id == DEFAULT_AGENT_SKILL_ID }
+        return skillsWithBundledDefault(stored)
+    }
+
+    /** Moves the former DataStore skill list to standard agent-skills directories once. */
+    private suspend fun migrateLegacyAgentSkills() {
+        val raw = context.dataStore.data.first()[PreferenceKeys.AGENT_SKILLS] ?: return
+        val legacy = decodeAgentSkills(raw)
+        val migrated = legacy.skills
+            .filterNot { it.id == DEFAULT_AGENT_SKILL_ID ||
+                normalizeAgentSkillName(it.name) == DEFAULT_AGENT_SKILL_ID }
+            .map { skill ->
+                val name = normalizeAgentSkillName(skill.name)
+                skill.copy(
+                    id = name,
+                    name = name,
+                    description = skill.description.ifBlank {
+                        "Reusable skill for ${skill.name.ifBlank { name }}."
+                    }.take(AgentSkillsStore.MAX_DESCRIPTION_LENGTH)
+                )
+            }
+        // File-backed skills take precedence if an earlier version stored the same name
+        // in both places. Never discard folders migrated from the old files directory.
+        val alreadySaved = agentSkillsStore.readBlocking()
+        val savedNames = alreadySaved.mapTo(mutableSetOf()) { it.name }
+        agentSkillsStore.replaceAll(alreadySaved + migrated.filter { it.name !in savedNames })
+        context.dataStore.edit { it.remove(PreferenceKeys.AGENT_SKILLS) }
     }
 
     private fun decodeSelectedModel(preferences: Preferences): SelectedModel =
@@ -513,12 +560,26 @@ class AppPreferencesRepository(private val context: Context) {
 
     suspend fun setAgentSkills(skills: List<AgentSkill>) {
         val cleaned = skills
-            .map { it.copy(name = it.name.trim(), content = it.content.trim()) }
-            .filter { it.name.isNotBlank() && it.content.isNotBlank() }
-            .distinctBy { it.id }
-        val group = AgentSkills(skills = cleaned)
+            .filterNot { it.id == DEFAULT_AGENT_SKILL_ID ||
+                normalizeAgentSkillName(it.name) == DEFAULT_AGENT_SKILL_ID }
+            .mapNotNull { skill ->
+                val name = normalizeAgentSkillName(skill.name)
+                val content = skill.content.trim()
+                if (content.isBlank()) return@mapNotNull null
+                skill.copy(
+                    id = name,
+                    name = name,
+                    content = content,
+                    description = skill.description.trim().ifBlank {
+                        "Reusable skill for $name."
+                    }.take(AgentSkillsStore.MAX_DESCRIPTION_LENGTH)
+                )
+            }
+            .distinctBy { it.name }
+        val group = skillsWithBundledDefault(cleaned)
         state.mutate({ it.copy(agentSkills = group) }) {
-            context.dataStore.edit { it[PreferenceKeys.AGENT_SKILLS] = Json.encodeToString(group) }
+            agentSkillsStore.replaceAll(cleaned)
+            context.dataStore.edit { it.remove(PreferenceKeys.AGENT_SKILLS) }
         }
     }
 
@@ -793,8 +854,25 @@ class AppPreferencesRepository(private val context: Context) {
 
     /** Replaces the complete preference snapshot during a full application restore. */
     suspend fun replace(preferences: AppPreferences) {
+        val restoredSkills = preferences.agentSkills.skills
+            .filterNot { it.id == DEFAULT_AGENT_SKILL_ID ||
+                normalizeAgentSkillName(it.name) == DEFAULT_AGENT_SKILL_ID }
+            .map { skill ->
+                val name = normalizeAgentSkillName(skill.name)
+                skill.copy(
+                    id = name,
+                    name = name,
+                    content = skill.content.trim(),
+                    description = skill.description.trim().ifBlank { "Reusable skill for $name." }
+                        .take(AgentSkillsStore.MAX_DESCRIPTION_LENGTH)
+                )
+            }
+            .filter { it.content.isNotBlank() }
+            .distinctBy { it.name }
+        val restoredSkillGroup = skillsWithBundledDefault(restoredSkills)
         AppLocale.save(context, preferences.useSystemLanguage, preferences.selectedLanguage)
-        state.mutate({ preferences }) {
+        state.mutate({ preferences.copy(agentSkills = restoredSkillGroup) }) {
+            agentSkillsStore.replaceAll(restoredSkills)
             context.dataStore.edit { stored ->
                 stored.clear()
                 stored[PreferenceKeys.CHAT_RELATIONS] = Json.encodeToString(preferences.chatRelations)
@@ -805,7 +883,6 @@ class AppPreferencesRepository(private val context: Context) {
                 stored[PreferenceKeys.USE_DYNAMIC_COLOR] = preferences.useDynamicColor
                 stored[PreferenceKeys.COLOR_SCHEME_NAME] = preferences.colorSchemeName
                 stored[PreferenceKeys.INSTRUCTION_LIBRARY] = Json.encodeToString(preferences.instructionLibrary)
-                stored[PreferenceKeys.AGENT_SKILLS] = Json.encodeToString(preferences.agentSkills)
                 stored[PreferenceKeys.CONTINUE_LAST_CONVERSATION] = preferences.continueLastConversation
                 stored[PreferenceKeys.PERSIST_SELECTED_MODEL] = preferences.persistSelectedModel
                 stored[PreferenceKeys.AUTO_SCROLL] = preferences.autoScroll

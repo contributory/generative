@@ -113,7 +113,7 @@ internal fun ModelPickerCard(
         tween(if (tier == 6) 1800 else 2600, easing = FastOutSlowInEasing),
         label = "thinkingCardTint"
     )
-    val cardShape = RoundedCornerShape(16.dp)
+    val cardShape = RoundedCornerShape(12.dp)
     val embeddedShape = RoundedCornerShape(12.dp)
     val amoled = LocalAmoledMode.current
     val cardBase = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
@@ -140,7 +140,7 @@ internal fun ModelPickerCard(
                 }
             } else Modifier
         )
-        .padding(10.dp)
+        .padding(if (embedded) 10.dp else 7.dp)
     val cardContent: @Composable ColumnScope.() -> Unit = {
             Row(
                 modifier = Modifier.fillMaxWidth().then(if (embedded) {
@@ -157,17 +157,18 @@ internal fun ModelPickerCard(
                 } else Modifier),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                EntityIcon(config.icon, Modifier.size(40.dp), text = modelInitial(modelId), matchName = config.displayName.ifBlank { modelId }, fallbackMatchName = modelId, model = true)
+                EntityIcon(config.icon, Modifier.size(if (embedded) 40.dp else 32.dp), text = modelInitial(modelId), matchName = config.displayName.ifBlank { modelId }, fallbackMatchName = modelId, model = true)
 
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(if (embedded) 10.dp else 8.dp))
 
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(if (embedded) 4.dp else 2.dp)
                 ) {
                     Text(
                         text = compactModelLabel(config.displayName.ifBlank { modelId }),
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = (if (embedded) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium)
+                            .copy(fontWeight = FontWeight.SemiBold),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )

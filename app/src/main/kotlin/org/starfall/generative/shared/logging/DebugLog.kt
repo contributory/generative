@@ -17,7 +17,8 @@ data class DebugLogEntry(
     val category: DebugLogCategory,
     val level: DebugLogLevel,
     val tag: String,
-    val message: String
+    val message: String,
+    val summary: String? = null
 ) {
     val time: String get() = TIME_FORMAT.format(Instant.ofEpochMilli(timeMillis))
 
@@ -36,6 +37,7 @@ data class DebugLogEntry(
 object DebugLog {
     const val MAX_ENTRIES = 500
     const val MAX_MESSAGE_CHARS = 4_000
+    const val MAX_REQUEST_CHARS = 512_000
     const val MAX_EXPORT_CHARS = 500_000
 
     private val nextId = AtomicLong()
@@ -72,6 +74,47 @@ object DebugLog {
         log(category, tag, DebugLogLevel.ERROR) {
             if (error == null) message else "$message: ${error::class.java.simpleName}: ${error.message}"
         }
+
+    /** One entry per HTTP call, updated in place when the response arrives. */
+    internal fun beginRequest(tag: String, label: String, payload: (() -> String)? = null): Long? {
+        val category = when {
+            isEnabled(DebugLogCategory.NETWORK) -> DebugLogCategory.NETWORK
+            payload != null && isEnabled(DebugLogCategory.PAYLOAD) -> DebugLogCategory.PAYLOAD
+            else -> return null
+        }
+        val summary = DebugLogRedactor.redact("→ $label")
+        val details = if (payload != null && isEnabled(DebugLogCategory.PAYLOAD)) safeRequestText(payload) else ""
+        val entry = DebugLogEntry(nextId.incrementAndGet(), System.currentTimeMillis(), category,
+            DebugLogLevel.INFO, tag, listOf(summary, details).filter(String::isNotBlank).joinToString("\n"), summary)
+        _entries.update { (it + entry).takeLast(MAX_ENTRIES) }
+        return entry.id
+    }
+
+    internal fun finishRequest(id: Long?, tag: String, summary: String, failed: Boolean,
+        payload: (() -> String)? = null) {
+        val safeSummary = DebugLogRedactor.redact(summary)
+        if (id == null) {
+            if (failed) log(DebugLogCategory.ERRORS, tag, DebugLogLevel.ERROR) { safeSummary }
+            return
+        }
+        if (scopes.isEmpty()) return
+        val details = if (payload != null && isEnabled(DebugLogCategory.PAYLOAD)) safeRequestText(payload) else ""
+        _entries.update { entries -> entries.map { entry ->
+            if (entry.id != id) entry else entry.copy(
+                level = if (failed) DebugLogLevel.ERROR else DebugLogLevel.INFO,
+                summary = safeSummary,
+                message = listOf(entry.message, safeSummary, details).filter(String::isNotBlank).joinToString("\n\n")
+                    .let { bounded(it, MAX_REQUEST_CHARS) }
+            )
+        } }
+    }
+
+    private fun safeRequestText(message: () -> String): String = bounded(DebugLogRedactor.redact(
+        try { message() } catch (e: Exception) { "(log message unavailable: ${e.message})" }
+    ), MAX_REQUEST_CHARS)
+
+    private fun bounded(text: String, limit: Int): String = if (text.length <= limit) text
+        else text.take(limit) + "\n… (${text.length - limit} more characters)"
 
     fun clear() {
         _entries.value = emptyList()

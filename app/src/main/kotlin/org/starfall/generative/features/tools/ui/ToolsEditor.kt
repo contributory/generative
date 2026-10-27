@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.ToolSettings
-import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ModelType
@@ -46,19 +45,16 @@ import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as Dropdo
 import org.starfall.generative.shared.ui.model.DefaultModelSelector
 import org.starfall.generative.shared.ui.model.ModelPickerSheet
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
-import org.starfall.generative.shared.ui.WebSearchProviderSettings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ToolsEditor(
     providers: List<ModelProvider>,
     settings: ToolSettings,
-    mcpServers: List<McpInfo> = emptyList(),
     onSave: (String, SystemToolConfig) -> Unit,
     onSetSendFile: (Boolean) -> Unit = {},
     onSetSearchTools: (Boolean) -> Unit = {},
-    onSetWebSearchProvider: (String?) -> Unit = {},
-    onSetWebSearchEnabled: (Boolean) -> Unit = {},
+    onSetAgentSkillsSearch: (Boolean) -> Unit = {},
     providerGroups: List<ProviderGroup> = emptyList(),
     collapsedGroupIds: Set<String> = emptySet(),
     collapsedProviderIds: Set<String> = emptySet(),
@@ -370,14 +366,6 @@ fun ToolsEditor(
                         )
                     }
                     item {
-                        WebSearchProviderSettings(
-                            servers = mcpServers,
-                            settings = settings,
-                            onProviderChange = onSetWebSearchProvider,
-                            onEnabledChange = onSetWebSearchEnabled
-                        )
-                    }
-                    item {
                         SettingsCard {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
@@ -387,6 +375,21 @@ fun ToolsEditor(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 Switch(checked = settings.searchToolsEnabled, onCheckedChange = onSetSearchTools)
+                            }
+                        }
+                    }
+                    item {
+                        SettingsCard {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(stringResource(R.string.tool_agent_skills_search_title),
+                                        style = MaterialTheme.typography.titleMedium)
+                                    Text(stringResource(R.string.tool_agent_skills_search_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Switch(checked = settings.agentSkillsSearchEnabled,
+                                    onCheckedChange = onSetAgentSkillsSearch)
                             }
                         }
                     }

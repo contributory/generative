@@ -20,7 +20,7 @@ import org.starfall.generative.shared.ui.model.ModelPickerSheet
 class ModelPickerToggleTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
-    @Test fun selectedModelSurvivesCollapsedParentsAndReasoningCanBeDisabledIndependently() {
+    @Test fun selectedModelHidesOnCollapseAndReasoningCanBeDisabledAfterExpansion() {
         val config = ModelConfiguration(supportsThinking = true)
         val provider = ModelProvider("p", "Primary", ModelApiType.OPENAI, baseUrl = "",
             groupId = "folder", config = ProviderConfiguration(modelIds = listOf("alpha", "beta"),
@@ -36,8 +36,11 @@ class ModelPickerToggleTest {
             }
         }
         compose.onNodeWithTag("model-picker-provider_p").assertIsDisplayed()
-        compose.onNodeWithTag("model-picker-model_p_alpha").assertIsDisplayed()
+        compose.onNodeWithTag("model-picker-model_p_alpha").assertDoesNotExist()
         compose.onNodeWithTag("model-picker-model_p_beta").assertDoesNotExist()
+        compose.onNodeWithTag("reasoning-slider").assertDoesNotExist()
+        compose.onNodeWithTag("model-picker-provider_p").performClick()
+        compose.onNodeWithTag("model-picker-model_p_alpha").assertIsDisplayed()
         compose.onNodeWithTag("reasoning-slider").assertIsEnabled()
         compose.onNodeWithTag("reasoning-slider").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) {
             it(0f)
@@ -91,6 +94,30 @@ class ModelPickerToggleTest {
         compose.onNodeWithTag("model-picker-tab_folder_folder").assertDoesNotExist()
         compose.onNodeWithTag("model-picker-tab_ungrouped").assertIsDisplayed()
         compose.onNodeWithTag("model-picker-model_root_gamma").assertIsDisplayed()
+    }
+
+    @Test fun searchLosesFocusOnOutsideTapAndImeAction() {
+        val provider = ModelProvider("p", "Primary", ModelApiType.OPENAI, baseUrl = "",
+            config = ProviderConfiguration(modelIds = listOf("alpha", "beta")))
+        compose.setContent {
+            MaterialTheme {
+                ModelPickerSheet(
+                    providers = listOf(provider), selectedProviderId = "", selectedModelId = "",
+                    conversationReasoningEffort = null, onSelectModel = { _, _ -> },
+                    onSetReasoningEffort = {}, onDismiss = {}
+                )
+            }
+        }
+
+        compose.onNodeWithTag("model-picker-search-button").performClick()
+        compose.onNodeWithTag("model-picker-search").assertIsFocused().performTextInput("alpha")
+        compose.onNodeWithTag("model-picker-provider_p").performClick()
+        compose.onNodeWithTag("model-picker-search-button").assertIsDisplayed()
+
+        compose.onNodeWithTag("model-picker-search-button").performClick()
+        compose.onNodeWithTag("model-picker-search").assertIsFocused().performImeAction()
+        compose.onNodeWithTag("model-picker-search-button").assertIsDisplayed()
+        compose.onNodeWithTag("model-picker-model_p_alpha").assertIsDisplayed()
     }
 
     @Test fun togglingBranchesKeepsTheViewportInsteadOfReturningToTheSelectedModel() {

@@ -5,12 +5,23 @@ import kotlinx.coroutines.flow.drop
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -99,6 +110,10 @@ internal fun ModelPickerSheetContent(
     onDismiss: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    var searchBounds by remember { mutableStateOf<Rect?>(null) }
+    var contentOrigin by remember { mutableStateOf(Offset.Zero) }
     var expandSearchResults by remember(query) { mutableStateOf(true) }
     val forceExpanded = query.isNotBlank() && expandSearchResults
     var collapsedGroupIds by remember { mutableStateOf(collapsedGroupIdsState) }
@@ -216,7 +231,29 @@ internal fun ModelPickerSheetContent(
         }
     }
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth()
+        .onGloballyPositioned { contentOrigin = it.positionInRoot() }
+        // Observe taps before children consume them without interrupting scrolling or clicks.
+        .pointerInput(searchBounds, contentOrigin, focusManager) {
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    if (event.changes.size > 1) break
+                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                    if (change.uptimeMillis - down.uptimeMillis >= viewConfiguration.longPressTimeoutMillis) break
+                    if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) break
+                    if (change.changedToUpIgnoreConsumed()) {
+                        if (searchBounds != null && searchBounds?.contains(contentOrigin + down.position) != true) {
+                            focusManager.clearFocus(force = true)
+                            keyboard?.hide()
+                        }
+                        break
+                    }
+                }
+            }
+        }
+    ) {
             ModelPickerToolbar(
                 query = query,
                 onQueryChange = { query = it },
@@ -233,7 +270,8 @@ internal fun ModelPickerSheetContent(
                 },
                 selectedModelId = selectedModelId,
                 selectedModel = selectedModel,
-                onOpenSelectedModel = onOpenSelectedModel
+                onOpenSelectedModel = onOpenSelectedModel,
+                onSearchBoundsChange = { searchBounds = it }
             )
 
             if (folderTabs.isNotEmpty()) {
@@ -266,8 +304,8 @@ internal fun ModelPickerSheetContent(
                     .fillMaxWidth()
                     .weight(1f)
                     .testTag("model-picker-list"),
-                contentPadding = PaddingValues(start = 20.dp, top = 10.dp, end = 20.dp, bottom = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 if (flatItems.isEmpty()) {
                     item(key = "empty") {

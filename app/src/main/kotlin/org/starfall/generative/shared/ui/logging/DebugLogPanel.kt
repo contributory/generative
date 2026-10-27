@@ -151,11 +151,11 @@ private fun DebugLogEntryBlock(entry: DebugLogEntry, onCopy: () -> Unit) {
                 }
             }
             Text(
-                entry.message,
+                if (expanded) entry.message else entry.summary ?: entry.message,
                 modifier = Modifier.padding(end = 8.dp),
                 style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 15.sp),
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = if (expanded) Int.MAX_VALUE else COLLAPSED_LINES,
+                maxLines = if (expanded) Int.MAX_VALUE else if (entry.summary != null) 2 else COLLAPSED_LINES,
                 overflow = TextOverflow.Ellipsis
             )
         }

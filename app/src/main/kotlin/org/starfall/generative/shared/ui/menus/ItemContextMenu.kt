@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
@@ -26,6 +27,7 @@ fun ItemContextMenu(
     deleteColor: Color,
     firstActionText: String? = null,
     firstActionIcon: Int? = null,
+    firstActionImageVector: ImageVector? = null,
     onFirstAction: (() -> Unit)? = null,
     enabled: Boolean = true
 ) {
@@ -47,10 +49,18 @@ fun ItemContextMenu(
                 shadowElevation = if (LocalAmoledMode.current) 0.dp else 8.dp,
                 border = prominentContainerBorder()
             ) {
-                if (firstActionText != null && firstActionIcon != null && onFirstAction != null) {
+                if (firstActionText != null && onFirstAction != null &&
+                    (firstActionIcon != null || firstActionImageVector != null)
+                ) {
                     DropdownMenuItem(
                         text = { Text(firstActionText) },
-                        leadingIcon = { FluentIcon(firstActionIcon, contentDescription = null) },
+                        leadingIcon = {
+                            if (firstActionImageVector != null) {
+                                FluentIcon(firstActionImageVector, contentDescription = null)
+                            } else {
+                                FluentIcon(firstActionIcon!!, contentDescription = null)
+                            }
+                        },
                         onClick = {
                             expanded = false
                             onFirstAction()

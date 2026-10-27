@@ -18,12 +18,16 @@ import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.features.settings.logic.SettingsViewModel
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.files.AgentSkillsStore
 import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.logging.DebugLog
 import org.starfall.generative.shared.media.SpeechAudioPlayer
 import org.starfall.generative.shared.media.SpeechSynthesisService
 import org.starfall.generative.shared.media.TtsHelper
 import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.shared.model.AgentSkill
+import org.starfall.generative.shared.model.DEFAULT_AGENT_SKILL_ID
+import org.starfall.generative.shared.model.normalizeAgentSkillName
 import org.starfall.generative.database.ConversationRepository
 import org.starfall.generative.database.McpRepository
 import org.starfall.generative.database.ModelRepository
@@ -72,6 +76,8 @@ class AppContainer(context: Context) {
         mcpService.serverLoader = mcp::resolveServer
     }
 
+    private val skillStore = AgentSkillsStore(appContext)
+
     val viewModelFactory = viewModelFactory {
         initializer {
             ChatViewModel(
@@ -80,17 +86,30 @@ class AppContainer(context: Context) {
                 mcp,
                 preferences,
                 ToolChatViewModel(toolHttp, mcpService, aiService, remoteMachineService, toolChatLabels(appContext),
-                    saveSkill = { name, content ->
-                        val cleanName = name.trim().take(120)
+                    saveSkill = { name, description, content ->
+                        val cleanName = normalizeAgentSkillName(name)
+                        require(cleanName != DEFAULT_AGENT_SKILL_ID) {
+                            "The bundled create-skill skill cannot be overwritten"
+                        }
+                        val cleanDescription = description.trim().take(1024)
                         val cleanContent = content.trim().take(32000)
-                        require(cleanName.isNotBlank() && cleanContent.isNotBlank()) { "Skill name and content are required" }
-                        val skill = org.starfall.generative.shared.model.AgentSkill(
-                            java.util.UUID.randomUUID().toString(), cleanName, cleanContent
+                        require(cleanName.isNotBlank() && cleanDescription.isNotBlank() && cleanContent.isNotBlank()) {
+                            "Skill name, description and content are required"
+                        }
+                        val skill = AgentSkill(
+                            cleanName, cleanName, cleanContent, cleanDescription
                         )
                         val current = preferences.appPreferencesFlow.first().agentSkills.skills
+                        require(current.none { it.name == cleanName }) {
+                            "A skill named $cleanName already exists"
+                        }
                         preferences.setAgentSkills(current + skill)
                         skill
-                    }),
+                    },
+                    // Re-discover from files for each agent turn (including external SKILL.md edits).
+                    availableSkills = { listOf(skillStore.readBundledCreateSkill(appContext)) + skillStore.readBlocking() },
+                    skillResources = { name -> skillStore.listResources(appContext, name) },
+                    readSkillResource = { name, path -> skillStore.readResource(appContext, name, path) }),
                 toolSettings,
                 speech,
                 TtsHelper(appContext),

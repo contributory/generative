@@ -61,6 +61,50 @@ class ZipAppDataTransferTest {
         }
     }
 
+    @Test fun skillDirectoryResourcesRoundTripWithoutFlatteningPaths() {
+        val source = Files.createTempDirectory("generative-skill-backup-").toFile()
+        val staging = Files.createTempDirectory("generative-skill-staging-").toFile()
+        try {
+            val document = source.resolve("SKILL.md").apply { writeText("---\nname: review\ndescription: Review files\n---\n\n# Review") }
+            val reference = source.resolve("REFERENCE.md").apply { writeText("Do not lose references") }
+            val nested = source.resolve("template.txt").apply { writeText("nested content") }
+            val backup = AppDataBackup(exportedAt = "2026-10-27T00:00:00Z")
+            val bytes = ByteArrayOutputStream().also { output ->
+                writeZipBackup(output, backup, emptyMap(), emptyMap(), emptyMap(),
+                    mapOf(
+                        "review/SKILL.md" to document,
+                        "review/references/REFERENCE.md" to reference,
+                        "review/assets/reference/template.txt" to nested
+                    ))
+            }.toByteArray()
+            val restored = readZipBackup(ByteArrayInputStream(bytes), staging)
+            assertEquals(setOf("review/SKILL.md", "review/references/REFERENCE.md", "review/assets/reference/template.txt"),
+                restored.skillFiles.keys)
+            assertEquals("Do not lose references", restored.skillFiles.getValue("review/references/REFERENCE.md").readText())
+            assertEquals("nested content", restored.skillFiles.getValue("review/assets/reference/template.txt").readText())
+        } finally {
+            source.deleteRecursively()
+            staging.deleteRecursively()
+        }
+    }
+
+    @Test fun refusesArchiveSkillDirectoryTraversal() {
+        val bytes = ByteArrayOutputStream().also { output ->
+            ZipOutputStream(output).use { zip ->
+                zip.putNextEntry(ZipEntry("skills/review/../secret.txt"))
+                zip.write("no".toByteArray())
+                zip.closeEntry()
+            }
+        }.toByteArray()
+        val staging = Files.createTempDirectory("generative-skill-traversal-").toFile()
+        try {
+            try {
+                readZipBackup(ByteArrayInputStream(bytes), staging)
+                org.junit.Assert.fail("Traversal should have been rejected")
+            } catch (_: IllegalStateException) { }
+        } finally { staging.deleteRecursively() }
+    }
+
     @Test(expected = IllegalStateException::class)
     fun rejectsBackupEntriesLargerThanImportLimitDuringExport() {
         val largeFile = Files.createTempFile("generative-oversized-backup", ".bin").toFile()

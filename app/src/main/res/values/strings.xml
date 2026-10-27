@@ -96,6 +96,7 @@
     <string name="sidebar_create_action">Create</string>
     <string name="sidebar_folders">Folders</string>
     <string name="sidebar_new_chat">New chat</string>
+    <string name="chat_open_temporary_chat">Open temporary chat</string>
     <string name="sidebar_search">Search</string>
     <string name="sidebar_menu">Generative</string>
     <string name="sidebar_clear_search">Clear search</string>
@@ -614,7 +615,12 @@
     <string name="settings_category_about_description">App information, software updates &amp; license</string>
     <string name="settings_chat_options">Chat Options</string>
     <string name="settings_chat_options_description">Conversation helpers, instructions, skills, and default language models</string>
-    <string name="chat_options_tab_helpers">Helpers</string>
+    <string name="chat_options_tab_options">Options</string>
+    <string name="settings_tts_provider_title">TTS Provider</string>
+    <string name="settings_tts_provider_description">Speech service used to read messages aloud.</string>
+    <string name="settings_tts_provider_select">Speech service</string>
+    <string name="settings_tts_provider_none">No speech service selected</string>
+    <string name="settings_tts_provider_empty">Add a Speech Service to choose a TTS provider.</string>
     <string name="common_instructions">Instructions</string>
     <string name="chat_options_tab_skills">Skills</string>
     <string name="common_skills">Skills</string>
@@ -632,11 +638,21 @@
     <string name="instruction_delete_confirmation">Delete “%1$s”? This cannot be undone.</string>
     <string name="agent_skills_empty">No skills yet. Add one in Chat Options &gt; Skills.</string>
     <string name="agent_skill_details">Skill details</string>
+    <string name="agent_skill_new_name">new-agent-skill</string>
+    <string name="agent_skill_name">Skill name</string>
+    <string name="agent_skill_name_hint">Lowercase letters, numbers, and hyphens only</string>
+    <string name="agent_skill_description">Description</string>
+    <string name="agent_skill_description_hint">What this skill does and when to use it</string>
+    <string name="agent_skill_description_template">Describe what this skill does and when an agent should use it.</string>
+    <string name="agent_skill_template">## Instructions\nDescribe the step-by-step workflow for this skill.\n\n## Examples\nAdd representative inputs and outputs when useful.\n\n## Edge Cases\nList important edge cases and constraints.</string>
     <string name="agent_skill_content">Skill instructions</string>
     <string name="agent_skill_content_hint">Describe what this agent skill should do</string>
     <string name="agent_skill_metadata">%1$d characters · ~%2$d tokens</string>
     <string name="agent_skill_delete_confirmation">Delete “%1$s”? This cannot be undone.</string>
     <string name="agent_skill_save">Save skill</string>
+    <string name="agent_skill_copy_document">Copy SKILL.md</string>
+    <string name="agent_skill_paste_document">Paste</string>
+    <string name="agent_skill_invalid_document">SKILL.md needs valid YAML frontmatter (name and description) and Markdown instructions.</string>
     <string name="agent_skills_menu_title">Agent Skills</string>
     <string name="agent_skills_manage">Manage skills</string>
     <string name="agent_skills_menu_empty">No skills are available.</string>
@@ -1080,6 +1096,7 @@
     <string name="speech_services_title">Speech Services</string>
     <string name="speech_custom_tts">Custom TTS</string>
     <string name="speech_add_service">Add speech service</string>
+    <string name="speech_set_tts_provider">Set TTS Provider</string>
     <string name="speech_preview_text">Hello! This is a preview of the %1$s voice.</string>
     <string name="common_selected">Selected</string>
     <string name="common_system">System</string>
@@ -1132,4 +1149,6 @@
     <string name="chat_minimap_open">Open conversation minimap</string>
     <string name="chat_minimap_close">Close conversation minimap</string>
     <string name="chat_minimap_navigate">Conversation minimap. Tap a position to jump there.</string>
+    <string name="tool_agent_skills_search_title">Agent Skills Search</string>
+    <string name="tool_agent_skills_search_description">Let the AI find and load skills on demand</string>
 </resources>

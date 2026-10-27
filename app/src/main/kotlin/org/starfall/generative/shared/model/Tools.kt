@@ -82,7 +82,9 @@ data class ToolSettings(
     /** Lets the AI display files in chat through send_file. On unless the user turns it off. */
     val sendFileEnabled: Boolean = true,
     /** Optional built-in tool allowing the model to find tool names and enablement. */
-    val searchToolsEnabled: Boolean = false
+    val searchToolsEnabled: Boolean = false,
+    /** Opt-in discovery; Agent Skills stay detached until a search or explicit user selection. */
+    val agentSkillsSearchEnabled: Boolean = false
 )
 
 @Serializable

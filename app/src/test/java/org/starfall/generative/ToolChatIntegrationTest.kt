@@ -39,6 +39,177 @@ import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 class ToolChatIntegrationTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
+    @Test fun disabledSearchDoesNotAttachSkillToolsForMatchingTaskOrPastSkill() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val root = Files.createTempDirectory("no-skill-tools-").toFile()
+        try {
+            server.enqueue(MockResponse().addHeader("Content-Type", "application/json").setBody(
+                """{"choices":[{"message":{"role":"assistant","content":"Hello!"}}]}"""))
+            val provider = ModelProvider("p", "Chat", ModelApiType.OPENAI,
+                baseUrl = server.url("/v1").toString(),
+                config = ProviderConfiguration(supportStream = false))
+            val http = ToolHttp(ToolFiles(root))
+            val skill = AgentSkill("review-code", "review-code", "Never send this body", "Review code")
+            val events = ToolChatViewModel(http, McpService(http), AiService(context),
+                availableSkills = { listOf(skill) }
+            ).generate(provider, "chat",
+                listOf(
+                    StoredMessage("previous", ChatRole.USER, listOf(MessageVersion(
+                        "Use skill review-code", selectedSkillName = "review-code"))),
+                    StoredMessage("previous-reply", ChatRole.MODEL, listOf(MessageVersion(
+                        content = "I reviewed it", toolActivity = listOf(ToolActivity(
+                            "old-call", "activate_skill", "activate_skill", "success",
+                            arguments = """{"name":"review-code"}"""))))),
+                    StoredMessage("u", ChatRole.USER, listOf(MessageVersion("Review this code")))
+                ),
+                "System instructions", emptyList(), listOf(provider),
+                { ToolSettings(searchToolsEnabled = true) }).toList()
+            val body = Json.parseToJsonElement(server.takeRequest().body.readUtf8()).jsonObject
+            val toolNames = body.getValue("tools").jsonArray.map {
+                it.jsonObject.getValue("function").jsonObject.getValue("name").jsonPrimitive.content
+            }
+            assertEquals(listOf("search_tools"), toolNames)
+            assertFalse(body.toString().contains("available_skills"))
+            assertFalse(body.toString().contains("activate_skill"))
+            assertFalse(body.toString().contains("read_skill_resource"))
+            // Earlier user text remains ordinary conversation history, but skill tools
+            // and their previous tool-call metadata must not be replayed.
+            assertFalse(body.toString().contains("Never send this body"))
+            assertTrue(events.filterIsInstance<GenerationEvent.Text>().isNotEmpty())
+        } finally {
+            server.shutdown()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun enabledSkillSearchOnlyAttachesOtherToolsAfterSearchAndActivation() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val root = Files.createTempDirectory("skills-search-turns-").toFile()
+        val skillsRoot = Files.createTempDirectory("skills-search-files-").toFile()
+        try {
+            val store = AgentSkillsStore(skillsRoot)
+            val skill = AgentSkill("review-code", "review-code", "Inspect references/checklist.md", "Review code changes")
+            val irrelevant = AgentSkill("translate-text", "translate-text", "Private translation instructions", "Translate text")
+            store.replaceAll(listOf(skill, irrelevant))
+            val checklist = skillsRoot.resolve("review-code/references/checklist.md")
+            checklist.parentFile.mkdirs()
+            checklist.writeText("Verify tests and edge cases")
+            val requests = mutableListOf<JsonObject>()
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val body = Json.parseToJsonElement(request.body.readUtf8()).jsonObject
+                    val round = synchronized(requests) { requests.add(body); requests.size }
+                    fun invoke(name: String, args: String) = obj(
+                        "role" to str("assistant"), "content" to str(""),
+                        "tool_calls" to JsonArray(listOf(obj(
+                            "id" to str("skill-call-$round"), "type" to str("function"),
+                            "function" to obj("name" to str(name), "arguments" to str(args))
+                        )))
+                    )
+                    val reply = when (round) {
+                        1 -> invoke("agent_skills_search", """{"query":"review code"}""")
+                        2 -> invoke("activate_skill", """{"name":"review-code"}""")
+                        3 -> invoke("read_skill_resource", """{"name":"review-code","path":"references/checklist.md"}""")
+                        else -> obj("role" to str("assistant"), "content" to str("Review done"))
+                    }
+                    return MockResponse().addHeader("Content-Type", "application/json")
+                        .setBody(obj("choices" to JsonArray(listOf(obj("message" to reply)))).toString())
+                }
+            }
+            val provider = ModelProvider("p", "Chat", ModelApiType.OPENAI,
+                baseUrl = server.url("/v1").toString(),
+                config = ProviderConfiguration(supportStream = false))
+            val http = ToolHttp(ToolFiles(root))
+            val events = ToolChatViewModel(http, McpService(http), AiService(context),
+                availableSkills = { listOf(skill, irrelevant) },
+                skillResources = { store.listResources(context, it) },
+                readSkillResource = { name, path -> store.readResource(context, name, path) }
+            ).generate(provider, "chat",
+                listOf(StoredMessage("u", ChatRole.USER, listOf(MessageVersion("Review this code")))),
+                "", emptyList(), listOf(provider), { ToolSettings(agentSkillsSearchEnabled = true) }).toList()
+            fun toolNames(body: JsonObject): Set<String> = body.getValue("tools").jsonArray.map {
+                it.jsonObject.getValue("function").jsonObject.getValue("name").jsonPrimitive.content
+            }.toSet()
+            assertEquals(4, requests.size)
+            assertEquals(setOf("agent_skills_search"), toolNames(requests[0]))
+            assertEquals(setOf("agent_skills_search", "activate_skill"), toolNames(requests[1]))
+            assertEquals(setOf("agent_skills_search", "activate_skill", "read_skill_resource"), toolNames(requests[2]))
+            assertFalse(requests[0].toString().contains("Inspect references/checklist.md"))
+            assertTrue(requests[1].toString().contains("Review code changes"))
+            assertFalse(requests[1].toString().contains("Private translation instructions"))
+            assertFalse(requests[1].toString().contains("translate-text"))
+            assertTrue(requests[2].toString().contains("Inspect references/checklist.md"))
+            assertTrue(requests[3].toString().contains("Verify tests and edge cases"))
+            assertTrue(events.filterIsInstance<GenerationEvent.Text>().any { it.text.contains("Review done") })
+        } finally {
+            server.shutdown()
+            root.deleteRecursively()
+            skillsRoot.deleteRecursively()
+        }
+    }
+
+    @Test fun agentDiscoversLoadsAndReadsSkillResourcesOnDemand() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val root = Files.createTempDirectory("skill-tools-integration-").toFile()
+        val skillsRoot = Files.createTempDirectory("skill-directory-").toFile()
+        try {
+            val store = AgentSkillsStore(skillsRoot)
+            val skill = AgentSkill("review", "review", "Use references/checks.md for review details", "Review patches")
+            store.replaceAll(listOf(skill))
+            val reference = skillsRoot.resolve("review/references/checks.md")
+            reference.parentFile.mkdirs()
+            reference.writeText("Check tests and boundary cases")
+            val requests = mutableListOf<String>()
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val body = Json.parseToJsonElement(request.body.readUtf8()).jsonObject
+                    synchronized(requests) { requests += body.toString() }
+                    val round = synchronized(requests) { requests.size }
+                    val response = when (round) {
+                        1 -> obj("role" to str("assistant"), "content" to str(""),
+                            "tool_calls" to JsonArray(listOf(obj("id" to str("call-activate"), "type" to str("function"),
+                                "function" to obj("name" to str("activate_skill"), "arguments" to str("""{"name":"review"}"""))))))
+                        2 -> obj("role" to str("assistant"), "content" to str(""),
+                            "tool_calls" to JsonArray(listOf(obj("id" to str("call-resource"), "type" to str("function"),
+                                "function" to obj("name" to str("read_skill_resource"),
+                                    "arguments" to str("""{"name":"review","path":"references/checks.md"}"""))))))
+                        else -> obj("role" to str("assistant"), "content" to str("Review complete"))
+                    }
+                    return MockResponse().addHeader("Content-Type", "application/json").setBody(
+                        obj("choices" to JsonArray(listOf(obj("message" to response)))).toString())
+                }
+            }
+            val provider = ModelProvider("p", "Chat", ModelApiType.OPENAI,
+                baseUrl = server.url("/v1").toString(),
+                config = ProviderConfiguration(supportStream = false))
+            val http = ToolHttp(ToolFiles(root))
+            val events = ToolChatViewModel(http, McpService(http), AiService(context),
+                availableSkills = { listOf(skill) },
+                skillResources = { store.listResources(context, it) },
+                readSkillResource = { name, path -> store.readResource(context, name, path) }
+            ).generate(provider, "chat",
+                listOf(StoredMessage("u", ChatRole.USER, listOf(MessageVersion("Please review this patch", selectedSkillName = "review")))),
+                "", emptyList(), listOf(provider), { ToolSettings() }).toList()
+            assertEquals(3, requests.size)
+            assertTrue(requests[0].contains("Review patches"))
+            assertFalse(requests[0].contains("Use references/checks.md"))
+            assertTrue(requests[0].contains("activate_skill"))
+            assertFalse(requests[0].contains("agent_skills_search"))
+            assertFalse(requests[0].contains("read_skill_resource"))
+            assertTrue(requests[1].contains("read_skill_resource"))
+            assertTrue(requests[1].contains("Use references/checks.md"))
+            assertTrue(requests[2].contains("Check tests and boundary cases"))
+            assertTrue(events.filterIsInstance<GenerationEvent.Text>().any { it.text.contains("Review complete") })
+        } finally {
+            server.shutdown()
+            root.deleteRecursively()
+            skillsRoot.deleteRecursively()
+        }
+    }
+
     @Test fun contentApiDisplaysVideoWithoutExposingMediaUrlOrOfferingSendFile() = contentApiScenario()
 
     private fun contentApiScenario() = runBlocking {

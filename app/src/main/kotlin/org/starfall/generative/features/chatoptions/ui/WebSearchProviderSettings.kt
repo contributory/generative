@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.ui
+package org.starfall.generative.features.chatoptions.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

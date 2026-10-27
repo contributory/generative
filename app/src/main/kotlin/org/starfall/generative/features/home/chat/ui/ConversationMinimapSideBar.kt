@@ -45,6 +45,7 @@ import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.dismiss
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.ChatRole
@@ -53,9 +54,15 @@ import org.starfall.generative.shared.model.StoredMessage
 internal class ConversationMinimapSideBarState {
     var isOpen by mutableStateOf(false)
     var boundsInRoot: Rect? = null
+    var isInteracting by mutableStateOf(false)
+    var interactionRevision by mutableIntStateOf(0)
+
+    fun markInteraction() { interactionRevision++ }
 }
 
-/** Observe taps on the chat ancestor so dismissing the rail does not block underlying controls. */
+private const val MINIMAP_IDLE_TIMEOUT_MS = 6_000L
+
+/** Observe taps and drags on the chat ancestor without intercepting the underlying gestures. */
 @Composable
 internal fun Modifier.dismissMinimapOnOutsideTap(state: ConversationMinimapSideBarState): Modifier {
     var coordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -69,12 +76,13 @@ internal fun Modifier.dismissMinimapOnOutsideTap(state: ConversationMinimapSideB
                     val event = awaitPointerEvent(PointerEventPass.Initial)
                     if (event.changes.size > 1) break
                     val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                    if (change.uptimeMillis - down.uptimeMillis >= viewConfiguration.longPressTimeoutMillis) break
-                    if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) break
-                    if (change.changedToUpIgnoreConsumed()) {
+                    if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop ||
+                        change.changedToUpIgnoreConsumed()
+                    ) {
                         state.isOpen = false
                         break
                     }
+                    if (change.uptimeMillis - down.uptimeMillis >= viewConfiguration.longPressTimeoutMillis) break
                 }
             }
         }
@@ -99,6 +107,12 @@ internal fun ConversationMinimapSideBar(
     val openLabel = stringResource(R.string.chat_minimap_open)
     val closeLabel = stringResource(R.string.chat_minimap_close)
     LaunchedEffect(messages.isEmpty()) { if (messages.isEmpty()) state.isOpen = false }
+    LaunchedEffect(state.isOpen, state.isInteracting, state.interactionRevision) {
+        if (state.isOpen && !state.isInteracting) {
+            delay(MINIMAP_IDLE_TIMEOUT_MS)
+            state.isOpen = false
+        }
+    }
     BackHandler(enabled = state.isOpen) { state.isOpen = false }
     if (messages.isEmpty()) return
 
@@ -148,6 +162,23 @@ internal fun ConversationMinimapSideBar(
                         .heightIn(max = 480.dp).fillMaxHeight()
                         .testTag("chat-minimap-sidebar")
                         .onGloballyPositioned { state.boundsInRoot = it.boundsInRoot() }
+                        // A finger held on the minimap is active interaction, even if the drag lasts over 6s.
+                        .pointerInput(state) {
+                            awaitEachGesture {
+                                awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                state.isInteracting = true
+                                try {
+                                    var pressed: Boolean
+                                    do {
+                                        pressed = awaitPointerEvent(PointerEventPass.Initial)
+                                            .changes.any { it.pressed }
+                                    } while (pressed)
+                                } finally {
+                                    state.isInteracting = false
+                                    state.markInteraction()
+                                }
+                            }
+                        }
                         .semantics { dismiss(closeLabel) { state.isOpen = false; true } }
                         .pointerInput(conversationKey, threshold) {
                             var distance = 0f
@@ -162,8 +193,13 @@ internal fun ConversationMinimapSideBar(
                     Box(Modifier.padding(horizontal = 5.dp, vertical = 8.dp)) {
                         key(conversationKey) {
                             ConversationMinimap(
-                                messages, listState, topObscuredPx, bottomObscuredPx, onNavigate,
-                                Modifier.fillMaxSize()
+                                messages, listState, topObscuredPx, bottomObscuredPx,
+                                onNavigate = {
+                                    // Accessibility navigation has no touch gesture to restart the idle timer.
+                                    if (!state.isInteracting) state.markInteraction()
+                                    onNavigate()
+                                },
+                                modifier = Modifier.fillMaxSize()
                             )
                         }
                     }

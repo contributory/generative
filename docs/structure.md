@@ -57,6 +57,8 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   └── 📁 ui/
 │   │       ├── 📄 ChatOptionsScreen.kt
 │   │       ├── 📄 HelperSettings.kt
+│   │       ├── 📄 TtsProviderSettings.kt
+│   │       ├── 📄 WebSearchProviderSettings.kt
 │   │       ├── 📄 InstructionsTab.kt
 │   │       ├── 📄 InstructionEditor.kt
 │   │       ├── 📄 InstructionPreview.kt
@@ -194,6 +196,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   │   ├── 📁 tool/
 │   │   │   │   │   ├── 📄 ContentApiMediaDownloader.kt
 │   │   │   │   │   ├── 📄 McpAttachments.kt
+│   │   │   │   │   ├── 📄 SkillToolRouting.kt
 │   │   │   │   │   ├── 📄 ToolChatViewModel.kt
 │   │   │   │   │   ├── 📄 ToolHistoryReplay.kt
 │   │   │   │   │   └── 📄 ToolResultsViewModel.kt
@@ -368,6 +371,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   ├── 📁 code/
 │   │   └── 📄 CodeSyntaxHighlighting.kt
 │   ├── 📁 files/
+│   │   ├── 📄 AgentSkillsStore.kt
 │   │   ├── 📄 AppDocumentsProvider.kt
 │   │   ├── 📄 AttachmentResolver.kt
 │   │   ├── 📄 ConversationUploads.kt
@@ -452,6 +456,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   ├── 📄 ChatMessage.kt
 │   │   ├── 📄 ChatProfile.kt
 │   │   ├── 📄 AgentSkill.kt
+│   │   ├── 📄 AgentSkillDocument.kt
 │   │   ├── 📄 ClaudeThinking.kt
 │   │   ├── 📄 ConversationListItem.kt
 │   │   ├── 📄 DefaultOptions.kt
@@ -520,7 +525,8 @@ This document is the detailed package map and architecture reference. The mandat
 │       │   ├── 📄 EntityIcon.kt
 │       │   ├── 📄 FluentIcon.kt
 │       │   ├── 📄 FluentUi.kt (generated typed icon registry)
-│       │   └── 📄 Icons.kt (Material-name compatibility aliases)
+│       │   ├── 📄 Icons.kt (Material-name compatibility aliases)
+│       │   └── 📄 TemporaryChatIcon.kt
 │       ├── 📁 layout/
 │       │   ├── 📄 AdaptiveCardLayout.kt
 │       │   ├── 📄 AmoledBorder.kt
@@ -576,7 +582,6 @@ This document is the detailed package map and architecture reference. The mandat
 │       ├── 📄 LoadingIndicator.kt
 │       ├── 📄 InstructionControls.kt
 │       ├── 📄 ToolControls.kt
-│       ├── 📄 WebSearchProviderSettings.kt
 │       ├── 📄 ToolSwitch.kt
 │       └── 📁 terminal/
 │           ├── 📄 RemoteTerminalScreen.kt

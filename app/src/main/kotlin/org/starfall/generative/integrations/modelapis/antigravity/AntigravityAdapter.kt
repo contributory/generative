@@ -312,8 +312,10 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
                 request["generationConfig"] = JsonObject(config + ("thinkingConfig" to thinkingConfig))
             }
         }
+        // The catalog's model field may be an internal protobuf enum, not a generation route.
         val resolvedModel = (modelConfig?.modelJson?.get("model") as? JsonPrimitive)?.contentOrNull
-            ?.takeIf(String::isNotBlank) ?: if (modelConfig?.modelJson?.isNotEmpty() == true) model
+            ?.takeIf { it.isNotBlank() && !it.startsWith("MODEL_PLACEHOLDER_") }
+            ?: if (modelConfig?.modelJson?.isNotEmpty() == true) model
         else AntigravityModels.resolve(model, modelConfig?.wireReasoningEffort)
         val normalizedRequest = normalizeAntigravityRequest(
             JsonObject(request), resolvedModel, sourceProvider.oauthCredentialId)

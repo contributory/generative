@@ -1,6 +1,8 @@
 package org.starfall.generative.shared.ui.logging
 
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
@@ -19,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -38,7 +41,7 @@ private val ButtonSize = 52.dp
 
 /**
  * Draggable floating button drawn above the app. Tapping it shows or hides the live [DebugLogPanel].
- * Everything outside the button and the panel stays touchable, so the app can be used while logs stream.
+ * Tapping outside the panel closes it.
  */
 @Composable
 fun DebugLogOverlay(modifier: Modifier = Modifier) {
@@ -57,8 +60,12 @@ fun DebugLogOverlay(modifier: Modifier = Modifier) {
         val y = (if (offsetY.isNaN()) maxY * 0.25f else offsetY).coerceIn(0f, maxY)
 
         if (panelOpen) {
+            Box(Modifier.fillMaxSize().clickable(
+                interactionSource = remember { MutableInteractionSource() }, indication = null
+            ) { panelOpen = false })
             DebugLogPanel(
-                Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.6f).padding(8.dp)
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.8f).padding(8.dp)
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }
             )
         }
         Surface(

@@ -346,15 +346,14 @@ fun AppNavigation(
             providers = providers,
             setSystem = viewModel::setSystemTool,
             setMcp = viewModel::setQuickMcp,
-            setWebSearchProvider = viewModel::setWebSearchProvider,
-            setWebSearchEnabled = viewModel::setWebSearchEnabled,
             setMachines = viewModel::setMachinesEnabled,
             setMachine = { machineId, enabled ->
                 viewModel.setMachineEnabled(machineId, enabled, remoteMachineState.machines.map { it.id })
             },
             setMachineTool = viewModel::setMachineToolEnabled,
             setSendFile = viewModel::setSendFileEnabled,
-            setSearchTools = viewModel::setSearchToolsEnabled
+            setSearchTools = viewModel::setSearchToolsEnabled,
+            setAgentSkillsSearch = viewModel::setAgentSkillsSearchEnabled
         )
     ) {
         val drawerScrim = modalScrimColor(DrawerDefaults.scrimColor)
@@ -443,6 +442,7 @@ fun AppNavigation(
                 ) {
                     ChatScreen(
                         conversation = currentConvState.value,
+                        isDrawerOpening = drawerState.targetValue == DrawerValue.Open || drawerState.isOpen,
                         activeStream = viewModel.activeStreamForCurrentConversation,
                         isGenerating = isGenerating,
                         generatingConversationId = generatingConversationId,
@@ -465,8 +465,8 @@ fun AppNavigation(
                         onMediaModeChange = viewModel::setComposerMedia,
                         onResendUserMessage = viewModel::resendUserMessage,
                         onSendMessage = { text, files -> viewModel.sendMessage(text, files) },
-                        onSendMessageWithSkill = { text, files, requested ->
-                            viewModel.sendMessage(text, files, requested)
+                        onSendMessageWithSkill = { text, files, requested, skillName ->
+                            viewModel.sendMessage(text, files, requested, skillName)
                         },
                         onStopGenerating = {
                             viewModel.stopGeneration()
@@ -778,7 +778,7 @@ fun AppNavigation(
                             onToggleGridView = { configurationViewModel.setShowSpeechAsGrid(it) },
                             providers = providers,
                             selectedSpeechServiceId = appPrefs.selectedSpeechServiceId,
-                            onSelectService = viewModel::selectSpeechService,
+                            onSetTtsProvider = viewModel::selectSpeechService,
                             onSaveService = { configurationViewModel.saveSpeechService(it) },
                             onDeleteService = { configurationViewModel.deleteSpeechService(it) },
                             onReorderServices = configurationViewModel::reorderSpeechServices,
@@ -803,13 +803,19 @@ fun AppNavigation(
                             onInstructionLibraryChange = viewModel::setInstructionLibrary,
                             agentSkills = appPrefs.agentSkills.skills,
                             onAgentSkillsChange = viewModel::setAgentSkills,
-                             providers = providers,
-                             settings = toolSettings,
-                             appPreferences = appPrefs,
-                             onAutoSummaryEnabledChange = settingsViewModel::setAutoSummaryEnabled,
-                             onSummarySuggestionEnabledChange = settingsViewModel::setSummarySuggestionEnabled,
-                             onAutoSummaryPercentChange = settingsViewModel::setAutoSummaryPercent,
-                             providerGroups = providerGroups,
+                            providers = providers,
+                            settings = toolSettings,
+                            mcpServers = mcpServers,
+                            onSetWebSearchProvider = viewModel::setWebSearchProvider,
+                            onSetWebSearchEnabled = viewModel::setWebSearchEnabled,
+                            speechServices = speechServices,
+                            selectedSpeechServiceId = appPrefs.selectedSpeechServiceId,
+                            onSetTtsProvider = { viewModel.selectSpeechService(it) },
+                            appPreferences = appPrefs,
+                            onAutoSummaryEnabledChange = settingsViewModel::setAutoSummaryEnabled,
+                            onSummarySuggestionEnabledChange = settingsViewModel::setSummarySuggestionEnabled,
+                            onAutoSummaryPercentChange = settingsViewModel::setAutoSummaryPercent,
+                            providerGroups = providerGroups,
                             collapsedGroupIds = appPrefs.modelPickerCollapsedGroups,
                             collapsedProviderIds = appPrefs.modelPickerCollapsedProviders,
                             onCollapsedGroupIdsChange = settingsViewModel::setModelPickerCollapsedGroups,
@@ -828,13 +834,11 @@ fun AppNavigation(
                     composable(AppDestination.TOOLS_EDITOR.route) {
                         ToolsEditor(
                             providers = providers,
-                            mcpServers = mcpServers,
                             settings = toolSettings,
                             onSave = viewModel::setSystemTool,
                             onSetSendFile = viewModel::setSendFileEnabled,
                             onSetSearchTools = viewModel::setSearchToolsEnabled,
-                            onSetWebSearchProvider = viewModel::setWebSearchProvider,
-                            onSetWebSearchEnabled = viewModel::setWebSearchEnabled,
+                            onSetAgentSkillsSearch = viewModel::setAgentSkillsSearchEnabled,
                             providerGroups = providerGroups,
                             collapsedGroupIds = appPrefs.modelPickerCollapsedGroups,
                             collapsedProviderIds = appPrefs.modelPickerCollapsedProviders,

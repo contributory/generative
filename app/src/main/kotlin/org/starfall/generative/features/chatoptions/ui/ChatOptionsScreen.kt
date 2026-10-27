@@ -30,10 +30,13 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.InstructionLibrary
+import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.SavedInstruction
+import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.defaultAgentSkills
+import org.starfall.generative.shared.model.isValidAgentSkillName
 import java.util.UUID
 import kotlinx.coroutines.launch
 import org.starfall.generative.shared.model.language.ModelType
@@ -59,6 +62,12 @@ private sealed interface ChatOptionsEditor {
 fun ChatOptionsScreen(
     providers: List<ModelProvider>,
     settings: ToolSettings,
+    mcpServers: List<McpInfo> = emptyList(),
+    onSetWebSearchProvider: (String?) -> Unit = {},
+    onSetWebSearchEnabled: (Boolean) -> Unit = {},
+    speechServices: List<SpeechService> = emptyList(),
+    selectedSpeechServiceId: String? = null,
+    onSetTtsProvider: (String) -> Unit = {},
     appPreferences: AppPreferences = AppPreferences(),
     onAutoSummaryEnabledChange: (Boolean) -> Unit = {},
     onSummarySuggestionEnabledChange: (Boolean) -> Unit = {},
@@ -133,14 +142,15 @@ fun ChatOptionsScreen(
 
     var skills by remember(agentSkills) { mutableStateOf(agentSkills) }
     fun saveSkillDraft(draft: AgentSkill): AgentSkill? {
-        if (draft.name.isBlank() || draft.content.isBlank()) return null
-        val skill = if (draft.id.isBlank()) {
-            draft.copy(id = UUID.randomUUID().toString())
-        } else {
-            draft
-        }
-        val exists = skills.any { it.id == skill.id }
-        val next = if (exists) skills.map { if (it.id == skill.id) skill else it } else skills + skill
+        val name = draft.name.trim()
+        if (!isValidAgentSkillName(name) || draft.description.isBlank() || draft.content.isBlank()) return null
+        // The folder name must always follow the frontmatter's name. When renamed,
+        // replace the old entry by its former id instead of duplicating a skill.
+        if (skills.any { it.name == name && it.id != draft.id }) return null
+        val skill = draft.copy(id = name, name = name,
+            description = draft.description.trim(), content = draft.content.trim())
+        val exists = skills.any { it.id == draft.id }
+        val next = if (exists) skills.map { if (it.id == draft.id) skill else it } else skills + skill
         skills = next
         onAgentSkillsChange(next)
         return skill
@@ -238,7 +248,7 @@ fun ChatOptionsScreen(
                         Tab(
                             selected = pager.currentPage == 0,
                             onClick = { coroutineScope.launch { pager.animateScrollToPage(0) } },
-                            text = { Text(stringResource(R.string.chat_options_tab_helpers)) }
+                            text = { Text(stringResource(R.string.chat_options_tab_options)) }
                         )
                         Tab(
                             selected = pager.currentPage == 1,
@@ -310,6 +320,21 @@ fun ChatOptionsScreen(
                                             onClick = { choosing = name }
                                         )
                                     }
+                                }
+                                item {
+                                    WebSearchProviderSettings(
+                                        servers = mcpServers,
+                                        settings = settings,
+                                        onProviderChange = onSetWebSearchProvider,
+                                        onEnabledChange = onSetWebSearchEnabled
+                                    )
+                                }
+                                item {
+                                    TtsProviderSettings(
+                                        speechServices = speechServices,
+                                        selectedSpeechServiceId = selectedSpeechServiceId,
+                                        onProviderChange = onSetTtsProvider
+                                    )
                                 }
                             }
                             1 -> InstructionsTab(

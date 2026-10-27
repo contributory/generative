@@ -135,11 +135,14 @@ fun UserInputArea(
     chatModeRequest: Int = 0,
     modifier: Modifier = Modifier,
     agentSkills: List<AgentSkill> = defaultAgentSkills(),
-    onSendMessageWithSkill: (String, List<String>, Boolean) -> Boolean = { text, files, _ -> onSendMessage(text, files) },
-    onOpenSkillsSettings: (() -> Unit)? = null
+    onSendMessageWithSkill: (String, List<String>, Boolean, String?) -> Boolean = { text, files, _, _ -> onSendMessage(text, files) },
+    onOpenSkillsSettings: (() -> Unit)? = null,
+    onModelSheetOpen: () -> Unit = {}
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue()) }
-    var createSkillAttachment by remember { mutableStateOf<SkillPromptAttachment?>(null) }
+    // Picker provenance controls activation; the composer shows only /skill-name.
+    var selectedSkillId by remember { mutableStateOf<String?>(null) }
+    val selectedSkill = agentSkills.firstOrNull { it.id == selectedSkillId }
     // The field may only take focus after the user touches it. Returning from another page (for example the
     // terminal, whose Android view held the window focus) hands the focus back to Compose, which would otherwise
     // move it into the only focusable item here and pop the keyboard up.
@@ -250,10 +253,14 @@ fun UserInputArea(
     DisposableEffect(Unit) { onDispose { onMediaModeChange(null, "", "") } }
     val focusManager = LocalFocusManager.current
     val bottomSheets = remember { BottomSheetsLinkState() }
+    val latestOnModelSheetOpen by rememberUpdatedState(onModelSheetOpen)
+    LaunchedEffect(bottomSheets.modelSheetPage) {
+        if (bottomSheets.modelSheetPage != null) latestOnModelSheetOpen()
+    }
     var skillsMenuOpen by remember { mutableStateOf(false) }
     var inputBoxWidthPx by remember { mutableIntStateOf(0) }
     LaunchedEffect(textState) {
-        skillsMenuOpen = if (textState.startsWith("/")) true else false
+        skillsMenuOpen = textState.startsWith("/") && selectedSkill == null
     }
     LaunchedEffect(bottomSheets.skillsMenuRequest) {
         if (bottomSheets.skillsMenuRequest > 0) skillsMenuOpen = true
@@ -293,13 +300,16 @@ fun UserInputArea(
     LaunchedEffect(editDraft?.revision) {
         editDraft?.let {
             mediaKind = null
-            createSkillAttachment = null
+            selectedSkillId = null
             textFieldValue = TextFieldValue(it.text, TextRange(it.text.length))
             onAttachmentsChange(it.attachments)
         }
     }
 
     val hasContent = textState.isNotBlank() || attachments.isNotEmpty()
+    LaunchedEffect(mediaKind) {
+        if (mediaKind != null) selectedSkillId = null
+    }
     val canSend = canSendChatInput(textState, attachments, mediaKind, isGenerating, mediaModel != null)
     val showStop = isGenerating && editDraft == null && (mediaKind != null || !hasContent)
     val mediaHint = directMediaHint(textState, attachments, mediaKind, mediaModel, mediaModelId, mediaLabel)
@@ -396,7 +406,7 @@ fun UserInputArea(
                             onClick = {
                                 onCancelEdit()
                                 textFieldValue = TextFieldValue()
-                                createSkillAttachment = null
+                                selectedSkillId = null
                                 onAttachmentsChange(emptyList())
                             }
                         ) { Text(stringResource(R.string.common_cancel)) }
@@ -508,11 +518,15 @@ fun UserInputArea(
                                             onEditMessage(draft.messageId, textState, attachments)
                                         } ?: mediaKind?.let { kind ->
                                             onSendMedia(DirectMediaRequest(textState, kind, mediaProviderId, mediaModelId, attachments))
-                                        } ?: onSendMessageWithSkill(textState, attachments, createSkillAttachment != null)
+                                        } ?: onSendMessageWithSkill(
+                                            textState, attachments,
+                                            selectedSkill?.id == DEFAULT_AGENT_SKILL_ID,
+                                            selectedSkill?.name?.takeUnless { it == DEFAULT_AGENT_SKILL_ID }
+                                        )
                                         if (submitted) {
                                             focusManager.clearFocus(force = true)
                                             textFieldValue = TextFieldValue()
-                                            createSkillAttachment = null
+                                            selectedSkillId = null
                                             onAttachmentsChange(emptyList())
                                             if (editDraft != null) onCancelEdit()
                                         } else {
@@ -563,7 +577,9 @@ fun UserInputArea(
                     BasicTextField(
                         value = textFieldValue,
                         onValueChange = { next ->
-                            createSkillAttachment = createSkillAttachment?.afterEdit(textFieldValue.text, next.text)
+                            if (selectedSkill != null && !next.text.hasSelectedSkillInvocation(selectedSkill.id)) {
+                                selectedSkillId = null
+                            }
                             textFieldValue = next
                         },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
@@ -652,14 +668,9 @@ fun UserInputArea(
                         Modifier.widthIn(max = 720.dp).fillMaxWidth()
                     },
                     onSelect = { skill ->
-                        val suffixStart = textState.indexOfFirst { it == ' ' || it == '\t' || it == '\n' }
-                        val suffix = suffixStart.takeIf { it >= 0 }
-                            ?.let { textState.substring(it).trimStart() }
-                            .orEmpty()
-                        val nextText = if (suffix.isBlank()) skill.content else skill.content + "\n\n" + suffix
+                        val nextText = textState.withSelectedSkillInvocation(skill.id)
                         textFieldValue = TextFieldValue(nextText, TextRange(nextText.length))
-                        createSkillAttachment = if (skill.id == DEFAULT_AGENT_SKILL_ID && skill.content.isNotEmpty())
-                            SkillPromptAttachment(0, skill.content.length) else null
+                        selectedSkillId = skill.id
                         skillsMenuOpen = false
                     },
                     onDismiss = { skillsMenuOpen = false },

@@ -85,6 +85,7 @@ class ChatViewModel(
     fun setSystemTool(name: String, config: SystemToolConfig) = toolSettingsActions.setSystemTool(name, config)
     fun setSendFileEnabled(enabled: Boolean) = toolSettingsActions.setSendFileEnabled(enabled)
     fun setSearchToolsEnabled(enabled: Boolean) = toolSettingsActions.setSearchToolsEnabled(enabled)
+    fun setAgentSkillsSearchEnabled(enabled: Boolean) = toolSettingsActions.setAgentSkillsSearchEnabled(enabled)
     fun setQuickMcp(id: String, enabled: Boolean) = toolSettingsActions.setQuickMcp(id, enabled)
     fun setWebSearchProvider(id: String?) = toolSettingsActions.setWebSearchProvider(id)
     fun setWebSearchEnabled(enabled: Boolean) = toolSettingsActions.setWebSearchEnabled(enabled)
@@ -289,7 +290,7 @@ class ChatViewModel(
         maybeStartAutomaticSummary = { automaticSummary.maybeStart() },
         isGenerationReplacementActive = { replacingGeneration },
         isSummaryActive = { summaryJob?.isActive == true },
-        sendMessage = { text, files, createSkill -> sendMessage(text, files, createSkill) },
+        sendMessage = { text, files, createSkill, skillName -> sendMessage(text, files, createSkill, skillName) },
     )
 
     private val conversationTitleGenerator = ConversationTitleGenerator(
@@ -575,8 +576,12 @@ class ChatViewModel(
         stopSpeaking()
     }
 
-    fun sendMessage(userText: String, fileAttachments: List<String> = emptyList(), createSkillRequested: Boolean = false): Boolean =
-        messageActions.sendMessage(userText, fileAttachments, createSkillRequested)
+    fun sendMessage(
+        userText: String,
+        fileAttachments: List<String> = emptyList(),
+        createSkillRequested: Boolean = false,
+        selectedSkillName: String? = null
+    ): Boolean = messageActions.sendMessage(userText, fileAttachments, createSkillRequested, selectedSkillName)
     fun sendMedia(request: DirectMediaRequest): Boolean = messageActions.sendMedia(request)
     fun setComposerMedia(kind: ModelType?, providerId: String, modelId: String) =
         messageActions.setComposerMedia(kind, providerId, modelId)

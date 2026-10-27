@@ -148,14 +148,18 @@ fun ChatScreen(
     modifier: Modifier = Modifier,
     activeStream: StateFlow<ActiveChatStreamState?>? = null,
     agentSkills: List<AgentSkill> = defaultAgentSkills(),
-    onSendMessageWithSkill: (String, List<String>, Boolean) -> Boolean = { text, files, _ -> onSendMessage(text, files) },
-    onOpenSkillsSettings: (() -> Unit)? = null
+    onSendMessageWithSkill: (String, List<String>, Boolean, String?) -> Boolean = { text, files, _, _ -> onSendMessage(text, files) },
+    onOpenSkillsSettings: (() -> Unit)? = null,
+    isDrawerOpening: Boolean = false
 ) {
     val conversationKey = conversation?.id ?: "__empty_conversation__"
     // reverseLayout puts item 0 at the physical bottom. The list data is reversed below,
     // so the newest message is item 0 and opening a conversation needs no corrective scroll.
     val listState = remember(conversationKey) { LazyListState() }
     val minimapState = remember(conversationKey) { ConversationMinimapSideBarState() }
+    LaunchedEffect(isDrawerOpening) {
+        if (isDrawerOpening) minimapState.isOpen = false
+    }
     var followBottom by remember(conversationKey) { mutableStateOf(true) }
     var jumpingToBottom by remember(conversationKey) { mutableStateOf(false) }
     val settleTracker = remember(conversationKey) { ChatSettleTracker() }
@@ -463,7 +467,7 @@ fun ChatScreen(
             val newestMessageId = messages.lastOrNull()?.id
             val precedingUserId = messages.getOrNull(messages.size - 2)
                 ?.takeIf { it.role == ChatRole.USER }?.id
-            val tailUserHeights = remember { HashMap<String, Int>() }
+            val tailTurn = remember { TailTurnAnchor() }
             ChatOpeningVeil(active = veilActive, modifier = Modifier.fillMaxSize()) {
             CompositionLocalProvider(
                 LocalChatSettleTracker provides settleTracker
@@ -479,21 +483,19 @@ fun ChatScreen(
             ) {
                 items(displayMessages, key = { it.id }) { msg ->
                     val isLast = msg.id == lastMessage?.id
-                    // The newest user message gets scroll room so it sits flush under the app bar. The
-                    // reply to it only keeps that message from moving when the reply starts.
+                    // The last user message sits flush under the app bar, from the moment it is sent: it is
+                    // padded itself while it is the newest item, and once its reply exists (a send adds both
+                    // at once) the scroll room lives below the reply, see TailTurnAnchor.
                     val isNewest = msg.id == newestMessageId
                     val tailModifier = when {
-                        !isNewest -> Modifier
-                        msg.role == ChatRole.USER -> Modifier.reverseTailScrollPadding(
+                        msg.role == ChatRole.USER && isNewest -> Modifier.reverseTailScrollPadding(
                             visibleChatPx,
-                            onNaturalHeight = { tailUserHeights[msg.id] = it }
+                            onNaturalHeight = { tailTurn.recordUser(msg.id, it) }
                         )
-                        msg.role == ChatRole.MODEL -> precedingUserId?.let { tailUserHeights[it] }?.let { userHeight ->
-                            Modifier.reverseTailScrollPadding(
-                                visibleChatPx,
-                                minItemHeightPx = (visibleChatPx - userHeight).coerceAtLeast(0)
-                            )
-                        } ?: Modifier
+                        msg.role == ChatRole.USER && msg.id == precedingUserId ->
+                            Modifier.userTailPadding(tailTurn, msg.id, visibleChatPx)
+                        msg.role == ChatRole.MODEL && isNewest && precedingUserId != null ->
+                            Modifier.replyTailPadding(tailTurn, precedingUserId, visibleChatPx)
                         else -> Modifier
                     }
                     Column(
@@ -724,10 +726,10 @@ fun ChatScreen(
                     revealed = true
                     onSendMessage(text, files).also { if (it && !isGenerating) followBottom = true }
                 },
-                onSendMessageWithSkill = { text, files, requested ->
+                onSendMessageWithSkill = { text, files, requested, skillName ->
                     inlineChatError = null
                     revealed = true
-                    onSendMessageWithSkill(text, files, requested).also { if (it && !isGenerating) followBottom = true }
+                    onSendMessageWithSkill(text, files, requested, skillName).also { if (it && !isGenerating) followBottom = true }
                 },
                 onEditMessage = { id, text, files ->
                     val isQueued = editDraft?.isQueued == true
@@ -768,7 +770,8 @@ fun ChatScreen(
                  onOpenFeatureToolsSettings = onOpenFeatureToolsSettings,
                   onOpenMcpConnectorsSettings = onOpenMcpConnectorsSettings,
                   agentSkills = agentSkills,
-                  onOpenSkillsSettings = onOpenSkillsSettings
+                  onOpenSkillsSettings = onOpenSkillsSettings,
+                 onModelSheetOpen = { minimapState.isOpen = false }
               )
         }
 
@@ -776,11 +779,18 @@ fun ChatScreen(
         ChatAppBar(
             modelName = selectedModelDisplayName,
             providerName = selectedProvider?.name.orEmpty(),
-            onOpenDrawer = onOpenDrawer,
+            onOpenDrawer = {
+                minimapState.isOpen = false
+                onOpenDrawer()
+            },
             onNewChat = onNewChat,
             onOpenSettings = onOpenSettings,
             featuresLogoImage = featuresLogoImage,
-            onOpenModelPicker = { modelPickerOpenRequest++ },
+            isTemporaryChat = conversationMessages.isEmpty(),
+            onOpenModelPicker = {
+                minimapState.isOpen = false
+                modelPickerOpenRequest++
+            },
             showTerminalButton = connectedMachines.isNotEmpty(),
             onOpenTerminal = {
                 // One running machine opens its terminal directly; several need a choice first.

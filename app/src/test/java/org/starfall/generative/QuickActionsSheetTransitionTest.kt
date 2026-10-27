@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -82,9 +83,11 @@ class QuickActionsSheetTransitionTest {
         val initialWindowNode = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode()
         val sheetNodeId = initialWindowNode.id
         val quickActionsHeight = initialWindowNode.boundsInRoot.height
+        val openingHeightDp = with(compose.density) { quickActionsHeight.toDp().value }
+        assertTrue("Quick Actions should open at roughly half the screen height", openingHeightDp in 350f..440f)
 
         // Navigate forward to MCP Connectors (shorter empty state): same sheet shrinks and slides left.
-        compose.onNodeWithText("MCP Connectors").performClick()
+        compose.onNodeWithText("MCP Connectors").performScrollTo().performClick()
         compose.mainClock.advanceTimeBy(100)
 
         val midShrinkNode = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode()
@@ -125,7 +128,7 @@ class QuickActionsSheetTransitionTest {
         assertEquals(quickActionsHeight, restoredHeight, 2f)
 
         // Feature Tools also transitions within the same sheet instance.
-        compose.onNodeWithText("Feature Tools").performClick()
+        compose.onNodeWithText("Feature Tools").performScrollTo().performClick()
         compose.mainClock.advanceTimeBy(450)
         assertEquals(sheetNodeId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
         compose.onNodeWithText("Image Generation").assertIsDisplayed()
@@ -150,7 +153,7 @@ class QuickActionsSheetTransitionTest {
         val sheetNodeId = initialWindowNode.id
         val quickActionsHeight = initialWindowNode.boundsInRoot.height
 
-        compose.onNodeWithText("MCP Connectors").performClick()
+        compose.onNodeWithText("MCP Connectors").performScrollTo().performClick()
         compose.mainClock.advanceTimeBy(100)
         val midGrowHeight = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
 

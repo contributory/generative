@@ -20,3 +20,9 @@ data class SpeechService(
     val languageCode: String = "",
     val extraBody: kotlinx.serialization.json.JsonObject = kotlinx.serialization.json.JsonObject(emptyMap())
 )
+
+/** Returns the configured TTS service, falling back to Android System TTS and then the first service. */
+fun List<SpeechService>.effectiveTtsProviderId(selectedSpeechServiceId: String?): String? =
+    firstOrNull { it.id == selectedSpeechServiceId }?.id
+        ?: firstOrNull { it.provider.equals("system", ignoreCase = true) }?.id
+        ?: firstOrNull()?.id

@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.ui.LocalToolControls
-import org.starfall.generative.shared.ui.WebSearchProviderSettings
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -141,6 +140,23 @@ internal fun FeatureToolsSheetContent(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.size(12.dp))
                     Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.tool_agent_skills_search_title),
+                            style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.tool_agent_skills_search_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = controls.settings.agentSkillsSearchEnabled,
+                        onCheckedChange = controls.setAgentSkillsSearch)
+                }
+            }
+            SettingsCard {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    FluentIcon(Icons.Outlined.Search, contentDescription = null,
+                        modifier = Modifier.size(44.dp).padding(10.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.size(12.dp))
+                    Column(Modifier.weight(1f)) {
                         Text("Search Tools", style = MaterialTheme.typography.titleSmall)
                         Text("Find tool names and enabled states", style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -149,11 +165,5 @@ internal fun FeatureToolsSheetContent(
                         onCheckedChange = controls.setSearchTools)
                 }
             }
-            WebSearchProviderSettings(
-                servers = controls.servers,
-                settings = controls.settings,
-                onProviderChange = controls.setWebSearchProvider,
-                onEnabledChange = controls.setWebSearchEnabled
-            )
     }
 }

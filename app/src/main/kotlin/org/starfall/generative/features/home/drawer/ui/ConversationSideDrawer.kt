@@ -243,7 +243,7 @@ fun ConversationSideDrawer(
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                 )
             }
-            LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Bottom)) {
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 val folders = organization.folders.sortedByDescending { it.pinned }
                 if (folders.isNotEmpty()) item(key = "folders-label") { SidebarLabel(stringResource(R.string.sidebar_folders)) }
                 folders.forEach { folder ->

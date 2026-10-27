@@ -10,6 +10,7 @@ import java.util.zip.ZipOutputStream
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -17,8 +18,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.features.appdata.logic.readZipBackup
 import org.starfall.generative.shared.model.AgentSkill
+import org.starfall.generative.shared.model.AgentSkills
 import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SavedInstruction
+import org.starfall.generative.shared.files.AgentSkillsStore
+import org.starfall.generative.shared.model.DEFAULT_AGENT_SKILL_ID
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.storage.preferences.SelectedModel
@@ -32,7 +36,7 @@ class AppPreferencesSchemaTest {
         val repository = AppPreferencesRepository(context)
         val instruction = SavedInstruction("instruction-1", "System rules", "Be precise")
         val library = InstructionLibrary(listOf(instruction), setOf(instruction.id))
-        val skill = AgentSkill("skill-1", "Research", "Gather evidence")
+        val skill = AgentSkill("research", "research", "Gather evidence", "Research skill for gathering evidence.")
         try {
             repository.setSelectedModel("provider-1", "model-1")
             repository.updateSidebar { it.copy(pinnedChatIds = setOf("chat-1")) }
@@ -41,6 +45,7 @@ class AppPreferencesSchemaTest {
             repository.setContentApiPresetInitialized(true)
             repository.setInstructionLibrary(library)
             repository.setAgentSkills(listOf(skill))
+            assertTrue(context.filesDir.resolve("agent-skills/research/SKILL.md").isFile)
 
             val restored = AppPreferencesRepository(context).appPreferencesFlow.first()
             assertEquals(SelectedModel("provider-1", "model-1"), restored.selectedModel)
@@ -49,7 +54,50 @@ class AppPreferencesSchemaTest {
             assertTrue(restored.chatRelations.mcpPresetsInitialized)
             assertTrue(restored.chatRelations.contentApiPresetInitialized)
             assertEquals(library, restored.instructionLibrary)
-            assertEquals(listOf(skill), restored.agentSkills.skills)
+            val bundled = AgentSkillsStore(context).readBundledCreateSkill(context)
+            assertEquals(listOf(bundled, skill), restored.agentSkills.skills)
+            assertTrue(bundled.content.contains("Call `create_skill`"))
+        } finally {
+            repository.replace(AppPreferences())
+        }
+    }
+
+    @Test
+    fun bundledCreateSkillCannotBeDeletedOrOverwrittenByRuntimeChanges() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = AppPreferencesRepository(context)
+        val bundled = AgentSkillsStore(context).readBundledCreateSkill(context)
+        try {
+            assertTrue(bundled.content.startsWith("# Create an Agent Skill"))
+            assertTrue(bundled.description.contains("when the user"))
+            repository.setAgentSkills(listOf(bundled.copy(content = "Overwritten")))
+            assertEquals(bundled, AppPreferencesRepository(context).appPreferencesFlow.first()
+                .agentSkills.skills.single { it.id == DEFAULT_AGENT_SKILL_ID })
+
+            repository.replace(AppPreferences(agentSkills = AgentSkills(emptyList())))
+            assertEquals(bundled, AppPreferencesRepository(context).appPreferencesFlow.first()
+                .agentSkills.skills.single { it.id == DEFAULT_AGENT_SKILL_ID })
+        } finally {
+            repository.replace(AppPreferences())
+        }
+    }
+
+    @Test
+    fun restoredPreferenceSnapshotRecreatesSkillFilesInsideAppdata() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = AppPreferencesRepository(context)
+        val skill = AgentSkill("backup-skill", "backup-skill", "Follow backup instructions", "Restorable skill")
+        val skillFile = context.filesDir.resolve("agent-skills/backup-skill/SKILL.md")
+        try {
+            repository.setAgentSkills(listOf(skill))
+            val snapshot = repository.appPreferencesFlow.first()
+            assertTrue(skillFile.isFile)
+            repository.setAgentSkills(emptyList())
+            assertFalse(skillFile.exists())
+            repository.replace(snapshot)
+            assertTrue(skillFile.isFile)
+            assertEquals(skill, AppPreferencesRepository(context).appPreferencesFlow.first()
+                .agentSkills.skills.single { it.id == skill.id })
         } finally {
             repository.replace(AppPreferences())
         }

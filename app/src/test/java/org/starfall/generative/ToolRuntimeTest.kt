@@ -3,6 +3,8 @@ package org.starfall.generative
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.*
@@ -48,6 +50,15 @@ class ToolRuntimeTest {
         assertFalse(toolAllowed(McpAccess(true, mapOf("write" to false)), true, true, "write"))
         assertFalse(toolAllowed(McpAccess(true), false, true, "write"))
         assertTrue(toolAllowed(McpAccess(true), null, true, "read"))
+    }
+
+    @Test fun agentSkillsSearchDefaultsOffAndSurvivesToolSettingsSerialization() {
+        assertFalse(ToolSettings().agentSkillsSearchEnabled)
+        assertFalse(Json.decodeFromString<ToolSettings>("{}").agentSkillsSearchEnabled)
+        val enabled = ToolSettings(agentSkillsSearchEnabled = true)
+        val restored = Json.decodeFromString<ToolSettings>(Json.encodeToString(enabled))
+        assertTrue(restored.agentSkillsSearchEnabled)
+        assertFalse(restored.searchToolsEnabled)
     }
 
     @Test fun pinnedWebSearchProviderUsesFeatureToolSwitchInsteadOfMcpSwitch() {

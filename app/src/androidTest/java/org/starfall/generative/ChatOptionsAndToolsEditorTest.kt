@@ -17,6 +17,7 @@ import org.starfall.generative.features.home.shared.ui.InstructionsSheetContent
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SavedInstruction
+import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.InstructionControls
 import org.starfall.generative.shared.ui.LocalInstructionControls
@@ -25,7 +26,7 @@ class ChatOptionsAndToolsEditorTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun chatOptionsSeparatesHelpersAndInstructionsIntoTabs() {
+    fun chatOptionsSeparatesOptionsAndInstructionsIntoTabs() {
         compose.setContent {
             TestTheme {
                 ChatOptionsScreen(
@@ -38,9 +39,11 @@ class ChatOptionsAndToolsEditorTest {
         }
 
         compose.onNodeWithText("Chat Options").assertIsDisplayed()
-        compose.onNodeWithText("Helpers").assertIsDisplayed()
+        compose.onNodeWithText("Options").assertIsDisplayed()
         compose.onNodeWithText("Instructions").assertIsDisplayed()
         compose.onNodeWithText("Conversation helpers").assertIsDisplayed()
+        compose.onNodeWithText("Web Search Provider").assertIsDisplayed()
+        compose.onNodeWithText("TTS Provider").assertIsDisplayed()
         compose.onNodeWithText("Image Generation").assertDoesNotExist()
         compose.onNodeWithText("Send File").assertDoesNotExist()
 
@@ -49,7 +52,7 @@ class ChatOptionsAndToolsEditorTest {
         compose.onNodeWithText("System Prompt & Instructions").assertDoesNotExist()
         compose.onNodeWithText("Conversation helpers").assertIsNotDisplayed()
 
-        compose.onNodeWithText("Helpers").performClick()
+        compose.onNodeWithText("Options").performClick()
         compose.onNodeWithText("Conversation helpers").assertIsDisplayed()
         compose.onNodeWithText("Instructions").performClick()
         compose.onNodeWithContentDescription("Add").assertIsDisplayed()
@@ -144,6 +147,30 @@ class ChatOptionsAndToolsEditorTest {
         compose.onNodeWithText("Video Generation").assertIsDisplayed()
         compose.onNodeWithText("Send File").assertIsDisplayed()
         compose.onNodeWithText("Conversation helpers").assertDoesNotExist()
+        compose.onNodeWithText("Web Search Provider").assertDoesNotExist()
+    }
+
+    @Test
+    fun chatOptionsOptionsTabCanChooseTtsProvider() {
+        var selectedId: String? = null
+        compose.setContent {
+            TestTheme {
+                ChatOptionsScreen(
+                    providers = emptyList(),
+                    settings = ToolSettings(),
+                    speechServices = listOf(SpeechService("voice", "Voice")),
+                    onSetTtsProvider = { selectedId = it },
+                    onSave = { _, _ -> },
+                    onBack = {}
+                )
+            }
+        }
+
+        compose.onNodeWithText("TTS Provider").assertIsDisplayed()
+        compose.onNodeWithText("Voice").performClick()
+        compose.onAllNodesWithText("Voice").assertCountEquals(2)
+        compose.onAllNodesWithText("Voice")[1].performClick()
+        compose.runOnIdle { assertEquals("voice", selectedId) }
     }
 }
 

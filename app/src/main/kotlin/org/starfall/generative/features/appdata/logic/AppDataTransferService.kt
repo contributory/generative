@@ -31,6 +31,7 @@ import org.starfall.generative.features.appdata.model.RemoteTerminalPreferencesS
 import org.starfall.generative.features.appdata.model.ZipAppDataBackup
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.files.AgentSkillsStore
 import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.database.ConversationRepository
 import org.starfall.generative.database.McpRepository
@@ -62,6 +63,7 @@ class AppDataTransferService(
     private val remoteMachineService: RemoteMachineService
 ) {
     private val restoreMutex = Mutex()
+    private val agentSkillsStore = AgentSkillsStore(context)
     private val transferScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val transferStateLock = Any()
     private val activeExportWrites = mutableSetOf<String>()
@@ -105,10 +107,11 @@ class AppDataTransferService(
             iconStore.exportFile(name) ?: error("The icon file $name is missing.")
         }
         val identityFiles = remoteMachineService.exportIdentityFiles()
+        val skillFiles = agentSkillsStore.exportFiles()
         val destination = File.createTempFile(prefix, ".zip", directory)
         try {
             destination.outputStream().use { output ->
-                writeZipBackup(output, backup, iconFiles, storedFiles, identityFiles)
+                writeZipBackup(output, backup, iconFiles, storedFiles, identityFiles, skillFiles)
             }
             destination
         } catch (error: Throwable) {
@@ -370,6 +373,10 @@ class AppDataTransferService(
         require(data.storedFileNames.toSet() == imported.toolFiles.keys) {
             "The stored files in the backup do not match its manifest."
         }
+        val backedUpSkills = data.appPreferences.agentSkills.skills.map { it.name }.toSet()
+        require(imported.skillFiles.keys.all { path ->
+            path.substringBefore('/') in backedUpSkills
+        }) { "The backup contains files for unknown skills." }
         require(data.remoteMachines.identities.map { it.id }.distinct().size == data.remoteMachines.identities.size) {
             "The backup contains duplicate SSH identity IDs."
         }
@@ -384,6 +391,20 @@ class AppDataTransferService(
         conversationRepository.replaceAll(data.conversations)
         applyFaultForTest?.invoke(isRollback)
         preferencesRepository.replace(data.appPreferences)
+        // Restore the original SKILL.md and all optional resources after the preference snapshot
+        // recreates skill directories. Do not trust ZIP paths beyond the validated member names.
+        imported.skillFiles.forEach { (path, source) ->
+            val root = File(context.filesDir, AgentSkillsStore.DIRECTORY_NAME).canonicalFile
+            val skillRoot = File(root, path.substringBefore('/')).canonicalFile
+            val destination = File(root, path)
+            require(skillRoot.parentFile == root &&
+                destination.canonicalFile.toPath().startsWith(skillRoot.toPath()) &&
+                destination.canonicalFile != skillRoot) {
+                "Unsafe restored skill path"
+            }
+            check(destination.parentFile.mkdirs() || destination.parentFile.isDirectory)
+            source.inputStream().use { input -> destination.outputStream().use { input.copyTo(it) } }
+        }
         toolSettingsStore.replace(data.toolSettings)
         modelRepository.importAccountCredentials(data.accountCredentials)
         mcpRepository.importOAuthTokens(data.mcpOAuthTokens)

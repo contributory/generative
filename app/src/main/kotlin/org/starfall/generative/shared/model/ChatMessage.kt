@@ -25,8 +25,10 @@ data class MessageVersion(
     @SerialName("generation_interrupted") val generationInterrupted: Boolean = false,
     @SerialName("generation_error") val generationError: String? = null,
     @SerialName("context_usage") val contextUsage: ContextUsageSnapshot? = null,
-    /** In-memory provenance from selecting Create Skill, never inferred from message text. */
-    @kotlinx.serialization.Transient val createSkillRequested: Boolean = false
+    /** Provenance set by the skill picker, never inferred from user-supplied text. */
+    @SerialName("create_skill_requested") val createSkillRequested: Boolean = false,
+    /** Picker-selected skill; never inferred by matching prompt text. */
+    @SerialName("selected_skill_name") val selectedSkillName: String? = null
 )
 
 @Serializable

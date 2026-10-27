@@ -158,4 +158,19 @@ class AppMenuScreenTest {
         right.performClick()
         compose.runOnIdle { assertEquals(1, drawer); assertEquals(1, settings) }
     }
+
+    @Test fun emptyChatToolbarShowsTemporaryChatAction() {
+        var opened = 0
+        compose.setContent {
+            MaterialTheme {
+                ChatAppBar("Selected model", "Provider", {}, { opened++ }, {}, isTemporaryChat = true)
+            }
+        }
+
+        compose.onNodeWithContentDescription("Open temporary chat")
+            .assertIsDisplayed()
+            .performClick()
+        compose.onNodeWithContentDescription("New chat").assertDoesNotExist()
+        compose.runOnIdle { assertEquals(1, opened) }
+    }
 }

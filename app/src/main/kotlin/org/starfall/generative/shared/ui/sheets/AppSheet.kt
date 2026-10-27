@@ -47,6 +47,9 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 
 internal val LocalBottomSheetMinContentHeight = compositionLocalOf { 0.dp }
 
+/** Distinguishes user-resized sheets from their default content-measured opening height. */
+internal val LocalBottomSheetManuallyResized = compositionLocalOf { false }
+
 /** Tallest content the sheet can show (window cap minus drag handle and navigation inset). */
 internal val LocalBottomSheetMaxContentHeight = compositionLocalOf { 0.dp }
 
@@ -222,7 +225,8 @@ fun AppSheet(
                     CompositionLocalProvider(
                         LocalOverscrollFactory provides null,
                         LocalBottomSheetMinContentHeight provides minContentHeight,
-                        LocalBottomSheetMaxContentHeight provides maxContentHeight
+                        LocalBottomSheetMaxContentHeight provides maxContentHeight,
+                        LocalBottomSheetManuallyResized provides (requestedHeight != null)
                     ) {
                         Column(Modifier.fillMaxWidth().nestedScroll(scrollBoundary), content = content)
                     }

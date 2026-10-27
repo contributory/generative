@@ -8,7 +8,6 @@ import okio.Buffer
 import org.starfall.generative.shared.model.logging.DebugLogCategory.ERRORS
 import org.starfall.generative.shared.model.logging.DebugLogCategory.NETWORK
 import org.starfall.generative.shared.model.logging.DebugLogCategory.PAYLOAD
-import org.starfall.generative.shared.model.logging.DebugLogLevel
 import java.io.IOException
 
 private const val TAG = "HTTP"
@@ -25,10 +24,9 @@ class DebugLogInterceptor : Interceptor {
             return chain.proceed(request)
         }
         val label = "${request.method} ${DebugLogRedactor.redact(request.url.toString())}"
-        DebugLog.log(NETWORK, TAG) { "→ $label" }
-        DebugLog.log(PAYLOAD, TAG) {
+        val entryId = DebugLog.beginRequest(TAG, label) {
             buildString {
-                append("→ ").append(label).append('\n').append(headerText(request.headers))
+                append(headerText(request.headers))
                 val body = request.body
                 append(
                     when {
@@ -45,19 +43,14 @@ class DebugLogInterceptor : Interceptor {
         val response = try {
             chain.proceed(request)
         } catch (e: IOException) {
-            DebugLog.error(ERRORS, TAG, "✗ $label after ${elapsedMs(startNs)} ms", e)
-            DebugLog.log(NETWORK, TAG, DebugLogLevel.ERROR) { "✗ $label (${e::class.java.simpleName})" }
+            DebugLog.finishRequest(entryId, TAG,
+                "✗ $label (${e::class.java.simpleName}: ${e.message}, ${elapsedMs(startNs)} ms)", true)
             throw e
         }
         val ms = elapsedMs(startNs)
-        val level = if (response.isSuccessful || response.code in 300..399) DebugLogLevel.INFO else DebugLogLevel.ERROR
-        DebugLog.log(NETWORK, TAG, level) { "← ${response.code} $label ($ms ms)" }
-        if (level == DebugLogLevel.ERROR) {
-            DebugLog.log(ERRORS, TAG, level) { "HTTP ${response.code} ${response.message} for $label" }
-        }
-        DebugLog.log(PAYLOAD, TAG) {
+        val failed = !response.isSuccessful && response.code !in 300..399
+        DebugLog.finishRequest(entryId, TAG, "← ${response.code} $label ($ms ms)", failed) {
             buildString {
-                append("← ").append(response.code).append(' ').append(label).append('\n')
                 append(headerText(response.headers))
                 val body = response.body
                 val type = body.contentType()

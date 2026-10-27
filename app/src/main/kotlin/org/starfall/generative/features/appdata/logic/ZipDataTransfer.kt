@@ -29,6 +29,7 @@ private const val MANIFEST_ENTRY = "manifest.json"
 private const val ICON_PREFIX = "icons/"
 private const val FILE_PREFIX = "files/"
 private const val IDENTITY_PREFIX = "remote-identities/"
+private const val SKILL_PREFIX = "skills/"
 private const val MAX_ENTRY_BYTES = 256L * 1024 * 1024
 private const val MAX_ARCHIVE_BYTES = 1L * 1024 * 1024 * 1024
 
@@ -43,7 +44,8 @@ fun writeZipBackup(
     data: AppDataBackup,
     iconFiles: Map<String, File>,
     toolFiles: Map<String, File>,
-    identityFiles: Map<String, Pair<File, File?>>
+    identityFiles: Map<String, Pair<File, File?>>,
+    skillFiles: Map<String, File> = emptyMap()
 ) {
     val names = mutableSetOf<String>()
     ZipOutputStream(BufferedOutputStream(output)).use { zip ->
@@ -96,7 +98,20 @@ fun writeZipBackup(
             addFile("$IDENTITY_PREFIX$id", files.first)
             files.second?.let { addFile("$IDENTITY_PREFIX$id.pub", it) }
         }
+        skillFiles.forEach { (path, file) ->
+            require(validSkillBackupPath(path)) { "Unsafe skill backup path: $path" }
+            addFile(SKILL_PREFIX + path, file)
+        }
     }
+}
+
+/** A skill ZIP member must be a regular relative file under a valid skill name. */
+private fun validSkillBackupPath(path: String): Boolean {
+    val parts = path.split('/')
+    return parts.size in 2..7 &&
+        org.starfall.generative.shared.model.isValidAgentSkillName(parts.first()) &&
+        parts.first() != org.starfall.generative.shared.model.DEFAULT_AGENT_SKILL_ID &&
+        parts.drop(1).all { it.isNotBlank() && it != "." && it != ".." && '\\' !in it && ':' !in it }
 }
 
 /** Converts the previous flat AppPreferences snapshot to the grouped schema without losing state. */
@@ -164,6 +179,8 @@ fun readZipBackup(input: InputStream, directory: File): ZipAppDataBackup {
     val toolFiles = linkedMapOf<String, File>()
     val privateIdentities = linkedMapOf<String, File>()
     val publicIdentities = linkedMapOf<String, File>()
+    val skillFiles = linkedMapOf<String, File>()
+    var extractionIndex = 0
     val seen = mutableSetOf<String>()
 
     ZipInputStream(BufferedInputStream(input)).use { zip ->
@@ -172,7 +189,8 @@ fun readZipBackup(input: InputStream, directory: File): ZipAppDataBackup {
             if (entry.isDirectory) continue
             val name = entry.name
             check(seen.add(name)) { "Duplicate backup entry: $name" }
-            check(name == MANIFEST_ENTRY || name.startsWith(ICON_PREFIX) || name.startsWith(FILE_PREFIX) || name.startsWith(IDENTITY_PREFIX)) {
+            check(name == MANIFEST_ENTRY || name.startsWith(ICON_PREFIX) || name.startsWith(FILE_PREFIX) ||
+                name.startsWith(IDENTITY_PREFIX) || name.startsWith(SKILL_PREFIX)) {
                 "Unsupported backup entry: $name"
             }
             check(!name.startsWith('/') && ".." !in name.split('/')) { "Unsafe backup entry path." }
@@ -180,10 +198,13 @@ fun readZipBackup(input: InputStream, directory: File): ZipAppDataBackup {
                 name == MANIFEST_ENTRY -> "manifest.json"
                 name.startsWith(ICON_PREFIX) -> name.removePrefix(ICON_PREFIX)
                 name.startsWith(FILE_PREFIX) -> name.removePrefix(FILE_PREFIX)
+                name.startsWith(SKILL_PREFIX) -> name.removePrefix(SKILL_PREFIX)
                 else -> name.removePrefix(IDENTITY_PREFIX)
             }
-            require(relative.isNotBlank() && '/' !in relative) { "Invalid backup entry name: $name" }
-            val destination = File(directory, name.replace('/', '_'))
+            require(if (name.startsWith(SKILL_PREFIX)) validSkillBackupPath(relative)
+                else relative.isNotBlank() && '/' !in relative) { "Invalid backup entry name: $name" }
+            // Flat transformed names can collide; use unique staged files instead.
+            val destination = File(directory, "entry_${++extractionIndex}")
             var written = 0L
             destination.outputStream().use { output ->
                 val buffer = ByteArray(32768)
@@ -206,6 +227,7 @@ fun readZipBackup(input: InputStream, directory: File): ZipAppDataBackup {
                 }
                 name.startsWith(ICON_PREFIX) -> iconFiles[relative] = destination
                 name.startsWith(FILE_PREFIX) -> toolFiles[relative] = destination
+                name.startsWith(SKILL_PREFIX) -> skillFiles[relative] = destination
                 name.startsWith(IDENTITY_PREFIX) && relative.endsWith(".pub") ->
                     publicIdentities[relative.removeSuffix(".pub")] = destination
                 name.startsWith(IDENTITY_PREFIX) -> privateIdentities[relative] = destination
@@ -218,5 +240,5 @@ fun readZipBackup(input: InputStream, directory: File): ZipAppDataBackup {
     require(data.type == "full_backup") { "The archive is not a Generative full backup." }
     require(data.formatVersion == AppDataBackup.CURRENT_FORMAT_VERSION) { "Unsupported backup version." }
     val identities = privateIdentities.mapValues { (id, file) -> file to publicIdentities[id] }
-    return ZipAppDataBackup(data, iconFiles, toolFiles, identities)
+    return ZipAppDataBackup(data, iconFiles, toolFiles, identities, skillFiles)
 }

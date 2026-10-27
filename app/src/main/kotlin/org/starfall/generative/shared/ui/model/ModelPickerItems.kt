@@ -152,11 +152,8 @@ fun computeModelPickerItems(
                 depth = 0,
                 hasSelectedModel = models.any { it.isSelected }
             ))
-            addAll(if (!forceExpanded && node.provider.id in collapsedProviderIds) {
-                // Keep the selected model visible so collapsing a provider never hides
-                // the model that the picker is currently representing.
-                models.filter { it.isSelected }
-            } else models)
+            // The provider row already indicates selection; a collapsed provider hides every card.
+            if (forceExpanded || node.provider.id !in collapsedProviderIds) addAll(models)
         }
     }
 }

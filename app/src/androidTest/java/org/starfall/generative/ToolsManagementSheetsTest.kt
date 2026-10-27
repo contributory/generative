@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.SemanticsMatcher
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -44,12 +45,12 @@ class ToolsManagementSheetsTest {
             }
         }
 
-        compose.onNodeWithText("Feature Tools").performClick()
+        compose.onNodeWithText("Feature Tools").performScrollTo().performClick()
         compose.runOnIdle {
             assertTrue(featureToolsOpened)
             assertTrue(!mcpConnectorsOpened)
         }
-        compose.onNodeWithText("MCP Connectors").performClick()
+        compose.onNodeWithText("MCP Connectors").performScrollTo().performClick()
         compose.runOnIdle { assertTrue(mcpConnectorsOpened) }
     }
 
@@ -62,7 +63,8 @@ class ToolsManagementSheetsTest {
                     LocalToolControls provides ToolControls(
                         settings = ToolSettings(),
                         setSystem = { name, config -> updates.add(name to config.enabled) },
-                        setSendFile = { updates.add("send_file" to it) }
+                        setSendFile = { updates.add("send_file" to it) },
+                        setAgentSkillsSearch = { updates.add("agent_skills_search" to it) }
                     )
                 ) {
                     FeatureToolsSheet(onDismiss = {})
@@ -74,14 +76,17 @@ class ToolsManagementSheetsTest {
         compose.onNodeWithText("Image Generation").assertIsDisplayed()
         compose.onNodeWithText("Video Generation").assertIsDisplayed()
         compose.onNodeWithText("Send File").assertIsDisplayed()
-        compose.onNodeWithText("Web Search Provider").assertIsDisplayed()
+        compose.onNodeWithText("Web Search Provider").assertDoesNotExist()
         compose.onNodeWithText("MCP Connectors").assertDoesNotExist()
         val toggleableNodes = compose.onAllNodes(
             SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState)
         )
-        toggleableNodes.assertCountEquals(3)
+        toggleableNodes.assertCountEquals(5)
         toggleableNodes[0].performClick()
         compose.runOnIdle { assertEquals(listOf("generate_image" to true), updates) }
+        compose.onNodeWithText("Agent Skills Search").performScrollTo().assertIsDisplayed()
+        toggleableNodes[3].performClick()
+        compose.runOnIdle { assertEquals(listOf("generate_image" to true, "agent_skills_search" to true), updates) }
     }
 
     @Test

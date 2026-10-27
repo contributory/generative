@@ -231,6 +231,7 @@ internal fun BottomSheetsLink(
                 val pageActive = LocalScreenTransitionActive.current
                 when (page) {
                     null -> QuickActionsSheetContent(
+                        useInitialSheetHeight = true,
                         onPickImage = {
                             if (!pageActive) return@QuickActionsSheetContent
                             photoPicker.launch(PickVisualMediaRequest(

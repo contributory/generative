@@ -279,45 +279,58 @@ class AiService(
         systemPrompt: String = "",
         maxOutputTokens: Int? = null
     ): Flow<GenerationEvent> = flow {
-        val resolved = resolveProvider(provider)
-        val modelConfig = resolved.config.modelConfigs[modelName] ?: ModelConfiguration()
-        val sendThinking = modelConfig.sendsThinkingBack(messages.hasToolCalls())
-        val requestProvider = resolved.copy(config = resolved.config.copy(supportStream = resolved.streamEnabledFor(modelName)))
-        val requestMessages = filterAttachmentsForProvider(requestProvider, modelConfig, messages.withoutEmptyModelMessages())
-        val temperature = modelConfig.temperature
-        val topP = modelConfig.topP
-        val topK = modelConfig.topK
-        val maxTokens = maxOutputTokens
-            ?.coerceAtLeast(1)
-            ?: resolved.config.maxTokens
-        logModelRequest(requestProvider, modelName, requestMessages, systemPrompt, maxTokens, temperature, topP, topK)
-        accountAdapters.get(resolved.type)?.let { adapter ->
-            emitAll(adapter.streamEvents(
-                requestProvider, modelName, requestMessages, systemPrompt, maxTokens
-            ))
-            return@flow
+        var modelLogId: Long? = null
+        var usesModelLog = false
+        try {
+            val resolved = resolveProvider(provider)
+            val modelConfig = resolved.config.modelConfigs[modelName] ?: ModelConfiguration()
+            val sendThinking = modelConfig.sendsThinkingBack(messages.hasToolCalls())
+            val requestProvider = resolved.copy(config = resolved.config.copy(supportStream = resolved.streamEnabledFor(modelName)))
+            val requestMessages = filterAttachmentsForProvider(requestProvider, modelConfig, messages.withoutEmptyModelMessages())
+            val temperature = modelConfig.temperature
+            val topP = modelConfig.topP
+            val topK = modelConfig.topK
+            val maxTokens = maxOutputTokens?.coerceAtLeast(1) ?: resolved.config.maxTokens
+            // These transports already log the actual HTTP request and response together.
+            usesModelLog = requestProvider.type !in setOf(ModelApiType.ANTIGRAVITY, ModelApiType.GOOGLE, ModelApiType.OLLAMA)
+            if (usesModelLog)
+                modelLogId = logModelRequest(requestProvider, modelName, requestMessages, systemPrompt, maxTokens, temperature, topP, topK)
+            val accountAdapter = accountAdapters.get(resolved.type)
+            if (accountAdapter != null) {
+                emitAll(accountAdapter.streamEvents(
+                    requestProvider, modelName, requestMessages, systemPrompt, maxTokens
+                ))
+            } else {
+                val adapter = adapters.get(resolved.type)
+                    ?: error("No request adapter is registered for ${resolved.type.displayName}.")
+                emitAll(adapter.stream(ModelApiRequest(
+                    provider = requestProvider,
+                    modelName = modelName,
+                    messages = requestMessages,
+                    systemPrompt = systemPrompt,
+                    temperature = temperature,
+                    topP = topP,
+                    topK = topK,
+                    maxTokens = maxTokens,
+                    reasoningEffort = modelConfig.wireReasoningEffort,
+                    sendThinkingContent = sendThinking,
+                    enabledModelTools = modelConfig.enabledModelTools.filter { it in modelConfig.supportedModelTools }.distinct()
+                )))
+            }
+            if (usesModelLog) DebugLog.finishRequest(modelLogId, "Model", "✓ ${provider.name} · $modelName", false)
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            if (usesModelLog) DebugLog.finishRequest(modelLogId, "Model", "✗ ${provider.name} · $modelName (cancelled)", false)
+            throw error
+        } catch (error: Exception) {
+            if (usesModelLog) DebugLog.finishRequest(modelLogId, "Model",
+                "✗ ${provider.name} · $modelName: ${error.message}", true)
+            else if (!(provider.type == ModelApiType.ANTIGRAVITY && error.message?.startsWith("HTTP ") == true))
+                DebugLog.error(DebugLogCategory.ERRORS, "Model", "Request to ${provider.name} / $modelName failed", error)
+            throw error
         }
-        val adapter = adapters.get(resolved.type)
-            ?: error("No request adapter is registered for ${resolved.type.displayName}.")
-        emitAll(adapter.stream(ModelApiRequest(
-            provider = requestProvider,
-            modelName = modelName,
-            messages = requestMessages,
-            systemPrompt = systemPrompt,
-            temperature = temperature,
-            topP = topP,
-            topK = topK,
-            maxTokens = maxTokens,
-            reasoningEffort = modelConfig.wireReasoningEffort,
-            sendThinkingContent = sendThinking,
-            enabledModelTools = modelConfig.enabledModelTools.filter { it in modelConfig.supportedModelTools }.distinct()
-        )))
-    }.catch { error ->
-        DebugLog.error(DebugLogCategory.ERRORS, "Model", "Request to ${provider.name} / $modelName failed", error)
-        throw error
     }
 
-    /** Official SDK transports cannot be intercepted, so the model request is logged here for every provider. */
+    /** Summarize SDK requests whose transports do not expose HTTP logging. */
     private fun logModelRequest(
         provider: ModelProvider,
         modelName: String,
@@ -327,18 +340,16 @@ class AiService(
         temperature: Double?,
         topP: Double?,
         topK: Int?
-    ) {
-        DebugLog.log(DebugLogCategory.NETWORK, "Model") {
-            "→ ${provider.type.displayName} · ${provider.name} · $modelName " +
-                "(stream=${provider.config.supportStream}, ${messages.size} messages)"
-        }
-        DebugLog.log(DebugLogCategory.PAYLOAD, "Model") {
+    ): Long? {
+        val label = "${provider.type.displayName} · ${provider.name} · $modelName " +
+            "(stream=${provider.config.supportStream}, ${messages.size} messages)"
+        return DebugLog.beginRequest("Model", label) {
             buildString {
                 append("model=").append(modelName).append(" maxTokens=").append(maxTokens)
                 append(" temperature=").append(temperature).append(" topP=").append(topP).append(" topK=").append(topK).append('\n')
-                if (systemPrompt.isNotBlank()) append("[system] ").append(systemPrompt.take(600)).append('\n')
+                if (systemPrompt.isNotBlank()) append("[system] ").append(systemPrompt).append('\n')
                 messages.forEach { message ->
-                    append('[').append(message.role.name.lowercase()).append("] ").append(message.content.take(600))
+                    append('[').append(message.role.name.lowercase()).append("] ").append(message.content)
                     if (message.files.isNotEmpty()) append(" (+").append(message.files.size).append(" files)")
                     append('\n')
                 }

@@ -31,6 +31,7 @@ import sh.calvin.reorderable.rememberReorderableLazyGridState
 import sh.calvin.reorderable.ScrollMoveMode
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import org.starfall.generative.shared.model.SpeechService
+import org.starfall.generative.shared.model.effectiveTtsProviderId
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.ui.layout.AdaptiveCardLayout
 import org.starfall.generative.shared.ui.icons.EntityIcon
@@ -53,7 +54,7 @@ fun SpeechServicesScreen(
     onToggleGridView: ((Boolean) -> Unit)? = null,
     providers: List<ModelProvider>,
     selectedSpeechServiceId: String?,
-    onSelectService: (String?) -> Unit,
+    onSetTtsProvider: (String?) -> Unit,
     onSaveService: (SpeechService) -> Unit,
     onDeleteService: (String) -> Unit,
     onReorderServices: (List<String>) -> Unit,
@@ -67,9 +68,7 @@ fun SpeechServicesScreen(
     var deletingServiceId by remember { mutableStateOf<String?>(null) }
     var orderedServices by remember(speechServices) { mutableStateOf(speechServices) }
     val providersById = remember(providers) { providers.associateBy { it.id } }
-    val effectiveSelectedId = speechServices.find { it.id == selectedSpeechServiceId }?.id
-        ?: speechServices.firstOrNull { it.provider.equals("system", true) }?.id
-        ?: speechServices.firstOrNull()?.id
+    val effectiveSelectedId = speechServices.effectiveTtsProviderId(selectedSpeechServiceId)
 
     Scaffold(
         topBar = {
@@ -155,7 +154,7 @@ fun SpeechServicesScreen(
                             providerName = providerName,
                             selected = service.id == effectiveSelectedId,
                             isPlaying = service.id == activeTestServiceId,
-                            onSelect = { onSelectService(service.id) },
+                            onSetTtsProvider = { onSetTtsProvider(service.id) },
                             onTest = {
                                 if (service.id == activeTestServiceId) onStopPlayback()
                                 else onTestVoice(service, context.getString(R.string.speech_preview_text, service.name))
@@ -184,9 +183,6 @@ fun SpeechServicesScreen(
             },
             onSave = { saved ->
                 onSaveService(saved)
-                if (selectedSpeechServiceId == null && !saved.provider.equals("system", true)) {
-                    onSelectService(saved.id)
-                }
                 editor = null
             }
         )
@@ -196,7 +192,7 @@ fun SpeechServicesScreen(
         DeleteSpeechServiceDialog(
             onConfirm = {
                 onDeleteService(id)
-                if (selectedSpeechServiceId == id) onSelectService(null)
+                if (selectedSpeechServiceId == id) onSetTtsProvider(null)
                 deletingServiceId = null
             },
             onDismiss = { deletingServiceId = null }
@@ -213,7 +209,7 @@ private fun SpeechServiceUnifiedCard(
     providerName: String,
     selected: Boolean,
     isPlaying: Boolean,
-    onSelect: () -> Unit,
+    onSetTtsProvider: () -> Unit,
     onTest: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -228,7 +224,7 @@ private fun SpeechServiceUnifiedCard(
     )
 
     Surface(
-        onClick = onSelect,
+        onClick = onEdit,
         shape = RoundedCornerShape(shapeCorner),
         color = if (selected) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
@@ -273,7 +269,12 @@ private fun SpeechServiceUnifiedCard(
                     ItemContextMenu(
                         onEdit = onEdit,
                         onDelete = onDelete,
-                        deleteColor = MaterialTheme.colorScheme.error
+                        deleteColor = MaterialTheme.colorScheme.error,
+                        firstActionText = stringResource(R.string.speech_set_tts_provider)
+                            .takeUnless { selected },
+                        firstActionImageVector = Icons.Outlined.RecordVoiceOver
+                            .takeUnless { selected },
+                        onFirstAction = if (selected) null else onSetTtsProvider
                     )
                 }
             },

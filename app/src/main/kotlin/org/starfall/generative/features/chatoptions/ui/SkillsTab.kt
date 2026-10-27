@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +26,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.AgentSkill
+import org.starfall.generative.shared.model.DEFAULT_AGENT_SKILL_ID
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.layout.groupedItemShape
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
@@ -36,6 +40,7 @@ internal fun SkillsTab(
     onDeleteSkill: (AgentSkill) -> Unit
 ) {
     var skillPendingDelete by remember { mutableStateOf<AgentSkill?>(null) }
+    var viewingBundledSkill by remember { mutableStateOf<AgentSkill?>(null) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -57,8 +62,11 @@ internal fun SkillsTab(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     skills.forEachIndexed { index, skill ->
+                        val bundled = skill.id == DEFAULT_AGENT_SKILL_ID
                         Surface(
-                            onClick = { onEditSkill(skill) },
+                            onClick = {
+                                if (bundled) viewingBundledSkill = skill else onEditSkill(skill)
+                            },
                             modifier = Modifier.fillMaxWidth(),
                             shape = groupedItemShape(index, skills.size),
                             color = prominentContainerColor(),
@@ -74,11 +82,13 @@ internal fun SkillsTab(
                                 ) {
                                     Text(skill.name, style = MaterialTheme.typography.titleMedium)
                                     Text(
-                                        stringResource(
-                                            R.string.agent_skill_metadata,
-                                            skill.content.length,
-                                            estimateSkillTokens(skill.content)
-                                        ),
+                                        skill.description.ifBlank {
+                                            stringResource(
+                                                R.string.agent_skill_metadata,
+                                                skill.content.length,
+                                                estimateSkillTokens(skill.content)
+                                            )
+                                        },
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -89,17 +99,40 @@ internal fun SkillsTab(
                                         maxLines = 2
                                     )
                                 }
-                                ItemContextMenu(
-                                    onEdit = { onEditSkill(skill) },
-                                    onDelete = { skillPendingDelete = skill },
-                                    deleteColor = MaterialTheme.colorScheme.error
-                                )
+                                if (!bundled) {
+                                    ItemContextMenu(
+                                        onEdit = { onEditSkill(skill) },
+                                        onDelete = { skillPendingDelete = skill },
+                                        deleteColor = MaterialTheme.colorScheme.error
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    viewingBundledSkill?.let { skill ->
+        AlertDialog(
+            onDismissRequest = { viewingBundledSkill = null },
+            title = { Text(skill.name) },
+            text = {
+                Column(
+                    Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(skill.description, style = MaterialTheme.typography.bodyMedium)
+                    Text(skill.content, style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { viewingBundledSkill = null }) {
+                    Text(stringResource(R.string.common_close))
+                }
+            }
+        )
     }
 
     skillPendingDelete?.let { skill ->

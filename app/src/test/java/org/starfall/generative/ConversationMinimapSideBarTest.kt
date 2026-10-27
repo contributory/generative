@@ -50,7 +50,7 @@ class ConversationMinimapSideBarTest {
                 ModalDrawerSheet { Text("Left drawer") }
             }) {
                 Box(Modifier.fillMaxSize().dismissMinimapOnOutsideTap(minimap)) {
-                    LazyColumn(state = list, reverseLayout = true, modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(state = list, reverseLayout = true, modifier = Modifier.fillMaxSize().testTag("chat-list")) {
                         items(messages.asReversed(), key = { it.id }) {
                             Text(it.content, Modifier.fillMaxWidth().height(400.dp))
                         }
@@ -94,11 +94,38 @@ class ConversationMinimapSideBarTest {
         compose.onNodeWithTag("chat-minimap-sidebar").assertDoesNotExist()
 
         compose.onNodeWithTag("chat-minimap-edge").performClick()
+        compose.onNodeWithTag("chat-list").performTouchInput {
+            swipe(Offset(width * 0.5f, height * 0.70f), Offset(width * 0.5f, height * 0.35f), 250)
+        }
+        compose.onNodeWithTag("chat-minimap-sidebar").assertDoesNotExist()
+
+        compose.onNodeWithTag("chat-minimap-edge").performClick()
         compose.onNodeWithTag("chat-minimap-sidebar").performTouchInput {
             swipe(Offset(5f, height / 2f), Offset(width - 2f, height / 2f), 300)
         }
         compose.onNodeWithTag("chat-minimap-sidebar").assertDoesNotExist()
         assertEquals(DrawerValue.Closed, drawer.currentValue)
+    }
+
+    @Test fun minimapClosesAfterSixIdleSecondsButInteractionRestartsCountdown() {
+        val state = ConversationMinimapSideBarState()
+        val messages = listOf(StoredMessage("message", ChatRole.USER,
+            listOf(MessageVersion(content = "Hello"))))
+        compose.setContent { MaterialTheme {
+            ConversationMinimapSideBar("chat", messages, remember { LazyListState() }, 0, 0, {}, {}, state)
+        } }
+        compose.onNodeWithTag("chat-minimap-edge").performClick()
+        compose.onNodeWithTag("chat-minimap-sidebar").assertIsDisplayed()
+        compose.mainClock.autoAdvance = false
+
+        compose.mainClock.advanceTimeBy(5_000)
+        compose.onNodeWithTag("chat-minimap-sidebar").assertIsDisplayed()
+        compose.onNodeWithTag("chat-minimap-map").performTouchInput { click(center) }
+        compose.mainClock.advanceTimeBy(5_000)
+        compose.onNodeWithTag("chat-minimap-sidebar").assertIsDisplayed()
+        compose.mainClock.advanceTimeBy(1_500)
+        compose.onNodeWithTag("chat-minimap-edge").assertIsDisplayed()
+        compose.onNodeWithTag("chat-minimap-sidebar").assertDoesNotExist()
     }
 
     @Test fun emptyConversationDoesNotExposeNavigator() {

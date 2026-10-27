@@ -86,7 +86,12 @@ internal class ChatMessageActions(
         modelDisplayName = provider?.config?.modelConfigs?.get(modelId)?.displayName?.ifBlank { modelId } ?: modelId
     )
 
-    fun sendMessage(userText: String, fileAttachments: List<String> = emptyList(), createSkillRequested: Boolean = false): Boolean {
+    fun sendMessage(
+        userText: String,
+        fileAttachments: List<String> = emptyList(),
+        createSkillRequested: Boolean = false,
+        selectedSkillName: String? = null
+    ): Boolean {
         if (userText.isBlank() && fileAttachments.isEmpty()) return false
 
         return guardRestoreBoolean {
@@ -100,6 +105,7 @@ internal class ChatMessageActions(
                         MessageVersion(
                             content = userText,
                             createSkillRequested = createSkillRequested,
+                            selectedSkillName = selectedSkillName,
                             timestamp = System.currentTimeMillis().toString(),
                             files = fileAttachments
                         )
@@ -111,7 +117,7 @@ internal class ChatMessageActions(
             }
 
             val incoming = StoredMessage(UUID.randomUUID().toString(), ChatRole.USER,
-                listOf(MessageVersion(content = userText, files = fileAttachments, createSkillRequested = createSkillRequested, timestamp = System.currentTimeMillis().toString())),
+                listOf(MessageVersion(content = userText, files = fileAttachments, createSkillRequested = createSkillRequested, selectedSkillName = selectedSkillName, timestamp = System.currentTimeMillis().toString())),
                 isQueued = true)
             if (maybeStartAutomaticSummary(incoming)) {
                 val conversationId = existing?.id ?: return@guardRestoreBoolean false
@@ -129,6 +135,7 @@ internal class ChatMessageActions(
                     MessageVersion(
                         content = userText,
                         createSkillRequested = createSkillRequested,
+                        selectedSkillName = selectedSkillName,
                         timestamp = now.toString(),
                         files = fileAttachments
                     )
@@ -433,7 +440,8 @@ internal class ChatMessageActions(
         return generationFor(conversation.id).startEvents(
             conversation,
             responseId,
-            toolEvents(configuredProvider, modelId, context.messages, context.systemPrompt, conversation.id, false),
+            toolEvents(configuredProvider, modelId, context.messages, context.systemPrompt, conversation.id,
+                conversation.messages[responseIndex - 1].activeVersion.createSkillRequested),
             rollbackConversation = rollbackConversation,
             resume = resume,
             usageContextKey = contextUsageKey(conversation, preferences.systemPromptFor(conversation),

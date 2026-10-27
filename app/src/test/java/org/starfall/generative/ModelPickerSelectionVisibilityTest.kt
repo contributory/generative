@@ -37,18 +37,20 @@ class ModelPickerSelectionVisibilityTest {
                 }
                 assertTrue(providerIndex >= 0)
                 val provider = items[providerIndex] as ModelPickerItem.Provider
-                val model = items[providerIndex + 1] as ModelPickerItem.Model
                 assertEquals(selected.id, provider.provider.id)
                 assertEquals(group.id, provider.provider.groupId)
                 assertEquals(0, provider.depth)
-                assertTrue(model.isSelected)
-                assertEquals("alpha", model.modelId)
-                assertEquals(1, model.depth)
+                assertTrue(provider.hasSelectedModel)
+                val visibleSelectedModels = items.filterIsInstance<ModelPickerItem.Model>()
+                    .filter { it.provider.id == selected.id }
                 if (providerCollapsed) {
-                    assertEquals(listOf("alpha"), items.filterIsInstance<ModelPickerItem.Model>()
-                        .filter { it.provider.id == selected.id }.map { it.modelId })
+                    assertTrue(visibleSelectedModels.isEmpty())
+                } else {
+                    assertEquals(listOf("alpha", "beta"), visibleSelectedModels.map { it.modelId })
+                    assertTrue(visibleSelectedModels.first().isSelected)
+                    assertEquals(1, visibleSelectedModels.first().depth)
                 }
-                assertEquals(if (providerCollapsed) 6 else 7, items.size)
+                assertEquals(if (providerCollapsed) 5 else 7, items.size)
             }
         }
     }
@@ -94,15 +96,15 @@ class ModelPickerSelectionVisibilityTest {
         assertTrue(computeModelPickerTabs(items("no match"), "Ungrouped").isEmpty())
     }
 
-    @Test fun collapsedRootProviderRetainsOnlySelectedModelAndExpansionRestoresOthers() {
+    @Test fun collapsedRootProviderHidesAllModelsAndExpansionRestoresThem() {
         val root = selected.copy(groupId = null)
         val items = computeModelPickerItems(listOf(root), emptyList(), emptyMap(), root.id, "beta",
             collapsedProviderIds = setOf(root.id))
         assertTrue(items[0] is ModelPickerItem.Ungrouped)
         assertEquals(0, (items[1] as ModelPickerItem.Provider).depth)
-        assertEquals("beta", (items[2] as ModelPickerItem.Model).modelId)
-        assertEquals(1, (items[2] as ModelPickerItem.Model).depth)
-        assertEquals(3, items.size)
+        assertTrue((items[1] as ModelPickerItem.Provider).hasSelectedModel)
+        assertTrue(items.none { it is ModelPickerItem.Model })
+        assertEquals(2, items.size)
         val expanded = computeModelPickerItems(listOf(root), emptyList(), emptyMap(), root.id, "beta")
         assertEquals(listOf("alpha", "beta"), expanded.filterIsInstance<ModelPickerItem.Model>().map { it.modelId })
     }

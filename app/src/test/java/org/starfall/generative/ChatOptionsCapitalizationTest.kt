@@ -120,7 +120,7 @@ class ChatOptionsCapitalizationTest {
             }
         }
 
-        // Helpers tab does not show the Add action in the TopAppBar.
+        // Options tab does not show the Add action in the TopAppBar.
         compose.onNodeWithContentDescription("Add").assertDoesNotExist()
 
         // Instructions tab exposes Add as a TopAppBar IconButton (not a body text Button)

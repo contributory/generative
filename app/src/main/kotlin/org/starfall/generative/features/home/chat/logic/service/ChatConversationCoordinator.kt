@@ -52,7 +52,7 @@ internal class ChatConversationCoordinator(
     private val maybeStartAutomaticSummary: () -> Boolean,
     private val isGenerationReplacementActive: () -> Boolean,
     private val isSummaryActive: () -> Boolean,
-    private val sendMessage: (String, List<String>, Boolean) -> Boolean,
+    private val sendMessage: (String, List<String>, Boolean, String?) -> Boolean,
 ) {
     private var conversationSelectionToken = 0L
     @Volatile private var pendingWrites = 0
@@ -158,7 +158,9 @@ internal class ChatConversationCoordinator(
             next = queued.firstOrNull()
             queuedByConversation + (conversationId to queued.drop(1))
         }
-        next?.let { sendMessage(it.content, it.files, it.activeVersion.createSkillRequested) }
+        next?.let {
+            sendMessage(it.content, it.files, it.activeVersion.createSkillRequested, it.activeVersion.selectedSkillName)
+        }
     }
 
     fun writeConversation(

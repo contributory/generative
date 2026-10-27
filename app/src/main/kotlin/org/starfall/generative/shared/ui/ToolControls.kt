@@ -14,12 +14,11 @@ data class ToolControls(
     val providers: List<ModelProvider> = emptyList(),
     val setSystem: (String,SystemToolConfig)->Unit = {_,_->},
     val setMcp: (String,Boolean)->Unit = {_,_->},
-    val setWebSearchProvider: (String?)->Unit = {},
-    val setWebSearchEnabled: (Boolean)->Unit = {},
     val setMachines: (Boolean)->Unit = {},
     val setMachine: (String, Boolean)->Unit = {_,_->},
     val setMachineTool: (String, String, Boolean)->Unit = {_,_,_->},
     val setSendFile: (Boolean)->Unit = {},
-    val setSearchTools: (Boolean)->Unit = {}
+    val setSearchTools: (Boolean)->Unit = {},
+    val setAgentSkillsSearch: (Boolean)->Unit = {}
 )
 val LocalToolControls = staticCompositionLocalOf { ToolControls() }

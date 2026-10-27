@@ -8,6 +8,7 @@ import org.starfall.generative.shared.media.SpeechSynthesisService
 import org.starfall.generative.shared.media.TtsHelper
 import org.starfall.generative.shared.media.speechText
 import org.starfall.generative.shared.model.SpeechService
+import org.starfall.generative.shared.model.effectiveTtsProviderId
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.storage.preferences.AppPreferences
@@ -79,10 +80,9 @@ internal class ChatSpeechCoordinator(
     fun speak(text: String, messageId: String? = null) {
         if (messageId != null && activeMessage.value == messageId) { stop(); return }
         val available = services.value
-        val selectedId = preferences.value.selectedSpeechServiceId
+        val selectedId = available.effectiveTtsProviderId(preferences.value.selectedSpeechServiceId)
         val service = selectedId?.let { id -> available.find { it.id == id } }
-            ?: available.find { it.provider.equals("system", ignoreCase = true) }
-            ?: available.firstOrNull() ?: return
+            ?: return
         speakWithService(service, text, messageId)
     }
 

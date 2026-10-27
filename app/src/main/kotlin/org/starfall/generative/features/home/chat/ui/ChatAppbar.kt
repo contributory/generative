@@ -37,6 +37,7 @@ import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.sendsThinkingBack
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.icons.TemporaryChatIcon
 import org.starfall.generative.shared.ui.FeaturesLogoImage
 import org.starfall.generative.shared.ui.GenerativeLinearWavyProgressIndicator
 import org.starfall.generative.features.home.chat.model.ContextWindowStatus
@@ -52,6 +53,7 @@ fun ChatAppBar(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     featuresLogoImage: String? = null,
+    isTemporaryChat: Boolean = false,
     onOpenModelPicker: () -> Unit = {},
     /** True while at least one remote machine holds a live connection. */
     showTerminalButton: Boolean = false,
@@ -181,12 +183,20 @@ fun ChatAppBar(
                     shadowElevation = if (buttonBorder == null) 4.dp else 0.dp
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        FluentIcon(
-                            imageVector = Icons.Outlined.Compose,
-                            contentDescription = stringResource(R.string.sidebar_new_chat),
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        if (isTemporaryChat) {
+                            TemporaryChatIcon(
+                                contentDescription = stringResource(R.string.chat_open_temporary_chat),
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        } else {
+                            FluentIcon(
+                                imageVector = Icons.Outlined.Compose,
+                                contentDescription = stringResource(R.string.sidebar_new_chat),
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
 

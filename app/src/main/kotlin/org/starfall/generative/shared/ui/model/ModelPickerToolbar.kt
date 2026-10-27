@@ -2,6 +2,9 @@ package org.starfall.generative.shared.ui.model
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -29,8 +32,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -46,6 +53,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 
 /** Expandable search, section controls, and an optional shortcut to the selected model. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ModelPickerToolbar(
     query: String,
@@ -55,12 +63,26 @@ internal fun ModelPickerToolbar(
     onToggleAllCollapsed: () -> Unit,
     selectedModelId: String,
     selectedModel: ModelConfiguration?,
-    onOpenSelectedModel: (() -> Unit)?
+    onOpenSelectedModel: (() -> Unit)?,
+    onSearchBoundsChange: (Rect?) -> Unit = {}
 ) {
     var searchExpanded by remember { mutableStateOf(false) }
     var searchWasFocused by remember { mutableStateOf(false) }
     val searchFocus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    val imeVisible = WindowInsets.isImeVisible
+    var imeWasVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(imeVisible) {
+        if (imeVisible) imeWasVisible = true
+        else if (imeWasVisible) {
+            imeWasVisible = false
+            if (searchExpanded) focusManager.clearFocus(force = true)
+        }
+    }
+    LaunchedEffect(searchExpanded) {
+        if (!searchExpanded) onSearchBoundsChange(null)
+    }
     val modelName = selectedModel?.displayName?.takeIf { it.isNotBlank() }
         ?: selectedModelId.ifBlank { stringResource(R.string.select_model) }
     val openSelectedDescription = stringResource(R.string.open_selected_model)
@@ -108,10 +130,11 @@ internal fun ModelPickerToolbar(
                             capitalization = KeyboardCapitalization.Sentences,
                             imeAction = ImeAction.Search
                         ),
-                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus(); keyboard?.hide() }),
                         shape = RoundedCornerShape(28.dp),
                         modifier = Modifier.fillMaxWidth()
                             .focusRequester(searchFocus)
+                            .onGloballyPositioned { onSearchBoundsChange(it.boundsInRoot()) }
                             .onFocusChanged { focus ->
                                 if (focus.isFocused) searchWasFocused = true
                                 else if (searchWasFocused) {

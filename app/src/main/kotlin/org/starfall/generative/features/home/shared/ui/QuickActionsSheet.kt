@@ -7,19 +7,29 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.sheets.AppSheet
+import org.starfall.generative.shared.ui.sheets.LocalBottomSheetMaxContentHeight
+import org.starfall.generative.shared.ui.sheets.LocalBottomSheetMinContentHeight
+import org.starfall.generative.shared.ui.sheets.LocalBottomSheetManuallyResized
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
+import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+
+/** Initial Quick Actions height, leaving the rest of the actions accessible by scrolling or dragging. */
+internal const val QUICK_ACTIONS_INITIAL_HEIGHT_FRACTION = 0.52f
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,7 +59,8 @@ fun QuickActionsSheet(
             onOpenFeatureTools = onOpenFeatureTools,
             onOpenMcpConnectors = onOpenMcpConnectors,
             onDismiss = onDismiss,
-            onOpenSkills = onOpenSkills
+            onOpenSkills = onOpenSkills,
+            useInitialSheetHeight = true
         )
     }
 }
@@ -65,12 +76,33 @@ internal fun QuickActionsSheetContent(
     onOpenFeatureTools: () -> Unit,
     onOpenMcpConnectors: () -> Unit,
     onDismiss: () -> Unit,
-    onOpenSkills: () -> Unit = {}
+    onOpenSkills: () -> Unit = {},
+    useInitialSheetHeight: Boolean = false
 ) {
+    // Only the opening viewport defaults to half-height. Once the handle is dragged,
+    // track its actual height in either direction without imposing a maximum or minimum.
+    val maxContentHeight = LocalBottomSheetMaxContentHeight.current
+    val minContentHeight = LocalBottomSheetMinContentHeight.current
+    val manuallyResized = LocalBottomSheetManuallyResized.current
+    val sheetViewport = if (useInitialSheetHeight && maxContentHeight > 0.dp) {
+        val bottomInset = with(LocalDensity.current) {
+            WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).getBottom(this).toDp()
+        }
+        val chromeHeight = 48.dp + bottomInset // AppSheet's drag handle and navigation inset.
+        val initialHeight = (maxContentHeight + chromeHeight) * QUICK_ACTIONS_INITIAL_HEIGHT_FRACTION - chromeHeight
+        Modifier.height((if (manuallyResized) minContentHeight else initialHeight).coerceIn(0.dp, maxContentHeight))
+    } else Modifier
+    val scrollState = rememberScrollState()
+    val isActivePage = LocalScreenTransitionActive.current
+    LaunchedEffect(isActivePage, useInitialSheetHeight) {
+        if (useInitialSheetHeight && isActivePage) scrollState.scrollTo(0)
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
+            .then(sheetViewport)
+            .verticalScroll(scrollState)
+            .testTag("quick-actions-content")
             .padding(horizontal = 16.dp)
             .padding(bottom = 28.dp)
     ) {

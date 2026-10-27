@@ -22,6 +22,10 @@ internal class ChatToolSettingsActions(
         scope.launch(LocalWriteErrors.handler) { store.update { it.copy(searchToolsEnabled = enabled) } }
     }
 
+    fun setAgentSkillsSearchEnabled(enabled: Boolean) {
+        scope.launch(LocalWriteErrors.handler) { store.update { it.copy(agentSkillsSearchEnabled = enabled) } }
+    }
+
     fun setSendFileEnabled(enabled: Boolean) {
         scope.launch(LocalWriteErrors.handler) { store.update { it.copy(sendFileEnabled = enabled) } }
     }

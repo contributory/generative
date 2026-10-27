@@ -41,8 +41,9 @@ internal fun AgentSkillsMenu(
 ) {
     val normalizedQuery = query.trim()
     val matchingSkills = skills.filter { skill ->
-        normalizedQuery.isBlank() ||
+            normalizedQuery.isBlank() ||
             skill.name.contains(normalizedQuery, ignoreCase = true) ||
+            skill.description.contains(normalizedQuery, ignoreCase = true) ||
             skill.content.contains(normalizedQuery, ignoreCase = true)
     }
 
@@ -112,7 +113,7 @@ internal fun AgentSkillsMenu(
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
-                                    skill.content,
+                                    skill.description.ifBlank { skill.content },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 2,
@@ -155,4 +156,19 @@ internal class AgentSkillsMenuPositionProvider(
             y = top.coerceIn(0, (windowSize.height - popupContentSize.height).coerceAtLeast(0))
         )
     }
+}
+
+/** Show the selected skill as a slash mention, without inserting SKILL.md. */
+internal fun String.withSelectedSkillInvocation(name: String): String {
+    val instructions = if (startsWith('/')) {
+        val commandEnd = indexOfFirst(Char::isWhitespace)
+        if (commandEnd < 0) "" else substring(commandEnd).trimStart()
+    } else trimStart()
+    return "/$name" + if (instructions.isEmpty()) "" else " $instructions"
+}
+
+/** Removing or changing the visible invocation removes its activation provenance. */
+internal fun String.hasSelectedSkillInvocation(name: String): Boolean {
+    val prefix = "/$name"
+    return startsWith(prefix) && (length == prefix.length || get(prefix.length).isWhitespace())
 }

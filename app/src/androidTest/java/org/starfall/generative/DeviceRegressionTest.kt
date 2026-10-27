@@ -38,14 +38,18 @@ class DeviceRegressionTest {
         compose.waitForIdle()
         val photos = compose.onNodeWithText("Photos")
         val initialTop = photos.fetchSemanticsNode().boundsInRoot.top
+        val content = compose.onNodeWithTag("quick-actions-content")
+        val initialContentHeight = content.fetchSemanticsNode().boundsInRoot.height
         val screenHeight = context.getSystemService(android.view.WindowManager::class.java)
             .currentWindowMetrics.bounds.height()
         assertTrue("Sheet did not open at half height", initialTop >= screenHeight * 0.45f)
-        photos.performTouchInput { swipeUp() }
+        compose.onNodeWithTag("bottom-sheet-drag-handle").performTouchInput { swipeUp() }
         compose.waitForIdle()
         assertTrue("Sheet did not expand", photos.fetchSemanticsNode().boundsInRoot.top < initialTop - 100)
-        compose.onNodeWithText("Feature Tools").assertIsDisplayed()
-        compose.onNodeWithText("MCP Connectors").assertIsDisplayed()
+        assertTrue("Quick Actions content should expand with the sheet, not remain height-limited",
+            content.fetchSemanticsNode().boundsInRoot.height > initialContentHeight + 100)
+        compose.onNodeWithText("Feature Tools").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("MCP Connectors").performScrollTo().assertIsDisplayed()
     }
 
     @Test fun modelPickerDoesNotDismissWhenFlingReachesTop() {

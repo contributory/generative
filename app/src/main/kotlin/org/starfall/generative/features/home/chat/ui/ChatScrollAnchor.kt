@@ -161,23 +161,85 @@ internal fun Modifier.anchorTailItem(
 }
 
 /**
- * Adds scroll room to the newest item in a reverse-layout chat list.
+ * Adds scroll room to the newest user message in a reverse-layout chat list.
  *
  * The list starts at the bottom, so the blank area goes *below* the bubble on screen (at the start
  * edge of the list). A newest user message grows to the full visible height, so it sits right under
  * the app bar and can be dragged back there, and it reports its natural height through
- * [onNaturalHeight]. The reply that follows passes [minItemHeightPx] (visible height minus that
- * message) so the content from the user message to the end keeps the same total height and the user
- * message does not move when the reply starts; the spacer shrinks to zero as the reply grows.
+ * [onNaturalHeight].
  */
 internal fun Modifier.reverseTailScrollPadding(
     visiblePx: Int,
-    minItemHeightPx: Int? = null,
     onNaturalHeight: ((Int) -> Unit)? = null
 ): Modifier = layout { measurable, constraints ->
     val placeable = measurable.measure(constraints)
     onNaturalHeight?.invoke(placeable.height)
-    val height = maxOf(placeable.height, minItemHeightPx ?: visiblePx)
+    val height = maxOf(placeable.height, visiblePx)
+    layout(placeable.width, height) { placeable.placeRelative(0, 0) }
+}
+
+/**
+ * Keeps the last user message flush under the app bar once its reply exists.
+ *
+ * A send adds the user message and its reply in one update, so the user message is never the newest
+ * item. The reply is measured first (item 0 of a reverse list) and the user message right after it, in
+ * the same pass. The blank room lives below the reply's content ([replyTailPadding], visible height minus
+ * the user message), so it shrinks by itself as the reply grows. Until the user message has reported its
+ * height, [userTailPadding] provides the same room from its side, so the very first frame is already right
+ * and the move of the room to the reply changes nothing on screen.
+ */
+@Stable
+internal class TailTurnAnchor {
+    private val userHeights = HashMap<String, Int>()
+    private var version by mutableIntStateOf(0)
+
+    // Written by the reply's measure, read by the user message's measure of the same pass.
+    private var replyNatural = 0
+    private var replyUsedUserHeight = false
+
+    fun recordUser(id: String, px: Int) {
+        if (userHeights.put(id, px) != px) version += 1
+    }
+
+    /** Observed by the reply's measure, so it measures again when the user message's height arrives or changes. */
+    fun userHeight(id: String): Int? {
+        version
+        return userHeights[id]
+    }
+
+    fun recordReply(natural: Int, usedUserHeight: Boolean) {
+        replyNatural = natural
+        replyUsedUserHeight = usedUserHeight
+    }
+
+    fun userItemHeight(visiblePx: Int, natural: Int): Int {
+        version // measures again together with the reply
+        return if (replyUsedUserHeight) natural else maxOf(natural, visiblePx - replyNatural)
+    }
+}
+
+internal fun Modifier.replyTailPadding(
+    anchor: TailTurnAnchor,
+    userId: String,
+    visiblePx: Int
+): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    val userHeight = anchor.userHeight(userId)
+    anchor.recordReply(placeable.height, userHeight != null)
+    val height = if (userHeight != null) {
+        maxOf(placeable.height, (visiblePx - userHeight).coerceAtLeast(0))
+    } else placeable.height
+    layout(placeable.width, height) { placeable.placeRelative(0, 0) }
+}
+
+internal fun Modifier.userTailPadding(
+    anchor: TailTurnAnchor,
+    userId: String,
+    visiblePx: Int
+): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    anchor.recordUser(userId, placeable.height)
+    val height = anchor.userItemHeight(visiblePx, placeable.height)
     layout(placeable.width, height) { placeable.placeRelative(0, 0) }
 }
 

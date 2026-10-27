@@ -4,8 +4,8 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -29,19 +30,33 @@ import org.starfall.generative.shared.ui.icons.Icons
 /** Muted divider between the folder sections in the shared picker list. */
 @Composable
 internal fun ModelPickerSection(label: String, tag: String) {
-    Box(
-        modifier = Modifier.fillMaxWidth()
-            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.035f), RoundedCornerShape(8.dp))
-            .padding(horizontal = 12.dp, vertical = 9.dp)
-            .testTag(tag),
-        contentAlignment = Alignment.Center
+    val lineColor = MaterialTheme.colorScheme.outlineVariant
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp).testTag(tag),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        ModelPickerDashedLine(Modifier.weight(1f), lineColor)
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
+        )
+        ModelPickerDashedLine(Modifier.weight(1f), lineColor)
+    }
+}
+
+@Composable
+private fun ModelPickerDashedLine(modifier: Modifier, color: Color) {
+    Canvas(modifier.height(1.dp)) {
+        drawLine(
+            color = color,
+            start = androidx.compose.ui.geometry.Offset(0f, size.height / 2f),
+            end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2f),
+            strokeWidth = 1.dp.toPx(),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()))
         )
     }
 }
@@ -77,7 +92,7 @@ internal fun ModelPickerProviderRow(
             .combinedClickable(onClick = onToggle, onLongClick = onEdit)
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             FluentIcon(
@@ -85,18 +100,18 @@ internal fun ModelPickerProviderRow(
                 contentDescription = stringResource(if (collapsed) R.string.expand_group else R.string.collapse_group, provider.name),
                 modifier = Modifier.size(20.dp)
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(4.dp))
             ProviderMark(
                 provider = provider,
                 compact = true
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(6.dp))
             Text(
                 provider.name,
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                  color = if (hasSelectedModel) MaterialTheme.colorScheme.onPrimaryContainer
                      else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
                  fontWeight = FontWeight.Medium
