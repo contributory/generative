@@ -4,10 +4,10 @@ import org.starfall.generative.features.providers.list.model.ProviderDragSurface
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -146,14 +146,14 @@ internal fun ProviderFolderOverlay(
         if (visible) {
             if (animateEnter) progress.animateTo(
                 1f,
-                animationSpec = spring(dampingRatio = 0.88f, stiffness = Spring.StiffnessMediumLow)
+                animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
             ) else progress.snapTo(1f)
         } else {
             // When dragging a member out, uncover the root grid immediately for drop targeting.
             if (animateExitImmediately) progress.snapTo(0f)
             else progress.animateTo(
                 0f,
-                animationSpec = spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
+                animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing)
             )
             onExitFinished()
         }

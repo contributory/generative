@@ -133,7 +133,7 @@ fun ProvidersScreen(
     // stays faintly legible (API 31+; a no-op below).
     val backdropBlur by animateDpAsState(
         targetValue = if (openGroup != null) 1.5.dp else 0.dp,
-        animationSpec = tween(durationMillis = 180),
+        animationSpec = tween(durationMillis = 450),
         label = "providerFolderBackdropBlur"
     )
     val folderOverlayGroup = openGroup ?: renderedFolderGroup

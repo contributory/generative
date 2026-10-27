@@ -402,7 +402,8 @@ class AppDataTransferService(
                 destination.canonicalFile != skillRoot) {
                 "Unsafe restored skill path"
             }
-            check(destination.parentFile.mkdirs() || destination.parentFile.isDirectory)
+            val parent = requireNotNull(destination.parentFile) { "Unsafe restored skill path" }
+            check(parent.mkdirs() || parent.isDirectory)
             source.inputStream().use { input -> destination.outputStream().use { input.copyTo(it) } }
         }
         toolSettingsStore.replace(data.toolSettings)

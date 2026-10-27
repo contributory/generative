@@ -52,12 +52,24 @@ fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave:
     fun back() { if (dirty) confirmDiscard = true else onBack() }
     BackHandler(enabled = LocalScreenTransitionActive.current) { back() }
     Scaffold(
-        topBar = { TopAppBar(
-        topBar = {     colors = edgeToEdgeTopAppBarColors(),
-            title = { Text(stringResource(if (video) R.string.tool_video_settings else R.string.tool_image_settings)) },
-            navigationIcon = { IconButton(onClick = { back() }) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
-                    actions = { Button(enabled = error == null, onClick = { parsed?.let { onSave(it, disabledParams) } }, modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(R.string.common_save)) } }
-        ) }
+        topBar = {
+            TopAppBar(
+                colors = edgeToEdgeTopAppBarColors(),
+                title = { Text(stringResource(if (video) R.string.tool_video_settings else R.string.tool_image_settings)) },
+                navigationIcon = {
+                    IconButton(onClick = { back() }) {
+                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                    }
+                },
+                actions = {
+                    Button(
+                        enabled = error == null,
+                        onClick = { parsed?.let { onSave(it, disabledParams) } },
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) { Text(stringResource(R.string.common_save)) }
+                }
+            )
+        }
     ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().consumeWindowInsets(padding).imePadding(),
