@@ -641,11 +641,11 @@
     <string name="settings_chat_options">ตัวเลือกแชท</string>
     <string name="settings_chat_options_description">ตัวช่วยการสนทนา คำสั่ง สกิล และโมเดลภาษาเริ่มต้น</string>
     <string name="chat_options_tab_options">ตัวเลือก</string>
-    <string name="settings_tts_provider_title">ผู้ให้บริการ TTS</string>
+    <string name="settings_tts_provider_title">บริการ TTS</string>
     <string name="settings_tts_provider_description">บริการเสียงพูดที่ใช้อ่านข้อความออกเสียง</string>
     <string name="settings_tts_provider_select">บริการเสียงพูด</string>
     <string name="settings_tts_provider_none">ยังไม่ได้เลือกบริการเสียงพูด</string>
-    <string name="settings_tts_provider_empty">เพิ่มบริการเสียงพูดเพื่อเลือกผู้ให้บริการ TTS</string>
+    <string name="settings_tts_provider_empty">เพิ่มบริการเสียงพูดเพื่อเลือกใช้กับ TTS</string>
     <string name="common_instructions">คำสั่ง</string>
     <string name="chat_options_tab_skills">สกิล</string>
     <string name="common_skills">สกิล</string>
@@ -984,10 +984,10 @@
     <string name="tool_settings_media_label">การตั้งค่าเครื่องมือสื่อ</string>
     <string name="tool_settings_media_tools_title">เครื่องมือสื่อ</string>
     <string name="tool_settings_other_tools_title">เครื่องมืออื่น</string>
-    <string name="tool_web_search_provider_title">ผู้ให้บริการค้นหาเว็บ</string>
+    <string name="tool_web_search_provider_title">บริการค้นหาเว็บ</string>
     <string name="tool_web_search_provider_description">ตรึงเซิร์ฟเวอร์ MCP หนึ่งรายเพื่อให้เครื่องมือค้นหาเว็บ</string>
     <string name="tool_web_search_provider_select">เซิร์ฟเวอร์ MCP</string>
-    <string name="tool_web_search_provider_none">ยังไม่ได้เลือกผู้ให้บริการ</string>
+    <string name="tool_web_search_provider_none">ยังไม่ได้เลือกบริการ</string>
     <string name="tool_web_search_provider_empty">เพิ่มเซิร์ฟเวอร์ MCP ในตัวเชื่อมต่อ MCP เพื่อใช้ค้นหาเว็บ</string>
     <string name="tool_send_file_title">ส่งไฟล์</string>
     <string name="tool_send_file_description">ให้โมเดลภาษาแสดงไฟล์จากผลลัพธ์ของเครื่องมือในแชทได้</string>

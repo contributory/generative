@@ -641,11 +641,11 @@
     <string name="settings_chat_options">Opsi Obrolan</string>
     <string name="settings_chat_options_description">Pembantu percakapan, instruksi, skill, dan model bahasa default</string>
     <string name="chat_options_tab_options">Opsi</string>
-    <string name="settings_tts_provider_title">Penyedia TTS</string>
+    <string name="settings_tts_provider_title">Layanan TTS</string>
     <string name="settings_tts_provider_description">Layanan suara yang dipakai untuk membaca pesan keras-keras.</string>
     <string name="settings_tts_provider_select">Layanan suara</string>
     <string name="settings_tts_provider_none">Belum ada layanan suara yang dipilih</string>
-    <string name="settings_tts_provider_empty">Tambahkan Layanan Suara untuk memilih penyedia TTS.</string>
+    <string name="settings_tts_provider_empty">Tambahkan layanan suara untuk memilihnya sebagai layanan TTS.</string>
     <string name="common_instructions">Instruksi</string>
     <string name="chat_options_tab_skills">Skill</string>
     <string name="common_skills">Skill</string>
@@ -984,10 +984,10 @@
     <string name="tool_settings_media_label">Pengaturan alat media</string>
     <string name="tool_settings_media_tools_title">Alat media</string>
     <string name="tool_settings_other_tools_title">Alat lainnya</string>
-    <string name="tool_web_search_provider_title">Penyedia Pencarian Web</string>
+    <string name="tool_web_search_provider_title">Layanan Pencarian Web</string>
     <string name="tool_web_search_provider_description">Tetapkan satu server MCP untuk menyediakan alat pencarian web.</string>
     <string name="tool_web_search_provider_select">Server MCP</string>
-    <string name="tool_web_search_provider_none">Belum ada penyedia yang dipilih</string>
+    <string name="tool_web_search_provider_none">Belum ada layanan yang dipilih</string>
     <string name="tool_web_search_provider_empty">Tambahkan server MCP di Konektor MCP untuk memakainya untuk pencarian web.</string>
     <string name="tool_send_file_title">Kirim Berkas</string>
     <string name="tool_send_file_description">Biarkan model bahasa menampilkan berkas dari hasil alat di obrolan.</string>

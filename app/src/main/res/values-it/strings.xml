@@ -641,11 +641,11 @@
     <string name="settings_chat_options">Opzioni chat</string>
     <string name="settings_chat_options_description">Assistenti di conversazione, istruzioni, skill e modelli di lingua predefiniti</string>
     <string name="chat_options_tab_options">Opzioni</string>
-    <string name="settings_tts_provider_title">Provider TTS</string>
+    <string name="settings_tts_provider_title">Servizio TTS</string>
     <string name="settings_tts_provider_description">Servizio vocale usato per leggere i messaggi ad alta voce.</string>
     <string name="settings_tts_provider_select">Servizio vocale</string>
     <string name="settings_tts_provider_none">Nessun servizio vocale selezionato</string>
-    <string name="settings_tts_provider_empty">Aggiungi un servizio vocale per scegliere un provider TTS.</string>
+    <string name="settings_tts_provider_empty">Aggiungi un servizio vocale per selezionarlo per la sintesi vocale.</string>
     <string name="common_instructions">Istruzioni</string>
     <string name="chat_options_tab_skills">Skill</string>
     <string name="common_skills">Skill</string>
@@ -984,10 +984,10 @@
     <string name="tool_settings_media_label">Impostazioni degli strumenti multimediali</string>
     <string name="tool_settings_media_tools_title">Strumenti multimediali</string>
     <string name="tool_settings_other_tools_title">Altri strumenti</string>
-    <string name="tool_web_search_provider_title">Provider di ricerca web</string>
+    <string name="tool_web_search_provider_title">Servizio di ricerca web</string>
     <string name="tool_web_search_provider_description">Fissa un server MCP che fornisca gli strumenti di ricerca web.</string>
     <string name="tool_web_search_provider_select">Server MCP</string>
-    <string name="tool_web_search_provider_none">Nessun provider selezionato</string>
+    <string name="tool_web_search_provider_none">Nessun servizio selezionato</string>
     <string name="tool_web_search_provider_empty">Aggiungi un server MCP in MCP Connectors per usarlo per la ricerca web.</string>
     <string name="tool_send_file_title">Invia file</string>
     <string name="tool_send_file_description">Consenti al modello di lingua di mostrare i file dei risultati degli strumenti in chat.</string>
