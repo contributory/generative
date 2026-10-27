@@ -114,6 +114,54 @@ def parse_xml(path):
     return tree
 
 
+def count_digits(text, index):
+    """Count the digits at `index` and return (count, next index)."""
+    start = index
+    while index < len(text) and text[index].isdigit():
+        index += 1
+    return index - start, index
+
+
+def read_argument_index(text, index, digits):
+    """Read the argument index of a format argument.
+
+    aapt2 rejects an argument without an index (`%s`) and an argument that reuses the previous
+    one (`%<`), because a translation may reorder the arguments. Returns (non positional, index).
+    """
+    if digits > 0:
+        # Digits are a positional argument when they are followed by "$", a size otherwise.
+        return index < len(text) and text[index] != "$", index
+    if index < len(text) and text[index] == "<":
+        index += 1
+        if index < len(text) and text[index] == "$":
+            index += 1
+        return True, index
+    return True, index
+
+
+def skip_size_and_flags(text, index):
+    """Skip the size, the width and the flags of a format argument."""
+    while index < len(text) and (text[index] in "-#+ ,(" or text[index].isdigit()):
+        index += 1
+    return index
+
+
+def read_format_argument(text, index):
+    """Read the format argument that starts at `index` (the character after the percent sign).
+
+    Returns (argument count, non positional, next index).
+    """
+    char = text[index]
+    if char == "%" or char == "n":
+        # "%%" is an escaped percent sign and "%n" writes the argument count: neither is a
+        # substitution.
+        return 0, False, index + 1
+    digits, index = count_digits(text, index)
+    nonpositional, index = read_argument_index(text, index, digits)
+    index = skip_size_and_flags(text, index)
+    return 1, nonpositional, index
+
+
 def verify_java_string_format(text):
     """Port of aapt2's VerifyJavaStringFormat: is the string a valid format string?
 
@@ -126,32 +174,14 @@ def verify_java_string_format(text):
     nonpositional = False
     while index < length:
         if text[index] == "%" and index + 1 < length:
-            index += 1
-            char = text[index]
-            if char == "%" or char == "n":
-                index += 1
+            count, non_positional, index = read_format_argument(text, index + 1)
+            if count == 0:
+                # "%%" and "%n" are no substitution: the scan continues right behind them.
                 continue
-            arg_count += 1
-            digits = 0
-            while index < length and text[index].isdigit():
-                index += 1
-                digits += 1
-            if digits > 0:
-                if index != length and text[index] != "$":
-                    # The digits were a size, not a positional argument.
-                    nonpositional = True
-            elif index < length and text[index] == "<":
-                # Reusing the last argument breaks when a translation reorders the arguments.
-                nonpositional = True
-                index += 1
-                if index != length and text[index] == "$":
-                    index += 1
-            else:
-                nonpositional = True
-            # Ignore size, width and flags.
-            while index < length and (text[index] in "-#+ ,(" or text[index].isdigit()):
-                index += 1
+            arg_count += count
+            nonpositional = nonpositional or non_positional
             if index != length and text[index] in TIME_FORMAT_CONVERSIONS:
+                # A Time.format() pattern, aapt2 accepts it as it is.
                 return True
         if index < length:
             index += 1
@@ -432,7 +462,8 @@ def check_locale(locale, folder, source_strings, source_plurals, required):
     return {"strings": strings, "plurals": plurals}, problems
 
 
-def main():
+def parse_arguments(argv=None):
+    """Read the command line."""
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--res-dir", type=Path, default=RES_DIR)
@@ -442,7 +473,62 @@ def main():
     parser.add_argument("--format", choices=["text", "json"], default="text")
     parser.add_argument("--strict", action="store_true",
                         help="exit with code 1 when warnings are found too")
-    args = parser.parse_args()
+    return parser.parse_args(argv)
+
+
+def select_locales(requested):
+    """The locales to report: every one, or the single one the caller asked for."""
+    if not requested:
+        return dict(LOCALES)
+    wanted = requested.lower()
+    selected = {folder: tag for folder, tag in LOCALES.items()
+                if folder.lower() == wanted or tag.lower() == wanted}
+    if not selected:
+        raise SystemExit(f"unknown locale '{requested}'")
+    return selected
+
+
+def build_report(locales, res_dir, source_strings, source_plurals, required, strict):
+    """Check every requested locale and collect the report."""
+    report = {}
+    failed = False
+    for folder, tag in sorted(locales.items()):
+        directory = res_dir / f"values-{folder}"
+        result, problems = check_locale(tag, directory, source_strings, source_plurals, required)
+        errors = [p for p in problems if p.severity == "error"]
+        warnings = [p for p in problems if p.severity == "warning"]
+        if errors or (strict and warnings):
+            failed = True
+        locale_strings = result["strings"] if result else {}
+        translated = sum(1 for key in required if key in locale_strings)
+        report[folder] = {
+            "tag": tag,
+            "translated": translated,
+            "required": len(required),
+            "coverage": round(100.0 * translated / len(required), 2) if required else 100.0,
+            "errors": [p.as_dict() for p in errors],
+            "warnings": [p.as_dict() for p in warnings],
+        }
+    return report, failed
+
+
+def print_locale(folder, data):
+    """Print the result of one locale."""
+    status = "FAIL" if data["errors"] else "ok  "
+    print(f"{status} values-{folder:<7} {data['tag']:<6} "
+          f"{data['translated']}/{data['required']} ({data['coverage']}%)")
+    for error in data["errors"][:20]:
+        print(f"       {error['severity']} {error['kind']} {error['key'] or ''}: {error['detail']}")
+    if len(data["errors"]) > 20:
+        print(f"       ... {len(data['errors']) - 20} more errors")
+    for warning in data["warnings"][:10]:
+        print(f"       {warning['severity']} {warning['kind']} {warning['key'] or ''}: {warning['detail']}")
+    if len(data["warnings"]) > 10:
+        print(f"       ... {len(data['warnings']) - 10} more warnings")
+
+
+def main():
+    args = parse_arguments()
 
     source_path = args.res_dir / SOURCE_DIR / "strings.xml"
     source_strings, source_plurals, invariant, source_problems = parse_resources(source_path)
@@ -455,35 +541,9 @@ def main():
     # pure-format remote machine summary stay English by design.
     required = {name: text for name, text in source_strings.items() if name not in invariant}
 
-    locales = dict(LOCALES)
-    if args.locale:
-        wanted = args.locale.lower()
-        selected = {folder: tag for folder, tag in locales.items()
-                    if folder.lower() == wanted or tag.lower() == wanted}
-        if not selected:
-            print(f"unknown locale '{args.locale}'", file=sys.stderr)
-            return 1
-        locales = selected
-
-    report = {}
-    failed = False
-    for folder, tag in sorted(locales.items()):
-        directory = args.res_dir / f"values-{folder}"
-        result, problems = check_locale(tag, directory, source_strings, source_plurals, required)
-        errors = [p for p in problems if p.severity == "error"]
-        warnings = [p for p in problems if p.severity == "warning"]
-        if errors or (args.strict and warnings):
-            failed = True
-        locale_strings = result["strings"] if result else {}
-        translated = sum(1 for key in required if key in locale_strings)
-        report[folder] = {
-            "tag": tag,
-            "translated": translated,
-            "required": len(required),
-            "coverage": round(100.0 * translated / len(required), 2) if required else 100.0,
-            "errors": [p.as_dict() for p in errors],
-            "warnings": [p.as_dict() for p in warnings],
-        }
+    locales = select_locales(args.locale)
+    report, failed = build_report(locales, args.res_dir, source_strings, source_plurals,
+                                  required, args.strict)
 
     hardcoded = []
     check_hardcoded_ui_text(args.kotlin_dir, hardcoded)
@@ -500,17 +560,7 @@ def main():
           f"{len(source_plurals)} plurals, {len(invariant)} invariant")
     print()
     for folder, data in report.items():
-        status = "FAIL" if data["errors"] else "ok  "
-        print(f"{status} values-{folder:<7} {data['tag']:<6} "
-              f"{data['translated']}/{data['required']} ({data['coverage']}%)")
-        for error in data["errors"][:20]:
-            print(f"       {error['severity']} {error['kind']} {error['key'] or ''}: {error['detail']}")
-        if len(data["errors"]) > 20:
-            print(f"       ... {len(data['errors']) - 20} more errors")
-        for warning in data["warnings"][:10]:
-            print(f"       {warning['severity']} {warning['kind']} {warning['key'] or ''}: {warning['detail']}")
-        if len(data["warnings"]) > 10:
-            print(f"       ... {len(data['warnings']) - 10} more warnings")
+        print_locale(folder, data)
     return 1 if failed else 0
 
 
