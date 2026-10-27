@@ -28,6 +28,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import java.io.File
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -58,6 +59,8 @@ import org.starfall.generative.features.settings.ui.MainAppbar
 import org.starfall.generative.features.speech.ui.SpeechServicesScreen
 import org.starfall.generative.features.storage.ui.StorageScreen
 import org.starfall.generative.features.tools.ui.ToolsEditor
+import org.starfall.generative.features.tools.ui.MediaRequestChainSettings
+import org.starfall.generative.features.tools.ui.MediaRequestProfileEditor
 import org.starfall.generative.features.home.chat.logic.ChatViewModel
 import org.starfall.generative.features.home.chat.logic.contextWindowStatus
 import org.starfall.generative.features.home.chat.ui.ChatScreen
@@ -69,6 +72,11 @@ import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.language.ModelType
+import org.starfall.generative.shared.model.SystemToolConfig
+import org.starfall.generative.shared.model.media.MediaGenerationMode
+import org.starfall.generative.shared.model.media.MediaRequestProfile
+import org.starfall.generative.shared.model.media.defaultMediaProfile
+import org.starfall.generative.shared.model.media.withDefaultMediaProfile
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.storage.preferences.AppPreferences
@@ -86,6 +94,15 @@ import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 private data class MachineEditorPage(val machine: RemoteMachine, val isNew: Boolean)
 private data class ProviderEditorPage(val provider: ModelProvider, val isNew: Boolean)
 private enum class RemoteMachineSettingsPage { SETTINGS }
+
+/** Distinct NavHost destinations, not conditional pages inside Feature Tools. */
+internal object MediaProfileRoutes {
+    const val LIBRARY = "system_tools/profiles/{kind}"
+    const val EDITOR = "system_tools/profiles/{kind}/edit/{profileId}"
+    fun library(video: Boolean) = "system_tools/profiles/${if (video) "video" else "image"}"
+    fun editor(video: Boolean, profileId: String) =
+        "${library(video)}/edit/${Uri.encode(profileId)}"
+}
 
 internal val NullableFilePathSaver = Saver<File?, String>(
     save = { it?.absolutePath },
@@ -218,6 +235,37 @@ fun AppNavigation(
     }
 
     val toolSettings by viewModel.toolSettings.collectAsStateWithLifecycle()
+
+    fun persistMediaProfiles(video: Boolean, updatedProfiles: Map<String, MediaRequestProfile>, preferredId: String) {
+        val toolName = if (video) "generate_video" else "generate_image"
+        // Read the latest config on every write; an editor must never overwrite model or toggle changes.
+        val config = toolSettings.system[toolName] ?: SystemToolConfig()
+        val profiles = updatedProfiles.withDefaultMediaProfile(video)
+        val selectedId = preferredId.takeIf { it in profiles } ?: defaultMediaProfile(video).id
+        val updated = config.withMediaProfiles(video, profiles)
+        val next = if (video) updated.copy(
+            activeVideoRequestProfileId = selectedId,
+            videoGenerationMode = updated.mediaProfile(true, selectedId).mode
+        ) else updated.copy(
+            activeImageRequestProfileId = selectedId,
+            imageGenerationMode = updated.mediaProfile(false, selectedId).mode
+        )
+        viewModel.setSystemTool(toolName, next)
+        // If a profile was deleted, reset only the model references that used it.
+        val kind = if (video) ModelType.VIDEO_GENERATION else ModelType.IMAGE_GENERATION
+        providers.forEach { source ->
+            source.config.modelConfigs.forEach { (id, model) ->
+                if (model.modelType == kind && model.mediaRequestProfileId.isNotBlank() &&
+                    model.mediaRequestProfileId !in profiles) {
+                    val fallback = next.mediaProfile(video, "")
+                    configurationViewModel.saveModelConfiguration(source.id, id, model.copy(
+                        mediaRequestProfileId = fallback.id,
+                        mediaApiType = fallback.mode
+                    ))
+                }
+            }
+        }
+    }
     val queuedMessages by viewModel.queuedMessages.collectAsStateWithLifecycle()
     val importedProviderId by configurationViewModel.importedProviderId.collectAsStateWithLifecycle()
     val providerImportFailed by configurationViewModel.providerImportFailed.collectAsStateWithLifecycle()
@@ -862,8 +910,67 @@ fun AppNavigation(
                                     launchSingleTop = true
                                 }
                             },
+                            onOpenMediaProfiles = { video ->
+                                navController.navigate(MediaProfileRoutes.library(video)) { launchSingleTop = true }
+                            },
                             onBack = { navController.popBackStack() }
                         )
+                    }
+                    composable(
+                        route = MediaProfileRoutes.LIBRARY,
+                        arguments = listOf(navArgument("kind") { type = NavType.StringType })
+                    ) { entry ->
+                        val video = entry.arguments?.getString("kind") == "video"
+                        val toolName = if (video) "generate_video" else "generate_image"
+                        val config = toolSettings.system[toolName] ?: SystemToolConfig()
+                        MediaRequestChainSettings(
+                            provider = providers.firstOrNull { it.id == config.providerId },
+                            config = config,
+                            onAutoSave = { profiles, activeId -> persistMediaProfiles(video, profiles, activeId) },
+                            onOpenProfile = { id -> navController.navigate(MediaProfileRoutes.editor(video, id)) },
+                            onAddProfile = { navController.navigate(MediaProfileRoutes.editor(video, "new")) },
+                            onBack = { navController.popBackStack() },
+                            video = video
+                        )
+                    }
+                    composable(
+                        route = MediaProfileRoutes.EDITOR,
+                        arguments = listOf(
+                            navArgument("kind") { type = NavType.StringType },
+                            navArgument("profileId") { type = NavType.StringType }
+                        )
+                    ) { entry ->
+                        val video = entry.arguments?.getString("kind") == "video"
+                        val profileId = entry.arguments?.getString("profileId").orEmpty()
+                        val toolName = if (video) "generate_video" else "generate_image"
+                        val config = toolSettings.system[toolName] ?: SystemToolConfig()
+                        val profile = if (profileId == "new") {
+                            val id = rememberSaveable { UUID.randomUUID().toString() }
+                            // Empty profiles are not inserted until a valid name can be auto-saved.
+                            remember(id) { MediaRequestProfile(id = id, name = "", mode = MediaGenerationMode.DEFAULT) }
+                        } else {
+                            remember(profileId) { config.mediaProfiles(video)[profileId] }
+                        }
+                        if (profile == null) {
+                            LaunchedEffect(profileId) { navController.popBackStack() }
+                        } else {
+                            key(profile.id) {
+                                MediaRequestProfileEditor(
+                                    provider = providers.firstOrNull { it.id == config.providerId },
+                                    config = config,
+                                    profile = profile,
+                                    video = video,
+                                    onAutoSave = { updated ->
+                                        val latest = toolSettings.system[toolName] ?: SystemToolConfig()
+                                        val current = latest.mediaProfiles(video)
+                                        val selected = if (video) latest.activeVideoRequestProfileId
+                                            else latest.activeImageRequestProfileId
+                                        persistMediaProfiles(video, current + (updated.id to updated), selected)
+                                    },
+                                    onBack = { navController.popBackStack() }
+                                )
+                            }
+                        }
                     }
                     composable(AppDestination.STORAGE.route) { StorageScreen(toolFiles) { navController.popBackStack() } }
                     composable(AppDestination.REMOTE_MACHINES.route) {

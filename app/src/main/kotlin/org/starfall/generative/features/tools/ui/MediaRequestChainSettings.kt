@@ -8,11 +8,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import java.util.UUID
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.media.*
@@ -34,42 +34,24 @@ fun MediaRequestChainSettings(
     provider: ModelProvider?,
     config: SystemToolConfig,
     onAutoSave: (Map<String, MediaRequestProfile>, String) -> Unit,
+    onOpenProfile: (String) -> Unit,
+    onAddProfile: () -> Unit,
     onBack: () -> Unit,
     video: Boolean
 ) {
-    val initialProfiles = remember(video) { config.mediaProfiles(video) }
-    var profiles by remember(video) { mutableStateOf(initialProfiles) }
+    val profiles = config.mediaProfiles(video)
     val protectedId = defaultMediaProfile(video).id
     val storedActiveId = if (video) config.activeVideoRequestProfileId else config.activeImageRequestProfileId
-    var activeId by remember(video) {
-        mutableStateOf(storedActiveId.takeIf { it in initialProfiles } ?: protectedId)
-    }
-    var editing by remember { mutableStateOf<MediaRequestProfile?>(null) }
+    val activeId = storedActiveId.takeIf { it in profiles } ?: protectedId
     var deletingProfileId by remember { mutableStateOf<String?>(null) }
 
     fun persist(updated: Map<String, MediaRequestProfile>) {
         val normalized = updated.withDefaultMediaProfile(video)
-        val selectedId = activeId.takeIf { it in normalized } ?: protectedId
-        if (profiles == normalized && activeId == selectedId) return
-        profiles = normalized
-        activeId = selectedId
-        onAutoSave(normalized, selectedId)
-    }
-
-    editing?.let { profile ->
-        MediaRequestProfileEditor(
-            provider = provider,
-            config = config,
-            profile = profile,
-            video = video,
-            onAutoSave = { updated -> persist(profiles + (updated.id to updated)) },
-            onBack = { editing = null }
-        )
-        return
+        onAutoSave(normalized, activeId.takeIf { it in normalized } ?: protectedId)
     }
 
     BackHandler(enabled = LocalScreenTransitionActive.current) { onBack() }
-    Scaffold(topBar = {
+    Scaffold(modifier = Modifier.testTag("media-profiles-screen"), topBar = {
         TopAppBar(
             colors = edgeToEdgeTopAppBarColors(),
             title = { Text(stringResource(if (video) R.string.media_video_gen_profiles else R.string.media_image_gen_profiles)) },
@@ -79,11 +61,7 @@ fun MediaRequestChainSettings(
                 }
             },
             actions = {
-                IconButton(onClick = {
-                    editing = MediaRequestProfile(
-                        id = UUID.randomUUID().toString(), name = "", mode = MediaGenerationMode.DEFAULT
-                    )
-                }) {
+                IconButton(onClick = onAddProfile) {
                     FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
                 }
             }
@@ -101,7 +79,11 @@ fun MediaRequestChainSettings(
                 val canDelete = profile.id != protectedId &&
                     (profile.mode != MediaGenerationMode.DEFAULT ||
                         profiles.values.count { it.mode == MediaGenerationMode.DEFAULT } > 1)
-                AppListContainer(isGrid = false, onClick = { editing = profile }) {
+                AppListContainer(
+                    isGrid = false,
+                    onClick = { onOpenProfile(profile.id) },
+                    modifier = Modifier.testTag("media-profile-item_${profile.id}")
+                ) {
                     Row(
                         Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 10.dp, bottom = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -128,7 +110,7 @@ fun MediaRequestChainSettings(
                                 RoundedDropdownMenuItem(
                                     text = { Text(stringResource(R.string.common_edit)) },
                                     leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) },
-                                    onClick = { menuExpanded = false; editing = profile }
+                                    onClick = { menuExpanded = false; onOpenProfile(profile.id) }
                                 )
                                 if (canDelete) RoundedDropdownMenuItem(
                                     text = { Text(stringResource(R.string.common_remove), color = MaterialTheme.colorScheme.error) },

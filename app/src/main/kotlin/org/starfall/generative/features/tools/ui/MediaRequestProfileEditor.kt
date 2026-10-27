@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -59,7 +60,7 @@ import org.starfall.generative.shared.ui.layout.nestedContainerColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun MediaRequestProfileEditor(
+fun MediaRequestProfileEditor(
     provider: ModelProvider?,
     profile: MediaRequestProfile,
     video: Boolean,
@@ -130,6 +131,7 @@ internal fun MediaRequestProfileEditor(
     }
     BackHandler(enabled = LocalScreenTransitionActive.current) { leave() }
     Scaffold(
+        modifier = Modifier.testTag("media-profile-editor-screen"),
         topBar = {
             TopAppBar(
                 colors = edgeToEdgeTopAppBarColors(),
@@ -171,7 +173,7 @@ internal fun MediaRequestProfileEditor(
                     onValueChange = { draft = draft.copy(name = it) },
                     label = { Text(stringResource(R.string.profile_name)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().testTag("media-profile-name-field")
                 )
                 if (provider != null) {
                     Text(
