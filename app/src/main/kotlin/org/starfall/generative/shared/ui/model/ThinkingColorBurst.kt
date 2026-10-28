@@ -33,6 +33,9 @@ private fun starCoordinate(index: Int, salt: Long): Float {
 @Stable
 internal class ThinkingColorBurst(private val scope: CoroutineScope) {
     val progress = Animatable(1f)
+    val retractionProgress = Animatable(1f)
+    var isRetracting by mutableStateOf(false)
+        private set
     var origin by mutableStateOf(Offset.Zero)
         private set
     var color by mutableStateOf(Color.Transparent)
@@ -59,6 +62,7 @@ internal class ThinkingColorBurst(private val scope: CoroutineScope) {
         starCount: Int = 32
     ) {
         job?.cancel()
+        isRetracting = false
         this.origin = origin
         this.color = color
         this.starCount = starCount.coerceIn(0, 256)
@@ -69,10 +73,26 @@ internal class ThinkingColorBurst(private val scope: CoroutineScope) {
         }
     }
 
+    /** Retract the maximum-effort colour into its original detent, including cards and sheet. */
+    fun retract(origin: Offset, durationMillis: Int = 950) {
+        job?.cancel()
+        this.origin = origin
+        keepAfterCompletion = false
+        isRetracting = true
+        job = scope.launch {
+            progress.snapTo(1f)
+            retractionProgress.snapTo(1f)
+            retractionProgress.animateTo(0f, tween(durationMillis, easing = FastOutSlowInEasing))
+            isRetracting = false
+            starCount = 0
+        }
+    }
+
     /** Restore the settled max-effort stars without replaying the animation when the sheet reopens. */
     fun restoreSettled() {
         job?.cancel()
         job = null
+        isRetracting = false
         starCount = starCount.coerceAtLeast(32)
         keepAfterCompletion = true
         scope.launch { progress.snapTo(1f) }
@@ -82,6 +102,7 @@ internal class ThinkingColorBurst(private val scope: CoroutineScope) {
     fun hide() {
         job?.cancel()
         job = null
+        isRetracting = false
         keepAfterCompletion = false
         starCount = 0
         scope.launch { progress.snapTo(1f) }
@@ -96,6 +117,11 @@ internal fun rememberThinkingColorBurst(): ThinkingColorBurst {
 
 /** Reveal the new gradient outward from the thumb before leaving its settled fill. */
 internal fun DrawScope.revealThinkingColor(burst: ThinkingColorBurst, draw: DrawScope.() -> Unit) {
+    if (burst.isRetracting) {
+        val radius = hypot(size.width, size.height) * burst.retractionProgress.value
+        clipPath(Path().apply { addOval(Rect(burst.origin, radius)) }) { draw() }
+        return
+    }
     val progress = burst.progress.value
     if (progress >= 0.52f) {
         draw()
@@ -178,23 +204,30 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
             private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
             override fun draw(canvas: android.graphics.Canvas) {
                 val progress = burst.progress.value
+                val retracting = burst.isRetracting
                 val settled = progress >= 1f && burst.keepAfterCompletion
-                if (progress >= 1f && !settled) return
+                if (progress >= 1f && !settled && !retracting) return
                 val width = root.width.toFloat()
                 val height = root.height.toFloat()
                 if (width <= 0f || height <= 0f) return
-                val bloom = if (settled) 1f else burst.bloomProgress
+                val bloom = when {
+                    retracting -> burst.retractionProgress.value
+                    settled -> 1f
+                    else -> burst.bloomProgress
+                }
                 val fade = bloom
                 val isRed = burst.color.red > burst.color.blue
                 repeat(burst.starCount) { index ->
                     val sx = width * starCoordinate(index, 0x13579BDFL)
                     val sy = height * starCoordinate(index, 0x2468ACE1L) - bloom * 20f
+                    val starX = if (retracting) burst.origin.x + (sx - burst.origin.x) * bloom else sx
+                    val starY = if (retracting) burst.origin.y + (sy - burst.origin.y) * bloom else sy
                     val twinkle = (sin(progress * PI * 6 + index * 2.41).toFloat() * 0.5f + 0.5f)
                     val secondaryTwinkle = (sin(progress * PI * 3 + index * 0.73).toFloat() * 0.5f + 0.5f)
                     val sparkle = if (isRed) {
                         // Red stars keep twinkling independently during the burst.
                         (0.08f + 0.92f * (twinkle * 0.72f + secondaryTwinkle * 0.28f)) *
-                            (0.38f + 0.62f * fade)
+                            (if (retracting) fade else 0.38f + 0.62f * fade)
                     } else {
                         twinkle * fade
                     }
@@ -204,9 +237,9 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
                     )
                     val ray = (2f + index % 3) * root.resources.displayMetrics.density
                     paint.strokeWidth = root.resources.displayMetrics.density
-                    canvas.drawLine(sx - ray, sy, sx + ray, sy, paint)
-                    canvas.drawLine(sx, sy - ray, sx, sy + ray, paint)
-                    canvas.drawCircle(sx, sy, root.resources.displayMetrics.density, paint)
+                    canvas.drawLine(starX - ray, starY, starX + ray, starY, paint)
+                    canvas.drawLine(starX, starY - ray, starX, starY + ray, paint)
+                    canvas.drawCircle(starX, starY, root.resources.displayMetrics.density, paint)
                 }
             }
             override fun setAlpha(alpha: Int) = Unit
@@ -220,7 +253,9 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
         onDispose { root.overlay.remove(overlay) }
     }
     LaunchedEffect(root, overlay, burst) {
-        snapshotFlow { burst.progress.value to burst.keepAfterCompletion }.collect {
+        snapshotFlow {
+            listOf(burst.progress.value, burst.keepAfterCompletion, burst.isRetracting, burst.retractionProgress.value)
+        }.collect {
             overlay.setBounds(0, 0, root.width, root.height)
             overlay.invalidateSelf()
         }

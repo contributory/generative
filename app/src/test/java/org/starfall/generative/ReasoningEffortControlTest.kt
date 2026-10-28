@@ -3,6 +3,7 @@ package org.starfall.generative
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import androidx.compose.ui.graphics.Color
 import org.junit.Test
 import org.starfall.generative.shared.model.language.DEFAULT_REASONING_EFFORTS
 import org.starfall.generative.shared.model.language.ModelConfiguration
@@ -11,6 +12,7 @@ import org.starfall.generative.shared.model.language.SELECTABLE_REASONING_EFFORT
 import org.starfall.generative.shared.model.language.supportedReasoningEfforts
 import org.starfall.generative.shared.ui.model.reasoningEffortBurstDuration
 import org.starfall.generative.shared.ui.model.reasoningEffortEnabled
+import org.starfall.generative.shared.ui.model.reasoningEffortAccent
 import org.starfall.generative.shared.ui.model.reasoningEffortIndex
 import org.starfall.generative.shared.ui.model.reasoningEffortOptions
 import org.starfall.generative.shared.ui.model.ReasoningEffortOption
@@ -64,31 +66,29 @@ class ReasoningEffortControlTest {
         }
     }
 
-    @Test fun colourFollowsTheTwoHighestLevelsTheModelSupports() {
-        // None, Default, then three levels: the lowest keeps its normal colour.
-        assertEquals(listOf(0, 1, 2, 5, 6), tiers(reasoningEffortOptions(DEFAULT_REASONING_EFFORTS)))
-        // Two levels: purple then red.
-        assertEquals(listOf(0, 1, 5, 6), tiers(reasoningEffortOptions(supportedEfforts = listOf("high", "max"))))
-        // Six levels: only the top two are tinted.
-        assertEquals(listOf(0, 1, 2, 3, 4, 4, 5, 6),
+    @Test fun onlyTheLastSelectableLevelGetsTheMaximumColour() {
+        assertEquals(listOf(0, 1, 2, 3, 6), tiers(reasoningEffortOptions(DEFAULT_REASONING_EFFORTS)))
+        assertEquals(listOf(0, 1, 2, 6), tiers(reasoningEffortOptions(supportedEfforts = listOf("high", "max"))))
+        assertEquals(listOf(0, 1, 2, 3, 4, 4, 4, 6),
             tiers(reasoningEffortOptions(supportedEfforts = SELECTABLE_REASONING_EFFORTS)))
-        // Moving the marks moves the colours with them.
-        val low = reasoningEffortOptions(supportedEfforts = listOf("minimal", "low"))
-        assertEquals(listOf(0, 1, 5, 6), tiers(low))
+        assertEquals(listOf(0, 1, 2, 6),
+            tiers(reasoningEffortOptions(supportedEfforts = listOf("minimal", "low"))))
+        assertTrue(tiers(reasoningEffortOptions(SELECTABLE_REASONING_EFFORTS)).none { it == 5 })
+        assertEquals(Color.Green, reasoningEffortAccent(5, Color.Green))
+        assertEquals(Color(0xFFB91C1C), reasoningEffortAccent(6, Color.Green))
     }
 
-    @Test fun aSingleLevelOnlyKeepsPurpleAndDefaultStaysUncoloured() {
+    @Test fun singleLevelGetsTheMaximumColourAndDefaultStaysUncoloured() {
         val options = reasoningEffortOptions(supportedEfforts = listOf("medium"))
         assertEquals(listOf(null, "medium"), efforts(options).filter { it != "none" })
-        assertEquals(listOf(0, 1, 5), tiers(options))
-        assertTrue(tiers(options).none { it == 6 })
+        assertEquals(listOf(0, 1, 6), tiers(options))
     }
 
     @Test fun aThinkingModelWithoutLevelsGetsAnActiveStepAfterDefault() {
         val options = reasoningEffortOptions(supportedEfforts = emptyList())
         assertEquals(listOf("none", null, REASONING_EFFORT_ACTIVE), efforts(options))
         assertEquals(listOf("None", "Default", "Active"), options.map { it.label })
-        assertEquals(listOf(0, 1, 5), tiers(options))
+        assertEquals(listOf(0, 1, 6), tiers(options))
         assertEquals(2, reasoningEffortIndex(REASONING_EFFORT_ACTIVE, options))
         assertEquals(1, reasoningEffortIndex(null, options))
     }
@@ -98,7 +98,7 @@ class ReasoningEffortControlTest {
         assertFalse(efforts(reasoningEffortOptions(supportedEfforts = listOf("low"))).contains(REASONING_EFFORT_ACTIVE))
     }
 
-    @Test fun maximumEffectsLastLongerThanThePurpleOne() {
-        assertTrue(reasoningEffortBurstDuration(6) > reasoningEffortBurstDuration(5))
+    @Test fun maximumEffectsLastLongerThanRegularLevels() {
+        assertTrue(reasoningEffortBurstDuration(6) > reasoningEffortBurstDuration(4))
     }
 }

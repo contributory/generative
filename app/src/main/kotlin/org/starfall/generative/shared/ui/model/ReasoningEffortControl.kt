@@ -1,7 +1,6 @@
 package org.starfall.generative.shared.ui.model
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -25,7 +24,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
@@ -33,7 +31,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.LayoutDirection
-import kotlin.math.hypot
 import kotlin.math.roundToInt
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.language.DEFAULT_REASONING_EFFORTS
@@ -67,28 +64,18 @@ internal fun reasoningEffortLabel(
 private fun isReasoningLevel(effort: String?): Boolean =
     effort != null && reasoningEffortEnabled(effort) && effort != REASONING_EFFORT_ACTIVE
 
-/**
- * Colour tiers follow the model's own levels: its two highest levels get the purple and red
- * effects, lower ones keep the normal colours. A single level only gets purple, Default never
- * gets a colour, and Active (a thinking model without levels) is purple.
- */
+/** Only the highest available reasoning level gets the maximum-effort colour effect. */
 internal fun reasoningEffortTier(index: Int, options: List<ReasoningEffortOption>): Int {
     val option = options.getOrNull(index) ?: return 1
     if (!reasoningEffortEnabled(option.effort)) return 0
     if (option.effort == null) return 1
-    if (option.effort == REASONING_EFFORT_ACTIVE) return 5
+    if (option.effort == REASONING_EFFORT_ACTIVE) return 6
     val levels = options.filter { isReasoningLevel(it.effort) }
-    if (levels.size == 1) return 5
     val position = levels.indexOf(option)
-    return when (levels.lastIndex - position) {
-        0 -> 6
-        1 -> 5
-        else -> minOf(2 + position, 4)
-    }
+    return if (position == levels.lastIndex) 6 else minOf(2 + position, 4)
 }
 
 internal fun reasoningEffortAccent(tier: Int, default: Color): Color = when (tier) {
-    5 -> Color(0xFF8B5CF6)
     6 -> Color(0xFFB91C1C)
     else -> default
 }
@@ -97,8 +84,7 @@ internal fun reasoningEffortBurstDuration(tier: Int): Int = when (tier) {
     0, 1 -> 850
     2 -> 1050
     3 -> 1250
-    4 -> 1500
-    5 -> 2600
+    4, 5 -> 1500
     else -> 4200
 }
 
@@ -139,8 +125,7 @@ internal fun ReasoningEffortControl(
     onEffortChange: (String?) -> Unit,
     onPreviewValueChange: (Float) -> Unit = {},
     options: List<ReasoningEffortOption> = reasoningEffortOptions(labels = localizedReasoningEffortLabels()),
-    onColorBurst: (Offset, Int) -> Unit = { _, _ -> },
-    trackBackground: Color = MaterialTheme.colorScheme.surface
+    onColorBurst: (Offset, Int) -> Unit = { _, _ -> }
 ) {
     var sliderValue by remember(effort, options) {
         mutableFloatStateOf(reasoningEffortIndex(effort, options).toFloat())
@@ -156,7 +141,6 @@ internal fun ReasoningEffortControl(
     var trackBounds by remember { mutableStateOf(Rect.Zero) }
     fun colorBand(value: Float) = reasoningEffortTier(value.roundToInt(), options)
     val band = colorBand(sliderValue)
-    var previousColorBand by remember { mutableIntStateOf(band) }
     val defaultColor = MaterialTheme.colorScheme.primary
     val defaultInactive = MaterialTheme.colorScheme.primaryContainer
     fun accentFor(tier: Int) = reasoningEffortAccent(tier, defaultColor)
@@ -178,14 +162,16 @@ internal fun ReasoningEffortControl(
                     onPreviewValueChange(it)
                     val nextBand = colorBand(it)
                     if (nextBand != previousBand && trackBounds.width > 0f) {
-                        previousColorBand = previousBand
-                        val fraction = (it / maximumValue).coerceIn(0f, 1f)
+                        // On departure, gather the red colour back into the highest detent,
+                        // not into the new thumb position.
+                        val fraction = (if (previousBand == 6) 1f else it / maximumValue).coerceIn(0f, 1f)
                         val physicalFraction = if (layoutDirection == LayoutDirection.Rtl) 1f - fraction else fraction
                         val origin = Offset(trackBounds.width * physicalFraction, trackBounds.height / 2f)
-                        // Lower tiers retain their normal static colors. Only purple/red transitions
-                        // get the bloom and screen effects.
-                        if (nextBand >= 5 || previousBand >= 5) {
-                            burst.start(origin, accentFor(nextBand), reasoningEffortBurstDuration(nextBand))
+                        if (nextBand == 6) {
+                            burst.start(origin, accentFor(6), reasoningEffortBurstDuration(6))
+                            onColorBurst(trackBounds.topLeft + origin, nextBand)
+                        } else if (previousBand == 6) {
+                            burst.retract(origin)
                             onColorBurst(trackBounds.topLeft + origin, nextBand)
                         }
                     }
@@ -228,35 +214,21 @@ internal fun ReasoningEffortControl(
                                      topLeft = Offset(if (layoutDirection == LayoutDirection.Rtl) size.width - width else 0f, 0f),
                                      size = Size(width, size.height), cornerRadius = radius)
                              }
-                             fun paintTrack(tier: Int) {
-                                 if (tier < 5) {
-                                     paintDefaultTrack()
-                                 } else {
-                                     drawRoundRect(Brush.horizontalGradient(
-                                         if (tier == 6) listOf(Color(0xFF991B1B), Color(0xFF160406))
-                                         else listOf(lerp(trackBackground, accentFor(tier), 0.5f), accentFor(tier))
-                                     ), cornerRadius = radius)
-                                 }
+                             fun paintMaxTrack() {
+                                 drawRoundRect(Brush.horizontalGradient(
+                                     listOf(Color(0xFF991B1B), Color(0xFF160406))
+                                 ), cornerRadius = radius)
                              }
-                             val animatingStrongTier = band >= 5 && previousColorBand >= 5 && burst.progress.value < 1f
-                             paintTrack(if (animatingStrongTier) previousColorBand else band)
-                             // Reveal purple/red from the thumb instead of sweeping from an edge.
-                             if (band >= 5 && burst.progress.value < 1f) {
-                                 if (burst.progress.value >= 0.52f) {
-                                     paintTrack(band)
-                                 } else {
-                                     val radius = 14.dp.toPx() + hypot(size.width, size.height) * burst.bloomProgress
-                                     clipPath(androidx.compose.ui.graphics.Path().apply {
-                                         addOval(Rect(burst.origin, radius))
-                                     }) { paintTrack(band) }
-                                 }
+                             paintDefaultTrack()
+                             if (band == 6 || burst.isRetracting) {
+                                 revealThinkingColor(burst) { paintMaxTrack() }
                              }
                             // Subtle detents remain visible beneath the settling color.
                             repeat(options.size) { index ->
                                 val x = size.width * index / options.lastIndex
                                   drawCircle(Color.White.copy(alpha = 0.32f), 1.25.dp.toPx(), Offset(x, size.height / 2f))
                              }
-                              if (band >= 5) drawThinkingColorBurst(burst)
+                              if (band == 6) drawThinkingColorBurst(burst)
                         })
                 },
                 modifier = Modifier.fillMaxWidth().testTag("reasoning-slider")
@@ -264,11 +236,7 @@ internal fun ReasoningEffortControl(
             Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 options.forEachIndexed { index, option ->
                     Text(option.label, style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                        color = when {
-                            index != sliderValue.roundToInt() -> labelColor.copy(alpha = 0.65f)
-                            band < 5 -> labelColor
-                            else -> labelColor
-                        })
+                        color = if (index == sliderValue.roundToInt()) labelColor else labelColor.copy(alpha = 0.65f))
                 }
             }
         }
@@ -284,9 +252,4 @@ internal fun maximumEffortCardBrush(): Brush = Brush.horizontalGradient(
         0.78f to Color(0xFFEA580C),
         1.00f to Color(0xFF1A0A06)
     )
-)
-
-/** Physical left-to-right colors: the strongest purple stays on the right. */
-internal fun maximumThinkingCardBrush(surface: Color): Brush = Brush.horizontalGradient(
-    listOf(lerp(surface, Color(0xFF7C3AED), 0.16f), lerp(surface, Color(0xFF7C3AED), 0.48f))
 )

@@ -327,7 +327,10 @@ internal fun BottomSheetsLink(
         // A conversation override wins; otherwise show the level saved for this model.
         val effectiveReasoningEffort = conversationReasoningEffort ?: selectedConfig.reasoningEffort
         val previewTier = rememberPreviewTier(selectedConfig, effectiveReasoningEffort)
-        val style = selectedModelSheetStyle(modelSheetPage == ModelSheetPage.SELECTED_MODEL && previewTier.intValue == 6 && selectedConfig.supportsThinking)
+        val style = selectedModelSheetStyle(
+            modelSheetPage == ModelSheetPage.SELECTED_MODEL && previewTier.intValue == 6 && selectedConfig.supportsThinking,
+            modelSheetPage == ModelSheetPage.SELECTED_MODEL && selectedModelScreenBurst.isRetracting
+        )
         CompositionLocalProvider(LocalThinkingScreenBurst provides selectedModelScreenBurst) {
             ThinkingScreenBurstLayer(selectedModelScreenBurst)
             // One sheet for all pages: switching slides the content and animates the height in place.
@@ -344,6 +347,9 @@ internal fun BottomSheetsLink(
                 // Read in the draw phase: the reveal animates every frame and must not recompose the sheet.
                 containerBrushRevealOrigin = { selectedModelScreenBurst.origin.takeIf { it != Offset.Zero } },
                 containerBrushRevealProgress = { selectedModelScreenBurst.progress.value },
+                containerBrushRetractionProgress = {
+                    selectedModelScreenBurst.retractionProgress.value.takeIf { selectedModelScreenBurst.isRetracting }
+                },
                 containerOverlay = style.overlay,
                 contentKey = modelSheetPage
             ) {

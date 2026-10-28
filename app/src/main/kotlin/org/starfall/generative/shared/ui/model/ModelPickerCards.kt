@@ -54,7 +54,6 @@ import org.starfall.generative.shared.ui.model.ReasoningEffortControl
 import org.starfall.generative.shared.ui.model.ThinkingScreenBurstLayer
 import org.starfall.generative.shared.ui.model.localizedReasoningEffortLabels
 import org.starfall.generative.shared.ui.model.maximumEffortCardBrush
-import org.starfall.generative.shared.ui.model.maximumThinkingCardBrush
 import org.starfall.generative.shared.ui.model.reasoningEffortBurstDuration
 import org.starfall.generative.shared.ui.model.reasoningEffortIndex
 import org.starfall.generative.shared.ui.model.reasoningEffortOptions
@@ -109,10 +108,11 @@ internal fun ModelPickerCard(
         mutableFloatStateOf(reasoningEffortIndex(conversationReasoningEffort, effortOptions).toFloat())
     }
     val tier = reasoningEffortTier(previewReasoningValue.roundToInt(), effortOptions)
-    val enhancedThinking = isSelected && showReasoningEffort && config.supportsThinking && tier >= 5
+    val enhancedThinking = isSelected && showReasoningEffort && config.supportsThinking && tier == 6
+    val cardBurst = rememberThinkingColorBurst()
     val cardTint by animateFloatAsState(
-        if (enhancedThinking) 1f else 0f,
-        tween(if (tier == 6) 1800 else 2600, easing = FastOutSlowInEasing),
+        if (enhancedThinking || cardBurst.isRetracting) 1f else 0f,
+        tween(1800, easing = FastOutSlowInEasing),
         label = "thinkingCardTint"
     )
     val cardShape = RoundedCornerShape(12.dp)
@@ -120,13 +120,10 @@ internal fun ModelPickerCard(
     val amoled = LocalAmoledMode.current
     val cardBase = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
         else prominentContainerColor()
-    val settledCardColor = cardBase
-    val cardBrush = if (tier == 6) maximumEffortCardBrush()
-        else maximumThinkingCardBrush(cardBase)
-    val cardBurst = rememberThinkingColorBurst()
+    val cardBrush = maximumEffortCardBrush()
     val screenBurst = LocalThinkingScreenBurst.current
     var cardOrigin by remember { mutableStateOf(Offset.Zero) }
-    val cardContentColor = if (!embedded && enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
+    val cardContentColor = if (!embedded && enhancedThinking) Color.White else MaterialTheme.colorScheme.onSurface
     val cardGesture = Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
     val cardModifier = modifier.fillMaxWidth().then(
         if (embedded) Modifier else Modifier.clip(cardShape).then(cardGesture)
@@ -137,8 +134,10 @@ internal fun ModelPickerCard(
         .then(
             if (drawBackground) Modifier.drawBehind {
                 revealThinkingColor(cardBurst) {
-                    drawRect(cardBrush, alpha = cardTint)
-                    if (tier == 6) drawMaximumEffortStreaks(cardTint)
+                    if (tier == 6 || cardBurst.isRetracting) {
+                        drawRect(cardBrush, alpha = cardTint)
+                        drawMaximumEffortStreaks(cardTint)
+                    }
                 }
             } else Modifier
         )
@@ -150,7 +149,7 @@ internal fun ModelPickerCard(
                         .clip(embeddedShape)
                         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
                         .then(
-                            if (amoled && !(enhancedThinking && tier >= 5)) {
+                            if (amoled && !(enhancedThinking)) {
                                 Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, embeddedShape)
                             } else Modifier
                         )
@@ -178,7 +177,7 @@ internal fun ModelPickerCard(
                         Text(
                             text = stringResource(R.string.model_label_id, compactModelLabel(modelId)),
                             style = MaterialTheme.typography.labelSmall,
-                             color = if (!embedded && enhancedThinking && tier >= 5) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                             color = if (!embedded && enhancedThinking) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -268,7 +267,7 @@ internal fun ModelPickerCard(
                         Text(
                             text = stringResource(R.string.reasoning_effort_title),
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = if (!embedded && enhancedThinking && tier >= 5) Color.White else MaterialTheme.colorScheme.onSurface
+                            color = if (!embedded && enhancedThinking) Color.White else MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -296,30 +295,20 @@ internal fun ModelPickerCard(
                     },
                     options = effortOptions,
                     onColorBurst = { origin, selectedTier ->
-                         val burstColor = if (selectedTier == 6) Color(0xFFDC2626) else Color(0xFFA78BFA)
-                         if (selectedTier >= 5) cardBurst.start(origin - cardOrigin, burstColor,
-                             reasoningEffortBurstDuration(selectedTier))
-                         screenBurst?.let { burst ->
-                             when (selectedTier) {
-                                 6 -> burst.start(
-                                     origin = origin,
-                                     color = burstColor,
-                                     durationMillis = 6500,
-                                     keepAfterCompletion = true,
-                                     starCount = 180
-                                 )
-                                 5 -> if (embedded) burst.hide() else burst.start(
-                                     origin = origin,
-                                     color = Color(0xFFA78BFA),
-                                     durationMillis = 2600,
-                                     keepAfterCompletion = false,
-                                     starCount = 32
-                                 )
-                                 else -> burst.hide()
-                             }
-                         }
-                    },
-                    trackBackground = settledCardColor
+                        if (selectedTier == 6) {
+                            cardBurst.start(origin - cardOrigin, Color(0xFFDC2626), reasoningEffortBurstDuration(6))
+                            screenBurst?.start(
+                                origin = origin,
+                                color = Color(0xFFDC2626),
+                                durationMillis = 6500,
+                                keepAfterCompletion = true,
+                                starCount = 180
+                            )
+                        } else {
+                            cardBurst.retract(origin - cardOrigin)
+                            screenBurst?.retract(origin)
+                        }
+                    }
                 )
             }
     }

@@ -49,15 +49,14 @@ internal class SelectedModelSheetStyle(
 )
 
 @Composable
-internal fun selectedModelSheetStyle(maxEffort: Boolean): SelectedModelSheetStyle {
-    // The purple tier is shown only on the effort control; max effort keeps its red sheet treatment.
-    val brush = if (maxEffort) maximumEffortCardBrush() else null
-    val color = if (brush == null) MaterialTheme.colorScheme.surfaceContainerLow else MaterialTheme.colorScheme.surface
+internal fun selectedModelSheetStyle(maxEffort: Boolean, retracting: Boolean = false): SelectedModelSheetStyle {
+    val brush = if (maxEffort || retracting) maximumEffortCardBrush() else null
+    val color = if (maxEffort) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceContainerLow
     return SelectedModelSheetStyle(
         color = color,
         brush = brush,
         navigationBarColor = if (maxEffort) Color(0xFF1A0A06) else color,
-        overlay = if (maxEffort) ({ drawMaximumEffortStreaks(1f) }) else null
+        overlay = if (maxEffort || retracting) ({ drawMaximumEffortStreaks(1f) }) else null
     )
 }
 
@@ -90,7 +89,10 @@ internal fun SelectedModelOverviewSheet(
 ) {
     val previewTier = rememberPreviewTier(config, conversationReasoningEffort)
     val screenBurst = LocalThinkingScreenBurst.current
-    val style = selectedModelSheetStyle(previewTier.intValue == 6 && config.supportsThinking)
+    val style = selectedModelSheetStyle(
+        previewTier.intValue == 6 && config.supportsThinking,
+        screenBurst?.isRetracting == true
+    )
     AppSheet(onDismissRequest = {
         screenBurst?.hide()
         onDismiss()
@@ -99,6 +101,7 @@ internal fun SelectedModelOverviewSheet(
         // Read in the draw phase: the reveal animates every frame and must not recompose the sheet.
         containerBrushRevealOrigin = { screenBurst?.origin?.takeIf { it != Offset.Zero } },
         containerBrushRevealProgress = { screenBurst?.progress?.value ?: 1f },
+        containerBrushRetractionProgress = { screenBurst?.takeIf { it.isRetracting }?.retractionProgress?.value },
         containerOverlay = style.overlay
     ) {
         // The sheet is its own window, so the screen-owned star overlay must also be attached to it;
@@ -151,7 +154,7 @@ internal fun SelectedModelOverviewContent(
         // A max-effort burst is started only by crossing into the red tier on the slider.
         // Reopening this sheet at an already-selected max tier should not replay it.
         when {
-            previewTier != 6 && screenBurst?.keepAfterCompletion == true -> screenBurst.hide()
+            previewTier != 6 && screenBurst?.keepAfterCompletion == true && !screenBurst.isRetracting -> screenBurst.hide()
             previewTier == 6 && config.supportsThinking && screenBurst != null && !screenBurst.keepAfterCompletion ->
                 screenBurst.restoreSettled()
         }
@@ -235,7 +238,7 @@ internal fun SelectedModelOverviewContent(
         // Show the dropdown only when this model has at least one configurable option.
         // Keep optional model controls tucked away until the user opens Model Options.
         if (visibleModelTools.isNotEmpty() || config.supportsThinking) {
-            val burstActive = previewTier >= 5 && config.supportsThinking
+            val burstActive = previewTier == 6 && config.supportsThinking
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = if (burstActive) {

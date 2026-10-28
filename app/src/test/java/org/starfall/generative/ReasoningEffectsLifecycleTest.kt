@@ -26,6 +26,8 @@ import org.starfall.generative.features.home.shared.ui.SelectedModelOverviewShee
 class ReasoningEffectsLifecycleTest {
     @get:Rule val compose = createComposeRule()
 
+    private val multiLevelConfig = ModelConfiguration(reasoningEfforts = listOf("low", "medium", "high", "xhigh", "max"))
+
     @Test fun maxStarsAreHiddenOnDismissalAndRestoredWhenTheSheetReopens() {
         var clicks = 0
         lateinit var burst: ThinkingColorBurst
@@ -46,7 +48,7 @@ class ReasoningEffectsLifecycleTest {
                             provider = provider,
                             folderName = null,
                             modelId = "Effect model",
-                            config = ModelConfiguration(),
+                            config = multiLevelConfig,
                             conversationReasoningEffort = effort,
                             onSetReasoningEffort = { effort = it },
                             onOpenModelPicker = { sheetVisible = false },
@@ -58,7 +60,7 @@ class ReasoningEffectsLifecycleTest {
         }
         compose.waitForIdle()
         compose.mainClock.autoAdvance = false
-        // OpenAI exposes a trailing "Max" option, so index 6 is the strongest (red) tier.
+        // Five configured levels mean Max is the sixth index (None/Default precede them).
         compose.onNodeWithTag("reasoning-slider").performSemanticsAction(SemanticsActions.SetProgress) {
             it(6f)
         }
@@ -93,7 +95,7 @@ class ReasoningEffectsLifecycleTest {
                         provider = provider,
                         folderName = null,
                         modelId = "Effect model",
-                        config = ModelConfiguration(),
+                        config = multiLevelConfig,
                         conversationReasoningEffort = effort,
                         onSetReasoningEffort = { effort = it },
                         onOpenModelPicker = {},
@@ -118,14 +120,53 @@ class ReasoningEffectsLifecycleTest {
         }
     }
 
-    @Test fun draggingToTheSecondStrongestTierKeepsItsBloomPlaying() {
+    @Test fun secondHighestLevelKeepsTheNormalColourWithoutAStarBurst() {
         lateinit var burst: ThinkingColorBurst
         setUpSheet { burst = it }
         compose.onNodeWithTag("reasoning-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(5f) }
         compose.mainClock.advanceTimeBy(300)
         compose.runOnIdle {
-            assertNotEquals(androidx.compose.ui.geometry.Offset.Zero, burst.origin)
-            assertTrue("Entering the purple tier must not cancel its own bloom", burst.progress.value < 1f)
+            assertFalse("The penultimate level must not have a purple bloom", burst.keepAfterCompletion)
+            assertFalse(burst.isRetracting)
+            assertEquals(1f, burst.progress.value, 0.001f)
+        }
+    }
+
+    @Test fun leavingMaximumRetractsItsEffectInsteadOfHidingImmediately() {
+        lateinit var burst: ThinkingColorBurst
+        setUpSheet { burst = it }
+        compose.onNodeWithTag("reasoning-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(6f) }
+        compose.mainClock.advanceTimeBy(1500)
+        compose.onNodeWithTag("reasoning-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(5f) }
+        compose.mainClock.advanceTimeBy(180)
+        compose.runOnIdle {
+            assertTrue("The outgoing maximum effect should contract", burst.isRetracting)
+            assertTrue(burst.retractionProgress.value in 0f..1f)
+            assertTrue(burst.retractionProgress.value < 1f)
+            assertTrue(burst.retractionProgress.value > 0f)
+            assertFalse(burst.keepAfterCompletion)
+        }
+        compose.mainClock.advanceTimeBy(1200)
+        compose.runOnIdle {
+            assertFalse(burst.isRetracting)
+            assertEquals(0f, burst.retractionProgress.value, 0.001f)
+            assertEquals(0, burst.starCount)
+        }
+    }
+
+    @Test fun returningToMaximumInterruptsTheRetraction() {
+        lateinit var burst: ThinkingColorBurst
+        setUpSheet { burst = it }
+        compose.onNodeWithTag("reasoning-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(6f) }
+        compose.mainClock.advanceTimeBy(250)
+        compose.onNodeWithTag("reasoning-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(5f) }
+        compose.mainClock.advanceTimeBy(100)
+        compose.onNodeWithTag("reasoning-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(6f) }
+        compose.mainClock.advanceTimeBy(100)
+        compose.runOnIdle {
+            assertFalse(burst.isRetracting)
+            assertTrue(burst.keepAfterCompletion)
+            assertTrue("The returning maximum effect should bloom again", burst.progress.value < 1f)
         }
     }
 }

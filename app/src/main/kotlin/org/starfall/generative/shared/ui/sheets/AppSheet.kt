@@ -95,6 +95,8 @@ fun AppSheet(
     containerBrushRevealOrigin: (() -> Offset?)? = null,
     /** Reveal progress in 0..1 (the circle is full at 0.52, matching the thinking bloom). Read while drawing. */
     containerBrushRevealProgress: (() -> Float)? = null,
+    /** When present, collapse the outgoing brush toward its reveal origin (1 = full, 0 = gone). */
+    containerBrushRetractionProgress: (() -> Float?)? = null,
     navigationBarColor: Color? = null,
     dragHandleHeight: Dp = 48.dp,
     dragHandleWidth: Dp = 32.dp,
@@ -207,7 +209,16 @@ fun AppSheet(
                         }
                         val localOrigin = containerBrushRevealOrigin?.invoke()?.let { it - containerOriginOnScreen }
                         val progress = (containerBrushRevealProgress?.invoke() ?: 1f).coerceIn(0f, 1f)
-                        if (localOrigin == null || progress >= 0.52f) {
+                        val retraction = containerBrushRetractionProgress?.invoke()
+                        if (localOrigin != null && retraction != null) {
+                            // Keep the ordinary sheet surface visible underneath while the
+                            // outgoing maximum-effort colour shrinks into its slider detent.
+                            settledBrush.brush = null
+                            val radius = hypot(size.width, size.height) * retraction.coerceIn(0f, 1f)
+                            clipPath(Path().apply { addOval(androidx.compose.ui.geometry.Rect(localOrigin, radius)) }) {
+                                drawTarget()
+                            }
+                        } else if (localOrigin == null || progress >= 0.52f) {
                             drawTarget()
                             settledBrush.brush = containerBrush
                         } else {
