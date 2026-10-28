@@ -620,6 +620,8 @@
     <string name="settings_speech_services_description">Modèles de synthèse vocale et voix</string>
     <string name="settings_storage">Stockage des médias</string>
     <string name="storage_short_title">Médias</string>
+    <string name="storage_media_empty">Aucune photo, vidéo ou piste audio enregistrée.</string>
+    <string name="storage_media_no_results">Aucun média correspondant.</string>
     <string name="settings_storage_description">Fichiers créés par vos outils</string>
     <string name="storage_open_in_files">Ouvrir dans Fichiers</string>
     <string name="storage_open_in_files_failed">Impossible d’ouvrir le gestionnaire de fichiers du système.</string>

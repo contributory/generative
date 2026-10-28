@@ -620,6 +620,8 @@
     <string name="settings_speech_services_description">Text-to-Speech-Modelle und Stimmen</string>
     <string name="settings_storage">Medienspeicher</string>
     <string name="storage_short_title">Medien</string>
+    <string name="storage_media_empty">Noch keine Fotos, Videos oder Audiodateien gespeichert.</string>
+    <string name="storage_media_no_results">Keine passenden Medien.</string>
     <string name="settings_storage_description">Von deinen Tools erstellte Dateien</string>
     <string name="storage_open_in_files">In Dateien öffnen</string>
     <string name="storage_open_in_files_failed">Der Dateimanager des Systems konnte nicht geöffnet werden.</string>

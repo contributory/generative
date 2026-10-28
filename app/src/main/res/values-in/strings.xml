@@ -620,6 +620,8 @@
     <string name="settings_speech_services_description">Model text-to-speech dan suara</string>
     <string name="settings_storage">Penyimpanan Media</string>
     <string name="storage_short_title">Media</string>
+    <string name="storage_media_empty">Belum ada foto, video, atau audio yang disimpan.</string>
+    <string name="storage_media_no_results">Tidak ada media yang cocok.</string>
     <string name="settings_storage_description">Berkas yang dibuat oleh alat Anda</string>
     <string name="storage_open_in_files">Buka di Berkas</string>
     <string name="storage_open_in_files_failed">Tidak dapat membuka pengelola berkas sistem.</string>

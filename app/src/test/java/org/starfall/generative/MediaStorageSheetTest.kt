@@ -1,0 +1,52 @@
+package org.starfall.generative
+
+import androidx.compose.ui.test.assertDoesNotExist
+import androidx.compose.ui.test.assertExists
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTextInput
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.starfall.generative.features.storage.ui.MediaStorageSheet
+import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.theme.GenerativeTheme
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi", application = LibraryTestApplication::class)
+class MediaStorageSheetTest {
+    @get:Rule val compose = createComposeRule()
+    @get:Rule val temporary = TemporaryFolder()
+
+    @Test
+    fun drawerMediaSheetShowsMediaGridAndFiltersByFilename() {
+        temporary.newFile("portrait.png")
+        temporary.newFile("clip.mp4")
+        temporary.newFile("song.mp3")
+        temporary.newFile("notes.txt")
+
+        compose.setContent {
+            GenerativeTheme(darkTheme = false, amoledMode = false) {
+                MediaStorageSheet(ToolFiles(temporary.root), onDismiss = {})
+            }
+        }
+
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithTag("media-storage-file_clip.mp4")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("media-storage-grid").assertExists()
+        compose.onNodeWithTag("media-storage-file_portrait.png").assertExists()
+        compose.onNodeWithTag("media-storage-file_song.mp3").assertExists()
+        compose.onNodeWithTag("media-storage-file_notes.txt").assertDoesNotExist()
+
+        compose.onNodeWithTag("media-storage-search").performTextInput("clip")
+        compose.onNodeWithTag("media-storage-file_clip.mp4").assertExists()
+        compose.onNodeWithTag("media-storage-file_portrait.png").assertDoesNotExist()
+        compose.onNodeWithTag("media-storage-file_song.mp3").assertDoesNotExist()
+    }
+}

@@ -704,6 +704,8 @@
     <string name="settings_speech_services_description">Text-to-speech models &amp; voices</string>
     <string name="settings_storage">Media Storage</string>
     <string name="storage_short_title">Media</string>
+    <string name="storage_media_empty">No saved photos, videos, or audio yet.</string>
+    <string name="storage_media_no_results">No matching media.</string>
     <string name="settings_storage_description">Files created by your tools</string>
     <string name="storage_open_in_files">Open in Files</string>
     <string name="storage_open_in_files_failed">Could not open the system file manager.</string>

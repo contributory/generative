@@ -167,6 +167,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       └── 📄 SpeechServicesScreen.kt
 │   ├── 📁 storage/
 │   │   └── 📁 ui/
+│   │       ├── 📄 MediaStorageSheet.kt
 │   │       └── 📄 StorageScreen.kt
 │   └── 📁 tools/
 │       └── 📁 ui/

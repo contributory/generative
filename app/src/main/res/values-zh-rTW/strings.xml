@@ -620,6 +620,8 @@
     <string name="settings_speech_services_description">文字轉語音模型與語音</string>
     <string name="settings_storage">媒體儲存空間</string>
     <string name="storage_short_title">媒體</string>
+    <string name="storage_media_empty">尚無已儲存的照片、影片或音訊。</string>
+    <string name="storage_media_no_results">找不到符合的媒體。</string>
     <string name="settings_storage_description">由你的工具建立的檔案</string>
     <string name="storage_open_in_files">在「檔案」中開啟</string>
     <string name="storage_open_in_files_failed">無法開啟系統檔案管理員。</string>

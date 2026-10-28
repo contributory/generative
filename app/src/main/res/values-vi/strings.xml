@@ -620,6 +620,8 @@
     <string name="settings_speech_services_description">Mô hình tổng hợp giọng nói và giọng đọc</string>
     <string name="settings_storage">Bộ nhớ media</string>
     <string name="storage_short_title">Media</string>
+    <string name="storage_media_empty">Chưa có ảnh, video hoặc âm thanh nào được lưu.</string>
+    <string name="storage_media_no_results">Không tìm thấy media phù hợp.</string>
     <string name="settings_storage_description">Các tệp do công cụ của bạn tạo ra</string>
     <string name="storage_open_in_files">Mở bằng Tệp</string>
     <string name="storage_open_in_files_failed">Không thể mở trình quản lý tệp của hệ thống.</string>

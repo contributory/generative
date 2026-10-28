@@ -620,6 +620,8 @@
     <string name="settings_speech_services_description">音声合成モデルと音声</string>
     <string name="settings_storage">メディアストレージ</string>
     <string name="storage_short_title">メディア</string>
+    <string name="storage_media_empty">保存済みの写真、動画、音声はまだありません。</string>
+    <string name="storage_media_no_results">一致するメディアがありません。</string>
     <string name="settings_storage_description">ツールが作成したファイル</string>
     <string name="storage_open_in_files">ファイルで開く</string>
     <string name="storage_open_in_files_failed">システムのファイルマネージャーを開けませんでした。</string>

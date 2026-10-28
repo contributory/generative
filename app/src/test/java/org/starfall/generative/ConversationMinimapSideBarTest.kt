@@ -183,8 +183,11 @@ class ConversationMinimapSideBarTest {
         assertEquals(104.dp, edge.top)
         compose.onNodeWithTag("chat-minimap-edge").performClick()
         assertInsideGap("chat-minimap-sidebar")
+        val anchoredTop = compose.onNodeWithTag("chat-minimap-sidebar").getUnclippedBoundsInRoot().top
+        assertEquals(104.dp, anchoredTop)
         compose.runOnIdle { inputHeight = 360.dp }
         assertInsideGap("chat-minimap-sidebar")
+        assertEquals(anchoredTop, compose.onNodeWithTag("chat-minimap-sidebar").getUnclippedBoundsInRoot().top)
     }
 
 }

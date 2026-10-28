@@ -3,6 +3,15 @@ package org.starfall.generative
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipe
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.constrainHeight
+import org.starfall.generative.shared.ui.sheets.AppSheet
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -113,6 +122,37 @@ class ModelSheetTransitionTest {
         assertEquals(sheetNodeId, restored.id)
         assertEquals(overviewHeight, restored.boundsInRoot.height, 2f)
         compose.onNodeWithTag("open-model-picker-button").assertIsDisplayed()
+    }
+
+    @Test
+    fun resizeHandleUsesLatestHeightAfterContentOnlyRemeasures() {
+        val contentHeight = mutableIntStateOf(300)
+        compose.setContent {
+            MaterialTheme {
+                AppSheet(onDismissRequest = {}) {
+                    // Read the height during measurement, without recomposing the caller.
+                    Layout(content = {}, modifier = Modifier) { _, constraints ->
+                        layout(constraints.maxWidth, constraints.constrainHeight(contentHeight.intValue.dp.roundToPx())) {}
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
+        val before = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
+        compose.runOnIdle { contentHeight.intValue = 400 }
+        compose.waitForIdle()
+        val grown = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
+        val growth = with(compose.density) { 100.dp.toPx() }
+        assertEquals(growth, grown - before, 2f)
+
+        val dragDistance = with(compose.density) { 80.dp.toPx() }
+        compose.onNodeWithTag("bottom-sheet-drag-handle").performTouchInput {
+            swipe(center, center - Offset(0f, dragDistance), 300)
+        }
+        compose.waitForIdle()
+        val resized = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
+        assertTrue("Dragging must start from the latest measured height", resized > grown + dragDistance / 2f)
+        assertTrue("Resizing must not jump beyond the gesture distance", resized <= grown + dragDistance + 2f)
     }
 
     @Test

@@ -339,8 +339,8 @@ internal fun BottomSheetsLink(
                 containerColor = style.color,
                 containerBrush = style.brush,
                 navigationBarColor = style.navigationBarColor,
-                // Only the picker has a scrolling list with its own navigation-bar safe padding.
-                contentBehindNavigationBar = modelSheetPage == ModelSheetPage.MODEL_PICKER,
+                // Keep the outer inset stable while pages slide and animate their height.
+                contentBehindNavigationBar = false,
                 // Read in the draw phase: the reveal animates every frame and must not recompose the sheet.
                 containerBrushRevealOrigin = { selectedModelScreenBurst.origin.takeIf { it != Offset.Zero } },
                 containerBrushRevealProgress = { selectedModelScreenBurst.progress.value },
@@ -375,6 +375,7 @@ internal fun BottomSheetsLink(
                             },
                             onSetReasoningEffort = {},
                             showReasoningEffort = false,
+                            includeNavigationBarPadding = false,
                             dynamicModelsMap = if (mediaKind != null) emptyMap() else dynamicModelsMap.toMap(),
                             modelFilter = if (mediaKind == null) chatModelPickerFilter else { _, _, config -> config.modelType == mediaKind },
                             onEditProvider = onEditProvider,

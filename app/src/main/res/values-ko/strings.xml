@@ -620,6 +620,8 @@
     <string name="settings_speech_services_description">음성 합성 모델과 음성</string>
     <string name="settings_storage">미디어 저장소</string>
     <string name="storage_short_title">미디어</string>
+    <string name="storage_media_empty">저장된 사진, 동영상, 오디오가 없습니다.</string>
+    <string name="storage_media_no_results">일치하는 미디어가 없습니다.</string>
     <string name="settings_storage_description">도구가 만든 파일</string>
     <string name="storage_open_in_files">파일 앱에서 열기</string>
     <string name="storage_open_in_files_failed">시스템 파일 관리자를 열지 못했습니다.</string>

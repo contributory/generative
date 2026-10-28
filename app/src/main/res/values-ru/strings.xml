@@ -620,6 +620,8 @@
     <string name="settings_speech_services_description">Модели синтеза речи и голоса</string>
     <string name="settings_storage">Хранилище медиа</string>
     <string name="storage_short_title">Медиа</string>
+    <string name="storage_media_empty">Пока нет сохранённых фото, видео или аудио.</string>
+    <string name="storage_media_no_results">Нет подходящих медиафайлов.</string>
     <string name="settings_storage_description">Файлы, созданные вашими инструментами</string>
     <string name="storage_open_in_files">Открыть в «Файлах»</string>
     <string name="storage_open_in_files_failed">Не удалось открыть системный файловый менеджер.</string>

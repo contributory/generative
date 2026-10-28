@@ -620,6 +620,8 @@
     <string name="settings_speech_services_description">文字转语音模型和语音</string>
     <string name="settings_storage">媒体存储</string>
     <string name="storage_short_title">媒体</string>
+    <string name="storage_media_empty">还没有保存的照片、视频或音频。</string>
+    <string name="storage_media_no_results">没有匹配的媒体。</string>
     <string name="settings_storage_description">由你的工具创建的文件</string>
     <string name="storage_open_in_files">在“文件”中打开</string>
     <string name="storage_open_in_files_failed">无法打开系统文件管理器。</string>

@@ -620,6 +620,8 @@
     <string name="settings_speech_services_description">โมเดลสังเคราะห์เสียงและเสียงพูด</string>
     <string name="settings_storage">ที่จัดเก็บสื่อ</string>
     <string name="storage_short_title">สื่อ</string>
+    <string name="storage_media_empty">ยังไม่มีรูปภาพ วิดีโอ หรือเสียงที่บันทึกไว้</string>
+    <string name="storage_media_no_results">ไม่พบสื่อที่ตรงกัน</string>
     <string name="settings_storage_description">ไฟล์ที่เครื่องมือของคุณสร้าง</string>
     <string name="storage_open_in_files">เปิดในไฟล์</string>
     <string name="storage_open_in_files_failed">เปิดโปรแกรมจัดการไฟล์ของระบบไม่ได้</string>

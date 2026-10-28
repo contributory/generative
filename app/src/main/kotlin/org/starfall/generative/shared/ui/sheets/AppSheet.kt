@@ -119,11 +119,12 @@ fun AppSheet(
         previousContentKey = contentKey
         if (fixedHeightFraction == null) requestedHeight = null
     }
+    // Read measuredHeight only in gesture/semantics callbacks. Reading it here would
+    // recompose the whole sheet on every frame of a page-height animation.
     var measuredHeight by remember { mutableIntStateOf(0) }
     var containerOriginOnScreen by remember { mutableStateOf(Offset.Zero) }
     val handleCoordinates = remember { HandleCoordinates() }
     val latestRequestedHeight by rememberUpdatedState(requestedHeight)
-    val latestMeasuredHeight by rememberUpdatedState(measuredHeight)
     // The last brush that was fully on screen. While a new brush is revealed in a circle it is kept
     // underneath, otherwise the old colour would vanish and be replaced by the flat container colour.
     val settledBrush = remember { SettledBrush() }
@@ -242,7 +243,7 @@ fun AppSheet(
                         .pointerInput(bounds.minimum, bounds.maximum) {
                             detectDragGestures(
                                 onDragStart = { startOffset ->
-                                    val startHeight = (latestRequestedHeight ?: latestMeasuredHeight.toFloat())
+                                    val startHeight = (latestRequestedHeight ?: measuredHeight.toFloat())
                                         .coerceIn(bounds.minimum.toFloat(), bounds.maximum.toFloat())
                                     val startY = handleCoordinates.value
                                         ?.localToScreen(startOffset)

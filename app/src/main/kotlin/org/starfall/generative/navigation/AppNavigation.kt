@@ -64,6 +64,7 @@ import org.starfall.generative.features.settings.logic.SettingsViewModel
 import org.starfall.generative.features.settings.ui.AppSettings
 import org.starfall.generative.features.settings.ui.MainAppbar
 import org.starfall.generative.features.speech.ui.SpeechServicesScreen
+import org.starfall.generative.features.storage.ui.MediaStorageSheet
 import org.starfall.generative.features.storage.ui.StorageScreen
 import org.starfall.generative.features.tools.ui.ToolsEditor
 import org.starfall.generative.features.tools.ui.MediaRequestChainSettings
@@ -189,6 +190,7 @@ fun AppNavigation(
     onTerminalLaunchHandled: () -> Unit = {},
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    var showMediaSheet by rememberSaveable { mutableStateOf(false) }
     val drawerFocusManager = LocalFocusManager.current
     // Opening the sidebar (button or swipe) takes focus away from the chat input.
     LaunchedEffect(drawerState.targetValue) {
@@ -486,6 +488,7 @@ fun AppNavigation(
             setAgentSkillsSearch = viewModel::setAgentSkillsSearchEnabled
         )
     ) {
+        if (showMediaSheet) MediaStorageSheet(toolFiles) { showMediaSheet = false }
         val drawerScrim = modalScrimColor(DrawerDefaults.scrimColor)
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -534,8 +537,10 @@ fun AppNavigation(
                         coroutineScope.launch { drawerState.close() }
                     },
                     onOpenMediaStorage = {
-                        coroutineScope.launch { drawerState.close() }
-                        openConfiguration(AppDestination.STORAGE)
+                        coroutineScope.launch {
+                            drawerState.close()
+                            showMediaSheet = true
+                        }
                     },
                     onOpenRemoteMachines = {
                         coroutineScope.launch { drawerState.close() }
@@ -545,6 +550,10 @@ fun AppNavigation(
                         remoteMachinePage = MachineEditorPage(machine, isNew = false)
                         coroutineScope.launch { drawerState.close() }
                         openConfiguration(AppDestination.REMOTE_MACHINES)
+                    },
+                    onOpenTerminal = { machine ->
+                        coroutineScope.launch { drawerState.close() }
+                        openTerminal(machine)
                     },
                     onSaveMachineTools = remoteMachinesViewModel::saveMachineTools
                 )
@@ -642,18 +651,20 @@ fun AppNavigation(
                         onSetModelReasoningEffort = configurationViewModel::setModelReasoningEffort,
                         onSetModelTools = configurationViewModel::setModelTools,
                         onEditModel = { providerId, modelId ->
+                            showHomePage(MENU_PAGE)
                             navController.navigate(
                                 "providers/edit/${Uri.encode(providerId)}?modelId=${
                                     Uri.encode(
                                         modelId
                                     )
-                                }"
+                                }&returnToChat=true"
                             ) {
                                 launchSingleTop = true
                             }
                         },
                         onEditProvider = { providerId ->
-                            navController.navigate("providers/edit/${Uri.encode(providerId)}") {
+                            showHomePage(MENU_PAGE)
+                            navController.navigate("providers/edit/${Uri.encode(providerId)}?returnToChat=true") {
                                 launchSingleTop = true
                             }
                         },
@@ -782,20 +793,30 @@ fun AppNavigation(
                     }
 
                     composable(
-                        route = "providers/edit/{providerId}?modelId={modelId}",
+                        route = "providers/edit/{providerId}?modelId={modelId}&returnToChat={returnToChat}",
                         arguments = listOf(navArgument("modelId") {
                             type = NavType.StringType
                             nullable = true
                             defaultValue = null
+                        }, navArgument("returnToChat") {
+                            type = NavType.BoolType
+                            defaultValue = false
                         })
                     ) { entry ->
                         val providerId = entry.arguments?.getString("providerId").orEmpty()
                         val modelId = entry.arguments?.getString("modelId")
+                        // Store the origin on this back-stack entry, including across recreation.
+                        val returnToChat = entry.arguments?.getBoolean("returnToChat") == true
+                        val dismissEditor: () -> Unit = {
+                            if (navController.currentBackStackEntry == entry && navController.popBackStack()) {
+                                if (returnToChat) showHomePage(CHAT_PAGE)
+                            }
+                        }
                         TargetedEditorContent(
                             recordId = providerId,
                             title = stringResource(R.string.provider_editor),
                             loadingMessage = stringResource(R.string.loading_provider_editor),
-                            onBack = { navController.popBackStack() },
+                            onBack = dismissEditor,
                             load = { configurationViewModel.loadProviderForEditor(providerId) }
                         ) { provider ->
                             key(provider.id) {
@@ -811,7 +832,7 @@ fun AppNavigation(
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     },
-                                    onDismiss = { navController.popBackStack() },
+                                    onDismiss = dismissEditor,
                                     onSaveModels = configurationViewModel::saveProviderModels,
                                     onReorderModels = configurationViewModel::reorderProviderModels,
                                     onAuthorizeProvider = configurationViewModel::authorizeProvider,

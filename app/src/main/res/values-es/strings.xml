@@ -620,6 +620,8 @@
     <string name="settings_speech_services_description">Modelos de síntesis de voz y voces</string>
     <string name="settings_storage">Almacenamiento multimedia</string>
     <string name="storage_short_title">Multimedia</string>
+    <string name="storage_media_empty">Todavía no hay fotos, videos ni audios guardados.</string>
+    <string name="storage_media_no_results">No hay medios que coincidan.</string>
     <string name="settings_storage_description">Archivos creados por tus herramientas</string>
     <string name="storage_open_in_files">Abrir en Archivos</string>
     <string name="storage_open_in_files_failed">No se ha podido abrir el gestor de archivos del sistema.</string>

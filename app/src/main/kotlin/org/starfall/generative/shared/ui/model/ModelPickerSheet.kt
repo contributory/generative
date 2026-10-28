@@ -99,16 +99,20 @@ internal fun ModelPickerSheetContent(
     showReasoningEffort: Boolean = true,
     onEditProvider: (providerId: String) -> Unit = {},
     onOpenSelectedModel: (() -> Unit)? = null,
+    // Disable when the containing sheet already reserves the navigation-bar inset.
+    includeNavigationBarPadding: Boolean = true,
     modifier: Modifier = Modifier,
     onDismiss: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
-    // The list may scroll behind the navigation bar, but its last item stays tappable.
-    val navigationBottomPadding = with(LocalDensity.current) {
-        WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).getBottom(this).toDp()
-    }
+    // Standalone pickers draw behind the navigation bar; shared sheets can own this inset.
+    val navigationBottomPadding = if (includeNavigationBarPadding) {
+        with(LocalDensity.current) {
+            WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).getBottom(this).toDp()
+        }
+    } else 0.dp
     var searchBounds by remember { mutableStateOf<Rect?>(null) }
     var contentOrigin by remember { mutableStateOf(Offset.Zero) }
     var expandSearchResults by remember(query) { mutableStateOf(true) }
@@ -162,9 +166,10 @@ internal fun ModelPickerSheetContent(
     }
 
     // Start at the selected model immediately, before the first list composition/layout.
-    val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = initialModelPickerItemIndex(flatItems, selectedProviderId, selectedModelId)
-    )
+    val initialItemIndex = remember(flatItems, selectedProviderId, selectedModelId) {
+        initialModelPickerItemIndex(flatItems, selectedProviderId, selectedModelId)
+    }
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialItemIndex)
 
     // Folder tabs are local navigation shortcuts. No tab selection or scroll position is persisted.
     val folderTabs = remember(flatItems, ungroupedTabLabel) { computeModelPickerTabs(flatItems, ungroupedTabLabel) }

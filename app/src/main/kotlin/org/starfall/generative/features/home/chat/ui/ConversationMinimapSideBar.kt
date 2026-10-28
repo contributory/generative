@@ -165,13 +165,13 @@ internal fun ConversationMinimapSideBar(
                 }
             }
         }
-        // Keep the visible rail and its slide animation above the input panel.
+        // Anchor the rail below the app bar; input resizing only limits its available height.
         Box(Modifier.fillMaxSize().padding(top = topInset, bottom = bottomInset).clipToBounds()) {
             AnimatedVisibility(
                 visible = state.isOpen && hasMessages,
                 enter = slideInHorizontally { it },
                 exit = slideOutHorizontally { it },
-                modifier = Modifier.align(AbsoluteAlignment.CenterRight)
+                modifier = Modifier.align(AbsoluteAlignment.TopRight)
             ) {
                 DisposableEffect(state) { onDispose { state.boundsInRoot = null } }
                 val borderColor = MaterialTheme.colorScheme.outlineVariant

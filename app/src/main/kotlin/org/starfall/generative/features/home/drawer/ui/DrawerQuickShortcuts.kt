@@ -24,6 +24,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -55,7 +58,7 @@ import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as Dropdo
 /**
  * Single combined card at the top of the left drawer.
  * - Remote: expandable list with per-machine context menus, title is "Remote"
- * - Media: navigates to StorageScreen, title is "Media"
+ * - Media: opens the media grid sheet, title is "Media"
  * Both rows share the same [prominentContainerColor] block.
  */
 @Composable
@@ -63,6 +66,7 @@ internal fun DrawerQuickShortcuts(
     onOpenMediaStorage: () -> Unit,
     onOpenRemoteMachines: () -> Unit,
     onEditRemoteMachine: (RemoteMachine) -> Unit = {},
+    onOpenTerminal: (RemoteMachine) -> Unit = {},
     onSaveMachineTools: (RemoteMachine) -> Unit,
     modifier: Modifier = Modifier,
     maxExpandedHeight: Dp = 280.dp
@@ -238,18 +242,34 @@ internal fun DrawerQuickShortcuts(
                                                 expanded = menuExpanded,
                                                 onDismissRequest = { menuExpanded = false }
                                             ) {
+                                                val toggleLabel = stringResource(
+                                                    if (checked) R.string.remote_machine_disable_action
+                                                    else R.string.remote_machine_enable_action
+                                                )
                                                 DropdownMenuItem(
-                                                    text = { Text(stringResource(
-                                                        if (checked) R.string.remote_machine_disable_action
-                                                        else R.string.remote_machine_enable_action
-                                                    )) },
+                                                    text = { Text(toggleLabel) },
+                                                    leadingIcon = { FluentIcon(icon, null) },
+                                                    trailingIcon = {
+                                                        Switch(
+                                                            checked = checked,
+                                                            onCheckedChange = { controls.setMachine(machine.id, it) },
+                                                            modifier = Modifier.testTag("drawer_machine_switch_${machine.id}")
+                                                                .semantics { contentDescription = toggleLabel }
+                                                        )
+                                                    },
+                                                    onClick = { controls.setMachine(machine.id, !checked) }
+                                                )
+                                                DropdownMenuItem(
+                                                    text = { Text(stringResource(R.string.remote_machine_open_terminal)) },
+                                                    leadingIcon = { FluentIcon(Icons.Outlined.Terminal, null) },
                                                     onClick = {
                                                         menuExpanded = false
-                                                        controls.setMachine(machine.id, !checked)
+                                                        onOpenTerminal(machine)
                                                     }
                                                 )
                                                 DropdownMenuItem(
                                                     text = { Text(stringResource(R.string.common_tools)) },
+                                                    leadingIcon = { FluentIcon(FluentUi.Regular.WrenchScrewdriver, null) },
                                                     onClick = {
                                                         menuExpanded = false
                                                         toolsMachine = machine
@@ -257,6 +277,7 @@ internal fun DrawerQuickShortcuts(
                                                 )
                                                 DropdownMenuItem(
                                                     text = { Text(stringResource(R.string.common_edit)) },
+                                                    leadingIcon = { FluentIcon(FluentUi.Regular.Edit, null) },
                                                     onClick = {
                                                         menuExpanded = false
                                                         onEditRemoteMachine(machine)
@@ -277,7 +298,7 @@ internal fun DrawerQuickShortcuts(
                 modifier = Modifier.padding(horizontal = 14.dp)
             )
 
-            // Media row — navigates to StorageScreen
+            // Media row — opens the media grid sheet
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
