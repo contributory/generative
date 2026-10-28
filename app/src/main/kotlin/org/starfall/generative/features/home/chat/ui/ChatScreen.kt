@@ -113,6 +113,7 @@ fun ChatScreen(
     onOpenSettings: () -> Unit,
     featuresLogoImage: String? = null,
     backgroundImage: String? = null,
+    backgroundTransparency: Float = 0.5f,
     onRegenerate: (String) -> Unit,
     onRetryFromError: (String) -> Unit = {},
     onEditMessage: (messageId: String, newContent: String, files: List<String>) -> Boolean,
@@ -419,12 +420,10 @@ fun ChatScreen(
                 }
             }
     ) {
-        org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage)
+        org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage, transparency = backgroundTransparency)
         // Let the list occupy the whole edge-to-edge surface. Its top padding keeps the newest
         // content readable initially, while later scrolls visibly pass behind the translucent app bar.
-        BoxWithConstraints(
-            Modifier.fillMaxSize().clipToBounds()
-        ) {
+        BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
         val bottomClearance = with(density) { inputAreaHeightPx.toDp() } + navigationBarHeight + maxHeight * 0.015f
         if (messages.isEmpty()) {
             Box(
@@ -470,7 +469,7 @@ fun ChatScreen(
             }
             val newestMessageId = messages.lastOrNull()?.id
             val precedingUserId = messages.getOrNull(messages.size - 2)
-                ?.takeIf { it.role == ChatRole.USER }?.id
+                ?.takeIf { it.role == ChatRole.USER && messages.lastOrNull()?.role == ChatRole.MODEL }?.id
             val tailTurn = remember { TailTurnAnchor() }
             ChatOpeningVeil(active = veilActive, modifier = Modifier.fillMaxSize()) {
             CompositionLocalProvider(
@@ -795,6 +794,7 @@ fun ChatScreen(
             onOpenTemporaryChat = onOpenTemporaryChat,
             onOpenSettings = onOpenSettings,
             featuresLogoImage = featuresLogoImage,
+            backgroundTransparency = backgroundTransparency,
             isTemporaryChat = conversationMessages.isEmpty() && conversation?.isTemporary != true,
             onOpenModelPicker = {
                 minimapState.isOpen = false
@@ -813,7 +813,7 @@ fun ChatScreen(
             conversationKey = conversationKey,
             messages = messages,
             listState = listState,
-            topObscuredPx = with(density) { (appBarHeight + 8.dp).roundToPx() },
+            topObscuredPx = with(density) { appBarHeight.roundToPx() },
             // Measure the entire bottom panel, including suggestions, errors and navigation insets.
             bottomObscuredPx = bottomPanelHeightPx + with(density) { 8.dp.roundToPx() },
             onOpen = {

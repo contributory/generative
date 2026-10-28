@@ -1074,7 +1074,6 @@
     <string name="speech_load_more">โหลดเพิ่มเติม</string>
     <string name="music_profiles">โปรไฟล์เพลง</string>
     <string name="music_audio">เสียง</string>
-    <string name="tool_music_generation_title">สร้างเพลง</string>
     <string name="tool_generate_music_description">สร้างเพลงที่เล่นได้ด้วยโปรไฟล์คำขอแบบกำหนดเอง</string>
     <string name="music_select_profile">เลือกโปรไฟล์</string>
     <string name="music_profile_required">เลือกโปรไฟล์เพลงแบบกำหนดเองที่ถูกต้องก่อนสร้างเพลง</string>
@@ -1093,4 +1092,9 @@
     <string name="speech_chunk_boundaries">จุดหรือการขึ้นบรรทัดใหม่ถือเป็นการจบประโยค ตัวคั่นที่อยู่ติดกันจะนับเพียงครั้งเดียว</string>
     <string name="notification_speech_channel">การเล่นเสียงพูด</string>
     <string name="notification_speech_playing">กำลังอ่านออกเสียง</string>
+    <string name="user_profile_background_transparency">ความโปร่งใสของพื้นหลัง</string>
+    <string name="user_profile_background_transparency_reset">คืนค่าความโปร่งใสพื้นหลังเริ่มต้น</string>
+    <string name="settings_item_transparency">ความโปร่งใสของส่วนประกอบ</string>
+    <string name="settings_item_transparency_description">ปรับความโปร่งใสของการ์ด ปุ่ม และรายการ ในโหมด AMOLED พื้นหลังจะโปร่งใสและมีเส้นขอบ</string>
+    <string name="settings_item_transparency_reset">คืนค่าความโปร่งใสของส่วนประกอบ</string>
 </resources>

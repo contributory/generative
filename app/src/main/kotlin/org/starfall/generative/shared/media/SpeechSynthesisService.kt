@@ -90,12 +90,12 @@ class SpeechSynthesisService(
             val base = resolved.baseUrl.trimEnd('/')
             var endpoint = if (google) {
                 val model = URLEncoder.encode(service.modelId!!.removePrefix("models/"), "UTF-8").replace("+", "%20")
-                "$base/models/$model:generateContent"
-            } else "$base/audio/speech"
+                resolved.config.customEndpoints["generate"]?.takeIf { it.isNotBlank() }?.replace("{model}", model)?.replace("{method}", "generateContent") ?: "$base/models/$model:generateContent"
+            } else resolved.config.customEndpoints["speech"]?.takeIf { it.isNotBlank() } ?: "$base/audio/speech"
             val auth = if (service.apiKey.isNotBlank()) Authorization(value = service.apiKey) else resolved.auth
             if (auth.method == AuthMethod.QUERY_PARAM && auth.token.isNotBlank()) {
                 val key = URLEncoder.encode(auth.key?.ifBlank { "key" } ?: "key", "UTF-8")
-                endpoint += "?" + key + "=" + URLEncoder.encode(auth.token, "UTF-8")
+                endpoint += (if (endpoint.contains('?')) "&" else "?") + key + "=" + URLEncoder.encode(auth.token, "UTF-8")
             }
             val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"

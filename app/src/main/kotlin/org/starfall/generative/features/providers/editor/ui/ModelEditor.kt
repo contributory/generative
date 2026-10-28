@@ -116,6 +116,7 @@ fun ModelEditor(
 
     BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(

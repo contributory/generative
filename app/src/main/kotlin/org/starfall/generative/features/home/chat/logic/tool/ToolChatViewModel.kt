@@ -20,6 +20,7 @@ import org.starfall.generative.shared.helpers.media.configuredMediaOptions
 import org.starfall.generative.shared.helpers.media.toolAttachmentReferences
 import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.integrations.mcp.McpSession
+import org.starfall.generative.integrations.mcp.mcpToolWireName
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.shared.model.ChatRole
@@ -201,7 +202,12 @@ class ToolChatViewModel internal constructor(
                     try {
                         val session = toolExecution.connect(server)
                         sessions[server.id] = session
-                        val allDiscovered = toolExecution.discoverTools(session)
+                        val allDiscovered = toolExecution.discoverTools(session).map { tool ->
+                            // Only the model-facing name changes. MCP calls still use originalName.
+                            if (isWebSearchProvider(settings(), server.id)) {
+                                tool.copy(name = mcpToolWireName("WebSearch", tool.originalName))
+                            } else tool
+                        }
                         val discovered = allDiscovered.filter {
                             globalMcpToolEnabled(settings(), server.id, it.originalName)
                         }
@@ -324,8 +330,14 @@ class ToolChatViewModel internal constructor(
             // Otherwise a remote tool called activate_skill could shadow the local loader.
             val nativeNames = setOf(CREATE_SKILL_TOOL_NAME, ACTIVATE_SKILL_TOOL_NAME,
                 READ_SKILL_RESOURCE_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME, AGENT_SKILLS_SEARCH_TOOL_NAME)
+            // Keep the WebSearch_ names stable if an ordinary MCP exposes the same wire name.
+            val pinnedSearchServerId = settings().run { if (webSearchEnabled) webSearchProviderId else null }
             val uniquelyNamedTools = tools.sortedBy { tool ->
-                if (tool.serverId == null && tool.remoteMachineId == null && tool.name in nativeNames) 0 else 1
+                when {
+                    tool.serverId == null && tool.remoteMachineId == null && tool.name in nativeNames -> 0
+                    tool.serverId != null && tool.serverId == pinnedSearchServerId -> 1
+                    else -> 2
+                }
             }.withUniqueWireNames()
             tools.clear()
             tools += uniquelyNamedTools

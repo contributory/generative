@@ -339,6 +339,8 @@ internal fun BottomSheetsLink(
                 containerColor = style.color,
                 containerBrush = style.brush,
                 navigationBarColor = style.navigationBarColor,
+                // Only the picker has a scrolling list with its own navigation-bar safe padding.
+                contentBehindNavigationBar = modelSheetPage == ModelSheetPage.MODEL_PICKER,
                 // Read in the draw phase: the reveal animates every frame and must not recompose the sheet.
                 containerBrushRevealOrigin = { selectedModelScreenBurst.origin.takeIf { it != Offset.Zero } },
                 containerBrushRevealProgress = { selectedModelScreenBurst.progress.value },

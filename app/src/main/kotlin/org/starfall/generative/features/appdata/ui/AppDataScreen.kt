@@ -60,6 +60,8 @@ fun AppDataScreen(
     }
 
     Scaffold(
+
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
                 colors = edgeToEdgeTopAppBarColors(),

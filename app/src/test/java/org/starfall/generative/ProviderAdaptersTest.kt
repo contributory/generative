@@ -43,6 +43,32 @@ class ProviderAdaptersTest {
     private fun sse(data: String) = MockResponse().setHeader("Content-Type", "text/event-stream").setBody(data)
     private fun openAiResponse(text: String) = sse("data: {\"id\":\"chat-test\",\"object\":\"chat.completion.chunk\",\"created\":1,\"model\":\"custom-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"$text\"}}]}\n\ndata: [DONE]\n\n")
 
+    @Test fun unversionedProviderBaseIsUsedAsEntered() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(sse("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"))
+            val anthropic = provider(server, ModelApiType.ANTHROPIC).copy(baseUrl = server.url("/gateway").toString())
+            adapters.streamAnthropic(anthropic, "claude", messages, "", null, null, 50).toList()
+            assertEquals("/gateway/messages", server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!.encodedPath)
+            server.enqueue(sse("data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"hello\"}]}}]}\n\n"))
+            val google = provider(server, ModelApiType.GOOGLE).copy(baseUrl = server.url("/gateway").toString())
+            adapters.streamGoogle(google, "gemini", messages, "", null, null, 50).toList()
+            assertEquals("/gateway/models/gemini:streamGenerateContent", server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!.encodedPath)
+        }
+    }
+
+    @Test fun customSdkEndpointsRouteRequests() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(openAiResponse("custom"))
+            val openai = provider(server, ModelApiType.OPENAI).let { it.copy(config = it.config.copy(customEndpoints = mapOf("chat" to server.url("/gateway/chat").toString()))) }
+            adapters.streamOpenAi(openai, "custom", messages, "", null, null, 50).toList()
+            assertEquals("/gateway/chat", server.takeRequest(5, TimeUnit.SECONDS)!!.path)
+            server.enqueue(sse("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"))
+            val anthropic = provider(server, ModelApiType.ANTHROPIC).let { it.copy(config = it.config.copy(customEndpoints = mapOf("messages" to server.url("/gateway/messages").toString()))) }
+            adapters.streamAnthropic(anthropic, "claude", messages, "", null, null, 50).toList()
+            assertEquals("/gateway/messages", server.takeRequest(5, TimeUnit.SECONDS)!!.path)
+        }
+    }
+
     @Test fun runtimeSwitchKeepsEndpointAndCredentialsSeparate() = runBlocking {
         MockWebServer().use { first -> MockWebServer().use { second ->
             first.enqueue(openAiResponse("first")); second.enqueue(openAiResponse("second"))

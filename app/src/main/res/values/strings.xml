@@ -1221,6 +1221,8 @@
     <string name="user_profile_background_menu">Menu Screen Background</string>
     <string name="user_profile_background_bottom_sheet">Bottom Sheet Background</string>
     <string name="user_profile_background_dialog">Dialog Background</string>
+    <string name="user_profile_background_transparency">Background transparency</string>
+    <string name="user_profile_background_transparency_reset">Reset background transparency to default</string>
     <string name="user_profile_background_options">%1$s options</string>
     <string name="user_profile_background_unavailable">%1$s (unavailable)</string>
     <string name="user_profile_image_error">Unable to use image</string>
@@ -1238,7 +1240,7 @@
     <string name="speech_engine_model" translatable="false">Synthesis model ID</string>
     <string name="music_profiles">Music Profiles</string>
     <string name="music_audio">Audio</string>
-    <string name="tool_music_generation_title">Music Generation</string>
+    <string name="tool_music_generation_title" translatable="false">Music Generation</string>
     <string name="tool_generate_music_description">Create playable music using a Custom request profile.</string>
     <string name="music_select_profile">Select Profile</string>
     <string name="music_profile_required">Select a valid Custom music profile before generating music.</string>
@@ -1261,4 +1263,11 @@
     <string name="speech_chunk_boundaries">A period or line break ends a sentence. Adjacent separators count once.</string>
     <string name="notification_speech_channel">Speech playback</string>
     <string name="notification_speech_playing">Reading aloud</string>
+    <string name="settings_item_transparency">Component transparency</string>
+    <string name="settings_item_transparency_description">Adjust the transparency of cards, buttons, and list items. AMOLED mode uses transparent items with outlines.</string>
+    <string name="settings_item_transparency_reset">Reset component transparency to default</string>
+    <string name="provider_custom">Custom</string>
+    <string name="provider_custom_endpoints">Custom endpoints</string>
+    <string name="provider_custom_endpoints_hint">Enter full URLs. Leave blank to use the default. Gemini generation URLs can use {model} and {method}.</string>
+    <string name="provider_endpoints_invalid">Enter valid HTTP or HTTPS endpoint URLs.</string>
 </resources>

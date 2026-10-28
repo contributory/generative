@@ -150,8 +150,9 @@ fun SpeechEditor(
         voice = it.id; voiceName = it.name; showVoices = false
     }, onDismiss = { showVoices = false })
     BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onDismiss)
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    Surface(Modifier.fillMaxSize(), color = androidx.compose.ui.graphics.Color.Transparent) {
         Scaffold(
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
             modifier = Modifier.fillMaxSize(),
             topBar = {
                 TopAppBar(

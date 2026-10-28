@@ -6,6 +6,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -18,6 +21,7 @@ import org.junit.Test
 import org.starfall.generative.features.home.shared.ui.FeatureToolsSheet
 import org.starfall.generative.features.home.shared.ui.McpConnectorsSheet
 import org.starfall.generative.features.home.shared.ui.QuickActionsSheet
+import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.ToolControls
@@ -75,18 +79,46 @@ class ToolsManagementSheetsTest {
         compose.onNodeWithText("Feature Tools").assertIsDisplayed()
         compose.onNodeWithText("Image Generation").assertIsDisplayed()
         compose.onNodeWithText("Video Generation").assertIsDisplayed()
-        compose.onNodeWithText("Send File").assertIsDisplayed()
-        compose.onNodeWithText("Web Search Provider").assertDoesNotExist()
         compose.onNodeWithText("MCP Connectors").assertDoesNotExist()
         val toggleableNodes = compose.onAllNodes(
             SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState)
         )
-        toggleableNodes.assertCountEquals(5)
-        toggleableNodes[0].performClick()
+        toggleableNodes.assertCountEquals(7)
+        toggleableNodes[1].performClick()
         compose.runOnIdle { assertEquals(listOf("generate_image" to true), updates) }
+        compose.onNodeWithText("Web Search").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("No service selected").assertIsDisplayed()
+        toggleableNodes[0].assertIsNotEnabled()
+        compose.onNodeWithText("Send File").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Agent Skills Search").performScrollTo().assertIsDisplayed()
-        toggleableNodes[3].performClick()
+        toggleableNodes[5].performClick()
         compose.runOnIdle { assertEquals(listOf("generate_image" to true, "agent_skills_search" to true), updates) }
+    }
+
+    @Test
+    fun webSearchSwitchUsesPinnedMcpProviderState() {
+        val updates = mutableListOf<Boolean>()
+        compose.setContent {
+            MaterialTheme {
+                CompositionLocalProvider(
+                    LocalToolControls provides ToolControls(
+                        servers = listOf(McpInfo(id = "search", name = "Search MCP")),
+                        settings = ToolSettings(webSearchProviderId = "search"),
+                        setWebSearch = { updates.add(it) }
+                    )
+                ) {
+                    FeatureToolsSheet(onDismiss = {})
+                }
+            }
+        }
+
+        compose.onNodeWithText("Web Search").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Search MCP").assertIsDisplayed()
+        val switches = compose.onAllNodes(
+            SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState)
+        )
+        switches[0].assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals(listOf(true), updates) }
     }
 
     @Test

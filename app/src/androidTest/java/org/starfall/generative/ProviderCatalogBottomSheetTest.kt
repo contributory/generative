@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.*
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -78,10 +79,22 @@ class ProviderCatalogBottomSheetTest {
         compose.waitForIdle()
         val loadedHeight = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
         assertTrue("Long results must grow the sheet above its initial 78%", loadedHeight > loadingHeight + 20f)
-        compose.onNodeWithTag("provider-model-catalog-list").assertIsDisplayed()
+        val list = compose.onNodeWithTag("provider-model-catalog-list").assertIsDisplayed()
+        list.performScrollToIndex(79)
+        list.performTouchInput { swipeUp(durationMillis = 400) }
+        compose.waitForIdle()
+        val sheetBounds = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot
+        val listBounds = list.fetchSemanticsNode().boundsInRoot
+        assertEquals("Catalog list must extend to the sheet's bottom edge",
+            sheetBounds.bottom, listBounds.bottom, 2f)
+        val lastModel = compose.onNodeWithText("Model 79").assertIsDisplayed()
+            .fetchSemanticsNode().boundsInRoot
+        val bottomGap = with(compose.density) { 16.dp.toPx() }
+        assertTrue("Last catalog model must have safe bottom spacing",
+            lastModel.bottom <= listBounds.bottom - bottomGap + 2f)
     }
 
-    @Test fun catalogOpensInBottomSheetWithFixedFooterAndOnDemandSearch() {
+    @Test fun catalogOpensInBottomSheetWithTopToolbarAndOnDemandSearch() {
         var selected by mutableStateOf(emptySet<String>())
         var refreshes = 0
         compose.setContent {
@@ -106,16 +119,33 @@ class ProviderCatalogBottomSheetTest {
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Alpha model").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("app-bottom-sheet").assertIsDisplayed()
         compose.onNodeWithTag("bottom-sheet-drag-handle").assertExists()
+        val toolbar = compose.onNodeWithTag("provider-model-catalog-toolbar")
+            .assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val list = compose.onNodeWithTag("provider-model-catalog-list")
+            .assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        assertTrue("Catalog toolbar must be above the model list", toolbar.bottom <= list.top)
         compose.onNodeWithTag("provider_model_catalog_search_button").assertIsDisplayed()
         compose.onNodeWithTag("provider_model_catalog_search").assertDoesNotExist()
         compose.onNodeWithContentDescription("Select all visible models").performClick()
         compose.runOnIdle { assertEquals(setOf("alpha", "beta"), selected) }
+        compose.onNodeWithContentDescription("Deselect all visible models").performClick()
+        compose.runOnIdle { assertEquals(emptySet<String>(), selected) }
 
         compose.onNodeWithTag("provider_model_catalog_search_button").performClick()
         compose.onNodeWithTag("provider_model_catalog_search").assertIsDisplayed()
         compose.onNodeWithTag("provider_model_catalog_search").performTextInput("alpha")
         compose.onNodeWithText("Alpha model").assertIsDisplayed()
         compose.onNodeWithText("Beta model").assertDoesNotExist()
+        // Dismissing the IME must collapse the editor, not reset the search filter.
+        compose.onNodeWithTag("provider_model_catalog_search").performImeAction()
+        compose.onNodeWithTag("provider_model_catalog_search_button").assertIsDisplayed()
+        compose.onNodeWithText("Alpha model").assertIsDisplayed()
+        compose.onNodeWithText("Beta model").assertDoesNotExist()
+        compose.onNodeWithTag("provider_model_catalog_search_button").performClick()
+        compose.onNodeWithTag("provider_model_catalog_search").assertTextContains("alpha")
+        compose.onNodeWithText("Beta model").assertDoesNotExist()
+        compose.onNodeWithTag("provider_model_catalog_search").performTextClearance()
+        compose.onNodeWithText("Beta model").assertIsDisplayed()
         compose.onNodeWithContentDescription("Refresh models").performClick()
         compose.waitUntil(5_000) { refreshes >= 2 }
     }

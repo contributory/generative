@@ -1075,7 +1075,6 @@
     <string name="speech_load_more">Carica altro</string>
     <string name="music_profiles">Profili musicali</string>
     <string name="music_audio">Audio</string>
-    <string name="tool_music_generation_title">Generazione musicale</string>
     <string name="tool_generate_music_description">Crea musica da ascoltare con un profilo di richiesta personalizzato.</string>
     <string name="music_select_profile">Scegli profilo</string>
     <string name="music_profile_required">Scegli un profilo musicale personalizzato valido prima di generare musica.</string>
@@ -1094,4 +1093,9 @@
     <string name="speech_chunk_boundaries">Un punto o un ritorno a capo termina una frase. I separatori consecutivi contano una sola volta.</string>
     <string name="notification_speech_channel">Riproduzione vocale</string>
     <string name="notification_speech_playing">Lettura ad alta voce</string>
+    <string name="user_profile_background_transparency">Trasparenza dello sfondo</string>
+    <string name="user_profile_background_transparency_reset">Ripristina la trasparenza dello sfondo</string>
+    <string name="settings_item_transparency">Trasparenza dei componenti</string>
+    <string name="settings_item_transparency_description">Regola la trasparenza di schede, pulsanti ed elementi. In AMOLED gli elementi sono trasparenti e bordati.</string>
+    <string name="settings_item_transparency_reset">Ripristina la trasparenza dei componenti</string>
 </resources>

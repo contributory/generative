@@ -1074,7 +1074,6 @@
     <string name="speech_load_more">Tải thêm</string>
     <string name="music_profiles">Hồ sơ âm nhạc</string>
     <string name="music_audio">Âm thanh</string>
-    <string name="tool_music_generation_title">Tạo nhạc</string>
     <string name="tool_generate_music_description">Tạo nhạc có thể phát bằng hồ sơ yêu cầu tùy chỉnh.</string>
     <string name="music_select_profile">Chọn hồ sơ</string>
     <string name="music_profile_required">Chọn hồ sơ âm nhạc tùy chỉnh hợp lệ trước khi tạo nhạc.</string>
@@ -1093,4 +1092,9 @@
     <string name="speech_chunk_boundaries">Dấu chấm hoặc xuống dòng kết thúc một câu. Các dấu phân cách liền nhau chỉ tính một lần.</string>
     <string name="notification_speech_channel">Phát giọng nói</string>
     <string name="notification_speech_playing">Đang đọc</string>
+    <string name="user_profile_background_transparency">Độ trong suốt của ảnh nền</string>
+    <string name="user_profile_background_transparency_reset">Đặt lại độ trong suốt ảnh nền về mặc định</string>
+    <string name="settings_item_transparency">Độ trong suốt của thành phần</string>
+    <string name="settings_item_transparency_description">Điều chỉnh độ trong suốt của thẻ, nút và các mục. AMOLED sử dụng nền trong suốt hoàn toàn và có viền.</string>
+    <string name="settings_item_transparency_reset">Đặt lại độ trong suốt thành phần</string>
 </resources>

@@ -32,6 +32,8 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.starfall.generative.shared.ui.layout.appTabRowColor
+import org.starfall.generative.shared.ui.layout.appTabRowBorder
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.media.MediaViewer
 import org.starfall.generative.shared.files.ToolFiles
@@ -110,7 +112,8 @@ internal fun ToolDetailsSheet(
 
             PrimaryTabRow(
                 selectedTabIndex = argsTab,
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                containerColor = appTabRowColor(),
+                modifier = appTabRowBorder(),
                 divider = {}
             ) {
                 Tab(

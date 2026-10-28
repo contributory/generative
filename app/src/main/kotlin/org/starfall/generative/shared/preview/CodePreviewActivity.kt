@@ -18,10 +18,13 @@ import java.io.ByteArrayInputStream
 import java.io.File
 import java.util.UUID
 import org.starfall.generative.shared.storage.preferences.AppLocale
+import org.starfall.generative.shared.storage.preferences.AppPreferences
+import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.theme.GenerativeTheme
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.enableTransparentSystemBars
+import org.starfall.generative.shared.ui.layout.LocalItemTransparency
 
 /** Private Activity keeps generated scripts away from native app state and credentials. */
 class CodePreviewActivity : ComponentActivity() {
@@ -39,58 +42,67 @@ class CodePreviewActivity : ComponentActivity() {
         previewFile = name?.takeIf { it.matches(Regex("[a-f0-9-]{36}\\.html")) }?.let { File(cacheDir, "code-preview/$it") }
         val document = previewFile?.let { runCatching { it.readText() }.getOrNull() }
         setContent {
-            GenerativeTheme {
-                var webView by remember { mutableStateOf<WebView?>(null) }
-                DisposableEffect(Unit) { onDispose { webView?.stopLoading(); webView?.destroy(); webView = null } }
-                Scaffold(topBar = {
-                    TopAppBar(
-                        colors = edgeToEdgeTopAppBarColors(),
-            title = { Text(stringResource(R.string.code_preview_title)) }, navigationIcon = {
-                        IconButton(onClick = { finish() }) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) }
-                    }, actions = {
-                        if (document != null) IconButton(onClick = {
-                            webView?.loadDataWithBaseURL(PREVIEW_ORIGIN, document, "text/html", "UTF-8", null)
-                        }) { FluentIcon(Icons.Outlined.Refresh, stringResource(R.string.code_preview_reload)) }
-                    })
-                }) { padding ->
-                    if (document == null) Text(stringResource(R.string.code_preview_unavailable), Modifier.padding(padding))
-                    else AndroidView(modifier = Modifier.fillMaxSize().padding(padding), factory = { context ->
-                        WebView(context).apply {
-                            settings.javaScriptEnabled = true
-                            settings.allowFileAccess = false
-                            settings.allowContentAccess = false
-                            @Suppress("DEPRECATION")
-                            settings.allowFileAccessFromFileURLs = false
-                            @Suppress("DEPRECATION")
-                            settings.allowUniversalAccessFromFileURLs = false
-                            settings.javaScriptCanOpenWindowsAutomatically = false
-                            settings.setSupportMultipleWindows(false)
-                            settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                            CookieManager.getInstance().setAcceptThirdPartyCookies(this, false)
-                            webViewClient = object : WebViewClient() {
-                                override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
-                                    request.url.scheme !in setOf("https", "http")
+            val preferencesFlow = remember { AppPreferencesRepository(applicationContext).appPreferencesFlow }
+            val appearance by preferencesFlow.collectAsState(initial = AppPreferences())
+            GenerativeTheme(
+                themeMode = appearance.themeMode,
+                amoledMode = appearance.useAmoled,
+                dynamicColor = appearance.useDynamicColor,
+                colorSchemeName = appearance.colorSchemeName
+            ) {
+                CompositionLocalProvider(LocalItemTransparency provides appearance.itemTransparency) {
+                    var webView by remember { mutableStateOf<WebView?>(null) }
+                    DisposableEffect(Unit) { onDispose { webView?.stopLoading(); webView?.destroy(); webView = null } }
+                    Scaffold(topBar = {
+                        TopAppBar(
+                            colors = edgeToEdgeTopAppBarColors(),
+                title = { Text(stringResource(R.string.code_preview_title)) }, navigationIcon = {
+                            IconButton(onClick = { finish() }) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) }
+                        }, actions = {
+                            if (document != null) IconButton(onClick = {
+                                webView?.loadDataWithBaseURL(PREVIEW_ORIGIN, document, "text/html", "UTF-8", null)
+                            }) { FluentIcon(Icons.Outlined.Refresh, stringResource(R.string.code_preview_reload)) }
+                        })
+                    }) { padding ->
+                        if (document == null) Text(stringResource(R.string.code_preview_unavailable), Modifier.padding(padding))
+                        else AndroidView(modifier = Modifier.fillMaxSize().padding(padding), factory = { context ->
+                            WebView(context).apply {
+                                settings.javaScriptEnabled = true
+                                settings.allowFileAccess = false
+                                settings.allowContentAccess = false
+                                @Suppress("DEPRECATION")
+                                settings.allowFileAccessFromFileURLs = false
+                                @Suppress("DEPRECATION")
+                                settings.allowUniversalAccessFromFileURLs = false
+                                settings.javaScriptCanOpenWindowsAutomatically = false
+                                settings.setSupportMultipleWindows(false)
+                                settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                                CookieManager.getInstance().setAcceptThirdPartyCookies(this, false)
+                                webViewClient = object : WebViewClient() {
+                                    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
+                                        request.url.scheme !in setOf("https", "http")
 
-                                override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-                                    val uri = request.url
-                                    if (uri.host == "preview.generative.invalid") {
-                                        val filename = uri.path?.removePrefix("/runtime/")
-                                        if (uri.path?.startsWith("/runtime/") == true && filename in previewRuntimeAssets) {
-                                            return WebResourceResponse("application/javascript", "UTF-8", assets.open("code-preview/$filename"))
+                                    override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+                                        val uri = request.url
+                                        if (uri.host == "preview.generative.invalid") {
+                                            val filename = uri.path?.removePrefix("/runtime/")
+                                            if (uri.path?.startsWith("/runtime/") == true && filename in previewRuntimeAssets) {
+                                                return WebResourceResponse("application/javascript", "UTF-8", assets.open("code-preview/$filename"))
+                                            }
+                                            return WebResourceResponse("text/plain", "UTF-8", 404, "Not Found", emptyMap(), ByteArrayInputStream(ByteArray(0)))
                                         }
-                                        return WebResourceResponse("text/plain", "UTF-8", 404, "Not Found", emptyMap(), ByteArrayInputStream(ByteArray(0)))
+                                        if (uri.scheme in setOf("file", "content", "intent")) {
+                                            return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
+                                        }
+                                        return null
                                     }
-                                    if (uri.scheme in setOf("file", "content", "intent")) {
-                                        return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
-                                    }
-                                    return null
                                 }
+                                webChromeClient = WebChromeClient()
+                                webView = this
+                                loadDataWithBaseURL(PREVIEW_ORIGIN, document, "text/html", "UTF-8", null)
                             }
-                            webChromeClient = WebChromeClient()
-                            webView = this
-                            loadDataWithBaseURL(PREVIEW_ORIGIN, document, "text/html", "UTF-8", null)
-                        }
-                    })
+                        })
+                    }
                 }
             }
         }

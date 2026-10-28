@@ -7,7 +7,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
+import org.starfall.generative.shared.theme.LocalAmoledMode
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -33,10 +35,23 @@ fun scrollableScaffoldPadding(
     )
 }
 
-/** Translucent toolbar surface allows scrolled content to remain visible under the status bar. */
+/**
+ * AppBars (other than the standalone ChatAppBar) follow Appearance > Component transparency.
+ * The color is applied only to the bar surface, not its text, icons, or the screen below it.
+ */
+internal fun appBarSurfaceColor(surface: Color, transparency: Float, amoled: Boolean): Color =
+    if (amoled) Color.Transparent else surface.itemFill(transparency)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun edgeToEdgeTopAppBarColors(): TopAppBarColors = TopAppBarDefaults.topAppBarColors(
-    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-    scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
-)
+fun edgeToEdgeTopAppBarColors(): TopAppBarColors {
+    val color = appBarSurfaceColor(
+        MaterialTheme.colorScheme.surface,
+        LocalItemTransparency.current,
+        LocalAmoledMode.current
+    )
+    return TopAppBarDefaults.topAppBarColors(
+        containerColor = color,
+        scrolledContainerColor = color
+    )
+}

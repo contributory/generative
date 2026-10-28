@@ -39,6 +39,8 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import kotlin.math.hypot
 import kotlin.math.roundToInt
+import org.starfall.generative.shared.ui.background.LocalProfileModalImages
+import org.starfall.generative.shared.ui.background.ProfileBackground
 import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.theme.modalScrimColor
 import org.starfall.generative.shared.ui.layout.amoledSheetBorder
@@ -50,7 +52,7 @@ internal val LocalBottomSheetMinContentHeight = compositionLocalOf { 0.dp }
 /** Distinguishes user-resized sheets from their default content-measured opening height. */
 internal val LocalBottomSheetManuallyResized = compositionLocalOf { false }
 
-/** Tallest content the sheet can show (window cap minus drag handle and navigation inset). */
+/** Tallest content the sheet can show (window cap minus drag handle and any reserved navigation inset). */
 internal val LocalBottomSheetMaxContentHeight = compositionLocalOf { 0.dp }
 
 /** Expand before scrolling upward; let downward motion at the list start reach Material. */
@@ -96,6 +98,9 @@ fun AppSheet(
     navigationBarColor: Color? = null,
     dragHandleHeight: Dp = 48.dp,
     dragHandleWidth: Dp = 32.dp,
+    /** Let scrollable content draw beneath the transparent navigation bar. Callers must keep
+     * their final actionable row above the system gesture area using list content padding. */
+    contentBehindNavigationBar: Boolean = false,
     /** When set, the sheet is this fraction of the available height regardless of content; null wraps content. */
     fixedHeightFraction: Float? = null,
     /** Changing this key releases any manual drag height so the sheet adapts to the new page's content. */
@@ -123,7 +128,10 @@ fun AppSheet(
     // underneath, otherwise the old colour would vanish and be replaced by the flat container colour.
     val settledBrush = remember { SettledBrush() }
     val resizeLabel = stringResource(R.string.sheet_resize)
-    val sheetModifier = if (LocalAmoledMode.current) {
+    val amoled = LocalAmoledMode.current
+    val sheetImage = LocalProfileModalImages.current.sheet
+    val sheetTransparency = LocalProfileModalImages.current.sheetTransparency
+    val sheetModifier = if (amoled) {
         modifier.amoledSheetBorder(sheetState, shape, MaterialTheme.colorScheme.outlineVariant, 1.dp)
     } else modifier
     ModalBottomSheet(
@@ -131,7 +139,7 @@ fun AppSheet(
         sheetState = sheetState,
         modifier = sheetModifier.testTag("app-bottom-sheet"),
         shape = shape,
-        containerColor = containerColor,
+        containerColor = if (amoled) Color.Black else containerColor.copy(alpha = 1f),
         scrimColor = modalScrimColor(BottomSheetDefaults.ScrimColor),
         dragHandle = null,
         // The surface itself is capped below the top safe inset; adding it as content
@@ -155,7 +163,11 @@ fun AppSheet(
                     consumed
                 }
             }
-            val bottomInsetPx = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).getBottom(density)
+            val bottomInsetPx = if (contentBehindNavigationBar) {
+                0
+            } else {
+                WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).getBottom(density)
+            }
             val dragHandlePx = with(density) { dragHandleHeight.roundToPx() }
             val effectiveMinSheetHeight = fixedHeightFraction?.let { fraction ->
                 val initialHeight = (bounds.maximum * fraction.coerceIn(0f, 1f)).roundToInt()
@@ -169,40 +181,61 @@ fun AppSheet(
             }
             var resizeDrag by remember { mutableStateOf<ResizeDrag?>(null) }
             Layout(content = {
-                Column(
+                Box(Modifier.fillMaxWidth().onGloballyPositioned {
+                    containerOriginOnScreen = it.localToScreen(Offset.Zero)
+                }) {
+                    // A bottom sheet always has an opaque Material surface beneath these layers.
+                    // Keep the photo below decorations; the decoration is blended so a photo
+                    // remains visible when maximum reasoning effort is selected.
+                    ProfileBackground(
+                        sheetImage,
+                        Modifier.matchParentSize(),
+                        sheetTransparency
+                    )
+                    Box(Modifier.matchParentSize().drawBehind {
+                        if (containerBrush == null) {
+                            settledBrush.brush = null
+                            return@drawBehind
+                        }
+                        val brushAlpha = sheetDecorationBrushAlpha(
+                            sheetImage, sheetTransparency
+                        )
+                        fun drawTarget() {
+                            drawRect(containerBrush, alpha = brushAlpha)
+                            containerOverlay?.invoke(this)
+                        }
+                        val localOrigin = containerBrushRevealOrigin?.invoke()?.let { it - containerOriginOnScreen }
+                        val progress = (containerBrushRevealProgress?.invoke() ?: 1f).coerceIn(0f, 1f)
+                        if (localOrigin == null || progress >= 0.52f) {
+                            drawTarget()
+                            settledBrush.brush = containerBrush
+                        } else {
+                            // Keep the outgoing tint visible until the expanding reveal covers it.
+                            settledBrush.brush?.takeIf { it != containerBrush }?.let {
+                                drawRect(it, alpha = brushAlpha)
+                            }
+                            val radius = 14.dp.toPx() + hypot(size.width, size.height) *
+                                (progress / 0.52f).coerceIn(0f, 1f)
+                            clipPath(
+                                Path().apply { addOval(androidx.compose.ui.geometry.Rect(localOrigin, radius)) }
+                            ) {
+                                drawTarget()
+                            }
+                        }
+                    })
+                    Column(
                     Modifier
                         .fillMaxWidth()
                         .onSizeChanged { measuredHeight = it.height }
-                        .onGloballyPositioned { containerOriginOnScreen = it.localToScreen(Offset.Zero) }
-                        .drawBehind {
-                            if (containerBrush == null) {
-                                settledBrush.brush = null
-                                return@drawBehind
-                            }
-                            fun drawTarget() {
-                                drawRect(containerBrush)
-                                containerOverlay?.invoke(this)
-                            }
-                            val localOrigin = containerBrushRevealOrigin?.invoke()?.let { it - containerOriginOnScreen }
-                            val progress = (containerBrushRevealProgress?.invoke() ?: 1f).coerceIn(0f, 1f)
-                            if (localOrigin == null || progress >= 0.52f) {
-                                drawTarget()
-                                settledBrush.brush = containerBrush
-                            } else {
-                                // Previous colour stays beneath (without the new tier's overlay streaks).
-                                settledBrush.brush?.takeIf { it != containerBrush }?.let { drawRect(it) }
-                                val radius = 14.dp.toPx() + hypot(size.width, size.height) *
-                                    (progress / 0.52f).coerceIn(0f, 1f)
-                                clipPath(
-                                    Path().apply { addOval(androidx.compose.ui.geometry.Rect(localOrigin, radius)) }
-                                ) {
-                                    drawTarget()
-                                }
-                            }
-                        }
-                        // Applied after drawBehind so the brush/overlay extends under the transparent
-                        // navigation bar instead of stopping at the content edge.
-                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+                        // Normally reserve the navigation inset for fixed controls. Scrollable
+                        // list pages opt out and provide their own bottom content padding, so
+                        // rows can move behind the transparent navigation bar as they scroll.
+                        .then(
+                            if (contentBehindNavigationBar) Modifier
+                            else Modifier.windowInsetsPadding(
+                                WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
+                            )
+                        )
                 ) {
                     Box(Modifier.fillMaxWidth().height(dragHandleHeight).testTag("bottom-sheet-drag-handle")
                         .onGloballyPositioned { handleCoordinates.value = it }
@@ -260,6 +293,7 @@ fun AppSheet(
                         Column(Modifier.fillMaxWidth().nestedScroll(scrollBoundary), content = content)
                     }
                 }
+                }
             }) { measurables, constraints ->
                 val ceiling = bounds.heightFor(bounds.maximum, requestedHeight)
                 // Fixed mode is content-independent: provider/model expansion and folder-tab
@@ -280,6 +314,10 @@ fun AppSheet(
         }
     }
 }
+
+/** Max-effort decoration stays above a profile photo without hiding it. */
+internal fun sheetDecorationBrushAlpha(photo: String?, transparency: Float): Float =
+    if (!photo.isNullOrBlank() && transparency.coerceIn(0f, 1f) < 1f) 0.32f else 1f
 
 private class HandleCoordinates { var value: LayoutCoordinates? = null }
 

@@ -41,6 +41,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import java.util.IdentityHashMap
 import org.starfall.generative.shared.theme.AmoledModalScrim
+import org.starfall.generative.shared.ui.background.LocalProfileModalImages
+import org.starfall.generative.shared.ui.background.ProfileBackground
 import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.theme.LocalDarkMode
 import org.starfall.generative.shared.ui.layout.windowHeightIn
@@ -147,11 +149,17 @@ fun AppDialog(
             Surface(
                 modifier = surfaceModifier.testTag("app-dialog"),
                 shape = shape,
-                color = containerColor,
-                tonalElevation = tonalElevation,
+                color = if (LocalAmoledMode.current) Color.Black else containerColor.copy(alpha = 1f),
+                tonalElevation = 0.dp,
                 border = if (LocalAmoledMode.current && !edgeToEdge)
                     BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null
             ) {
+                Box {
+                ProfileBackground(
+                    LocalProfileModalImages.current.dialog,
+                    Modifier.matchParentSize(),
+                    LocalProfileModalImages.current.dialogTransparency
+                )
                 val columnModifier = if (edgeToEdge) Modifier.fillMaxSize().safeDrawingPadding().imePadding()
                     else Modifier.fillMaxWidth()
                 Column(columnModifier) {
@@ -181,6 +189,7 @@ fun AppDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) { buttons() }
+                }
                 }
             }
         }

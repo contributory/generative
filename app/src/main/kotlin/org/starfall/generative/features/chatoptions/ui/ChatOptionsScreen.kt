@@ -39,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.starfall.generative.shared.ui.layout.appTabRowColor
+import org.starfall.generative.shared.ui.layout.appTabRowBorder
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.InstructionLibrary
@@ -279,6 +281,7 @@ fun ChatOptionsScreen(
             null -> {
             BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
             Scaffold(
+                containerColor = androidx.compose.ui.graphics.Color.Transparent,
                 topBar = {
                     TopAppBar(
                         colors = edgeToEdgeTopAppBarColors(),
@@ -325,7 +328,7 @@ fun ChatOptionsScreen(
                         end = padding.calculateEndPadding(LocalLayoutDirection.current)
                     )
                 ) {
-                    PrimaryTabRow(selectedTabIndex = pager.currentPage) {
+                    PrimaryTabRow(selectedTabIndex = pager.currentPage, containerColor = appTabRowColor(), modifier = appTabRowBorder()) {
                         Tab(
                             selected = pager.currentPage == 0,
                             onClick = { coroutineScope.launch { pager.animateScrollToPage(0) } },

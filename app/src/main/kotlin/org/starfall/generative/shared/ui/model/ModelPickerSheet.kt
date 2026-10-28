@@ -21,6 +21,7 @@ import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -54,7 +55,7 @@ fun ModelPickerSheet(
 ) {
     // Match Fetch Models: let list content determine the initial height, while AppSheet
     // continues to support handle dragging up to the top safe inset.
-    AppSheet(onDismissRequest = onDismiss) {
+    AppSheet(onDismissRequest = onDismiss, contentBehindNavigationBar = true) {
         ModelPickerSheetContent(
             providers = providers,
             providerGroups = providerGroups,
@@ -104,6 +105,10 @@ internal fun ModelPickerSheetContent(
     var query by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
+    // The list may scroll behind the navigation bar, but its last item stays tappable.
+    val navigationBottomPadding = with(LocalDensity.current) {
+        WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).getBottom(this).toDp()
+    }
     var searchBounds by remember { mutableStateOf<Rect?>(null) }
     var contentOrigin by remember { mutableStateOf(Offset.Zero) }
     var expandSearchResults by remember(query) { mutableStateOf(true) }
@@ -269,7 +274,10 @@ internal fun ModelPickerSheetContent(
                     .fillMaxWidth()
                     .weight(1f, fill = false)
                     .testTag("model-picker-list"),
-                contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 12.dp),
+                contentPadding = PaddingValues(
+                    start = 16.dp, top = 6.dp, end = 16.dp,
+                    bottom = 12.dp + navigationBottomPadding
+                ),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 if (flatItems.isEmpty()) {

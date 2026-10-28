@@ -1074,7 +1074,6 @@
     <string name="speech_load_more">さらに読み込む</string>
     <string name="music_profiles">音楽プロファイル</string>
     <string name="music_audio">音声</string>
-    <string name="tool_music_generation_title">音楽生成</string>
     <string name="tool_generate_music_description">カスタムリクエストプロファイルを使って、再生可能な音楽を作成します。</string>
     <string name="music_select_profile">プロファイルを選択</string>
     <string name="music_profile_required">音楽を生成する前に、有効なカスタム音楽プロファイルを選択してください。</string>
@@ -1093,4 +1092,9 @@
     <string name="speech_chunk_boundaries">ピリオドまたは改行で文を区切ります。連続する区切りは1回として数えます。</string>
     <string name="notification_speech_channel">音声の再生</string>
     <string name="notification_speech_playing">読み上げ中</string>
+    <string name="user_profile_background_transparency">背景の透明度</string>
+    <string name="user_profile_background_transparency_reset">背景の透明度を初期値に戻す</string>
+    <string name="settings_item_transparency">コンポーネントの透明度</string>
+    <string name="settings_item_transparency_description">カードやボタン、項目の透明度を調整します。AMOLEDでは背景が透明になり、枠線が表示されます。</string>
+    <string name="settings_item_transparency_reset">コンポーネントの透明度を初期値に戻す</string>
 </resources>

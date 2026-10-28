@@ -24,7 +24,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -90,11 +93,30 @@ private fun ProviderFolderMiniGrid(groupId: String, providers: List<ModelProvide
 }
 
 private const val FolderPageOpacity = 0.6f
+internal const val FolderOpenDurationMillis = 600 // 20% longer than the previous 500ms.
+internal const val FolderCloseDurationMillis = 450
+private const val FolderCollapsedWidthFraction = 0.30f
+
+/**
+ * The page starts/ends at up to 30% of the host width, centred over the actual folder tile.
+ * Preserve the tile's aspect ratio instead of jumping to the middle of the screen.
+ */
+internal fun folderCollapsedRect(source: Rect?, width: Float): Rect? {
+    val card = source ?: return null
+    if (card.width <= 0f || card.height <= 0f || width <= 0f) return card
+    val scale = (width * FolderCollapsedWidthFraction / card.width).coerceAtMost(1f)
+    val halfWidth = card.width * scale / 2f
+    val halfHeight = card.height * scale / 2f
+    return Rect(
+        card.center.x - halfWidth, card.center.y - halfHeight,
+        card.center.x + halfWidth, card.center.y + halfHeight
+    )
+}
 
 /** Bounds of the opening/closing page relative to the shared, full-screen drag host. */
 internal fun folderExpansionRect(source: Rect?, width: Float, height: Float, progress: Float): Rect {
     val full = Rect(0f, 0f, width, height)
-    val from = source ?: full
+    val from = folderCollapsedRect(source, width) ?: full
     val t = progress.coerceIn(0f, 1f)
     fun interpolate(a: Float, b: Float) = a + (b - a) * t
     return Rect(
@@ -139,20 +161,20 @@ internal fun ProviderFolderOverlay(
         }
     }
     // Keep the detail expansion and full-screen backdrop fade on the same reversible timeline.
-    // Starting with the actual card rect also works when the root list has been scrolled.
+    // The scaled starting rect stays centred on the tapped card, even after root scrolling.
     val progress = remember { Animatable(if (animateEnter) 0f else 1f) }
     LaunchedEffect(visible, animateExitImmediately) {
         if (visible) {
             if (animateEnter) progress.animateTo(
                 1f,
-                animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
+                animationSpec = tween(durationMillis = FolderOpenDurationMillis, easing = FastOutSlowInEasing)
             ) else progress.snapTo(1f)
         } else {
             // When dragging a member out, uncover the root grid immediately for drop targeting.
             if (animateExitImmediately) progress.snapTo(0f)
             else progress.animateTo(
                 0f,
-                animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing)
+                animationSpec = tween(durationMillis = FolderCloseDurationMillis, easing = FastOutSlowInEasing)
             )
             onExitFinished()
         }
@@ -170,8 +192,8 @@ internal fun ProviderFolderOverlay(
         val currentBounds = folderExpansionRect(start, fullWidthPx, fullHeightPx, fraction)
         val cornerRadius = 22.dp * (1f - fraction)
         val shape = RoundedCornerShape(cornerRadius)
-        // This entire layer intercepts touches while the folder is growing or shrinking.
-        Box(
+        // Only an open folder blocks the root list; closing keeps drawing without taking touches.
+        if (visible) Box(
             Modifier.fillMaxSize().clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -186,7 +208,8 @@ internal fun ProviderFolderOverlay(
                 .background(endColor)
         )
         // Only the folder details expand/contract from the tapped tile.
-        Surface(
+        FolderAnimationContent(
+            interactive = visible,
             modifier = Modifier.fillMaxSize()
                 .graphicsLayer {
                     transformOrigin = TransformOrigin(0f, 0f)
@@ -198,9 +221,8 @@ internal fun ProviderFolderOverlay(
                     this.shape = shape
                     clip = true
                 }
-                .testTag("provider_folder_screen_${group.id}"),
-            shape = shape,
-            color = Color.Transparent
+                .graphicsLayer { alpha = contentAlpha }
+                .testTag("provider_folder_screen_${group.id}")
         ) {
             Box(
                 Modifier.fillMaxSize()
@@ -212,7 +234,6 @@ internal fun ProviderFolderOverlay(
                 Column(
                     Modifier.fillMaxSize()
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-                        .graphicsLayer { alpha = contentAlpha }
                 ) {
                     // Header actions remain below the status bar; the grid below may
                     // scroll into the transparent navigation-bar region.
@@ -357,4 +378,26 @@ private fun ProviderFolderExitHint() {
             .padding(horizontal = 14.dp, vertical = 8.dp)
             .testTag("provider_folder_exit_hint")
     )
+}
+
+/** Retain the last rendered contents during exit, without placing their touch targets. */
+@Composable
+internal fun FolderAnimationContent(
+    interactive: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val layer = rememberGraphicsLayer()
+    Layout(
+        content = { Box(Modifier.fillMaxSize()) { content() } },
+        modifier = modifier.drawWithContent {
+            if (interactive) layer.record { this@drawWithContent.drawContent() }
+            drawLayer(layer)
+        }
+    ) { measurables, constraints ->
+        val child = measurables.single().measure(constraints)
+        layout(child.width, child.height) {
+            if (interactive) child.placeRelative(0, 0)
+        }
+    }
 }

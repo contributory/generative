@@ -85,6 +85,7 @@ fun ConversationSideDrawer(
     onNavigateToSettings: () -> Unit,
     featuresLogoImage: String? = null,
     backgroundImage: String? = null,
+    backgroundTransparency: Float = 0.5f,
     onCloseDrawer: () -> Unit,
     onOpenMediaStorage: () -> Unit = {},
     onOpenRemoteMachines: () -> Unit = {},
@@ -149,9 +150,10 @@ fun ConversationSideDrawer(
     val keyboard = LocalSoftwareKeyboardController.current
     var searchFocused by remember { mutableStateOf(false) }
     fun unfocusSearch() {
+        // Keep the active filter when focus leaves or the drawer closes. Only the
+        // search field's clear button should reset the query.
         searchFocused = false
         searchExpanded = false
-        search = ""
         focusManager.clearFocus(force = true)
         keyboard?.hide()
     }
@@ -184,15 +186,18 @@ fun ConversationSideDrawer(
     ModalDrawerSheet(
         modifier = modifier.fillMaxWidth().testTag("conversation_side_drawer"),
         drawerShape = RectangleShape,
-        drawerContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 1f)
+        drawerContainerColor = if (LocalAmoledMode.current) Color.Black else MaterialTheme.colorScheme.surface.copy(alpha = 1f),
+        // Inset the interactive content only; do not inset the drawer surface/photo.
+        windowInsets = WindowInsets(0, 0, 0, 0)
     ) {
         BoxWithConstraints(
             modifier = Modifier.fillMaxSize()
         ) {
             val halfDrawerHeight = maxHeight * 0.5f
-            org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage)
+            org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage, transparency = backgroundTransparency)
             Column(
                 Modifier.fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
                     .imePadding()
                     // A tap on any non-interactive part of the drawer leaves the search field.
                     .pointerInput(Unit) {
@@ -384,7 +389,12 @@ fun ConversationSideDrawer(
                                 .graphicsLayer { alpha = (1f - searchProgress.value / 0.35f).coerceIn(0f, 1f) }
                                 .testTag("conversation_drawer_search_button")
                         ) {
-                            FluentIcon(Icons.Default.Search, stringResource(R.string.sidebar_search))
+                            FluentIcon(
+                                Icons.Default.Search,
+                                stringResource(R.string.sidebar_search),
+                                tint = if (search.isNotBlank()) MaterialTheme.colorScheme.primary
+                                    else LocalContentColor.current
+                            )
                         }
                     }
                 }

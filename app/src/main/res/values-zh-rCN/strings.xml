@@ -1074,7 +1074,6 @@
     <string name="speech_load_more">加载更多</string>
     <string name="music_profiles">音乐配置</string>
     <string name="music_audio">音频</string>
-    <string name="tool_music_generation_title">音乐生成</string>
     <string name="tool_generate_music_description">使用自定义请求配置创建可播放的音乐。</string>
     <string name="music_select_profile">选择配置</string>
     <string name="music_profile_required">生成音乐前，请选择有效的自定义音乐配置。</string>
@@ -1093,4 +1092,9 @@
     <string name="speech_chunk_boundaries">句号或换行表示一句结束。连续的分隔符只计一次。</string>
     <string name="notification_speech_channel">语音播放</string>
     <string name="notification_speech_playing">正在朗读</string>
+    <string name="user_profile_background_transparency">背景透明度</string>
+    <string name="user_profile_background_transparency_reset">恢复默认背景透明度</string>
+    <string name="settings_item_transparency">组件透明度</string>
+    <string name="settings_item_transparency_description">调整卡片、按钮和列表项的透明度。AMOLED 模式下项目背景完全透明，并显示边框。</string>
+    <string name="settings_item_transparency_reset">重置组件透明度</string>
 </resources>

@@ -7,15 +7,22 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.abs
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
@@ -130,6 +137,42 @@ enum class AppDestination(val route: String) {
     ABOUT("About"),
 }
 
+/** The two top-level pages; pages under Menu are navigated inside its own NavHost. */
+internal const val CHAT_PAGE = 0
+internal const val MENU_PAGE = 1
+
+/** The native Pager owns both page swipes; Chat body filters only leftward drags. */
+internal fun homePagerSwipeEnabled(settledPage: Int, menuRoute: String?): Boolean =
+    settledPage == CHAT_PAGE || menuRoute == AppDestination.FEATURES.route
+
+/** Route gestures at their start; never switch owners when the finger reverses direction. */
+internal fun Modifier.homePagerGestureRouting(
+    chatActive: Boolean, appBarBottomPx: Int, drawerEdgePx: Int, onPagerAllowed: (Boolean) -> Unit
+): Modifier = pointerInput(chatActive, appBarBottomPx, drawerEdgePx) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        val onAppBar = chatActive && down.position.y < appBarBottomPx && down.position.x > drawerEdgePx
+        if (chatActive) onPagerAllowed(onAppBar)
+        try {
+            var directionChosen = false
+            do {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                val dx = (event.changes.firstOrNull { it.id == down.id }?.position?.x ?: down.position.x) - down.position.x
+                if (onAppBar && !directionChosen && abs(dx) > viewConfiguration.touchSlop / 2) {
+                    directionChosen = true
+                    if (dx > 0f) onPagerAllowed(false) // Drawer owns this entire gesture.
+                }
+            } while (event.changes.any { it.pressed })
+        } finally {
+            if (chatActive) onPagerAllowed(true) // Also restore on cancellation/navigation.
+        }
+    }
+}
+
+/** System Back at the Menu root has the same destination and animation as a rightward tab swipe. */
+internal fun homePagerBackToChatEnabled(currentPage: Int, menuRoute: String?): Boolean =
+    currentPage == MENU_PAGE && menuRoute == AppDestination.FEATURES.route
+
 /** Longest a chat selection waits for the drawer to finish closing before it is applied anyway. */
 private const val DRAWER_CLOSE_WAIT_MS = 700L
 
@@ -155,12 +198,24 @@ fun AppNavigation(
 
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val chatOnTop = navBackStackEntry?.destination?.route == AppDestination.CHAT.route
+    // A built-in HorizontalPager owns both full-screen pages, exactly like tab navigation.
+    // Its offscreen page remains composed (and retains scroll, draft and nested NavHost).
+    val homePager = rememberPagerState(initialPage = CHAT_PAGE, pageCount = { 2 })
+    val chatOnTop = homePager.currentPage == CHAT_PAGE
+    var chatPagerGestureAllowed by remember { mutableStateOf(true) }
+    val density = LocalDensity.current
+    val appBarBottomPx = with(density) { 72.dp.roundToPx() } + WindowInsets.statusBars.getTop(density)
+    val drawerEdgePx = with(density) { 32.dp.roundToPx() }
+    fun showHomePage(page: Int) {
+        coroutineScope.launch { homePager.animateScrollToPage(page) }
+    }
     fun navigate(destination: AppDestination) {
-        navController.navigate(destination.route) {
-            popUpTo(AppDestination.CHAT.route) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
+        if (destination == AppDestination.CHAT || destination == AppDestination.FEATURES) {
+            navController.popBackStack(AppDestination.FEATURES.route, inclusive = false)
+            showHomePage(if (destination == AppDestination.CHAT) CHAT_PAGE else MENU_PAGE)
+        } else {
+            navController.navigate(destination.route) { launchSingleTop = true }
+            showHomePage(MENU_PAGE)
         }
     }
 
@@ -175,14 +230,17 @@ fun AppNavigation(
     }
 
     fun openConfiguration(destination: AppDestination) {
+        showHomePage(MENU_PAGE)
         navController.navigate(destination.route) { launchSingleTop = true }
     }
 
     fun openTerminal(machine: RemoteMachine) {
+        showHomePage(MENU_PAGE)
         navController.navigate("terminal/${Uri.encode(machine.id)}") { launchSingleTop = true }
     }
 
     fun openSkillsSettings() {
+        showHomePage(MENU_PAGE)
         navController.navigate("${AppDestination.CHAT_OPTIONS.route}?tab=skills") { launchSingleTop = true }
     }
 
@@ -193,6 +251,7 @@ fun AppNavigation(
             append("?tab=instructions")
             instructionId?.let { append("&instructionId=${Uri.encode(it)}") }
         }
+        showHomePage(MENU_PAGE)
         navController.navigate(route) { launchSingleTop = true }
     }
 
@@ -378,6 +437,7 @@ fun AppNavigation(
     LaunchedEffect(importedProviderId) {
         importedProviderId?.let { id ->
             drawerState.close()
+            showHomePage(MENU_PAGE)
             navController.navigate("providers/edit/$id") { launchSingleTop = true }
             configurationViewModel.providerImportOpened(id)
         }
@@ -395,6 +455,12 @@ fun AppNavigation(
 
     CompositionLocalProvider(
         org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences provides appPrefs,
+        org.starfall.generative.shared.ui.layout.LocalItemTransparency provides appPrefs.itemTransparency,
+        org.starfall.generative.shared.ui.background.LocalProfileModalImages provides
+            org.starfall.generative.shared.ui.background.ProfileModalImages(
+                appPrefs.userProfile.sheetBackground, appPrefs.userProfile.dialogBackground,
+                appPrefs.userProfile.sheetTransparency, appPrefs.userProfile.dialogTransparency
+            ),
         LocalChatAttachmentSelection provides chatAttachments,
         LocalInstructionControls provides InstructionControls(
             library = appPrefs.instructionLibraryForSelection(currentConvInstructionIds),
@@ -415,6 +481,7 @@ fun AppNavigation(
             },
             setMachineTool = viewModel::setMachineToolEnabled,
             setSendFile = viewModel::setSendFileEnabled,
+            setWebSearch = viewModel::setWebSearchEnabled,
             setSearchTools = viewModel::setSearchToolsEnabled,
             setAgentSkillsSearch = viewModel::setAgentSkillsSearchEnabled
         )
@@ -433,6 +500,7 @@ fun AppNavigation(
                     generatingConversationIds = generatingConversationIds,
                     organization = appPrefs.chatRelations.sidebar,
                     backgroundImage = appPrefs.userProfile.drawerBackground,
+                    backgroundTransparency = appPrefs.userProfile.drawerTransparency,
                     onUpdateOrganization = settingsViewModel::updateSidebar,
                     onDeleteConversations = { ids ->
                         viewModel.deleteConversations(ids, chatAttachments.attachments.value)
@@ -482,30 +550,25 @@ fun AppNavigation(
                 )
             }
         ) {
-            // The chat screen stays composed whatever page is open: NavHost disposes a destination's
-            // composition when another page is on top, which used to wipe the scroll position, the typed
-            // draft, open sheets and every other piece of chat UI state. Other pages draw over it.
+            // Pager and Drawer retain their native gestures. Ownership is locked by
+            // the initial touch region/direction, never by subsequent finger reversals.
             val focusManager = LocalFocusManager.current
             LaunchedEffect(chatOnTop) {
                 if (!chatOnTop) focusManager.clearFocus(force = true)
             }
-            Box(modifier = Modifier.fillMaxSize()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .then(
-                            if (chatOnTop) Modifier else Modifier.pointerInput(Unit) {
-                                // Hidden underneath another page: swallow touches so nothing reaches it.
-                                awaitPointerEventScope {
-                                    while (true) {
-                                        awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
-                                    }
-                                }
-                            }
-                        )
-                ) {
+            HorizontalPager(
+                state = homePager,
+                modifier = Modifier.fillMaxSize().homePagerGestureRouting(
+                    chatOnTop, appBarBottomPx, drawerEdgePx
+                ) { chatPagerGestureAllowed = it },
+                beyondViewportPageCount = 1,
+                userScrollEnabled = homePagerSwipeEnabled(homePager.settledPage, navBackStackEntry?.destination?.route) && chatPagerGestureAllowed,
+                key = { if (it == CHAT_PAGE) "chat" else "menu" }
+            ) { page ->
+                if (page == CHAT_PAGE) {
                     ChatScreen(
                         backgroundImage = appPrefs.userProfile.chatBackground,
+                        backgroundTransparency = appPrefs.userProfile.chatTransparency,
                         conversation = currentConvState.value,
                         isDrawerOpening = drawerState.targetValue == DrawerValue.Open || drawerState.isOpen,
                         activeStream = viewModel.activeStreamForCurrentConversation,
@@ -612,10 +675,19 @@ fun AppNavigation(
                          onOpenFeatureToolsSettings = { openConfiguration(AppDestination.TOOLS_EDITOR) },
                          onOpenMcpConnectorsSettings = { openConfiguration(AppDestination.MCP) }
                      )
-                }
-                NavHost(
+                } else {
+                    // One opaque photo behind the entire Menu NavHost; nested pages only
+                    // slide their transparent content and never reposition this background.
+                    Box(Modifier.fillMaxSize()) {
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                        org.starfall.generative.shared.ui.background.ProfileBackground(
+                            appPrefs.userProfile.menuBackground,
+                            transparency = appPrefs.userProfile.menuTransparency
+                        )
+                    }
+                    NavHost(
                     navController = navController,
-                    startDestination = AppDestination.CHAT.route,
+                    startDestination = AppDestination.FEATURES.route,
                     enterTransition = {
                         slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(300))
                     },
@@ -630,8 +702,14 @@ fun AppNavigation(
                     }
                 ) {
                     composable(AppDestination.CHAT.route) {
-                        // The chat lives outside the NavHost (see above) so it is never disposed.
-                        Box(Modifier.fillMaxSize())
+                        // Compatibility for saved back stacks from the former single NavHost.
+                        LaunchedEffect(Unit) {
+                            showHomePage(CHAT_PAGE)
+                            navController.navigate(AppDestination.FEATURES.route) {
+                                popUpTo(AppDestination.CHAT.route) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
                     }
 
                     composable(
@@ -1044,9 +1122,7 @@ fun AppNavigation(
                             modifier = Modifier.fillMaxSize(),
                             logoImage = appPrefs.featuresLogoImage,
                             onLogoImageChange = settingsViewModel::setFeaturesLogoImage,
-                            backgroundImage = appPrefs.userProfile.menuBackground,
                             onNavigateToUserProfile = { openConfiguration(AppDestination.USER_PROFILE) },
-                            onBack = { navController.popBackStack() },
                             onNavigateToChatOptions = { openConfiguration(AppDestination.CHAT_OPTIONS) },
                             onNavigateToToolsEditor = { openConfiguration(AppDestination.TOOLS_EDITOR) },
                             onNavigateToProviders = { openConfiguration(AppDestination.PROVIDERS) },
@@ -1063,6 +1139,7 @@ fun AppNavigation(
 
                     composable(AppDestination.APP_SETTINGS.route) {
                         Scaffold(
+                            containerColor = androidx.compose.ui.graphics.Color.Transparent,
                             topBar = {
                                 MainAppbar(
                                     title = stringResource(R.string.settings_category_app_settings),
@@ -1086,6 +1163,7 @@ fun AppNavigation(
                                     onColorSchemeChange = { scheme ->
                                         settingsViewModel.setColorSchemeName(scheme)
                                     },
+                                    onItemTransparencyChange = settingsViewModel::setItemTransparency,
                                     onHideStatusBarChange = { value ->
                                         settingsViewModel.setHideStatusBar(value)
                                     },
@@ -1152,6 +1230,7 @@ fun AppNavigation(
 
                     composable(AppDestination.ABOUT.route) {
                         Scaffold(
+                            containerColor = androidx.compose.ui.graphics.Color.Transparent,
                             topBar = {
                                 MainAppbar(
                                     title = stringResource(R.string.settings_category_about),
@@ -1173,8 +1252,15 @@ fun AppNavigation(
                         }
                     }
                 }
+                }
             }
         }
+    }
+    }
+    // Back from the Menu root is a native Pager transition to Chat, just like a swipe.
+    // Nested screens retain their own NavHost Back behavior without switching tabs.
+    BackHandler(enabled = homePagerBackToChatEnabled(homePager.currentPage, navBackStackEntry?.destination?.route)) {
+        showHomePage(CHAT_PAGE)
     }
     BackHandler(enabled = drawerState.isOpen) {
         coroutineScope.launch { drawerState.close() }

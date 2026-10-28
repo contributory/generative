@@ -18,6 +18,7 @@ data class ToolControls(
     val setMachine: (String, Boolean)->Unit = {_,_->},
     val setMachineTool: (String, String, Boolean)->Unit = {_,_,_->},
     val setSendFile: (Boolean)->Unit = {},
+    val setWebSearch: (Boolean)->Unit = {},
     val setSearchTools: (Boolean)->Unit = {},
     val setAgentSkillsSearch: (Boolean)->Unit = {}
 )

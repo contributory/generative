@@ -34,6 +34,9 @@ class SettingsViewModel(
     fun setUseAmoled(value: Boolean) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setUseAmoled(value) }
     }
+    fun setItemTransparency(value: Float) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setItemTransparency(value) }
+    }
     fun setUseDynamicColor(value: Boolean) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setUseDynamicColor(value) }
     }

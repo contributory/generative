@@ -84,6 +84,8 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
     BackHandler(enabled = viewingFile == null && !inSelectMode, onBack = onBack)
 
     Scaffold(
+
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             if (inSelectMode) {
                 TopAppBar(

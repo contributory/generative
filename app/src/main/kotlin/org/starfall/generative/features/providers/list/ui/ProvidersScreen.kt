@@ -133,11 +133,13 @@ fun ProvidersScreen(
     // stays faintly legible (API 31+; a no-op below).
     val backdropBlur by animateDpAsState(
         targetValue = if (openGroup != null) 1.5.dp else 0.dp,
-        animationSpec = tween(durationMillis = 450),
+        animationSpec = tween(
+            durationMillis = if (openGroup != null) FolderOpenDurationMillis else FolderCloseDurationMillis
+        ),
         label = "providerFolderBackdropBlur"
     )
     val folderOverlayGroup = openGroup ?: renderedFolderGroup
-    BackHandler(enabled = LocalScreenTransitionActive.current && folderOverlayGroup != null) {
+    BackHandler(enabled = LocalScreenTransitionActive.current && openGroup != null) {
         if (openGroupId != null) openGroupId = null
     }
     // The skip flag is one-shot: the overlay reads it when first composed, then it is cleared so later opens animate.
@@ -514,8 +516,9 @@ fun ProvidersScreen(
             )
     ) {
         Scaffold(
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
             // Root controls are covered by the folder page, and must also be hidden from accessibility.
-            modifier = (if (folderOverlayGroup != null) Modifier.clearAndSetSemantics {} else Modifier)
+            modifier = (if (openGroup != null) Modifier.clearAndSetSemantics {} else Modifier)
                 .then(if (backdropBlur > 0.dp) Modifier.blur(backdropBlur) else Modifier),
             topBar = {
                 ProviderScreenTopBar(

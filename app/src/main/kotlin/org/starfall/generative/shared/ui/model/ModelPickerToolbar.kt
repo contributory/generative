@@ -71,6 +71,8 @@ internal fun ModelPickerToolbar(
     onOpenSelectedModel: (() -> Unit)?,
     onSearchBoundsChange: (Rect?) -> Unit = {}
 ) {
+    // The toolbar owns only focus/expansion; the query is held by ModelPickerSheetContent
+    // and must survive collapsing this editor on focus or IME loss.
     var searchExpanded by remember { mutableStateOf(false) }
     var searchWasFocused by remember { mutableStateOf(false) }
     var collapseAfterIme by remember { mutableStateOf(false) }

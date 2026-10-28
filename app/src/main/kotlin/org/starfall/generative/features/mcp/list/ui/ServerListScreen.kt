@@ -56,7 +56,8 @@ fun ServerListScreen(
     var selectedToolError by remember { mutableStateOf<Pair<String, String>?>(null) }
     var orderedServers by remember(mcpServers) { mutableStateOf(mcpServers) }
     val context = LocalContext.current
-    Scaffold(topBar = {
+    Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,topBar = {
             TopAppBar(
                 colors = edgeToEdgeTopAppBarColors(),
             title = {

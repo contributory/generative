@@ -89,6 +89,8 @@ internal fun RemoteMachineSettings(
     }
 
     Scaffold(
+
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             RemoteMachinesTopBar(
                 title = stringResource(R.string.remote_machine_settings),

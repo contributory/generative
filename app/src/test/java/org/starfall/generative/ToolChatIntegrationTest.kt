@@ -39,6 +39,78 @@ import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 class ToolChatIntegrationTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
+    @Test fun pinnedWebSearchServiceUsesFixedWirePrefixAndOriginalMcpToolName() = runBlocking {
+        for (pinned in listOf(false, true)) {
+            val server = MockWebServer()
+            server.start()
+            val root = Files.createTempDirectory("web-search-tool-").toFile()
+            val seenModelNames = mutableListOf<String>()
+            val calledMcpNames = mutableListOf<String>()
+            val expected = if (pinned) "WebSearch_awesome_tool" else "My_Server_awesome_tool"
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    if (request.method == "DELETE") return MockResponse().setResponseCode(204)
+                    if (request.method == "GET" && request.path == "/mcp") return MockResponse().setResponseCode(405)
+                    val body = Json.parseToJsonElement(request.body.readUtf8()).jsonObject
+                    fun json(value: JsonElement) = MockResponse()
+                        .addHeader("Content-Type", "application/json").setBody(value.toString())
+                    if (request.path == "/mcp") {
+                        val result = when (body.text("method")) {
+                            "notifications/initialized" -> return MockResponse().setResponseCode(202)
+                            "initialize" -> obj("protocolVersion" to str("2025-06-18"), "capabilities" to obj("tools" to obj()),
+                                "serverInfo" to obj("name" to str("test"), "version" to str("1")))
+                            "tools/list" -> obj("tools" to JsonArray(listOf(obj("name" to str("awesome_tool"),
+                                "inputSchema" to obj("type" to str("object"))))))
+                            "tools/call" -> {
+                                calledMcpNames += body.requireObject("params").text("name")
+                                obj("content" to JsonArray(listOf(obj("type" to str("text"), "text" to str("search result")))))
+                            }
+                            else -> error("Unexpected MCP method: ${body.text("method")}")
+                        }
+                        return json(obj("jsonrpc" to str("2.0"), "id" to body.getValue("id"), "result" to result))
+                    }
+                    val toolNames = body.getValue("tools").jsonArray.map {
+                        it.jsonObject.requireObject("function").text("name")
+                    }
+                    seenModelNames += toolNames
+                    assertEquals(listOf(expected), toolNames)
+                    val reply = if (seenModelNames.size == 1) {
+                        obj("role" to str("assistant"), "content" to str(""),
+                            "tool_calls" to JsonArray(listOf(obj("id" to str("call1"), "type" to str("function"),
+                                "function" to obj("name" to str(expected), "arguments" to str("{}"))))))
+                    } else {
+                        assertTrue(body.toString().contains("search result"))
+                        obj("role" to str("assistant"), "content" to str("Done"))
+                    }
+                    return json(obj("choices" to JsonArray(listOf(obj("message" to reply)))))
+                }
+            }
+            try {
+                val provider = ModelProvider("p", "Chat", ModelApiType.OPENAI,
+                    baseUrl = server.url("/v1").toString(),
+                    config = ProviderConfiguration(supportStream = false))
+                val mcp = McpInfo("search", "My Server", url = server.url("/mcp").toString())
+                val http = ToolHttp(ToolFiles(root))
+                val settings = ToolSettings(
+                    webSearchProviderId = if (pinned) mcp.id else null,
+                    webSearchEnabled = pinned
+                )
+                val events = ToolChatViewModel(http, McpService(http), AiService(context)).generate(
+                    provider, "chat", listOf(StoredMessage("u", ChatRole.USER, listOf(MessageVersion("Search")))),
+                    "", listOf(mcp), listOf(provider), { settings }
+                ).toList()
+                assertEquals(2, seenModelNames.size)
+                assertEquals(listOf("awesome_tool"), calledMcpNames)
+                assertEquals(expected, events.filterIsInstance<GenerationEvent.Tool>()
+                    .first { it.activity.wireName == expected }.activity.wireName)
+                assertEquals("Done", events.filterIsInstance<GenerationEvent.Text>().joinToString("") { it.text })
+            } finally {
+                server.shutdown()
+                root.deleteRecursively()
+            }
+        }
+    }
+
     @Test fun disabledSearchDoesNotAttachSkillToolsForMatchingTaskOrPastSkill() = runBlocking {
         val server = MockWebServer()
         server.start()

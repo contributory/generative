@@ -7,12 +7,14 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.features.speech.ui.SpeechModelField
 import org.starfall.generative.integrations.speech.SpeechSynthesisModel
 import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.shared.model.SpeechService
+import java.util.concurrent.atomic.AtomicInteger
 
 /** Model defaults must come from each engine's fetched catalog, not a fixed model ID. */
 class SpeechModelFieldTest {
@@ -46,6 +48,40 @@ class SpeechModelFieldTest {
         }
     }
 
+    @Test fun savedModelFetchesOnlyWhenPickerIsOpenedAndReusesCatalog() {
+        var modelId by mutableStateOf<String?>("saved-model")
+        val requests = AtomicInteger()
+        compose.setContent {
+            MaterialTheme {
+                SpeechModelField(
+                    SpeechService("saved", "Voice", engine = SpeechEngine.ELEVENLABS,
+                        apiKey = "saved-key", modelId = modelId),
+                    onChange = { modelId = it },
+                    fetchModels = {
+                        requests.incrementAndGet()
+                        listOf(SpeechSynthesisModel("catalog-first", "First from catalog"))
+                    }
+                )
+            }
+        }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertEquals(0, requests.get())
+            assertEquals("saved-model", modelId)
+        }
+        compose.onNodeWithContentDescription("Refresh models").assertDoesNotExist()
+
+        compose.onNodeWithTag("speech-model-dropdown").performClick()
+        compose.waitUntil(5_000) { requests.get() == 1 }
+        compose.onNodeWithText("First from catalog").assertExists()
+        compose.runOnIdle { assertEquals("saved-model", modelId) }
+        compose.onNodeWithText("First from catalog").performClick()
+        compose.runOnIdle { assertEquals("catalog-first", modelId) }
+        compose.onNodeWithTag("speech-model-dropdown").performClick()
+        compose.onNodeWithText("First from catalog").assertExists()
+        compose.runOnIdle { assertEquals(1, requests.get()) }
+    }
+
     @Test fun doesNotReplaceSavedOrManuallyEnteredModels() {
         var modelId by mutableStateOf<String?>("saved-model")
         var apiKey by mutableStateOf("first-key")
@@ -71,6 +107,9 @@ class SpeechModelFieldTest {
                 )
             }
         }
+        compose.waitForIdle()
+        compose.runOnIdle { assertFalse(firstStarted.isCompleted) }
+        compose.onNodeWithTag("speech-model-dropdown").performClick()
         compose.waitUntil(5_000) { firstStarted.isCompleted }
         compose.runOnIdle { first.complete(listOf(SpeechSynthesisModel("first-from-api", "First"))) }
         compose.waitForIdle()

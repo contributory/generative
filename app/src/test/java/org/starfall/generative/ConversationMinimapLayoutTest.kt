@@ -47,7 +47,26 @@ class ConversationMinimapLayoutTest {
     @Test fun scrollCentersPointsInsideLongMessages() {
         assertEquals(900, minimapScrollOffset(2000, 0.5f, 200))
         assertEquals(1900, minimapScrollOffset(2000, 0f, 200))
-        assertEquals(0, minimapScrollOffset(2000, 1f, 200))
+        assertEquals(-100, minimapScrollOffset(2000, 1f, 200))
+    }
+
+    @Test fun indicatorKeepsItsSizeAcrossMessagesWithDifferentEstimationErrors() {
+        val ranges = listOf(0f..0.4f, 0.4f..0.45f, 0.95f..1f)
+        ranges.forEach { visible ->
+            val indicator = minimapIndicatorRange(visible, 0.2f)
+            assertEquals(0.2f, indicator.endInclusive - indicator.start, 0.0001f)
+            assertTrue(indicator.start >= 0f && indicator.endInclusive <= 1f)
+        }
+        assertEquals(0f..1f, minimapIndicatorRange(0.2f..0.3f, 2f))
+    }
+
+    @Test fun shortMessagesAndInsetsKeepTheTargetCenteredWithoutClamping() {
+        assertEquals(-200, minimapScrollOffset(100, 0.5f, 400, 50))
+        // At a message boundary, equivalent points in adjacent items must differ
+        // only by the next item's height, not jump by half a viewport.
+        val endOfOlder = minimapScrollOffset(100, 1f, 400)
+        val startOfNewer = minimapScrollOffset(300, 0f, 400)
+        assertEquals(300, startOfNewer - endOfOlder)
     }
 
     @Test fun appendedOrRemovedMessagesResolveTheirCurrentReverseIndex() {

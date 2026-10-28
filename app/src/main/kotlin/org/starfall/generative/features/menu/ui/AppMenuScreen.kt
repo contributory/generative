@@ -8,7 +8,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,10 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +56,8 @@ import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.theme.LocalAmoledMode
+import org.starfall.generative.shared.ui.layout.LocalItemTransparency
+import org.starfall.generative.shared.ui.layout.itemFill
 import org.starfall.generative.shared.ui.FeaturesLogoImage
 import org.starfall.generative.shared.ui.icons.FluentUi
 
@@ -89,9 +87,7 @@ fun AppMenuScreen(
     modifier: Modifier = Modifier,
     logoImage: String? = null,
     onLogoImageChange: (String?) -> Unit = {},
-    backgroundImage: String? = null,
     onNavigateToUserProfile: () -> Unit = {},
-    onBack: () -> Unit = {},
     onNavigateToChatOptions: () -> Unit = {},
     onNavigateToToolsEditor: () -> Unit = {},
     onNavigateToProviders: () -> Unit = {},
@@ -104,45 +100,14 @@ fun AppMenuScreen(
     onNavigateToAppData: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {}
 ) {
-    val edgeSwipeStarted = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    val edgeSwipeDistance = androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-    val gestureStartWidthPx = with(LocalDensity.current) {
-        (LocalConfiguration.current.screenWidthDp.dp.toPx() / 2f)
-    }
-    val backThresholdPx = with(androidx.compose.ui.platform.LocalDensity.current) { 80.dp.toPx() }
     val safeDrawing = WindowInsets.safeDrawing.asPaddingValues()
     val layoutDirection = LocalLayoutDirection.current
 
-    Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-    org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage)
+    // Background is owned once by AppNavigation for every destination in the Menu
+    // family. Only this screen's content participates in nested navigation slides.
+    Box(modifier.fillMaxSize()) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize()
-            .pointerInput(onBack, gestureStartWidthPx, backThresholdPx) {
-                detectHorizontalDragGestures(
-                    onDragStart = { offset ->
-                        edgeSwipeStarted.value = offset.x <= gestureStartWidthPx
-                        edgeSwipeDistance.floatValue = 0f
-                    },
-                    onHorizontalDrag = { change, dragAmount ->
-                        if (edgeSwipeStarted.value && dragAmount > 0f) {
-                            edgeSwipeDistance.floatValue += dragAmount
-                            if (edgeSwipeDistance.floatValue >= backThresholdPx) {
-                                change.consume()
-                                edgeSwipeStarted.value = false
-                                onBack()
-                            }
-                        }
-                    },
-                    onDragEnd = {
-                        edgeSwipeStarted.value = false
-                        edgeSwipeDistance.floatValue = 0f
-                    },
-                    onDragCancel = {
-                        edgeSwipeStarted.value = false
-                        edgeSwipeDistance.floatValue = 0f
-                    }
-                )
-            },
+        modifier = Modifier.fillMaxSize(),
         // Draw the list itself behind transparent system bars, but keep interactive content inside
         // the safe area. This is the same edge-to-edge arrangement used by ChatScreen.
         contentPadding = PaddingValues(
@@ -315,9 +280,9 @@ internal fun featureButtonContainerColor(
     colorScheme: ColorScheme = MaterialTheme.colorScheme,
     amoledMode: Boolean = LocalAmoledMode.current
 ): Color = if (amoledMode) {
-    colorScheme.surfaceContainerLow
+    Color.Transparent
 } else {
-    colorScheme.surfaceContainerHigh
+    colorScheme.surfaceContainerHigh.copy(alpha = 1f).itemFill(LocalItemTransparency.current)
 }
 
 @Composable
@@ -352,7 +317,9 @@ private fun FeatureButton(
         ) {
             Surface(
                 shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
+                color = if (LocalAmoledMode.current) Color.Transparent else
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 1f).itemFill(LocalItemTransparency.current),
+                border = if (LocalAmoledMode.current) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null,
                 modifier = Modifier.size(46.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {

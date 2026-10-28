@@ -53,7 +53,8 @@ fun MediaRequestChainSettings(
     }
 
     BackHandler(enabled = LocalScreenTransitionActive.current) { onBack() }
-    Scaffold(modifier = Modifier.testTag("media-profiles-screen"), topBar = {
+    Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,modifier = Modifier.testTag("media-profiles-screen"), topBar = {
         TopAppBar(
             colors = edgeToEdgeTopAppBarColors(),
             title = { Text(stringResource(if (music) R.string.music_profiles else if (video) R.string.media_video_gen_profiles else R.string.media_image_gen_profiles)) },

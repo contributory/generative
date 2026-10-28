@@ -41,6 +41,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.net.HttpURLConnection
 import java.net.URL
+import org.starfall.generative.shared.ui.layout.appTabRowColor
+import org.starfall.generative.shared.ui.layout.appTabRowBorder
 import org.starfall.generative.R
 import androidx.compose.ui.res.stringResource
 import android.content.res.Resources
@@ -61,6 +63,7 @@ import org.starfall.generative.shared.storage.preferences.ScreenWakelockMode
 import org.starfall.generative.shared.storage.preferences.ToolCallStrategy
 import org.starfall.generative.shared.storage.preferences.WordWrapMode
 import org.starfall.generative.shared.theme.ThemePresets
+import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -96,6 +99,7 @@ fun AppearanceSettingsView(
     onAmoledChange: (Boolean) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onColorSchemeChange: (String) -> Unit,
+    onItemTransparencyChange: (Float) -> Unit = {},
     onHideStatusBarChange: (Boolean) -> Unit = {},
     onWordWrapModeChange: (WordWrapMode) -> Unit = {},
     onWordWrapColumnChange: (Int) -> Unit = {},
@@ -108,6 +112,11 @@ fun AppearanceSettingsView(
     onMessageFontFamilyChange: (MessageFontFamily) -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(bottom = 24.dp)
 ) {
+    // Keep drag feedback local and write the preference only when the user releases the slider.
+    var itemTransparencyDraft by remember { mutableFloatStateOf(appPreferences.itemTransparency) }
+    LaunchedEffect(appPreferences.itemTransparency) {
+        itemTransparencyDraft = appPreferences.itemTransparency
+    }
     LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             SettingsSection(stringResource(R.string.settings_theme)) {
@@ -165,6 +174,34 @@ fun AppearanceSettingsView(
                             }
                         }
                     }
+                }
+            }
+        }
+        item {
+            SettingsSection(stringResource(R.string.settings_item_transparency)) {
+                Text(
+                    stringResource(R.string.settings_item_transparency_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = {
+                        itemTransparencyDraft = 0.5f
+                        onItemTransparencyChange(0.5f)
+                    }, enabled = !LocalAmoledMode.current) {
+                        FluentIcon(Icons.Default.RestartAlt, stringResource(R.string.settings_item_transparency_reset))
+                    }
+                    Slider(
+                        value = itemTransparencyDraft.coerceIn(0f, 1f),
+                        onValueChange = { itemTransparencyDraft = it },
+                        onValueChangeFinished = { onItemTransparencyChange(itemTransparencyDraft) },
+                        modifier = Modifier.weight(1f),
+                        enabled = !LocalAmoledMode.current
+                    )
+                    Text(
+                        "${(itemTransparencyDraft.coerceIn(0f, 1f) * 100).toInt()}%",
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
                 }
             }
         }
@@ -424,6 +461,7 @@ fun AppSettings(
     onAmoledChange: (Boolean) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onColorSchemeChange: (String) -> Unit,
+    onItemTransparencyChange: (Float) -> Unit = {},
     onHideStatusBarChange: (Boolean) -> Unit,
     onWordWrapModeChange: (WordWrapMode) -> Unit,
     onWordWrapColumnChange: (Int) -> Unit,
@@ -467,10 +505,11 @@ fun AppSettings(
     Column(Modifier.fillMaxSize().padding(top = scaffoldPadding.calculateTopPadding() + 8.dp)) {
         PrimaryTabRow(
             selectedTabIndex = pager.currentPage,
+            containerColor = appTabRowColor(),
             modifier = Modifier.padding(
                 start = scaffoldPadding.calculateStartPadding(LocalLayoutDirection.current) + 16.dp,
                 end = scaffoldPadding.calculateEndPadding(LocalLayoutDirection.current) + 16.dp
-            )
+            ).then(appTabRowBorder())
         ) {
             Tab(
                 selected = pager.currentPage == 0,
@@ -515,6 +554,7 @@ fun AppSettings(
                     onAmoledChange = onAmoledChange,
                     onDynamicColorChange = onDynamicColorChange,
                     onColorSchemeChange = onColorSchemeChange,
+                    onItemTransparencyChange = onItemTransparencyChange,
                     onHideStatusBarChange = onHideStatusBarChange,
                     onWordWrapModeChange = onWordWrapModeChange,
                     onWordWrapColumnChange = onWordWrapColumnChange,

@@ -107,6 +107,7 @@ data class AppPreferences(
     val useAmoled: Boolean = false,
     val useDynamicColor: Boolean = true,
     val colorSchemeName: String = "DEFAULT", // DEFAULT, EMERALD, SUNSET, CRIMSON, VIOLET
+    val itemTransparency: Float = 0.5f,
     val instructionLibrary: InstructionLibrary = InstructionLibrary(),
     val agentSkills: AgentSkills = AgentSkills(),
     val continueLastConversation: Boolean = false,
@@ -187,6 +188,7 @@ class AppPreferencesRepository(private val context: Context) {
         val USE_AMOLED = booleanPreferencesKey("use_amoled")
         val USE_DYNAMIC_COLOR = booleanPreferencesKey("use_dynamic_color")
         val COLOR_SCHEME_NAME = stringPreferencesKey("color_scheme_name")
+        val ITEM_TRANSPARENCY = floatPreferencesKey("item_transparency")
         val INSTRUCTION_LIBRARY = stringPreferencesKey("prompt_library")
         val AGENT_SKILLS = stringPreferencesKey("agent_skills")
         val CONTINUE_LAST_CONVERSATION = booleanPreferencesKey("continue_last_conversation")
@@ -261,6 +263,7 @@ class AppPreferencesRepository(private val context: Context) {
                 useAmoled = preferences[PreferenceKeys.USE_AMOLED] ?: legacyAmoled,
                 useDynamicColor = preferences[PreferenceKeys.USE_DYNAMIC_COLOR] ?: true,
                 colorSchemeName = preferences[PreferenceKeys.COLOR_SCHEME_NAME] ?: "DEFAULT",
+                itemTransparency = (preferences[PreferenceKeys.ITEM_TRANSPARENCY] ?: 0.5f).coerceIn(0f, 1f),
                 instructionLibrary = decodeInstructionLibrary(preferences),
                 agentSkills = agentSkillsFromFiles(),
                 continueLastConversation = preferences[PreferenceKeys.CONTINUE_LAST_CONVERSATION] ?: false,
@@ -500,6 +503,13 @@ class AppPreferencesRepository(private val context: Context) {
             }
         }
     }
+    suspend fun setItemTransparency(value: Float) {
+        val adjusted = value.coerceIn(0f, 1f)
+        state.mutate({ it.copy(itemTransparency = adjusted) }) {
+            context.dataStore.edit { it[PreferenceKeys.ITEM_TRANSPARENCY] = adjusted }
+        }
+    }
+
     suspend fun setUseDynamicColor(useDynamic: Boolean) {
         state.mutate({ it.copy(useDynamicColor = useDynamic) }) {
             context.dataStore.edit { preferences ->
@@ -884,6 +894,7 @@ class AppPreferencesRepository(private val context: Context) {
                 stored[PreferenceKeys.USE_AMOLED] = preferences.useAmoled
                 stored[PreferenceKeys.USE_DYNAMIC_COLOR] = preferences.useDynamicColor
                 stored[PreferenceKeys.COLOR_SCHEME_NAME] = preferences.colorSchemeName
+                stored[PreferenceKeys.ITEM_TRANSPARENCY] = preferences.itemTransparency.coerceIn(0f, 1f)
                 stored[PreferenceKeys.INSTRUCTION_LIBRARY] = Json.encodeToString(preferences.instructionLibrary)
                 stored[PreferenceKeys.CONTINUE_LAST_CONVERSATION] = preferences.continueLastConversation
                 stored[PreferenceKeys.PERSIST_SELECTED_MODEL] = preferences.persistSelectedModel

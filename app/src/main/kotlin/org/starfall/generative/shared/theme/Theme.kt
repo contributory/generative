@@ -267,6 +267,8 @@ fun GenerativeTheme(
         colorSchemeName == "MONOCHROME" -> if (isDark) MonochromeDark else MonochromeLight
         else -> if (isDark) DefaultDark else DefaultLight
     }
+    // Keep screen and modal surface tokens opaque. Only individual items apply
+    // LocalItemTransparency when drawing their own backgrounds.
     val colorScheme = completeScheme(selectedScheme, isDark).let {
         if (isAmoled) it.withAmoledSurfaces() else it
     }

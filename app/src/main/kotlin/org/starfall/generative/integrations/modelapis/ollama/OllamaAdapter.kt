@@ -57,7 +57,7 @@ internal class OllamaAdapter(
         }
 
     override suspend fun testConnection(provider: ModelProvider): Result<String> = try {
-        val response = httpClient.get(resolveTagsUrl(provider.baseUrl)) {
+        val response = httpClient.get(provider.config.customEndpoints["catalog"]?.takeIf { it.isNotBlank() } ?: provider.config.customListModelsUrl?.takeIf { it.isNotBlank() } ?: resolveTagsUrl(provider.baseUrl)) {
             provider.auth.requestHeaders(provider.type).forEach { (key, value) -> header(key, value) }
             if (provider.auth.method == AuthMethod.QUERY_PARAM && provider.auth.token.isNotBlank()) {
                 parameter(provider.auth.key?.takeIf { it.isNotBlank() } ?: "key", provider.auth.token)
@@ -106,7 +106,7 @@ internal class OllamaAdapter(
             })
         }
         try {
-            val response = httpClient.post(resolveChatUrl(provider.baseUrl)) {
+            val response = httpClient.post(provider.config.customEndpoints["chat"]?.takeIf { it.isNotBlank() } ?: resolveChatUrl(provider.baseUrl)) {
                 contentType(ContentType.Application.Json)
                 provider.auth.requestHeaders(provider.type).forEach { (key, value) -> header(key, value) }
                 if (provider.auth.method == AuthMethod.QUERY_PARAM && provider.auth.token.isNotBlank()) {

@@ -32,6 +32,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import org.starfall.generative.shared.ui.layout.appTabRowColor
+import org.starfall.generative.shared.ui.layout.appTabRowBorder
 import org.starfall.generative.R
 import org.starfall.generative.features.providers.shared.ui.ModelConnectionDialog
 import org.starfall.generative.features.providers.shared.logic.ModelConnectionTests
@@ -155,6 +157,10 @@ fun ProviderEditor(
     var antigravityProjectIds by remember(initialProvider.id) {
         mutableStateOf(initialProvider.config.antigravityProjectIds)
     }
+    var showEndpoints by rememberSaveable { mutableStateOf(false) }
+    var endpoints by remember(initialProvider.id) { mutableStateOf(initialProvider.config.customEndpoints.let {
+        if ("catalog" !in it && !initialProvider.config.customListModelsUrl.isNullOrBlank()) it + ("catalog" to initialProvider.config.customListModelsUrl.orEmpty()) else it
+    }) }
     var showHeaders by rememberSaveable { mutableStateOf(false) }
     val headerRows = remember { mutableStateListOf<Pair<String, String>>().apply { addAll(initialProvider.config.headers.entries.map { it.key to it.value }) } }
     val pager = rememberPagerState(pageCount = { 2 })
@@ -180,12 +186,13 @@ fun ProviderEditor(
     val codexClientVersionValid = type != ModelApiType.OPENAI_CODEX || isValidClientVersion(codexClientVersion)
     val antigravityVersionValid = type != ModelApiType.ANTIGRAVITY || isValidClientVersion(antigravityVersion)
     val antigravityChangelistValid = type != ModelApiType.ANTIGRAVITY || isValidAntigravityChangelist(antigravityChangelist)
-    val valid = urlValid && authValid && headersValid && codexClientVersionValid &&
+    val endpointsValid = endpointFields(type).all { (key, _) -> endpoints[key].isNullOrBlank() || validEndpoint(endpoints.getValue(key), key) }
+    val valid = urlValid && authValid && headersValid && endpointsValid && codexClientVersionValid &&
         antigravityVersionValid && antigravityChangelistValid
     fun requestConfig(
         modelOrder: List<String> = order,
         modelValues: Map<String, ModelConfiguration> = models
-    ) = initialProvider.config.copy(supportStream = supportStream, anthropicPromptCache = anthropicPromptCache, headers = parsedHeaders ?: initialProvider.config.headers,
+    ) = initialProvider.config.copy(customEndpoints = endpoints.filterValues { it.isNotBlank() }.mapValues { it.value.trim() }, customListModelsUrl = null, supportStream = supportStream, anthropicPromptCache = anthropicPromptCache, headers = parsedHeaders ?: initialProvider.config.headers,
         multipleApiKeys = apiKeys.enabled, apiKeys = apiKeys.entries, oauthAccounts = oauthAccounts,
         codexClientVersion = if (type == ModelApiType.OPENAI_CODEX) codexClientVersion.trim().ifEmpty { null } else null,
         antigravityVersion = if (type == ModelApiType.ANTIGRAVITY) antigravityVersion.trim().ifEmpty { null } else null,
@@ -273,7 +280,8 @@ fun ProviderEditor(
                 onSave = { id, config -> memory.remember(id, config); updateModels((models - modelId) + (id to config)); editingModel = null },
                 onBack = { editingModel = null })
         } else {
-            Scaffold(modifier = Modifier.fillMaxSize(), topBar = {
+            Scaffold(
+                containerColor = androidx.compose.ui.graphics.Color.Transparent,modifier = Modifier.fillMaxSize(), topBar = {
                 TopAppBar(
                     colors = edgeToEdgeTopAppBarColors(),
             title = {
@@ -297,7 +305,7 @@ fun ProviderEditor(
                     })
             }) { padding ->
                 Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
-                    PrimaryTabRow(selectedTabIndex = pager.currentPage) {
+                    PrimaryTabRow(selectedTabIndex = pager.currentPage, containerColor = appTabRowColor(), modifier = appTabRowBorder()) {
                         Tab(pager.currentPage == 0, { scope.launch { pager.animateScrollToPage(0) } }, text = { Text(stringResource(R.string.common_configuration)) })
                         Tab(pager.currentPage == 1, { scope.launch { pager.animateScrollToPage(1) } }, text = { Text(stringResource(R.string.provider_models)) })
                     }
@@ -406,9 +414,11 @@ fun ProviderEditor(
                                 AnthropicPromptCacheSettings(anthropicPromptCache) { anthropicPromptCache = it }
                                 HorizontalDivider()
                             }
-                            OutlinedButton(onClick = { showHeaders = true }, modifier = Modifier.fillMaxWidth()) {
-                                Text(stringResource(R.string.headers))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = { showHeaders = true }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.headers)) }
+                                if (endpointFields(type).isNotEmpty()) OutlinedButton(onClick = { showEndpoints = true }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.provider_custom)) }
                             }
+                            if (!endpointsValid && !showEndpoints) Text(stringResource(R.string.provider_endpoints_invalid), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                             if (!headersValid && !showHeaders) Text(stringResource(R.string.provider_headers_invalid), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                         } else ProviderModelsPane(order, models, modelList, onMove = { from, to -> order = order.moved(from, to) },
                             onDrop = { if (providerPersisted) onReorderModels(initialProvider.id, order) }, onEdit = { editingModel = it },
@@ -425,6 +435,7 @@ fun ProviderEditor(
                 onCancelAuthorization = { activeOAuthRequest?.let { onCancelProviderAuthorization?.invoke(it) } },
                 onDelete = { removeOAuthAccount(it) }, onDismiss = { showOAuthAccounts = false }
             )
+            if (showEndpoints) ProviderEndpointsDialog(type, baseUrl, endpoints, { endpoints = it }, onDismiss = { showEndpoints = false })
             if (showHeaders) ProviderHeadersDialog(headerRows, headersValid, onDismiss = { showHeaders = false })
             if (showApiKeys) ProviderApiKeysDialog(apiKeys, ::keyIdentity, onDismiss = { showApiKeys = false })
             if (showTestDialog) ModelConnectionDialog(draft().copy(name = name.trim().ifEmpty { context.getString(R.string.provider_fallback_name) }), tests, onTestConnection != null,

@@ -41,8 +41,7 @@ import org.starfall.generative.shared.ui.icons.TemporaryChatIcon
 import org.starfall.generative.shared.ui.FeaturesLogoImage
 import org.starfall.generative.shared.ui.GenerativeLinearWavyProgressIndicator
 import org.starfall.generative.features.home.chat.model.ContextWindowStatus
-import org.starfall.generative.shared.ui.layout.prominentContainerBorder
-import org.starfall.generative.shared.ui.layout.prominentContainerColor
+import org.starfall.generative.shared.ui.background.backgroundPhotoAlpha
 
 @Composable
 fun ChatAppBar(
@@ -53,6 +52,7 @@ fun ChatAppBar(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     featuresLogoImage: String? = null,
+    backgroundTransparency: Float = 0.5f,
     isTemporaryChat: Boolean = false,
     onOpenTemporaryChat: () -> Unit = onNewChat,
     onOpenModelPicker: () -> Unit = {},
@@ -69,47 +69,33 @@ fun ChatAppBar(
         modifier = modifier
             .fillMaxWidth()
             .height(72.dp + statusBarHeight)
-            // Background first so it extends under the status bar. It fades from fully
-            // transparent at the bottom to dark at the top.
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-                        MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                        MaterialTheme.colorScheme.surface.copy(alpha = 0f)
-                    )
-                )
-            )
+            // Fade by percentage of Chat's configured background opacity, not absolute opacity.
+            .background(Brush.verticalGradient(
+                0f to MaterialTheme.colorScheme.surface.copy(alpha = backgroundPhotoAlpha(backgroundTransparency)),
+                1f to MaterialTheme.colorScheme.surface.copy(alpha = 0f)
+            ))
             .padding(top = statusBarHeight)
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        val buttonColor = prominentContainerColor().copy(alpha = 0.94f)
-        val buttonBorder = prominentContainerBorder()
-        Surface(
+        // Icon-only actions: no extra background or raised surface around the glyphs.
+        // IconButton retains an accessible tap target while the visual size stays compact.
+        IconButton(
             onClick = onOpenDrawer,
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .size(48.dp),
-            shape = CircleShape,
-            color = buttonColor,
-            border = buttonBorder,
-            shadowElevation = if (buttonBorder == null) 4.dp else 0.dp
+            modifier = Modifier.align(Alignment.CenterStart).size(44.dp)
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                FluentIcon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = stringResource(R.string.chat_open_side_navigation),
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+            FluentIcon(
+                imageVector = Icons.Default.Menu,
+                contentDescription = stringResource(R.string.chat_open_side_navigation),
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(24.dp)
+            )
         }
 
         Row(
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .fillMaxWidth()
-                .padding(start = 68.dp),
+                .padding(start = 64.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
@@ -147,71 +133,49 @@ fun ChatAppBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (showTerminalButton) {
-                    Surface(
-                        onClick = onOpenTerminal,
-                        modifier = Modifier.size(48.dp),
-                        shape = CircleShape,
-                        color = buttonColor,
-                        border = buttonBorder,
-                        shadowElevation = if (buttonBorder == null) 4.dp else 0.dp
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(44.dp)) {
+                        IconButton(onClick = onOpenTerminal, modifier = Modifier.fillMaxSize()) {
                             FluentIcon(
                                 imageVector = Icons.Outlined.Terminal,
                                 contentDescription = stringResource(R.string.remote_machine_open_terminal),
                                 tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(24.dp)
                             )
-                            // Live-connection dot, matching the machines list status indicator.
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(top = 10.dp, end = 10.dp)
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary)
-                            )
                         }
+                        // Live-connection dot; keep it above the icon without a second backdrop.
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 7.dp, end = 7.dp)
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                        )
                     }
                 }
 
-                Surface(
+                IconButton(
                     onClick = if (isTemporaryChat) onOpenTemporaryChat else onNewChat,
-                    modifier = Modifier.size(48.dp),
-                    shape = CircleShape,
-                    color = buttonColor,
-                    border = buttonBorder,
-                    shadowElevation = if (buttonBorder == null) 4.dp else 0.dp
+                    modifier = Modifier.size(44.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        if (isTemporaryChat) {
-                            TemporaryChatIcon(
-                                contentDescription = stringResource(R.string.chat_open_temporary_chat),
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        } else {
-                            FluentIcon(
-                                imageVector = Icons.Outlined.Compose,
-                                contentDescription = stringResource(R.string.sidebar_new_chat),
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+                    if (isTemporaryChat) {
+                        TemporaryChatIcon(
+                            contentDescription = stringResource(R.string.chat_open_temporary_chat),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        FluentIcon(
+                            imageVector = Icons.Outlined.Compose,
+                            contentDescription = stringResource(R.string.sidebar_new_chat),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
 
-                Surface(
-                    onClick = onOpenSettings,
-                    modifier = Modifier.size(48.dp),
-                    shape = CircleShape,
-                    color = buttonColor,
-                    border = buttonBorder,
-                    shadowElevation = if (buttonBorder == null) 4.dp else 0.dp
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        FeaturesLogoImage(featuresLogoImage, Modifier.size(40.dp).clip(CircleShape))
-                    }
+                IconButton(onClick = onOpenSettings, modifier = Modifier.size(44.dp)) {
+                    FeaturesLogoImage(featuresLogoImage, Modifier.size(32.dp).clip(CircleShape))
                 }
             }
         }

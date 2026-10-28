@@ -31,14 +31,14 @@ internal class VideoGeneration(
         require(videoUrl == null) { "This video API needs an attached source video, not input_video_url." }
         validateVideoOptions(provider, model, options)
         val configuredBase = providerBase(provider).removeSuffix("/videos")
-        val base = configuredBase
-        var job = http.json(http.request("$base/videos", provider).post(openAiVideoRequest(model, prompt, image, video)).build())
+        val videos = provider.config.customEndpoints["video"]?.takeIf { it.isNotBlank() }?.trimEnd('/') ?: "$configuredBase/videos"
+        var job = http.json(http.request(videos, provider).post(openAiVideoRequest(model, prompt, image, video)).build())
         val id = videoJobId(job)
         validateVideoJobId(id)
         if (!isTerminalVideoJob(job)) {
             if (id.isBlank() && job.text("status").isBlank()) return job
             require(id.isNotBlank()) { "Video API returned no job ID to retrieve the result." }
-            val pollUrl = "$base/videos/$id"
+            val pollUrl = provider.config.customEndpoints["videoStatus"]?.takeIf { it.isNotBlank() }?.replace("{id}", id) ?: "$videos/$id"
             job = withTimeout(pollingTimeoutMillis.milliseconds) {
                 var state = job
                 while (!isTerminalVideoJob(state)) {
@@ -52,7 +52,7 @@ internal class VideoGeneration(
         // OpenAI-compatible gateways may provide a CDN URL for the common media collector.
         if (videoResultUrl(job).isNotBlank()) return obj("url" to str(videoResultUrl(job)))
         if (id.isBlank()) return job
-        return obj("file" to str("tool-file:" + http.download("$base/videos/$id/content", provider)))
+        return obj("file" to str("tool-file:" + http.download(provider.config.customEndpoints["videoContent"]?.takeIf { it.isNotBlank() }?.replace("{id}", id) ?: "$videos/$id/content", provider)))
     }
 
 }

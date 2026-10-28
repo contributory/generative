@@ -139,6 +139,7 @@ fun MediaRequestProfileEditor(
     }
     BackHandler(enabled = LocalScreenTransitionActive.current) { leave() }
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         modifier = Modifier.testTag("media-profile-editor-screen"),
         topBar = {
             TopAppBar(

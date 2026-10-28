@@ -12,6 +12,7 @@ data class ProviderConfiguration(
     val headers: Map<String, String> = emptyMap(),
     val responsesApi: Boolean = false,
     val customListModelsUrl: String? = null,
+    val customEndpoints: Map<String, String> = emptyMap(),
     val maxTokens: Int = 4000,
     // Model IDs are scoped to this provider, including custom gateway models.
     val modelConfigs: Map<String, ModelConfiguration> = emptyMap(),

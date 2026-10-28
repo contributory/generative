@@ -132,7 +132,7 @@ class ConversationMinimapSideBarTest {
         compose.setContent { MaterialTheme {
             ConversationMinimapSideBar("empty", emptyList(), LazyListState(), 0, 0, {}, {}, remember { ConversationMinimapSideBarState() })
         } }
-        compose.onNodeWithTag("chat-minimap-edge").assertDoesNotExist()
+        compose.onNodeWithTag("chat-minimap-edge").assertExists().assertHasNoClickAction()
         compose.onNodeWithTag("chat-minimap-sidebar").assertDoesNotExist()
     }
 
@@ -152,7 +152,7 @@ class ConversationMinimapSideBarTest {
     }
 
 
-    @Test fun railAndEdgeStayBetweenAppBarAndResizingInputPanel() {
+    @Test fun edgeReachesScreenBottomWhileRailStaysAboveResizingInputPanel() {
         var inputHeight by mutableStateOf(140.dp)
         val state = ConversationMinimapSideBarState()
         val messages = listOf(StoredMessage("message", ChatRole.USER, listOf(MessageVersion(content = "Hello"))))
@@ -177,7 +177,10 @@ class ConversationMinimapSideBarTest {
             assertTrue(bounds.top >= appBar.bottom + 8.dp)
             assertTrue(bounds.bottom <= input.top - 8.dp)
         }
-        assertInsideGap("chat-minimap-edge")
+        val edge = compose.onNodeWithTag("chat-minimap-edge").getUnclippedBoundsInRoot()
+        val input = compose.onNodeWithTag("minimap-test-input").getUnclippedBoundsInRoot()
+        assertEquals(input.bottom, edge.bottom)
+        assertEquals(104.dp, edge.top)
         compose.onNodeWithTag("chat-minimap-edge").performClick()
         assertInsideGap("chat-minimap-sidebar")
         compose.runOnIdle { inputHeight = 360.dp }

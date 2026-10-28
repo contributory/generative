@@ -33,27 +33,34 @@ internal fun SpeechModelField(
     val client = remember { StandaloneSpeechClient() }
     val currentModelId by rememberUpdatedState(service.modelId)
     val currentOnChange by rememberUpdatedState(onChange)
-    key(service.engine, service.apiKey) {
+    key(service.id, service.engine, service.apiKey) {
         var models by remember { mutableStateOf<List<SpeechSynthesisModel>>(emptyList()) }
         var loading by remember { mutableStateOf(false) }
         var error by remember { mutableStateOf<String?>(null) }
         var expanded by remember { mutableStateOf(false) }
-        var refresh by remember { mutableIntStateOf(0) }
+        // A saved model needs no catalog request until the user opens the picker.
+        // Remember this per engine/key so selecting a model never triggers another fetch.
+        var fetchRequested by remember { mutableStateOf(service.modelId.isNullOrBlank()) }
+        var fetchedOnce by remember { mutableStateOf(false) }
         val canFetch = service.apiKey.isNotBlank()
-        LaunchedEffect(refresh) {
-            if (!canFetch) return@LaunchedEffect
+        LaunchedEffect(fetchRequested) {
+            if (!canFetch || !fetchRequested) return@LaunchedEffect
             loading = true; error = null
             try {
                 delay(600)
                 val fetched = fetchModels?.invoke(service) ?: client.models(service)
                 currentCoroutineContext().ensureActive()
                 models = fetched
+                fetchedOnce = true
                 // Never overwrite a saved model or one typed/chosen while the request was running.
                 if (currentModelId.isNullOrBlank()) fetched.firstOrNull()?.id?.let(currentOnChange)
             } catch (cancelled: CancellationException) { throw cancelled
             } catch (failure: Exception) {
                 error = failure.message.orEmpty().let { if (service.apiKey.isBlank()) it else it.replace(service.apiKey, "[redacted]") }.take(500)
-            } finally { loading = false }
+            } finally {
+                loading = false
+                fetchRequested = false
+            }
         }
         Box {
             SelectableOutlinedTextField(service.modelId.orEmpty(), onChange,
@@ -63,10 +70,15 @@ internal fun SpeechModelField(
                 trailingIcon = {
                     Row {
                         if (loading) CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
-                        else IconButton(enabled = canFetch, onClick = { refresh++ }) {
-                            FluentIcon(Icons.Outlined.Refresh, stringResource(R.string.refresh_models))
-                        }
-                        IconButton(onClick = { expanded = !expanded }) {
+                        IconButton(
+                            onClick = {
+                                if (!expanded && canFetch && !loading && !fetchedOnce && error == null) {
+                                    fetchRequested = true
+                                }
+                                expanded = !expanded
+                            },
+                            modifier = Modifier.testTag("speech-model-dropdown")
+                        ) {
                             FluentIcon(Icons.Default.KeyboardArrowDown, stringResource(R.string.speech_engine_model))
                         }
                     }
@@ -74,9 +86,15 @@ internal fun SpeechModelField(
             AppDropdownMenu(expanded, { expanded = false }) {
                 error?.let { detail ->
                     Text(detail, Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
-                    RoundedDropdownMenuItem(text = { Text(stringResource(R.string.common_retry)) }, onClick = { refresh++; expanded = false })
+                    RoundedDropdownMenuItem(text = { Text(stringResource(R.string.common_retry)) }, onClick = {
+                        fetchRequested = true
+                        expanded = false
+                    })
                 }
-                if (!loading && error == null && models.isEmpty()) {
+                if (loading || fetchRequested) {
+                    CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
+                }
+                if (!loading && !fetchRequested && error == null && models.isEmpty()) {
                     RoundedDropdownMenuItem(text = { Text(stringResource(R.string.no_models_returned)) }, enabled = false, onClick = {})
                 }
                 models.forEach { model ->

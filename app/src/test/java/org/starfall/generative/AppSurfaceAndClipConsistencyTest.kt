@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -40,7 +41,10 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.theme.GenerativeTheme
 import org.starfall.generative.shared.theme.ThemePresets
+import org.starfall.generative.shared.ui.layout.LocalItemTransparency
 import org.starfall.generative.shared.ui.layout.groupedItemShape
+import org.starfall.generative.shared.ui.layout.appTabRowColor
+import org.starfall.generative.shared.ui.layout.appBarSurfaceColor
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
@@ -53,13 +57,27 @@ class AppSurfaceAndClipConsistencyTest {
     val compose = createComposeRule()
 
     @Test
-    fun cardAppearance_usesProminentFillInLightAndDarkAndProminentBorderOnlyInAmoled() {
+    fun appBarsFollowComponentTransparencyAndKeepAmoledTransparent() {
+        val surface = Color(0xFF273244)
+        for (transparency in listOf(0f, 0.25f, 0.5f, 0.75f, 1f)) {
+            val actual = appBarSurfaceColor(surface, transparency, amoled = false)
+            assertEquals(1f - transparency, actual.alpha, 0.001f)
+            assertEquals(surface.copy(alpha = 1f - transparency), actual)
+            assertEquals(Color.Transparent, appBarSurfaceColor(surface, transparency, amoled = true))
+        }
+        assertEquals(surface, appBarSurfaceColor(surface, -0.5f, amoled = false))
+        assertEquals(0f, appBarSurfaceColor(surface, 1.5f, amoled = false).alpha, 0.001f)
+    }
+
+    @Test
+    fun cardAppearance_keepsScreensOpaqueAndItemsTranslucentOrOutlined() {
         var darkTheme by mutableStateOf(false)
         var amoledMode by mutableStateOf(false)
         var colorSchemeName by mutableStateOf(ThemePresets.first().name)
         var background = Color.Unspecified
         var prominentColor = Color.Unspecified
         var nestedColor = Color.Unspecified
+        var tabColor = Color.Unspecified
         var prominentBorder: BorderStroke? = null
         var nestedBorder: BorderStroke? = null
         var outlineVariant = Color.Unspecified
@@ -74,6 +92,7 @@ class AppSurfaceAndClipConsistencyTest {
                 outlineVariant = MaterialTheme.colorScheme.outlineVariant
                 prominentColor = prominentContainerColor()
                 nestedColor = nestedContainerColor()
+                tabColor = appTabRowColor()
                 prominentBorder = prominentContainerBorder()
                 nestedBorder = nestedContainerBorder()
             }
@@ -88,6 +107,10 @@ class AppSurfaceAndClipConsistencyTest {
             compose.waitForIdle()
             assertNotEquals("Light ${preset.name}: prominent card must contrast with background", background, prominentColor)
             assertNotEquals("Light ${preset.name}: nested container must contrast with parent card", prominentColor, nestedColor)
+            assertEquals(1f, background.alpha, 0.001f)
+            assertEquals(0.5f, prominentColor.alpha, 0.001f)
+            assertEquals("TabRow uses the same translucent fill as other items", prominentColor, tabColor)
+            assertEquals(0.5f, nestedColor.alpha, 0.001f)
             assertNull("Light ${preset.name}: prominent card must not draw an AMOLED border", prominentBorder)
             assertNull("Light ${preset.name}: nested container must not draw an AMOLED border", nestedBorder)
 
@@ -97,20 +120,49 @@ class AppSurfaceAndClipConsistencyTest {
             compose.waitForIdle()
             assertNotEquals("Dark ${preset.name}: prominent card must contrast with background", background, prominentColor)
             assertNotEquals("Dark ${preset.name}: nested container must contrast with parent card", prominentColor, nestedColor)
+            assertEquals(1f, background.alpha, 0.001f)
+            assertEquals(0.5f, prominentColor.alpha, 0.001f)
+            assertEquals("TabRow uses the same translucent fill as other items", prominentColor, tabColor)
+            assertEquals(0.5f, nestedColor.alpha, 0.001f)
             assertNull("Dark ${preset.name}: prominent card must not draw an AMOLED border", prominentBorder)
             assertNull("Dark ${preset.name}: nested container must not draw an AMOLED border", nestedBorder)
 
-            // AMOLED Dark theme: pure black fill, prominent outlineVariant border.
+            // AMOLED Dark theme: pure black screen, fully transparent item fills and outlined items.
             darkTheme = true
             amoledMode = true
             compose.waitForIdle()
             assertEquals("AMOLED ${preset.name}: background must be black", Color.Black, background)
-            assertEquals("AMOLED ${preset.name}: prominent card fill must be black", Color.Black, prominentColor)
-            assertEquals("AMOLED ${preset.name}: nested container fill must be black", Color.Black, nestedColor)
+            assertEquals("AMOLED ${preset.name}: prominent item fill must be transparent", Color.Transparent, prominentColor)
+            assertEquals("AMOLED ${preset.name}: nested item fill must be transparent", Color.Transparent, nestedColor)
+            assertEquals("AMOLED TabRow must be transparent", Color.Transparent, tabColor)
             assertNotNull("AMOLED ${preset.name}: prominent card must draw a border", prominentBorder)
             assertNotNull("AMOLED ${preset.name}: nested container must draw a border", nestedBorder)
             assertEquals(BorderStroke(1.dp, outlineVariant), prominentBorder)
             assertEquals(BorderStroke(1.dp, outlineVariant), nestedBorder)
+        }
+    }
+
+    @Test
+    fun appearanceItemSliderDoesNotMakeScreenTransparent() {
+        var transparency by mutableStateOf(0.5f)
+        var screen = Color.Unspecified
+        var card = Color.Unspecified
+        var nested = Color.Unspecified
+        compose.setContent {
+            GenerativeTheme(darkTheme = false, dynamicColor = false) {
+                CompositionLocalProvider(LocalItemTransparency provides transparency) {
+                    screen = MaterialTheme.colorScheme.background
+                    card = prominentContainerColor()
+                    nested = nestedContainerColor()
+                }
+            }
+        }
+        for (value in listOf(0f, 0.25f, 0.5f, 1f)) {
+            transparency = value
+            compose.waitForIdle()
+            assertEquals(1f, screen.alpha, 0.001f)
+            assertEquals(1f - value, card.alpha, 0.001f)
+            assertEquals(1f - value, nested.alpha, 0.001f)
         }
     }
 

@@ -134,7 +134,7 @@ class AppMenuScreenGroupUiTest {
     }
 
     @Test
-    fun lightAndDarkModesUseProminentBackgroundWhileAmoledUsesClearBorder() {
+    fun screenStaysOpaqueWhileItemsAreTranslucentOrOutlinedInAmoled() {
         var themeMode by mutableStateOf("LIGHT")
         var amoledMode by mutableStateOf(false)
         var presetName by mutableStateOf("DEFAULT")
@@ -169,10 +169,8 @@ class AppMenuScreenGroupUiTest {
                 amoledMode = amoledPref
                 compose.waitForIdle()
                 assertNull("Light mode (${preset.name}) should not use border", buttonBorder)
-                assertTrue(
-                    "Light mode (${preset.name}) button fill must stand out from background",
-                    maxChannelDelta(screenBackground.toArgb(), buttonColor.toArgb()) >= 12
-                )
+                assertEquals("Screen must stay opaque", 1f, screenBackground.alpha, 0.001f)
+                assertEquals("Light mode item fill must be 50% opaque", 0.5f, buttonColor.alpha, 0.001f)
             }
 
             // Dark mode (non-AMOLED)
@@ -180,13 +178,11 @@ class AppMenuScreenGroupUiTest {
             amoledMode = false
             compose.waitForIdle()
             assertNull("Dark mode (${preset.name}) should not use border", buttonBorder)
+            assertEquals("Screen must stay opaque", 1f, screenBackground.alpha, 0.001f)
+            assertEquals("Dark mode item fill must be 50% opaque", 0.5f, buttonColor.alpha, 0.001f)
             assertTrue(
                 "Dark mode (${preset.name}) background should not be AMOLED black",
                 maxChannelDelta(AndroidColor.BLACK, screenBackground.toArgb()) >= 12
-            )
-            assertTrue(
-                "Dark mode (${preset.name}) button fill must stand out from background",
-                maxChannelDelta(screenBackground.toArgb(), buttonColor.toArgb()) >= 18
             )
 
             // AMOLED mode
@@ -194,7 +190,7 @@ class AppMenuScreenGroupUiTest {
             amoledMode = true
             compose.waitForIdle()
             assertEquals(Color.Black, screenBackground)
-            assertEquals(Color.Black, buttonColor)
+            assertEquals("AMOLED item is transparent; only its outline remains", Color.Transparent, buttonColor)
             val border = buttonBorder
             assertNotNull("AMOLED mode (${preset.name}) must use a clear border", border)
             assertEquals(1.5.dp, border!!.width)

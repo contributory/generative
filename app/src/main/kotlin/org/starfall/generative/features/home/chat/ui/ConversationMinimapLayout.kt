@@ -51,7 +51,19 @@ internal fun minimapViewport(
     return if (bottom > top) top.coerceIn(0f, 1f)..bottom.coerceIn(0f, 1f) else null
 }
 
-/** Center a point inside a long message after its actual height has been measured. */
-internal fun minimapScrollOffset(itemSize: Int, fraction: Float, viewportSize: Int): Int =
-    ((1f - fraction.coerceIn(0f, 1f)) * itemSize - viewportSize.coerceAtLeast(0) / 2f)
-        .toInt().coerceAtLeast(0)
+/** Use one scale for the viewport indicator instead of resizing it for each message's estimate. */
+internal fun minimapIndicatorRange(
+    visible: ClosedFloatingPointRange<Float>, fraction: Float
+): ClosedFloatingPointRange<Float> {
+    val length = fraction.coerceIn(0f, 1f)
+    val center = (visible.start + visible.endInclusive) / 2f
+    val start = (center - length / 2f).coerceIn(0f, 1f - length)
+    return start..(start + length)
+}
+
+/** Center the target in the readable area, including points near either end of a short message. */
+internal fun minimapScrollOffset(
+    itemSize: Int, fraction: Float, viewportSize: Int, viewportStart: Int = 0
+): Int =
+    ((1f - fraction.coerceIn(0f, 1f)) * itemSize - viewportStart - viewportSize.coerceAtLeast(0) / 2f)
+        .toInt()

@@ -1074,7 +1074,6 @@
     <string name="speech_load_more">더 불러오기</string>
     <string name="music_profiles">음악 프로필</string>
     <string name="music_audio">오디오</string>
-    <string name="tool_music_generation_title">음악 생성</string>
     <string name="tool_generate_music_description">사용자 지정 요청 프로필로 재생 가능한 음악을 만듭니다.</string>
     <string name="music_select_profile">프로필 선택</string>
     <string name="music_profile_required">음악을 생성하기 전에 유효한 사용자 지정 음악 프로필을 선택하세요.</string>
@@ -1093,4 +1092,9 @@
     <string name="speech_chunk_boundaries">마침표나 줄바꿈으로 문장을 구분합니다. 연속된 구분자는 한 번만 셉니다.</string>
     <string name="notification_speech_channel">음성 재생</string>
     <string name="notification_speech_playing">읽어 주는 중</string>
+    <string name="user_profile_background_transparency">배경 투명도</string>
+    <string name="user_profile_background_transparency_reset">배경 투명도 초기화</string>
+    <string name="settings_item_transparency">컴포넌트 투명도</string>
+    <string name="settings_item_transparency_description">카드, 버튼, 항목의 투명도를 조절합니다. AMOLED에서는 배경이 완전히 투명하고 테두리가 표시됩니다.</string>
+    <string name="settings_item_transparency_reset">컴포넌트 투명도 초기화</string>
 </resources>

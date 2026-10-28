@@ -19,10 +19,10 @@ internal class ModelCatalogAdapter(private val httpClient: HttpClient, private v
         for (suffix in listOf("/chat/completions", "/responses", "/messages", "/models", "/chat", "/tags", "/generate")) {
             base = base.removeSuffix(suffix)
         }
-        val endpoint = provider.config.customListModelsUrl?.takeIf { it.isNotBlank() } ?: when (provider.type) {
-            ModelApiType.OLLAMA -> base.removeSuffix("/api").removeSuffix("/v1") + "/v1/models"
-            ModelApiType.ANTHROPIC -> base.removeSuffix("/v1") + "/v1/models"
-            ModelApiType.GOOGLE -> if (Regex("/v1(?:beta|alpha)?$").containsMatchIn(base)) "$base/models" else "$base/v1beta/models"
+        val endpoint = provider.config.customEndpoints["catalog"]?.takeIf { it.isNotBlank() } ?: provider.config.customListModelsUrl?.takeIf { it.isNotBlank() } ?: when (provider.type) {
+            ModelApiType.OLLAMA -> base.removeSuffix("/api").removeSuffix("/v1") + "/api/tags"
+            ModelApiType.ANTHROPIC -> "$base/models"
+            ModelApiType.GOOGLE -> "$base/models"
             ModelApiType.OPENAI, ModelApiType.OPENAI_RESPONSES -> "$base/models"
             else -> error("No model discovery endpoint is registered for ${provider.type.displayName}.")
         }

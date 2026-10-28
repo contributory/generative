@@ -1,6 +1,13 @@
 package org.starfall.generative
 
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.test.assertDoesNotExist
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsFocused
@@ -19,6 +26,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.features.home.drawer.ui.ConversationSideDrawer
 import org.starfall.generative.shared.model.SidebarOrganization
+import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.theme.GenerativeTheme
 
 @RunWith(RobolectricTestRunner::class)
@@ -26,6 +34,60 @@ import org.starfall.generative.shared.theme.GenerativeTheme
 class ConversationDrawerFocusTest {
     @get:Rule
     val compose = createComposeRule()
+
+    @Test
+    fun losingSearchFocusKeepsQueryAndConversationFilterUntilExplicitClear() {
+        val conversations = listOf("Alpha chat", "Beta chat").mapIndexed { index, name ->
+            ConversationListItem(
+                id = "chat-$index", title = name, createdAt = 1L, updatedAt = 1L,
+                tokenCount = null, providerId = "", modelId = "", profileId = null,
+                reasoningEffort = null, hasMessages = true, hasSummary = false
+            )
+        }
+        var isOpen by mutableStateOf(true)
+        lateinit var focusManager: FocusManager
+        compose.setContent {
+            focusManager = LocalFocusManager.current
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                ConversationSideDrawer(
+                    conversations = conversations,
+                    currentConversationId = null,
+                    isOpen = isOpen,
+                    organization = SidebarOrganization(),
+                    onUpdateOrganization = {},
+                    onDeleteConversations = {},
+                    onSelectConversation = {},
+                    onNewChat = {},
+                    onRenameConversation = { _, _ -> },
+                    onDeleteConversation = {},
+                    onNavigateToSettings = {},
+                    onCloseDrawer = {}
+                )
+            }
+        }
+        compose.waitForIdle()
+        compose.onNodeWithTag("conversation_drawer_search_button").performClick()
+        compose.onNodeWithTag("conversation_drawer_search").assertIsFocused().performTextInput("Alpha")
+        compose.onNodeWithText("Alpha chat").assertIsDisplayed()
+        compose.onNodeWithText("Beta chat").assertDoesNotExist()
+
+        compose.runOnIdle { focusManager.clearFocus(force = true) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("conversation_drawer_search_button").assertIsDisplayed()
+        compose.onNodeWithText("Alpha chat").assertIsDisplayed()
+        compose.onNodeWithText("Beta chat").assertDoesNotExist()
+
+        // Drawer focus restoration also must not clear a previous search.
+        compose.runOnIdle { isOpen = false }
+        compose.waitForIdle()
+        compose.runOnIdle { isOpen = true }
+        compose.waitForIdle()
+        compose.onNodeWithText("Beta chat").assertDoesNotExist()
+        compose.onNodeWithTag("conversation_drawer_search_button").performClick()
+        compose.onNodeWithTag("conversation_drawer_search").assertTextContains("Alpha")
+        compose.onNodeWithTag("conversation_drawer_search").performTextClearance()
+        compose.onNodeWithText("Beta chat").assertIsDisplayed()
+    }
 
     @Test
     fun openingDrawerShowsSearchButtonAndOnlyOpensSearchAfterTap() {

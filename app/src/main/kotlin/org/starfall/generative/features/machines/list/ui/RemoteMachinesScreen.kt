@@ -79,6 +79,8 @@ fun RemoteMachinesScreen(
     val context = LocalContext.current
 
     Scaffold(
+
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             RemoteMachinesTopBar(
                 title = stringResource(R.string.remote_machines_title),

@@ -12,6 +12,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.shared.model.api.*
 import org.starfall.generative.shared.model.auth.*
@@ -76,7 +77,9 @@ internal class OfficialProviderSdk(private val attachments: AttachmentResolver) 
                                  requestOptions: com.openai.core.RequestOptions): com.openai.core.http.HttpResponse {
                 // Interrupting a blocking socket read does not reliably close the socket.
                 // The official async transport cancels its OkHttp call when this future is cancelled.
-                val future = transport.executeAsync(request, requestOptions)
+                val endpoint = provider.config.customEndpoints[if (provider.type == ModelApiType.OPENAI_RESPONSES) "responses" else "chat"]
+                val routed = if (endpoint.isNullOrBlank()) request else request.toBuilder().baseUrl(endpoint).pathSegments(emptyList()).build()
+                val future = transport.executeAsync(routed, requestOptions)
                 try {
                     return future.get()
                 } catch (e: InterruptedException) {
@@ -107,6 +110,24 @@ internal class OfficialProviderSdk(private val attachments: AttachmentResolver) 
 
     internal fun anthropic(provider: ModelProvider) = AnthropicOkHttpClient.builder().apply {
         baseUrl(baseUrl(provider))
+        val anthropicBase = provider.baseUrl.trim().trimEnd('/').removeSuffix("/messages").removeSuffix("/models")
+        run {
+            addInterceptor(com.anthropic.core.http.Interceptor { transport ->
+                object : com.anthropic.core.http.HttpClient by transport {
+                    fun route(request: com.anthropic.core.http.HttpRequest): com.anthropic.core.http.HttpRequest {
+                        val catalog = request.pathSegments.lastOrNull() == "models"
+                        val key = if (catalog) "catalog" else "messages"
+                        val endpoint = provider.config.customEndpoints[key]?.takeIf { it.isNotBlank() }
+                            ?: if (catalog) provider.config.customListModelsUrl?.takeIf { it.isNotBlank() } ?: "$anthropicBase/models" else "$anthropicBase/messages"
+                        return request.toBuilder().baseUrl(endpoint).replaceAllPathSegments().build()
+                    }
+                    override fun execute(request: com.anthropic.core.http.HttpRequest, requestOptions: com.anthropic.core.RequestOptions) =
+                        transport.execute(route(request), requestOptions)
+                    override fun executeAsync(request: com.anthropic.core.http.HttpRequest, requestOptions: com.anthropic.core.RequestOptions) =
+                        transport.executeAsync(route(request), requestOptions)
+                }
+            })
+        }
         timeout(Duration.ofMinutes(2))
         maxRetries(0)
         if (provider.auth.method == AuthMethod.PLATFORM_DEFAULT && provider.auth.token.isNotBlank()) apiKey(provider.auth.token)
@@ -122,7 +143,26 @@ internal class OfficialProviderSdk(private val attachments: AttachmentResolver) 
         val version = Regex("/(v1(?:beta|alpha)?)$").find(base)?.groupValues?.get(1)
         // Supply auth in the transport so custom headers/query auth work with gateways too.
         val transport = OkHttpClient.Builder().addInterceptor(org.starfall.generative.shared.logging.DebugLogInterceptor()).addInterceptor { chain ->
-            val request = chain.request().newBuilder()
+            val original = chain.request()
+            val request = original.newBuilder()
+            if (version == null) {
+                val basePath = base.toHttpUrlOrNull()?.encodedPath?.trimEnd('/') ?: error("Invalid Gemini base URL")
+                val prefix = "$basePath/v1beta/"
+                if (original.url.encodedPath.startsWith(prefix)) {
+                    request.url(original.url.newBuilder().encodedPath(basePath + "/" + original.url.encodedPath.removePrefix(prefix)).build())
+                }
+            }
+            provider.config.customEndpoints["generate"]?.takeIf { it.isNotBlank() }?.let { template ->
+                val match = Regex("/models/([^/:]+):([^/?]+)$").find(original.url.encodedPath)
+                if (match != null) {
+                    val target = template.replace("{model}", match.groupValues[1]).replace("{method}", match.groupValues[2])
+                    val url = target.toHttpUrlOrNull()
+                        ?: error("Invalid custom Gemini endpoint")
+                    val routed = url.newBuilder()
+                    for (name in original.url.queryParameterNames) for (value in original.url.queryParameterValues(name)) routed.addQueryParameter(name, value)
+                    request.url(routed.build())
+                }
+            }
             if (provider.auth.method == AuthMethod.PLATFORM_DEFAULT && provider.auth.token.isNotBlank()) {
                 provider.config.headers.forEach { (key, value) -> request.header(key, value) }
             } else {
@@ -130,7 +170,7 @@ internal class OfficialProviderSdk(private val attachments: AttachmentResolver) 
                 headers(provider).forEach { (key, value) -> request.header(key, value) }
             }
             if (provider.auth.method == AuthMethod.QUERY_PARAM && provider.auth.token.isNotBlank()) {
-                request.url(chain.request().url.newBuilder()
+                request.url(request.build().url.newBuilder()
                     .setQueryParameter(provider.auth.key?.takeIf { it.isNotBlank() } ?: "key", provider.auth.token).build())
             }
             chain.proceed(request.build())

@@ -1075,7 +1075,6 @@
     <string name="speech_load_more">Muat lagi</string>
     <string name="music_profiles">Profil musik</string>
     <string name="music_audio">Audio</string>
-    <string name="tool_music_generation_title">Pembuatan musik</string>
     <string name="tool_generate_music_description">Buat musik yang dapat diputar menggunakan profil permintaan kustom.</string>
     <string name="music_select_profile">Pilih profil</string>
     <string name="music_profile_required">Pilih profil musik kustom yang valid sebelum membuat musik.</string>
@@ -1094,4 +1093,9 @@
     <string name="speech_chunk_boundaries">Titik atau baris baru mengakhiri kalimat. Pemisah yang berurutan dihitung sekali.</string>
     <string name="notification_speech_channel">Pemutaran suara</string>
     <string name="notification_speech_playing">Membaca dengan suara</string>
+    <string name="user_profile_background_transparency">Transparansi latar belakang</string>
+    <string name="user_profile_background_transparency_reset">Atur ulang transparansi latar belakang</string>
+    <string name="settings_item_transparency">Transparansi komponen</string>
+    <string name="settings_item_transparency_description">Atur transparansi kartu, tombol, dan item. Mode AMOLED menggunakan item transparan dengan garis tepi.</string>
+    <string name="settings_item_transparency_reset">Atur ulang transparansi komponen</string>
 </resources>

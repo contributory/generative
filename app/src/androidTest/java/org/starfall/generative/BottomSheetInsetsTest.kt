@@ -48,6 +48,23 @@ class BottomSheetInsetsTest {
         checkSheet(fullHeight = true, withImeInsets = true)
     }
 
+    @Test fun scrollableSheetCanExtendToNavigationBarWithoutChangingDefaultSheets() {
+        compose.activityRule.scenario.onActivity {
+            WindowCompat.setDecorFitsSystemWindows(it.window, false)
+        }
+        compose.setContent {
+            MaterialTheme {
+                AppSheet(onDismissRequest = {}, contentBehindNavigationBar = true) {
+                    Box(Modifier.fillMaxWidth().fillMaxHeight().testTag("edge-to-edge-content"))
+                }
+            }
+        }
+        compose.waitForIdle()
+        val content = compose.onNodeWithTag("edge-to-edge-content").fetchSemanticsNode().boundsInRoot
+        val sheet = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot
+        assertEquals("Opted-in content extends to the bottom of the sheet", sheet.bottom, content.bottom, 1f)
+    }
+
     private fun checkSheet(fullHeight: Boolean, withImeInsets: Boolean = false) {
         lateinit var dialogView: View
         compose.activityRule.scenario.onActivity {

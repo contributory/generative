@@ -55,31 +55,31 @@ class SystemMediaTools(private val http: ToolHttp) {
         val response = when(provider.type) {
             ModelApiType.OPENAI, ModelApiType.OPENAI_RESPONSES -> if(kind == "generate_image") {
                 if (referenceImages.isEmpty()) {
-                    http.postMedia("$base/images/generations", imageGenerationRequest(provider.type, model, prompt, imageOptions), provider)
+                    http.postMedia(provider.config.customEndpoints["imageGeneration"]?.takeIf { it.isNotBlank() } ?: "$base/images/generations", imageGenerationRequest(provider.type, model, prompt, imageOptions), provider)
                 } else {
-                    http.postMedia("$base/images/edits", openAiImageEditRequest(model, prompt, imageOptions, referenceImages), provider)
+                    http.postMedia(provider.config.customEndpoints["imageEdit"]?.takeIf { it.isNotBlank() } ?: "$base/images/edits", openAiImageEditRequest(model, prompt, imageOptions, referenceImages), provider)
                 }
             } else {
                 VideoGeneration(http).generate(provider, model, prompt, image, videoOptions, inputImageUrl, video, inputVideoUrl)
             }
             ModelApiType.GOOGLE -> {
-                val root = if(Regex("/v1(?:beta|alpha)?$").containsMatchIn(base)) base else "$base/v1beta"
+                val root = base
                 if(kind == "generate_image") {
                     val method = if(model.contains("imagen",ignoreCase = true)) "predict" else "generateContent"
                     val body = if (referenceImages.isEmpty()) imageGenerationRequest(provider.type, model, prompt, imageOptions)
                         else googleImageEditRequest(model, prompt, imageOptions, referenceImages)
-                    http.post("$root/models/$model:$method", body, provider)
+                    http.post(provider.config.customEndpoints["generate"]?.takeIf { it.isNotBlank() }?.replace("{model}", model)?.replace("{method}", method) ?: "$root/models/$model:$method", body, provider)
                 } else {
                     require(videoOptions.isEmpty() && inputImageUrl == null) { "Google video generation uses attached images and provider defaults." }
                     require(image == null || (video == null && inputVideoUrl == null)) { "Google video generation accepts either a source image or a source video, not both." }
                     require(video == null || inputVideoUrl == null) { "Use one source video: an attachment or input_video_url." }
-                    var job = http.post("$root/models/$model:predictLongRunning", googleVideoRequest(prompt, image, video, inputVideoUrl), provider)
+                    var job = http.post(provider.config.customEndpoints["generate"]?.takeIf { it.isNotBlank() }?.replace("{model}", model)?.replace("{method}", "predictLongRunning") ?: "$root/models/$model:predictLongRunning", googleVideoRequest(prompt, image, video, inputVideoUrl), provider)
                     val name = googleVideoOperationName(job)
                     job = withTimeout(15*60*1000L) {
                         var state = job
                         while (!googleVideoOperationDone(state)) {
                             delay(3000)
-                            state = http.json(http.request("$root/$name", provider).get().build())
+                            state = http.json(http.request(provider.config.customEndpoints["operation"]?.takeIf { it.isNotBlank() }?.replace("{operation}", name) ?: "$root/$name", provider).get().build())
                         }
                         state
                     }

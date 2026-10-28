@@ -52,6 +52,7 @@ fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave:
     fun back() { if (dirty) confirmDiscard = true else onBack() }
     BackHandler(enabled = LocalScreenTransitionActive.current) { back() }
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
                 colors = edgeToEdgeTopAppBarColors(),

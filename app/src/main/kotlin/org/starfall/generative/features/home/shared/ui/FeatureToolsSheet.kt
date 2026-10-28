@@ -56,6 +56,37 @@ internal fun FeatureToolsSheetContent(
                 )
             }
         )
+            val webSearchProvider = controls.servers.firstOrNull { it.id == controls.settings.webSearchProviderId }
+            SettingsCard {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    FluentIcon(
+                        Icons.Outlined.Language,
+                        contentDescription = null,
+                        modifier = Modifier.size(44.dp).padding(10.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.size(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            stringResource(R.string.model_tool_web_search),
+                            style = MaterialTheme.typography.titleSmall,
+                            maxLines = 1
+                        )
+                        Text(
+                            webSearchProvider?.name ?: stringResource(R.string.tool_web_search_provider_none),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Switch(
+                        checked = webSearchProvider != null && controls.settings.webSearchEnabled,
+                        enabled = webSearchProvider != null,
+                        onCheckedChange = controls.setWebSearch
+                    )
+                }
+            }
             listOf("generate_image", "generate_video", "generate_music").forEach { name ->
                 val config = controls.settings.system[name] ?: SystemToolConfig()
                 val provider = if (name == "generate_music") null else controls.providers.firstOrNull { it.id == config.providerId }

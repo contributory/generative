@@ -1077,7 +1077,6 @@
     <string name="speech_load_more">Загрузить ещё</string>
     <string name="music_profiles">Музыкальные профили</string>
     <string name="music_audio">Аудио</string>
-    <string name="tool_music_generation_title">Генерация музыки</string>
     <string name="tool_generate_music_description">Создавайте музыку для воспроизведения с помощью профиля пользовательского запроса.</string>
     <string name="music_select_profile">Выбрать профиль</string>
     <string name="music_profile_required">Перед генерацией музыки выберите действительный пользовательский музыкальный профиль.</string>
@@ -1096,4 +1095,9 @@
     <string name="speech_chunk_boundaries">Точка или перенос строки завершает предложение. Последовательные разделители считаются одним.</string>
     <string name="notification_speech_channel">Воспроизведение речи</string>
     <string name="notification_speech_playing">Чтение вслух</string>
+    <string name="user_profile_background_transparency">Прозрачность фона</string>
+    <string name="user_profile_background_transparency_reset">Сбросить прозрачность фона</string>
+    <string name="settings_item_transparency">Прозрачность компонентов</string>
+    <string name="settings_item_transparency_description">Настройте прозрачность карточек, кнопок и элементов. В режиме AMOLED элементы прозрачны и имеют контур.</string>
+    <string name="settings_item_transparency_reset">Сбросить прозрачность компонентов</string>
 </resources>

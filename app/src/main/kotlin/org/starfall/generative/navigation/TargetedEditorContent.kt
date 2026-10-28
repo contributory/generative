@@ -59,6 +59,7 @@ internal fun <T : Any> TargetedEditorContent(
 
     BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
                 colors = edgeToEdgeTopAppBarColors(),

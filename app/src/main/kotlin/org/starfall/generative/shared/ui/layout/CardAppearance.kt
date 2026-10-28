@@ -11,19 +11,19 @@ import org.starfall.generative.shared.theme.LocalAmoledMode
 
 /**
  * Container fill for primary cards, tiles, and list items:
- * prominent container fill in normal Light/Dark themes, pure black surface in AMOLED dark mode.
+ * configurable translucent item fill in normal Light/Dark themes; no fill in AMOLED dark mode.
  */
 @Composable
 fun prominentContainerColor(): Color =
     if (LocalAmoledMode.current) {
-        MaterialTheme.colorScheme.surfaceContainerLow
+        Color.Transparent
     } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh
+        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 1f).itemFill(LocalItemTransparency.current)
     }
 
 /**
  * Container border for primary cards, tiles, and list items:
- * no routine border in normal Light/Dark themes, prominent outline border in AMOLED dark mode.
+ * no routine border in normal Light/Dark themes, visible outline border in AMOLED dark mode.
  */
 @Composable
 fun prominentContainerBorder(width: Dp = 1.dp): BorderStroke? =
@@ -40,14 +40,14 @@ fun prominentContainerBorder(width: Dp = 1.dp): BorderStroke? =
 @Composable
 fun nestedContainerColor(): Color =
     if (LocalAmoledMode.current) {
-        MaterialTheme.colorScheme.surface
+        Color.Transparent
     } else {
-        MaterialTheme.colorScheme.surfaceContainerHighest
+        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 1f).itemFill(LocalItemTransparency.current)
     }
 
 /**
  * Container border for nested sub-containers and code/media blocks:
- * no routine border in normal Light/Dark themes, prominent outline border in AMOLED dark mode.
+ * no routine border in normal Light/Dark themes, visible outline border in AMOLED dark mode.
  */
 @Composable
 fun nestedContainerBorder(width: Dp = 1.dp): BorderStroke? =

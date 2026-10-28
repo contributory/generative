@@ -11,6 +11,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.starfall.generative.shared.ui.layout.appTabRowColor
+import org.starfall.generative.shared.ui.layout.appTabRowBorder
 import org.starfall.generative.R
 import org.starfall.generative.features.mcp.shared.ui.McpConnectionSettings
 import org.starfall.generative.features.mcp.shared.ui.McpToolsTab
@@ -81,8 +83,9 @@ fun ServerEditor(
     fun refreshTools() { if (canSave && !cachedLoading) scope.launch { onRefreshTools(currentServer()) } }
     BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onDismiss)
 
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Scaffold(topBar = {
+    Surface(Modifier.fillMaxSize(), color = androidx.compose.ui.graphics.Color.Transparent) {
+        Scaffold(
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,topBar = {
             TopAppBar(
                 colors = edgeToEdgeTopAppBarColors(),
                 title = {
@@ -96,7 +99,7 @@ fun ServerEditor(
             )
         }) { padding ->
             Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
-                PrimaryTabRow(selectedTabIndex = selectedTab) {
+                PrimaryTabRow(selectedTabIndex = selectedTab, containerColor = appTabRowColor(), modifier = appTabRowBorder()) {
                     Tab(selectedTab == 0, { selectedTab = 0 }, text = { Text(stringResource(R.string.mcp_basic_settings), fontWeight = FontWeight.SemiBold) })
                     Tab(selectedTab == 1, { selectedTab = 1 }, text = { Text(stringResource(R.string.common_tools), fontWeight = FontWeight.SemiBold) })
                 }

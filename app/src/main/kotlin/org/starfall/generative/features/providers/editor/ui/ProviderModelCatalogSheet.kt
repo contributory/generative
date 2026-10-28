@@ -3,23 +3,22 @@ package org.starfall.generative.features.providers.editor.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.unit.lerp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,8 +28,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
@@ -75,10 +77,15 @@ internal fun ProviderModelCatalogSheet(
     val searchFocus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
+    // Keep the final selectable model clear of the system gesture region.
+    val navigationBottomPadding = with(LocalDensity.current) {
+        WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).getBottom(this).toDp()
+    }
     fun collapseSearch() {
+        // Losing focus only closes the search editor; the query keeps filtering the catalog.
+        // The trailing clear icon is the only action that resets the filter.
         searchExpanded = false
         searchFocused = false
-        query = ""
         focusManager.clearFocus(force = true)
         keyboard?.hide()
     }
@@ -122,12 +129,18 @@ internal fun ProviderModelCatalogSheet(
         it.contains(query, ignoreCase = true) || modelsById[it]?.displayName?.contains(query, ignoreCase = true) == true
     }
     val allVisibleSelected = visibleModels.isNotEmpty() && visibleModels.all { it in selectedModels }
+    val selectionState = when {
+        allVisibleSelected -> ToggleableState.On
+        visibleModels.any { it in selectedModels } -> ToggleableState.Indeterminate
+        else -> ToggleableState.Off
+    }
     val selectionDescription = stringResource(
         if (allVisibleSelected) R.string.provider_deselect_visible_models else R.string.select_all_visible_models
     )
     if (!visible) return
     AppSheet(
         onDismissRequest = onDismiss,
+        contentBehindNavigationBar = true,
         // Keep the original opening height while fetching. Once the results arrive, let the
         // actual list content determine the sheet height (capped below the status bar).
         fixedHeightFraction = if (loading) 0.78f else null,
@@ -144,6 +157,99 @@ internal fun ProviderModelCatalogSheet(
                     if (searchExpanded) detectTapGestures(onTap = { collapseSearch() })
                 }
         ) {
+            // Match ModelPickerSheet: the compact toolbar stays above the results.
+            BoxWithConstraints(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
+                    .testTag("provider-model-catalog-toolbar")
+            ) {
+                val searchWidth by animateDpAsState(
+                    targetValue = if (searchExpanded) (maxWidth - 104.dp).coerceAtLeast(40.dp) else 40.dp,
+                    label = "catalogSearchWidth"
+                )
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilledTonalIconButton(
+                        onClick = { onSetSelection(visibleModels, !allVisibleSelected) },
+                        enabled = visibleModels.isNotEmpty(),
+                        modifier = Modifier.size(40.dp).semantics {
+                            contentDescription = selectionDescription
+                            toggleableState = selectionState
+                        }
+                    ) {
+                        FluentIcon(
+                            when (selectionState) {
+                                ToggleableState.On -> Icons.Outlined.CheckCircle
+                                ToggleableState.Indeterminate -> Icons.Outlined.Check
+                                ToggleableState.Off -> Icons.Outlined.RadioButtonUnchecked
+                            },
+                            contentDescription = null,
+                            tint = if (selectionState == ToggleableState.Off || visibleModels.isEmpty())
+                                LocalContentColor.current else MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Box(Modifier.width(searchWidth), contentAlignment = Alignment.CenterStart) {
+                        if (searchExpanded) {
+                            SelectableOutlinedTextField(
+                                value = query,
+                                onValueChange = { query = it },
+                                singleLine = true,
+                                placeholder = {
+                                    Text(stringResource(R.string.search_models), maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis)
+                                },
+                                leadingIcon = { FluentIcon(Icons.Outlined.Search, contentDescription = null) },
+                                trailingIcon = if (query.isNotEmpty()) {
+                                    {
+                                        IconButton(onClick = { query = "" }) {
+                                            FluentIcon(Icons.Default.Close, stringResource(R.string.common_clear))
+                                        }
+                                    }
+                                } else null,
+                                keyboardOptions = KeyboardOptions(
+                                    capitalization = KeyboardCapitalization.Sentences,
+                                    imeAction = ImeAction.Search
+                                ),
+                                keyboardActions = KeyboardActions(onSearch = {
+                                    focusManager.clearFocus()
+                                    keyboard?.hide()
+                                }),
+                                shape = RoundedCornerShape(28.dp),
+                                modifier = Modifier.fillMaxWidth()
+                                    .focusRequester(searchFocus)
+                                    .testTag("provider_model_catalog_search")
+                                    .onFocusChanged {
+                                        if (!it.isFocused && searchFocused && searchExpanded) collapseSearch()
+                                        searchFocused = it.isFocused
+                                    }
+                            )
+                        } else {
+                            FilledTonalIconButton(
+                                onClick = { searchExpanded = true },
+                                modifier = Modifier.size(40.dp)
+                                    .testTag("provider_model_catalog_search_button")
+                            ) {
+                                FluentIcon(
+                                    Icons.Outlined.Search,
+                                    stringResource(R.string.search_models),
+                                    tint = if (query.isNotBlank()) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.weight(1f))
+                    FilledTonalIconButton(
+                        onClick = { refresh++ },
+                        enabled = !loading,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        FluentIcon(Icons.Outlined.Refresh, stringResource(R.string.refresh_models))
+                    }
+                }
+            }
             if (loading) GenerativeLinearWavyProgressIndicator(Modifier.fillMaxWidth())
             loadError?.let { error ->
                 Surface(
@@ -178,7 +284,10 @@ internal fun ProviderModelCatalogSheet(
                     .weight(1f, fill = loading)
                     .fillMaxWidth()
                     .testTag("provider-model-catalog-list"),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
+                contentPadding = PaddingValues(
+                    start = 16.dp, end = 16.dp, top = 8.dp,
+                    bottom = 16.dp + navigationBottomPadding
+                ),
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (visibleModels.isEmpty() && !loading && loadError == null) {
                     item { Text(stringResource(if (query.isBlank()) R.string.no_models_returned else R.string.no_matching_models), modifier = Modifier.padding(16.dp)) }
@@ -239,73 +348,6 @@ internal fun ProviderModelCatalogSheet(
                         }
                         }
                     }
-                }
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-            BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                // Match ConversationSideDrawer: search starts as a circular button, grows in
-                // place, receives focus only when opened, and collapses when focus/IME leaves.
-                val progress by animateFloatAsState(
-                    targetValue = if (searchExpanded) 1f else 0f,
-                    animationSpec = tween(260, easing = FastOutSlowInEasing),
-                    label = "catalogSearchProgress"
-                )
-                val collapsedWidth = 52.dp
-                val expandedWidth = (maxWidth - 112.dp).coerceAtLeast(collapsedWidth)
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier.width(lerp(collapsedWidth, expandedWidth, progress)).height(56.dp),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        if (searchExpanded || progress > 0.01f) {
-                            SelectableOutlinedTextField(
-                                value = query, onValueChange = { query = it }, singleLine = true,
-                                placeholder = { Text(stringResource(R.string.search_models), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                leadingIcon = { FluentIcon(Icons.Default.Search, stringResource(R.string.search_models)) },
-                                trailingIcon = {
-                                    if (query.isNotEmpty()) IconButton(onClick = { query = "" }) {
-                                        FluentIcon(Icons.Default.Close, stringResource(R.string.sidebar_clear_search))
-                                    }
-                                },
-                                shape = RoundedCornerShape(28.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-                                    .graphicsLayer { alpha = ((progress - 0.2f) / 0.5f).coerceIn(0f, 1f) }
-                                    .focusRequester(searchFocus)
-                                    .testTag("provider_model_catalog_search")
-                                    .onFocusChanged {
-                                        if (!it.isFocused && searchFocused && searchExpanded) collapseSearch()
-                                        searchFocused = it.isFocused
-                                    }
-                            )
-                        }
-                        if (progress < 0.35f) {
-                            OutlinedIconButton(
-                                onClick = { searchExpanded = true },
-                                shape = RoundedCornerShape(28.dp),
-                                modifier = Modifier.size(52.dp)
-                                    .graphicsLayer { alpha = (1f - progress / 0.35f).coerceIn(0f, 1f) }
-                                    .testTag("provider_model_catalog_search_button")
-                            ) { FluentIcon(Icons.Default.Search, stringResource(R.string.search_models)) }
-                        }
-                    }
-                    Spacer(Modifier.weight(1f))
-                    IconButton(onClick = { refresh++ }, enabled = !loading, modifier = Modifier.size(52.dp)) {
-                        FluentIcon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.refresh_models))
-                    }
-                    TriStateCheckbox(
-                        state = when {
-                            allVisibleSelected -> ToggleableState.On
-                            visibleModels.any { it in selectedModels } -> ToggleableState.Indeterminate
-                            else -> ToggleableState.Off
-                        },
-                        onClick = { onSetSelection(visibleModels, !allVisibleSelected) },
-                        enabled = visibleModels.isNotEmpty(),
-                        modifier = Modifier.semantics { contentDescription = selectionDescription }
-                    )
                 }
             }
         }

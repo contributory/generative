@@ -4,6 +4,8 @@ import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import org.junit.Assert.assertEquals
@@ -56,6 +58,31 @@ class ModelPickerToggleTest {
         }
         compose.runOnIdle { assertEquals(null, effort) }
         compose.onNodeWithText("Default").assertIsDisplayed()
+    }
+
+    @Test fun longPickerDrawsUnderNavigationBarButFinalModelRemainsAboveGestureArea() {
+        val provider = ModelProvider(
+            "p", "Provider", ModelApiType.OPENAI, baseUrl = "",
+            config = ProviderConfiguration(modelIds = (0..79).map { "model-$it" })
+        )
+        compose.setContent { MaterialTheme {
+            ModelPickerSheet(providers = listOf(provider), selectedProviderId = "",
+                selectedModelId = "", conversationReasoningEffort = null,
+                onSelectModel = { _, _ -> }, onSetReasoningEffort = {}, onDismiss = {})
+        } }
+        val list = compose.onNodeWithTag("model-picker-list")
+        list.performScrollToNode(hasTestTag("model-picker-model_p_model-79"))
+        list.performTouchInput { swipeUp(durationMillis = 400) }
+        compose.waitForIdle()
+        val sheetBounds = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot
+        val listBounds = list.fetchSemanticsNode().boundsInRoot
+        val lastRow = compose.onNodeWithTag("model-picker-model_p_model-79")
+            .assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val navigationInset = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+            ?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
+        assertEquals("Model list must reach behind the navigation bar", sheetBounds.bottom, listBounds.bottom, 2f)
+        assertTrue("Last model must clear the navigation gesture area",
+            lastRow.bottom <= listBounds.bottom - navigationInset + 2f)
     }
 
     @Test fun folderTabsJumpWithinOneListAndSearchFiltersSections() {
@@ -166,6 +193,13 @@ class ModelPickerToggleTest {
             compose.onAllNodesWithTag("model-picker-search-button").fetchSemanticsNodes().isNotEmpty()
         }
         compose.onNodeWithTag("model-picker-search-button").assertIsDisplayed()
+        // The editor may collapse, but the result set must stay filtered.
+        compose.onNodeWithTag("model-picker-model_p_alpha").assertIsDisplayed()
+        compose.onNodeWithTag("model-picker-model_p_beta").assertDoesNotExist()
+        compose.onNodeWithTag("model-picker-search-button").performClick()
+        compose.onNodeWithTag("model-picker-search").assertTextContains("alpha")
+        compose.onNodeWithTag("model-picker-search").performTextClearance()
+        compose.onNodeWithTag("model-picker-model_p_beta").assertIsDisplayed()
         assertHeaderAboveList()
     }
 
@@ -211,6 +245,7 @@ class ModelPickerToggleTest {
         compose.onNodeWithTag("model-picker-search").assertIsFocused().performImeAction()
         compose.onNodeWithTag("model-picker-search-button").assertIsDisplayed()
         compose.onNodeWithTag("model-picker-model_p_alpha").assertIsDisplayed()
+        compose.onNodeWithTag("model-picker-model_p_beta").assertDoesNotExist()
     }
 
     @Test fun togglingBranchesKeepsTheViewportInsteadOfReturningToTheSelectedModel() {

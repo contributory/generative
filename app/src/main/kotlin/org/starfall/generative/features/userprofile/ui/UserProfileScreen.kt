@@ -40,6 +40,7 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.media.mediaMimeType
+import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.menus.AppDropdownMenu
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
@@ -57,6 +58,7 @@ fun UserProfileScreen(
     val scope = rememberCoroutineScope()
     var target by remember { mutableStateOf<UserProfileImageSlot?>(null) }
     var menuFor by remember { mutableStateOf<UserProfileImageSlot?>(null) }
+    var transparencyFor by remember { mutableStateOf<UserProfileImageSlot?>(null) }
     var showStorage by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -82,6 +84,8 @@ fun UserProfileScreen(
     fun chooseStorage(slot: UserProfileImageSlot) { target = slot; menuFor = null; showStorage = true }
 
     Scaffold(
+
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
@@ -142,7 +146,9 @@ fun UserProfileScreen(
                     listOf(
                         Triple(UserProfileImageSlot.CHAT, stringResource(R.string.user_profile_background_chat), profile.chatBackground),
                         Triple(UserProfileImageSlot.DRAWER, stringResource(R.string.user_profile_background_drawer), profile.drawerBackground),
-                        Triple(UserProfileImageSlot.MENU, stringResource(R.string.user_profile_background_menu), profile.menuBackground)
+                        Triple(UserProfileImageSlot.MENU, stringResource(R.string.user_profile_background_menu), profile.menuBackground),
+                        Triple(UserProfileImageSlot.SHEET, stringResource(R.string.user_profile_background_bottom_sheet), profile.sheetBackground),
+                        Triple(UserProfileImageSlot.DIALOG, stringResource(R.string.user_profile_background_dialog), profile.dialogBackground)
                     ).forEachIndexed { index, (slot, label, image) ->
                         Surface(shape = if (index == 0) RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp,
                             bottomStart = 6.dp, bottomEnd = 6.dp) else RoundedCornerShape(6.dp),
@@ -166,35 +172,44 @@ fun UserProfileScreen(
                                             gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                                         },
                                         onStorage = { chooseStorage(slot) },
-                                        onRemove = { menuFor = null; storeImage(slot, null) }
+                                        onRemove = { menuFor = null; storeImage(slot, null) },
+                                        onTransparency = { menuFor = null; transparencyFor = slot }
                                     )
                                 }
                             }
                         }
                     }
-                    listOf(stringResource(R.string.user_profile_background_bottom_sheet),
-                        stringResource(R.string.user_profile_background_dialog)).forEachIndexed { index, label ->
-                        Surface(shape = if (index == 1) RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp,
-                            bottomStart = 22.dp, bottomEnd = 22.dp) else RoundedCornerShape(6.dp),
-                            color = prominentContainerColor()) {
-                            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                                Box(Modifier.size(52.dp).clip(RoundedCornerShape(14.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-                                    FluentIcon(Icons.Outlined.Image, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
-                                IconButton(enabled = false, onClick = {}) {
-                                    FluentIcon(Icons.Default.MoreVert, stringResource(R.string.user_profile_background_unavailable, label))
-                                }
-                            }
-                        }
-                    }
+
                 }
             }
         }
+    }
+    transparencyFor?.let { slot ->
+        val current = slot.imageTransparency(profile)
+        AlertDialog(
+            onDismissRequest = { transparencyFor = null },
+            title = { Text(stringResource(R.string.user_profile_background_transparency)) },
+            text = {
+                Column {
+                    Text("${(current * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { onChange { slot.withImageTransparency(it, 0.5f) } }) {
+                            FluentIcon(Icons.Default.Refresh, stringResource(R.string.user_profile_background_transparency_reset))
+                        }
+                        Slider(
+                            value = current.coerceIn(0f, 1f),
+                            onValueChange = { value -> onChange { slot.withImageTransparency(it, value) } },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { transparencyFor = null }) {
+                    Text(stringResource(R.string.common_ok))
+                }
+            }
+        )
     }
     if (showStorage) MediaStoragePhotoSheet(
         onDismiss = { showStorage = false },
@@ -220,12 +235,16 @@ fun UserProfileScreen(
 
 @Composable
 private fun SlotMenu(expanded: Boolean, hasImage: Boolean, onDismiss: () -> Unit,
-                     onGallery: () -> Unit, onStorage: () -> Unit, onRemove: () -> Unit) {
+                     onGallery: () -> Unit, onStorage: () -> Unit, onRemove: () -> Unit, onTransparency: (() -> Unit)? = null) {
     AppDropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         RoundedDropdownMenuItem(text = { Text(stringResource(R.string.user_profile_photos_gallery)) }, onClick = onGallery,
             leadingIcon = { FluentIcon(Icons.Outlined.Image, null) })
         RoundedDropdownMenuItem(text = { Text(stringResource(R.string.settings_storage)) }, onClick = onStorage,
             leadingIcon = { FluentIcon(Icons.Outlined.Folder, null) })
+        if (onTransparency != null) RoundedDropdownMenuItem(
+            text = { Text(stringResource(R.string.user_profile_background_transparency)) }, onClick = onTransparency,
+            leadingIcon = { FluentIcon(Icons.Default.Settings, null) }
+        )
         RoundedDropdownMenuItem(text = { Text(stringResource(R.string.common_remove)) }, enabled = hasImage, onClick = onRemove,
             leadingIcon = { FluentIcon(Icons.Outlined.Delete, null) })
     }
@@ -258,13 +277,6 @@ private fun MediaStoragePhotoSheet(onDismiss: () -> Unit, onSelected: (File) -> 
     }
     AppSheet(onDismissRequest = onDismiss, fixedHeightFraction = 0.82f) {
         Column(Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 16.dp)) {
-            Box(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-                Text(stringResource(R.string.settings_storage), style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.align(Alignment.CenterStart), fontWeight = FontWeight.SemiBold)
-                IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.CenterEnd)) {
-                    FluentIcon(Icons.Default.Close, stringResource(R.string.common_close))
-                }
-            }
             OutlinedTextField(value = search, onValueChange = { search = it }, singleLine = true,
                 placeholder = { Text(stringResource(R.string.user_profile_search_photos)) }, modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(28.dp))
