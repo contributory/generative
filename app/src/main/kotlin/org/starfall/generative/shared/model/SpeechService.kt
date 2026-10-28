@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import org.starfall.generative.shared.model.provider.ModelProvider
 
 @Serializable
-enum class SpeechEngine { SYSTEM, PROVIDER, ELEVENLABS, FISH_AUDIO, CARTESIA;
+enum class SpeechEngine { SYSTEM, PROVIDER, ELEVENLABS, FISH_AUDIO, CARTESIA, SPEECHIFY;
     val standalone: Boolean get() = this !in listOf(SYSTEM, PROVIDER)
 }
 

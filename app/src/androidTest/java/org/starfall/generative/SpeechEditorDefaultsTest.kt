@@ -17,10 +17,11 @@ class SpeechEditorDefaultsTest {
             SpeechEditor(SpeechService("new", "Custom TTS"), true, emptyList(), false,
                 onTest = { _, _ -> }, onDismiss = {}, onSave = {})
         } }
-        listOf("ElevenLabs", "Fish Audio", "Cartesia").forEach { engine ->
+        listOf("ElevenLabs", "Fish Audio", "Cartesia", "Speechify").forEach { engine ->
             compose.onNodeWithTag("speech-engine-selector").performScrollTo().performClick()
             compose.onNodeWithText(engine).performClick()
             compose.onNodeWithTag("speech-service-name").assertTextContains(engine)
+            compose.onNodeWithTag("speech-model-id").performScrollTo().assertTextEquals("")
             compose.onNodeWithContentDescription("Show API key").performScrollTo().performClick()
             compose.onNodeWithContentDescription("Hide API key").assertExists()
         }

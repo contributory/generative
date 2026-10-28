@@ -19,7 +19,12 @@ internal class SpeechModelCatalog(private val http: ToolHttp) {
         } else {
             require(service.apiKey.isNotBlank()) { "Enter an API key." }
             val adapter = adapter(engine)
-            Request.Builder().url(adapter.base + if (engine == SpeechEngine.ELEVENLABS) "/v1/models" else "/models?capability=tts")
+            Request.Builder().url(adapter.base + when (engine) {
+                    SpeechEngine.ELEVENLABS -> "/v1/models"
+                    SpeechEngine.CARTESIA -> "/models?capability=tts"
+                    SpeechEngine.SPEECHIFY -> "/v1/audio/models"
+                    else -> error("Unsupported model catalog.")
+                })
                 .apply { adapter.headers(service.apiKey).forEach { (key, value) -> header(key, value) } }.build()
         }
         http.withResponse(request) { response ->
@@ -49,6 +54,18 @@ internal fun parseSpeechModels(engine: SpeechEngine, response: JsonElement): Lis
                 if (item.text("capability") != "tts") return@mapNotNull null
                 SpeechSynthesisModel(item.text("id"), item.text("id"))
             }
+        }
+        SpeechEngine.SPEECHIFY -> {
+            val entries = ((response as? JsonObject)?.get("models") as? JsonArray)
+                ?: error("Invalid Speechify model list.")
+            // TTS models are in `models`; `dialogue_models` cannot synthesize one utterance.
+            // Keep deprecated but still selectable IDs visible for existing accounts.
+            entries.filterIsInstance<JsonObject>()
+                .map { item ->
+                    val name = item.text("name").ifBlank { item.text("id") }
+                    val deprecated = (item["deprecated"] as? JsonPrimitive)?.booleanOrNull == true
+                    SpeechSynthesisModel(item.text("id"), if (deprecated) "$name (deprecated)" else name)
+                }
         }
         SpeechEngine.FISH_AUDIO -> {
             val root = response as? JsonObject ?: error("Invalid model schema response.")

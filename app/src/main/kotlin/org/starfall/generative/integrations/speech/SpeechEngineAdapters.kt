@@ -22,6 +22,7 @@ internal fun adapter(engine: SpeechEngine): SpeechEngineAdapter = when (engine) 
     SpeechEngine.ELEVENLABS -> ElevenLabsSpeechClient
     SpeechEngine.FISH_AUDIO -> FishAudioSpeechClient
     SpeechEngine.CARTESIA -> CartesiaSpeechClient
+    SpeechEngine.SPEECHIFY -> SpeechifySpeechClient
     else -> error("Select a standalone speech engine.")
 }
 
@@ -147,5 +148,53 @@ internal object CartesiaSpeechClient : SpeechEngineAdapter {
     override fun page(body: JsonObject, cursor: String?) = VoicePage(
         body.items("data").map { it.voice("id", "name", listOfNotNull(it.text("language").takeIf(String::isNotBlank))) },
         body.text("next_page").takeIf { body.more() && it.isNotBlank() && it != cursor }
+    )
+}
+
+/**
+ * Speechify Build TTS returns JSON containing Base64 audio, not raw media bytes.
+ * Voice search is deliberately absent from its GET /v1/voices endpoint.
+ */
+internal object SpeechifySpeechClient : SpeechEngineAdapter {
+    override val base = "https://api.speechify.ai"
+    override fun headers(key: String) = mapOf("Authorization" to "Bearer $key")
+
+    override fun synthesis(service: SpeechService, text: String): Request {
+        advanced(service, setOf("options", "pronunciations", "safety_identifier"))
+        require(text.isNotBlank() && text.length <= 2_000) { "Speechify supports up to 2000 spoken characters per request." }
+        require(service.responseFormat in setOf("mp3", "wav", "ogg", "aac")) {
+            "Choose MP3, WAV, Ogg or AAC for Speechify."
+        }
+        service.extraBody["options"]?.let {
+            require(it is JsonObject) { "Speechify options must be a JSON object." }
+        }
+        service.extraBody["pronunciations"]?.let {
+            require(it is JsonArray && it.size <= 200) { "Speechify pronunciations must be an array of at most 200 entries." }
+        }
+        val body = buildJsonObject {
+            service.extraBody.forEach { (k, v) -> put(k, v) }
+            put("input", text)
+            put("voice_id", service.voice)
+            put("model", service.modelId)
+            put("audio_format", service.responseFormat)
+            if (service.languageCode.isNotBlank()) put("language", service.languageCode.trim())
+        }
+        return post("/v1/audio/speech", service, body).newBuilder().header("Accept", "application/json").build()
+    }
+
+    override fun voices(key: String, query: String, cursor: String?, owned: Boolean) =
+        get("/v1/voices", key, mapOf("limit" to "100", "cursor" to cursor,
+            "type" to if (owned) "personal" else null))
+
+    override fun page(body: JsonObject, cursor: String?): VoicePage = VoicePage(
+        body.items("voices").map { item ->
+            SpeechVoice(
+                item.text("id"),
+                item.text("display_name").ifBlank { item.text("id") },
+                item.text("gender").takeIf { it != "not_specified" }.orEmpty(),
+                listOfNotNull(item.text("locale").takeIf(String::isNotBlank))
+            )
+        },
+        body.text("next_cursor").takeIf { body.more() && it.isNotBlank() && it != cursor }
     )
 }

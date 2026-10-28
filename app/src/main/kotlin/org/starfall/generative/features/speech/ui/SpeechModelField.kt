@@ -5,12 +5,15 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import org.starfall.generative.R
 import org.starfall.generative.integrations.speech.SpeechSynthesisModel
 import org.starfall.generative.integrations.speech.StandaloneSpeechClient
@@ -22,8 +25,14 @@ import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 
 @Composable
-internal fun SpeechModelField(service: SpeechService, onChange: (String) -> Unit) {
+internal fun SpeechModelField(
+    service: SpeechService,
+    onChange: (String) -> Unit,
+    fetchModels: (suspend (SpeechService) -> List<SpeechSynthesisModel>)? = null
+) {
     val client = remember { StandaloneSpeechClient() }
+    val currentModelId by rememberUpdatedState(service.modelId)
+    val currentOnChange by rememberUpdatedState(onChange)
     key(service.engine, service.apiKey) {
         var models by remember { mutableStateOf<List<SpeechSynthesisModel>>(emptyList()) }
         var loading by remember { mutableStateOf(false) }
@@ -36,7 +45,11 @@ internal fun SpeechModelField(service: SpeechService, onChange: (String) -> Unit
             loading = true; error = null
             try {
                 delay(600)
-                models = client.models(service)
+                val fetched = fetchModels?.invoke(service) ?: client.models(service)
+                currentCoroutineContext().ensureActive()
+                models = fetched
+                // Never overwrite a saved model or one typed/chosen while the request was running.
+                if (currentModelId.isNullOrBlank()) fetched.firstOrNull()?.id?.let(currentOnChange)
             } catch (cancelled: CancellationException) { throw cancelled
             } catch (failure: Exception) {
                 error = failure.message.orEmpty().let { if (service.apiKey.isBlank()) it else it.replace(service.apiKey, "[redacted]") }.take(500)
@@ -57,7 +70,7 @@ internal fun SpeechModelField(service: SpeechService, onChange: (String) -> Unit
                             FluentIcon(Icons.Default.KeyboardArrowDown, stringResource(R.string.speech_engine_model))
                         }
                     }
-                }, modifier = Modifier.fillMaxWidth())
+                }, modifier = Modifier.fillMaxWidth().testTag("speech-model-id"))
             AppDropdownMenu(expanded, { expanded = false }) {
                 error?.let { detail ->
                     Text(detail, Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)

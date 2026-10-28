@@ -271,7 +271,7 @@ Moved Music Generation below Video Generation. Removed the inline red missing-mo
 
 ### Automatic synthesis model catalogs (2026-10-28)
 
-Speech Services now loads model choices after an API key is entered, with debounce, cancellation on engine/key changes, refresh, and manual ID fallback. Catalog results never replace the selected ID implicitly and are not stored with credentials.
+Speech Services now loads model choices after an API key is entered, with debounce, cancellation on engine/key changes, refresh, and manual ID fallback. After a successful catalog response, the first returned synthesis model is automatically selected **only if the model field is blank**. An existing saved choice or a manually entered ID is never overwritten by a catalog response. Changing the engine or API key clears the previous model selection so the first model from the new catalog can be chosen. If the catalog fails or returns no models, the model remains unset and manual ID entry stays available. Catalog results are not stored with credentials.
 
 - ElevenLabs: authenticated `GET https://api.elevenlabs.io/v1/models`; parse the top-level array and include only `can_do_text_to_speech == true`. Source: https://elevenlabs.io/docs/api-reference/models/list
 - Cartesia: authenticated/versioned `GET https://api.cartesia.ai/models?capability=tts`; include `capability == tts`. `modes` applies to STT and must not filter TTS entries. Source: https://docs.cartesia.ai/api-reference/models/list

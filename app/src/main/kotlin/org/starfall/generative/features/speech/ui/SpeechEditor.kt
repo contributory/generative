@@ -230,7 +230,8 @@ fun SpeechEditor(
                             DropdownMenuItem(text = { Text(speechEngineLabel(next)) }, onClick = {
                                 updateDefaultName(speechEngineLabel(next))
                                 engine = next; providerId = ""; voice = ""; voiceName = ""; apiKey = ""; extraBodyText = "{}"; speed = 1f
-                                modelId = when(next) { SpeechEngine.ELEVENLABS -> "eleven_multilingual_v2"; SpeechEngine.FISH_AUDIO -> "s2.1-pro-free"; else -> "sonic-3.6" }
+                                // The engine model is chosen from its fetched catalog after entering an API key.
+                                modelId = null
                                 responseFormat = when(next) { SpeechEngine.ELEVENLABS -> "mp3_44100_128"; SpeechEngine.CARTESIA -> "wav"; else -> "mp3" }
                                 providerExpanded = false
                             })
@@ -252,8 +253,14 @@ fun SpeechEditor(
                 }
 
                 if (standalone) {
-                    SpeechApiKeyField(apiKey, { apiKey = it }, standalone = true, visibilityKey = initialService.id to engine)
-                    SpeechModelField(currentService()) { modelId = it }
+                    SpeechApiKeyField(apiKey, { nextKey ->
+                        if (nextKey != apiKey) {
+                            // Whitespace-only changes do not change the credential used for fetching.
+                            if (nextKey.trim() != apiKey.trim()) modelId = null
+                            apiKey = nextKey
+                        }
+                    }, standalone = true, visibilityKey = initialService.id to engine)
+                    SpeechModelField(service = currentService(), onChange = { modelId = it })
                 } else if (!system) {
                     Box {
                         OutlinedButton(
@@ -334,15 +341,16 @@ fun SpeechEditor(
                             modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4
                         )
                     }
-                    if (google) {
+                    if (google || engine == SpeechEngine.SPEECHIFY) {
                         SelectableOutlinedTextField(
                             value = languageCode, onValueChange = { languageCode = it },
                             label = { Text(stringResource(R.string.speech_language_code)) },
                             placeholder = { Text("vi-VN") }, singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
-                        Text(stringResource(R.string.speech_gemini_audio_description), style = MaterialTheme.typography.bodySmall)
-                    } else {
+                        if (google) Text(stringResource(R.string.speech_gemini_audio_description), style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (!google) {
                         var formatExpanded by remember { mutableStateOf(false) }
                         Box {
                             OutlinedButton(onClick = { formatExpanded = true }, modifier = Modifier.fillMaxWidth()) {
@@ -354,6 +362,7 @@ fun SpeechEditor(
                                     SpeechEngine.ELEVENLABS -> listOf("mp3_44100_128", "mp3_22050_32")
                                     SpeechEngine.FISH_AUDIO -> listOf("mp3", "wav", "opus")
                                     SpeechEngine.CARTESIA -> listOf("wav")
+                                    SpeechEngine.SPEECHIFY -> listOf("mp3", "wav", "ogg", "aac")
                                     else -> listOf("mp3", "wav", "aac", "flac", "opus", "pcm")
                                 }).forEach { format ->
                                     DropdownMenuItem(text = { Text(format) }, onClick = { responseFormat = format; formatExpanded = false })
@@ -422,6 +431,7 @@ internal fun speechEngineLabel(engine: SpeechEngine): String = when(engine) {
     SpeechEngine.ELEVENLABS -> "ElevenLabs"
     SpeechEngine.FISH_AUDIO -> "Fish Audio"
     SpeechEngine.CARTESIA -> "Cartesia"
+    SpeechEngine.SPEECHIFY -> "Speechify"
     else -> engine.name
 }
 

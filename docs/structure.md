@@ -703,7 +703,7 @@ The project uses `ui/`, `logic/`, and `model/` instead of a canonical `presentat
 ### Standalone speech and music requests
 
 - `shared/model/SpeechService.kt` declares `SpeechEngine` with legacy System/Provider inference.
-- `integrations/speech/SpeechEngineAdapters.kt` owns ElevenLabs, Fish Audio and Cartesia HTTP mappings and their separate voice pagination protocols; `StandaloneSpeechClient.kt` handles bounded, cancellable transport without diagnostic request logging.
+- `integrations/speech/SpeechEngineAdapters.kt` owns ElevenLabs, Fish Audio, Cartesia and Speechify HTTP mappings and their separate voice pagination protocols; `StandaloneSpeechClient.kt` handles bounded, cancellable transport without diagnostic request logging.
 - `features/speech/ui/SpeechVoiceSheet.kt` owns on-demand voice search, pagination, retries and selection. `SpeechEditor.kt` keeps standalone model/voice IDs separate from Provider models.
 - `SpeechRepository` stores additive engine/voice-name metadata in structured JSON and continues encrypting keys in `SpeechAuthEntity`; no Room schema change is required.
 - `shared/model/media/MediaRequestChain.kt` adds `MediaKind.MUSIC`, `AUDIO`, protected credential envelopes and Custom music-profile validation. `SystemToolConfig` owns a separate music library and active ID.

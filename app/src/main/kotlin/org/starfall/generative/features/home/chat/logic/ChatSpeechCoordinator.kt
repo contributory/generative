@@ -77,7 +77,8 @@ internal class ChatSpeechCoordinator(
                     }
                 }
                 val standalone = if (service.engine.standalone) StandaloneSpeechClient() else null
-                for (chunk in speechChunks(plainText, sentencesPerChunk = service.sentencesPerChunk.coerceAtLeast(1))) {
+                for (chunk in speechChunks(plainText, sentencesPerChunk = service.sentencesPerChunk.coerceAtLeast(1),
+                    maxCharacters = if (service.engine == SpeechEngine.SPEECHIFY) 1_900 else 4_000)) {
                     ensureActive()
                     val audio = if (standalone != null) standalone.synthesize(service, chunk)
                         else synthesis.synthesize(requireNotNull(provider), service, chunk)

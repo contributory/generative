@@ -26,6 +26,17 @@ class SpeechModelCatalogTest {
             {"id":"sonic","capability":"tts"}, {"id":"ink","capability":"stt","modes":["batch"]}
         ]}"""))
         assertEquals(listOf("sonic"), cartesia.map { it.id })
+        val speechify = parseSpeechModels(SpeechEngine.SPEECHIFY, Json.parseToJsonElement("""{
+            "models":[
+                {"id":"simba-3.2","name":"Simba 3.2","deprecated":false},
+                {"id":"simba-3.5","name":"Simba 3.5","recommended":true,"deprecated":false},
+                {"id":"legacy","name":"Legacy","deprecated":true}
+            ],
+            "dialogue_models":[{"id":"simba-dialogue-1.0"}]
+        }"""))
+        assertEquals(listOf("simba-3.2", "simba-3.5", "legacy"), speechify.map { it.id })
+        assertEquals("Simba 3.2", speechify.first().name)
+        assertEquals("Legacy (deprecated)", speechify[2].name)
         val fish = parseSpeechModels(SpeechEngine.FISH_AUDIO, Json.parseToJsonElement("""{
             "paths":{"/v1/tts":{"post":{"parameters":[
                 {"in":"header","name":"model","schema":{"enum":["s2.1-pro","drama-3"]}}
@@ -56,6 +67,11 @@ class SpeechModelCatalogTest {
             assertEquals("/models?capability=tts", cartesia.path)
             assertEquals("Bearer secret", cartesia.getHeader("Authorization"))
             assertEquals(CARTESIA_VERSION, cartesia.getHeader("Cartesia-Version"))
+            server.enqueue(MockResponse().setBody("""{"models":[{"id":"simba-3.5","name":"Simba 3.5"}]}"""))
+            assertEquals("simba-3.5", client.models(service(SpeechEngine.SPEECHIFY)).single().id)
+            val speechify = server.takeRequest()
+            assertEquals("/v1/audio/models", speechify.path)
+            assertEquals("Bearer secret", speechify.getHeader("Authorization"))
             server.enqueue(MockResponse().setBody("""{"paths":{"/v1/tts":{"post":{"parameters":[
                 {"in":"header","name":"model","schema":{"enum":["drama-3"]}}
             ]}}}}"""))

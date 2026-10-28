@@ -20,9 +20,9 @@ import org.starfall.generative.shared.networking.ToolHttp
 
 class StandaloneSpeechTest {
     private fun service(engine: SpeechEngine) = SpeechService("speech", "Speech", engine = engine,
-        modelId = when(engine) { SpeechEngine.ELEVENLABS -> "eleven_multilingual_v2"; SpeechEngine.FISH_AUDIO -> "s2.1-pro-free"; else -> "sonic-3.6" },
+        modelId = when(engine) { SpeechEngine.ELEVENLABS -> "eleven_multilingual_v2"; SpeechEngine.FISH_AUDIO -> "s2.1-pro-free"; SpeechEngine.SPEECHIFY -> "simba-3.5"; else -> "sonic-3.6" },
         voice = "voice/with space", apiKey = "private-key", responseFormat = when(engine) {
-            SpeechEngine.ELEVENLABS -> "mp3_44100_128"; SpeechEngine.FISH_AUDIO -> "mp3"; else -> "wav"
+            SpeechEngine.ELEVENLABS -> "mp3_44100_128"; SpeechEngine.FISH_AUDIO -> "mp3"; SpeechEngine.SPEECHIFY -> "mp3"; else -> "wav"
         })
 
     @Test fun oldJsonInfersSystemAndProviderWithoutMistakingEngineIds() {
@@ -72,6 +72,77 @@ class StandaloneSpeechTest {
         assertEquals("voice-id", c.voices("key", "soft", cp.nextCursor, false).url.queryParameter("starting_after"))
         assertEquals("soft", c.voices("key", "soft", null, false).url.queryParameter("q"))
     }
+
+    @Test fun speechifyRequestAndVoicePaginationFollowBuildApi() {
+        val speechify = SpeechifySpeechClient.synthesis(
+            service(SpeechEngine.SPEECHIFY).copy(languageCode = "vi-VN"), "Hello")
+        assertEquals("/v1/audio/speech", speechify.url.encodedPath)
+        assertEquals("Bearer private-key", speechify.header("Authorization"))
+        assertEquals("application/json", speechify.header("Accept"))
+        val json = Buffer().also { speechify.body!!.writeTo(it) }.readUtf8()
+            .let { Json.parseToJsonElement(it).jsonObject }
+        assertEquals("Hello", json["input"]!!.jsonPrimitive.content)
+        assertEquals("simba-3.5", json["model"]!!.jsonPrimitive.content)
+        assertEquals("voice/with space", json["voice_id"]!!.jsonPrimitive.content)
+        assertEquals("vi-VN", json["language"]!!.jsonPrimitive.content)
+        assertEquals("mp3", json["audio_format"]!!.jsonPrimitive.content)
+        assertFalse("text" in json)
+
+        val page = SpeechifySpeechClient.page(Json.parseToJsonElement("""{
+            "voices":[{"id":"first","display_name":"Vietnamese voice","locale":"vi-VN","type":"shared"},
+            {"id":"clone","display_name":"My voice","locale":"en-US","type":"personal"}],
+            "has_more":true,"next_cursor":"opaque-123"
+        }""").jsonObject, null)
+        assertEquals(listOf("first", "clone"), page.voices.map { it.id })
+        assertEquals("Vietnamese voice", page.voices.first().name)
+        assertEquals(listOf("vi-VN"), page.voices.first().languages)
+        val next = SpeechifySpeechClient.voices("private-key", "Vietnamese", page.nextCursor, true)
+        assertEquals("opaque-123", next.url.queryParameter("cursor"))
+        assertEquals("personal", next.url.queryParameter("type"))
+        assertNull(next.url.queryParameter("search"))
+        assertEquals("100", next.url.queryParameter("limit"))
+        assertNull(SpeechifySpeechClient.page(Json.parseToJsonElement(
+            """{"voices":[],"has_more":false,"next_cursor":null}""").jsonObject, "opaque-123").nextCursor)
+
+        assertThrows(IllegalArgumentException::class.java) {
+            SpeechifySpeechClient.synthesis(service(SpeechEngine.SPEECHIFY), "x".repeat(2_001))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            SpeechifySpeechClient.synthesis(service(SpeechEngine.SPEECHIFY).copy(responseFormat = "pcm"), "Hi")
+        }
+    }
+
+    @Test fun speechifyBase64AudioIsDecodedAndSearchesAcrossSparsePages() = runBlocking {
+        val server = MockWebServer(); server.start()
+        try {
+            val client = StandaloneSpeechClient(ToolHttp(client = OkHttpClient.Builder().followRedirects(false)
+                .addInterceptor { chain ->
+                    val url = chain.request().url
+                    chain.proceed(chain.request().newBuilder()
+                        .url(server.url(url.encodedPath + (url.encodedQuery?.let { "?$it" } ?: ""))).build())
+                }.build()))
+            val wav = pcmWave(ByteArray(300))
+            val encoded = java.util.Base64.getEncoder().encodeToString(wav)
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json")
+                .setBody("""{"audio_data":"$encoded","audio_format":"wav"}"""))
+            assertArrayEquals(wav, client.synthesize(service(SpeechEngine.SPEECHIFY), "Hello"))
+            assertEquals("/v1/audio/speech", server.takeRequest().path)
+            assertThrows(IllegalStateException::class.java) {
+                decodeSpeechifyAudio(Json.parseToJsonElement("""{"audio_data":"bad!"}"""))
+            }
+
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json")
+                .setBody("""{"voices":[{"id":"a","display_name":"English"}],"has_more":true,"next_cursor":"next"}"""))
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json")
+                .setBody("""{"voices":[{"id":"vi","display_name":"Vietnamese"}],"has_more":false,"next_cursor":null}"""))
+            val page = client.voices(service(SpeechEngine.SPEECHIFY), "vietnamese")
+            assertEquals(listOf("vi"), page.voices.map { it.id })
+            assertNull(page.nextCursor)
+            assertNull(server.takeRequest().requestUrl?.queryParameter("search"))
+            assertEquals("next", server.takeRequest().requestUrl?.queryParameter("cursor"))
+        } finally { server.shutdown() }
+    }
+
     @Test fun binaryAudioErrorsRedirectsAndCancellation() = runBlocking {
         val server = MockWebServer(); server.start()
         try {

@@ -6,6 +6,9 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import java.io.ByteArrayOutputStream
 import org.starfall.generative.shared.model.SpeechService
+import org.starfall.generative.shared.model.SpeechEngine
+import kotlinx.serialization.json.*
+import java.util.Base64
 import org.starfall.generative.shared.networking.ToolHttp
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -18,8 +21,15 @@ class StandaloneSpeechClient(private val http: ToolHttp = ToolHttp(client = OkHt
         http.withResponse(adapter(service.engine).synthesis(service, text)) { response ->
             http.requireSuccess(response)
             val mime = response.header("Content-Type").orEmpty().substringBefore(';').lowercase()
-            require(mime.startsWith("audio/") || mime == "application/octet-stream") { "Speech API did not return audio." }
-            val bytes = response.body.byteStream().use { source ->
+            val speechify = service.engine == SpeechEngine.SPEECHIFY
+            require(if (speechify) mime == "application/json" else
+                (mime.startsWith("audio/") || mime == "application/octet-stream")) {
+                "Speech API did not return the expected audio response."
+            }
+            val bytes = if (speechify) {
+                decodeSpeechifyAudio(Json.parseToJsonElement(http.readJson(response,
+                    sanitizeMedia = false, maxChars = 46 * 1024 * 1024)))
+            } else response.body.byteStream().use { source ->
                 val output = ByteArrayOutputStream()
                 val buffer = ByteArray(8192)
                 while (true) {
@@ -42,10 +52,44 @@ class StandaloneSpeechClient(private val http: ToolHttp = ToolHttp(client = OkHt
         withContext(Dispatchers.IO) {
             require(service.apiKey.isNotBlank()) { "Enter an API key to fetch voices." }
             val engine = adapter(service.engine)
-            engine.page(http.json(engine.voices(service.apiKey, query, cursor, owned)), cursor)
-                .let { page -> page.copy(voices = page.voices.filter { it.id.isNotBlank() }.take(100)) }
+            val speechifySearch = service.engine == SpeechEngine.SPEECHIFY && query.isNotBlank()
+            var next = cursor
+            val matches = mutableListOf<SpeechVoice>()
+            var requests = 0
+            // Speechify provides cursor pagination but no name-search parameter.
+            // Search fetched pages locally, retaining the next server cursor.
+            do {
+                val page = engine.page(http.json(engine.voices(service.apiKey, query, next, owned)), next)
+                matches += page.voices.filter { voice ->
+                    !speechifySearch || listOf(voice.name, voice.id, voice.description)
+                        .plus(voice.languages).any { it.contains(query.trim(), ignoreCase = true) }
+                }
+                next = page.nextCursor
+                requests++
+            } while (speechifySearch && next != null && matches.size < 50 && requests < 6)
+            VoicePage(matches.filter { it.id.isNotBlank() }.distinctBy { it.id }.take(100), next)
         }
 }
 
 data class SpeechVoice(val id: String, val name: String, val description: String = "", val languages: List<String> = emptyList())
 data class VoicePage(val voices: List<SpeechVoice>, val nextCursor: String? = null)
+
+
+/** Decode Speechify's Base64 JSON response, bounded before allocating audio bytes. */
+internal fun decodeSpeechifyAudio(value: JsonElement): ByteArray {
+    val body = value as? JsonObject ?: error("Speechify returned invalid JSON.")
+    val encoded = (body["audio_data"] as? JsonPrimitive)?.contentOrNull
+        ?: error("Speechify response has no audio_data.")
+    require(encoded.isNotBlank() && encoded.length <= 45 * 1024 * 1024) {
+        "Speechify audio is empty or exceeds the audio size limit."
+    }
+    return try {
+        Base64.getDecoder().decode(encoded).also {
+            require(it.isNotEmpty() && it.size <= 32 * 1024 * 1024) {
+                "Speechify audio is empty or exceeds 32 MB."
+            }
+        }
+    } catch (_: IllegalArgumentException) {
+        error("Speechify returned invalid Base64 audio.")
+    }
+}
