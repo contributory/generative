@@ -13,7 +13,13 @@ class SpeechAudioPlayer(private val context: Context) {
     private var player: ExoPlayer? = null
     private var currentFile: File? = null
 
-    suspend fun play(audio: ByteArray, onFinished: () -> Unit = {}, onError: () -> Unit = {}, onStarted: () -> Unit = {}) =
+    suspend fun play(
+        audio: ByteArray,
+        onFinished: () -> Unit = {},
+        onError: () -> Unit = {},
+        onStarted: () -> Unit = {},
+        speed: Float = 1f
+    ) =
         withContext(Dispatchers.Main.immediate) {
             stop()
             var file: File? = null
@@ -48,6 +54,9 @@ class SpeechAudioPlayer(private val context: Context) {
                     override fun onPlayerError(error: PlaybackException) = finish(true)
                 })
                 next.setMediaItem(MediaPlayers.item(preparedFile.path))
+                // Standalone speech providers do not share a common API speed parameter.
+                // Apply their configured speed at playback without affecting pitch.
+                next.setPlaybackSpeed(speed.takeIf { it.isFinite() }?.coerceIn(0.25f, 4f) ?: 1f)
                 next.prepare()
                 next.play()
             } catch (error: Throwable) {
@@ -59,11 +68,13 @@ class SpeechAudioPlayer(private val context: Context) {
         }
 
     /** Wait for this clip before synthesizing the next one; cancellation only stops its own player. */
-    suspend fun playAndAwait(audio: ByteArray, onStarted: () -> Unit = {}) = withContext(Dispatchers.Main.immediate) {
+    suspend fun playAndAwait(audio: ByteArray, onStarted: () -> Unit = {}, speed: Float = 1f) = withContext(Dispatchers.Main.immediate) {
         val completion = CompletableDeferred<Unit>()
         play(audio,
             onFinished = { completion.complete(Unit) },
-            onError = { completion.completeExceptionally(SpeechPlaybackException()) }, onStarted = onStarted)
+            onError = { completion.completeExceptionally(SpeechPlaybackException()) },
+            onStarted = onStarted,
+            speed = speed)
         val ownedPlayer = player
         try { completion.await() }
         finally { if (ownedPlayer != null && player === ownedPlayer) stop() }

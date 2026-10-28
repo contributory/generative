@@ -22,6 +22,7 @@ import org.starfall.generative.shared.media.supportsSpeechProvider
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.integrations.speech.adapter
+import org.starfall.generative.integrations.speech.SpeechSynthesisModel
 import androidx.compose.ui.text.input.KeyboardType
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelType
@@ -45,7 +46,8 @@ fun SpeechEditor(
     isPlaying: Boolean,
     onTest: (SpeechService, String) -> Unit,
     onDismiss: () -> Unit,
-    onSave: (SpeechService) -> Unit
+    onSave: (SpeechService) -> Unit,
+    fetchModels: (suspend (SpeechService) -> List<SpeechSynthesisModel>)? = null
 ) {
     val context = LocalContext.current
     val ttsModelsByProvider = remember(providers) {
@@ -260,7 +262,8 @@ fun SpeechEditor(
                             apiKey = nextKey
                         }
                     }, standalone = true, visibilityKey = initialService.id to engine)
-                    SpeechModelField(service = currentService(), onChange = { modelId = it })
+                    SpeechModelField(service = currentService(), onChange = { modelId = it },
+                        fetchModels = fetchModels)
                 } else if (!system) {
                     Box {
                         OutlinedButton(
@@ -319,7 +322,7 @@ fun SpeechEditor(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                if (!google && !standalone) {
+                if (!google) {
                     val speedRange = if (system) 0.5f..2.0f else 0.25f..4f
                     val speedSliderState = remember(speedRange) {
                         SliderState(value = speed, trackRange = speedRange)
@@ -328,7 +331,8 @@ fun SpeechEditor(
                     Text(stringResource(R.string.speech_speed_value, String.format("%.1f", speed)))
                     Slider(
                         state = speedSliderState,
-                        onValueChange = { speed = it }
+                        onValueChange = { speed = it },
+                        modifier = Modifier.fillMaxWidth().testTag("speech-speed-slider")
                     )
                 }
 

@@ -39,7 +39,8 @@ class SpeechServiceStorageTest {
         try {
             org.starfall.generative.shared.model.SpeechEngine.entries.filter { it.standalone }.forEach { engine ->
                 val service = SpeechService(engine.name, "Standalone", provider = "", engine = engine,
-                    modelId = "engine-model", voice = "voice-id", voiceName = "Friendly name", apiKey = "private-key", sentencesPerChunk = 7)
+                    modelId = "engine-model", voice = "voice-id", voiceName = "Friendly name", apiKey = "private-key",
+                    speed = 1.6f, sentencesPerChunk = 7)
                 SpeechRepository(db).saveService(service)
                 assertEquals(service, SpeechRepository(db).getById(service.id))
                 val entity = db.speechServiceDao().getServiceById(service.id)!!

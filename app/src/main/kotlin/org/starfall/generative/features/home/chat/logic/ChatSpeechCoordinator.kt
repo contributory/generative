@@ -84,7 +84,8 @@ internal class ChatSpeechCoordinator(
                         else synthesis.synthesize(requireNotNull(provider), service, chunk)
                     ensureActive()
                     if (request != requestNumber) return@launch
-                    player.playAndAwait(audio, onStarted)
+                    player.playAndAwait(audio, onStarted,
+                        speed = if (standalone != null) service.speed else 1f)
                 }
             } catch (e: CancellationException) { throw e
             } catch (e: SpeechPlaybackException) {

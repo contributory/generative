@@ -2,12 +2,16 @@ package org.starfall.generative
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.features.speech.ui.SpeechEditor
 import org.starfall.generative.shared.model.SpeechService
+import org.starfall.generative.shared.model.SpeechEngine
 
 class SpeechEditorDefaultsTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
@@ -33,6 +37,40 @@ class SpeechEditorDefaultsTest {
         compose.onNodeWithText("Android System TTS").performClick()
         compose.onNodeWithTag("speech-service-name").assertTextContains("My narrator")
     }
+
+    @Test fun everyStandaloneSpeechEngineSavesPlaybackSpeed() {
+        val selectedEngine = mutableStateOf(SpeechEngine.ELEVENLABS)
+        var saved: SpeechService? = null
+        compose.setContent { MaterialTheme {
+            key(selectedEngine.value) {
+                val engine = selectedEngine.value
+                SpeechEditor(
+                    SpeechService("speech-${engine.name}", "Narrator", engine = engine,
+                        modelId = "selected-model", voice = "voice-id", apiKey = "test-key",
+                        responseFormat = when (engine) {
+                            SpeechEngine.ELEVENLABS -> "mp3_44100_128"
+                            SpeechEngine.CARTESIA -> "wav"
+                            else -> "mp3"
+                        }),
+                    isNew = false, providers = emptyList(), isPlaying = false,
+                    onTest = { _, _ -> }, onDismiss = {}, onSave = { saved = it },
+                    fetchModels = { listOf(org.starfall.generative.integrations.speech.SpeechSynthesisModel(
+                        "selected-model", "Selected")) }
+                )
+            }
+        } }
+        SpeechEngine.entries.filter { it.standalone }.forEach { engine ->
+            compose.runOnIdle { selectedEngine.value = engine; saved = null }
+            compose.onNodeWithTag("speech-speed-slider").performScrollTo()
+                .performSemanticsAction(SemanticsActions.SetProgress) { it(1.6f) }
+            compose.onNodeWithText("Save").performClick()
+            compose.runOnIdle {
+                org.junit.Assert.assertEquals(engine, saved?.engine)
+                org.junit.Assert.assertEquals(1.6f, saved?.speed ?: 0f, 0.001f)
+            }
+        }
+    }
+
     @Test fun sentenceCountDefaultsToTenAndIsSavedWithTheService() {
         val provider = org.starfall.generative.shared.model.provider.ModelProvider("p", "Provider",
             org.starfall.generative.shared.model.api.ModelApiType.OPENAI, baseUrl = "https://example.test/v1",
