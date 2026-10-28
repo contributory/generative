@@ -3,7 +3,6 @@ package org.starfall.generative.features.mcp.shared.ui
 import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -11,9 +10,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.McpAuthMethod
@@ -25,6 +21,7 @@ import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.text.ApiKeyField
 import org.starfall.generative.shared.ui.icons.providerInitials
 
 @Composable
@@ -53,7 +50,6 @@ internal fun McpConnectionSettings(
     modifier: Modifier = Modifier
 ) {
     var oauthAdvancedExpanded by remember { mutableStateOf(false) }
-    var authValueRevealed by remember(authMethod) { mutableStateOf(false) }
     Column(modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         IconPickerRow(icon, onIconChange, text = providerInitials(name), fallback = Icons.Outlined.Extension,
             onBusyChange = onIconBusyChange, matchName = name, faviconBaseUrl = url)
@@ -94,19 +90,10 @@ internal fun McpConnectionSettings(
             oauthClientSecret, onOauthClientSecretChange, oauthAuthorized, oauthRedirectUri, onOauthRedirectUriChange,
             onAuthorizeOAuth, onClearOAuth,
             oauthAdvancedExpanded, { oauthAdvancedExpanded = !oauthAdvancedExpanded })
-        if (authMethod != McpAuthMethod.NONE && authMethod != McpAuthMethod.OAUTH2) SelectableOutlinedTextField(authValue, onAuthValueChange,
+        if (authMethod != McpAuthMethod.NONE && authMethod != McpAuthMethod.OAUTH2) ApiKeyField(authValue, onAuthValueChange,
             label = { Text(stringResource(if (authMethod == McpAuthMethod.BEARER_TOKEN) R.string.bearer_token else R.string.common_value)) },
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
-            trailingIcon = {
-                IconButton(onClick = { authValueRevealed = !authValueRevealed }) {
-                    FluentIcon(
-                        if (authValueRevealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
-                        stringResource(if (authValueRevealed) R.string.provider_hide_api_key else R.string.provider_show_api_key)
-                    )
-                }
-            },
+            visibilityKey = authMethod,
             singleLine = true,
-            visualTransformation = if (authValueRevealed) VisualTransformation.None else PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth().onFocusChanged {
                 if (!it.isFocused && authMethod == McpAuthMethod.BEARER_TOKEN) onAuthValueChange(bearerHeaderValue(authKey.trim().ifBlank { "Authorization" }, authValue))
             })

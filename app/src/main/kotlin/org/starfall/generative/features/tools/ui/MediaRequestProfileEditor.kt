@@ -303,7 +303,9 @@ fun MediaRequestProfileEditor(
                     }
                 }
             }
-                chainValidationError(draft.chain)?.let { message ->
+                chainValidationError(draft.chain)?.takeUnless { message ->
+                    message == R.string.media_chain_one_step_required || message == R.string.media_chain_media_path_required
+                }?.let { message ->
                     item {
                         Text(stringResource(message), color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall)

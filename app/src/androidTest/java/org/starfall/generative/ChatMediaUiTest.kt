@@ -351,7 +351,7 @@ class ChatMediaUiTest {
         } finally { store.delete(listOf(name)) }
     }
 
-    @Test fun runningMediaToolsShowSquarePlaceholdersAndFailuresRemoveThem() {
+    @Test fun runningMediaToolsRetainFailedPlaceholdersAndRemoveCancelledOnes() {
         var version by mutableStateOf(MessageVersion(toolActivity = listOf(
             ToolActivity("image-pending", "generate_image"),
             ToolActivity("video-pending", "generate_video")
@@ -364,6 +364,8 @@ class ChatMediaUiTest {
             )
         } }
 
+        val originalImageBounds = compose.onNodeWithTag("media-generation-placeholder_image-pending")
+            .fetchSemanticsNode().boundsInRoot
         compose.onNodeWithTag("media-generation-placeholder_image-pending")
             .assertExists().assertHeightIsAtLeast(100.dp)
         compose.onNodeWithTag("media-generation-placeholder_video-pending")
@@ -377,7 +379,13 @@ class ChatMediaUiTest {
                 ToolActivity("video-pending", "generate_video")
             ))
         }
-        compose.onNodeWithTag("media-generation-placeholder_image-pending").assertDoesNotExist()
+        val failedImageBounds = compose.onNodeWithTag("media-generation-placeholder_image-pending")
+            .assertExists().fetchSemanticsNode().boundsInRoot
+        assertEquals(originalImageBounds.width, failedImageBounds.width, 0.5f)
+        assertEquals(originalImageBounds.height, failedImageBounds.height, 0.5f)
+        compose.onNodeWithTag("media-generation-failed_image-pending", useUnmergedTree = true).assertExists()
+        compose.onNodeWithContentDescription("Image generation failed").assertExists()
+        compose.onNodeWithContentDescription("Generating image").assertDoesNotExist()
         compose.onNodeWithTag("media-generation-placeholder_video-pending").assertExists()
 
         compose.runOnIdle {
@@ -387,6 +395,10 @@ class ChatMediaUiTest {
         }
         compose.onNodeWithTag("media-generation-placeholder_video-pending").assertDoesNotExist()
 
+        compose.runOnIdle { streaming = false }
+        compose.onNodeWithTag("media-generation-placeholder_image-pending").assertExists()
+        compose.onNodeWithContentDescription("Image generation failed").assertExists()
+
         // A restored or stopped message must not resurrect placeholders for stale running calls.
         compose.runOnIdle {
             version = MessageVersion(toolActivity = listOf(ToolActivity("stale", "generate_image")))
@@ -395,14 +407,32 @@ class ChatMediaUiTest {
         compose.onNodeWithTag("media-generation-placeholder_stale").assertDoesNotExist()
     }
 
-    @Test fun successfulMediaReplacesItsPendingPreview() {
+    @Test fun failedVideoKeepsItsFrameInSavedMessages() {
+        val version = MessageVersion(toolActivity = listOf(
+            ToolActivity("video-failed", "generate_video", status = "error", summary = "Video request failed")
+        ))
+        compose.setContent { MaterialTheme {
+            AssistantMessageCard(
+                StoredMessage("assistant-video-failed", ChatRole.MODEL, listOf(version)),
+                false, {}, {}, {}, {}, {}, {}, onSwitchVersion = {}
+            )
+        } }
+        compose.onNodeWithTag("media-generation-placeholder_video-failed").assertExists().assertHeightIsAtLeast(100.dp)
+        compose.onNodeWithTag("media-generation-failed_video-failed", useUnmergedTree = true).assertExists()
+        compose.onNodeWithContentDescription("Video generation failed").assertExists()
+        compose.onNodeWithContentDescription("Generating video").assertDoesNotExist()
+    }
+
+    @Test fun successfulMediaReplacesItsPendingPreviewWithoutMovingEarlierFailure() {
         val store = ToolFiles(context)
         val bitmap = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
         val bytes = ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
         bitmap.recycle()
         val name = runBlocking { store.save(bytes.inputStream(), "image/png") }
         try {
+            val failed = ToolActivity("earlier-failure", "generate_image", status = "error")
             var version by mutableStateOf(MessageVersion(toolActivity = listOf(
+                failed,
                 ToolActivity("rendering", "generate_image")
             )))
             compose.setContent { MaterialTheme {
@@ -412,8 +442,11 @@ class ChatMediaUiTest {
                 )
             } }
             compose.onNodeWithTag("media-generation-placeholder_rendering").assertExists()
+            val failedLeft = compose.onNodeWithTag("media-generation-placeholder_earlier-failure")
+                .fetchSemanticsNode().boundsInRoot.left
             compose.runOnIdle {
                 version = version.copy(toolActivity = listOf(
+                    failed,
                     ToolActivity("rendering", "generate_image", status = "success", files = listOf(name))
                 ))
             }
@@ -421,6 +454,11 @@ class ChatMediaUiTest {
             compose.waitUntil(5_000) {
                 compose.onAllNodesWithContentDescription("Generated image").fetchSemanticsNodes().isNotEmpty()
             }
+            val failureBounds = compose.onNodeWithTag("media-generation-placeholder_earlier-failure")
+                .assertExists().fetchSemanticsNode().boundsInRoot
+            val imageBounds = compose.onNodeWithContentDescription("Generated image").fetchSemanticsNode().boundsInRoot
+            assertEquals(failedLeft, failureBounds.left, 0.5f)
+            assertTrue(failureBounds.left < imageBounds.left)
         } finally { store.delete(listOf(name)) }
     }
 

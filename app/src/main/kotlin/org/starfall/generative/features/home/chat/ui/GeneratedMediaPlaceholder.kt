@@ -31,22 +31,32 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.ToolActivity
 import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 
-/** Reserved square preview for an image/video tool that has not returned its media yet. */
+/** Reserved square preview for pending or failed image/video generation. */
 @Composable
 internal fun GeneratedMediaPlaceholder(activity: ToolActivity, modifier: Modifier = Modifier) {
     val video = activity.name == "generate_video"
-    val label = stringResource(if (video) R.string.tool_generating_video else R.string.tool_generating_image)
+    val failed = activity.status == "error"
+    val label = stringResource(when {
+        failed && video -> R.string.media_video_generation_failed
+        failed -> R.string.media_image_generation_failed
+        video -> R.string.tool_generating_video
+        else -> R.string.tool_generating_image
+    })
     val scheme = MaterialTheme.colorScheme
-    val transition = rememberInfiniteTransition(label = "media-preview-shimmer")
-    val phase by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(2800, easing = LinearEasing), RepeatMode.Restart),
-        label = "media-preview-glow"
-    )
+    val phase = if (failed) 0f else {
+        val transition = rememberInfiniteTransition(label = "media-preview-shimmer")
+        val animatedPhase by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(2800, easing = LinearEasing), RepeatMode.Restart),
+            label = "media-preview-glow"
+        )
+        animatedPhase
+    }
     val shape = RoundedCornerShape(16.dp)
 
     BoxWithConstraints(
@@ -69,39 +79,43 @@ internal fun GeneratedMediaPlaceholder(activity: ToolActivity, modifier: Modifie
             val secondaryGlow = scheme.tertiary
             Canvas(Modifier.fillMaxSize()) {
                 drawRect(base.copy(alpha = 0.6f))
-                val radius = size.minDimension * 0.82f
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(glow.copy(alpha = 0.3f), Color.Transparent),
-                        center = Offset(size.width * (0.15f + phase * 0.7f), size.height * 0.3f),
-                        radius = radius
-                    ),
-                    radius = radius,
-                    center = Offset(size.width * (0.15f + phase * 0.7f), size.height * 0.3f)
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(secondaryGlow.copy(alpha = 0.2f), Color.Transparent),
-                        center = Offset(size.width * (0.85f - phase * 0.7f), size.height * 0.8f),
-                        radius = radius
-                    ),
-                    radius = radius,
-                    center = Offset(size.width * (0.85f - phase * 0.7f), size.height * 0.8f)
-                )
-                val sweep = size.width * (phase * 2.5f - 0.75f)
-                drawRect(
-                    brush = Brush.linearGradient(
-                        colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.10f), Color.Transparent),
-                        start = Offset(sweep - size.width * 0.7f, 0f),
-                        end = Offset(sweep + size.width * 0.25f, size.height)
+                if (!failed) {
+                    val radius = size.minDimension * 0.82f
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(glow.copy(alpha = 0.3f), Color.Transparent),
+                            center = Offset(size.width * (0.15f + phase * 0.7f), size.height * 0.3f),
+                            radius = radius
+                        ),
+                        radius = radius,
+                        center = Offset(size.width * (0.15f + phase * 0.7f), size.height * 0.3f)
                     )
-                )
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(secondaryGlow.copy(alpha = 0.2f), Color.Transparent),
+                            center = Offset(size.width * (0.85f - phase * 0.7f), size.height * 0.8f),
+                            radius = radius
+                        ),
+                        radius = radius,
+                        center = Offset(size.width * (0.85f - phase * 0.7f), size.height * 0.8f)
+                    )
+                    val sweep = size.width * (phase * 2.5f - 0.75f)
+                    drawRect(
+                        brush = Brush.linearGradient(
+                            colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.10f), Color.Transparent),
+                            start = Offset(sweep - size.width * 0.7f, 0f),
+                            end = Offset(sweep + size.width * 0.25f, size.height)
+                        )
+                    )
+                }
             }
             FluentIcon(
-                imageVector = if (video) Icons.Outlined.Videocam else Icons.Outlined.Image,
+                imageVector = if (failed) FluentUi.Regular.ErrorCircle else if (video) Icons.Outlined.Videocam else Icons.Outlined.Image,
                 contentDescription = null,
-                tint = scheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(32.dp)
+                tint = if (failed) scheme.error else scheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(32.dp).then(
+                    if (failed) Modifier.testTag("media-generation-failed_${activity.id}") else Modifier
+                )
             )
         }
     }

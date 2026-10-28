@@ -12,6 +12,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -176,4 +178,66 @@ class QuickActionsSheetTransitionTest {
         val restoredHeight = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
         assertEquals(quickActionsHeight, restoredHeight, 2f)
     }
+
+    private fun resizeSheet(fraction: Float) {
+        compose.onNodeWithTag("bottom-sheet-drag-handle")
+            .performSemanticsAction(SemanticsActions.SetProgress) { resize -> assertTrue(resize(fraction)) }
+        compose.mainClock.advanceTimeBy(450)
+    }
+
+    private fun sheetHeight(): Float =
+        compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
+
+    @Test
+    fun expandedQuickActionsRetainsItsHeightAcrossAllLinkedSheets() {
+        compose.setContent { LinkedQuickActionsHost(ToolControls(settings = ToolSettings())) }
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+        val initialHeight = sheetHeight()
+        resizeSheet(0.8f)
+        val resizedHeight = sheetHeight()
+        assertTrue(resizedHeight > initialHeight + 80f)
+
+        listOf("Instructions", "Feature Tools", "MCP Connectors").forEach { title ->
+            compose.onNodeWithText(title).performScrollTo().performClick()
+            compose.mainClock.advanceTimeBy(450)
+            compose.onNodeWithContentDescription("Back").performClick()
+            compose.mainClock.advanceTimeBy(450)
+            assertEquals("Returning from $title must restore the manually expanded height", resizedHeight, sheetHeight(), 2f)
+        }
+    }
+
+    @Test
+    fun contractedQuickActionsKeepsItsHeightWhenChildIsResized() {
+        compose.setContent { LinkedQuickActionsHost(ToolControls(settings = ToolSettings())) }
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+        val initialHeight = sheetHeight()
+        resizeSheet(0.05f)
+        val resizedHeight = sheetHeight()
+        assertTrue(resizedHeight < initialHeight - 40f)
+
+        compose.onNodeWithText("MCP Connectors").performScrollTo().performClick()
+        compose.mainClock.advanceTimeBy(450)
+        resizeSheet(0.9f)
+        assertTrue(sheetHeight() > resizedHeight + 80f)
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.mainClock.advanceTimeBy(450)
+        assertEquals("A child's drag height must not replace the Quick Actions height", resizedHeight, sheetHeight(), 2f)
+    }
+
+    @Test
+    fun resizingOnlyChildLeavesUnresizedQuickActionsAtItsOpeningHeight() {
+        compose.setContent { LinkedQuickActionsHost(ToolControls(settings = ToolSettings())) }
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+        val initialHeight = sheetHeight()
+        compose.onNodeWithText("MCP Connectors").performScrollTo().performClick()
+        compose.mainClock.advanceTimeBy(450)
+        resizeSheet(0.9f)
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.mainClock.advanceTimeBy(450)
+        assertEquals(initialHeight, sheetHeight(), 2f)
+    }
+
 }

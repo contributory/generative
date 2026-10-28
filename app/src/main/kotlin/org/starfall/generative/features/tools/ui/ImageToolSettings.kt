@@ -44,7 +44,7 @@ fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave:
     var disabledParams by remember(provider.id, config.modelId, video) { mutableStateOf(config.disabledParams) }
     var confirmDiscard by remember { mutableStateOf(false) }
     val parsed = runCatching { Json.parseToJsonElement(draft).jsonObject }.getOrNull()
-    val error = if (parsed == null) stringResource(R.string.speech_json_invalid_hint) else runCatching {
+    val error = if (parsed == null) stringResource(R.string.speech_json_invalid_hint) else if (config.modelId.isBlank()) null else runCatching {
         if (video) validateVideoOptions(provider, config.modelId, parsed)
         else validateImageOptions(provider, config.modelId, parsed)
     }.exceptionOrNull()?.message

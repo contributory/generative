@@ -60,6 +60,7 @@ class SpeechRepository(private val db: AppDatabase) {
             structured.replaceDocument(StructuredJsonDocument("speech_service", service.id, "engine_settings", buildJsonObject {
                 put("engine", service.engine.name)
                 put("voiceName", service.voiceName)
+                put("sentencesPerChunk", service.sentencesPerChunk)
             }))
             val old = structured.getDocument("speech_service", service.id, "extra_body")
             if (service.extraBody.isNotEmpty()) structured.replaceDocument(StructuredJsonDocument("speech_service", service.id, "extra_body", service.extraBody))
@@ -109,6 +110,7 @@ class SpeechRepository(private val db: AppDatabase) {
             languageCode = entity.languageCode,
             engine = engine,
             voiceName = settings?.get("voiceName")?.jsonPrimitive?.contentOrNull.orEmpty(),
+            sentencesPerChunk = (settings?.get("sentencesPerChunk") as? JsonPrimitive)?.intOrNull?.takeIf { it > 0 } ?: 10,
             extraBody = extraBody
         )
     }

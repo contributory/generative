@@ -1,5 +1,8 @@
 package org.starfall.generative.shared.media
 
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
@@ -104,6 +107,9 @@ class SpeechSynthesisService(
                 auth.requestHeaders(resolved.type).forEach { (key, value) -> setRequestProperty(key, value) }
                 resolved.config.headers.forEach { (key, value) -> setRequestProperty(key, value) }
             }
+            val cancelRequest = launch(start = CoroutineStart.UNDISPATCHED) {
+                try { awaitCancellation() } finally { connection.disconnect() }
+            }
             try {
                 connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
                 val status = connection.responseCode
@@ -127,6 +133,7 @@ class SpeechSynthesisService(
                     pcmWave(decoded, rate)
                 } else decoded
             } finally {
+                cancelRequest.cancel()
                 connection.disconnect()
             }
         }

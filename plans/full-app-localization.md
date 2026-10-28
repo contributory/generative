@@ -384,13 +384,28 @@ normalizes both spellings to the same entry, and the tests assert the folder is 
 | `scripts/localization_check.py` | New offline coverage/validation CLI, hardened against XML entity attacks, extended with the `aapt2` format rule and the hardcoded-Kotlin-text rule. |
 | `scripts/translate_strings.py` | `--check` delegates to the new checker (offline, no `googletrans` needed). |
 
-## Speech engines and Music Generation follow-up
+## Speech engines and Music Generation — completed localization
 
-The speech/music implementation adds English source keys only, in accordance with AGENTS.md.
-Translate the following keys together across **every** supported non-English locale in a coordinated pass:
+Added the 21 speech/music strings to every supported non-English locale in one coordinated change:
+`de`, `es`, `fr`, `in`, `it`, `ja`, `ko`, `pt-rBR`, `ru`, `th`, `vi`, `zh-rCN`, and `zh-rTW`.
+The translations cover voice browsing/search, engine model/key labels, Music Generation and its profile library, protected credentials and validation messages. Android Keystore, API, IDs and `{{api_token}}` retain their technical meaning; profile terminology follows each locale's existing media-profile labels.
 
-- `speech_choose_voice`, `speech_owned_voices`, `speech_no_voices`, `speech_load_more`, `speech_engine_model`, `speech_search_voices`, `speech_engine_api_key`, `speech_engine_api_key_help`, `speech_voice_required`.
-- `music_profiles`, `music_audio`, `tool_music_generation_title`, `tool_generate_music_description`, `music_select_profile`, `music_profile_required`.
-- `music_profile_credential`, `music_profile_credential_help`, `music_duplicate_profile`, `music_unsafe_headers`, `tool_generating_music`, `tool_generate_music`.
+`python3 scripts/localization_check.py --format json` passes with **1,238/1,238 required entries (100%) in every locale**, with zero errors. The checker still warns about some deliberately identical technical terms and existing strings. The missing-translation follow-up for speech/music is resolved.
 
-Keep engine names, API, Profile, model/voice IDs and request-template placeholders intact. Missing translations currently use Android's English fallback; they are not counted as translated coverage.
+Feature Tools now presents Image Generation, Video Generation, then Music Generation. Missing model/profile selections no longer produce inline red setup warnings; execution-time validation is retained.
+
+## Invariant reasoning effort labels (2026-10-28)
+
+At the user's request, reasoning effort level/state labels remain in English across all locales. Removed the four localized overrides (`reasoning_level_xhigh`, `model_reasoning_level_min`, `model_reasoning_level_med`, `model_reasoning_level_xhigh`) from every non-English resource file and marked the English originals non-translatable. Dedicated non-translatable resources also cover None, Default and Active within reasoning controls; common labels elsewhere retain their translations. Low, High and the other API level names already use their original names. These invariant labels are excluded from required translation coverage.
+
+## Media generation failure accessibility (2026-10-28)
+
+Added `media_image_generation_failed` and `media_video_generation_failed` to English and every supported non-English locale. These labels are screen-reader descriptions for the retained failed-generation tiles; the tiles visibly show only the Fluent ErrorCircle icon.
+
+## Configurable speech chunks (2026-10-28)
+
+Added `speech_sentences_per_chunk` and `speech_chunk_boundaries` to English and every supported non-English locale together. They label the per-service API sentence-count setting and explain deduplication of adjacent period/newline boundaries.
+
+## Speech playback notifications (2026-10-28)
+
+Added `notification_speech_channel` and `notification_speech_playing` in English and all 13 supported non-English locales. The notification reuses the existing localized Stop action and displays the configured service name without the transcript.

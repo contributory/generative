@@ -39,7 +39,7 @@ class SpeechServiceStorageTest {
         try {
             org.starfall.generative.shared.model.SpeechEngine.entries.filter { it.standalone }.forEach { engine ->
                 val service = SpeechService(engine.name, "Standalone", provider = "", engine = engine,
-                    modelId = "engine-model", voice = "voice-id", voiceName = "Friendly name", apiKey = "private-key")
+                    modelId = "engine-model", voice = "voice-id", voiceName = "Friendly name", apiKey = "private-key", sentencesPerChunk = 7)
                 SpeechRepository(db).saveService(service)
                 assertEquals(service, SpeechRepository(db).getById(service.id))
                 val entity = db.speechServiceDao().getServiceById(service.id)!!
@@ -54,8 +54,13 @@ class SpeechServiceStorageTest {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java).build()
         try {
-            SpeechRepository(db).saveService(SpeechService("s", "Old", provider = "system", voice = "Default", speed = 1f, pitch = 1f, sortOrder = 0))
+            db.speechServiceDao().insertOrUpdate(SpeechServiceEntity(
+                id = "s", name = "Old", provider = "system", modelId = null, voice = "Default",
+                speed = 1f, pitch = 1f, sortOrder = 0, icon = null, instructions = "",
+                responseFormat = "mp3", languageCode = "", authId = null
+            ))
             val service = SpeechRepository(db).getById("s")!!
+            assertEquals(10, service.sentencesPerChunk)
             assertEquals("mp3", service.responseFormat)
             assertEquals("", service.instructions)
             assertTrue(service.extraBody.isEmpty())

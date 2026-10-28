@@ -297,7 +297,7 @@
     <string name="model_type_tts">TTS</string>
     <string name="model_type_stt">STT</string>
     <string name="common_tools">Tools</string>
-    <string name="reasoning_level_xhigh">X-High</string>
+    <string name="reasoning_level_xhigh" translatable="false">X-High</string>
     <string name="media_generated_image">Generated image</string>
     <string name="media_image_preview_unavailable">Image preview unavailable</string>
     <string name="media_video_thumbnail">Video thumbnail</string>
@@ -416,9 +416,9 @@
     <string name="image_option_top_k">Top K</string>
     <string name="image_option_top_p">Top P</string>
     <string name="image_option_user_identifier">User identifier</string>
-    <string name="model_reasoning_level_min">Min</string>
-    <string name="model_reasoning_level_med">Med</string>
-    <string name="model_reasoning_level_xhigh">XHigh</string>
+    <string name="model_reasoning_level_min" translatable="false">Min</string>
+    <string name="model_reasoning_level_med" translatable="false">Med</string>
+    <string name="model_reasoning_level_xhigh" translatable="false">XHigh</string>
     <string name="code_block_summary">%1$s | %2$d lines</string>
     <string name="latex_formula_clip_label">LaTeX formula</string>
     <string name="latex_formula_copied">Formula copied</string>
@@ -1252,4 +1252,13 @@
     <string name="speech_engine_api_key">API key</string>
     <string name="speech_engine_api_key_help">Required by this speech engine. Stored securely on this device.</string>
     <string name="speech_voice_required">Choose a voice or enter its Voice ID.</string>
+    <string name="reasoning_level_none" translatable="false">None</string>
+    <string name="reasoning_level_default" translatable="false">Default</string>
+    <string name="reasoning_level_active" translatable="false">Active</string>
+    <string name="media_image_generation_failed">Image generation failed</string>
+    <string name="media_video_generation_failed">Video generation failed</string>
+    <string name="speech_sentences_per_chunk">Sentences per API request</string>
+    <string name="speech_chunk_boundaries">A period or line break ends a sentence. Adjacent separators count once.</string>
+    <string name="notification_speech_channel">Speech playback</string>
+    <string name="notification_speech_playing">Reading aloud</string>
 </resources>

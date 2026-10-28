@@ -32,6 +32,8 @@ fun speechText(markdown: String, includeCodeBlocks: Boolean = false): String {
         }
     }
     visit(speechMarkdownParser.parse(markdown))
-    return output.toString().replace(Regex("[ \\t]+"), " ")
+    val readable = output.toString().replace(Regex("[^\\p{L}\\p{M}\\p{N}\\s.,!?;…’'。！？、，；]"), " ")
+    if (readable.none { it.isLetterOrDigit() }) return ""
+    return readable.replace(Regex("[ \\t]+"), " ")
         .replace(Regex(" *\\n[ \\n]*"), "\n").trim()
 }

@@ -8,6 +8,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -79,21 +83,28 @@ internal fun QuickActionsSheetContent(
     onOpenSkills: () -> Unit = {},
     useInitialSheetHeight: Boolean = false
 ) {
-    // Only the opening viewport defaults to half-height. Once the handle is dragged,
-    // track its actual height in either direction without imposing a maximum or minimum.
+    // SlideSheetContent saves the base page while a linked sheet is open. Keep its last
+    // manual viewport there because AppSheet releases its drag height on page changes.
+    var savedViewportHeight by rememberSaveable { mutableStateOf<Float?>(null) }
+    val isActivePage = LocalScreenTransitionActive.current
     val maxContentHeight = LocalBottomSheetMaxContentHeight.current
     val minContentHeight = LocalBottomSheetMinContentHeight.current
     val manuallyResized = LocalBottomSheetManuallyResized.current
+    LaunchedEffect(isActivePage, useInitialSheetHeight, manuallyResized, minContentHeight) {
+        if (isActivePage && useInitialSheetHeight && manuallyResized) {
+            savedViewportHeight = minContentHeight.value
+        }
+    }
     val sheetViewport = if (useInitialSheetHeight && maxContentHeight > 0.dp) {
         val bottomInset = with(LocalDensity.current) {
             WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).getBottom(this).toDp()
         }
         val chromeHeight = 48.dp + bottomInset // AppSheet's drag handle and navigation inset.
         val initialHeight = (maxContentHeight + chromeHeight) * QUICK_ACTIONS_INITIAL_HEIGHT_FRACTION - chromeHeight
-        Modifier.height((if (manuallyResized) minContentHeight else initialHeight).coerceIn(0.dp, maxContentHeight))
+        val viewportHeight = if (manuallyResized) minContentHeight else savedViewportHeight?.dp ?: initialHeight
+        Modifier.height(viewportHeight.coerceIn(0.dp, maxContentHeight))
     } else Modifier
     val scrollState = rememberScrollState()
-    val isActivePage = LocalScreenTransitionActive.current
     LaunchedEffect(isActivePage, useInitialSheetHeight) {
         if (useInitialSheetHeight && isActivePage) scrollState.scrollTo(0)
     }

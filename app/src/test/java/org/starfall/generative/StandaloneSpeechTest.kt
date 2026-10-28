@@ -28,7 +28,7 @@ class StandaloneSpeechTest {
     @Test fun oldJsonInfersSystemAndProviderWithoutMistakingEngineIds() {
         assertEquals(SpeechEngine.SYSTEM, Json.decodeFromString<SpeechService>("""{"id":"s","name":"Old"}""").engine)
         assertEquals(SpeechEngine.PROVIDER, Json.decodeFromString<SpeechService>("""{"id":"s","name":"Old","provider":"elevenlabs"}""").engine)
-        val speech = service(SpeechEngine.CARTESIA).copy(voiceName = "Friendly voice")
+        val speech = service(SpeechEngine.CARTESIA).copy(voiceName = "Friendly voice", sentencesPerChunk = 12)
         assertEquals(speech, Json.decodeFromString<SpeechService>(Json.encodeToString(speech)))
     }
     @Test fun eachEngineOwnsItsAuthenticationAndPayload() {

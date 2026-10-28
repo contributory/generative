@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -31,7 +32,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.providerInitials
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
-import org.starfall.generative.shared.ui.text.ApiKeyMask
+import org.starfall.generative.shared.ui.text.ApiKeyField
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 
 /** Full-screen speech service editor. All configuration and preview actions are kept inline. */
@@ -78,10 +79,25 @@ fun SpeechEditor(
     var responseFormat by remember(initialService.id) { mutableStateOf(initialService.responseFormat) }
     var languageCode by remember(initialService.id) { mutableStateOf(initialService.languageCode) }
     var extraBodyText by remember(initialService.id) { mutableStateOf(initialService.extraBody.toString()) }
+    var chunkSizeText by remember(initialService.id) { mutableStateOf(initialService.sentencesPerChunk.coerceAtLeast(1).toString()) }
+    val chunkSize = chunkSizeText.toIntOrNull()?.takeIf { it > 0 }
     var apiKey by remember(initialService.id) { mutableStateOf(initialService.apiKey) }
     var providerExpanded by remember { mutableStateOf(false) }
     var modelExpanded by remember { mutableStateOf(false) }
     var advancedExpanded by remember(initialService.id, engine) { mutableStateOf(initialService.extraBody.isNotEmpty()) }
+
+    val systemServiceName = stringResource(R.string.speech_system_tts)
+    val newServiceName = stringResource(R.string.speech_custom_tts)
+    val defaultServiceName = when (engine) {
+        SpeechEngine.SYSTEM -> systemServiceName
+        SpeechEngine.PROVIDER -> providers.firstOrNull { it.id == providerId }?.name.orEmpty()
+        else -> speechEngineLabel(engine)
+    }
+    fun updateDefaultName(nextName: String) {
+        val defaults = setOf(newServiceName, "Custom TTS", defaultServiceName) +
+            if (engine == SpeechEngine.SYSTEM) setOf("Android System TTS") else emptySet()
+        if (name.isBlank() || name.trim() in defaults) name = nextName
+    }
 
     val availableModels = ttsModelsByProvider[providerId].orEmpty()
     val system = engine == SpeechEngine.SYSTEM
@@ -113,6 +129,7 @@ fun SpeechEditor(
         modelId = modelId,
         voice = voice.trim(),
         speed = speed,
+        sentencesPerChunk = chunkSize ?: initialService.sentencesPerChunk,
         pitch = pitch,
         instructions = if (supportsInstructions) instructions else "",
         responseFormat = responseFormat,
@@ -124,7 +141,7 @@ fun SpeechEditor(
     val engineValidationError = if (standalone && extraBody != null) runCatching {
         adapter(engine).synthesis(currentService(), "Test")
     }.exceptionOrNull()?.message else null
-    val canSave = name.isNotBlank() &&
+    val canSave = name.isNotBlank() && (system || chunkSize != null) &&
         (system || if (standalone) extraBody != null && engineValidationError == null else (modelId in availableModels && extraBody != null))
 
     if (showVoices && standalone) SpeechVoiceSheet(currentService(), onChoose = {
@@ -164,7 +181,7 @@ fun SpeechEditor(
                     onValueChange = { name = it },
                     label = { Text(stringResource(R.string.speech_service_name)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().testTag("speech-service-name")
                 )
 
                 IconPickerRow(
@@ -184,7 +201,7 @@ fun SpeechEditor(
                 Box {
                     OutlinedButton(
                         onClick = { providerExpanded = true },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().testTag("speech-engine-selector")
                     ) {
                         Text(
                             if (system) {
@@ -203,6 +220,7 @@ fun SpeechEditor(
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.speech_system_tts)) },
                             onClick = {
+                                updateDefaultName(systemServiceName)
                                 providerId = "system"
                                 engine = SpeechEngine.SYSTEM
                                 providerExpanded = false
@@ -210,6 +228,7 @@ fun SpeechEditor(
                         )
                         SpeechEngine.entries.filter { it.standalone }.forEach { next ->
                             DropdownMenuItem(text = { Text(speechEngineLabel(next)) }, onClick = {
+                                updateDefaultName(speechEngineLabel(next))
                                 engine = next; providerId = ""; voice = ""; voiceName = ""; apiKey = ""; extraBodyText = "{}"; speed = 1f
                                 modelId = when(next) { SpeechEngine.ELEVENLABS -> "eleven_multilingual_v2"; SpeechEngine.FISH_AUDIO -> "s2.1-pro-free"; else -> "sonic-3.6" }
                                 responseFormat = when(next) { SpeechEngine.ELEVENLABS -> "mp3_44100_128"; SpeechEngine.CARTESIA -> "wav"; else -> "mp3" }
@@ -220,6 +239,7 @@ fun SpeechEditor(
                             DropdownMenuItem(
                                 text = { Text(provider.name) },
                                 onClick = {
+                                     updateDefaultName(provider.name)
                                      if (standalone) { apiKey = ""; extraBodyText = "{}"; responseFormat = "mp3" }
                                      engine = SpeechEngine.PROVIDER
                                      providerId = provider.id
@@ -232,11 +252,8 @@ fun SpeechEditor(
                 }
 
                 if (standalone) {
-                    SpeechApiKeyField(apiKey, { apiKey = it }, standalone = true)
-                    SelectableOutlinedTextField(modelId.orEmpty(), { modelId = it },
-                        label = { Text(stringResource(R.string.speech_engine_model)) }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
-                        modifier = Modifier.fillMaxWidth())
+                    SpeechApiKeyField(apiKey, { apiKey = it }, standalone = true, visibilityKey = initialService.id to engine)
+                    SpeechModelField(currentService()) { modelId = it }
                 } else if (!system) {
                     Box {
                         OutlinedButton(
@@ -280,7 +297,7 @@ fun SpeechEditor(
                     value = voice,
                     onValueChange = { voice = it; voiceName = "" },
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
-                    trailingIcon = if (standalone) { { IconButton(onClick = { showVoices = true }) { FluentIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.speech_choose_voice)) } } } else null,
+                    trailingIcon = if (standalone) { { IconButton(onClick = { showVoices = true }, enabled = apiKey.isNotBlank()) { FluentIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.speech_choose_voice)) } } } else null,
                     supportingText = if (voiceName.isNotBlank()) { { Text(voiceName) } } else null,
                     label = {
                         Text(
@@ -293,11 +310,6 @@ fun SpeechEditor(
                     },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
-                )
-                if (!standalone && voice.isBlank()) Text(
-                    stringResource(if (standalone) R.string.speech_voice_required else R.string.speech_voice_optional_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
                 )
 
                 if (!google && !standalone) {
@@ -349,6 +361,15 @@ fun SpeechEditor(
                             }
                         }
                     }
+                    SelectableOutlinedTextField(
+                        value = chunkSizeText, onValueChange = { chunkSizeText = it },
+                        label = { Text(stringResource(R.string.speech_sentences_per_chunk)) },
+                        supportingText = { Text(stringResource(R.string.speech_chunk_boundaries)) },
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
+                            autoCorrectEnabled = false, keyboardType = KeyboardType.Number),
+                        isError = chunkSizeText.isNotBlank() && chunkSize == null,
+                        singleLine = true, modifier = Modifier.fillMaxWidth().testTag("speech-chunk-size")
+                    )
                     if (standalone) TextButton(onClick = { advancedExpanded = !advancedExpanded }) {
                         Text(stringResource(R.string.image_tool_advanced_json), Modifier.weight(1f))
                         FluentIcon(if (advancedExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, null)
@@ -362,7 +383,7 @@ fun SpeechEditor(
                             else if (!standalone) { { Text(stringResource(R.string.speech_provider_parameters_help)) } } else null,
                         modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 5
                     )
-                    if (!standalone) SpeechApiKeyField(apiKey, { apiKey = it }, standalone = false)
+                    if (!standalone) SpeechApiKeyField(apiKey, { apiKey = it }, standalone = false, visibilityKey = initialService.id to engine)
                 }
 
                 if (system) {
@@ -405,14 +426,12 @@ internal fun speechEngineLabel(engine: SpeechEngine): String = when(engine) {
 }
 
 @Composable
-private fun SpeechApiKeyField(value: String, onChange: (String) -> Unit, standalone: Boolean) {
-    SelectableOutlinedTextField(
+private fun SpeechApiKeyField(value: String, onChange: (String) -> Unit, standalone: Boolean, visibilityKey: Any?) {
+    ApiKeyField(
         value = value, onValueChange = onChange,
         label = { Text(stringResource(if (standalone) R.string.speech_engine_api_key else R.string.speech_api_key_override)) },
-        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
-            autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
         supportingText = if (!standalone) { { Text(stringResource(R.string.speech_api_key_help)) } } else null,
-        visualTransformation = ApiKeyMask, singleLine = true,
+        visibilityKey = visibilityKey,
         modifier = Modifier.fillMaxWidth()
     )
 }

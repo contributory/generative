@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -140,7 +141,15 @@ private fun ReleaseEntry(latest: GitHubReleaseInfo) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(latest.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Text(stringResource(R.string.settings_update_available, latest.tagName), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (latest.body.isNotBlank()) Text(latest.body, style = MaterialTheme.typography.bodySmall, maxLines = 8, overflow = TextOverflow.Ellipsis)
+        if (latest.body.isNotBlank()) {
+            Box(
+                modifier = Modifier.fillMaxWidth()
+                    .heightIn(max = 240.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(latest.body, style = MaterialTheme.typography.bodySmall)
+            }
+        }
         if (latest.apkAssets.isNotEmpty()) {
             latest.apkAssets.forEach { asset ->
                 OutlinedButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(asset.downloadUrl))) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {

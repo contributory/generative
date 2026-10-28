@@ -33,7 +33,7 @@ class SpeechSynthesisTest {
         assertFalse(spoken.contains("println"))
         assertFalse(spoken.contains("indented_code"))
         assertTrue(speechText(markdown, includeCodeBlocks = true).contains("println"))
-        assertTrue(speechText(markdown, includeCodeBlocks = true).contains("indented_code"))
+        assertTrue(speechText(markdown, includeCodeBlocks = true).contains("indented code"))
         assertEquals("", speechText("```\nonly_code()\n```"))
     }
     private fun provider(type: ModelApiType = ModelApiType.OPENAI, url: String = "https://example.test/v1") =
@@ -54,7 +54,9 @@ class SpeechSynthesisTest {
         assertTrue(text.contains("Hello world"))
         assertTrue(text.contains("Read this and that."))
         assertTrue(text.contains("Documentation"))
-        assertTrue(text.contains("& escaped *star*."))
+        assertTrue(text.contains("escaped star."))
+        assertFalse(text.contains("&"))
+        assertFalse(text.contains("*"))
         assertFalse(text.contains("https://"))
         assertFalse(text.contains("#"))
         assertFalse(text.contains("|"))

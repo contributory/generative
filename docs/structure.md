@@ -582,6 +582,7 @@ This document is the detailed package map and architecture reference. The mandat
 │       │   ├── 📄 BottomSheetHeight.kt
 │       │   └── 📄 SlideSheetContent.kt
 │       ├── 📁 text/
+│       │   ├── 📄 ApiKeyField.kt
 │       │   ├── 📄 ApiKeyMask.kt
 │       │   ├── 📄 GlyphSelectionGate.kt
 │       │   ├── 📄 MessageMarkdownStyle.kt
@@ -709,3 +710,9 @@ The project uses `ui/`, `logic/`, and `model/` instead of a canonical `presentat
 - `features/tools/ui/MusicToolSettings.kt` provides the profile-only Music Generation card; `MusicProfileCredentialField.kt` masks and encrypts the profile key before updating the draft. The existing profile library/editor receives an explicit `MediaKind`; Music omits the mode selector and built-in Default.
 - `integrations/media/MusicGenerationClient.kt` snapshots a Custom profile and executes it without a Provider or chat model. It disables request debug logging, uses profile-owned encrypted credentials, bounds execution, and rolls back newly created output files on failure/cancellation through `shared/files/ToolFileBatch.kt`.
 - `shared/media/AudioContent.kt` recognizes supported audio containers for TTS and Music; `ToolFiles` validates audio before publishing a generated file. Existing chat audio previews and Media Storage render saved tracks.
+
+- `integrations/speech/SpeechModelCatalog.kt` fetches synthesis model catalogs independently of voice lists. `features/speech/ui/SpeechModelField.kt` automatically loads on engine/key changes, allows refresh/selection, and preserves manual IDs on failures or empty results.
+
+- `shared/media/SpeechChunks.kt` groups external TTS requests by each service’s configurable sentence count (default 10), using period/newline boundaries without duplicate adjacent separators and retaining a character cap. `SpeechText.kt` strips decorative symbols/colons before synthesis. `SpeechAudioPlayer.playAndAwait` lets the chat speech coordinator synthesize and play one clip at a time, retaining active-message state until the whole sequence completes.
+
+- `shared/media/SpeechPlaybackNotification.kt` owns the TTS notification channel and session-specific Stop action. `ChatSpeechCoordinator` shows it on actual playback start for both Android TTS and API audio, keeps it through chunk boundaries, and clears it on completion/error/Stop. AppContainer injects its application-context instance into ChatViewModel. Existing notification permission handling is reused; this is a playback-status notification, not a foreground service.

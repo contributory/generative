@@ -38,7 +38,6 @@ import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.media.MediaGenerationMode
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.shared.model.systemMediaToolAvailable
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
@@ -98,17 +97,12 @@ fun ToolsEditor(
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            item {
-                MusicToolSettings(settings.system["generate_music"] ?: SystemToolConfig(),
-                    onChange = { onSave("generate_music", it) }, onOpenProfiles = onOpenMusicProfiles)
-            }
             items(listOf("generate_image", "generate_video")) { name ->
                 val config = settings.system[name] ?: SystemToolConfig()
                 val provider = providers.find { it.id == config.providerId }
                 val model = provider?.config?.modelConfigs?.get(config.modelId)
                 val image = name == "generate_image"
                 val selectedProfile = config.selectedMediaProfile(!image, model)
-                val available = systemMediaToolAvailable(name, config, providers, selectedProfile.mode)
                 val profiles = config.mediaProfiles(!image)
                 val hasModel = provider != null && config.modelId.isNotBlank() && model != null
                 var apiTypeExpanded by remember(name, config.providerId, config.modelId) {
@@ -146,14 +140,6 @@ fun ToolsEditor(
                         model = model,
                         onClick = { choosing = name }
                     )
-                    if (!available) {
-                        Text(
-                            stringResource(R.string.tool_select_compatible_model_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
                     Spacer(Modifier.height(8.dp))
                     HorizontalDivider()
                     Spacer(Modifier.height(8.dp))
@@ -215,6 +201,10 @@ fun ToolsEditor(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            }
+            item {
+                MusicToolSettings(settings.system["generate_music"] ?: SystemToolConfig(),
+                    onChange = { onSave("generate_music", it) }, onOpenProfiles = onOpenMusicProfiles)
             }
             item {
                 Text(

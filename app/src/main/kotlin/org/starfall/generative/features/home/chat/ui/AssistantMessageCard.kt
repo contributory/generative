@@ -473,7 +473,7 @@ private data class ProcessingBlock(
 
 private sealed interface MediaPreviewItem {
     data class File(val name: String) : MediaPreviewItem
-    data class Pending(val activity: ToolActivity) : MediaPreviewItem
+    data class Placeholder(val activity: ToolActivity) : MediaPreviewItem
 }
 
 @Composable
@@ -561,10 +561,10 @@ private fun CompletedAssistantContent(
                             )
                         }
                     }
-                    val files = block.items.filterIsInstance<ProcessingDropdownItem.Tool>()
+                    val mediaItems = block.items.filterIsInstance<ProcessingDropdownItem.Tool>()
                         .flatMap { item ->
                             val activity = item.activity
-                            if (activity.name == "send_file" && activity.inlineMedia) {
+                            val activityFiles = if (activity.name == "send_file" && activity.inlineMedia) {
                                 activity.files
                             } else if (activity.inlineMedia || activity.responsePreviewLimit == 0 &&
                                 activity.name in listOf("generate_image", "generate_video")) {
@@ -574,18 +574,18 @@ private fun CompletedAssistantContent(
                                 }
                             } else if (activity.responsePreviewLimit > 0) emptyList()
                             else activity.files.filterNot { it.endsWith(".json", ignoreCase = true) }
+                            val files = activityFiles.map { it.removePrefix("tool-file:") }
+                                .filter { shownFiles.add(it) }
+                            // Preserve each call's position when its pending tile becomes a file or failure.
+                            when {
+                                activityFiles.isNotEmpty() -> files.map { MediaPreviewItem.File(it) }
+                                activity.name in setOf("generate_image", "generate_video") &&
+                                    (activity.status == "error" || isStreaming && activity.status == "running") ->
+                                    listOf(MediaPreviewItem.Placeholder(activity))
+                                else -> emptyList()
+                            }
                         }
-                        .map { it.removePrefix("tool-file:") }
-                        .filter { shownFiles.add(it) }
-                    // A running media tool reserves its preview position immediately. Failed,
-                    // cancelled and historical calls must never leave an empty media tile behind.
-                    val pendingMedia = if (isStreaming) block.items
-                        .filterIsInstance<ProcessingDropdownItem.Tool>()
-                        .map { it.activity }
-                        .filter { it.status == "running" && it.name in setOf("generate_image", "generate_video") }
-                    else emptyList()
-                    val mediaItems = files.map { MediaPreviewItem.File(it) } +
-                        pendingMedia.map { MediaPreviewItem.Pending(it) }
+                    val files = mediaItems.filterIsInstance<MediaPreviewItem.File>()
                     if (mediaItems.isNotEmpty()) {
                         if (files.isNotEmpty()) SelectionOnlyPlaceholder("[MediaBlock]")
                         DisableSelection {
@@ -606,7 +606,7 @@ private fun CompletedAssistantContent(
                                                             onToggleChatImage = onToggleChatImage,
                                                             playVideoInline = columns == 1)
                                                     }
-                                                    is MediaPreviewItem.Pending -> key(item.activity.id) {
+                                                    is MediaPreviewItem.Placeholder -> key(item.activity.id) {
                                                         GeneratedMediaPlaceholder(item.activity)
                                                     }
                                                 }

@@ -25,6 +25,7 @@ data class SpeechService(
     val languageCode: String = "",
     val engine: SpeechEngine = if (provider.equals("system", true)) SpeechEngine.SYSTEM else SpeechEngine.PROVIDER,
     val voiceName: String = "",
+    val sentencesPerChunk: Int = 10,
     val extraBody: kotlinx.serialization.json.JsonObject = kotlinx.serialization.json.JsonObject(emptyMap())
 )
 

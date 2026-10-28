@@ -50,9 +50,9 @@ internal data class ReasoningEffortLabels(
 
 @Composable
 internal fun localizedReasoningEffortLabels(): ReasoningEffortLabels = ReasoningEffortLabels(
-    none = stringResource(R.string.common_none),
-    default = stringResource(R.string.common_default),
-    active = stringResource(R.string.common_active),
+    none = stringResource(R.string.reasoning_level_none),
+    default = stringResource(R.string.reasoning_level_default),
+    active = stringResource(R.string.reasoning_level_active),
     xhigh = stringResource(R.string.reasoning_level_xhigh),
 )
 

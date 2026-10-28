@@ -115,7 +115,8 @@ class AppContainer(context: Context) {
                 TtsHelper(appContext),
                 SpeechSynthesisService(providers::resolveProvider),
                 SpeechAudioPlayer(appContext),
-                toolFiles
+                toolFiles,
+                speechNotification = org.starfall.generative.shared.media.SpeechPlaybackNotification(appContext)
             )
         }
         initializer { ConfigurationViewModel(profiles, providers, mcp, speech, preferences) }

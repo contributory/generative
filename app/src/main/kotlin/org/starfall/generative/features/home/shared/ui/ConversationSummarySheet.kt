@@ -146,7 +146,9 @@ internal fun ConversationSummarySheetContent(
 
         val displayedError = validationError ?: error
         if (displayedError != null) {
-            Text(displayedError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            Text(displayedError,
+                color = if (validationError != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall)
         }
 
         Button(

@@ -19,7 +19,7 @@ import org.starfall.generative.shared.model.provider.DEFAULT_ANTIGRAVITY_CHANGEL
 import org.starfall.generative.shared.model.provider.DEFAULT_ANTIGRAVITY_VERSION
 import org.starfall.generative.shared.model.provider.DEFAULT_CODEX_CLIENT_VERSION
 import org.starfall.generative.shared.model.auth.AuthMethod
-import org.starfall.generative.shared.ui.text.ApiKeyMask
+import org.starfall.generative.shared.ui.text.ApiKeyField
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
@@ -141,9 +141,8 @@ internal fun ProviderAuthField(
     onFocusLost: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    var revealed by remember(method) { mutableStateOf(false) }
     val hasKey = method !in listOf(AuthMethod.OAUTH, AuthMethod.NONE, AuthMethod.OTHER)
-    SelectableOutlinedTextField(
+    ApiKeyField(
         value = if (hasKey) value else "", onValueChange = onValueChange,
         label = {
             Text(
@@ -169,16 +168,7 @@ internal fun ProviderAuthField(
                 }
             }
         }) else null,
-        trailingIcon = if (hasKey) ({
-            IconButton(onClick = { revealed = !revealed }) {
-                FluentIcon(if (revealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
-                    stringResource(if (revealed) R.string.provider_hide_api_key else R.string.provider_show_api_key))
-            }
-        }) else null,
-        visualTransformation = if (revealed || !hasKey) VisualTransformation.None else ApiKeyMask,
-        keyboardOptions = KeyboardOptions(
-            capitalization = if (hasKey) KeyboardCapitalization.None else KeyboardCapitalization.Sentences
-        ),
+        visibilityKey = method,
         maxLines = 3,
         modifier = Modifier
             .fillMaxWidth()

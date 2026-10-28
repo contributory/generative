@@ -7,7 +7,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.ui.icons.FluentIcon
@@ -44,7 +43,5 @@ internal fun MusicToolSettings(config: SystemToolConfig, onChange: (SystemToolCo
             }
             IconButton(onClick = onOpenProfiles) { FluentIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.music_profiles)) }
         }
-        if (config.activeMusicRequestProfile == null) Text(stringResource(R.string.music_profile_required),
-            color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
     }
 }

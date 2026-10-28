@@ -17,19 +17,23 @@ class TtsHelper(context: Context) {
     private var tts: TextToSpeech? = null
     private var ready = false
     private var closed = false
-    private data class Request(val text: String, val speed: Float, val pitch: Float, val voice: String, val onFinished: () -> Unit)
+    private data class Request(val text: String, val speed: Float, val pitch: Float, val voice: String, val onFinished: () -> Unit, val onStarted: () -> Unit)
     private var pending: Request? = null
     private var defaultVoice: android.speech.tts.Voice? = null
     private var requestNumber = 0L
     private var activePrefix: String? = null
     private var lastUtteranceId: String? = null
     private var onFinished: (() -> Unit)? = null
+    private var onStarted: (() -> Unit)? = null
 
-    fun speak(text: String, speed: Float = 1.0f, pitch: Float = 1.0f, voice: String = "Default", onFinished: () -> Unit = {}) {
+    fun speak(text: String, speed: Float = 1.0f, pitch: Float = 1.0f, voice: String = "Default", onFinished: () -> Unit = {}) =
+        speak(text, speed, pitch, voice, onStarted = {}, onFinished = onFinished)
+
+    fun speak(text: String, speed: Float, pitch: Float, voice: String, onStarted: () -> Unit, onFinished: () -> Unit) {
         handler.post {
             if (closed || text.isBlank()) { onFinished(); return@post }
             pending?.onFinished?.invoke()
-            pending = Request(text, speed, pitch, voice, onFinished)
+            pending = Request(text, speed, pitch, voice, onFinished, onStarted)
             if (ready) playPending() else if (tts == null) {
                 tts = TextToSpeech(appContext) { status ->
                     // Posting also handles engines that invoke their listener inside the constructor.
@@ -51,7 +55,13 @@ class TtsHelper(context: Context) {
             return
         }
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) = Unit
+            override fun onStart(utteranceId: String?) { handler.post {
+                if (activePrefix?.let { utteranceId?.startsWith(it) } == true) {
+                    val callback = onStarted
+                    onStarted = null
+                    callback?.invoke()
+                }
+            } }
             override fun onDone(utteranceId: String?) { handler.post {
                 if (utteranceId == lastUtteranceId && utteranceId != null) finishActive()
             } }
@@ -81,6 +91,7 @@ class TtsHelper(context: Context) {
         pending = null
         finishActive()
         onFinished = request.onFinished
+        onStarted = request.onStarted
         engine.setSpeechRate(request.speed.coerceIn(0.1f, 4f))
         engine.setPitch(request.pitch.coerceIn(0.1f, 4f))
         val selectedVoice = if (request.voice.equals("Default", true)) defaultVoice
@@ -111,6 +122,7 @@ class TtsHelper(context: Context) {
     private fun finishActive() {
         val callback = onFinished
         onFinished = null
+        onStarted = null
         activePrefix = null
         lastUtteranceId = null
         callback?.invoke()

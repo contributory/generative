@@ -78,6 +78,7 @@ class ChatViewModel(
     private val speechSynthesis: SpeechSynthesisService,
     private val speechAudioPlayer: SpeechAudioPlayer,
     private val toolFiles: ToolFiles,
+    private val speechNotification: org.starfall.generative.shared.media.SpeechPlaybackNotification? = null,
 ) : ViewModel() {
 
     val toolSettings = toolStore.settings.stateIn(viewModelScope, SharingStarted.Eagerly, ToolSettings())
@@ -525,7 +526,7 @@ class ChatViewModel(
     }
 
     private val speech = ChatSpeechCoordinator(viewModelScope, appPreferences, providers, speechServices,
-        ttsHelper, speechSynthesis, speechAudioPlayer)
+        ttsHelper, speechSynthesis, speechAudioPlayer, speechNotification)
     val speakingMessageId = speech.speakingMessageId
     val activeTestSpeechServiceId = speech.activeTestServiceId
     fun speakText(text: String, messageId: String? = null) = speech.speak(text, messageId)

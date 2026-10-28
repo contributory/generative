@@ -36,6 +36,8 @@ class StandaloneSpeechClient(private val http: ToolHttp = ToolHttp(client = OkHt
             bytes
         }
     }
+    suspend fun models(service: SpeechService): List<SpeechSynthesisModel> = SpeechModelCatalog(http).load(service)
+
     suspend fun voices(service: SpeechService, query: String, cursor: String? = null, owned: Boolean = false): VoicePage =
         withContext(Dispatchers.IO) {
             require(service.apiKey.isNotBlank()) { "Enter an API key to fetch voices." }

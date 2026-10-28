@@ -4,9 +4,12 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.starfall.generative.R
 import org.starfall.generative.shared.media.SpeechAudioPlayer
+import org.starfall.generative.shared.media.SpeechPlaybackNotification
 import org.starfall.generative.shared.media.SpeechSynthesisService
 import org.starfall.generative.shared.media.TtsHelper
 import org.starfall.generative.shared.media.speechText
+import org.starfall.generative.shared.media.speechChunks
+import org.starfall.generative.shared.media.SpeechPlaybackException
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.integrations.speech.StandaloneSpeechClient
@@ -22,7 +25,8 @@ internal class ChatSpeechCoordinator(
     private val services: StateFlow<List<SpeechService>>,
     private val tts: TtsHelper,
     private val synthesis: SpeechSynthesisService,
-    private val player: SpeechAudioPlayer
+    private val player: SpeechAudioPlayer,
+    private val notification: SpeechPlaybackNotification? = null
 ) {
     private var job: Job? = null
     private var requestNumber = 0L
@@ -42,46 +46,51 @@ internal class ChatSpeechCoordinator(
             if (request == requestNumber) {
                 activeMessage.value = null
                 activeTestService.value = null
+                notification?.hide()
             }
         }
+        val onStarted = {
+            if (request == requestNumber) notification?.show(service.name) { stop() }
+            Unit
+        }
         if (service.engine == SpeechEngine.SYSTEM) {
-            tts.speak(plainText, service.speed, service.pitch, service.voice, onFinished)
+            tts.speak(plainText, service.speed, service.pitch, service.voice, onStarted = onStarted, onFinished = onFinished)
             return
         }
         job = scope.launch {
             try {
-                if (service.engine.standalone) {
-                    val audio = StandaloneSpeechClient().synthesize(service, plainText)
+                val provider = if (service.engine.standalone) null else providers.value.find { it.id == service.provider }
+                if (!service.engine.standalone) {
+                    if (provider == null) {
+                        tts.reportError(R.string.speech_provider_missing)
+                        return@launch
+                    }
+                    val modelId = service.modelId
+                    if (modelId == null) {
+                        tts.reportError(R.string.speech_model_missing)
+                        return@launch
+                    }
+                    if (provider.config.modelConfigs[modelId]?.modelType != ModelType.TEXT_TO_SPEECH ||
+                        provider.config.modelIds?.contains(modelId) == false) {
+                        tts.reportError(R.string.speech_model_unavailable)
+                        return@launch
+                    }
+                }
+                val standalone = if (service.engine.standalone) StandaloneSpeechClient() else null
+                for (chunk in speechChunks(plainText, sentencesPerChunk = service.sentencesPerChunk.coerceAtLeast(1))) {
                     ensureActive()
-                    player.play(audio, onFinished, onError = { tts.reportError(R.string.speech_playback_failed) })
-                    return@launch
+                    val audio = if (standalone != null) standalone.synthesize(service, chunk)
+                        else synthesis.synthesize(requireNotNull(provider), service, chunk)
+                    ensureActive()
+                    if (request != requestNumber) return@launch
+                    player.playAndAwait(audio, onStarted)
                 }
-                val provider = providers.value.find { it.id == service.provider }
-                if (provider == null) {
-                    tts.reportError(R.string.speech_provider_missing)
-                    onFinished()
-                    return@launch
-                }
-                val modelId = service.modelId
-                if (modelId == null) {
-                    tts.reportError(R.string.speech_model_missing)
-                    onFinished()
-                    return@launch
-                }
-                if (provider.config.modelConfigs[modelId]?.modelType != ModelType.TEXT_TO_SPEECH ||
-                    provider.config.modelIds?.contains(modelId) == false) {
-                    tts.reportError(R.string.speech_model_unavailable)
-                    onFinished()
-                    return@launch
-                }
-                val audio = synthesis.synthesize(provider, service, plainText)
-                ensureActive()
-                player.play(audio, onFinished, onError = { tts.reportError(R.string.speech_playback_failed) })
             } catch (e: CancellationException) { throw e
+            } catch (e: SpeechPlaybackException) {
+                tts.reportError(R.string.speech_playback_failed)
             } catch (e: Exception) {
                 tts.reportError(e.localizedMessage, R.string.speech_synthesis_failed)
-                onFinished()
-            }
+            } finally { onFinished() }
         }
     }
 
@@ -96,6 +105,7 @@ internal class ChatSpeechCoordinator(
 
     fun stop() {
         requestNumber++
+        notification?.hide()
         activeMessage.value = null
         activeTestService.value = null
         job?.cancel()

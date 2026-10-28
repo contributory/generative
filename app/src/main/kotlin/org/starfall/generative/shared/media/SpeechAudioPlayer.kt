@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -12,7 +13,7 @@ class SpeechAudioPlayer(private val context: Context) {
     private var player: ExoPlayer? = null
     private var currentFile: File? = null
 
-    suspend fun play(audio: ByteArray, onFinished: () -> Unit = {}, onError: () -> Unit = {}) =
+    suspend fun play(audio: ByteArray, onFinished: () -> Unit = {}, onError: () -> Unit = {}, onStarted: () -> Unit = {}) =
         withContext(Dispatchers.Main.immediate) {
             stop()
             var file: File? = null
@@ -36,7 +37,11 @@ class SpeechAudioPlayer(private val context: Context) {
                     if (error) onError()
                     onFinished()
                 }
+                var started = false
                 next.addListener(object : Player.Listener {
+                    override fun onIsPlayingChanged(isPlaying: Boolean) {
+                        if (isPlaying && !started && player === next) { started = true; onStarted() }
+                    }
                     override fun onPlaybackStateChanged(state: Int) {
                         if (state == Player.STATE_ENDED) finish(false)
                     }
@@ -53,6 +58,17 @@ class SpeechAudioPlayer(private val context: Context) {
             }
         }
 
+    /** Wait for this clip before synthesizing the next one; cancellation only stops its own player. */
+    suspend fun playAndAwait(audio: ByteArray, onStarted: () -> Unit = {}) = withContext(Dispatchers.Main.immediate) {
+        val completion = CompletableDeferred<Unit>()
+        play(audio,
+            onFinished = { completion.complete(Unit) },
+            onError = { completion.completeExceptionally(SpeechPlaybackException()) }, onStarted = onStarted)
+        val ownedPlayer = player
+        try { completion.await() }
+        finally { if (ownedPlayer != null && player === ownedPlayer) stop() }
+    }
+
     fun stop() {
         val previous = player
         player = null
@@ -63,3 +79,5 @@ class SpeechAudioPlayer(private val context: Context) {
 
     fun shutdown() = stop()
 }
+
+internal class SpeechPlaybackException : IllegalStateException("Speech playback failed.")

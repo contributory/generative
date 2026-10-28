@@ -264,3 +264,37 @@ Ran `./gradlew --offline :app:assembleDebug :app:lintDebug :app:testDebugUnitTes
 - Two nullable Java interop warnings remain in ToolFiles at the existing file-parent checks.
 - Reviewed the standalone speech editors: API key precedes synthesis model/voice, engine-specific Voice labels omit the OpenAI alloy example, advanced JSON is collapsed for empty configuration, and redundant standalone help text is removed. The voice sheet uses the shared list container, theme colors and Fluent selection icon, with no empty subtitle row.
 - No connected Android device/emulator was available; runtime visual/playback checks remain pending.
+
+### Feature Tools ordering and coordinated localization (2026-10-28)
+
+Moved Music Generation below Video Generation. Removed the inline red missing-model/profile setup warnings from the three tool cards while preserving execution validation. Added all 21 new speech/music resource keys across all 13 supported non-English locales. Localization coverage is now 100% in every locale, with no checker errors; the earlier translation follow-up is resolved.
+
+### Automatic synthesis model catalogs (2026-10-28)
+
+Speech Services now loads model choices after an API key is entered, with debounce, cancellation on engine/key changes, refresh, and manual ID fallback. Catalog results never replace the selected ID implicitly and are not stored with credentials.
+
+- ElevenLabs: authenticated `GET https://api.elevenlabs.io/v1/models`; parse the top-level array and include only `can_do_text_to_speech == true`. Source: https://elevenlabs.io/docs/api-reference/models/list
+- Cartesia: authenticated/versioned `GET https://api.cartesia.ai/models?capability=tts`; include `capability == tts`. `modes` applies to STT and must not filter TTS entries. Source: https://docs.cartesia.ai/api-reference/models/list
+- Fish Audio: the documented `/model` endpoint lists **voices**, not synthesis engine models. The public OpenAPI schema declares the allowed `/v1/tts` `model` header enum; fetch that enum from https://docs.fish.audio/api-reference/openapi.json without attaching an API key. This is the published supported model catalog, not an account entitlement check. Keep manual IDs available if the schema changes. Sources: https://docs.fish.audio/llms.txt and https://docs.fish.audio/api-reference/endpoint/model/list-models
+
+Added `SpeechModelCatalogTest` for shape/filtering, auth/version/query correctness, public-schema credential isolation, and sanitized HTTP errors. Tests have not been executed; the previously identified Gradle test dependency/compilation blockers remain.
+
+### Spoken text cleanup and bounded speech requests (2026-10-28)
+
+TTS now removes decorative symbols and colons from parsed visible text, while keeping letters/accents, numbers and sentence punctuation. Symbol-only messages are ignored. External engines and Provider-based TTS receive balanced chunks of 3–5 sentences; messages shorter than three sentences remain a single request. A 4,000-character cap can split unusually long groups/sentences further without breaking surrogate pairs. Each clip finishes playback before the next request is sent. Stop cancels the sequence and active request; playback errors stop subsequent chunks. Android System TTS keeps its own utterance queue.
+
+Executed `SpeechChunksTest` independently with the cached Kotlin/CommonMark/JUnit dependencies: all 3 tests passed (symbol/colon cleanup, 3–5-sentence grouping without lost text, length/Unicode bounds). This did not build the Android app or execute Android playback tests. Kotlin syntax parsing and `git diff --check` also passed.
+
+### Configurable speech chunk size (2026-10-28)
+
+Replaces the earlier fixed 3–5 sentence grouping. Speech Editor now exposes a positive sentence count for external TTS requests, defaulting to 10 per Speech Service. The additive `SpeechService.sentencesPerChunk` field is serialized for backup/export and persisted in structured engine settings without a Room migration. Existing JSON/rows without the field default to 10. Android System TTS retains its own utterance queue.
+
+Sentence boundaries are periods and line breaks (including CRLF); adjacent boundary runs such as a period followed by whitespace/newlines count once. Decimal points inside numbers are preserved. The independent character cap still protects requests containing unusually long sentences. New labels/help text are translated across all supported locales.
+
+Standalone JUnit coverage for text cleanup and configurable splitting passed all 4 tests. Added repository round-trip/legacy-row and editor Save coverage; those Android-dependent tests remain unexecuted because of the previously reported environment blockers.
+
+### TTS status-bar notification (2026-10-28)
+
+Added a session-scoped, silent playback notification for Android System TTS and external API audio. Playback-start callbacks show the service name and a localized Stop action; completion/error/Stop remove the notification. It remains stable between chunks and never includes the spoken transcript. Each Stop PendingIntent is scoped to its playback session, preventing stale notifications from cancelling a newer request. The dynamic receiver is app-private and unregistered when playback ends. Existing application notification permission handling is reused; denied notification permission does not interrupt audio.
+
+Added SpeechPlaybackNotificationTest for posting/removing the notification and rejecting an old Stop action. Android/Robolectric tests remain unexecuted due to previously reported test-environment blockers; static Kotlin syntax checks, localization and AAPT2 resource compilation passed. This change adds a status notification and does not introduce a foreground playback service.

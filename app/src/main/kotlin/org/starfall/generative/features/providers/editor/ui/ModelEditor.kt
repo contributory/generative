@@ -175,8 +175,8 @@ fun ModelEditor(
                 value = modelId,
                 onValueChange = { modelId = it },
                 label = { Text(stringResource(R.string.model_id)) },
-                supportingText = { Text(idError ?: idApiHint) },
-                isError = idError != null,
+                supportingText = { Text(idError?.takeIf { trimmedId.isNotBlank() } ?: idApiHint) },
+                isError = trimmedId.isNotBlank() && idError != null,
                 maxLines = 3,
                 modifier = Modifier.fillMaxWidth()
             )
