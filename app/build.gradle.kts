@@ -17,7 +17,7 @@ val gitBranch = git("branch", "--show-current").ifBlank {
 }
 
 // main keeps the plain version; other branches retain their full name after a hyphen.
-// Example: feature/abc -> 1.1.<commit-count>-feature/abc. On non-main branches this takes
+// Example: feature/abc -> 1.2.<commit-count>-feature/abc. On non-main branches this takes
 // precedence over the unstableVersion flag, so branch builds keep a branch-identifying version.
 val versionSuffix = gitBranch
     .takeIf { it.isNotBlank() && it != "main" && it != "HEAD" }
@@ -46,9 +46,9 @@ android {
             providers.gradleProperty("unstableVersion").orNull == "true" &&
             (gitBranch.isBlank() || gitBranch == "main" || gitBranch == "HEAD")
         ) {
-            "1.1.$gitCommitNumber-unstable"
+            "1.2.$gitCommitNumber-unstable"
         } else {
-            "1.1.$gitCommitNumber$versionSuffix"
+            "1.2.$gitCommitNumber$versionSuffix"
         }
 
         manifestPlaceholders["appAuthRedirectScheme"] = "generative-oauth"
