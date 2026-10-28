@@ -166,7 +166,7 @@
     <string name="no_providers_added">No Model Providers Added</string>
     <string name="delete_provider_message">Delete this model provider? Stored credentials will be deleted.</string>
     <string name="provider_models">Models</string>
-    <string name="provider_base_url">Base URL</string>
+    <string name="provider_base_url" translatable="false">Base URL</string>
     <string name="provider_invalid_base_url">Use an HTTP(S) base URL without query, fragment or embedded credentials.</string>
     <string name="provider_codex_client_version">Codex client version</string>
     <string name="provider_codex_client_version_invalid">Enter a dot-separated version such as %1$s, with an optional pre-release or build suffix.</string>
@@ -176,7 +176,7 @@
     <string name="provider_antigravity_changelist_invalid">Enter digits only, or leave empty to use the version-aware default.</string>
     <string name="provider_antigravity_project_id">Antigravity project ID (optional)</string>
     <string name="http_unencrypted_provider_warning">HTTP is unencrypted. API keys, headers and messages can be read on the network. Use HTTPS outside a trusted local network.</string>
-    <string name="stream">Stream Response</string>
+    <string name="stream" translatable="false">Stream Response</string>
     <string name="custom_headers">Custom Headers</string>
     <string name="open_model_catalog">Open model catalog</string>
     <string name="test_connection">Test connection</string>
@@ -202,9 +202,9 @@
     <string name="provider_deselect_visible_models">Deselect visible models</string>
     <string name="provider_select_model">Select model %1$s</string>
     <string name="provider_model_not_returned">Not returned by the current API result</string>
-    <string name="model_temperature_label">Temperature (0–%1$s)</string>
-    <string name="model_top_p_label">Top-p (0–1)</string>
-    <string name="model_top_k_label">Top-k (positive integer)</string>
+    <string name="model_temperature_label" translatable="false">Temperature (0–%1$s)</string>
+    <string name="model_top_p_label" translatable="false">Top-p (0–1)</string>
+    <string name="model_top_k_label" translatable="false">Top-k (positive integer)</string>
     <string name="model_reset_sampling">Reset sampling to API defaults</string>
     <string name="common_test_all_text_models">Test all language models</string>
     <string name="model_no_text_models">No language models</string>
@@ -381,41 +381,41 @@
     <string name="media_var_step_url">The resolved request URL for step %1$d</string>
     <string name="media_var_step_method">The request method used in step %1$d</string>
     <string name="media_var_step_status">The HTTP status code returned by step %1$d</string>
-    <string name="image_tool_advanced_json">Advanced JSON</string>
-    <string name="image_tool_additional_body">Additional request body</string>
+    <string name="image_tool_advanced_json" translatable="false">Advanced JSON</string>
+    <string name="image_tool_additional_body" translatable="false">Additional request body</string>
     <string name="image_tool_reset_defaults">Reset this model to defaults</string>
     <string name="image_tool_choose_value">Choose value</string>
     <string name="image_tool_provider_default">Model provider default</string>
-    <string name="image_option_add_watermark">Add watermark</string>
-    <string name="image_option_aspect_ratio">Aspect ratio</string>
-    <string name="image_option_background">Background</string>
-    <string name="image_option_enhance_prompt">Enhance prompt</string>
-    <string name="image_option_guidance_scale">Guidance scale</string>
-    <string name="image_option_image_size">Image size</string>
-    <string name="image_option_include_filter_reason">Include filter reason</string>
-    <string name="image_option_include_safety_attributes">Include safety attributes</string>
-    <string name="image_option_jpeg_quality">JPEG quality (%)</string>
-    <string name="image_option_maximum_output_tokens">Maximum output tokens</string>
-    <string name="image_option_moderation">Moderation</string>
-    <string name="image_option_negative_prompt">Negative prompt</string>
-    <string name="image_option_number_of_images">Number of images</string>
-    <string name="image_option_output_compression">Output compression (%)</string>
-    <string name="image_option_output_format">Output format</string>
-    <string name="image_option_partial_images_when_streaming">Partial images when streaming</string>
-    <string name="image_option_people">People</string>
-    <string name="image_option_prompt_language">Prompt language</string>
-    <string name="image_option_quality">Quality</string>
-    <string name="image_option_response_format_dall_e">Response format (DALL·E)</string>
-    <string name="image_option_safety_filter">Safety filter</string>
-    <string name="image_option_seed">Seed</string>
-    <string name="image_option_stream_image_response">Stream image response</string>
-    <string name="image_option_style_dall_e_3">Style (DALL·E 3)</string>
-    <string name="image_option_temperature">Temperature</string>
-    <string name="image_option_thinking_budget_1_automatic">Thinking budget (-1 = automatic)</string>
-    <string name="image_option_thinking_level">Thinking level</string>
-    <string name="image_option_top_k">Top K</string>
-    <string name="image_option_top_p">Top P</string>
-    <string name="image_option_user_identifier">User identifier</string>
+    <string name="image_option_add_watermark" translatable="false">Add watermark</string>
+    <string name="image_option_aspect_ratio" translatable="false">Aspect ratio</string>
+    <string name="image_option_background" translatable="false">Background</string>
+    <string name="image_option_enhance_prompt" translatable="false">Enhance prompt</string>
+    <string name="image_option_guidance_scale" translatable="false">Guidance scale</string>
+    <string name="image_option_image_size" translatable="false">Image size</string>
+    <string name="image_option_include_filter_reason" translatable="false">Include filter reason</string>
+    <string name="image_option_include_safety_attributes" translatable="false">Include safety attributes</string>
+    <string name="image_option_jpeg_quality" translatable="false">JPEG quality (%)</string>
+    <string name="image_option_maximum_output_tokens" translatable="false">Maximum output tokens</string>
+    <string name="image_option_moderation" translatable="false">Moderation</string>
+    <string name="image_option_negative_prompt" translatable="false">Negative prompt</string>
+    <string name="image_option_number_of_images" translatable="false">Number of images</string>
+    <string name="image_option_output_compression" translatable="false">Output compression (%)</string>
+    <string name="image_option_output_format" translatable="false">Output format</string>
+    <string name="image_option_partial_images_when_streaming" translatable="false">Partial images when streaming</string>
+    <string name="image_option_people" translatable="false">People</string>
+    <string name="image_option_prompt_language" translatable="false">Prompt language</string>
+    <string name="image_option_quality" translatable="false">Quality</string>
+    <string name="image_option_response_format_dall_e" translatable="false">Response format (DALL·E)</string>
+    <string name="image_option_safety_filter" translatable="false">Safety filter</string>
+    <string name="image_option_seed" translatable="false">Seed</string>
+    <string name="image_option_stream_image_response" translatable="false">Stream image response</string>
+    <string name="image_option_style_dall_e_3" translatable="false">Style (DALL·E 3)</string>
+    <string name="image_option_temperature" translatable="false">Temperature</string>
+    <string name="image_option_thinking_budget_1_automatic" translatable="false">Thinking budget (-1 = automatic)</string>
+    <string name="image_option_thinking_level" translatable="false">Thinking level</string>
+    <string name="image_option_top_k" translatable="false">Top K</string>
+    <string name="image_option_top_p" translatable="false">Top P</string>
+    <string name="image_option_user_identifier" translatable="false">User identifier</string>
     <string name="model_reasoning_level_min" translatable="false">Min</string>
     <string name="model_reasoning_level_med" translatable="false">Med</string>
     <string name="model_reasoning_level_xhigh" translatable="false">XHigh</string>
@@ -433,26 +433,26 @@
 
     <string name="add_model_title">Add Model</string>
     <string name="edit_model_title">Edit Model</string>
-    <string name="model_id">Model ID</string>
+    <string name="model_id" translatable="false">Model ID</string>
     <string name="model_id_api_hint">The ID sent to the model provider API.</string>
     <string name="model_id_required">Model ID is required.</string>
     <string name="model_id_no_whitespace">Model ID cannot contain whitespace.</string>
     <string name="model_id_duplicate">This model provider already has a model with this ID.</string>
-    <string name="model_type">Model type</string>
-    <string name="capabilities">Capabilities</string>
-    <string name="input_media">Input</string>
-    <string name="model_thinking">Reasoning Support</string>
-    <string name="tool_calls">ToolCall Support</string>
-    <string name="model_reasoning_levels">Supported reasoning levels</string>
+    <string name="model_type" translatable="false">Model type</string>
+    <string name="capabilities" translatable="false">Capabilities</string>
+    <string name="input_media" translatable="false">Input</string>
+    <string name="model_thinking" translatable="false">Reasoning Support</string>
+    <string name="tool_calls" translatable="false">Tool Support</string>
+    <string name="model_reasoning_levels" translatable="false">Supported reasoning levels</string>
     <string name="model_options_title">Model Options</string>
-    <string name="model_tools_title">Model Tools</string>
+    <string name="model_tools_title" translatable="false">Model Tools</string>
     <string name="model_tools_hint">Built-in tools this language model supports, sent in the model API request.</string>
-    <string name="send_thinking_content_back">Send Thinking Content</string>
+    <string name="send_thinking_content_back" translatable="false">Send Thinking Content</string>
     <string name="send_thinking_content_back_hint">Auto sends earlier thinking back only in chats with tool calls. On always sends it; Off never does.</string>
     <string name="common_default">Default</string>
     <string name="mcp_required_parameter_default_needed">Set a default value before disabling this required parameter.</string>
-    <string name="model_arguments">Arguments</string>
-    <string name="model_tool_name">Tool name</string>
+    <string name="model_arguments" translatable="false">Arguments</string>
+    <string name="model_tool_name" translatable="false">Tool name</string>
     <string name="model_tools_editor_hint">Pick default tools, add custom tool names, and toggle tools on or off.</string>
 
     <string name="mcp_servers_title">MCP Servers</string>
@@ -466,15 +466,15 @@
     <string name="mcp_no_endpoint">No endpoint</string>
     <string name="mcp_error_details">Error · Tap for details</string>
     <string name="mcp_basic_settings">Basic Settings</string>
-    <string name="legacy_sse">Legacy SSE</string>
-    <string name="server_url">Server URL</string>
+    <string name="legacy_sse" translatable="false">Legacy SSE</string>
+    <string name="server_url" translatable="false">Server URL</string>
     <string name="server_url_help">Server URL for %1$s</string>
     <string name="http_unencrypted_mcp_warning">HTTP is unencrypted. Headers, credentials and tool data are visible on the network.</string>
-    <string name="mcp_auth">Auth</string>
+    <string name="mcp_auth" translatable="false">Auth</string>
     <string name="mcp_auth_help">Authentication used for MCP requests</string>
-    <string name="mcp_auth_type">Type: %1$s</string>
-    <string name="header_key">Header key</string>
-    <string name="query_parameter_name">Query parameter name</string>
+    <string name="mcp_auth_type" translatable="false">Type: %1$s</string>
+    <string name="header_key" translatable="false">Header key</string>
+    <string name="query_parameter_name" translatable="false">Query parameter name</string>
     <string name="mcp_oauth_discovery_help">OAuth metadata is discovered from the MCP server, then Authorization Code + PKCE is used. Leave Client ID empty to use dynamic client registration when supported.</string>
     <string name="mcp_oauth_client_id_optional">Optional pre-registered Client ID</string>
     <string name="mcp_oauth_client_id_help">Only enter this when the authorization server does not support dynamic client registration, or you already registered Generative manually.</string>
@@ -483,13 +483,13 @@
     <string name="mcp_reauthorize_oauth">Re-authorize OAuth</string>
     <string name="mcp_remove_oauth">Remove OAuth authorization</string>
     <string name="advanced_client_credentials">Advanced Client Credentials</string>
-    <string name="client_id">Client ID</string>
-    <string name="client_secret">Client secret</string>
+    <string name="client_id" translatable="false">Client ID</string>
+    <string name="client_secret" translatable="false">Client secret</string>
     <string name="mcp_oauth_client_secret_help">Optional. Only for a secret issued to a pre-registered confidential client.</string>
-    <string name="redirect_uri">Redirect URI</string>
+    <string name="redirect_uri" translatable="false">Redirect URI</string>
     <string name="mcp_oauth_redirect_uri_help">Must match the callback URL registered for this client. Default: %1$s</string>
     <string name="authorize_in_browser">Authorize in Browser</string>
-    <string name="bearer_token">Bearer Token</string>
+    <string name="bearer_token" translatable="false">Bearer Token</string>
     <string name="available_tools">Available tools</string>
     <string name="no_cached_tool_list">No cached tool list</string>
     <string name="cached_tools_count">%1$d cached tools</string>
@@ -506,9 +506,9 @@
     <string name="common_none">None</string>
     <string name="common_url">URL</string>
     <string name="url_query">URL Query</string>
-    <string name="oauth_flow">OAuth Flow</string>
-    <string name="mcp_streamable_http">Streamable HTTP</string>
-    <string name="mcp_sse">SSE</string>
+    <string name="oauth_flow" translatable="false">OAuth Flow</string>
+    <string name="mcp_streamable_http" translatable="false">Streamable HTTP</string>
+    <string name="mcp_sse" translatable="false">SSE</string>
     <string name="loading_tools">Loading tools…</string>
     <string name="common_add">Add</string>
     <string name="common_edit">Edit</string>
@@ -527,7 +527,7 @@
     <string name="edit_provider_group">Edit Model Provider Group</string>
     <string name="expand_all_model_sections">Expand all model providers and folders</string>
     <string name="collapse_all_model_sections">Collapse all model providers and folders</string>
-    <string name="context_window">Context window (tokens)</string>
+    <string name="context_window" translatable="false">Context window (tokens)</string>
     <string name="context_window_invalid">Enter a positive token count.</string>
     <string name="context_summary_suggestion">Estimated context usage: %1$d%%. Summarize to make room.</string>
     <string name="summarize_now">Summarize</string>
@@ -540,9 +540,9 @@
     <string name="provider_restore_default_url">Restore default URL</string>
     <string name="provider_select_auth_type">Select authentication type</string>
     <string name="provider_api_key_label">API Key (%1$s)</string>
-    <string name="provider_auth_bearer_type">Bearer</string>
-    <string name="provider_auth_custom_header">Custom Header</string>
-    <string name="provider_auth_platform_default">Platform Default</string>
+    <string name="provider_auth_bearer_type" translatable="false">Bearer</string>
+    <string name="provider_auth_custom_header" translatable="false">Custom Header</string>
+    <string name="provider_auth_platform_default" translatable="false">Platform Default</string>
     <string name="provider_show_api_key">Show API key</string>
     <string name="provider_hide_api_key">Hide API key</string>
     <string name="file_download">Download file</string>
@@ -556,13 +556,13 @@
     <string name="video_exit_fullscreen">Exit fullscreen video</string>
     <string name="provider_multiple_api_keys">Multiple API Keys</string>
     <string name="provider_manage_api_keys">Manage API Keys</string>
-    <string name="provider_prompt_cache">Prompt cache</string>
-    <string name="provider_prompt_cache_ttl">Cache duration</string>
+    <string name="provider_prompt_cache" translatable="false">Prompt cache</string>
+    <string name="provider_prompt_cache_ttl" translatable="false">Cache duration</string>
     <string name="provider_prompt_cache_ttl_5m">5 minutes</string>
     <string name="provider_prompt_cache_ttl_1h">1 hour</string>
-    <string name="provider_prompt_cache_system">Cache system prompt</string>
-    <string name="provider_prompt_cache_tools">Cache tools</string>
-    <string name="provider_prompt_cache_conversation">Cache conversation history</string>
+    <string name="provider_prompt_cache_system" translatable="false">Cache system prompt</string>
+    <string name="provider_prompt_cache_tools" translatable="false">Cache tools</string>
+    <string name="provider_prompt_cache_conversation" translatable="false">Cache conversation history</string>
     <string name="provider_prompt_cache_hint">Caching for 1 hour costs more than for 5 minutes.</string>
     <string name="provider_edit_api_key">Edit API Key</string>
     <string name="provider_save_api_key">Save API key</string>
@@ -577,7 +577,7 @@
     <string name="favicon_preview">Favicon preview</string>
     <string name="favicon_fetch">Fetch</string>
     <string name="provider_drag_save_failed">Could not save the model provider position. Please try again.</string>
-    <string name="model_json">Model JSON</string>
+    <string name="model_json" translatable="false">Model JSON</string>
     <string name="word_wrap">Code line wrapping</string>
     <string name="word_wrap_viewport">Wrap to available width</string>
     <string name="word_wrap_column">Wrap at the column limit</string>
@@ -838,22 +838,22 @@
     <string name="remote_machine_editor_title">Machine Editor</string>
     <string name="remote_machine_basic_section">Basic information</string>
     <string name="remote_machine_connection_section">Connection</string>
-    <string name="remote_machine_sftp_section">SFTP files</string>
+    <string name="remote_machine_sftp_section" translatable="false">SFTP files</string>
     <string name="remote_machine_sftp_section_help">The Files action in this machine’s menu browses this folder over SFTP. The session starts only when needed.</string>
-    <string name="remote_machine_sftp_directory">SFTP Directory</string>
+    <string name="remote_machine_sftp_directory" translatable="false">SFTP Directory</string>
     <string name="remote_machine_sftp_directory_help">Root folder for Files. Defaults to $HOME; ~ and absolute paths are also supported.</string>
     <string name="remote_machine_sftp_root_summary" translatable="false">%1$s@%2$s · %3$s</string>
     <string name="remote_machine_start_port_forward">Start Port Forward</string>
     <string name="remote_machine_port_forward_started">Port forwarding started. Open terminals reuse this connection.</string>
     <string name="remote_machine_type_label">Machine type</string>
-    <string name="remote_machine_host">Host</string>
-    <string name="remote_machine_port">Port</string>
-    <string name="remote_machine_ip">Shell IP</string>
+    <string name="remote_machine_host" translatable="false">Host</string>
+    <string name="remote_machine_port" translatable="false">Port</string>
+    <string name="remote_machine_ip" translatable="false">Shell IP</string>
     <string name="remote_machine_get_ip">Get IP</string>
-    <string name="remote_machine_environment">Cloud Shell environment</string>
-    <string name="remote_machine_username">Username</string>
+    <string name="remote_machine_environment" translatable="false">Cloud Shell environment</string>
+    <string name="remote_machine_username" translatable="false">Username</string>
     <string name="remote_machine_authentication">Authentication</string>
-    <string name="remote_machine_private_key">Private key</string>
+    <string name="remote_machine_private_key" translatable="false">Private key</string>
     <string name="remote_machine_password">Password</string>
     <string name="remote_machine_show_password">Show password</string>
     <string name="remote_machine_hide_password">Hide password</string>
@@ -861,7 +861,7 @@
     <string name="remote_machine_keyboard_interactive_help">Use PAM or interactive SSH prompts. With an empty password, you are prompted only if the server requests one.</string>
     <string name="remote_machine_password_help">Optional. Leave empty if the server needs no password, or to be prompted only when it asks for one.</string>
     <string name="remote_machine_choose_key">Choose uploaded key</string>
-    <string name="remote_machine_identity_file">IdentityFile</string>
+    <string name="remote_machine_identity_file" translatable="false">IdentityFile</string>
     <string name="remote_machine_identity_file_help">Path to the private key, or the name of a key uploaded in Remote Settings. The key is never stored on the machine. Leave empty if not needed.</string>
     <string name="remote_machine_no_uploaded_keys">No keys uploaded yet</string>
     <string name="remote_machine_ssh_keys">SSH keys</string>
@@ -871,53 +871,53 @@
     <string name="remote_machine_public_key_uploaded">Public key uploaded</string>
     <string name="remote_machine_public_key_missing">No public key (needed for Cloud Shell)</string>
     <string name="remote_machine_ssh_key_used_by">Used by %1$d machine(s)</string>
-    <string name="remote_machine_key_passphrase">Key passphrase</string>
+    <string name="remote_machine_key_passphrase" translatable="false">Key passphrase</string>
     <string name="remote_connection_channel_name">Remote machine connections</string>
     <string name="remote_connection_channel_description">Connected remote machines, with a button to disconnect.</string>
     <string name="remote_connection_notification_title">Connected to %1$s</string>
     <string name="remote_connection_notification_text">SSH connection is open.</string>
     <string name="remote_connection_notification_forwarding">Forwarding %1$s</string>
-    <string name="remote_machine_port_forwarding_section">Port forwarding</string>
+    <string name="remote_machine_port_forwarding_section" translatable="false">Port forwarding</string>
     <string name="remote_machine_port_forwarding_help">Forwards start when the SSH session connects and stop when it disconnects. A machine with an active forward is not disconnected when idle.</string>
-    <string name="remote_machine_forward_type">Forward type</string>
-    <string name="remote_machine_forward_local">Local forward</string>
+    <string name="remote_machine_forward_type" translatable="false">Forward type</string>
+    <string name="remote_machine_forward_local" translatable="false">Local forward</string>
     <string name="remote_machine_forward_local_help">Opens a port on this device that forwards to a port on the machine.</string>
-    <string name="remote_machine_forward_local_rules">Local forwards</string>
+    <string name="remote_machine_forward_local_rules" translatable="false">Local forwards</string>
     <string name="remote_machine_forward_local_hint">One per line: 8080 (same port) or 8080:10808 (device 8080 → machine 10808)</string>
-    <string name="remote_machine_forward_remote">Remote forward</string>
+    <string name="remote_machine_forward_remote" translatable="false">Remote forward</string>
     <string name="remote_machine_forward_remote_help">Opens a port on the machine that forwards to a port on this device.</string>
-    <string name="remote_machine_forward_remote_rules">Remote forwards</string>
+    <string name="remote_machine_forward_remote_rules" translatable="false">Remote forwards</string>
     <string name="remote_machine_forward_remote_hint">One per line: 8080 (same port) or 8080:10808 (machine 8080 → device 10808)</string>
-    <string name="remote_machine_forward_dynamic">Dynamic forward (SOCKS5)</string>
+    <string name="remote_machine_forward_dynamic" translatable="false">Dynamic forward (SOCKS5)</string>
     <string name="remote_machine_forward_dynamic_help">Runs a SOCKS5 proxy on this device that connects through the machine.</string>
-    <string name="remote_machine_forward_dynamic_ports">SOCKS ports</string>
+    <string name="remote_machine_forward_dynamic_ports" translatable="false">SOCKS ports</string>
     <string name="remote_machine_forward_dynamic_hint">Comma-separated local ports, e.g. 1080</string>
-    <string name="remote_machine_ssh_options">SSH options</string>
+    <string name="remote_machine_ssh_options" translatable="false">SSH options</string>
     <string name="remote_machine_ssh_options_help">Add JSch options only when needed. Unknown or reserved options are rejected on save.</string>
-    <string name="remote_machine_advanced_ssh_options">Additional SSH options</string>
-    <string name="remote_machine_ssh_option_name">Option name</string>
-    <string name="remote_machine_ssh_option_value">Option value</string>
-    <string name="remote_machine_proxy_machine">Proxy machine</string>
-    <string name="remote_machine_websocket_proxy">Websocket Proxy</string>
-    <string name="remote_machine_websocket_url">WebSocket full URL</string>
-    <string name="remote_machine_websocket_headers">Headers (one Header: value per line)</string>
-    <string name="remote_machine_websocket_connect_timeout">Connect timeout (seconds)</string>
+    <string name="remote_machine_advanced_ssh_options" translatable="false">Additional SSH options</string>
+    <string name="remote_machine_ssh_option_name" translatable="false">Option name</string>
+    <string name="remote_machine_ssh_option_value" translatable="false">Option value</string>
+    <string name="remote_machine_proxy_machine" translatable="false">Proxy machine</string>
+    <string name="remote_machine_websocket_proxy" translatable="false">WebSocket Proxy</string>
+    <string name="remote_machine_websocket_url" translatable="false">WebSocket full URL</string>
+    <string name="remote_machine_websocket_headers" translatable="false">Headers (one Header: value per line)</string>
+    <string name="remote_machine_websocket_connect_timeout" translatable="false">Connect timeout (seconds)</string>
     <string name="remote_machine_websocket_skip_certificates">Skip certificate verification</string>
     <string name="remote_machine_websocket_show_advanced">Advanced WebSocket settings</string>
     <string name="remote_machine_websocket_hide_advanced">Hide advanced WebSocket settings</string>
-    <string name="remote_machine_websocket_ca_certificate">CA certificate (PEM, optional)</string>
-    <string name="remote_machine_websocket_handshake_timeout">Handshake timeout (seconds)</string>
-    <string name="remote_machine_websocket_read_timeout">Read timeout (seconds, 0 = unlimited)</string>
-    <string name="remote_machine_websocket_write_timeout">Write timeout (seconds, 0 = unlimited)</string>
-    <string name="remote_machine_websocket_close_timeout">Close timeout (seconds)</string>
-    <string name="remote_machine_websocket_subprotocols">Sub-protocols (comma separated)</string>
-    <string name="remote_machine_timeout">Connection timeout (seconds)</string>
-    <string name="remote_machine_keep_alive">Server keep-alive (seconds)</string>
-    <string name="remote_machine_strict_host_key">Strict host-key checking</string>
+    <string name="remote_machine_websocket_ca_certificate" translatable="false">CA certificate (PEM, optional)</string>
+    <string name="remote_machine_websocket_handshake_timeout" translatable="false">Handshake timeout (seconds)</string>
+    <string name="remote_machine_websocket_read_timeout" translatable="false">Read timeout (seconds, 0 = unlimited)</string>
+    <string name="remote_machine_websocket_write_timeout" translatable="false">Write timeout (seconds, 0 = unlimited)</string>
+    <string name="remote_machine_websocket_close_timeout" translatable="false">Close timeout (seconds)</string>
+    <string name="remote_machine_websocket_subprotocols" translatable="false">Sub-protocols (comma separated)</string>
+    <string name="remote_machine_timeout" translatable="false">Connection timeout (seconds)</string>
+    <string name="remote_machine_keep_alive" translatable="false">Server keep-alive (seconds)</string>
+    <string name="remote_machine_strict_host_key" translatable="false">Strict host-key checking</string>
     <string name="remote_machine_compression">Enable compression</string>
     <string name="remote_machine_websocket_url_help" formatted="false">Use ws:// or wss://. %h and %p are replaced with the SSH host and port.</string>
     <string name="remote_machine_google_section">Google Cloud OAuth</string>
-    <string name="remote_machine_oauth_client">OAuth client</string>
+    <string name="remote_machine_oauth_client" translatable="false">OAuth client</string>
     <string name="remote_machine_select_oauth">Select an OAuth client</string>
     <string name="remote_machine_oauth_sign_in">Sign in with Google</string>
     <string name="remote_machine_username_auto">Fetched automatically from the Google Cloud Shell API once Google is authorized.</string>
@@ -939,7 +939,7 @@
     <string name="remote_machine_oauth_clients_help">Import the JSON downloaded from Google Cloud, or add a client manually. Desktop clients also need a client secret.</string>
     <string name="remote_machine_no_oauth_clients">No OAuth clients added yet.</string>
     <string name="remote_machine_import_oauth_json">Import OAuth client JSON</string>
-    <string name="remote_machine_oauth_client_type">OAuth client type</string>
+    <string name="remote_machine_oauth_client_type" translatable="false">OAuth client type</string>
     <string name="remote_machine_oauth_type_desktop">Desktop app</string>
     <string name="remote_machine_oauth_type_android">Android app</string>
     <string name="remote_machine_google_no_access_token">Google did not return an access token.</string>
@@ -1015,8 +1015,8 @@
     <string name="tool_summary_settings_title">Summary behavior</string>
     <string name="tool_summary_settings_description">When Generative suggests or starts a conversation summary. These options apply to the Chat Summary helper.</string>
     <string name="tool_select_model_hint">Tap to choose a language model</string>
-    <string name="tool_image_generation_title">Image Generation</string>
-    <string name="tool_video_generation_title">Video Generation</string>
+    <string name="tool_image_generation_title" translatable="false">Image Generation</string>
+    <string name="tool_video_generation_title" translatable="false">Video Generation</string>
     <string name="tool_generate_image_description">Generate images from prompts using the selected model.</string>
     <string name="tool_generate_video_description">Generate videos from prompts using the selected model.</string>
     <string name="tool_select_compatible_model_hint">Select a compatible model to enable this tool.</string>
@@ -1034,8 +1034,8 @@
     <string name="image_tool_range_hint">Range: %1$s – %2$s</string>
     <string name="common_discard">Discard</string>
     <string name="media_api_type">Profile</string>
-    <string name="media_image_profile">Image Profile</string>
-    <string name="media_video_profile">Video Profile</string>
+    <string name="media_image_profile" translatable="false">Image Profile</string>
+    <string name="media_video_profile" translatable="false">Video Profile</string>
     <string name="media_chain_custom">Custom</string>
     <string name="media_chain_edit_custom">Edit custom mapping</string>
     <string name="media_chain_custom_summary">Custom request chain is active.</string>
@@ -1046,8 +1046,8 @@
     <string name="media_chain_profiles_help">Manage reusable Default and Custom API profiles for your image/video models.</string>
     <string name="media_image_gen_profile">ImageGenProfile</string>
     <string name="media_video_gen_profile">VideoGenProfile</string>
-    <string name="media_image_gen_profiles">Image Profiles</string>
-    <string name="media_video_gen_profiles">Video Profiles</string>
+    <string name="media_image_gen_profiles" translatable="false">Image Profiles</string>
+    <string name="media_video_gen_profiles" translatable="false">Video Profiles</string>
     <string name="media_profile_default_hint">Uses the selected profile with the provider’s default generation API.</string>
     <string name="media_chain_profiles">Profiles</string>
     <plurals name="media_chain_profile_steps">
@@ -1072,46 +1072,46 @@
     <string name="media_chain_step">Step %1$d</string>
     <string name="media_chain_one_step_required">At least one request step is required.</string>
     <string name="media_chain_editing_step">Edit step %1$d</string>
-    <string name="media_chain_endpoint">Endpoint URL or path</string>
+    <string name="media_chain_endpoint" translatable="false">Endpoint URL or path</string>
     <string name="media_chain_endpoint_help">Provider-relative path or HTTP(S) URL. Supports {{model}} and previous step values.</string>
-    <string name="media_chain_method">HTTP method</string>
-    <string name="media_chain_headers">Headers</string>
-    <string name="media_chain_headers_editor">Headers JSON</string>
+    <string name="media_chain_method" translatable="false">HTTP method</string>
+    <string name="media_chain_headers" translatable="false">Headers</string>
+    <string name="media_chain_headers_editor" translatable="false">Headers JSON</string>
     <string name="media_chain_headers_json_invalid">Enter a valid JSON object with string header values.</string>
     <string name="media_chain_headers_help">JSON object. Supports variables; configured provider authorization is used automatically.</string>
-    <string name="media_chain_content_type">Content Type</string>
-    <string name="media_chain_content_type_json">application/json</string>
-    <string name="media_chain_content_type_form">multipart/form-data</string>
-    <string name="media_chain_content_type_raw">Raw bytes</string>
-    <string name="media_chain_custom_content_type">Custom content type</string>
+    <string name="media_chain_content_type" translatable="false">Content Type</string>
+    <string name="media_chain_content_type_json" translatable="false">application/json</string>
+    <string name="media_chain_content_type_form" translatable="false">multipart/form-data</string>
+    <string name="media_chain_content_type_raw" translatable="false">Raw bytes</string>
+    <string name="media_chain_custom_content_type" translatable="false">Custom content type</string>
     <string name="media_chain_custom_content_type_help">Optional MIME type override. Leave blank for automatic selection.</string>
     <string name="media_chain_json">JSON</string>
-    <string name="media_chain_file_transport">File transport</string>
+    <string name="media_chain_file_transport" translatable="false">File transport</string>
     <string name="media_chain_file">File</string>
     <string name="media_chain_base64">Base64</string>
-    <string name="media_chain_body_editor">Body Editor</string>
+    <string name="media_chain_body_editor" translatable="false">Body Editor</string>
     <string name="media_chain_request_body_help">Use {{prompt}}, {{model}}, {{input_files}} or previous step responses. Raw mode supports direct file bytes.</string>
-    <string name="media_chain_response_type">Response type</string>
+    <string name="media_chain_response_type" translatable="false">Response type</string>
     <string name="media_chain_octet_stream">Binary file</string>
-    <string name="media_chain_observer">Retry observer</string>
+    <string name="media_chain_observer" translatable="false">Retry observer</string>
     <string name="media_chain_observer_disabled">Retry observer is disabled for this step.</string>
-    <string name="media_chain_observer_mode">Success condition</string>
+    <string name="media_chain_observer_mode" translatable="false">Success condition</string>
     <string name="media_chain_observer_path_exists">Path exists</string>
     <string name="media_chain_observer_read_value">Read values</string>
-    <string name="media_chain_status_path">Status JSON path (optional)</string>
+    <string name="media_chain_status_path" translatable="false">Status JSON path (optional)</string>
     <string name="media_chain_status_path_help">Retry until the path exists, or until its value is no longer pending.</string>
-    <string name="media_chain_pending_values">Pending values</string>
+    <string name="media_chain_pending_values" translatable="false">Pending values</string>
     <string name="media_chain_values_help">Comma-separated, case-insensitive status values.</string>
-    <string name="media_chain_retry_policy">Bounded retry policy</string>
-    <string name="media_chain_max_attempts">Max attempts</string>
-    <string name="media_chain_delay_millis">Delay (ms)</string>
-    <string name="media_chain_max_wait_millis">Max wait (ms)</string>
-    <string name="media_chain_final_response">Final response</string>
-    <string name="media_chain_final_source_step">Read response body from</string>
+    <string name="media_chain_retry_policy" translatable="false">Bounded retry policy</string>
+    <string name="media_chain_max_attempts" translatable="false">Max attempts</string>
+    <string name="media_chain_delay_millis" translatable="false">Delay (ms)</string>
+    <string name="media_chain_max_wait_millis" translatable="false">Max wait (ms)</string>
+    <string name="media_chain_final_response" translatable="false">Final response</string>
+    <string name="media_chain_final_source_step" translatable="false">Read response body from</string>
     <string name="media_chain_last_step">Last step</string>
-    <string name="media_chain_media_path">Media path in JSON response</string>
+    <string name="media_chain_media_path" translatable="false">Media path in JSON response</string>
     <string name="media_chain_media_path_help">Use dot paths and array selectors, for example data[0].url.</string>
-    <string name="media_chain_value_kind">Media value format</string>
+    <string name="media_chain_value_kind" translatable="false">Media value format</string>
     <string name="media_chain_link">Link</string>
     <string name="media_chain_invalid_configuration">Complete the required fields, use valid JSON, and keep retry values within their bounds. Raw media responses cannot use a JSON status path.</string>
     <string name="media_chain_media_path_required">A JSON final response requires a media path.</string>
@@ -1143,16 +1143,16 @@
     <string name="speech_select_tts_model">Select TTS model</string>
     <string name="speech_no_tts_models">No model is marked as text to speech yet. Set a model type in Model Providers to use it here.</string>
     <string name="speech_voice">Voice</string>
-    <string name="speech_voice_gemini_hint">Gemini voice (for example: Kore)</string>
-    <string name="speech_voice_id_hint">Voice ID (for example: alloy)</string>
+    <string name="speech_voice_gemini_hint" translatable="false">Gemini voice (for example: Kore)</string>
+    <string name="speech_voice_id_hint" translatable="false">Voice ID (for example: alloy)</string>
     <string name="speech_speed_value">Speed: %1$sx</string>
     <string name="speech_pitch_value">Pitch: %1$sx</string>
     <string name="speech_voice_instructions">Voice instructions</string>
     <string name="speech_voice_instructions_help_google">Tone, accent, emotion and speaking speed.</string>
-    <string name="speech_language_code">Language code (optional)</string>
-    <string name="speech_audio_format">Audio format: %1$s</string>
-    <string name="speech_additional_parameters">Additional API parameters (JSON)</string>
-    <string name="speech_api_key_override">API key override (optional)</string>
+    <string name="speech_language_code" translatable="false">Language code (optional)</string>
+    <string name="speech_audio_format" translatable="false">Audio format: %1$s</string>
+    <string name="speech_additional_parameters" translatable="false">Additional API parameters (JSON)</string>
+    <string name="speech_api_key_override" translatable="false">API key override (optional)</string>
     <string name="speech_test_announcement">Testing speech voice output.</string>
     <string name="speech_services_title">Speech Services</string>
     <string name="speech_custom_tts">Custom TTS</string>
@@ -1201,7 +1201,7 @@
     <string name="context_window_api_breakdown">Input: %1$s · Output: %2$s tokens</string>
     <string name="context_window_api_input_only">Input: %1$s tokens · Output usage unavailable</string>
     <string name="context_window_percent_used">Context window %1$d%% used</string>
-    <string name="headers">Headers</string>
+    <string name="headers" translatable="false">Headers</string>
     <string name="mcp_enable">Enable</string>
     <string name="mcp_enabled">Enabled</string>
     <string name="drag_to_exit_folder_hint">Drag up to the app bar or down to the navigation bar to leave the folder</string>
@@ -1210,7 +1210,7 @@
     <string name="chat_minimap_open">Open conversation minimap</string>
     <string name="chat_minimap_close">Close conversation minimap</string>
     <string name="chat_minimap_navigate">Conversation minimap. Tap a position to jump there.</string>
-    <string name="tool_agent_skills_search_title">Agent Skills Search</string>
+    <string name="tool_agent_skills_search_title" translatable="false">Agent Skills Search</string>
     <string name="tool_agent_skills_search_description">Let the AI find and load skills on demand</string>
     <string name="user_profile_title">User Profile</string>
     <string name="user_profile_photo_options">Profile photo options</string>
@@ -1227,7 +1227,7 @@
     <string name="user_profile_photos_gallery">Photos Gallery</string>
     <string name="user_profile_search_photos">Search photos</string>
     <string name="user_profile_no_photos">No photos in Media Storage</string>
-    <string name="tool_search_tools_title">Search Tools</string>
+    <string name="tool_search_tools_title" translatable="false">Search Tools</string>
     <string name="tool_search_tools_description">Find tool names and enabled states</string>
     <string name="ollama_error_text">[Error: %1$s]</string>
     <string name="ollama_network_error">Network error</string>
@@ -1235,7 +1235,7 @@
     <string name="speech_owned_voices">My voices only</string>
     <string name="speech_no_voices">No voices found.</string>
     <string name="speech_load_more">Load more</string>
-    <string name="speech_engine_model">Synthesis model ID</string>
+    <string name="speech_engine_model" translatable="false">Synthesis model ID</string>
     <string name="music_profiles">Music Profiles</string>
     <string name="music_audio">Audio</string>
     <string name="tool_music_generation_title">Music Generation</string>
@@ -1249,7 +1249,7 @@
     <string name="tool_generate_music">Generate music</string>
     <string name="music_unsafe_headers">Use the protected Profile API key and {{api_token}} for authentication headers before saving.</string>
     <string name="speech_search_voices">Search voices</string>
-    <string name="speech_engine_api_key">API key</string>
+    <string name="speech_engine_api_key" translatable="false">API key</string>
     <string name="speech_engine_api_key_help">Required by this speech engine. Stored securely on this device.</string>
     <string name="speech_voice_required">Choose a voice or enter its Voice ID.</string>
     <string name="reasoning_level_none" translatable="false">None</string>
