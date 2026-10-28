@@ -1,0 +1,30 @@
+version: v1.0
+name: Generative Android Debug
+
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2404
+  containers:
+    - name: main
+      image: registry.semaphoreci.com/android:36
+
+blocks:
+  - name: Test, lint and build debug APK
+    task:
+      jobs:
+        - name: Android debug
+          commands:
+            - checkout
+            - |
+              set -euo pipefail
+              source .semaphore/setup-android.sh
+              chmod +x gradlew
+              ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --no-daemon --stacktrace
+              python3 scripts/name-apks.py app/build/outputs/apk/debug Generative-debug.apk
+              artifact push job app/build/outputs/apk/debug/Generative-debug.apk
+
+# Release is intentionally manual; a push must not publish a GitHub release.
+promotions:
+  - name: Build and publish release
+    pipeline_file: release.yml

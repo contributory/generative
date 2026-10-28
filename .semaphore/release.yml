@@ -1,0 +1,50 @@
+version: v1.0
+name: Generative Android Release
+
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2404
+  containers:
+    - name: main
+      image: registry.semaphoreci.com/android:36
+
+blocks:
+  - name: Sign and publish release APK
+    task:
+      # Create this secret in Semaphore with KEYSTORE_PATH, KEYSTORE_PASSWORD,
+      # KEY_ALIAS, KEY_PASSWORD, and GH_TOKEN (or GITHUB_TOKEN). The keystore
+      # must be uploaded as a secret file at the KEYSTORE_PATH location.
+      secrets:
+        - name: generative-release
+      env_vars:
+        - name: GITHUB_RELEASE_REPO
+          value: starfall-org/generative
+      jobs:
+        - name: Android release
+          commands:
+            - checkout
+            - |
+              set -euo pipefail
+              source .semaphore/setup-android.sh
+              : "${KEYSTORE_PATH:?Missing KEYSTORE_PATH secret}"
+              : "${KEYSTORE_PASSWORD:?Missing KEYSTORE_PASSWORD secret}"
+              : "${KEY_ALIAS:?Missing KEY_ALIAS secret}"
+              : "${KEY_PASSWORD:?Missing KEY_PASSWORD secret}"
+              test -f "$KEYSTORE_PATH"
+              keytool -list -keystore "$KEYSTORE_PATH" -storepass:env KEYSTORE_PASSWORD -alias "$KEY_ALIAS" >/dev/null
+              signing_check_dir="$(mktemp -d)"
+              trap 'rm -rf "$signing_check_dir"' EXIT
+              keytool -certreq -keystore "$KEYSTORE_PATH" -storepass:env KEYSTORE_PASSWORD -keypass:env KEY_PASSWORD -alias "$KEY_ALIAS" -file "$signing_check_dir/check.csr" >/dev/null
+              : "${GH_TOKEN:-${GITHUB_TOKEN:?Missing GH_TOKEN or GITHUB_TOKEN secret}}"
+              if ! command -v gh >/dev/null 2>&1; then
+                sudo apt-get update -qq
+                sudo apt-get install -y gh
+              fi
+              chmod +x gradlew
+              ./gradlew :app:assembleRelease --no-daemon --stacktrace
+              python3 scripts/name-apks.py app/build/outputs/apk/release Generative.apk
+              artifact push job app/build/outputs/apk/release/Generative.apk
+              export GITHUB_RELEASE_TAG="$(python3 -c 'import json; print(json.load(open("app/build/outputs/apk/release/output-metadata.json"))["elements"][0]["versionName"])')"
+              bash scripts/publish-github-release.sh
+              artifact push job app/build/outputs/apk/release/Generative.apk.sha1
