@@ -101,8 +101,9 @@ class ToolFiles(val directory: File) {
             temporarySessions[directory.canonicalPath]?.values?.toList().orEmpty()
         }
         return (temporary.map { File(it.directory, name) } + File(directory, name)).firstOrNull {
-            it.isFile && it.canonicalFile.parentFile in
-                (temporary.map { session -> session.directory.canonicalFile } + directory.canonicalFile)
+            it.isFile && it.canonicalFile.parentFile?.let { parent ->
+                parent in (temporary.map { session -> session.directory.canonicalFile } + directory.canonicalFile)
+            } == true
         }
     }
     /**
@@ -121,7 +122,7 @@ class ToolFiles(val directory: File) {
             val temporaryDirectories = synchronized(initialized) {
                 temporarySessions[directory.canonicalPath]?.values?.map { it.directory.canonicalFile }.orEmpty()
             }
-            if (parent != directory.canonicalFile && parent !in temporaryDirectories) return null
+            if (parent == null || (parent != directory.canonicalFile && parent !in temporaryDirectories)) return null
             file.name
         } else path
         return name.takeIf { it.matches(Regex("[a-zA-Z0-9._-]+")) && !it.endsWith(".part") && !it.endsWith(".spill") }
