@@ -96,7 +96,9 @@ fun AssistantMessageCard(
     val activeVersion = storedVersion
     val generatedModelName = activeVersion.modelDisplayName.ifBlank { activeVersion.modelId.ifBlank { fallbackModelName } }
     val generationError = activeVersion.generationError.orEmpty()
-    val toolbarText = message.content.ifBlank { generationError }
+    // Tool-only responses have no Markdown body, but still have actionable copy/share content.
+    val actionCopyText = remember(activeVersion) { assistantCopyText(message) }
+    val toolbarText = actionCopyText.ifBlank { generationError }
     val versionIndices = remember(message.versions, message.activeVersionIndex) {
         val counted = message.countedVersionIndices()
         if (message.activeVersionIndex in counted) counted
@@ -228,7 +230,7 @@ fun AssistantMessageCard(
                     FluentIcon(Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
                 MessageActionButton(onClick = {
-                    if (message.content.isNotBlank()) {
+                    if (actionCopyText.isNotBlank()) {
                         onCopy()
                     } else {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

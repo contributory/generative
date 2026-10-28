@@ -50,8 +50,8 @@ class ConversationMinimapSideBarTest {
                 ModalDrawerSheet { Text("Left drawer") }
             }) {
                 Box(Modifier.fillMaxSize().dismissMinimapOnOutsideTap(minimap)) {
-                    LazyColumn(state = list, reverseLayout = true, modifier = Modifier.fillMaxSize().testTag("chat-list")) {
-                        items(messages.asReversed(), key = { it.id }) {
+                    LazyColumn(state = list, modifier = Modifier.fillMaxSize().testTag("chat-list")) {
+                        items(messages, key = { it.id }) {
                             Text(it.content, Modifier.fillMaxWidth().height(400.dp))
                         }
                     }
@@ -75,12 +75,12 @@ class ConversationMinimapSideBarTest {
             click(Offset(width / 2f, height * 0.02f))
         }
         compose.waitForIdle()
-        assertTrue("Tapping the top reaches older messages", list.firstVisibleItemIndex >= 18)
+        assertTrue("Tapping the top reaches older messages", list.firstVisibleItemIndex <= 1)
         compose.onNodeWithTag("chat-minimap-map").performTouchInput {
             click(Offset(width / 2f, height * 0.98f))
         }
         compose.waitForIdle()
-        assertTrue("Tapping the bottom reaches newer messages", list.firstVisibleItemIndex <= 1)
+        assertTrue("Tapping the bottom reaches newer messages", list.firstVisibleItemIndex >= 17)
         val beforeDrag = compose.onNodeWithTag("chat-minimap-map").getUnclippedBoundsInRoot()
         compose.onNodeWithTag("chat-minimap-map").performTouchInput {
             swipe(Offset(width / 2f, height * 0.95f), Offset(width / 2f, height * 0.03f), 700)
@@ -88,7 +88,7 @@ class ConversationMinimapSideBarTest {
         compose.waitForIdle()
         assertEquals(beforeDrag, compose.onNodeWithTag("chat-minimap-map").getUnclippedBoundsInRoot())
         assertTrue(navigated)
-        assertTrue("The oldest messages are at the high indices of the reverse list", list.firstVisibleItemIndex >= 18)
+        assertTrue("The oldest messages are at the low indices of the forward list", list.firstVisibleItemIndex <= 1)
         compose.onNodeWithTag("outside-action").performTouchInput { click() }
         assertTrue("Outside controls must remain usable while the sidebar is open", outsideClicked)
         compose.onNodeWithTag("chat-minimap-sidebar").assertDoesNotExist()

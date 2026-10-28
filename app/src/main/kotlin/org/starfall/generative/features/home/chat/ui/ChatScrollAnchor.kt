@@ -14,7 +14,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import org.starfall.generative.features.home.chat.logic.SentMessageDetector
 import org.starfall.generative.features.home.chat.logic.anchorTailSpacer
 
@@ -22,18 +21,7 @@ private const val MAX_WAIT_FRAMES = 90
 private const val MAX_SETTLE_PASSES = 3
 private const val SETTLE_TOLERANCE_PX = 2
 
-/**
- * The scroll position of a just-sent user message: flush under the app bar. When a message is sent,
- * including a pending one that starts once the previous response ends, [ChatAnchorEffects] places it
- * there once; the user can drag it away and back. Only user messages get this: [anchorTailItem]
- * keeps the content tall enough to reach it, and AI messages scroll as before. A chat that is opened
- * ending with a user message is padded the same way (without a settle), so that message can be dragged
- * there too.
- *
- * Every other automatic scroll (following a streaming reply, jump to latest, opening a chat) must stay
- * out of the way while [settling], and must not use "scroll to the end of the content", which with the
- * spacer present would move the user message to the top.
- */
+/** Pins a newly sent user message under the app bar until settled or manually interrupted. */
 @Stable
 internal class ChatScrollAnchor {
     val detector = SentMessageDetector()
@@ -49,21 +37,6 @@ internal class ChatScrollAnchor {
     /** True from the send until the message is in place, or until the user takes over. */
     var settling by mutableStateOf(false)
         private set
-
-    // Natural (unpadded) height of each item, written while the item is measured. Plain storage plus a
-    // version that only the newest item's measure reads, so a prefix change re-measures just that item.
-    private val naturalHeights = HashMap<String, Int>()
-    private var heightsVersion by mutableIntStateOf(0)
-
-    fun recordHeight(id: String, px: Int, notify: Boolean) {
-        if (naturalHeights.put(id, px) != px && notify) heightsVersion += 1
-    }
-
-    /** Minimum height of the newest item: one visible area minus the items of the turn before it. */
-    fun newestItemMinHeight(visiblePx: Int, precedingIds: List<String>): Int {
-        heightsVersion // observed by the measuring item
-        return anchorTailSpacer(visiblePx, precedingIds.sumOf { naturalHeights[it] ?: 0 })
-    }
 
     fun start(id: String) {
         messageId = id
@@ -83,7 +56,6 @@ internal class ChatScrollAnchor {
     fun end() {
         messageId = null
         settling = false
-        naturalHeights.clear()
     }
 }
 
@@ -117,6 +89,7 @@ internal fun ChatAnchorEffects(
             // The first pass animates to the message; the next passes correct for sizes that were
             // still unknown (the reply grows as it is measured).
             repeat(MAX_SETTLE_PASSES) {
+                if (!anchor.settling) return@LaunchedEffect
                 val index = currentIndexOf(id)
                 if (index < 0) return@LaunchedEffect
                 val info = listState.layoutInfo
@@ -124,7 +97,7 @@ internal fun ChatAnchorEffects(
                 if (item == null) {
                     listState.animateScrollToItem(index, 0)
                 } else {
-                    val delta = item.offset
+                    val delta = item.offset - info.beforeContentPadding
                     if (abs(delta) <= SETTLE_TOLERANCE_PX) return@LaunchedEffect
                     listState.animateScrollBy(delta.toFloat())
                 }
@@ -136,87 +109,41 @@ internal fun ChatAnchorEffects(
     }
 }
 
-/**
- * Measures an item and records its natural height; the newest item is then padded to at least
- * [ChatScrollAnchor.newestItemMinHeight] when [padNewest] is set. The caller sets it for a just-sent
- * message and for a chat that ends with a user message, so that message can be dragged under the
- * app bar. Because the padding is decided in the same measure pass as the item's own size, content
- * that shrinks (a placeholder replaced by short text) never lets the list clamp its scroll position
- * the way a separate spacer, updated a frame later, would.
- */
-internal fun Modifier.anchorTailItem(
-    anchor: ChatScrollAnchor,
-    id: String,
-    isNewest: Boolean,
-    precedingIds: List<String>,
-    visiblePx: Int,
-    padNewest: Boolean
-): Modifier = layout { measurable, constraints ->
-    val placeable = measurable.measure(constraints)
-    anchor.recordHeight(id, placeable.height, notify = !isNewest)
-    val height = if (isNewest && padNewest) {
-        maxOf(placeable.height, anchor.newestItemMinHeight(visiblePx, precedingIds))
-    } else placeable.height
-    layout(placeable.width, height) { placeable.placeRelative(0, 0) }
-}
-
-/**
- * Adds scroll room to the newest user message in a reverse-layout chat list.
- *
- * The list starts at the bottom, so the blank area goes *below* the bubble on screen (at the start
- * edge of the list). A newest user message grows to the full visible height, so it sits right under
- * the app bar and can be dragged back there, and it reports its natural height through
- * [onNaturalHeight].
- */
-internal fun Modifier.reverseTailScrollPadding(
+/** Pad *after* the newest user bubble, never above it or between it and a reply. */
+internal fun Modifier.tailScrollPadding(
     visiblePx: Int,
     onNaturalHeight: ((Int) -> Unit)? = null
 ): Modifier = layout { measurable, constraints ->
     val placeable = measurable.measure(constraints)
     onNaturalHeight?.invoke(placeable.height)
-    val height = maxOf(placeable.height, visiblePx)
-    layout(placeable.width, height) { placeable.placeRelative(0, 0) }
+    layout(placeable.width, maxOf(placeable.height, visiblePx)) {
+        placeable.placeRelative(0, 0)
+    }
 }
 
-/**
- * Keeps the last user message flush under the app bar once its reply exists.
- *
- * A send adds the user message and its reply in one update, so the user message is never the newest
- * item. The reply is measured first (item 0 of a reverse list) and the user message right after it, in
- * the same pass. The blank room lives below the reply's content ([replyTailPadding], visible height minus
- * the user message), so it shrinks by itself as the reply grows. Until the user message has reported its
- * height, [userTailPadding] provides the same room from its side, so the very first frame is already right
- * and the move of the room to the reply changes nothing on screen.
- */
+/** Keeps the free space *after* the newest AI reply until it grows past the viewport. */
 @Stable
-internal class TailTurnAnchor {
+internal class TailTurnAnchor(private val fallbackUserHeightPx: Int) {
     private val userHeights = HashMap<String, Int>()
     private var version by mutableIntStateOf(0)
-
-    // Written by the reply's measure, read by the user message's measure of the same pass.
-    private var replyNatural = 0
-    private var replyUsedUserHeight = false
 
     fun recordUser(id: String, px: Int) {
         if (userHeights.put(id, px) != px) version += 1
     }
 
-    /** Observed by the reply's measure, so it measures again when the user message's height arrives or changes. */
-    fun userHeight(id: String): Int? {
-        version
-        return userHeights[id]
-    }
-
-    fun recordReply(natural: Int, usedUserHeight: Boolean) {
-        replyNatural = natural
-        replyUsedUserHeight = usedUserHeight
-    }
-
-    fun userItemHeight(visiblePx: Int, natural: Int): Int {
-        version // measures again together with the reply
-        return if (replyUsedUserHeight) natural else maxOf(natural, visiblePx - replyNatural)
+    fun userHeight(id: String): Int {
+        version // invalidate the last reply's measurement when the user message is measured
+        return userHeights[id] ?: fallbackUserHeightPx
     }
 }
+
+/** Record the preceding user bubble without inserting blank space between it and the reply. */
+internal fun Modifier.recordTurnUserHeight(anchor: TailTurnAnchor, id: String): Modifier =
+    layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        anchor.recordUser(id, placeable.height)
+        layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
+    }
 
 internal fun Modifier.replyTailPadding(
     anchor: TailTurnAnchor,
@@ -224,23 +151,10 @@ internal fun Modifier.replyTailPadding(
     visiblePx: Int
 ): Modifier = layout { measurable, constraints ->
     val placeable = measurable.measure(constraints)
-    val userHeight = anchor.userHeight(userId)
-    anchor.recordReply(placeable.height, userHeight != null)
-    val height = if (userHeight != null) {
-        maxOf(placeable.height, (visiblePx - userHeight).coerceAtLeast(0))
-    } else placeable.height
-    layout(placeable.width, height) { placeable.placeRelative(0, 0) }
-}
-
-internal fun Modifier.userTailPadding(
-    anchor: TailTurnAnchor,
-    userId: String,
-    visiblePx: Int
-): Modifier = layout { measurable, constraints ->
-    val placeable = measurable.measure(constraints)
-    anchor.recordUser(userId, placeable.height)
-    val height = anchor.userItemHeight(visiblePx, placeable.height)
-    layout(placeable.width, height) { placeable.placeRelative(0, 0) }
+    val remaining = anchorTailSpacer(visiblePx, anchor.userHeight(userId))
+    layout(placeable.width, maxOf(placeable.height, remaining)) {
+        placeable.placeRelative(0, 0)
+    }
 }
 
 /**
@@ -258,6 +172,6 @@ internal suspend fun LazyListState.revealItemBottom(index: Int) {
         info = layoutInfo
         item = info.visibleItemsInfo.firstOrNull { it.index == index } ?: return
     }
-    val remaining = item.offset + item.size - (info.viewportEndOffset - info.afterContentPadding)
+    val remaining = item.offset + item.size - info.viewportEndOffset
     if (remaining > 0) scrollBy(remaining.toFloat())
 }

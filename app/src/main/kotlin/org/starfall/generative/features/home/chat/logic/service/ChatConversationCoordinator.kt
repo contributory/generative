@@ -56,6 +56,8 @@ internal class ChatConversationCoordinator(
     private val sendMessage: (String, List<String>, Boolean, String?) -> Boolean,
 ) {
     private var conversationSelectionToken = 0L
+    private val _loadingConversationId = MutableStateFlow<String?>(null)
+    val loadingConversationId: StateFlow<String?> = _loadingConversationId
     @Volatile private var pendingWrites = 0
     @Volatile private var activeAdmissions = 0
     @Volatile private var restoreInProgress = false
@@ -215,6 +217,7 @@ internal class ChatConversationCoordinator(
             activeOperationsFlow.first { it == 0 }
             serializedWrites.withLock {
                 conversationSelectionToken++
+                _loadingConversationId.value = null
                 cancelTitles()
                 cancelSummary()
                 allGenerations().forEach { it.stopAndJoin() }
@@ -285,20 +288,39 @@ internal class ChatConversationCoordinator(
     fun selectConversation(conversation: Conversation) = withRestoreGuard(onRejected = {}) {
         if (deletingAllConversations.value || conversation.id in deletingConversations.value) return@withRestoreGuard
         conversationSelectionToken++
+        _loadingConversationId.value = null
         applySelectedConversation(conversation)
     }
 
     fun selectConversation(conversationId: String) = withRestoreGuard(onRejected = {}) {
         if (deletingAllConversations.value || conversationId in deletingConversations.value) return@withRestoreGuard
         val request = ++conversationSelectionToken
+        // Re-selecting the displayed chat has no history to fetch.
+        if (currentConversation.value?.id == conversationId) {
+            _loadingConversationId.value = null
+            return@withRestoreGuard
+        }
+        // A live generation already owns the complete in-memory snapshot; no disk read or veil.
+        val live = existingGeneration(conversationId)?.takeIf { it.busy.value }?.snapshot
+        if (live != null) {
+            _loadingConversationId.value = null
+            applySelectedConversation(live)
+            return@withRestoreGuard
+        }
+        // Publish before launching IO, even if the current chat is null or has no messages.
+        _loadingConversationId.value = conversationId
         scope.launch(LocalWriteErrors.handler) {
-            val conversation = conversationRepo.loadById(conversationId) ?: return@launch
-            // A slow history read must not replace a newer selection or cross a restore boundary.
-            withRestoreGuard(onRejected = {}) {
-                if (request != conversationSelectionToken || deletingAllConversations.value ||
-                    conversationId in deletingConversations.value
-                ) return@withRestoreGuard
-                applySelectedConversation(conversation)
+            try {
+                val conversation = conversationRepo.loadById(conversationId) ?: return@launch
+                // A slow history read must not replace a newer selection or cross a restore boundary.
+                withRestoreGuard(onRejected = {}) {
+                    if (request != conversationSelectionToken || deletingAllConversations.value ||
+                        conversationId in deletingConversations.value
+                    ) return@withRestoreGuard
+                    applySelectedConversation(conversation)
+                }
+            } finally {
+                if (request == conversationSelectionToken) _loadingConversationId.value = null
             }
         }
     }
@@ -350,6 +372,7 @@ internal class ChatConversationCoordinator(
     private fun startBlankChat(temporary: Boolean) = withRestoreGuard(onRejected = {}) {
         // A selection read started earlier must not replace this blank draft when it completes.
         conversationSelectionToken++
+        _loadingConversationId.value = null
         discardTemporaryOnExit("")
         disconnectRemoteMachines()
         val now = System.currentTimeMillis()
@@ -409,6 +432,10 @@ internal class ChatConversationCoordinator(
                 targets.forEach(PersistentMarkdownAstCache::invalidateConversation)
                 previous = currentConversation.value?.takeIf { it.id in targets }
                 deletingConversations.update { it + targets }
+                if (_loadingConversationId.value in targets) {
+                    conversationSelectionToken++
+                    _loadingConversationId.value = null
+                }
                 if (previous != null) {
                     currentConversation.value = null
                     queuedMessagesByConversation.update { it - targets }
@@ -496,6 +523,8 @@ internal class ChatConversationCoordinator(
                 PersistentMarkdownAstCache.invalidateAll()
                 previous = currentConversation.value
                 deletingAllConversations.value = true
+                conversationSelectionToken++
+                _loadingConversationId.value = null
                 currentConversation.value = null
                 queuedMessagesByConversation.value = emptyMap()
                 scope.launch(LocalWriteErrors.handler) {
@@ -535,6 +564,7 @@ internal class ChatConversationCoordinator(
         serializedWrites.withLock {
             // Invalidate any selection load that began before the restore boundary.
             conversationSelectionToken++
+            _loadingConversationId.value = null
             cancelTitles()
             cancelSummary()
             allGenerations().forEach { it.stopAndJoin() }

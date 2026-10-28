@@ -7,9 +7,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -28,6 +30,30 @@ import org.starfall.generative.shared.model.ToolActivity
 
 class StreamingToolActivityUiTest {
     @get:Rule val compose = createComposeRule()
+
+    @Test fun completedToolOnlyResponseShowsActionToolbar() {
+        var copied = false
+        compose.setContent { MaterialTheme {
+            AssistantMessageCard(
+                message = StoredMessage(
+                    "tool-only", ChatRole.MODEL,
+                    listOf(MessageVersion(toolActivity = listOf(
+                        ToolActivity(id = "tool", name = "search_documents", status = "success")
+                    )))
+                ),
+                isStreaming = false,
+                onCopy = { copied = true },
+                onRegenerate = {},
+                onEdit = {},
+                onDelete = {},
+                onRead = {},
+                onSwitchVersion = {}
+            )
+        } }
+        val copyLabel = InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.common_copy)
+        compose.onNodeWithContentDescription(copyLabel).assertIsDisplayed().performClick()
+        compose.runOnIdle { assertTrue(copied) }
+    }
 
     @Test fun runningToolAppearsBetweenStreamedTextAndRemainsAvailableAfterCompletion() {
         val before = "Before the action.\n\n"

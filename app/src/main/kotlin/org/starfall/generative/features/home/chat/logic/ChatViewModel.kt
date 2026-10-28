@@ -304,6 +304,8 @@ class ChatViewModel(
         sendMessage = { text, files, createSkill, skillName -> sendMessage(text, files, createSkill, skillName) },
     )
 
+    val loadingConversationId: StateFlow<String?> = conversationCoordinator.loadingConversationId
+
     private val conversationTitleGenerator = ConversationTitleGenerator(
         scope = viewModelScope,
         conversationRepo = conversationRepo,

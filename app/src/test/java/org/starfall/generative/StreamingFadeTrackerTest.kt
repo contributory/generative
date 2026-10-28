@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.starfall.generative.shared.ui.text.StreamingFadeRange
+import org.starfall.generative.shared.ui.text.STREAM_FADE_DURATION_MS
 import org.starfall.generative.shared.ui.text.StreamingFadeTracker
 import org.starfall.generative.shared.ui.text.shouldRevealStreamingText
 
@@ -42,6 +43,18 @@ class StreamingFadeTrackerTest {
         assertTrue(shouldRevealStreamingText(localEnabled = true, systemAnimationsEnabled = true))
         assertTrue(!shouldRevealStreamingText(localEnabled = false, systemAnimationsEnabled = true))
         assertTrue(!shouldRevealStreamingText(localEnabled = true, systemAnimationsEnabled = false))
+    }
+
+    @Test
+    fun eachChunkUnveilsQuicklyAndDoesNotKeepOldFadesRunning() {
+        val tracker = StreamingFadeTracker()
+        assertTrue("The reveal must finish before another slow token batch", STREAM_FADE_DURATION_MS <= 160L)
+        tracker.update("First", 0)
+        tracker.update("First second", 65)
+        assertEquals(
+            listOf(StreamingFadeRange(5, 12, 65), StreamingFadeRange(12, 18, 140)),
+            tracker.update("First second third", 140)
+        )
     }
 
     @Test

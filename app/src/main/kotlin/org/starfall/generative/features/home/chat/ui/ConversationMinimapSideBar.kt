@@ -296,8 +296,8 @@ private fun ConversationMinimap(
     val displayedSpans = draggingSpans ?: spans
     val latestSpans by rememberUpdatedState(spans)
     val layout = listState.layoutInfo
-    val readableStart = layout.viewportStartOffset + bottomObscuredPx
-    val readableEnd = layout.viewportEndOffset - topObscuredPx
+    val readableStart = layout.viewportStartOffset + topObscuredPx
+    val readableEnd = layout.viewportEndOffset - bottomObscuredPx
     val mappedViewport = minimapViewport(
         displayedSpans,
         layout.visibleItemsInfo.mapNotNull { item -> (item.key as? String)?.let { MinimapVisibleItem(it, item.offset, item.size) } },
@@ -316,9 +316,8 @@ private fun ConversationMinimap(
         // cancel a scroll between measuring an offscreen item and positioning it.
         for (target in navigationRequests) {
             val current = latestMessages
-            val chronologicalIndex = current.indexOfFirst { it.id == target.id }
-            if (chronologicalIndex < 0) continue
-            val index = current.lastIndex - chronologicalIndex
+            val index = current.indexOfFirst { it.id == target.id }
+            if (index < 0) continue
             var itemHeight = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == target.id }?.size
                 ?: heights[target.id]
             if (itemHeight == null) {
@@ -328,8 +327,8 @@ private fun ConversationMinimap(
             if (itemHeight != null) {
                 heights[target.id] = itemHeight
                 val info = listState.layoutInfo
-                val start = info.viewportStartOffset + latestInsets.second
-                val end = info.viewportEndOffset - latestInsets.first
+                val start = info.viewportStartOffset + latestInsets.first
+                val end = info.viewportEndOffset - latestInsets.second
                 listState.scrollToItem(index, minimapScrollOffset(itemHeight, target.fraction, end - start, start))
             }
         }

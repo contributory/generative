@@ -10,6 +10,16 @@ import org.starfall.generative.shared.model.ToolActivity
 
 class AssistantMessageCopyTextTest {
     @Test
+    fun toolOnlyResponseHasCopyableActionPlaceholder() {
+        val message = StoredMessage(
+            id = "assistant",
+            role = ChatRole.MODEL,
+            versions = listOf(MessageVersion(toolActivity = listOf(ToolActivity(id = "tool", name = "search"))))
+        )
+        assertEquals("[ActionTurnsBlock]", assistantCopyText(message))
+    }
+
+    @Test
     fun actionAndMediaBlocksUseSelectionPlaceholdersAtTheirContentOffsets() {
         val message = StoredMessage(
             id = "assistant",

@@ -66,11 +66,15 @@ class ChatOpeningScrollTest {
         ))
     )
 
-    private fun show(current: androidx.compose.runtime.State<Conversation?>) {
+    private fun show(
+        current: androidx.compose.runtime.State<Conversation?>,
+        loadingId: androidx.compose.runtime.State<String?> = mutableStateOf(null)
+    ) {
         compose.setContent {
             MaterialTheme {
                 ChatScreen(
                     conversation = current.value, isGenerating = false,
+                    loadingConversationId = loadingId.value,
                     generatingConversationId = null, chatError = null,
                     providers = emptyList(), selectedProviderId = "", selectedModelName = "",
                     onNewChat = {}, onSendMessage = { _, _ -> false }, onSendMedia = { false },
@@ -162,4 +166,37 @@ class ChatOpeningScrollTest {
         assertTrue("Opening must not pull the user back to the bottom", position() < bottom)
         compose.onNodeWithContentDescription("Jump to latest").assertIsDisplayed()
     }
+
+    @Test fun pendingHistoryReadIsVeiledEvenBeforeConversationOrMessagesExist() {
+        val current = mutableStateOf<Conversation?>(null)
+        val loadingId = mutableStateOf<String?>("disk-history")
+        show(current, loadingId)
+        assertTrue("A pending disk read must show the veil with no messages yet", veilNodes().isNotEmpty())
+        // A veil over the chat list must not swallow input-area interaction.
+        compose.onNode(hasSetTextAction()).assertIsEnabled()
+        compose.onNode(hasSetTextAction()).performTouchInput { click() }
+        compose.onNode(hasSetTextAction()).performTextInput("input remains usable")
+        compose.onNode(hasSetTextAction()).assertTextContains("input remains usable")
+
+        compose.runOnIdle {
+            current.value = conversation("disk-history")
+            loadingId.value = null
+        }
+        assertEndVisible("disk-history")
+    }
+
+    @Test fun historyVeilHasNoDeadlineWhileSelectionIsStillLoading() {
+        val current = mutableStateOf<Conversation?>(conversation("slow-history"))
+        val loadingId = mutableStateOf<String?>("still-reading")
+        compose.mainClock.autoAdvance = false
+        show(current, loadingId)
+        assertTrue(veilNodes().isNotEmpty())
+        // Go well beyond the removed four-second deadline while a history load remains pending.
+        repeat(350) { compose.mainClock.advanceTimeByFrame() }
+        assertTrue("The history veil must not time out", veilNodes().isNotEmpty())
+        compose.runOnIdle { loadingId.value = null }
+        compose.mainClock.autoAdvance = true
+        assertEndVisible("slow-history")
+    }
+
 }

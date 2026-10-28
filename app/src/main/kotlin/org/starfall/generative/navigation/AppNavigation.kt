@@ -259,6 +259,7 @@ fun AppNavigation(
 
     val conversations: List<ConversationListItem> by viewModel.conversations.collectAsStateWithLifecycle()
     val currentConvState = viewModel.currentConversation.collectAsStateWithLifecycle()
+    val loadingConversationId by viewModel.loadingConversationId.collectAsStateWithLifecycle()
     // Streaming republishes the conversation about 20 times a second. Reading it in this function would
     // recompose the drawer, navigation and every CompositionLocal below on each tick, which slows the whole
     // app. Only values that rarely change are derived here; the chat screen reads the conversation itself.
@@ -579,6 +580,7 @@ fun AppNavigation(
                         backgroundImage = appPrefs.userProfile.chatBackground,
                         backgroundTransparency = appPrefs.userProfile.chatTransparency,
                         conversation = currentConvState.value,
+                        loadingConversationId = loadingConversationId,
                         isDrawerOpening = drawerState.targetValue == DrawerValue.Open || drawerState.isOpen,
                         activeStream = viewModel.activeStreamForCurrentConversation,
                         isGenerating = isGenerating,

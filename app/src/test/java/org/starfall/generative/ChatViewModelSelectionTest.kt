@@ -61,10 +61,13 @@ class ChatViewModelSelectionTest {
             val database = db.openHelper.writableDatabase
             database.beginTransaction()
             viewModel.selectConversation(conversation.id)
+            assertEquals("A disk read must be observable before messages arrive", conversation.id,
+                viewModel.loadingConversationId.value)
             // Start the history read while SQLite is blocked, then create the blank draft before
             // releasing it. The old implementation applied the queued result after this point.
             shadowOf(Looper.getMainLooper()).idle()
             viewModel.startNewChat()
+            assertNull("A new chat cancels the history loading veil", viewModel.loadingConversationId.value)
             database.setTransactionSuccessful()
             database.endTransaction()
 
