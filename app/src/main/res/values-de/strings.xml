@@ -229,9 +229,6 @@
     <string name="notification_oauth_channel_description">Hält die Kontoanmeldung aktiv, während du den Browser nutzt.</string>
     <string name="notification_oauth_title">Kontoanmeldung läuft</string>
     <string name="invalid_provider_link">Ungültiger Link zum Modellanbieter.</string>
-    <string name="fgs_subtype_oauth">Empfängt während der Anmeldung einen lokalen OAuth-Browser-Callback</string>
-    <string name="fgs_subtype_generation">Erzeugung der Antwort eines Sprachmodells im Hintergrund</string>
-    <string name="fgs_subtype_remote">Hält SSH-Verbindungen und Portweiterleitungen am Laufen und lässt den Nutzer sie trennen</string>
     <string name="chat_dismiss_error">Fehler ausblenden</string>
     <string name="chat_jump_to_latest">Zum Neuesten springen</string>
     <string name="common_copied_to_clipboard">In die Zwischenablage kopiert</string>

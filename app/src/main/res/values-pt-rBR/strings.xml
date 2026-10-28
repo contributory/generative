@@ -229,9 +229,6 @@
     <string name="notification_oauth_channel_description">Mantém o login ativo enquanto você usa o navegador.</string>
     <string name="notification_oauth_title">Login em andamento</string>
     <string name="invalid_provider_link">Link de provedor inválido.</string>
-    <string name="fgs_subtype_oauth">Recebe o retorno local de OAuth do navegador durante o login</string>
-    <string name="fgs_subtype_generation">Gera a resposta de um modelo de linguagem em segundo plano</string>
-    <string name="fgs_subtype_remote">Mantém as conexões SSH e o redirecionamento de portas ativos para você poder desconectá-los</string>
     <string name="chat_dismiss_error">Dispensar o erro</string>
     <string name="chat_jump_to_latest">Ir para o mais recente</string>
     <string name="common_copied_to_clipboard">Copiado para a área de transferência</string>

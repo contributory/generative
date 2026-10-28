@@ -229,9 +229,6 @@
     <string name="notification_oauth_channel_description">Поддерживает вход в аккаунт, пока вы пользуетесь браузером.</string>
     <string name="notification_oauth_title">Выполняется вход</string>
     <string name="invalid_provider_link">Некорректная ссылка на провайдера.</string>
-    <string name="fgs_subtype_oauth">Принимает локальный ответ OAuth из браузера во время входа</string>
-    <string name="fgs_subtype_generation">Создаёт ответ языковой модели в фоне</string>
-    <string name="fgs_subtype_remote">Поддерживает SSH-соединения и перенаправление портов, чтобы вы могли их разорвать</string>
     <string name="chat_dismiss_error">Закрыть ошибку</string>
     <string name="chat_jump_to_latest">Перейти к последнему</string>
     <string name="common_copied_to_clipboard">Скопировано в буфер обмена</string>

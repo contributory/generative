@@ -231,9 +231,9 @@
     <string name="notification_oauth_channel_description">Keeps account sign-in active while you use the browser.</string>
     <string name="notification_oauth_title">Account sign-in in progress</string>
     <string name="invalid_provider_link">Invalid model provider link.</string>
-    <string name="fgs_subtype_oauth">Receive a local OAuth browser callback while the user signs in</string>
-    <string name="fgs_subtype_generation">Language model response generation in background</string>
-    <string name="fgs_subtype_remote">Keep remote SSH connections and port forwards alive and let the user disconnect them</string>
+    <string name="fgs_subtype_oauth" translatable="false">Receive a local OAuth browser callback while the user signs in</string>
+    <string name="fgs_subtype_generation" translatable="false">Language model response generation in background</string>
+    <string name="fgs_subtype_remote" translatable="false">Keep remote SSH connections and port forwards alive and let the user disconnect them</string>
     <string name="chat_dismiss_error">Dismiss error</string>
     <string name="chat_jump_to_latest">Jump to latest</string>
     <string name="common_copied_to_clipboard">Copied to clipboard</string>

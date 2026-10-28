@@ -229,9 +229,6 @@
     <string name="notification_oauth_channel_description">Proses masuk akun tetap berjalan saat Anda memakai peramban.</string>
     <string name="notification_oauth_title">Proses masuk akun</string>
     <string name="invalid_provider_link">Tautan penyedia model tidak valid.</string>
-    <string name="fgs_subtype_oauth">Menerima callback OAuth peramban lokal saat pengguna masuk</string>
-    <string name="fgs_subtype_generation">Pembuatan respons model bahasa di latar belakang</string>
-    <string name="fgs_subtype_remote">Menjaga koneksi SSH dan penerusan porta tetap hidup serta membiarkan pengguna memutus sambungannya</string>
     <string name="chat_dismiss_error">Tutup kesalahan</string>
     <string name="chat_jump_to_latest">Lompat ke terbaru</string>
     <string name="common_copied_to_clipboard">Disalin ke papan klip</string>

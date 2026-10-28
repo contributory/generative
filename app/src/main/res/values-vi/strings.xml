@@ -229,9 +229,6 @@
     <string name="notification_oauth_channel_description">Giữ cho việc đăng nhập hoạt động khi bạn dùng trình duyệt.</string>
     <string name="notification_oauth_title">Đang đăng nhập</string>
     <string name="invalid_provider_link">Liên kết nhà cung cấp không hợp lệ.</string>
-    <string name="fgs_subtype_oauth">Nhận lệnh gọi lại OAuth cục bộ từ trình duyệt trong khi đăng nhập</string>
-    <string name="fgs_subtype_generation">Tạo câu trả lời của mô hình ngôn ngữ ở chế độ nền</string>
-    <string name="fgs_subtype_remote">Giữ các kết nối SSH và chuyển tiếp cổng hoạt động để bạn có thể ngắt chúng</string>
     <string name="chat_dismiss_error">Bỏ qua lỗi</string>
     <string name="chat_jump_to_latest">Tới tin nhắn mới nhất</string>
     <string name="common_copied_to_clipboard">Đã sao chép vào bộ nhớ tạm</string>

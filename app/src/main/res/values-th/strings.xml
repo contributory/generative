@@ -229,9 +229,6 @@
     <string name="notification_oauth_channel_description">ให้การเข้าสู่ระบบบัญชีทำงานต่อขณะใช้เบราว์เซอร์</string>
     <string name="notification_oauth_title">กำลังเข้าสู่ระบบบัญชี</string>
     <string name="invalid_provider_link">ลิงก์ผู้ให้บริการโมเดลไม่ถูกต้อง</string>
-    <string name="fgs_subtype_oauth">รับ callback ของ OAuth จากเบราว์เซอร์ในเครื่องขณะผู้ใช้เข้าสู่ระบบ</string>
-    <string name="fgs_subtype_generation">สร้างคำตอบของโมเดลภาษาในเบื้องหลัง</string>
-    <string name="fgs_subtype_remote">คงการเชื่อมต่อ SSH และการส่งต่อพอร์ตให้ทำงานต่อ และให้ผู้ใช้ตัดการเชื่อมต่อได้</string>
     <string name="chat_dismiss_error">ปิดข้อผิดพลาด</string>
     <string name="chat_jump_to_latest">ข้ามไปข้อความล่าสุด</string>
     <string name="common_copied_to_clipboard">คัดลอกไปยังคลิปบอร์ดแล้ว</string>

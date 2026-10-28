@@ -229,9 +229,6 @@
     <string name="notification_oauth_channel_description">Mantiene attivo l\'accesso all\'account mentre usi il browser.</string>
     <string name="notification_oauth_title">Accesso all\'account in corso</string>
     <string name="invalid_provider_link">Link del provider di modelli non valido.</string>
-    <string name="fgs_subtype_oauth">Riceve un callback OAuth locale del browser durante l\'accesso</string>
-    <string name="fgs_subtype_generation">Generazione della risposta del modello di lingua in background</string>
-    <string name="fgs_subtype_remote">Mantiene attive le connessioni SSH e gli inoltri di porta, lasciando all\'utente la possibilità di disconnettersi</string>
     <string name="chat_dismiss_error">Ignora errore</string>
     <string name="chat_jump_to_latest">Vai al più recente</string>
     <string name="common_copied_to_clipboard">Copiato negli appunti</string>

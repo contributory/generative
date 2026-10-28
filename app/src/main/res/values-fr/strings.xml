@@ -229,9 +229,6 @@
     <string name="notification_oauth_channel_description">Maintient la connexion active pendant l’utilisation du navigateur.</string>
     <string name="notification_oauth_title">Connexion en cours</string>
     <string name="invalid_provider_link">Lien de fournisseur invalide.</string>
-    <string name="fgs_subtype_oauth">Reçoit le callback OAuth local du navigateur pendant la connexion</string>
-    <string name="fgs_subtype_generation">Génération d’une réponse de modèle de langue en arrière-plan</string>
-    <string name="fgs_subtype_remote">Maintient les connexions SSH et les redirections de ports actives pour permettre à l’utilisateur de les déconnecter</string>
     <string name="chat_dismiss_error">Ignorer l’erreur</string>
     <string name="chat_jump_to_latest">Aller au plus récent</string>
     <string name="common_copied_to_clipboard">Copié dans le presse-papiers</string>

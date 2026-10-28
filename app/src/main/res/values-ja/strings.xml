@@ -229,9 +229,6 @@
     <string name="notification_oauth_channel_description">ブラウザー使用中もサインインを維持します。</string>
     <string name="notification_oauth_title">サインイン中</string>
     <string name="invalid_provider_link">プロバイダーのリンクが無効です。</string>
-    <string name="fgs_subtype_oauth">サインイン中にブラウザーからローカル OAuth コールバックを受け取ります</string>
-    <string name="fgs_subtype_generation">バックグラウンドで言語モデルの応答を生成します</string>
-    <string name="fgs_subtype_remote">SSH 接続とポート転送を維持し、ユーザーが切断できるようにします</string>
     <string name="chat_dismiss_error">エラーを閉じる</string>
     <string name="chat_jump_to_latest">最新へ移動</string>
     <string name="common_copied_to_clipboard">クリップボードにコピーしました</string>

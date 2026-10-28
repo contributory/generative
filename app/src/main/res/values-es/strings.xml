@@ -229,9 +229,6 @@
     <string name="notification_oauth_channel_description">Mantiene el inicio de sesión activo mientras usas el navegador.</string>
     <string name="notification_oauth_title">Iniciando sesión</string>
     <string name="invalid_provider_link">Enlace de proveedor no válido.</string>
-    <string name="fgs_subtype_oauth">Recibe la respuesta local de OAuth del navegador durante el inicio de sesión</string>
-    <string name="fgs_subtype_generation">Genera la respuesta de un modelo de lenguaje en segundo plano</string>
-    <string name="fgs_subtype_remote">Mantiene las conexiones SSH y la redirección de puertos activas para que puedas desconectarlas</string>
     <string name="chat_dismiss_error">Descartar el error</string>
     <string name="chat_jump_to_latest">Ir a lo más reciente</string>
     <string name="common_copied_to_clipboard">Copiado al portapapeles</string>

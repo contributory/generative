@@ -229,9 +229,6 @@
     <string name="notification_oauth_channel_description">在你使用瀏覽器時維持登入狀態。</string>
     <string name="notification_oauth_title">正在登入</string>
     <string name="invalid_provider_link">供應商連結無效。</string>
-    <string name="fgs_subtype_oauth">登入期間接收瀏覽器傳回的本機 OAuth 回呼</string>
-    <string name="fgs_subtype_generation">在背景產生語言模型回覆</string>
-    <string name="fgs_subtype_remote">維持 SSH 連線與連接埠轉送運作，讓你可以手動中斷</string>
     <string name="chat_dismiss_error">忽略錯誤</string>
     <string name="chat_jump_to_latest">跳到最新</string>
     <string name="common_copied_to_clipboard">已複製到剪貼簿</string>
