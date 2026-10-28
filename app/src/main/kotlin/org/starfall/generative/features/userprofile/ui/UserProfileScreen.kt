@@ -196,8 +196,10 @@ fun UserProfileScreen(
                         IconButton(onClick = { onChange { slot.withImageTransparency(it, 0.5f) } }) {
                             FluentIcon(Icons.Default.Refresh, stringResource(R.string.user_profile_background_transparency_reset))
                         }
+                        val sliderState = remember(slot) { SliderState(value = current.coerceIn(0f, 1f)) }
+                        sliderState.value = current.coerceIn(0f, 1f)
                         Slider(
-                            value = current.coerceIn(0f, 1f),
+                            state = sliderState,
                             onValueChange = { value -> onChange { slot.withImageTransparency(it, value) } },
                             modifier = Modifier.weight(1f)
                         )

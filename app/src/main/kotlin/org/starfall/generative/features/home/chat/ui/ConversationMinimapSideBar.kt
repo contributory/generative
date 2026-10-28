@@ -188,9 +188,9 @@ internal fun ConversationMinimapSideBar(
                             val border = Path().apply {
                                 moveTo(size.width, inset)
                                 lineTo(radius, inset)
-                                quadraticBezierTo(inset, inset, inset, radius)
+                                quadraticTo(inset, inset, inset, radius)
                                 lineTo(inset, size.height - radius)
-                                quadraticBezierTo(inset, size.height - inset, radius, size.height - inset)
+                                quadraticTo(inset, size.height - inset, radius, size.height - inset)
                                 lineTo(size.width, size.height - inset)
                             }
                             onDrawWithContent {

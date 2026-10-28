@@ -191,8 +191,10 @@ fun AppearanceSettingsView(
                     }, enabled = !LocalAmoledMode.current) {
                         FluentIcon(Icons.Default.RestartAlt, stringResource(R.string.settings_item_transparency_reset))
                     }
+                    val sliderState = remember { SliderState(value = itemTransparencyDraft.coerceIn(0f, 1f)) }
+                    sliderState.value = itemTransparencyDraft.coerceIn(0f, 1f)
                     Slider(
-                        value = itemTransparencyDraft.coerceIn(0f, 1f),
+                        state = sliderState,
                         onValueChange = { itemTransparencyDraft = it },
                         onValueChangeFinished = { onItemTransparencyChange(itemTransparencyDraft) },
                         modifier = Modifier.weight(1f),
