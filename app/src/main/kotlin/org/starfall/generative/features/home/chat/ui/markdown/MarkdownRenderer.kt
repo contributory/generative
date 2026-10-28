@@ -159,6 +159,14 @@ private fun RenderMarkdownDocument(
     val bodySize = preferences.effectiveMessageFontSize.sp
     val messageFont = preferences.messageFontFamily.toComposeFontFamily()
     val markdownTypography = messageMarkdownTypography()
+    // When an action begins, previously streamed text becomes a standalone Markdown block.
+    // Parsing that block is asynchronous: never replace already visible text with a blank area.
+    if (parsed.state is State.Loading ||
+        (parsed.state is State.Success && parsed.state.content != content)
+    ) {
+        CompletePlainTextMarkdown(content, modifier, fillMaxWidth)
+        return
+    }
     Markdown(
         state = parsed.state,
         modifier = modifier

@@ -45,6 +45,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.dismiss
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.runtime.mutableIntStateOf
+import kotlin.math.abs
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import org.starfall.generative.R
@@ -100,6 +104,7 @@ internal fun ConversationMinimapSideBar(
     onOpen: () -> Unit,
     onNavigate: () -> Unit,
     state: ConversationMinimapSideBarState,
+    tailSpacerPx: (String) -> Int = { 0 },
     modifier: Modifier = Modifier
 ) {
     val latestOnOpen by rememberUpdatedState(onOpen)
@@ -230,7 +235,7 @@ internal fun ConversationMinimapSideBar(
                     Box(Modifier.padding(horizontal = 5.dp, vertical = 8.dp)) {
                         key(conversationKey) {
                             ConversationMinimap(
-                                messages, listState, topObscuredPx, bottomObscuredPx,
+                                messages, listState, topObscuredPx, bottomObscuredPx, tailSpacerPx,
                                 onNavigate = {
                                     // Accessibility navigation has no touch gesture to restart the idle timer.
                                     if (!state.isInteracting) state.markInteraction()
@@ -252,11 +257,13 @@ private fun ConversationMinimap(
     listState: LazyListState,
     topObscuredPx: Int,
     bottomObscuredPx: Int,
+    tailSpacerPx: (String) -> Int,
     onNavigate: () -> Unit,
     modifier: Modifier
 ) {
-    val navigationRequests = remember { Channel<MinimapTarget>(Channel.CONFLATED) }
-    DisposableEffect(navigationRequests) { onDispose { navigationRequests.close() } }
+    val latestTailSpacer by rememberUpdatedState(tailSpacerPx)
+    val commands = remember { Channel<MinimapCommand>(Channel.UNLIMITED) }
+    DisposableEffect(commands) { onDispose { commands.close() } }
     val latestMessages by rememberUpdatedState(messages)
     val latestOnNavigate by rememberUpdatedState(onNavigate)
     val width = LocalConfiguration.current.screenWidthDp
@@ -268,7 +275,8 @@ private fun ConversationMinimap(
             val lines = text.lineSequence().take(32).map { it.length.coerceIn(4, 60) / 60f }.toList()
             val media = message.files.size + message.activeVersion.toolActivity.sumOf { it.files.size }
             // Heights of unvisited messages are estimates; measured lazy items replace them below.
-            val estimatedLines = maxOf(text.count { it == '\n' } + 1, message.content.length / (width / 8).coerceAtLeast(20))
+            val charsPerLine = (width / 8).coerceAtLeast(20)
+            val estimatedLines = text.lineSequence().sumOf { line -> maxOf(1, (line.length + charsPerLine - 1) / charsPerLine) }
             MinimapPreview(message.id, message.role == ChatRole.USER, lines, media > 0,
                 (48f + estimatedLines * 20f + media * 120f) * density)
         }
@@ -280,51 +288,71 @@ private fun ConversationMinimap(
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.map { it.key to it.size } }
             .collect { visible ->
                 visible.forEach { (key, size) ->
-                    if (key is String && key in ids && size > 0) heights[key] = size
+                    if (key is String && key in ids) {
+                        val natural = size - latestTailSpacer(key)
+                        if (natural > 0) heights[key] = natural
+                    }
                 }
             }
     }
-    // Keep the full conversation fitted to the rail. Measurements collected during scrolling
-    // are used on the next content change rather than shifting the map under the user's finger.
-    val mapHeights = remember(entries) {
-        entries.map { it.id to (heights[it.id]?.toFloat() ?: it.estimatedHeight) }
+    // Measured heights replace estimates as soon as they exist. Estimates that are still left are
+    // scaled by how far the measured ones deviated, so one unseen long reply cannot dominate the rail
+    // and make the finger stall in one stretch and leap over another.
+    val mapHeights = run {
+        var measuredSum = 0.0
+        var estimatedSum = 0.0
+        var measuredCount = 0
+        entries.forEach { entry ->
+            heights[entry.id]?.let { measuredSum += it; estimatedSum += entry.estimatedHeight; measuredCount++ }
+        }
+        val scale = if (measuredCount >= 2 && estimatedSum > 0.0)
+            (measuredSum / estimatedSum).toFloat().coerceIn(0.25f, 4f) else 1f
+        entries.map { it.id to (heights[it.id]?.toFloat() ?: (it.estimatedHeight * scale)) }
     }
     val spans = remember(mapHeights) { minimapSpans(mapHeights) }
     val contentHeight = mapHeights.sumOf { it.second.toDouble() }.toFloat()
-    // Keep the map fixed under the finger while newly visited messages are measured.
-    var draggingSpans by remember { mutableStateOf<List<MinimapSpan>?>(null) }
-    val displayedSpans = draggingSpans ?: spans
-    val latestSpans by rememberUpdatedState(spans)
+    val displayedSpans = spans
     val layout = listState.layoutInfo
     val readableStart = layout.viewportStartOffset + topObscuredPx
     val readableEnd = layout.viewportEndOffset - bottomObscuredPx
     val mappedViewport = minimapViewport(
         displayedSpans,
-        layout.visibleItemsInfo.mapNotNull { item -> (item.key as? String)?.let { MinimapVisibleItem(it, item.offset, item.size) } },
+        layout.visibleItemsInfo.mapNotNull { item -> (item.key as? String)?.let { MinimapVisibleItem(it, item.offset, (item.size - tailSpacerPx(it)).coerceAtLeast(0)) } },
         readableStart,
         readableEnd
     )
-    var draggingViewportFraction by remember { mutableStateOf<Float?>(null) }
-    val viewportFraction = ((readableEnd - readableStart).coerceAtLeast(0) / contentHeight.coerceAtLeast(1f))
+    // The rail is a plain scrollbar. One continuous value, scroll in 0..1, maps linearly to the thumb
+    // position and to a pixel offset in the chat; no message boundary takes part in the arithmetic.
+    var railPx by remember { mutableIntStateOf(0) }
+    val minThumbPx = with(LocalDensity.current) { 28.dp.toPx() }
+    val viewportPx = (readableEnd - readableStart).coerceAtLeast(0).toFloat()
+    val contentSafe = contentHeight.coerceAtLeast(1f)
+    val scrollRangePx = (contentHeight - viewportPx).coerceAtLeast(0f)
+    val thumbFraction = maxOf(viewportPx / contentSafe, if (railPx > 0) minThumbPx / railPx else 0f)
         .coerceIn(0f, 1f)
-    val viewport = mappedViewport?.let {
-        minimapIndicatorRange(it, draggingViewportFraction ?: viewportFraction)
-    }
+    val actualScroll = if (scrollRangePx <= 0f) 0f
+        else ((mappedViewport?.start ?: 0f) * contentSafe / scrollRangePx).coerceIn(0f, 1f)
+    var draggingScroll by remember { mutableStateOf<Float?>(null) }
+    val thumbTop = (draggingScroll ?: actualScroll) * (1f - thumbFraction)
+    val metrics by rememberUpdatedState(MinimapMetrics(contentHeight, viewportPx, thumbFraction, actualScroll))
+    val latestSpans by rememberUpdatedState(spans)
     val latestInsets by rememberUpdatedState(topObscuredPx to bottomObscuredPx)
-    LaunchedEffect(listState, navigationRequests) {
-        // Serialize scrolls and keep only the newest pending position. A new move must not
-        // cancel a scroll between measuring an offscreen item and positioning it.
-        for (target in navigationRequests) {
-            val current = latestMessages
-            val index = current.indexOfFirst { it.id == target.id }
-            if (index < 0) continue
-            var itemHeight = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == target.id }?.size
-                ?: heights[target.id]
+    LaunchedEffect(listState, commands) {
+        // One consumer applies every move in order, so a new command never cancels a scroll that is
+        // between measuring an offscreen item and positioning it. Pixel scrolls are merged per frame.
+        suspend fun naturalHeightOf(id: String): Int? =
+            listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == id }
+                ?.let { it.size - latestTailSpacer(id) }
+
+        suspend fun jump(target: MinimapTarget) {
+            val index = latestMessages.indexOfFirst { it.id == target.id }
+            if (index < 0) return
+            var itemHeight = naturalHeightOf(target.id) ?: heights[target.id]
             if (itemHeight == null) {
                 listState.scrollToItem(index)
-                itemHeight = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == target.id }?.size
+                itemHeight = naturalHeightOf(target.id)
             }
-            if (itemHeight != null) {
+            if (itemHeight != null && itemHeight > 0) {
                 heights[target.id] = itemHeight
                 val info = listState.layoutInfo
                 val start = info.viewportStartOffset + latestInsets.first
@@ -332,40 +360,141 @@ private fun ConversationMinimap(
                 listState.scrollToItem(index, minimapScrollOffset(itemHeight, target.fraction, end - start, start))
             }
         }
-    }
-    val navigate: (Float) -> Unit = { position ->
-        minimapTarget(displayedSpans, position)?.let { target ->
-            latestOnNavigate()
-            navigationRequests.trySend(target)
+
+        suspend fun scrollToEnd() {
+            val lastIndex = latestMessages.lastIndex
+            if (lastIndex < 0) return
+            val lastId = latestMessages[lastIndex].id
+            var itemHeight = naturalHeightOf(lastId) ?: heights[lastId]
+            if (itemHeight == null) {
+                listState.scrollToItem(lastIndex)
+                itemHeight = naturalHeightOf(lastId)
+            }
+            if (itemHeight != null && itemHeight > 0) {
+                val info = listState.layoutInfo
+                val end = info.viewportEndOffset - latestInsets.second
+                // Put the bottom edge of the newest message on the bottom of the readable area.
+                listState.scrollToItem(lastIndex, itemHeight - end)
+            }
+        }
+
+        var carried: MinimapCommand? = null
+        while (true) {
+            val command = carried ?: commands.receiveCatching().getOrNull() ?: break
+            carried = null
+            when (command) {
+                is MinimapCommand.Jump -> jump(command.target)
+                is MinimapCommand.Scroll -> {
+                    var px = command.px
+                    while (true) {
+                        val next = commands.tryReceive().getOrNull() ?: break
+                        if (next is MinimapCommand.Scroll) px += next.px else { carried = next; break }
+                    }
+                    listState.scrollBy(px)
+                }
+                MinimapCommand.ToStart -> listState.scrollToItem(0, 0)
+                MinimapCommand.ToEnd -> scrollToEnd()
+            }
         }
     }
-    val latestViewportFraction by rememberUpdatedState(viewportFraction)
-    val currentNavigate by rememberUpdatedState(navigate)
+    val jumpTo: (Float) -> Unit = { scroll ->
+        latestOnNavigate()
+        val m = metrics
+        when {
+            scroll <= 0f -> commands.trySend(MinimapCommand.ToStart)
+            scroll >= 1f -> commands.trySend(MinimapCommand.ToEnd)
+            else -> minimapTarget(
+                latestSpans, (scroll * m.scrollRangePx + m.viewportPx / 2f) / m.contentHeight.coerceAtLeast(1f)
+            )?.let { commands.trySend(MinimapCommand.Jump(it)) }
+        }
+    }
+    val currentJumpTo by rememberUpdatedState(jumpTo)
     val description = stringResource(R.string.chat_minimap_navigate)
     val userColor = MaterialTheme.colorScheme.primary
     val modelColor = MaterialTheme.colorScheme.onSurfaceVariant
     val highlight = MaterialTheme.colorScheme.primary
     Canvas(modifier.testTag("chat-minimap-map")
+        .onSizeChanged { railPx = it.height }
         .semantics {
             contentDescription = description
-            progressBarRangeInfo = ProgressBarRangeInfo(viewport?.start ?: 0f, 0f..1f)
-            setProgress { currentNavigate(it); true }
+            progressBarRangeInfo = ProgressBarRangeInfo(actualScroll, 0f..1f)
+            setProgress { currentJumpTo(it.coerceIn(0f, 1f)); true }
         }
-        .pointerInput(Unit) { detectTapGestures { currentNavigate(it.y / size.height.coerceAtLeast(1)) } }
         .pointerInput(Unit) {
-            detectVerticalDragGestures(
-                onDragStart = { point ->
-                    draggingSpans = latestSpans
-                    draggingViewportFraction = latestViewportFraction
-                    currentNavigate(point.y / size.height.coerceAtLeast(1))
-                },
-                onVerticalDrag = { change, _ ->
-                    change.consume()
-                    currentNavigate(change.position.y / size.height.coerceAtLeast(1))
-                },
-                onDragEnd = { draggingSpans = null; draggingViewportFraction = null },
-                onDragCancel = { draggingSpans = null; draggingViewportFraction = null }
-            )
+            // Press anywhere to go there, hold and drag to scroll. A drag moves the chat by the
+            // same share of its remaining distance as the finger moves of the rail's remaining
+            // distance, so motion is proportional and both ends are reached exactly.
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                val railHeight = size.height.toFloat().coerceAtLeast(1f)
+                val slop = viewConfiguration.touchSlop
+                var dragging = false
+                var scroll = 0f
+                var position = 0f
+                var lastY = down.position.y
+                try {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!dragging) {
+                            if (change.changedToUpIgnoreConsumed()) {
+                                change.consume()
+                                currentJumpTo(fingerToScroll(down.position.y / railHeight, metrics.thumbFraction))
+                                break
+                            }
+                            val dx = change.position.x - down.position.x
+                            val dy = change.position.y - down.position.y
+                            if (maxOf(abs(dx), abs(dy)) > slop) {
+                                // A mostly horizontal swipe belongs to the rail's dismiss gesture.
+                                if (abs(dy) < abs(dx)) return@awaitEachGesture
+                                dragging = true
+                                latestOnNavigate()
+                                val m = metrics
+                                val finger = down.position.y / railHeight
+                                val thumbStart = (draggingScroll ?: m.actualScroll) * (1f - m.thumbFraction)
+                                if (finger in thumbStart..(thumbStart + m.thumbFraction)) {
+                                    scroll = m.actualScroll // grabbed the thumb: no jump
+                                } else {
+                                    scroll = fingerToScroll(finger, m.thumbFraction)
+                                    currentJumpTo(scroll)
+                                }
+                                position = scroll * m.scrollRangePx
+                                draggingScroll = scroll
+                                lastY = change.position.y
+                                change.consume()
+                            }
+                            continue
+                        }
+                        if (!change.pressed) { change.consume(); break }
+                        val m = metrics
+                        val deltaFraction = (change.position.y - lastY) / railHeight
+                        lastY = change.position.y
+                        val newScroll = (scroll + deltaFraction / (1f - m.thumbFraction).coerceAtLeast(0.0001f))
+                            .coerceIn(0f, 1f)
+                        val delta = newScroll - scroll
+                        if (delta != 0f) {
+                            when {
+                                newScroll >= 1f -> { commands.trySend(MinimapCommand.ToEnd); position = m.scrollRangePx }
+                                newScroll <= 0f -> { commands.trySend(MinimapCommand.ToStart); position = 0f }
+                                else -> {
+                                    val px = if (delta > 0f) {
+                                        delta / (1f - scroll).coerceAtLeast(0.0001f) * (m.scrollRangePx - position).coerceAtLeast(0f)
+                                    } else {
+                                        delta / scroll.coerceAtLeast(0.0001f) * position.coerceAtLeast(0f)
+                                    }
+                                    position += px
+                                    commands.trySend(MinimapCommand.Scroll(px))
+                                }
+                            }
+                            scroll = newScroll
+                            draggingScroll = scroll
+                        }
+                        change.consume()
+                    }
+                } finally {
+                    draggingScroll = null
+                }
+            }
         }
     ) {
         displayedSpans.forEach { span ->
@@ -389,14 +518,29 @@ private fun ConversationMinimap(
                     Size(blockWidth, height * 0.5f), CornerRadius(2.dp.toPx()))
             }
         }
-        viewport?.let { range ->
-            val top = range.start * size.height
-            val bottom = maxOf(range.endInclusive * size.height, top + 3.dp.toPx()).coerceAtMost(size.height)
-            drawRect(highlight.copy(alpha = 0.12f), Offset(0f, top), Size(size.width, bottom - top))
-            drawRect(highlight.copy(alpha = 0.8f), Offset(0f, top), Size(size.width, bottom - top), style = Stroke(1.dp.toPx()))
-        }
+        val top = thumbTop * size.height
+        val bottom = (top + thumbFraction * size.height).coerceAtMost(size.height)
+        drawRect(highlight.copy(alpha = 0.12f), Offset(0f, top), Size(size.width, bottom - top))
+        drawRect(highlight.copy(alpha = 0.8f), Offset(0f, top), Size(size.width, bottom - top), style = Stroke(1.dp.toPx()))
     }
 }
+
+private sealed interface MinimapCommand {
+    class Jump(val target: MinimapTarget) : MinimapCommand
+    class Scroll(val px: Float) : MinimapCommand
+    data object ToStart : MinimapCommand
+    data object ToEnd : MinimapCommand
+}
+
+private class MinimapMetrics(
+    val contentHeight: Float, val viewportPx: Float, val thumbFraction: Float, val actualScroll: Float
+) {
+    val scrollRangePx: Float get() = (contentHeight - viewportPx).coerceAtLeast(0f)
+}
+
+/** Scroll value (0..1) whose thumb is centered on the finger, clamped so the ends stay reachable. */
+private fun fingerToScroll(finger: Float, thumbFraction: Float): Float =
+    ((finger - thumbFraction / 2f) / (1f - thumbFraction).coerceAtLeast(0.0001f)).coerceIn(0f, 1f)
 
 private data class MinimapPreview(
     val id: String, val user: Boolean, val lines: List<Float>, val hasMedia: Boolean, val estimatedHeight: Float

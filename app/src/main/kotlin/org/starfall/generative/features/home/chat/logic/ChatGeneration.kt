@@ -4,8 +4,6 @@ import kotlinx.coroutines.*
 import kotlin.coroutines.EmptyCoroutineContext
 import org.starfall.generative.shared.files.TemporaryChatFiles
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.MessageVersion
@@ -22,8 +20,6 @@ import org.starfall.generative.features.home.chat.model.ChatStreamStatus
 
 private const val MAX_GENERATION_TEXT_CHARS = 512_000
 private const val MAX_GENERATION_SIGNATURE_CHARS = 64_000
-// While streaming, the partial answer is checkpointed this often so a crash or process kill keeps it.
-private const val PARTIAL_SAVE_INTERVAL_MS = 2_000L
 
 /** Marks a persistence failure so the chat screen can show it inline in the user's language. */
 internal const val SAVE_CONVERSATION_ERROR_PREFIX = "Could not save conversation:"
@@ -53,9 +49,6 @@ internal class ChatGeneration(
     private var job: Job? = null
     private var nextGenerationId = 0L
     @Volatile private var activeStopSession: GenerationStopSession? = null
-    private val pendingUpdateWrites = linkedSetOf<Job>()
-    private val pendingUpdateWritesLock = Any()
-    private val persistenceMutex = Mutex()
 
     init {
         require(charactersPerBatch > 0) { "charactersPerBatch must be positive" }
@@ -97,14 +90,10 @@ internal class ChatGeneration(
                 conversation: Conversation,
                 allowStoppedSnapshot: Boolean = false
             ) {
-                persistenceMutex.withLock {
-                    // A queued checkpoint must not overwrite the frozen response after Stop.
-                    // The final frozen snapshot is explicitly allowed through this guard.
-                    if (stopSession.isRequested() && !allowStoppedSnapshot) return@withLock
-                    // Keep the live placeholder for the streaming UI, but never write an AI message
-                    // that still has no answer, reasoning, files, tools or error.
-                    save(conversation.pruningEmptyResponses())
-                }
+                // Only completed or interrupted assistant blocks reach storage. A Stop that
+                // races with a block boundary is saved by the finalization path instead.
+                if (stopSession.isRequested() && !allowStoppedSnapshot) return
+                save(conversation.pruningEmptyResponses())
             }
 
             val initialVersion = snapshot?.messages?.firstOrNull { it.id == messageId }?.activeVersion
@@ -193,61 +182,34 @@ internal class ChatGeneration(
                 }
             }
 
-            var lastCheckpointAt = System.currentTimeMillis()
-            suspend fun checkpointPartialResponse() {
-                val now = System.currentTimeMillis()
-                if (stopSession.isRequested()) return
-                if (now - lastCheckpointAt < PARTIAL_SAVE_INTERVAL_MS) return
-                if (output.isEmpty() && reasoningOutput.isEmpty()) return
-                lastCheckpointAt = now
-                try {
-                    val checkpoint = responseSnapshot()
-                    if (stopSession.isRequested()) return
-                    snapshot = checkpoint
-                    persist(checkpoint)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    // A failed checkpoint must not abort the generation; the final save still runs.
-                    DebugLog.error(DebugLogCategory.ERRORS, "Generation", "Could not save partial response", e)
-                }
-            }
-
             val startedAtMs = System.currentTimeMillis()
             DebugLog.log(DebugLogCategory.TOKENS, "Generation") {
                 val history = snapshot?.messages.orEmpty()
                 "Context ≈ ${history.sumOf { estimateMessageTokens(it, true) }} tokens in ${history.size} messages (estimate)"
             }
             try {
-                if (!stopSession.isRequested()) {
-                    streamDisplay.publishInitialState()
-                    persist(snapshot!!)
-                }
+                if (!stopSession.isRequested()) streamDisplay.publishInitialState()
                 chunks.collect { chunk ->
                     if (stopSession.isRequested()) return@collect
                     when (chunk) {
                         is GenerationEvent.Text -> {
-                            val accepted = synchronized(stopSession.lock) {
-                                if (stopSession.requested) false else {
+                            synchronized(stopSession.lock) {
+                                if (!stopSession.requested) {
                                     appendLimited(output, chunk.text, MAX_GENERATION_TEXT_CHARS, "Answer")
                                     streamDisplay.appendText(chunk.text)
-                                    true
                                 }
                             }
-                            if (accepted) checkpointPartialResponse()
                         }
                         is GenerationEvent.Reasoning -> {
-                            val accepted = synchronized(stopSession.lock) {
-                                if (stopSession.requested) false else {
+                            synchronized(stopSession.lock) {
+                                if (!stopSession.requested) {
                                     appendLimited(reasoningOutput, chunk.text, MAX_GENERATION_TEXT_CHARS, "Reasoning")
                                     chunk.signature?.let {
                                         appendLimited(reasoningSignatureOutput, it, MAX_GENERATION_SIGNATURE_CHARS, "Reasoning signature")
                                     }
                                     streamDisplay.appendExplicitReasoning(chunk.text)
-                                    true
                                 }
                             }
-                            if (accepted) checkpointPartialResponse()
                         }
                         is GenerationEvent.Usage -> {
                             if (usageContextKey != null && chunk.usage.isValid && !stopSession.isRequested()) {
@@ -256,7 +218,6 @@ internal class ChatGeneration(
                                 snapshot = recordContextUsage(current, activeMessageId, chunk.usage, usageContextKey)
                                 if (stopSession.isRequested()) return@collect
                                 publish(snapshot!!)
-                                persist(snapshot!!)
                             }
                         }
                         is GenerationEvent.Tool -> {
@@ -304,7 +265,6 @@ internal class ChatGeneration(
                             })
                             if (stopSession.isRequested()) return@collect
                             publish(snapshot!!)
-                            persist(snapshot!!)
                         }
                         is GenerationEvent.UserMessage -> {
                             val accepted = synchronized(stopSession.lock) {
@@ -454,12 +414,7 @@ internal class ChatGeneration(
         snapshot = updated
         snapshotMutationRevision++
         publish(updated)
-        val writeJob = scope.launch(start = CoroutineStart.LAZY) { persistenceMutex.withLock { save(updated) } }
-        synchronized(pendingUpdateWritesLock) { pendingUpdateWrites += writeJob }
-        writeJob.invokeOnCompletion {
-            synchronized(pendingUpdateWritesLock) { pendingUpdateWrites -= writeJob }
-        }
-        writeJob.start()
+        // Metadata changes remain in this generation's RAM snapshot until its block settles.
     }
 
     /** Synchronous UI cutoff first, network/job cancellation second. */
@@ -475,13 +430,6 @@ internal class ChatGeneration(
 
     suspend fun stopAndJoin() {
         job?.cancelAndJoin()
-        // Tool activity can schedule persistence in the ViewModel scope independently of [job].
-        // Join every such write before a full restore replaces the conversation database.
-        while (true) {
-            val writes = synchronized(pendingUpdateWritesLock) { pendingUpdateWrites.toList() }
-            if (writes.isEmpty()) break
-            writes.joinAll()
-        }
     }
 }
 private fun logToolActivity(activity: org.starfall.generative.shared.model.ToolActivity) {

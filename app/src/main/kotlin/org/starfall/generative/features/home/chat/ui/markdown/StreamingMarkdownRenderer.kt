@@ -273,9 +273,19 @@ private fun IncrementalStreamingMarkdown(
             parsing = parsing,
             streamFreezeSignal = streamFreezeSignal
         )
+        val frozen = streamFreezeSignal?.frozen?.collectAsState()?.value == true
+        // Stop cancels in-flight parsing. Keep all already rendered Markdown nodes, but expose
+        // any committed text the parser had not processed as a plain-text overflow instead of
+        // leaving part (or all) of the response invisible.
+        val visibleSnapshot = renderSnapshot.value.let { parsed ->
+            if (frozen && parsed.overflowStart == null && streamSnapshot.length > parsed.parsedLength) {
+                // The overflow renderer replaces unstable nodes; include their source too.
+                parsed.copy(overflowStart = parsed.unstableNodes.firstOrNull()?.startOffset ?: parsed.parsedLength)
+            } else parsed
+        }
         RenderIncrementalMarkdown(
             parser = incrementalParser,
-            renderSnapshot = renderSnapshot.value,
+            renderSnapshot = visibleSnapshot,
             latestSnapshot = latestSnapshot,
             truncationLabel = truncationLabel,
             modifier = modifier,

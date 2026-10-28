@@ -190,6 +190,8 @@ internal object ChatRenderMetrics {
     fun recordChatScreenRecomposition() { screenRecompositions.incrementAndGet() }
     fun recordMessageCardRecomposition() { messageRecompositions.incrementAndGet() }
 
+    internal fun messageRecompositionCountForTests(): Long = messageRecompositions.get()
+
     internal fun resetForTests() {
         screenRecompositions.set(0)
         messageRecompositions.set(0)

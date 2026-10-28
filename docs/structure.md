@@ -169,6 +169,11 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   └── 📁 ui/
 │   │       ├── 📄 MediaStorageSheet.kt
 │   │       └── 📄 StorageScreen.kt
+│   ├── 📁 userprofile/
+│   │   └── 📁 ui/
+│   │       ├── 📄 MediaStoragePhotoSheet.kt
+│   │       ├── 📄 UserProfileImages.kt
+│   │       └── 📄 UserProfileScreen.kt
 │   └── 📁 tools/
 │       └── 📁 ui/
 │           ├── 📄 ImageToolSettings.kt
@@ -249,6 +254,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │       ├── 📄 AssistantMessageCard.kt
 │   │   │       ├── 📄 AttachmentPreview.kt
 │   │   │       ├── 📄 ChatAppbar.kt
+│   │   │       ├── 📄 ChatMessageCallbacks.kt
 │   │   │       ├── 📄 ChatMessageDialogs.kt
 │   │   │       ├── 📄 ChatOpeningVeil.kt
 │   │   │       ├── 📄 ChatRenderCaches.kt

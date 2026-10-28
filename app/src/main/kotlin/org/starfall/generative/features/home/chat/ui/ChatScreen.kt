@@ -53,6 +53,7 @@ import kotlinx.coroutines.flow.StateFlow
 import androidx.compose.ui.unit.Velocity
 import kotlin.math.exp
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlinx.coroutines.isActive
 import org.starfall.generative.features.home.chat.logic.SAVE_CONVERSATION_ERROR_PREFIX
 import org.starfall.generative.shared.model.ChatRole
@@ -90,9 +91,17 @@ import org.starfall.generative.shared.ui.layout.prominentContainerColor
 private const val OPEN_AT_BOTTOM_OFFSET = 10_000_000
 
 // Smoothly track the newest reply with velocity, not a fresh per-line scroll animation.
-private const val CHAT_FOLLOW_DISTANCE_TIME_SECONDS = 0.18f
-private const val CHAT_FOLLOW_VELOCITY_EASE_SECONDS = 0.085f
-private const val CHAT_FOLLOW_MAX_SPEED_DP_PER_SECOND = 1_700f
+private const val CHAT_FOLLOW_DISTANCE_TIME_SECONDS = 0.11f
+private const val CHAT_FOLLOW_VELOCITY_EASE_SECONDS = 0.065f
+private const val CHAT_FOLLOW_MAX_SPEED_DP_PER_SECOND = 2_200f
+private const val CHAT_FOLLOW_BOTTOM_GAP_SCREEN_FRACTION = 0.30f
+private const val CHAT_FINISH_SETTLE_STABLE_FRAMES = 20
+private const val CHAT_FINISH_SETTLE_MAX_NANOS = 2_000_000_000L
+
+/** Keep 30% of the window's height below the newest AI text, limited only by usable chat space. */
+internal fun chatFollowBottomGapPx(screenHeightPx: Int, visibleChatHeightPx: Int): Int =
+    (screenHeightPx.coerceAtLeast(0) * CHAT_FOLLOW_BOTTOM_GAP_SCREEN_FRACTION)
+        .roundToInt().coerceAtMost(visibleChatHeightPx.coerceAtLeast(0))
 
 // The opening veil lifts after the list has stayed at its newest message with no background work
 // pending for this many frames.
@@ -163,6 +172,16 @@ fun ChatScreen(
     onOpenSkillsSettings: (() -> Unit)? = null,
     isDrawerOpening: Boolean = false
 ) {
+    val density = LocalDensity.current
+    var appBarHeightPx by remember { mutableIntStateOf(0) }
+    var inputAreaHeightPx by remember { mutableIntStateOf(0) }
+    var bottomPanelHeightPx by remember { mutableIntStateOf(0) }
+    var chatRootCoordinates by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
+    var inputAreaBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    val appBarHeight = if (appBarHeightPx > 0) with(density) { appBarHeightPx.toDp() }
+        else 72.dp
+    val navigationBarHeight = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
+
     val conversationKey = conversation?.id ?: "__empty_conversation__"
     // Chronological LazyColumn: start at the last item rather than composing the oldest on open.
     val initialLastIndex = ((conversation?.messages?.size ?: 0) + queuedMessages.size - 1).coerceAtLeast(0)
@@ -170,18 +189,27 @@ fun ChatScreen(
         LazyListState(initialLastIndex, OPEN_AT_BOTTOM_OFFSET)
     }
     val minimapState = remember(conversationKey) { ConversationMinimapSideBarState() }
+    // Blank scroll room appended to the newest items; the minimap must not count it as content.
+    val tailSpacers = remember(conversationKey) { mutableStateMapOf<String, Int>() }
     LaunchedEffect(isDrawerOpening) {
         if (isDrawerOpening) minimapState.isOpen = false
     }
     var followBottom by remember(conversationKey) { mutableStateOf(true) }
     // An interrupted follow stays paused until a manual swipe actually reaches the newest end.
     var userPausedFollow by remember(conversationKey) { mutableStateOf(false) }
+    // When streaming ends, loading/toolbar and Markdown's final layout can change the last
+    // item's size. Keep following until it settles without discarding its incremental tree.
+    var finishSettling by remember(conversationKey) { mutableStateOf(false) }
+    var wasStreamingHere by remember(conversationKey) { mutableStateOf(false) }
+    var seenNewestVersionKey by remember(conversationKey) { mutableStateOf<String?>(null) }
     fun resumeFollowing() {
         userPausedFollow = false
         followBottom = true
     }
     var openingAtBottom by remember(conversationKey) { mutableStateOf(true) }
     val anchor = remember(conversationKey) { ChatScrollAnchor() }
+    // Unlike the per-conversation detector, a first-send request survives null -> new chat ID.
+    var firstSendAwaitingAnchor by remember { mutableStateOf(false) }
     var jumpingToBottom by remember(conversationKey) { mutableStateOf(false) }
     val settleTracker = remember(conversationKey) { ChatSettleTracker() }
     var revealed by remember(conversationKey) { mutableStateOf(false) }
@@ -200,27 +228,35 @@ fun ChatScreen(
     val streamingHere = isGenerating && generatingConversationId == conversation?.id
     val messageIds = remember(conversationKey, structuralRevision) { conversationMessages.map { it.id } }
     val queuedIds = remember(queuedMessages) { queuedMessages.map { it.id } }
-    val messages = remember(conversationKey, structuralRevision, conversation?.updatedAt, queuedMessages) {
+    // Tool activity and reasoning updates do not necessarily advance updatedAt or the
+    // structural revision. Key by the actual message snapshot so live Actions become visible.
+    val messages = remember(conversationMessages, queuedMessages) {
         conversationMessages + queuedMessages
     }
-    val tailAnchorId = anchor.messageId
-        ?: messages.lastOrNull()?.takeIf { it.role == ChatRole.USER && !it.isQueued }?.id
     SideEffect {
         ChatRenderMetrics.recordChatScreenRecomposition()
-        anchor.detector.observe(conversationMessages, structuralRevision)?.let { id ->
+        val newUserId = anchor.detector.observe(conversationMessages, structuralRevision)
+            ?: if (firstSendAwaitingAnchor) {
+                conversationMessages.lastOrNull { it.role == ChatRole.USER && !it.isQueued }?.id
+            } else null
+        newUserId?.let { id ->
+            firstSendAwaitingAnchor = false
             openingAtBottom = false
             anchor.start(id)
             resumeFollowing() // Sending a new message explicitly resumes following.
         }
         if (anchor.messageId?.let { id -> messages.none { it.id == id } } == true) anchor.end()
         if (streamingHere) openingAtBottom = false
+        if (wasStreamingHere && !streamingHere) finishSettling = autoScroll && followBottom && !userPausedFollow
+        if (streamingHere) finishSettling = false
+        wasStreamingHere = streamingHere
     }
 
     var editDraft by remember(conversation?.id) { mutableStateOf<ChatInputEditDraft?>(null) }
     val selection = LocalChatAttachmentSelection.current ?: remember(conversation?.id) { ChatAttachmentSelection() }
     var inputAttachments by selection.attachments
     val chatModeRequest = selection.requestId
-    val toggleChatImage: (String) -> Unit = selection::toggle
+    val toggleChatImage: (String) -> Unit = remember(selection) { selection::toggle }
 
     // Dialog state for deleting a message
     var deletingMessageId by remember(conversation?.id) { mutableStateOf<String?>(null) }
@@ -241,8 +277,7 @@ fun ChatScreen(
         lastResponseState?.generationInterrupted,
         lastResponseState?.processingFinishedAt
     ) { unansweredUserMessageIds(conversationMessages) }
-    // Streaming text is followed by the per-frame loop below; stepping on text length made the scroll jump per chunk.
-    val autoScrollTick = if (!autoScroll || streamingHere) null else lastMessage?.activeVersionIndex
+    // A response is followed only while it is streaming; finishing must not snap the list.
     // A chat that was already settled at its newest message earlier in this process, and whose parsed
     // content is still in the (evictable) RAM cache, opens at its final size on the first frame and needs
     // no veil. Otherwise the first open hides the chat until it is fully loaded and at the latest message.
@@ -266,16 +301,35 @@ fun ChatScreen(
         if (!isGenerating) action()
     }
     // A small edge tolerance prevents a gesture from needing an extra swipe for its last pixels.
-    val resumeEdgePx = with(LocalDensity.current) { 20.dp.roundToPx() }
+    val resumeEdgePx = with(density) { 20.dp.roundToPx() }
+    val appBarTopPx = with(density) { (appBarHeight + 8.dp).roundToPx() }
+    fun visibleContentGapPx(): Int {
+        val layout = listState.layoutInfo
+        return chatFollowBottomGapPx(
+            layout.viewportSize.height, (layout.viewportEndOffset - appBarTopPx).coerceAtLeast(0)
+        )
+    }
+    fun distanceToLatestContent(): Int? {
+        val layout = listState.layoutInfo
+        val index = messages.lastIndex
+        val item = layout.visibleItemsInfo.firstOrNull { it.index == index } ?: return null
+        val spacer = tailSpacers[messages[index].id] ?: 0
+        val gap = if (messages[index].role == ChatRole.MODEL) visibleContentGapPx() else 0
+        return latestContentDistancePx(item.offset, item.size, spacer, layout.viewportEndOffset, gap)
+    }
     fun reachedLatest(): Boolean {
         val layout = listState.layoutInfo
-        if (layout.totalItemsCount == 0) return false
-        if (!listState.canScrollForward) return true
-        val last = layout.visibleItemsInfo.lastOrNull { it.index == layout.totalItemsCount - 1 }
-            ?: return false
-        // Only within the actual end of the item; a blank tail must not count as a hit.
-        return last.offset + last.size - layout.viewportEndOffset in 0..resumeEdgePx
+        val item = layout.visibleItemsInfo.firstOrNull { it.index == messages.lastIndex }
+            ?: return !listState.canScrollForward
+        val contentBottom = item.offset + item.size - (tailSpacers[messages.last().id] ?: 0)
+        // Being at the very end of the blank tail is NOT being at the latest answer:
+        // the last line might already be hidden beneath the translucent AppBar.
+        return contentBottom >= appBarTopPx &&
+            (distanceToLatestContent() ?: Int.MAX_VALUE) <= resumeEdgePx
     }
+    // The nested-scroll connection outlives message-list recompositions. Never keep a callback
+    // from the initial empty conversation that doesn't know the newest reply's ID or spacer.
+    val latestReached by rememberUpdatedState { reachedLatest() }
     val scrollConnection = remember(listState, resumeEdgePx) {
         object : NestedScrollConnection {
             private var swipingTowardsLatest = false
@@ -302,13 +356,13 @@ fun ChatScreen(
                 // bottom, not only when the fling ends (which may report zero velocity).
                 if (userPausedFollow && swipingTowardsLatest && movingTowardsLatest &&
                     (source == NestedScrollSource.UserInput || source == NestedScrollSource.SideEffect) &&
-                    reachedLatest()
+                    latestReached()
                 ) resumeFollowing()
                 return Offset.Zero
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (userPausedFollow && swipingTowardsLatest && reachedLatest()) resumeFollowing()
+                if (userPausedFollow && swipingTowardsLatest && latestReached()) resumeFollowing()
                 swipingTowardsLatest = false
                 return Velocity.Zero
             }
@@ -322,10 +376,13 @@ fun ChatScreen(
     suspend fun scrollToBottom(includeQueued: Boolean = true) {
         val index = if (includeQueued) messages.lastIndex else conversationMessages.lastIndex
         if (index < 0) return
-        // The tail padding fills free room *after* the newest bubble, not between the user
-        // message and its reply. Show that padded end rather than scrolling past it.
-        if (tailAnchorId != null) listState.revealItemBottom(index)
-        else listState.scrollToItem(index, OPEN_AT_BOTTOM_OFFSET)
+        val id = messages[index].id
+        // Reveal text and actions, NOT the end of the invisible padding inside the item.
+        listState.revealItemBottom(
+            index,
+            trailingSpacerPx = { tailSpacers[id] ?: 0 },
+            bottomGapPx = if (messages[index].role == ChatRole.MODEL) visibleContentGapPx() else 0
+        )
     }
     suspend fun animateScrollToBottom() {
         val index = messages.lastIndex
@@ -340,18 +397,19 @@ fun ChatScreen(
         val firstLoad = seenMessageIds.isEmpty()
         seenMessageIds.addAll(messageIds)
         if (firstLoad) {
-            if (messages.isNotEmpty() && openingAtBottom) {
+            if (messages.isNotEmpty() && openingAtBottom && !firstSendAwaitingAnchor && !anchor.settling) {
                 snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > 0 }
-                if (openingAtBottom) scrollToBottom()
+                if (openingAtBottom && !anchor.settling) scrollToBottom()
             }
             return@LaunchedEffect
         }
-        if (hasNewMessage && !anchor.settling &&
-            (hasNewUserMessage || (autoScroll && followBottom && !userPausedFollow))
+        // Explicit user sends belong to ChatAnchorEffects. A competing jump-to-end can
+        // otherwise undo the placement beneath the AppBar before the first reply frame.
+        if (hasNewMessage && !hasNewUserMessage && !anchor.settling &&
+            autoScroll && followBottom && !userPausedFollow
         ) {
             openingAtBottom = false
             scrollToBottom()
-            if (hasNewUserMessage) resumeFollowing()
         }
     }
     LaunchedEffect(conversationKey, queuedIds) {
@@ -367,8 +425,8 @@ fun ChatScreen(
         if (!openingAtBottom || messages.isEmpty()) return@LaunchedEffect
         // A saved conversation may continue measuring after the initial scroll. This runs only
         // while opening it, never while the user scrolls or a new answer is streaming.
-        snapshotFlow { listState.canScrollForward }.collect { canScrollForward ->
-            if (openingAtBottom && canScrollForward && !anchor.settling) {
+        snapshotFlow { !reachedLatest() }.collect { needsScroll ->
+            if (openingAtBottom && needsScroll && !anchor.settling) {
                 withFrameNanos { }
                 if (openingAtBottom && !anchor.settling) scrollToBottom()
             }
@@ -382,7 +440,7 @@ fun ChatScreen(
         var stableFrames = 0
         while (true) {
             withFrameNanos { }
-            val settled = settleTracker.pending == 0 && !listState.canScrollForward
+            val settled = settleTracker.pending == 0 && reachedLatest()
             stableFrames = if (settled) stableFrames + 1 else 0
             if (stableFrames >= OPENING_STABLE_FRAMES) break
         }
@@ -393,58 +451,73 @@ fun ChatScreen(
         // Remember the settled state so the next open of this chat is instant. Only record while the
         // view is at the newest message with its assets ready, never a half-loaded layout.
         snapshotFlow {
-            settleTracker.pending == 0 && !listState.canScrollForward
+            settleTracker.pending == 0 && reachedLatest()
         }.first { it }
         ChatOpenCache.remember(conversationKey, openSignature, renderEnvironment, settleTracker.readyAssets())
     }
-    LaunchedEffect(
-        conversation?.id,
-        conversationMessages.size,
-        autoScroll,
-        autoScrollTick,
-        followBottom,
-        userPausedFollow,
-        anchor.settling,
-        streamingHere,
-        if (autoScroll) summaryProgress?.progress else null
-    ) {
-        if (autoScroll && followBottom && !userPausedFollow && !anchor.settling && messages.isNotEmpty() && !streamingHere) {
-            // Let a finger drag or fling finish before a programmatic correction takes over.
-            snapshotFlow { listState.isScrollInProgress }.first { !it }
-            if (followBottom && !userPausedFollow) scrollToBottom(includeQueued = true)
-        }
+    // Keep the follower coroutine mounted across streaming -> settled. Restarting it on
+    // streamingHere/finishSettling reset its velocity at exactly the completion boundary.
+    // Observe the latest layout and message data without capturing a stale list.
+    val liveStreamState = rememberUpdatedState(streamingHere)
+    val followMessagesState = rememberUpdatedState(conversationMessages)
+    val followGapState = rememberUpdatedState { visibleContentGapPx() }
+    val recoverBottomState = rememberUpdatedState<suspend () -> Unit> {
+        scrollToBottom(includeQueued = false)
     }
-    // One continuous follower: incoming lines change the distance, never restart a scroll animation.
     val maxFollowSpeedPx = with(LocalDensity.current) { CHAT_FOLLOW_MAX_SPEED_DP_PER_SECOND.dp.toPx() }
-    LaunchedEffect(conversation?.id, conversationMessages.size, autoScroll, streamingHere, followBottom, userPausedFollow, anchor.settling, maxFollowSpeedPx) {
-        if (!autoScroll || !streamingHere || !followBottom || userPausedFollow || anchor.settling) return@LaunchedEffect
-        var previousFrame = 0L
-        var velocity = 0f
+    LaunchedEffect(conversation?.id, autoScroll, followBottom, userPausedFollow, maxFollowSpeedPx) {
+        if (!autoScroll || !followBottom || userPausedFollow) return@LaunchedEffect
         while (isActive) {
-            if (!followBottom || userPausedFollow) return@LaunchedEffect
-            val frame = withFrameNanos { it }
-            val seconds = if (previousFrame == 0L) 1f / 60f else
-                ((frame - previousFrame) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
-            previousFrame = frame
-            if (anchor.settling || listState.isScrollInProgress || conversationMessages.isEmpty()) {
-                velocity = 0f
-                continue
-            }
-            val layout = listState.layoutInfo
-            val item = layout.visibleItemsInfo.firstOrNull { it.index == conversationMessages.lastIndex }
-            if (item == null) {
-                // A structural change can move the reply offscreen; recover it once, not per line.
-                scrollToBottom(includeQueued = false)
-                velocity = 0f
-                continue
-            }
-            val remaining = (item.offset + item.size - layout.viewportEndOffset).coerceAtLeast(0).toFloat()
-            val targetVelocity = min(remaining / CHAT_FOLLOW_DISTANCE_TIME_SECONDS, maxFollowSpeedPx)
-            velocity += (targetVelocity - velocity) * (1f - exp(-seconds / CHAT_FOLLOW_VELOCITY_EASE_SECONDS))
-            if (remaining > 0.5f && velocity > 0f) {
-                // Raw delta avoids creating a competing scroll mutation on every rendered frame.
-                // User drags/flings still take priority through isScrollInProgress and the pause flag.
-                listState.dispatchRawDelta(min(remaining, velocity * seconds))
+            // Idle means suspended, not an always-running frame loop.
+            snapshotFlow { liveStreamState.value || finishSettling }.first { it }
+            var previousFrame = 0L
+            var velocity = 0f
+            var settleStartFrame = 0L
+            var lastItemSize = -1
+            var stableFrames = 0
+            while (isActive && (liveStreamState.value || finishSettling)) {
+                val frame = withFrameNanos { it }
+                val seconds = if (previousFrame == 0L) 1f / 60f else
+                    ((frame - previousFrame) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
+                previousFrame = frame
+                val visibleMessages = followMessagesState.value
+                if (anchor.settling || listState.isScrollInProgress || visibleMessages.isEmpty()) {
+                    velocity = 0f
+                    continue
+                }
+                val layout = listState.layoutInfo
+                val item = layout.visibleItemsInfo.firstOrNull { it.index == visibleMessages.lastIndex }
+                if (item == null) {
+                    // Once the response settles, never teleport the user to the end.
+                    if (!liveStreamState.value) {
+                        finishSettling = false
+                        break
+                    }
+                    recoverBottomState.value()
+                    velocity = 0f
+                    continue
+                }
+                val remaining = latestContentDistancePx(
+                    item.offset, item.size, tailSpacers[visibleMessages.last().id] ?: 0,
+                    layout.viewportEndOffset, followGapState.value()
+                ).coerceAtLeast(0).toFloat()
+                if (!liveStreamState.value) {
+                    if (settleStartFrame == 0L) settleStartFrame = frame
+                    stableFrames = if (item.size == lastItemSize && remaining <= 0.5f) stableFrames + 1 else 0
+                    lastItemSize = item.size
+                    if (stableFrames >= CHAT_FINISH_SETTLE_STABLE_FRAMES ||
+                        frame - settleStartFrame > CHAT_FINISH_SETTLE_MAX_NANOS
+                    ) {
+                        finishSettling = false
+                        break
+                    }
+                }
+                val targetVelocity = min(remaining / CHAT_FOLLOW_DISTANCE_TIME_SECONDS, maxFollowSpeedPx)
+                velocity += (targetVelocity - velocity) * (1f - exp(-seconds / CHAT_FOLLOW_VELOCITY_EASE_SECONDS))
+                if (remaining > 0.5f && velocity > 0f) {
+                    // User gestures retain priority; no competing scroll animation is started.
+                    listState.dispatchRawDelta(min(remaining, velocity * seconds))
+                }
             }
         }
     }
@@ -461,16 +534,6 @@ fun ChatScreen(
         // Scrolling only tucks the keyboard away; it must not clear the text selection (a tap does that).
         if (listState.isScrollInProgress) keyboardController?.hide()
     }
-
-    val density = LocalDensity.current
-    var appBarHeightPx by remember { mutableIntStateOf(0) }
-    var inputAreaHeightPx by remember { mutableIntStateOf(0) }
-    var bottomPanelHeightPx by remember { mutableIntStateOf(0) }
-    var chatRootCoordinates by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
-    var inputAreaBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-    val appBarHeight = if (appBarHeightPx > 0) with(density) { appBarHeightPx.toDp() }
-        else 72.dp
-    val navigationBarHeight = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
 
     PlatformTextSelection {
     BoxWithConstraints(
@@ -548,13 +611,33 @@ fun ChatScreen(
             val visibleChatPx = with(density) {
                 (maxHeight - (appBarHeight + 8.dp) - bottomClearance).coerceAtLeast(0.dp).roundToPx()
             }
+            // The newest AI reply reserves 30% of the window below its content, with a cap
+            // for the remaining chat viewport when the keyboard or composer grows.
+            val followBottomGapPx = chatFollowBottomGapPx(constraints.maxHeight, visibleChatPx)
             val newestMessageId = messages.lastOrNull()?.id
             val precedingUserId = messages.getOrNull(messages.size - 2)
                 ?.takeIf { it.role == ChatRole.USER && messages.lastOrNull()?.role == ChatRole.MODEL }?.id
             val tailTurn = remember(conversationKey) { TailTurnAnchor(with(density) { 112.dp.roundToPx() }) }
+            // The floor only guards a stream ending; a new version of the same reply (edited text,
+            // regenerated answer, edited user message) must start from its own height, not the old one.
+            val newestVersionKey = messages.lastOrNull()?.let { "${it.id}:${it.versions.size}:${it.activeVersionIndex}" }
+            val replyHeightFloor = remember(conversationKey, newestVersionKey) { ReplyHeightFloor() }
+            val currentFollowing by rememberUpdatedState { followBottom && !userPausedFollow && !anchor.settling }
+            LaunchedEffect(conversationKey, newestVersionKey) {
+                // An edit that shortens or lengthens the newest message changes its height without any
+                // structural change, so nothing re-reveals it. Skip the initial composition and streams.
+                if (seenNewestVersionKey == null) { seenNewestVersionKey = newestVersionKey; return@LaunchedEffect }
+                if (seenNewestVersionKey == newestVersionKey) return@LaunchedEffect
+                seenNewestVersionKey = newestVersionKey
+                if (liveStreamState.value || !currentFollowing()) return@LaunchedEffect
+                withFrameNanos { }
+                withFrameNanos { }
+                if (!liveStreamState.value && currentFollowing()) scrollToBottom(includeQueued = false)
+            }
             ChatAnchorEffects(anchor, listState,
                 itemIndexOf = { id -> messages.indexOfFirst { it.id == id } },
-                itemCount = { messages.size }
+                itemCount = { messages.size },
+                measuredUserHeight = { id -> id != precedingUserId || tailTurn.hasMeasured(id) }
             )
             ChatOpeningVeil(active = veilActive, modifier = Modifier.fillMaxSize()) {
             CompositionLocalProvider(
@@ -594,12 +677,19 @@ fun ChatScreen(
                     val tailModifier = when {
                         msg.role == ChatRole.USER && isNewest -> Modifier.tailScrollPadding(
                             visibleChatPx,
-                            onNaturalHeight = { tailTurn.recordUser(msg.id, it) }
+                            onNaturalHeight = { tailTurn.recordUser(msg.id, it) },
+                            onSpacer = { if (tailSpacers[msg.id] != it) tailSpacers[msg.id] = it }
                         )
                         msg.role == ChatRole.USER && msg.id == precedingUserId ->
                             Modifier.recordTurnUserHeight(tailTurn, msg.id)
-                        msg.role == ChatRole.MODEL && isNewest && precedingUserId != null ->
-                            Modifier.replyTailPadding(tailTurn, precedingUserId, visibleChatPx)
+                        msg.role == ChatRole.MODEL && isNewest ->
+                            Modifier.replyTailPadding(
+                                tailTurn, precedingUserId, visibleChatPx, followBottomGapPx,
+                                heightFloor = replyHeightFloor,
+                                recordFloor = streamingHere || finishSettling
+                            ) {
+                                if (tailSpacers[msg.id] != it) tailSpacers[msg.id] = it
+                            }
                         else -> Modifier
                     }
                     Column(
@@ -613,15 +703,15 @@ fun ChatScreen(
                             cacheEnabled = conversation?.isTemporary != true,
                             selectedImageAttachments = inputAttachments,
                             onToggleChatImage = toggleChatImage,
-                            onResend = if (msg.id in unansweredMessages) ({
+                            onResend = if (msg.id in unansweredMessages) rememberChatAction {
                                 if (onResendUserMessage(msg.id)) resumeFollowing()
-                            }) else null,
-                            onResendFromMenu = if (!msg.isQueued) ({
+                            } else null,
+                            onResendFromMenu = if (!msg.isQueued) rememberChatAction {
                                 if (onResendUserMessage(msg.id)) resumeFollowing()
-                            }) else null,
+                            } else null,
                             resendEnabled = !isGenerating && summaryProgress == null &&
                                 selectedModelName.isNotBlank() && providers.any { it.id == selectedProviderId },
-                            onEdit = {
+                            onEdit = rememberChatValueAction<String> {
                                 if (msg.isQueued) {
                                     editDraft = ChatInputEditDraft(
                                         messageId = msg.id,
@@ -639,14 +729,14 @@ fun ChatScreen(
                                     )
                                 }
                             },
-                            onDelete = {
+                            onDelete = rememberChatValueAction<String> {
                                 if (msg.isQueued) {
                                     onDeleteQueuedMessage(msg.id)
                                 } else {
                                     deletingMessageId = msg.id
                                 }
                             },
-                            onSwitchVersion = { newIdx ->
+                            onSwitchVersion = rememberChatValueAction { newIdx: Int ->
                                 if (!msg.isQueued) {
                                     whenIdle { onSwitchVersion(msg.id, newIdx) }
                                 }
@@ -670,21 +760,21 @@ fun ChatScreen(
                             conversationId = conversation?.id,
                             cacheEnabled = conversation?.isTemporary != true,
                             streamStateFlow = activeStream,
-                            onCopy = {
+                            onCopy = rememberChatAction {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.common_copy), assistantCopyText(msg)))
                                 Toast.makeText(context, context.getString(R.string.common_copied_to_clipboard), Toast.LENGTH_SHORT).show()
                             },
-                            onRegenerate = {
+                            onRegenerate = rememberChatAction {
                                 whenIdle {
                                     if (!isLast) regeneratingMessageId = msg.id
                                     else onRegenerate(msg.id)
                                 }
                             },
                             onRetryError = if (isLast) {
-                                { whenIdle { onRetryFromError(msg.id) } }
+                                rememberChatAction { whenIdle { onRetryFromError(msg.id) } }
                             } else null,
-                            onEdit = {
+                            onEdit = rememberChatAction {
                                 editDraft = ChatInputEditDraft(
                                     messageId = msg.id,
                                     text = msg.content,
@@ -692,13 +782,13 @@ fun ChatScreen(
                                     revision = System.nanoTime()
                                 )
                             },
-                            onDelete = {
+                            onDelete = rememberChatAction {
                                 deletingMessageId = msg.id
                             },
-                            onRead = {
+                            onRead = rememberChatAction {
                                 onReadMessage(msg.id, msg.content)
                             },
-                            onSwitchVersion = { newIdx ->
+                            onSwitchVersion = rememberChatValueAction { newIdx: Int ->
                                 whenIdle { onSwitchVersion(msg.id, newIdx) }
                             }
                         )
@@ -829,17 +919,32 @@ fun ChatScreen(
                 onSendMedia = { request ->
                     inlineChatError = null
                     revealed = true
-                    onSendMedia(request).also { if (it) resumeFollowing() }
+                    onSendMedia(request).also { sent ->
+                        if (sent) {
+                            if (conversationMessages.isEmpty()) firstSendAwaitingAnchor = true
+                            resumeFollowing()
+                        }
+                    }
                 },
                 onSendMessage = { text, files ->
                     inlineChatError = null
                     revealed = true
-                    onSendMessage(text, files).also { if (it && !isGenerating) resumeFollowing() }
+                    onSendMessage(text, files).also { sent ->
+                        if (sent) {
+                            if (conversationMessages.isEmpty()) firstSendAwaitingAnchor = true
+                            if (!isGenerating) resumeFollowing()
+                        }
+                    }
                 },
                 onSendMessageWithSkill = { text, files, requested, skillName ->
                     inlineChatError = null
                     revealed = true
-                    onSendMessageWithSkill(text, files, requested, skillName).also { if (it && !isGenerating) resumeFollowing() }
+                    onSendMessageWithSkill(text, files, requested, skillName).also { sent ->
+                        if (sent) {
+                            if (conversationMessages.isEmpty()) firstSendAwaitingAnchor = true
+                            if (!isGenerating) resumeFollowing()
+                        }
+                    }
                 },
                 onEditMessage = { id, text, files ->
                     val isQueued = editDraft?.isQueued == true
@@ -926,7 +1031,9 @@ fun ChatScreen(
                 followBottom = false
                 revealed = true
             },
-            state = minimapState
+            state = minimapState,
+            // Only the newest message carries tail padding; earlier entries in the map are stale.
+            tailSpacerPx = { id -> if (id == messages.lastOrNull()?.id) tailSpacers[id] ?: 0 else 0 }
         )
     }
 

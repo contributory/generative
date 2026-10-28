@@ -18,7 +18,7 @@ import org.starfall.generative.features.home.chat.logic.SentMessageDetector
 import org.starfall.generative.features.home.chat.logic.anchorTailSpacer
 
 private const val MAX_WAIT_FRAMES = 90
-private const val MAX_SETTLE_PASSES = 3
+private const val MAX_SETTLE_PASSES = 8
 private const val SETTLE_TOLERANCE_PX = 2
 
 /** Pins a newly sent user message under the app bar until settled or manually interrupted. */
@@ -71,10 +71,12 @@ internal fun ChatAnchorEffects(
     anchor: ChatScrollAnchor,
     listState: LazyListState,
     itemIndexOf: (String) -> Int,
-    itemCount: () -> Int
+    itemCount: () -> Int,
+    measuredUserHeight: (String) -> Boolean = { true }
 ) {
     val currentIndexOf by rememberUpdatedState(itemIndexOf)
     val currentItemCount by rememberUpdatedState(itemCount)
+    val currentHeightReady by rememberUpdatedState(measuredUserHeight)
 
     LaunchedEffect(anchor.request) {
         val id = anchor.messageId ?: return@LaunchedEffect
@@ -86,20 +88,27 @@ internal fun ChatAnchorEffects(
                 !(currentIndexOf(id) >= 0 && listState.layoutInfo.totalItemsCount >= currentItemCount())
             ) androidx.compose.runtime.withFrameNanos { }
 
-            // The first pass animates to the message; the next passes correct for sizes that were
-            // still unknown (the reply grows as it is measured).
+            // A just-appended reply initially uses an estimated user-bubble height. Keep
+            // correcting until the real bubble is measured and its tail spacer has remeasured;
+            // otherwise the final 2-3 lines of needed scroll can be left unapplied.
+            var alignedFrames = 0
             repeat(MAX_SETTLE_PASSES) {
                 if (!anchor.settling) return@LaunchedEffect
                 val index = currentIndexOf(id)
                 if (index < 0) return@LaunchedEffect
-                val info = listState.layoutInfo
-                val item = info.visibleItemsInfo.firstOrNull { it.index == index }
+                val item = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
                 if (item == null) {
+                    alignedFrames = 0
                     listState.animateScrollToItem(index, 0)
                 } else {
-                    val delta = item.offset - info.beforeContentPadding
-                    if (abs(delta) <= SETTLE_TOLERANCE_PX) return@LaunchedEffect
-                    listState.animateScrollBy(delta.toFloat())
+                    // Offset 0 is the content start below the existing AppBar top padding.
+                    val delta = item.offset
+                    if (abs(delta) > SETTLE_TOLERANCE_PX) {
+                        alignedFrames = 0
+                        listState.animateScrollBy(delta.toFloat())
+                    } else if (currentHeightReady(id) && ++alignedFrames >= 2) {
+                        return@LaunchedEffect
+                    }
                 }
                 androidx.compose.runtime.withFrameNanos { }
             }
@@ -112,16 +121,19 @@ internal fun ChatAnchorEffects(
 /** Pad *after* the newest user bubble, never above it or between it and a reply. */
 internal fun Modifier.tailScrollPadding(
     visiblePx: Int,
-    onNaturalHeight: ((Int) -> Unit)? = null
+    onNaturalHeight: ((Int) -> Unit)? = null,
+    onSpacer: ((Int) -> Unit)? = null
 ): Modifier = layout { measurable, constraints ->
     val placeable = measurable.measure(constraints)
     onNaturalHeight?.invoke(placeable.height)
-    layout(placeable.width, maxOf(placeable.height, visiblePx)) {
+    val height = maxOf(placeable.height, visiblePx)
+    onSpacer?.invoke(height - placeable.height)
+    layout(placeable.width, height) {
         placeable.placeRelative(0, 0)
     }
 }
 
-/** Keeps the free space *after* the newest AI reply until it grows past the viewport. */
+/** Tracks the preceding user's height so the latest AI reply has scroll room below it. */
 @Stable
 internal class TailTurnAnchor(private val fallbackUserHeightPx: Int) {
     private val userHeights = HashMap<String, Int>()
@@ -131,9 +143,11 @@ internal class TailTurnAnchor(private val fallbackUserHeightPx: Int) {
         if (userHeights.put(id, px) != px) version += 1
     }
 
-    fun userHeight(id: String): Int {
+    fun hasMeasured(id: String): Boolean = id in userHeights
+
+    fun userHeight(id: String?): Int {
         version // invalidate the last reply's measurement when the user message is measured
-        return userHeights[id] ?: fallbackUserHeightPx
+        return if (id == null) fallbackUserHeightPx else userHeights[id] ?: fallbackUserHeightPx
     }
 }
 
@@ -145,33 +159,65 @@ internal fun Modifier.recordTurnUserHeight(anchor: TailTurnAnchor, id: String): 
         layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
     }
 
+internal fun replyTailHeight(naturalHeight: Int, visiblePx: Int, userHeight: Int, bottomGapPx: Int): Int =
+    maxOf(naturalHeight + bottomGapPx, anchorTailSpacer(visiblePx, userHeight))
+
+/** Largest height the newest reply reached while it streamed; the item never shrinks below it afterwards. */
+internal class ReplyHeightFloor {
+    var px = 0
+}
+
 internal fun Modifier.replyTailPadding(
     anchor: TailTurnAnchor,
-    userId: String,
-    visiblePx: Int
+    userId: String?,
+    visiblePx: Int,
+    bottomGapPx: Int,
+    heightFloor: ReplyHeightFloor? = null,
+    recordFloor: Boolean = false,
+    onSpacer: ((Int) -> Unit)? = null
 ): Modifier = layout { measurable, constraints ->
     val placeable = measurable.measure(constraints)
-    val remaining = anchorTailSpacer(visiblePx, anchor.userHeight(userId))
-    layout(placeable.width, maxOf(placeable.height, remaining)) {
+    // Retain the breathing room after generation finishes as well. Removing it on Stop or
+    // completion would resize the last item and make LazyColumn jump back to an old position.
+    var height = replyTailHeight(placeable.height, visiblePx, anchor.userHeight(userId), bottomGapPx)
+    if (heightFloor != null) {
+        // The loader disappears and the final Markdown re-lays out when a stream ends; a shorter
+        // item would clamp the scroll position, so it keeps the height it had while streaming.
+        if (recordFloor && height > heightFloor.px) heightFloor.px = height
+        height = maxOf(height, heightFloor.px)
+    }
+    onSpacer?.invoke(height - placeable.height)
+    layout(placeable.width, height) {
         placeable.placeRelative(0, 0)
     }
 }
 
-/**
- * Brings the bottom edge of the item at [index] into view, and does nothing when it already is.
- * Unlike scrolling to the end of the content, this never reaches the top position through the
- * anchor spacer.
- */
-internal suspend fun LazyListState.revealItemBottom(index: Int) {
+/** The last item includes invisible tail padding; only its real content is a scroll target. */
+internal fun latestContentDistancePx(
+    itemOffset: Int,
+    itemHeight: Int,
+    trailingSpacerPx: Int,
+    viewportEndPx: Int,
+    bottomGapPx: Int
+): Int = itemOffset + itemHeight - trailingSpacerPx.coerceAtLeast(0) - viewportEndPx + bottomGapPx
+
+/** Reveal the last message content, leaving its requested bottom gap visible rather than
+ * scrolling through the invisible spacer (which can hide the answer behind the AppBar). */
+internal suspend fun LazyListState.revealItemBottom(
+    index: Int,
+    trailingSpacerPx: () -> Int = { 0 },
+    bottomGapPx: Int = 0
+) {
     var info = layoutInfo
     var item = info.visibleItemsInfo.firstOrNull { it.index == index }
     if (item == null) {
-        // Not composed: bring it in, which also gives it a measured size.
         scrollToItem(index)
         androidx.compose.runtime.withFrameNanos { }
         info = layoutInfo
         item = info.visibleItemsInfo.firstOrNull { it.index == index } ?: return
     }
-    val remaining = item.offset + item.size - info.viewportEndOffset
-    if (remaining > 0) scrollBy(remaining.toFloat())
+    val distance = latestContentDistancePx(
+        item.offset, item.size, trailingSpacerPx(), info.viewportEndOffset, bottomGapPx
+    )
+    if (distance != 0) scrollBy(distance.toFloat())
 }

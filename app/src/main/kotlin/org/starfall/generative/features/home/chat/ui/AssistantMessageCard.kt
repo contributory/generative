@@ -36,6 +36,7 @@ import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.ToolActivity
 import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
+import org.starfall.generative.features.home.chat.model.ChatStreamStatus
 import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
 import kotlinx.coroutines.flow.StateFlow
 import org.starfall.generative.shared.model.countedVersionIndices
@@ -75,19 +76,14 @@ fun AssistantMessageCard(
     SideEffect { ChatRenderMetrics.recordMessageCardRecomposition() }
     var showMoreMenu by remember { mutableStateOf(false) }
     val storedVersion = message.activeVersion
-    // The frozen stream state of a stopped response stays published after Stop. A card that mounts
-    // later (the chat was left and reopened from history) never saw the live stream, so a fresh
-    // incremental renderer would start already frozen and parse nothing. Only a card that streamed
-    // in this composition keeps the incremental renderer; every other card renders the saved text.
-    val streamedInThisComposition = remember(message.id) { booleanArrayOf(false) }
+    // A card that streamed here keeps its incremental Markdown tree through Stop and natural
+    // completion. Reopening the chat instead uses saved text, never a stale/frozen parser.
+    val streamedInThisComposition = remember(message.id, message.activeVersionIndex) { booleanArrayOf(false) }
+    // Shared by the text subtrees so adding a tool block or clearing the published stream
+    // cannot discard the last incremental snapshot and remount all the Markdown at completion.
+    val retainedStream = remember(message.id, message.activeVersionIndex) { arrayOfNulls<ActiveChatStreamState>(1) }
     if (isStreaming) streamedInThisComposition[0] = true
-    val stoppedStreamForMessage = streamStateFlow?.value?.takeIf {
-        streamedInThisComposition[0] &&
-            it.conversationId == conversationId && it.messageId == message.id && it.stopSignal.isFrozen
-    }
-    // Keep the exact incremental Markdown tree mounted after Stop instead of switching to the
-    // persisted String and parsing the whole answer again.
-    val keepStreamRendererMounted = isStreaming || stoppedStreamForMessage != null
+    val keepStreamRendererMounted = streamedInThisComposition[0]
     val renderCacheIdentity = remember(conversationId, message.id, cacheEnabled) {
         conversationId?.takeIf { cacheEnabled }?.let { MarkdownRenderCacheIdentity(it, message.id) }
     }
@@ -130,6 +126,7 @@ fun AssistantMessageCard(
             onToggleChatImage = onToggleChatImage,
             renderCacheIdentity = renderCacheIdentity,
             streamStateFlow = streamStateFlow?.takeIf { keepStreamRendererMounted },
+            retainedStream = retainedStream,
             streamConversationId = conversationId,
             streamMessageId = message.id
         )
@@ -438,18 +435,38 @@ private fun StreamingAssistantText(
     messageId: String,
     startOffset: Int,
     fallbackContent: String,
-    cacheIdentity: MarkdownRenderCacheIdentity?
+    cacheIdentity: MarkdownRenderCacheIdentity?,
+    retainedStream: Array<ActiveChatStreamState?>
 ) {
-    val stream = streamStateFlow.collectAsState().value?.takeIf {
+    val currentStream = streamStateFlow.collectAsState().value?.takeIf {
         it.conversationId == conversationId && it.messageId == messageId
     }
+    if (currentStream != null) retainedStream[0] = currentStream
+    val stream = currentStream ?: retainedStream[0]
     if (stream == null) {
         val fallback = fallbackContent.substring(startOffset.coerceIn(0, fallbackContent.length)).trimEnd()
         if (fallback.isNotBlank()) SmoothStreamingMarkdownMessage(fallback, false, cacheIdentity)
         return
     }
-    val streamTail = remember(stream.content, startOffset) {
-        stream.content.suffixFrom(startOffset)
+    // Completion clears the shared stream, but final persistence can include an extra batch
+    // that its conflated UI collector never saw. Append only that suffix to the same parser.
+    val fullSnapshot = remember(stream.content, fallbackContent, currentStream) {
+        if (currentStream != null || stream.stopSignal.isFrozen || stream.status == ChatStreamStatus.CANCELLED) {
+            stream.content
+        } else {
+            val seenLength = stream.content.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            val boundaryStart = (seenLength - 64).coerceAtLeast(0)
+            val boundary = stream.content.slice(boundaryStart, seenLength)
+            val prefix = stream.content.prefix(minOf(64, seenLength))
+            if (fallbackContent.length > seenLength && fallbackContent.startsWith(prefix) &&
+                fallbackContent.regionMatches(boundaryStart, boundary, 0, boundary.length)
+            ) {
+                stream.content.append(fallbackContent.substring(seenLength), stream.revision + 1)
+            } else stream.content
+        }
+    }
+    val streamTail = remember(fullSnapshot, startOffset) {
+        fullSnapshot.suffixFrom(startOffset)
     }
     if (streamTail.length > 0L) {
         StreamingMarkdownRenderer(
@@ -488,12 +505,32 @@ private fun CompletedAssistantContent(
     onToggleChatImage: ((String) -> Unit)?,
     renderCacheIdentity: MarkdownRenderCacheIdentity? = null,
     streamStateFlow: StateFlow<ActiveChatStreamState?>? = null,
+    retainedStream: Array<ActiveChatStreamState?>,
     streamConversationId: String? = null,
     streamMessageId: String? = null
 ) {
     val context = LocalContext.current
     val store = remember(context) { ToolFiles(context) }
-    val blocks = remember(version.content, version.reasoningContent, version.toolActivity) { buildProcessingBlocks(version) }
+    // Unfinished reasoning lives in the stream, not in database snapshots. Read it directly
+    // so the actions block can appear before any tool boundary or final save.
+    val liveReasoning = rememberLiveStreamReasoning(
+        streamStateFlow, streamConversationId, streamMessageId.orEmpty(), enabled = isStreaming
+    )
+    val timelineVersion = remember(version, liveReasoning) {
+        if (liveReasoning != null && liveReasoning.length > version.reasoningContent.orEmpty().length) {
+            version.copy(reasoningContent = liveReasoning)
+        } else version
+    }
+    val blocks = remember(timelineVersion.content, timelineVersion.reasoningContent, timelineVersion.toolActivity) {
+        buildProcessingBlocks(timelineVersion)
+    }
+    val lastBlock = blocks.lastOrNull()
+    // Answer text streamed after the last block means its actions are done, even before the stored
+    // content catches up with the stream.
+    val streamAnswerStarted = rememberStreamAnswerStarted(
+        streamStateFlow, streamConversationId, streamMessageId.orEmpty(),
+        offset = lastBlock?.offset ?: 0, enabled = isStreaming && lastBlock != null
+    )
     // Tool details have their own sheet. Keep the answer text canonical here; redacting matching tool
     // responses made the rendered message look truncated while copy/edit still showed the full value.
     val content = version.content
@@ -508,7 +545,8 @@ private fun CompletedAssistantContent(
                     messageId = streamMessageId.orEmpty(),
                     startOffset = 0,
                     fallbackContent = content,
-                    cacheIdentity = renderCacheIdentity
+                    cacheIdentity = renderCacheIdentity,
+                    retainedStream = retainedStream
                 )
             } else if (blocks.isEmpty() && content.isNotBlank()) {
                 SmoothStreamingMarkdownMessage(content.trimEnd(), false, renderCacheIdentity)
@@ -518,7 +556,8 @@ private fun CompletedAssistantContent(
                 blocks.forEach { block ->
                     val offset = block.offset.coerceIn(cursor, content.length)
                     // Answer text after this block means its actions are finished, so they all collapse.
-                    val answerStarted = content.substring(offset).isNotBlank()
+                    val answerStarted = content.substring(offset).isNotBlank() ||
+                        (block === lastBlock && streamAnswerStarted)
                     if (offset > cursor) {
                         val textBefore = content.substring(cursor, offset).trimEnd()
                         if (textBefore.isNotBlank()) {
@@ -542,7 +581,10 @@ private fun CompletedAssistantContent(
                     val hasActionTurn = visibleProcessingItems.any { it is ProcessingDropdownItem.Tool }
                     // Identity is the block's position plus its first item. Keying on every item (or on
                     // the reasoning text) recreated the dropdown on each streamed token or new tool call.
-                    val live = animateStreamingContent && block === blocks.last() && !answerStarted
+                    val hasRunningAction = visibleProcessingItems.any {
+                        it is ProcessingDropdownItem.Tool && it.activity.status == "running"
+                    }
+                    val live = isStreaming && block === blocks.last() && (!answerStarted || hasRunningAction)
                     if (hasActionTurn) SelectionOnlyPlaceholder("[ActionTurnsBlock]")
                     key(block.offset, block.items.firstOrNull()?.let { first ->
                         when (first) {
@@ -631,7 +673,8 @@ private fun CompletedAssistantContent(
                         messageId = streamMessageId.orEmpty(),
                         startOffset = cursor,
                         fallbackContent = content,
-                        cacheIdentity = renderCacheIdentity?.forBlock("tail-$cursor")
+                        cacheIdentity = renderCacheIdentity?.forBlock("tail-$cursor"),
+                        retainedStream = retainedStream
                     )
                 } else if (cursor < content.length) {
                     val remaining = content.substring(cursor)

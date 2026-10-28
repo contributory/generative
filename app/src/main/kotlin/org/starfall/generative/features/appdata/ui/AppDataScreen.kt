@@ -11,12 +11,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.IconButton
@@ -55,9 +57,8 @@ fun AppDataScreen(
     var showResetConfirm by rememberSaveable { mutableStateOf(false) }
     var showExportWarning by rememberSaveable { mutableStateOf(false) }
     val transferBusy = exportInProgress || importInProgress
-    BackHandler {
-        if (!importInProgress) onBack()
-    }
+    // Transfers belong to the application scope, not this screen. Navigation never waits for them.
+    BackHandler(onBack = onBack)
 
     Scaffold(
 
@@ -67,7 +68,7 @@ fun AppDataScreen(
                 colors = edgeToEdgeTopAppBarColors(),
                 title = { Text(stringResource(R.string.settings_category_app_data)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !importInProgress) {
+                    IconButton(onClick = onBack) {
                         FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                     }
                 }
@@ -130,6 +131,23 @@ fun AppDataScreen(
                         enabled = !transferBusy
                     ) {
                         onImportZip()
+                    }
+                    if (importInProgress) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Text(
+                                stringResource(R.string.settings_import_background_status),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }

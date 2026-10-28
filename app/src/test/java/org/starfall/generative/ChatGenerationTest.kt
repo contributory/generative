@@ -7,6 +7,7 @@ import org.junit.Test
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.features.providers.shared.ui.*
 import org.starfall.generative.shared.model.generation.GenerationEvent
+import org.starfall.generative.shared.model.generation.TokenUsage
 import org.starfall.generative.features.home.chat.logic.ChatGeneration
 import org.starfall.generative.features.home.chat.model.ChatStreamStatus
 import org.starfall.generative.features.home.chat.logic.prepareRegeneration
@@ -49,6 +50,77 @@ class ChatGenerationTest {
         assertEquals("", selected.messages.last().content)
         assertEquals("first second", saved["a"]!!.messages.last().content)
         assertFalse(runner.busy.value)
+    }
+
+    @Test fun liveTextToolsUsageAndMetadataStayInMemoryUntilCompletion() = runBlocking {
+        val writes = mutableListOf<Conversation>()
+        val published = mutableListOf<Conversation>()
+        val streamStates = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
+        val reachedTool = CompletableDeferred<Unit>()
+        val finishResponse = CompletableDeferred<Unit>()
+        val runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = { writes += it },
+            publish = { published += it },
+            publishStream = { _, state -> state?.let(streamStates::add) }
+        )
+
+        runner.startEvents(conversation(), "a1", flow {
+            emit(GenerationEvent.Text("First"))
+            emit(GenerationEvent.Reasoning("Thinking"))
+            emit(GenerationEvent.Usage(TokenUsage(100, 10)))
+            emit(GenerationEvent.Tool(ToolActivity("tool", "search", status = "running")))
+            reachedTool.complete(Unit)
+            finishResponse.await()
+            emit(GenerationEvent.Tool(ToolActivity("tool", "search", status = "success")))
+            emit(GenerationEvent.Text(" second"))
+        }, usageContextKey = "test-context")
+
+        reachedTool.await()
+        assertTrue("No initial, timed, tool or usage database writes", writes.isEmpty())
+        assertTrue(runner.busy.value)
+        assertEquals("First", streamStates.last().content.materialize())
+        assertEquals("Thinking", streamStates.last().reasoning.materialize())
+        assertEquals("First", published.last().messages.last().content)
+        assertEquals("running", published.last().messages.last().activeVersion.toolActivity.single().status)
+        assertNotNull(published.last().messages.last().activeVersion.contextUsage)
+        runner.updateConversation { it.copy(title = "Edited live") }
+        assertTrue("Metadata changes must not write an unfinished block", writes.isEmpty())
+
+        finishResponse.complete(Unit)
+        runner.busy.first { !it }
+        assertEquals(1, writes.size)
+        assertEquals("Edited live", writes.single().title)
+        assertEquals("First second", writes.single().messages.last().content)
+        assertEquals("success", writes.single().messages.last().activeVersion.toolActivity.single().status)
+        assertNotNull(writes.single().messages.last().activeVersion.contextUsage)
+    }
+
+    @Test fun completedToolTurnSavesOnceBeforeNextAssistantBlockFinishes() = runBlocking {
+        val writes = mutableListOf<Conversation>()
+        val nextBlockStarted = CompletableDeferred<Unit>()
+        val releaseNextBlock = CompletableDeferred<Unit>()
+        val runner = ChatGeneration(
+            CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            { writes += it }, {}
+        )
+        runner.startEvents(conversation(), "a1", flow {
+            emit(GenerationEvent.Text("Completed first block"))
+            emit(GenerationEvent.UserMessage(message("u2", ChatRole.USER, "Follow up")))
+            emit(GenerationEvent.Text("Unfinished second block"))
+            nextBlockStarted.complete(Unit)
+            releaseNextBlock.await()
+            emit(GenerationEvent.Text(" and done"))
+        })
+        nextBlockStarted.await()
+        assertEquals(1, writes.size)
+        assertEquals("Completed first block", writes.single().messages[1].content)
+        assertEquals(listOf("u1", "a1", "u2"), writes.single().messages.map { it.id })
+        assertEquals("The next AI response is not written before it finishes", 3, writes.single().messages.size)
+        releaseNextBlock.complete(Unit)
+        runner.busy.first { !it }
+        assertEquals(2, writes.size)
+        assertEquals("Unfinished second block and done", writes.last().messages.last().content)
     }
 
     @Test fun titleChangesDuringGenerationSurviveTheFinalResponseCommit() = runBlocking {
@@ -272,7 +344,7 @@ class ChatGenerationTest {
         val release = CompletableDeferred<Unit>()
         var saves = 0
         val runner = ChatGeneration(CoroutineScope(coroutineContext + Dispatchers.Unconfined), {
-            if (++saves == 2) { saving.complete(Unit); release.await() }
+            if (++saves == 1) { saving.complete(Unit); release.await() }
         }, {})
         runner.start(conversation(), "a1", flow { emit("partial"); awaitCancellation() })
         runner.stop()
@@ -282,6 +354,7 @@ class ChatGenerationTest {
         release.complete(Unit)
         runner.stopAndJoin()
         assertFalse(runner.busy.value)
+        assertEquals("Stop saves once, not at the beginning of the stream", 1, saves)
     }
 
     @Test fun deletingAfterStopCannotResurrectConversation() = runBlocking {

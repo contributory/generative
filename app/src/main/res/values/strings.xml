@@ -810,6 +810,7 @@
     <string name="settings_backup_sensitive_warning_continue">Continue to export</string>
     <string name="settings_export_all_data_zip">Export Complete Backup (ZIP)</string>
     <string name="settings_import_all_data_zip">Import Complete Backup (ZIP)</string>
+    <string name="settings_import_background_status">Importing in the background. You can leave this screen.</string>
     <string name="settings_clear_all_chats_title">Clear All Chats</string>
     <string name="settings_clear_all_chats_message">Are you sure you want to delete all conversations? This action cannot be undone.</string>
     <string name="settings_clear_all">Clear All</string>

@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,21 +30,18 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 import org.starfall.generative.shared.ui.icons.FluentIcon
-import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.media.MediaViewer
 import org.starfall.generative.shared.ui.media.isPreviewableMedia
 import org.starfall.generative.shared.ui.media.mediaMimeType
 import org.starfall.generative.shared.ui.media.mediaThumbnail
 import org.starfall.generative.shared.ui.sheets.AppSheet
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
 
 /** Quick media browsing from the drawer, with the same three-column layout as profile photos. */
 @Composable
 fun MediaStorageSheet(store: ToolFiles, onDismiss: () -> Unit) {
     val revision by ToolFiles.revision.collectAsStateWithLifecycle()
     var media by remember(store) { mutableStateOf<List<StoredMedia>?>(null) }
-    var search by rememberSaveable { mutableStateOf("") }
     var viewingFile by remember { mutableStateOf<File?>(null) }
     LaunchedEffect(store, revision) {
         media = withContext(Dispatchers.IO) {
@@ -56,37 +52,16 @@ fun MediaStorageSheet(store: ToolFiles, onDismiss: () -> Unit) {
         }
         if (viewingFile != null && media.orEmpty().none { it.file == viewingFile }) viewingFile = null
     }
-    val filtered = remember(media, search) {
-        media.orEmpty().filter { it.file.name.contains(search.trim(), ignoreCase = true) }
-    }
     AppSheet(
         onDismissRequest = onDismiss,
         fixedHeightFraction = 0.82f,
         contentBehindNavigationBar = true
     ) {
-        Column(Modifier.fillMaxSize().imePadding().padding(horizontal = 16.dp).testTag("media-storage-sheet")) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.storage_short_title), Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleLarge)
-                IconButton(onClick = onDismiss) {
-                    FluentIcon(FluentUi.Regular.Dismiss, stringResource(R.string.common_close))
-                }
-            }
-            SelectableOutlinedTextField(
-                value = search,
-                onValueChange = { search = it },
-                singleLine = true,
-                placeholder = { Text(stringResource(R.string.sidebar_search)) },
-                leadingIcon = { FluentIcon(Icons.Outlined.Search, null) },
-                shape = RoundedCornerShape(28.dp),
-                modifier = Modifier.fillMaxWidth().testTag("media-storage-search")
-            )
-            Spacer(Modifier.height(12.dp))
-            if (media == null || filtered.isEmpty()) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 16.dp).testTag("media-storage-sheet")) {
+            if (media.isNullOrEmpty()) {
                 Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                     if (media == null) GenerativeLoadingIndicator()
-                    else Text(stringResource(if (media.orEmpty().isEmpty()) R.string.storage_media_empty
-                        else R.string.storage_media_no_results), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    else Text(stringResource(R.string.storage_media_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 LazyVerticalGrid(
@@ -98,7 +73,7 @@ fun MediaStorageSheet(store: ToolFiles, onDismiss: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    items(filtered, key = { it.file.absolutePath }) { item ->
+                    items(media.orEmpty(), key = { it.file.absolutePath }) { item ->
                         MediaStorageTile(item) { viewingFile = item.file }
                     }
                 }

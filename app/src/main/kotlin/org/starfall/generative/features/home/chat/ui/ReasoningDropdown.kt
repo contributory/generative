@@ -2,6 +2,7 @@ package org.starfall.generative.features.home.chat.ui
 
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -174,7 +175,9 @@ internal fun ProcessingDropdown(
             }
         }
 
-        // A collapsed timeline shows only running tools; expanding it shows every item.
+        // A collapsed timeline shows only the step that is running now (a running tool, or the trailing
+        // thinking step while the block is live); finished steps retract into the closed dropdown.
+        // Expanding it shows every item.
         Box(Modifier.fillMaxWidth()) {
             // Draw one continuous connector behind every numbered action. Individual
             // short segments were laid out between rows, so row padding made them look
@@ -199,14 +202,19 @@ internal fun ProcessingDropdown(
                         is ProcessingDropdownItem.Tool -> item.activity.id
                     }
                     key(itemKey) {
-                        val runningTool = item is ProcessingDropdownItem.Tool && item.activity.status == "running"
-                        val shown = expanded || runningTool
-                        // Running items animate in during a live stream.
-                        val visibility = remember { MutableTransitionState(!isStreaming && shown) }
+                        val running = when (item) {
+                            is ProcessingDropdownItem.Tool -> item.activity.status == "running"
+                            is ProcessingDropdownItem.Thinking -> isStreaming && index == visibleItems.lastIndex
+                        }
+                        val shown = expanded || running
+                        // A step that starts running is composed already visible, so it appears in
+                        // the same frame it is added (0 ms). Only expanding by hand and retracting animate.
+                        val visibility = remember { MutableTransitionState(shown) }
                         visibility.targetState = shown
                         AnimatedVisibility(
                             visibleState = visibility,
-                            enter = expandVertically() + slideInVertically { it / 2 } + fadeIn(),
+                            enter = if (running) EnterTransition.None
+                            else expandVertically() + slideInVertically { it / 2 } + fadeIn(),
                             exit = shrinkVertically() + fadeOut()
                         ) {
                             Row(

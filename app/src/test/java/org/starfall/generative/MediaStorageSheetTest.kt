@@ -5,7 +5,8 @@ import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -23,7 +24,7 @@ class MediaStorageSheetTest {
     @get:Rule val temporary = TemporaryFolder()
 
     @Test
-    fun drawerMediaSheetShowsMediaGridAndFiltersByFilename() {
+    fun drawerMediaSheetShowsMediaGridWithoutHeaderOrSearch() {
         temporary.newFile("portrait.png")
         temporary.newFile("clip.mp4")
         temporary.newFile("song.mp3")
@@ -44,9 +45,11 @@ class MediaStorageSheetTest {
         compose.onNodeWithTag("media-storage-file_song.mp3").assertExists()
         compose.onNodeWithTag("media-storage-file_notes.txt").assertDoesNotExist()
 
-        compose.onNodeWithTag("media-storage-search").performTextInput("clip")
+        compose.onNodeWithTag("media-storage-search").assertDoesNotExist()
+        compose.onNodeWithText("Media").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Close").assertDoesNotExist()
         compose.onNodeWithTag("media-storage-file_clip.mp4").assertExists()
-        compose.onNodeWithTag("media-storage-file_portrait.png").assertDoesNotExist()
-        compose.onNodeWithTag("media-storage-file_song.mp3").assertDoesNotExist()
+        compose.onNodeWithTag("media-storage-file_portrait.png").assertExists()
+        compose.onNodeWithTag("media-storage-file_song.mp3").assertExists()
     }
 }

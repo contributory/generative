@@ -65,6 +65,20 @@ internal fun Conversation.startedWithDirectMedia(): Boolean =
         it.name == "generate_image" || it.name == "generate_video"
     } == true
 
+private fun Conversation.asConversationListItem() = ConversationListItem(
+    id = id,
+    title = title,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+    tokenCount = tokenCount,
+    providerId = providerId,
+    modelId = modelId,
+    profileId = profileId,
+    reasoningEffort = reasoningEffort,
+    hasMessages = messages.isNotEmpty(),
+    hasSummary = summary != null
+)
+
 /** Composes chat UI state; workflows are delegated to focused services under `logic/service/`. */
 class ChatViewModel(
     private val conversationRepo: ConversationRepository,
@@ -122,14 +136,23 @@ class ChatViewModel(
     private val deletingAllConversations = MutableStateFlow(false)
     private val deletingConversations = MutableStateFlow<Set<String>>(emptySet())
     private val renamingConversations = MutableStateFlow<Map<String, String>>(emptyMap())
+    // New conversations have no database row until their first AI block finishes. Show their
+    // metadata in the drawer from RAM, without persisting an unfinished response.
+    private val _liveConversationPreviews = MutableStateFlow<Map<String, ConversationListItem>>(emptyMap())
     val conversations: StateFlow<List<ConversationListItem>> = combine(
-        conversationRepo.conversationList, deletingConversations, renamingConversations, deletingAllConversations
-    ) { items, deleted, renamed, deletingAll ->
-        if (deletingAll) emptyList() else items.filterNot { it.id in deleted }.map { item ->
-            renamed[item.id]?.let { item.copy(title = it) } ?: item
+        conversationRepo.conversationList.onEach { persisted ->
+            val ids = persisted.mapTo(mutableSetOf()) { it.id }
+            _liveConversationPreviews.update { previews -> previews - ids }
+        },
+        _liveConversationPreviews, deletingConversations, renamingConversations, deletingAllConversations
+    ) { persisted, previews, deleted, renamed, deletingAll ->
+        if (deletingAll) emptyList() else {
+            val persistedIds = persisted.mapTo(mutableSetOf()) { it.id }
+            (persisted + previews.values.filterNot { it.id in persistedIds })
+                .filterNot { it.id in deleted }
+                .map { item -> renamed[item.id]?.let { item.copy(title = it) } ?: item }
         }
-    }
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val providers: StateFlow<List<ModelProvider>> = modelRepo.allProviders
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -169,6 +192,11 @@ class ChatViewModel(
                 scope = viewModelScope,
                 save = conversationRepo::saveConversation,
                 publish = { updated ->
+                    if (!updated.isTemporary && !deletingAllConversations.value &&
+                        updated.id !in deletingConversations.value
+                    ) {
+                        _liveConversationPreviews.update { it + (updated.id to updated.asConversationListItem()) }
+                    }
                     if (_currentConversation.value?.id == updated.id) {
                         _currentConversation.value = renamingConversations.value[updated.id]?.let {
                             updated.copy(title = it)
@@ -413,11 +441,14 @@ class ChatViewModel(
         if (_currentConversation.value?.isTemporary == true) stopSpeaking()
         conversationCoordinator.startTemporaryChat()
     }
-    fun deleteConversation(id: String) = conversationCoordinator.deleteConversation(id)
-    fun deleteConversations(ids: Set<String>, attachedFiles: Collection<String> = emptyList()) =
+    fun deleteConversation(id: String) = deleteConversations(setOf(id))
+    fun deleteConversations(ids: Set<String>, attachedFiles: Collection<String> = emptyList()) {
+        _liveConversationPreviews.update { it - ids }
         conversationCoordinator.deleteConversations(ids, attachedFiles)
+    }
     fun renameConversation(id: String, newTitle: String) = conversationCoordinator.renameConversation(id, newTitle)
     fun clearAllConversations(attachedFiles: Collection<String> = emptyList()) {
+        _liveConversationPreviews.value = emptyMap()
         conversationCoordinator.clearAllConversations(attachedFiles)
     }
     suspend fun importConversations(items: List<Conversation>) = conversationCoordinator.importConversations(items)
@@ -435,13 +466,15 @@ class ChatViewModel(
                 generations.clear()
             }
             _generationStates.value = emptyMap()
+            _liveConversationPreviews.value = emptyMap()
+            _activeStreams.value = emptyMap()
         } finally {
             conversationCoordinator.endRestore()
         }
         if (succeeded) restoreLastConversation()
     }
     fun deleteAllUserData(attachedFiles: Collection<String> = emptyList()) =
-        conversationCoordinator.deleteAllUserData(attachedFiles)
+        clearAllConversations(attachedFiles)
 
 
     init {
@@ -538,36 +571,53 @@ class ChatViewModel(
     fun setConversationReasoningEffort(effort: String?) {
         val current = _currentConversation.value ?: return
         val normalized = effort?.takeIf { it.isNotBlank() }
-        val updated = current.copy(reasoningEffort = normalized, updatedAt = System.currentTimeMillis())
-        if (updated.messages.isNotEmpty()) {
-            writeConversation(beforeLaunch = { _currentConversation.value = updated }) {
-                conversationRepo.saveConversation(updated)
-            }
+        val updatedAt = System.currentTimeMillis()
+        val generation = existingGeneration(current.id)?.takeIf { it.snapshot?.id == current.id }
+        if (generation != null) {
+            generation.updateConversation { it.copy(reasoningEffort = normalized, updatedAt = updatedAt) }
         } else {
-            conversationCoordinator.withRestoreGuard(onRejected = {}) {
-                _currentConversation.value = updated
+            val updated = current.copy(reasoningEffort = normalized, updatedAt = updatedAt)
+            if (updated.messages.isNotEmpty()) {
+                writeConversation(beforeLaunch = { _currentConversation.value = updated }) {
+                    conversationRepo.saveConversation(updated)
+                }
+            } else {
+                conversationCoordinator.withRestoreGuard(onRejected = {}) {
+                    _currentConversation.value = updated
+                }
             }
         }
     }
 
     fun setSummaryRole(role: SummaryRole) {
         val current = _currentConversation.value ?: return
-        val summary = current.summary ?: return
-        val updated = current.copy(
-            summary = summary.copy(role = role),
-            updatedAt = System.currentTimeMillis()
-        )
-        writeConversation(beforeLaunch = { _currentConversation.value = updated }) {
-            conversationRepo.saveConversation(updated)
+        if (current.summary == null) return
+        val updatedAt = System.currentTimeMillis()
+        val generation = existingGeneration(current.id)?.takeIf { it.snapshot?.id == current.id }
+        if (generation != null) {
+            generation.updateConversation { conversation ->
+                conversation.copy(summary = conversation.summary?.copy(role = role), updatedAt = updatedAt)
+            }
+        } else {
+            val updated = current.copy(summary = current.summary.copy(role = role), updatedAt = updatedAt)
+            writeConversation(beforeLaunch = { _currentConversation.value = updated }) {
+                conversationRepo.saveConversation(updated)
+            }
         }
     }
 
     fun deleteConversationSummary() {
         val current = _currentConversation.value ?: return
         if (current.summary == null) return
-        val updated = current.copy(summary = null, updatedAt = System.currentTimeMillis())
-        writeConversation(beforeLaunch = { _currentConversation.value = updated }) {
-            conversationRepo.saveConversation(updated)
+        val updatedAt = System.currentTimeMillis()
+        val generation = existingGeneration(current.id)?.takeIf { it.snapshot?.id == current.id }
+        if (generation != null) {
+            generation.updateConversation { it.copy(summary = null, updatedAt = updatedAt) }
+        } else {
+            val updated = current.copy(summary = null, updatedAt = updatedAt)
+            writeConversation(beforeLaunch = { _currentConversation.value = updated }) {
+                conversationRepo.saveConversation(updated)
+            }
         }
     }
 

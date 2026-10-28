@@ -9,9 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,15 +19,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.starfall.generative.R
-import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.icons.AppImages
 import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.storage.preferences.UserProfile
@@ -39,9 +32,7 @@ import org.starfall.generative.shared.ui.FeaturesLogoImage
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
-import org.starfall.generative.shared.ui.media.mediaMimeType
 import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
-import org.starfall.generative.shared.ui.sheets.AppSheet
 import org.starfall.generative.shared.ui.menus.AppDropdownMenu
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
 
@@ -266,42 +257,3 @@ private fun ProfileImage(image: String?, modifier: Modifier, fallback: Boolean =
             contentScale = ContentScale.Crop)
     }
 }
-
-@Composable
-private fun MediaStoragePhotoSheet(onDismiss: () -> Unit, onSelected: (File) -> Unit) {
-    val context = LocalContext.current
-    var photos by remember { mutableStateOf<List<File>>(emptyList()) }
-    var search by remember { mutableStateOf("") }
-    LaunchedEffect(Unit) {
-        photos = withContext(Dispatchers.IO) {
-            ToolFiles(context).list().filter { mediaMimeType(it.name).startsWith("image/") }
-        }
-    }
-    AppSheet(onDismissRequest = onDismiss, fixedHeightFraction = 0.82f) {
-        Column(Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 16.dp)) {
-            OutlinedTextField(value = search, onValueChange = { search = it }, singleLine = true,
-                placeholder = { Text(stringResource(R.string.user_profile_search_photos)) }, modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp))
-            Spacer(Modifier.height(12.dp))
-            val filtered = photos.filter { it.name.contains(search, ignoreCase = true) }
-            if (filtered.isEmpty()) {
-                Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.user_profile_no_photos), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            } else {
-                LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.weight(1f).fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    items(filtered, key = { it.absolutePath }) { file ->
-                        AsyncImage(model = file, contentDescription = file.name,
-                            modifier = Modifier.fillMaxWidth().aspectRatio(1f)
-                                .clip(RoundedCornerShape(8.dp)).clickable { onSelected(file) },
-                            contentScale = ContentScale.Crop)
-                    }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-        }
-    }
-}
-

@@ -4,10 +4,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -109,11 +112,32 @@ class StreamingToolActivityUiTest {
         compose.runOnIdle {
             version = version.copy(content = before + after)
             isStreaming = false
+            streamFlow.value = null // ChatGeneration clears the stream after normal completion.
         }
         compose.onNodeWithText("Before the action.").assertIsDisplayed()
         compose.onNodeWithText(after).assertIsDisplayed()
         compose.onNodeWithText("Tool executed").performClick()
         compose.onNodeWithText("search documents").assertIsDisplayed()
+    }
+
+    @Test fun stoppingBeforeTheIncrementalParserRunsNeverHidesCommittedText() {
+        val frozen = StreamFreezeSignal().apply { freeze() }
+        val text = "AI answer that was committed just before Stop."
+        val flow = MutableStateFlow<ActiveChatStreamState?>(ActiveChatStreamState(
+            conversationId = "chat", messageId = "answer", generationId = 7L,
+            revision = 1L, status = ChatStreamStatus.CANCELLED,
+            content = StreamTextSnapshot.of(text), reasoning = StreamTextSnapshot.of(),
+            stopSignal = frozen, lastCommitMetrics = null, cumulativeMetrics = StreamMetricsSnapshot()
+        ))
+        compose.setContent { MaterialTheme {
+            AssistantMessageCard(
+                message = StoredMessage("answer", ChatRole.MODEL, listOf(MessageVersion(content = text))),
+                isStreaming = true, onCopy = {}, onRegenerate = {}, onEdit = {},
+                onDelete = {}, onRead = {}, onSwitchVersion = {},
+                conversationId = "chat", streamStateFlow = flow
+            )
+        } }
+        compose.onNodeWithText(text).assertIsDisplayed()
     }
 
     @Test fun collapsedTimelineShowsOnlyRunningActions() {
@@ -146,6 +170,66 @@ class StreamingToolActivityUiTest {
         }
         compose.onNodeWithText("first action").assertDoesNotExist()
         compose.onNodeWithText("second action").assertIsDisplayed()
+    }
+
+    @Test fun liveThinkingStepShowsWhileClosedAndRetractsWhenAToolTakesOver() {
+        var items by mutableStateOf<List<ProcessingDropdownItem>>(listOf(ProcessingDropdownItem.Thinking("Planning the work")))
+        var live by mutableStateOf(true)
+        compose.setContent { MaterialTheme {
+            ProcessingDropdown(items = items, durationMillis = null, startNumber = 1, isStreaming = live)
+        } }
+        // The dropdown header and the running thinking step are visible without expanding.
+        compose.onNodeWithText("Thinking...").assertIsDisplayed()
+        compose.onNodeWithTag("live-thinking-preview").assertIsDisplayed()
+
+        compose.runOnIdle {
+            items = items + ProcessingDropdownItem.Tool(ToolActivity("tool", "search_documents"))
+        }
+        compose.onNodeWithText("search documents").assertIsDisplayed()
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("live-thinking-preview").fetchSemanticsNodes().isEmpty() }
+
+        compose.runOnIdle {
+            items = listOf(items.first(), ProcessingDropdownItem.Tool(ToolActivity("tool", "search_documents", status = "success")))
+        }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("search documents").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText("Generating...").assertIsDisplayed()
+
+        compose.onNodeWithText("Generating...").performClick()
+        compose.onNodeWithText("search documents").assertIsDisplayed()
+    }
+
+    @Test fun liveThinkingComesFromTheStreamAndRetractsOnceTheAnswerStarts() {
+        val freezeSignal = StreamFreezeSignal()
+        fun stream(reasoning: String, answer: String, revision: Long) = ActiveChatStreamState(
+            conversationId = "conversation",
+            messageId = "assistant",
+            generationId = 1L,
+            revision = revision,
+            status = ChatStreamStatus.STREAMING,
+            content = StreamTextSnapshot.of(answer),
+            reasoning = StreamTextSnapshot.of(reasoning),
+            stopSignal = freezeSignal,
+            lastCommitMetrics = null,
+            cumulativeMetrics = StreamMetricsSnapshot()
+        )
+        val streamFlow = MutableStateFlow<ActiveChatStreamState?>(stream("", "", 1))
+        // The stored version has no reasoning or content yet: only the stream has them.
+        val stored = MessageVersion()
+        compose.setContent { MaterialTheme {
+            AssistantMessageCard(
+                StoredMessage("assistant", ChatRole.MODEL, listOf(stored)),
+                true, {}, {}, {}, {}, {}, {}, onSwitchVersion = {},
+                conversationId = "conversation", streamStateFlow = streamFlow
+            )
+        } }
+        compose.onAllNodesWithTag("live-thinking-preview").assertCountEquals(0)
+
+        compose.runOnIdle { streamFlow.value = stream("Considering options", "", 2) }
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("live-thinking-preview").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("live-thinking-preview").assertIsDisplayed()
+
+        compose.runOnIdle { streamFlow.value = stream("Considering options", "Here is the answer.", 3) }
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("live-thinking-preview").fetchSemanticsNodes().isEmpty() }
     }
 
 }

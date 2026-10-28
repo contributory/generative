@@ -67,6 +67,7 @@ fun ChatAppBar(
 
     Box(
         modifier = modifier
+            .testTag("chat-app-bar")
             .fillMaxWidth()
             .height(72.dp + statusBarHeight)
             // Fade by percentage of Chat's configured background opacity, not absolute opacity.
