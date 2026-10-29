@@ -82,7 +82,7 @@ class RetainedChatConversationsTest {
         retained.record(chat("chat-10"), ids)
         assertEquals(10, retained.ids.size) // No arbitrary chat-count cutoff.
         retained.trimToFraction(0.5f)
-        assertEquals(6, retained.ids.size) // Active plus five recently used chats.
+        assertEquals(5, retained.ids.size) // Active plus four recently used chats (9 / 2 truncated).
         assertFalse("chat-1" in retained.ids)
         assertTrue(retained.selection("chat-1").attachments.value.isEmpty())
         retained.trimToFraction(0f)
