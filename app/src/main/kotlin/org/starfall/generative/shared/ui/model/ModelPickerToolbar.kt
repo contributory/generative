@@ -32,6 +32,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -134,8 +135,9 @@ internal fun ModelPickerToolbar(
                     )
                 )
             }
-            Box(Modifier.width(searchWidth), contentAlignment = Alignment.CenterStart) {
-                if (searchExpanded) {
+            // Keep the field mounted until its collapse animation finishes.
+            Box(Modifier.width(searchWidth).clipToBounds(), contentAlignment = Alignment.CenterStart) {
+                if (searchExpanded || searchWidth > 40.dp) {
                     LaunchedEffect(Unit) { searchFocus.requestFocus() }
                     SelectableOutlinedTextField(
                         value = query,

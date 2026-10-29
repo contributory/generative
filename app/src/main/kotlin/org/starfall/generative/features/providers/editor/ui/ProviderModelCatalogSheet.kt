@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -28,7 +29,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -171,27 +171,9 @@ internal fun ProviderModelCatalogSheet(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    FilledTonalIconButton(
-                        onClick = { onSetSelection(visibleModels, !allVisibleSelected) },
-                        enabled = visibleModels.isNotEmpty(),
-                        modifier = Modifier.size(40.dp).semantics {
-                            contentDescription = selectionDescription
-                            toggleableState = selectionState
-                        }
-                    ) {
-                        FluentIcon(
-                            when (selectionState) {
-                                ToggleableState.On -> Icons.Outlined.CheckCircle
-                                ToggleableState.Indeterminate -> Icons.Outlined.Check
-                                ToggleableState.Off -> Icons.Outlined.RadioButtonUnchecked
-                            },
-                            contentDescription = null,
-                            tint = if (selectionState == ToggleableState.Off || visibleModels.isEmpty())
-                                LocalContentColor.current else MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    Box(Modifier.width(searchWidth), contentAlignment = Alignment.CenterStart) {
-                        if (searchExpanded) {
+                    // Keep the field mounted until its collapse animation finishes.
+                    Box(Modifier.width(searchWidth).clipToBounds(), contentAlignment = Alignment.CenterStart) {
+                        if (searchExpanded || searchWidth > 40.dp) {
                             SelectableOutlinedTextField(
                                 value = query,
                                 onValueChange = { query = it },
@@ -248,6 +230,14 @@ internal fun ProviderModelCatalogSheet(
                     ) {
                         FluentIcon(Icons.Outlined.Refresh, stringResource(R.string.refresh_models))
                     }
+                    TriStateCheckbox(
+                        state = selectionState,
+                        onClick = { onSetSelection(visibleModels, !allVisibleSelected) },
+                        enabled = visibleModels.isNotEmpty(),
+                        modifier = Modifier.size(40.dp)
+                            .testTag("provider-model-catalog-select-all")
+                            .semantics { contentDescription = selectionDescription }
+                    )
                 }
             }
             if (loading) GenerativeLinearWavyProgressIndicator(Modifier.fillMaxWidth())
