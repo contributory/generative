@@ -11,4 +11,4 @@ internal fun markdownHeadingContent(
     content: String,
     node: ASTNode,
     contentChildType: IElementType = MarkdownTokenTypes.ATX_CONTENT
-): String = (node.findChildOfType(contentChildType) ?: node).getTextInNode(content).toString()
+): String = (node.findChildOfType(contentChildType) ?: node).getTextInNode(content).toString().trim()

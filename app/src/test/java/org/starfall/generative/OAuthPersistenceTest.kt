@@ -5,6 +5,9 @@ import org.starfall.generative.integrations.modelapis.account.*
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.*
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import java.util.concurrent.TimeUnit
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -68,11 +71,21 @@ class OAuthPersistenceTest {
         store.save("codex:second", CodexTokenState("second-access", "second-refresh"))
         val provider = ModelProvider("codex", "Codex", ModelApiType.OPENAI_CODEX, baseUrl = "",
             auth = Authorization(AuthMethod.OAUTH, value = "openai_codex_oauth", oauthAccountId = "codex:second"))
-        val adapter = OpenAICodexAdapter(context, AttachmentResolver(context))
-        assertTrue(adapter.fetchModels(provider).isNotEmpty())
-        assertNull(store.load("codex"))
-        adapter.clearCredentials(provider.oauthCredentialId)
-        assertNull(store.load("codex:second"))
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json")
+                .setBody("""{"models":[{"slug":"codex-test-model"}]}"""))
+            val adapter = OpenAICodexAdapter(
+                context, AttachmentResolver(context),
+                modelsEndpoint = server.url("/models").toString()
+            )
+            assertEquals(listOf("codex-test-model"), adapter.fetchModels(provider))
+            val request = server.takeRequest(5, TimeUnit.SECONDS)!!
+            assertEquals("Bearer second-access", request.getHeader("Authorization"))
+            assertTrue(request.path!!.startsWith("/models?client_version="))
+            assertNull(store.load("codex"))
+            adapter.clearCredentials(provider.oauthCredentialId)
+            assertNull(store.load("codex:second"))
+        }
     }
 
 

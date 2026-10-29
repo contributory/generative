@@ -167,7 +167,9 @@ data class ToolActivity(
     val reasoningOffset: Int? = null,
     val inlineMedia: Boolean = false,
     /** Non-zero marks a generic MCP tool response (not media / Content-API). It does not limit [response]. */
-    val responsePreviewLimit: Int = 0
+    val responsePreviewLimit: Int = 0,
+    /** Keeps distinct Actions groups when editing moves them to one Content offset. */
+    val actionGroup: Int? = null
 )
 
 @Serializable

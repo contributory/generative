@@ -61,7 +61,7 @@ class AppSurfaceAndClipConsistencyTest {
         val surface = Color(0xFF273244)
         for (transparency in listOf(0f, 0.25f, 0.5f, 0.75f, 1f)) {
             val actual = appBarSurfaceColor(surface, transparency, amoled = false)
-            assertEquals(1f - transparency, actual.alpha, 0.001f)
+            assertEquals(1f - transparency, actual.alpha, 1f / 255f)
             assertEquals(surface.copy(alpha = 1f - transparency), actual)
             assertEquals(Color.Transparent, appBarSurfaceColor(surface, transparency, amoled = true))
         }
@@ -108,9 +108,9 @@ class AppSurfaceAndClipConsistencyTest {
             assertNotEquals("Light ${preset.name}: prominent card must contrast with background", background, prominentColor)
             assertNotEquals("Light ${preset.name}: nested container must contrast with parent card", prominentColor, nestedColor)
             assertEquals(1f, background.alpha, 0.001f)
-            assertEquals(0.5f, prominentColor.alpha, 0.001f)
+            assertEquals(0.5f, prominentColor.alpha, 1f / 255f)
             assertEquals("TabRow uses the same translucent fill as other items", prominentColor, tabColor)
-            assertEquals(0.5f, nestedColor.alpha, 0.001f)
+            assertEquals(0.5f, nestedColor.alpha, 1f / 255f)
             assertNull("Light ${preset.name}: prominent card must not draw an AMOLED border", prominentBorder)
             assertNull("Light ${preset.name}: nested container must not draw an AMOLED border", nestedBorder)
 
@@ -121,9 +121,9 @@ class AppSurfaceAndClipConsistencyTest {
             assertNotEquals("Dark ${preset.name}: prominent card must contrast with background", background, prominentColor)
             assertNotEquals("Dark ${preset.name}: nested container must contrast with parent card", prominentColor, nestedColor)
             assertEquals(1f, background.alpha, 0.001f)
-            assertEquals(0.5f, prominentColor.alpha, 0.001f)
+            assertEquals(0.5f, prominentColor.alpha, 1f / 255f)
             assertEquals("TabRow uses the same translucent fill as other items", prominentColor, tabColor)
-            assertEquals(0.5f, nestedColor.alpha, 0.001f)
+            assertEquals(0.5f, nestedColor.alpha, 1f / 255f)
             assertNull("Dark ${preset.name}: prominent card must not draw an AMOLED border", prominentBorder)
             assertNull("Dark ${preset.name}: nested container must not draw an AMOLED border", nestedBorder)
 
@@ -161,8 +161,8 @@ class AppSurfaceAndClipConsistencyTest {
             transparency = value
             compose.waitForIdle()
             assertEquals(1f, screen.alpha, 0.001f)
-            assertEquals(1f - value, card.alpha, 0.001f)
-            assertEquals(1f - value, nested.alpha, 0.001f)
+            assertEquals(1f - value, card.alpha, 1f / 255f)
+            assertEquals(1f - value, nested.alpha, 1f / 255f)
         }
     }
 

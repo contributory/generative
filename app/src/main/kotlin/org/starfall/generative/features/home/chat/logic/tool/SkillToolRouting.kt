@@ -43,14 +43,8 @@ internal fun skillsForCurrentTurn(
     }
     if (explicit.size == 1) return explicit
     if (explicit.size > 1) return emptyList() // Ambiguous: don't guess a skill.
-    if (Regex("(?i)\\b(?:skill|kỹ năng|kĩ năng)\\b").containsMatchIn(input) ||
-        Regex("(?i)^\\s*(?:what|why|explain|define|tell me about|how does|what is)").containsMatchIn(input)
-    ) return emptyList() // Describing or asking about a skill is not using it.
-
-    // Never attach by a fuzzy name/description match. With Agent Skills Search enabled,
-    // the model must call the search tool first; otherwise only deliberate invocation qualifies.
-    // Short follow-ups can continue a previously used skill, but an unrelated new
-    // request in the same chat must never inherit all earlier skill tools.
+    // Explicit continuation is allowed only when the immediately preceding user
+    // turn actually selected or activated this skill; questions never inherit it.
     if (!isSkillContinuation(input)) return emptyList()
     val latestUserIndex = messages.indexOfLast { it.role == ChatRole.USER }
     val previousUserIndex = messages.subList(0, latestUserIndex)

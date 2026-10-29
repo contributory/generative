@@ -113,9 +113,9 @@ class AccountTokenUsageTest {
                     val upstreamStream = stream || account == ModelApiType.OPENAI_CODEX || account == ModelApiType.ANTIGRAVITY
                     val body = if (upstreamStream) streamBody(wire, includeUsage, ::envelope)
                         else envelope(response(wire, includeUsage)).toString()
-                    // Codex must also consume a terminal usage event without a trailing blank line.
+                    // The terminal SSE event must have its required blank-line delimiter.
                     server.enqueue(MockResponse().setHeader("Content-Type", if (upstreamStream) "text/event-stream" else "application/json")
-                        .setBody(if (account == ModelApiType.OPENAI_CODEX) body.trimEnd() else body))
+                        .setBody(body))
                     val provider = ModelProvider(id, "Usage", account, auth = auth,
                         baseUrl = server.url(if (account == ModelApiType.OPENAI_CODEX) "/responses" else "/v1").toString(),
                         config = ProviderConfiguration(supportStream = stream))
@@ -204,8 +204,8 @@ class AccountTokenUsageTest {
                 obj("usageMetadata" to full.getValue("usageMetadata"))
             ) else listOf(full)
             ModelApiType.OPENAI_RESPONSES -> listOf(
-                json("""{"type":"response.output_text.delta","delta":"hello"}"""),
-                obj("type" to str("response.completed"), "response" to full)
+                json("""{"type":"response.output_text.delta","sequence_number":1,"item_id":"msg_test","output_index":0,"content_index":0,"delta":"hello"}"""),
+                obj("type" to str("response.completed"), "sequence_number" to JsonPrimitive(2), "response" to full)
             )
             ModelApiType.OLLAMA -> listOf(json("""{"message":{"content":"hello"},"done":false}"""),
                 JsonObject(usageFields(full) + ("done" to JsonPrimitive(true))))
@@ -220,7 +220,11 @@ class AccountTokenUsageTest {
             }
         }
         return if (type == ModelApiType.OLLAMA) events.joinToString("\n", postfix = "\n") { it.toString() }
-            else events.joinToString("") { "data: ${envelope(it)}\n\n" }
+            else events.joinToString("") { event ->
+                val typeHeader = if (type == ModelApiType.ANTHROPIC || type == ModelApiType.OPENAI_RESPONSES)
+                    "event: " + event.getValue("type").jsonPrimitive.content + "\n" else ""
+                typeHeader + "data: " + envelope(event) + "\n\n"
+            }
     }
 
     private fun usageFields(value: JsonObject) = value.filterKeys {

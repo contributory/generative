@@ -680,6 +680,8 @@ class ChatViewModel(
     fun stopGeneration() = messageActions.stopGeneration()
     fun editMessage(messageId: String, newContent: String, files: List<String>): Boolean =
         messageActions.editMessage(messageId, newContent, files)
+    fun deleteAssistantBlock(messageId: String, blockNumber: Int) =
+        messageActions.deleteAssistantBlock(messageId, blockNumber)
     fun deleteMessage(messageId: String) = messageActions.deleteMessage(messageId)
     fun deleteMessageVersion(messageId: String) = messageActions.deleteMessageVersion(messageId)
     fun switchMessageVersion(messageId: String, versionIndex: Int) =

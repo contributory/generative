@@ -16,6 +16,8 @@ import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.DisableSelection
@@ -44,6 +46,8 @@ import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.text.IndependentSelectionContainer
+import org.starfall.generative.shared.ui.menus.AppDropdownMenu
+import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
 
 @Composable
 fun ReasoningDropdown(
@@ -124,7 +128,8 @@ internal fun ProcessingDropdown(
     durationMillis: Long?,
     startNumber: Int,
     modifier: Modifier = Modifier,
-    isStreaming: Boolean = false
+    isStreaming: Boolean = false,
+    onDelete: (() -> Unit)? = null
 ) {
     // The timeline starts closed. Running steps remain visible outside its folded history;
     // only the user can change whether the history itself is expanded.
@@ -278,13 +283,41 @@ internal fun ProcessingDropdown(
                 }
             }
         }
-        if (expanded) {
-            // Only the left padding closes Actions; Thinking selection and tool taps stay untouched.
+        if (expanded || onDelete != null) {
+            // Only padding handles fold/delete gestures; selection and tools are untouched.
             Box(Modifier.matchParentSize()) {
-                Spacer(Modifier.width(8.dp).fillMaxHeight()
-                    .clickable(onClickLabel = stringResource(R.string.collapse)) { expanded = false }
-                    .testTag("processing-dropdown-padding"))
+                BlockContextPadding(
+                    onTap = if (expanded) ({ expanded = false }) else null,
+                    onDelete = onDelete,
+                    modifier = Modifier.testTag("processing-dropdown-padding")
+                )
             }
+        }
+    }
+}
+
+/** Long-press the narrow left padding to delete a block; a tap still folds Actions. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun BlockContextPadding(
+    onTap: (() -> Unit)?,
+    onDelete: (() -> Unit)?,
+    modifier: Modifier = Modifier
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    Box(modifier.width(8.dp).fillMaxHeight()
+        .combinedClickable(onClick = { onTap?.invoke() }, onLongClick = {
+            if (onDelete != null) menuOpen = true
+        })) {
+        AppDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            RoundedDropdownMenuItem(
+                text = { Text(stringResource(R.string.common_delete)) },
+                leadingIcon = { FluentIcon(Icons.Outlined.Delete, contentDescription = null) },
+                onClick = {
+                    menuOpen = false
+                    onDelete?.invoke()
+                }
+            )
         }
     }
 }

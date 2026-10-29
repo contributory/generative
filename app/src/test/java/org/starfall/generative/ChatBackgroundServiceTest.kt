@@ -27,7 +27,8 @@ class ChatBackgroundServiceTest {
             assertEquals(Notification.CATEGORY_SERVICE, notification.category)
             assertTrue(notification.flags and Notification.FLAG_ONGOING_EVENT != 0)
             assertTrue(notification.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0)
-            assertEquals("AI is thinking...", notification.extras.getString(Notification.EXTRA_TITLE))
+            assertEquals(service.getString(R.string.notification_generation_title),
+                notification.extras.getString(Notification.EXTRA_TITLE))
             assertFalse(notification.extras.getBoolean(Notification.EXTRA_SHOW_WHEN))
             assertEquals(MainActivity::class.java.name,
                 shadowOf(notification.contentIntent).savedIntent.component!!.className)

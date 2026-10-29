@@ -119,7 +119,9 @@ class FaviconServiceTest {
                     else -> MockResponse().setResponseCode(404)
                 }
             }
-            val result = service().get(server.url("/").toString(), "")
+            // A homepage belongs in baseUrl. customUrl intentionally performs an extra
+            // direct-image probe before homepage discovery.
+            val result = service().get("", server.url("/").toString())
             assertEquals(listOf("/", "/site/index.html", "/site/bad.png", "/favicon.ico"), List(4) { server.takeRequest().path })
             result.bitmap.recycle()
         } finally { server.shutdown() }

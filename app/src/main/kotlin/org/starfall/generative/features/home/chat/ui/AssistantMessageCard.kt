@@ -24,17 +24,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import org.starfall.generative.shared.ui.media.MediaFileCard
-import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.ToolActivity
+import org.starfall.generative.features.home.chat.logic.service.AssistantTimelineItem
+import org.starfall.generative.features.home.chat.logic.service.buildAssistantActionBlocks
+import org.starfall.generative.features.home.chat.logic.service.AssistantBlockKind
+import org.starfall.generative.features.home.chat.logic.service.assistantVisibleBlocks
 import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
 import org.starfall.generative.features.home.chat.model.ChatStreamStatus
 import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
@@ -43,7 +46,6 @@ import org.starfall.generative.shared.model.countedVersionIndices
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
-import org.starfall.generative.shared.ui.media.mediaMimeType
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.features.home.chat.ui.markdown.MarkdownRenderer
 import org.starfall.generative.features.home.chat.ui.markdown.StreamingMarkdownRenderer
@@ -60,6 +62,7 @@ fun AssistantMessageCard(
     onRetryError: (() -> Unit)? = null,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onDeleteBlock: ((Int) -> Unit)? = null,
     onRead: () -> Unit,
     onSwitchVersion: (Int) -> Unit,
     selectedImageAttachments: List<String> = emptyList(),
@@ -92,9 +95,12 @@ fun AssistantMessageCard(
     val activeVersion = storedVersion
     val generatedModelName = activeVersion.modelDisplayName.ifBlank { activeVersion.modelId.ifBlank { fallbackModelName } }
     val generationError = activeVersion.generationError.orEmpty()
-    // Tool-only responses have no Markdown body, but still have actionable copy/share content.
-    val actionCopyText = remember(activeVersion) { assistantCopyText(message) }
-    val toolbarText = actionCopyText.ifBlank { generationError }
+    // Copy and Share use the same representation, including action/media placeholders.
+    val toolbarText = remember(activeVersion) { assistantCopyText(message) }
+    val hasContent = activeVersion.content.isNotBlank() ||
+        !activeVersion.reasoningContent.isNullOrBlank() ||
+        activeVersion.toolActivity.isNotEmpty() || activeVersion.files.isNotEmpty() ||
+        generationError.isNotBlank()
     val versionIndices = remember(message.versions, message.activeVersionIndex) {
         val counted = message.countedVersionIndices()
         if (message.activeVersionIndex in counted) counted
@@ -124,12 +130,23 @@ fun AssistantMessageCard(
             animateStreamingContent = keepStreamRendererMounted,
             selectedImageAttachments = selectedImageAttachments,
             onToggleChatImage = onToggleChatImage,
+            onDeleteBlock = onDeleteBlock,
             renderCacheIdentity = renderCacheIdentity,
             streamStateFlow = streamStateFlow?.takeIf { keepStreamRendererMounted },
             retainedStream = retainedStream,
             streamConversationId = conversationId,
             streamMessageId = message.id
         )
+        if (!isStreaming && hasContent && activeVersion.content.isBlank()) {
+            OutlinedButton(
+                onClick = onEdit,
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp).testTag("assistant-empty-content")
+            ) {
+                FluentIcon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.common_edit))
+            }
+        }
         if (isStreaming) {
             GenerationLoadingIndicator(
                 modelName = generatedModelName,
@@ -151,11 +168,7 @@ fun AssistantMessageCard(
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
-        if (activeVersion.files.isNotEmpty()) {
-            AttachmentStrip(activeVersion.files, removable = false, modifier = Modifier.padding(top = 8.dp),
-                selectedImageAttachments = selectedImageAttachments, onToggleChatImage = onToggleChatImage,
-                inlinePreview = true)
-        }
+
 
         if (!isStreaming && versionIndices.size > 1) {
             Row(
@@ -200,10 +213,8 @@ fun AssistantMessageCard(
             }
         }
 
-        // A failed response can have no normal assistant content and therefore is not treated as
-        // a response version by the message actions. It still needs the same toolbar so users can
-        // copy/share/delete/edit the error instead of being left with only the error card.
-        if (!isStreaming && toolbarText.isNotBlank()) {
+        // Toolbar visibility depends on message data, not on its copy representation.
+        if (!isStreaming && hasContent) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -226,15 +237,8 @@ fun AssistantMessageCard(
                 ) {
                     FluentIcon(Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
-                MessageActionButton(onClick = {
-                    if (actionCopyText.isNotBlank()) {
-                        onCopy()
-                    } else {
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.message_error_clip_label), toolbarText))
-                        Toast.makeText(context, context.getString(R.string.message_error_copied), Toast.LENGTH_SHORT).show()
-                    }
-                }, contentDescription = stringResource(R.string.common_copy)) {
+                MessageActionButton(onClick = onCopy,
+                    contentDescription = stringResource(R.string.common_copy)) {
                     FluentIcon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
 
@@ -371,53 +375,6 @@ private fun GenerationErrorBlock(
     }
 }
 
-private sealed interface ProcessingTimelineItem {
-    val contentOffset: Int
-
-    data class Thinking(
-        override val contentOffset: Int,
-        val reasoning: String
-    ) : ProcessingTimelineItem
-
-    data class Tool(val activity: ToolActivity) : ProcessingTimelineItem {
-        override val contentOffset: Int get() = activity.contentOffset
-    }
-}
-
-private fun buildProcessingTimeline(version: MessageVersion): List<ProcessingTimelineItem> {
-    val activities = version.toolActivity.filterNot { it.name.endsWith(": connect") }
-    val reasoning = version.reasoningContent.orEmpty()
-
-    if (activities.isNotEmpty() && activities.all { it.reasoningOffset == null }) {
-        return buildList {
-            if (reasoning.isNotBlank()) add(ProcessingTimelineItem.Thinking(0, reasoning))
-            activities.forEach { add(ProcessingTimelineItem.Tool(it)) }
-        }
-    }
-
-    val timeline = mutableListOf<ProcessingTimelineItem>()
-    var reasoningCursor = 0
-    activities.forEach { activity ->
-        val reasoningEnd = (activity.reasoningOffset ?: reasoningCursor)
-            .coerceIn(reasoningCursor, reasoning.length)
-        if (reasoningEnd > reasoningCursor) {
-            timeline += ProcessingTimelineItem.Thinking(
-                activity.contentOffset.coerceIn(0, version.content.length),
-                reasoning.substring(reasoningCursor, reasoningEnd)
-            )
-        }
-        timeline += ProcessingTimelineItem.Tool(activity)
-        reasoningCursor = reasoningEnd
-    }
-    if (reasoningCursor < reasoning.length) {
-        timeline += ProcessingTimelineItem.Thinking(
-            activities.lastOrNull()?.contentOffset?.coerceIn(0, version.content.length) ?: 0,
-            reasoning.substring(reasoningCursor)
-        )
-    }
-    return timeline
-}
-
 @Composable
 private fun SmoothStreamingMarkdownMessage(
     content: String,
@@ -485,16 +442,6 @@ private fun StreamingAssistantText(
     }
 }
 
-private data class ProcessingBlock(
-    val offset: Int,
-    val items: List<ProcessingDropdownItem>
-)
-
-private sealed interface MediaPreviewItem {
-    data class File(val name: String) : MediaPreviewItem
-    data class Placeholder(val activity: ToolActivity) : MediaPreviewItem
-}
-
 @Composable
 private fun CompletedAssistantContent(
     version: MessageVersion,
@@ -503,14 +450,13 @@ private fun CompletedAssistantContent(
     animateStreamingContent: Boolean,
     selectedImageAttachments: List<String>,
     onToggleChatImage: ((String) -> Unit)?,
+    onDeleteBlock: ((Int) -> Unit)?,
     renderCacheIdentity: MarkdownRenderCacheIdentity? = null,
     streamStateFlow: StateFlow<ActiveChatStreamState?>? = null,
     retainedStream: Array<ActiveChatStreamState?>,
     streamConversationId: String? = null,
     streamMessageId: String? = null
 ) {
-    val context = LocalContext.current
-    val store = remember(context) { ToolFiles(context) }
     // Unfinished reasoning lives in the stream, not in database snapshots. Read it directly
     // so the actions block can appear before any tool boundary or final save.
     val liveReasoning = rememberLiveStreamReasoning(
@@ -522,7 +468,10 @@ private fun CompletedAssistantContent(
         } else version
     }
     val blocks = remember(timelineVersion.content, timelineVersion.reasoningContent, timelineVersion.toolActivity) {
-        buildProcessingBlocks(timelineVersion)
+        buildAssistantActionBlocks(timelineVersion)
+    }
+    val numberedBlocks = remember(timelineVersion, isStreaming) {
+        assistantVisibleBlocks(timelineVersion, isStreaming)
     }
     val lastBlock = blocks.lastOrNull()
     // Answer text streamed after the last block means its actions are done, even before the stored
@@ -538,7 +487,7 @@ private fun CompletedAssistantContent(
 
     GatedSelectionContainer {
         Column {
-            if (blocks.isEmpty() && animateStreamingContent && streamStateFlow != null) {
+            if (numberedBlocks.isEmpty() && animateStreamingContent && streamStateFlow != null) {
                 StreamingAssistantText(
                     streamStateFlow = streamStateFlow,
                     conversationId = streamConversationId,
@@ -548,117 +497,70 @@ private fun CompletedAssistantContent(
                     cacheIdentity = renderCacheIdentity,
                     retainedStream = retainedStream
                 )
-            } else if (blocks.isEmpty() && content.isNotBlank()) {
-                SmoothStreamingMarkdownMessage(content.trimEnd(), false, renderCacheIdentity)
             } else {
                 var cursor = 0
                 var nextItemNumber = 1
-                blocks.forEach { block ->
-                    val offset = block.offset.coerceIn(cursor, content.length)
-                    // Answer text after this block means its actions are finished, so they all collapse.
-                    val answerStarted = content.substring(offset).isNotBlank() ||
-                        (block === lastBlock && streamAnswerStarted)
+                numberedBlocks.forEach { visual ->
+                    val offset = visual.offset.coerceIn(cursor, content.length)
                     if (offset > cursor) {
                         val textBefore = content.substring(cursor, offset).trimEnd()
                         if (textBefore.isNotBlank()) {
-                            FormattedMarkdownMessage(
-                                content = textBefore,
-                                cacheIdentity = renderCacheIdentity?.forBlock("before-${block.offset}")
-                            )
+                            FormattedMarkdownMessage(textBefore,
+                                renderCacheIdentity?.forBlock("before-${visual.number}"))
                             Spacer(Modifier.height(4.dp))
                         }
                     }
-
-                    // Keep completed media-generation actions in the timeline. Their preview
-                    // appears below, but success must not make the Actions dropdown disappear.
-                    val hasActionTurn = block.items.any { it is ProcessingDropdownItem.Tool }
-                    // Identity is the block's position plus its first item. Keying on every item (or on
-                    // the reasoning text) recreated the dropdown on each streamed token or new tool call.
-                    val hasRunningAction = block.items.any {
-                        it is ProcessingDropdownItem.Tool && it.activity.status == "running"
-                    }
-                    val live = isStreaming && block === blocks.last() && (!answerStarted || hasRunningAction)
-                    if (hasActionTurn) SelectionOnlyPlaceholder("[ActionTurnsBlock]")
-                    key(block.offset, block.items.firstOrNull()?.let { first ->
-                        when (first) {
-                            is ProcessingDropdownItem.Thinking -> "thinking"
-                            is ProcessingDropdownItem.Tool -> "tool:${first.activity.id}"
-                        }
-                    }) {
-                        // Thinking owns an independent selection island inside ProcessingDropdown.
-                        // Tool/action visuals are excluded from the message content selection; the
-                        // placeholder above is their sole copy/select representation.
-                        DisableSelection {
-                            ProcessingDropdown(
-                                items = block.items,
-                                durationMillis = processingDurationMillis.takeIf { blocks.size == 1 },
-                                startNumber = nextItemNumber,
-                                modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
-                                isStreaming = live
-                            )
-                        }
-                    }
-                    val mediaItems = block.items.filterIsInstance<ProcessingDropdownItem.Tool>()
-                        .flatMap { item ->
-                            val activity = item.activity
-                            val activityFiles = if (activity.name == "send_file" && activity.inlineMedia) {
-                                activity.files
-                            } else if (activity.inlineMedia || activity.responsePreviewLimit == 0 &&
-                                activity.name in listOf("generate_image", "generate_video")) {
-                                activity.files.filter { file ->
-                                    val mime = mediaMimeType(file.removePrefix("tool-file:"))
-                                    mime.startsWith("image/") || mime.startsWith("video/") || mime.startsWith("audio/")
+                    val block = visual.actionIndex?.let { blocks.getOrNull(it) }
+                    when (visual.kind) {
+                        AssistantBlockKind.ACTIONS -> {
+                            if (block != null) {
+                                val answerStarted = content.substring(offset).isNotBlank() ||
+                                    (block === lastBlock && streamAnswerStarted)
+                                val running = block.items.any {
+                                    it is AssistantTimelineItem.Tool && it.activity.status == "running"
                                 }
-                            } else if (activity.responsePreviewLimit > 0) emptyList()
-                            else activity.files.filterNot { it.endsWith(".json", ignoreCase = true) }
-                            val files = activityFiles.map { it.removePrefix("tool-file:") }
-                                .filter { shownFiles.add(it) }
-                            // Preserve each call's position when its pending tile becomes a file or failure.
-                            when {
-                                activityFiles.isNotEmpty() -> files.map { MediaPreviewItem.File(it) }
-                                activity.name in setOf("generate_image", "generate_video") &&
-                                    (activity.status == "error" || isStreaming && activity.status == "running") ->
-                                    listOf(MediaPreviewItem.Placeholder(activity))
-                                else -> emptyList()
-                            }
-                        }
-                    val files = mediaItems.filterIsInstance<MediaPreviewItem.File>()
-                    if (mediaItems.isNotEmpty()) {
-                        if (files.isNotEmpty()) SelectionOnlyPlaceholder("[MediaBlock]")
-                        DisableSelection {
-                            val columns = when {
-                                mediaItems.size == 1 -> 1
-                                mediaItems.size <= 6 -> 2
-                                else -> 3
-                            }
-                            Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                mediaItems.chunked(columns).forEach { rowItems ->
-                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        rowItems.forEach { item ->
-                                            Box(Modifier.weight(1f)) {
-                                                when (item) {
-                                                    is MediaPreviewItem.File -> key(item.name) {
-                                                        MediaFileCard(store, item.name, imageOnly = true,
-                                                            selectedForChat = store.resolve(item.name)?.path in selectedImageAttachments,
-                                                            onToggleChatImage = onToggleChatImage,
-                                                            playVideoInline = columns == 1)
-                                                    }
-                                                    is MediaPreviewItem.Placeholder -> key(item.activity.id) {
-                                                        GeneratedMediaPlaceholder(item.activity)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        repeat(columns - rowItems.size) { Spacer(Modifier.weight(1f)) }
+                                val live = isStreaming && block === lastBlock && (!answerStarted || running)
+                                SelectionOnlyPlaceholder(visual.placeholder)
+                                key(visual.actionIndex, block.items.firstOrNull()?.let { item ->
+                                    when (item) {
+                                        is AssistantTimelineItem.Thinking -> "thinking"
+                                        is AssistantTimelineItem.Tool -> item.activity.id
+                                    }
+                                }) {
+                                    DisableSelection {
+                                        ProcessingDropdown(
+                                            items = block.items.map { item -> when (item) {
+                                                is AssistantTimelineItem.Thinking -> ProcessingDropdownItem.Thinking(item.reasoning)
+                                                is AssistantTimelineItem.Tool -> ProcessingDropdownItem.Tool(item.activity)
+                                            } },
+                                            durationMillis = processingDurationMillis.takeIf { blocks.size == 1 },
+                                            startNumber = nextItemNumber,
+                                            modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
+                                            isStreaming = live,
+                                            onDelete = if (!isStreaming && onDeleteBlock != null)
+                                                ({ onDeleteBlock(visual.number) }) else null
+                                        )
                                     }
                                 }
+                                nextItemNumber += block.items.count {
+                                    it !is AssistantTimelineItem.Tool || it.activity.name != "send_file"
+                                }
                             }
                         }
+                        AssistantBlockKind.MEDIA -> AssistantMediaBlock(
+                            block = block,
+                            files = version.files,
+                            number = visual.number,
+                            isStreaming = isStreaming,
+                            selectedImageAttachments = selectedImageAttachments,
+                            onToggleChatImage = onToggleChatImage,
+                            onDelete = if (!isStreaming && onDeleteBlock != null)
+                                ({ onDeleteBlock(visual.number) }) else null,
+                            shownFiles = shownFiles
+                        )
                     }
-                    nextItemNumber += block.items.count { it !is ProcessingDropdownItem.Tool || it.activity.name != "send_file" }
                     cursor = offset
                 }
-
                 if (animateStreamingContent && streamStateFlow != null) {
                     StreamingAssistantText(
                         streamStateFlow = streamStateFlow,
@@ -678,47 +580,6 @@ private fun CompletedAssistantContent(
             }
         }
     }
-}
-
-private fun ProcessingTimelineItem.toDropdownItem(): ProcessingDropdownItem = when (this) {
-    is ProcessingTimelineItem.Thinking -> ProcessingDropdownItem.Thinking(reasoning)
-    is ProcessingTimelineItem.Tool -> ProcessingDropdownItem.Tool(activity)
-}
-
-private fun buildProcessingBlocks(version: MessageVersion): List<ProcessingBlock> {
-    val timeline = buildProcessingTimeline(version)
-    if (timeline.isEmpty()) return emptyList()
-
-    val blocks = mutableListOf<ProcessingBlock>()
-    var groupOffset = timeline.first().contentOffset.coerceIn(0, version.content.length)
-    var previousOffset = groupOffset
-    var groupItems = mutableListOf(timeline.first().toDropdownItem())
-
-    timeline.drop(1).forEach { item ->
-        val itemOffset = item.contentOffset.coerceIn(previousOffset, version.content.length)
-        val hasVisibleContentBetween = itemOffset > previousOffset && version.content.substring(
-            previousOffset.coerceAtMost(version.content.length),
-            itemOffset.coerceAtMost(version.content.length)
-        ).isNotBlank()
-
-        if (hasVisibleContentBetween) {
-            blocks += ProcessingBlock(
-                offset = groupOffset,
-                items = groupItems.toList()
-            )
-            groupOffset = itemOffset
-            groupItems = mutableListOf()
-        }
-
-        groupItems += item.toDropdownItem()
-        previousOffset = itemOffset
-    }
-
-    blocks += ProcessingBlock(
-        offset = groupOffset,
-        items = groupItems.toList()
-    )
-    return blocks
 }
 
 @Composable
@@ -749,29 +610,14 @@ fun FormattedMarkdownMessage(
 /** Copy representation of one assistant message; visual action/media blocks have stable text tokens. */
 internal fun assistantCopyText(message: StoredMessage): String {
     val version = message.activeVersion
-    val activities = version.toolActivity
-        .filterNot { it.name.endsWith(": connect") }
-        .sortedBy { it.contentOffset }
-    if (activities.isEmpty()) return version.content
-
     val content = version.content
-    val output = StringBuilder(content.length)
+    val result = StringBuilder()
     var cursor = 0
-    activities.groupBy { it.contentOffset.coerceIn(0, content.length) }
-        .toSortedMap()
-        .forEach { (offset, group) ->
-            if (offset > cursor) output.append(content, cursor, offset)
-            val action = group.any { it.name != "send_file" }
-            val media = group.any { activity ->
-                activity.files.any { file ->
-                    val mime = mediaMimeType(file.removePrefix("tool-file:"))
-                    mime.startsWith("image/") || mime.startsWith("video/") || mime.startsWith("audio/")
-                }
-            }
-            if (action) output.append("[ActionTurnsBlock]")
-            if (media) output.append("[MediaBlock]")
-            cursor = offset
-        }
-    if (cursor < content.length) output.append(content, cursor, content.length)
-    return output.toString()
+    assistantVisibleBlocks(version).forEach { block ->
+        val offset = block.offset.coerceIn(cursor, content.length)
+        result.append(content, cursor, offset).append(block.placeholder)
+        cursor = offset
+    }
+    result.append(content, cursor, content.length)
+    return result.toString().ifBlank { version.generationError.orEmpty() }
 }

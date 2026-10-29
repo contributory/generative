@@ -93,6 +93,7 @@ fun ChatScreen(
     onRegenerate: (String) -> Unit,
     onRetryFromError: (String) -> Unit = {},
     onEditMessage: (messageId: String, newContent: String, files: List<String>) -> Boolean,
+    onDeleteAssistantBlock: (String, Int) -> Unit = { _, _ -> },
     onDeleteMessage: (messageId: String) -> Unit,
     onDeleteMessageVersion: (messageId: String) -> Unit,
     onSwitchVersion: (messageId: String, versionIndex: Int) -> Unit,
@@ -574,16 +575,19 @@ fun ChatScreen(
                             onEdit = rememberChatAction {
                                 editDraft = ChatInputEditDraft(
                                     messageId = msg.id,
-                                    text = msg.content,
+                                    text = assistantCopyText(msg),
                                     attachments = msg.files,
                                     revision = System.nanoTime()
                                 )
+                            },
+                            onDeleteBlock = rememberChatValueAction<Int> { block ->
+                                whenIdle { onDeleteAssistantBlock(msg.id, block) }
                             },
                             onDelete = rememberChatAction {
                                 deletingMessageId = msg.id
                             },
                             onRead = rememberChatAction {
-                                onReadMessage(msg.id, msg.content)
+                                onReadMessage(msg.id, msg.content.ifBlank { msg.reasoningContent.orEmpty() })
                             },
                             onSwitchVersion = rememberChatValueAction { newIdx: Int ->
                                 whenIdle { onSwitchVersion(msg.id, newIdx) }

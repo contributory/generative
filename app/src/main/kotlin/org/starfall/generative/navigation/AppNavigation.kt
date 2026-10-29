@@ -585,6 +585,9 @@ fun AppNavigation(
                         onDeleteMessage = { id ->
                             viewModel.deleteMessage(id)
                         },
+                        onDeleteAssistantBlock = { id, block ->
+                            viewModel.deleteAssistantBlock(id, block)
+                        },
                         onDeleteMessageVersion = { id ->
                             viewModel.deleteMessageVersion(id)
                         },

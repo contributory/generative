@@ -138,7 +138,7 @@ class ContextApiUsageTest {
             emit(GenerationEvent.Text("After tool"))
             emit(GenerationEvent.Usage(TokenUsage(800, 30)))
         }, usageContextKey = contextUsageKey(initial, prompt, config))
-        assertFalse(runner.busy.value)
+        withTimeout(5_000) { runner.busy.first { !it } }
         assertEquals("Before toolAfter tool", saved!!.messages.last().content)
         assertEquals(830L, status(saved!!).usedTokens)
         assertEquals(TokenUsage(800, 30), status(saved!!).apiUsage)
@@ -153,6 +153,7 @@ class ContextApiUsageTest {
             emit(GenerationEvent.Usage(TokenUsage(80, 10)))
             emit(GenerationEvent.Text(" not covered"))
         }, usageContextKey = contextUsageKey(initial, prompt, config))
+        withTimeout(5_000) { runner.busy.first { !it } }
         assertNull(status(saved!!).apiUsage)
         assertTrue(status(saved!!).isEstimated)
     }

@@ -207,12 +207,12 @@ class AccountAdapterTest {
     @Test fun cancellingSseAggregationDuringResponseBodyPropagates() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream")
-                .setBody("data: {\"id\":\"chatcmpl-test\",\"choices\":[]}\n\n")
-                .throttleBody(1, 1, java.util.concurrent.TimeUnit.DAYS))
+                .setBody("data: {\"id\":\"chatcmpl-test\",\"choices\":[]}\n\n" + " ".repeat(8192))
+                .throttleBody(128, 10, java.util.concurrent.TimeUnit.SECONDS))
             val provider = ModelProvider("sse-cancel", "Test", ModelApiType.OPENAI,
                 auth = Authorization(AuthMethod.BEARER_TOKEN, value = "token"),
                 baseUrl = server.url("/v1").toString())
-            val job = async {
+            val job = async(Dispatchers.IO) {
                 ToolHttp().modelResponse(server.url("/v1/chat/completions").toString(), obj(), provider,
                     true, {}, {})
             }
@@ -250,7 +250,9 @@ class AccountAdapterTest {
                             """{"type":"content_block_stop","index":1}""",
                             """{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":1}}""",
                             """{"type":"message_stop"}"""
-                        ).joinToString("") { "data: $it\n\n" }
+                        ).joinToString("") { event ->
+                            "event: " + Json.parseToJsonElement(event).jsonObject.getValue("type").jsonPrimitive.content + "\ndata: $event\n\n"
+                        }
                         ModelApiType.ANTIGRAVITY -> "data: $body\n\n"
                         else -> """data: {"id":"chatcmpl-test","object":"chat.completion.chunk","created":0,"model":"chat","choices":[{"index":0,"delta":{"content":"hello","reasoning_content":"plan"},"finish_reason":null}]}""" + "\n\ndata: [DONE]\n\n"
                     }

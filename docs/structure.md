@@ -199,6 +199,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   │   ├── 📁 service/
 │   │   │   │   │   ├── 📄 AutomaticConversationSummaryCoordinator.kt
 │   │   │   │   │   ├── 📄 ChatConversationCoordinator.kt
+│   │   │   │   │   ├── 📄 AssistantMessageBlocks.kt
 │   │   │   │   │   ├── 📄 ChatMessageActions.kt
 │   │   │   │   │   ├── 📄 ChatMessageRetryActions.kt
 │   │   │   │   │   ├── 📄 ChatModelContextCoordinator.kt
@@ -254,6 +255,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │       │   └── 📄 VirtualizedMarkdownTable.kt
 │   │   │       ├── 📁 tool/
 │   │   │       │   └── 📄 ToolActivityCards.kt
+│   │   │       ├── 📄 AssistantMediaBlock.kt
 │   │   │       ├── 📄 AssistantMessageCard.kt
 │   │   │       ├── 📄 AttachmentPreview.kt
 │   │   │       ├── 📄 ChatAppbar.kt
@@ -739,4 +741,5 @@ The project uses `ui/`, `logic/`, and `model/` instead of a canonical `presentat
 - `ChatScreen` forwards existing card actions and composer events. History data loads before the real list mounts; renderer/cache readiness never gates viewport creation. `ConversationMinimapSideBar` is a conventional list scrollbar. It appears by itself while the list scrolls (between the app bar and the composer) and fades after a short idle; it adds no horizontal-swipe rules, so edge swipes behave exactly as on any chat body. Only the thumb takes touches, and only vertical drags. Thumb position and size are measured in turns from the lazy list's native visible items (`minimapVisibleSpan`/`minimapThumb`), with no text-height estimates. Dragging scrolls the list directly (`scrollToItem` with an in-turn fraction only for on-screen turns), reports manual scrolling through `onScrub` so follow stops, and dragging to the bottom resumes it at the end of the latest content.
 - Stopped stream snapshots stay available for the mounted conversation's handoff and are released on navigation/deletion; live streams for other conversations continue independently. Persistence remains at completed/interrupted block boundaries, with temporary chats excluded.
 
+- Chat response block layout is shared by grouping, numbering, Copy/Share and Edit (chat/logic/service/AssistantMessageBlocks.kt). Removing a numbered placeholder from Edit retains its block before Content; a long press on its left padding is required for Delete. Edit and block Delete create response versions, and an additive Room v13-to-v14 migration preserves block locations across chat reloads.
 - `chat/ui/ThinkingPlainText.kt` displays raw reasoning with the configured message font and a subdued text color. It does not parse Markdown or own scroll physics. `LiveThinkingBlock` smooths only the drawn auto-follow position with a short graphics-layer animation; native `ScrollState`, manual drag and the inactivity pause remain authoritative. The Actions timeline starts folded; running steps are shown outside the fold and shrink into history on completion. Manually expanded Thinking and Actions states are retained through the transition.

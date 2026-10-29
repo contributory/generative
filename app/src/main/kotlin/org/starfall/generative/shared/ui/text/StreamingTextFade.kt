@@ -64,8 +64,15 @@ internal fun rememberStreamingTextPresentation(text: String): StreamingTextPrese
     val frameTime = remember { mutableLongStateOf(SystemClock.uptimeMillis()) }
     LaunchedEffect(ranges) {
         val finishAt = ranges.maxOfOrNull { it.startedAt + STREAM_FADE_DURATION_MS } ?: return@LaunchedEffect
+        // Advance from the Compose frame clock. Under a virtual animation clock,
+        // SystemClock.uptimeMillis() need not advance, which otherwise spins forever.
+        val initialUptime = SystemClock.uptimeMillis()
+        var firstFrameNanos = -1L
         do {
-            withFrameNanos { frameTime.longValue = SystemClock.uptimeMillis() }
+            withFrameNanos { nanos ->
+                if (firstFrameNanos < 0L) firstFrameNanos = nanos
+                frameTime.longValue = initialUptime + (nanos - firstFrameNanos) / 1_000_000L
+            }
         } while (frameTime.longValue < finishAt)
     }
 

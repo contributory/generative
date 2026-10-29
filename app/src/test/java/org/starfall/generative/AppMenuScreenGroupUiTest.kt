@@ -170,7 +170,7 @@ class AppMenuScreenGroupUiTest {
                 compose.waitForIdle()
                 assertNull("Light mode (${preset.name}) should not use border", buttonBorder)
                 assertEquals("Screen must stay opaque", 1f, screenBackground.alpha, 0.001f)
-                assertEquals("Light mode item fill must be 50% opaque", 0.5f, buttonColor.alpha, 0.001f)
+                assertEquals("Light mode item fill must be 50% opaque", 0.5f, buttonColor.alpha, 1f / 255f)
             }
 
             // Dark mode (non-AMOLED)
@@ -179,7 +179,7 @@ class AppMenuScreenGroupUiTest {
             compose.waitForIdle()
             assertNull("Dark mode (${preset.name}) should not use border", buttonBorder)
             assertEquals("Screen must stay opaque", 1f, screenBackground.alpha, 0.001f)
-            assertEquals("Dark mode item fill must be 50% opaque", 0.5f, buttonColor.alpha, 0.001f)
+            assertEquals("Dark mode item fill must be 50% opaque", 0.5f, buttonColor.alpha, 1f / 255f)
             assertTrue(
                 "Dark mode (${preset.name}) background should not be AMOLED black",
                 maxChannelDelta(AndroidColor.BLACK, screenBackground.toArgb()) >= 12

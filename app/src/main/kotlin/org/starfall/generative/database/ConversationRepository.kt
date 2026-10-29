@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.SetSerializer
 import kotlinx.serialization.builtins.serializer
 import org.starfall.generative.shared.model.ChatRole
@@ -181,7 +182,8 @@ class ConversationRepository @JvmOverloads constructor(private val db: AppDataba
                         contentOffset = activity.contentOffset,
                         reasoningOffset = activity.reasoningOffset,
                         inlineMedia = activity.inlineMedia,
-                        responsePreviewLimit = activity.responsePreviewLimit
+                        responsePreviewLimit = activity.responsePreviewLimit,
+                        actionGroup = activity.actionGroup
                     )
                 }
                 MessageVersion(
@@ -197,7 +199,17 @@ class ConversationRepository @JvmOverloads constructor(private val db: AppDataba
                     modelDisplayName = version.modelDisplayName,
                     generationInterrupted = version.generationInterrupted,
                     generationError = version.generationError,
-                    contextUsage = version.toContextUsage()
+                    contextUsage = version.toContextUsage(),
+                    reasoningContentOffset = version.reasoningContentOffset,
+                    filesContentOffset = version.filesContentOffset,
+                    mediaContentOffsets = runCatching {
+                        json.decodeFromString(MapSerializer(String.serializer(), Int.serializer()),
+                            version.mediaContentOffsetsJson)
+                    }.getOrDefault(emptyMap()),
+                    blockOrder = runCatching {
+                        json.decodeFromString(MapSerializer(String.serializer(), Int.serializer()),
+                            version.blockOrderJson)
+                    }.getOrDefault(emptyMap())
                 )
             }
             StoredMessage(
@@ -284,7 +296,15 @@ class ConversationRepository @JvmOverloads constructor(private val db: AppDataba
                 usageInputTokens = contextUsage?.usage?.inputTokens,
                 usageOutputTokens = contextUsage?.usage?.outputTokens,
                 usageContextKey = contextUsage?.contextKey,
-                usageMessagesFingerprint = contextUsage?.messagesFingerprint
+                usageMessagesFingerprint = contextUsage?.messagesFingerprint,
+                reasoningContentOffset = version.reasoningContentOffset,
+                filesContentOffset = version.filesContentOffset,
+                mediaContentOffsetsJson = json.encodeToString(
+                    MapSerializer(String.serializer(), Int.serializer()), version.mediaContentOffsets
+                ),
+                blockOrderJson = json.encodeToString(
+                    MapSerializer(String.serializer(), Int.serializer()), version.blockOrder
+                )
             )
             val previous = existingVersions.firstOrNull { it.versionIndex == versionIndex }
             if (previous == null) dao.insertMessageVersion(entity)
@@ -313,7 +333,8 @@ class ConversationRepository @JvmOverloads constructor(private val db: AppDataba
             val entity = ToolActivityEntity(
                 conversationId, messageId, versionIndex, activityIndex, activity.id, activity.name,
                 activity.wireName, activity.status, activity.summary, activity.arguments, activity.response,
-                activity.contentOffset, activity.reasoningOffset, activity.inlineMedia, activity.responsePreviewLimit
+                activity.contentOffset, activity.reasoningOffset, activity.inlineMedia, activity.responsePreviewLimit,
+                activity.actionGroup
             )
             val previous = existing.firstOrNull { it.activityIndex == activityIndex }
             if (previous == null) dao.insertToolActivity(entity)

@@ -289,7 +289,7 @@ class ChatMessageListTest {
         compose.mainClock.autoAdvance = true
     }
 
-    @Test fun firstVisiblePublicationAfterAnInitiallyNullStreamRequestsFollow() {
+    @Test fun firstVisiblePublicationWithoutLayoutGrowthDoesNotRequestFollow() {
         val messages = listOf(message("user", ChatRole.USER), message("reply", ChatRole.MODEL))
         val state = ChatMessageListState(initialMessages = messages)
         val stream = MutableStateFlow<ActiveChatStreamState?>(null)
@@ -309,7 +309,7 @@ class ChatMessageListTest {
             )
         }
         compose.waitForIdle()
-        assertTrue("The first published chunk must not be dropped", state.requestCount > before)
+        assertEquals("Only rendered content growth triggers follow, not stream publications", before, state.requestCount)
     }
 
     @Test fun historyFirstLayoutUsesNativeEndAcrossViewportFontAndInsetChanges() {

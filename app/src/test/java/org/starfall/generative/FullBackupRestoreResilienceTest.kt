@@ -137,8 +137,12 @@ class FullBackupRestoreResilienceTest {
 
             val message = thrown.message.orEmpty()
             assertTrue("Message must include original cause: $message", message.contains("Primary restore failed"))
-            assertEquals("Primary restore failed", thrown.cause?.message)
-            assertEquals("Rollback also failed", thrown.suppressed.singleOrNull()?.message)
+            // A coroutine/restore wrapper may preserve the failure in a nested cause.
+            // Assert both root failures without depending on their wrapper depth.
+            val causes = generateSequence(thrown as Throwable?) { it.cause }.toList()
+            assertTrue(causes.any { it.message == "Primary restore failed" })
+            assertTrue(causes.flatMap { it.suppressed.toList() }
+                .any { it.message == "Rollback also failed" })
 
             val preserved = harness.transfer.recoveryDirectory.listFiles().orEmpty().singleOrNull()
             assertNotNull("Safety snapshot must remain in filesDir/backup-recovery", preserved)

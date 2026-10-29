@@ -111,7 +111,7 @@ internal class McpAttachments(private val entries: List<Entry>, private val sett
         ),
         ToolDefinition(
             name = CONNECT_MCPS_TOOL_NAME,
-            description = "Connect to MCP servers by mcp_id so their tools are added to the next requests; use them right after connecting. " +
+            description = "Use list_mcps to discover mcp_ids, then connect to MCP servers by mcp_id so their tools are added to the next requests; use them right after connecting. " +
                 "At most ${settings.loadLimit} MCP servers stay connected; connecting more disconnects the oldest, " +
                 "and a server not used for $MCP_AUTO_UNLOAD_USER_TURNS user messages is disconnected automatically. " +
                 "Returns only which servers were connected, not their tools. detailed=true also attaches the tool descriptions.",

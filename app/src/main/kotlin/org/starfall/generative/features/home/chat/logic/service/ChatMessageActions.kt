@@ -317,8 +317,11 @@ internal class ChatMessageActions(
     fun stopGeneration() { generationForCurrent()?.stop() }
 
     fun editMessage(messageId: String, newContent: String, files: List<String>): Boolean {
-        if (isRestoreInProgress() || summaryJob()?.isActive == true || (newContent.isBlank() && files.isEmpty())) {
-            return false
+        if (isRestoreInProgress() || summaryJob()?.isActive == true) return false
+        if (newContent.isBlank() && files.isEmpty()) {
+            val target = _currentConversation.value?.messages?.firstOrNull { it.id == messageId }
+            if (target?.role != ChatRole.MODEL ||
+                assistantVisibleBlocks(target.activeVersion).isEmpty()) return false
         }
         if (isGenerating.value) {
             val conversation = _currentConversation.value ?: return false
@@ -345,7 +348,7 @@ internal class ChatMessageActions(
 
     private fun editMessageNow(messageId: String, newContent: String, files: List<String>): Boolean =
         guardRestoreBoolean {
-            if (summaryJob()?.isActive == true || (newContent.isBlank() && files.isEmpty())) {
+            if (summaryJob()?.isActive == true) {
                 return@guardRestoreBoolean false
             }
             val conv = _currentConversation.value ?: return@guardRestoreBoolean false
@@ -354,18 +357,12 @@ internal class ChatMessageActions(
             if (idx == -1) return@guardRestoreBoolean false
 
             val oldMsg = currentMsgs[idx]
+            if (newContent.isBlank() && files.isEmpty() &&
+                (oldMsg.role != ChatRole.MODEL ||
+                    assistantVisibleBlocks(oldMsg.activeVersion).isEmpty())) return@guardRestoreBoolean false
             val newVersions = oldMsg.versions.toMutableList()
             val now = System.currentTimeMillis()
-            newVersions.add(
-                MessageVersion(
-                    content = newContent,
-                    timestamp = now.toString(),
-                    files = files,
-                    providerId = oldMsg.activeVersion.providerId,
-                    modelId = oldMsg.activeVersion.modelId,
-                    modelDisplayName = oldMsg.activeVersion.modelDisplayName
-                )
-            )
+            newVersions.add(editedMessageVersion(oldMsg, newContent, files, now.toString()))
             currentMsgs[idx] = oldMsg.copy(
                 versions = newVersions,
                 activeVersionIndex = newVersions.size - 1
@@ -509,6 +506,23 @@ internal class ChatMessageActions(
         saveEditedConversation(conv, updated)
     }
 
+    fun deleteAssistantBlock(messageId: String, blockNumber: Int) = guardRestoreUnit {
+        if (isGenerating.value) return@guardRestoreUnit
+        val conversation = _currentConversation.value ?: return@guardRestoreUnit
+        val index = conversation.messages.indexOfFirst { it.id == messageId && it.role == ChatRole.MODEL }
+        if (index < 0) return@guardRestoreUnit
+        val message = conversation.messages[index]
+        val updated = deleteAssistantBlock(message.activeVersion, blockNumber)
+        if (updated == message.activeVersion) return@guardRestoreUnit
+        val messages = conversation.messages.toMutableList()
+        val versions = message.versions + updated.copy(timestamp = System.currentTimeMillis().toString())
+        messages[index] = message.copy(versions = versions, activeVersionIndex = versions.lastIndex)
+        saveEditedConversation(conversation, conversation.withUpdatedMessageStructure(messages).copy(
+            summary = summaryAfterMessageMutation(conversation, index, messages),
+            updatedAt = System.currentTimeMillis()
+        ))
+    }
+
     fun switchMessageVersion(messageId: String, versionIndex: Int) = guardRestoreUnit {
         if (isGenerating.value) return@guardRestoreUnit
         val conv = _currentConversation.value ?: return@guardRestoreUnit
@@ -534,3 +548,20 @@ internal class ChatMessageActions(
 private const val RESUME_AFTER_ERROR_PROMPT =
     "The previous response was interrupted by an error. Continue it exactly from where it stopped " +
         "without repeating what was already written or already done by tools."
+
+
+/** Editing a response changes only its Content; tool results and Thinking are retained. */
+internal fun editedMessageVersion(
+    message: StoredMessage,
+    content: String,
+    files: List<String>,
+    timestamp: String
+): MessageVersion = message.activeVersion.let { previous ->
+    if (message.role == ChatRole.MODEL) {
+        editedAssistantVersion(message, content, files, timestamp)
+    } else {
+        MessageVersion(content = content, files = files, timestamp = timestamp,
+            providerId = previous.providerId, modelId = previous.modelId,
+            modelDisplayName = previous.modelDisplayName)
+    }
+}

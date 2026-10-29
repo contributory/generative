@@ -4,6 +4,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onNodeWithTag
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import org.starfall.generative.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Rule
@@ -19,10 +25,12 @@ import org.starfall.generative.features.home.chat.model.StreamFreezeSignal
 import org.starfall.generative.features.home.chat.model.StreamMetricsSnapshot
 import org.starfall.generative.features.home.chat.model.StreamTextSnapshot
 import org.starfall.generative.features.home.chat.ui.AssistantMessageCard
+import org.starfall.generative.features.home.chat.ui.assistantCopyText
 import org.starfall.generative.features.home.chat.ui.ChatRenderMetrics
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
+import org.starfall.generative.shared.model.ToolActivity
 import org.starfall.generative.features.home.chat.ui.rememberChatAction
 import org.starfall.generative.features.home.chat.ui.rememberChatValueAction
 
@@ -81,6 +89,86 @@ class ChatMessageCallbacksTest {
         assertEquals(false, observedGeneration)
     }
 
+    @Test fun anyStoredToolOrFileShowsToolbarButAnEmptyResponseDoesNot() {
+        val versions = listOf(
+            MessageVersion(toolActivity = listOf(ToolActivity(id = "search", name = "web_search"))),
+            MessageVersion(toolActivity = listOf(ToolActivity(id = "internal", name = "server: connect"))),
+            MessageVersion(toolActivity = listOf(ToolActivity(id = "file", name = "send_file",
+                files = listOf("tool-file:document.pdf")))),
+            MessageVersion(files = listOf("image.png")),
+            MessageVersion()
+        )
+        var selected by mutableStateOf(0)
+        var copied = 0
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        compose.setContent { MaterialTheme {
+            AssistantMessageCard(
+                message = StoredMessage("reply", ChatRole.MODEL, listOf(versions[selected])),
+                isStreaming = false, onCopy = { copied++ }, onRegenerate = {},
+                onEdit = {}, onDelete = {}, onRead = {}, onSwitchVersion = {}
+            )
+        } }
+        repeat(4) { index ->
+            compose.onNodeWithTag("assistant-empty-content").assertExists()
+            compose.onNodeWithContentDescription(context.getString(R.string.common_copy))
+                .assertExists().performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.common_share)).assertExists()
+            compose.runOnIdle {
+                assertEquals(index + 1, copied)
+                selected++
+            }
+        }
+        compose.onNodeWithTag("assistant-empty-content").assertDoesNotExist()
+        compose.onNodeWithContentDescription(context.getString(R.string.common_copy)).assertDoesNotExist()
+    }
+
+    @Test fun interruptedThinkingOnlyMessageHasFunctionalToolbar() {
+        val reasoning = "**Raw thinking**\n# Not formatted"
+        val message = StoredMessage("thinking-only", ChatRole.MODEL,
+            listOf(MessageVersion(reasoningContent = reasoning, generationInterrupted = true)))
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        var copiedText = ""
+        var copyCalls = 0
+        var editCalls = 0
+        var regenerationCalls = 0
+        compose.setContent { MaterialTheme {
+            AssistantMessageCard(
+                message = message, isStreaming = false,
+                onCopy = { copiedText = assistantCopyText(message); copyCalls++ },
+                onRegenerate = { regenerationCalls++ },
+                onEdit = { editCalls++ }, onDelete = {}, onRead = {}, onSwitchVersion = {}
+            )
+        } }
+        compose.onNodeWithTag("assistant-empty-content").assertExists().performClick()
+        compose.onNodeWithContentDescription(context.getString(R.string.common_copy))
+            .assertExists().performClick()
+        compose.runOnIdle {
+            assertEquals("[ActionTurnsBlock1]", copiedText)
+            assertEquals(1, copyCalls)
+            assertEquals(1, editCalls)
+        }
+        compose.onNodeWithContentDescription(context.getString(R.string.common_share)).assertExists()
+        compose.onNodeWithContentDescription(context.getString(R.string.message_regenerate)).performClick()
+        compose.runOnIdle { assertEquals(1, regenerationCalls) }
+    }
+
+    @Test fun answeredMessageStillUsesNormalCopyInsteadOfThinkingFallback() {
+        val message = StoredMessage("answered", ChatRole.MODEL,
+            listOf(MessageVersion(content = "Final answer", reasoningContent = "Private reasoning")))
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        var copies = 0
+        compose.setContent { MaterialTheme {
+            AssistantMessageCard(
+                message = message, isStreaming = false,
+                onCopy = { copies++ }, onRegenerate = {},
+                onEdit = {}, onDelete = {}, onRead = {}, onSwitchVersion = {}
+            )
+        } }
+        compose.onNodeWithTag("assistant-empty-content").assertDoesNotExist()
+        compose.onNodeWithContentDescription(context.getString(R.string.common_copy)).performClick()
+        compose.runOnIdle { assertEquals(1, copies) }
+    }
+
     @Test fun streamingAnswerChangesOnlyTheContentSubtreeNotTheAssistantCardShell() {
         val reply = StoredMessage("reply", ChatRole.MODEL, listOf(MessageVersion(content = "")))
         var text = StreamTextSnapshot.of("Started ")
@@ -94,6 +182,9 @@ class ChatMessageCallbacksTest {
         )
         val stream = MutableStateFlow<ActiveChatStreamState?>(state())
         ChatRenderMetrics.resetForTests()
+        // The assertion concerns recomposition, not animation timing. A live response
+        // may contain perpetual progress animations, so drive the clock explicitly.
+        compose.mainClock.autoAdvance = false
         compose.setContent { MaterialTheme {
             AssistantMessageCard(
                 message = reply, isStreaming = true, conversationId = "chat",
@@ -113,6 +204,7 @@ class ChatMessageCallbacksTest {
         }
         assertEquals("Content stream must not invalidate the assistant-card shell", before,
             ChatRenderMetrics.messageRecompositionCountForTests())
+        compose.mainClock.autoAdvance = true
     }
 
     @Test fun parameterizedCallbackAlsoUsesLatestMessageState() {

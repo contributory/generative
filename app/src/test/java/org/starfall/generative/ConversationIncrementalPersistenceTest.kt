@@ -55,6 +55,29 @@ class ConversationIncrementalPersistenceTest {
         } finally { db.close() }
     }
 
+    @Test fun editedBlockPositionsAndGroupIdsRoundTripThroughRoom() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java).build()
+        try {
+            val edited = MessageVersion(
+                content = "One two", reasoningContent = "Thinking",
+                reasoningContentOffset = 4,
+                files = listOf("attachment.png"), filesContentOffset = 2,
+                mediaContentOffsets = mapOf("search" to 6),
+                toolActivity = listOf(
+                    ToolActivity(id = "search", name = "generate_image",
+                        contentOffset = 4, actionGroup = 2,
+                        files = listOf("tool-file:image.png"))
+                )
+            )
+            val original = Conversation("layout", "Layout", 1, 2,
+                messages = listOf(StoredMessage("reply", ChatRole.MODEL, listOf(edited))))
+            val repo = ConversationRepository(db)
+            repo.saveConversation(original)
+            assertEquals(original, repo.loadById(original.id))
+        } finally { db.close() }
+    }
+
     @Test fun replacingVersionsPersistsTheActiveRetryAndRemovesStaleDescendants() = runBlocking {
         val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java).build()
         try {

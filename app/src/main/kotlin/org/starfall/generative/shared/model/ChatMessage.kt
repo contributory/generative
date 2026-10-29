@@ -28,7 +28,11 @@ data class MessageVersion(
     /** Provenance set by the skill picker, never inferred from user-supplied text. */
     @SerialName("create_skill_requested") val createSkillRequested: Boolean = false,
     /** Picker-selected skill; never inferred by matching prompt text. */
-    @SerialName("selected_skill_name") val selectedSkillName: String? = null
+    @SerialName("selected_skill_name") val selectedSkillName: String? = null,
+    @SerialName("reasoning_content_offset") val reasoningContentOffset: Int = 0,
+    @SerialName("files_content_offset") val filesContentOffset: Int? = null,
+    @SerialName("media_content_offsets") val mediaContentOffsets: Map<String, Int> = emptyMap(),
+    @SerialName("block_order") val blockOrder: Map<String, Int> = emptyMap()
 )
 
 @Serializable

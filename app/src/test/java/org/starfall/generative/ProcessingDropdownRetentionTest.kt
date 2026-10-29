@@ -74,6 +74,20 @@ class ProcessingDropdownRetentionTest {
         compose.onNodeWithText("Completed thinking", substring = true, useUnmergedTree = true).assertExists()
     }
 
+    @Test fun longPressPaddingOpensDeleteMenuWithoutClosingActions() {
+        var deletes = 0
+        val items = listOf(ProcessingDropdownItem.Thinking("Completed thinking"))
+        compose.setContent { MaterialTheme {
+            ProcessingDropdown(items, durationMillis = null, startNumber = 1,
+                isStreaming = false, onDelete = { deletes++ })
+        } }
+        val padding = compose.onNodeWithTag("processing-dropdown-padding")
+        padding.assertExists().performTouchInput { longClick() }
+        compose.onNodeWithText("Delete").assertExists().performClick()
+        compose.runOnIdle { org.junit.Assert.assertEquals(1, deletes) }
+        compose.onNodeWithTag("processing-dropdown-toggle").assertExists()
+    }
+
     @Test fun closedActionsShowRunningToolThenRetractItOnCompletion() {
         var status by mutableStateOf("running")
         compose.setContent { MaterialTheme {

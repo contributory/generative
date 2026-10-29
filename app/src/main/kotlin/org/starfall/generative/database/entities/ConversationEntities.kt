@@ -1,5 +1,6 @@
 package org.starfall.generative.database.entities
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -55,7 +56,11 @@ data class MessageVersionEntity(
     val usageInputTokens: Long? = null,
     val usageOutputTokens: Long? = null,
     val usageContextKey: String? = null,
-    val usageMessagesFingerprint: String? = null
+    val usageMessagesFingerprint: String? = null,
+    @ColumnInfo(defaultValue = "0") val reasoningContentOffset: Int = 0,
+    val filesContentOffset: Int? = null,
+    @ColumnInfo(defaultValue = "'{}'") val mediaContentOffsetsJson: String = "{}",
+    @ColumnInfo(defaultValue = "'{}'") val blockOrderJson: String = "{}"
 )
 
 @Entity(
@@ -89,7 +94,8 @@ data class ToolActivityEntity(
     val contentOffset: Int,
     val reasoningOffset: Int?,
     val inlineMedia: Boolean,
-    val responsePreviewLimit: Int
+    val responsePreviewLimit: Int,
+    val actionGroup: Int? = null
 )
 
 @Entity(
