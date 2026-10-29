@@ -26,6 +26,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   ├── 📄 ConfigurationMigration9To10.kt
 │   ├── 📄 ConversationMigration9To10.kt
 │   ├── 📄 ConversationRepository.kt
+│   ├── 📄 ConversationSaveJournal.kt
 │   ├── 📄 EndpointSecrets.kt
 │   ├── 📄 McpRepository.kt
 │   ├── 📄 ModelRepository.kt
@@ -191,6 +192,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   │   │   ├── 📄 LatexDetector.kt
 │   │   │   │   │   ├── 📄 MarkdownHeading.kt
 │   │   │   │   │   ├── 📄 MarkdownLibrary.kt
+│   │   │   │   │   ├── 📄 MarkdownRenderWork.kt
 │   │   │   │   │   ├── 📄 MathSplitter.kt
 │   │   │   │   │   ├── 📄 PersistentMarkdownAstCache.kt
 │   │   │   │   │   └── 📄 StableMarkdownPrefix.kt
@@ -210,7 +212,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │   │   │   ├── 📄 ToolHistoryReplay.kt
 │   │   │   │   │   └── 📄 ToolResultsViewModel.kt
 │   │   │   │   ├── 📄 ChatGeneration.kt
-│   │   │   │   ├── 📄 ChatScrollAnchor.kt
+│   │   │   │   ├── 📄 SentMessageDetector.kt
 │   │   │   │   ├── 📄 ChatStreamDisplay.kt
 │   │   │   │   ├── 📄 StreamCharBatcher.kt
 │   │   │   │   ├── 📄 StreamResponseTextSplitter.kt
@@ -245,6 +247,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │       │   ├── 📄 MarkdownRenderer.kt
 │   │   │       │   ├── 📄 MarkdownTable.kt
 │   │   │       │   ├── 📄 StreamingMarkdownRenderer.kt
+│   │   │       │   ├── 📄 StreamingMarkdownPreparation.kt
 │   │   │       │   ├── 📄 VirtualizedFrozenChunks.kt
 │   │   │       │   ├── 📄 VirtualizedIncrementalMarkdown.kt
 │   │   │       │   ├── 📄 VirtualizedMarkdownList.kt
@@ -259,15 +262,16 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │       ├── 📄 ChatOpeningVeil.kt
 │   │   │       ├── 📄 ChatRenderCaches.kt
 │   │   │       ├── 📄 ChatScreen.kt
+│   │   │       ├── 📄 ChatMessageList.kt
 │   │   │       ├── 📄 ConversationMinimapLayout.kt
 │   │   │       ├── 📄 ConversationMinimapSideBar.kt
-│   │   │       ├── 📄 ChatScrollAnchor.kt
 │   │   │       ├── 📄 ConversationSummaryUi.kt
 │   │   │       ├── 📄 GenerationLoadingIndicator.kt
 │   │   │       ├── 📄 LiveThinkingBlock.kt
 │   │   │       ├── 📄 MessageBubble.kt
 │   │   │       ├── 📄 ReasoningDropdown.kt
-│   │   │       ├── 📄 ThinkingMarkdown.kt
+│   │   │       ├── 📄 RetainedChatConversations.kt
+│   │   │       ├── 📄 ThinkingPlainText.kt
 │   │   │       └── 📄 UserMessageCard.kt
 │   │   ├── 📁 drawer/
 │   │   │   ├── 📁 logic/
@@ -370,6 +374,7 @@ This document is the detailed package map and architecture reference. The mandat
 │       └── 📄 SshOptions.kt
 ├── 📁 navigation/
 │   ├── 📄 AppNavigation.kt
+│   ├── 📄 RetainedNavHost.kt
 │   └── 📄 TargetedEditorContent.kt
 ├── 📁 preview/
 ├── 📁 shared/
@@ -545,7 +550,8 @@ This document is the detailed package map and architecture reference. The mandat
 │       │   ├── 📄 ResponsiveLayout.kt
 │       │   ├── 📄 ScreenCover.kt
 │       │   ├── 📄 SettingsCard.kt
-│       │   ├── 📄 SlideScreenContent.kt
+│       │   ├── 📄 RetainedScreenContent.kt
+│       │   ├── 📄 ScreenSlideMotion.kt
 │       │   └── 📄 SystemBars.kt
 │       ├── 📁 lists/
 │       │   ├── 📄 AppListContainer.kt
@@ -698,6 +704,8 @@ The project uses `ui/`, `logic/`, and `model/` instead of a canonical `presentat
 
 ### App menu feature
 
+- `navigation/RetainedNavHost.kt` retains active `NavController` destinations while hidden and keeps popped pages for the duration of their horizontal GPU-layer slide, then calls `onTransitionComplete` to release them. Chat is the single start destination. No horizontal Pager or custom Chat swipe-gating remains; the native drawer handles swipes. One Menu-family photo backdrop is owned by the retained host: it slides only for the direct Chat ↔ App Menu transition, remaining stationary under all other pages. Shared `RetainedScreenContent` uses the same horizontal slide for embedded editors, retaining their parent and disposing the exiting editor after its slide. `shared/ui/layout/ScreenSlideMotion.kt` owns slide duration and direction: Forward moves right to left, PopBack moves left to right.
+
 - `features/menu/ui/AppMenuScreen.kt` is the untitled menu feature; its header displays the light-background app logo (`drawable-nodpi/generative_logo_light.png`) in every theme.
 
 ### Context and summary accounting
@@ -723,3 +731,12 @@ The project uses `ui/`, `logic/`, and `model/` instead of a canonical `presentat
 - `shared/media/SpeechChunks.kt` groups external TTS requests by each service’s configurable sentence count (default 10), using period/newline boundaries without duplicate adjacent separators and retaining a character cap. `SpeechText.kt` strips decorative symbols/colons before synthesis. `SpeechAudioPlayer.playAndAwait` lets the chat speech coordinator synthesize and play one clip at a time, retaining active-message state until the whole sequence completes.
 
 - `shared/media/SpeechPlaybackNotification.kt` owns the TTS notification channel and session-specific Stop action. `ChatSpeechCoordinator` shows it on actual playback start for both Android TTS and API audio, keeps it through chunk boundaries, and clears it on completion/error/Stop. AppContainer injects its application-context instance into ChatViewModel. Existing notification permission handling is reused; this is a playback-status notification, not a foreground service.
+
+### Chat viewport
+
+- `chat/ui/ChatMessageList.kt` owns the conversation-keyed native `LazyListState`, initial viewport layout, message markers, follow eligibility and the single cancellable scroll-intent consumer. The current source uses a normal chronological `LazyColumn`, initialized at its final keyed boundary without an opening scroll. The rejected reversed-list implementation has been removed from source; UI validation and acceptance under `plans/chatscreen-refactor.md` remain pending. Turns are keyed by stable message IDs. A short final turn uses a minimum usable-viewport height without imposing an upper bound; declarative list padding supplies the capped 30% bottom allowance. Child renderers determine their own dimensions.
+- `chat/ui/RetainedChatConversations.kt` keeps chat compositions keyed by conversation ID, with no fixed chat-count limit. Parked chats remain composed but are not measured, placed or drawn; their viewport, Thinking, Actions, composer draft and chat attachments survive immediate return. On navigation it uses actual JVM heap headroom to trim least-recently-used inactive pages, and Android memory-pressure callbacks (`EvictableCache` via `ChatRenderCaches`) release further inactive pages. No periodic polling or fixed chat-count cutoff. Temporary chats are never retained, and deleted conversations are dropped. Android does not provide an actual per-composition low-priority RAM tier; this is a bounded, explicitly reclaimable in-memory cache.
+- `ChatScreen` forwards existing card actions and composer events. History data loads before the real list mounts; renderer/cache readiness never gates viewport creation. `ConversationMinimapSideBar` is a conventional list scrollbar. It appears by itself while the list scrolls (between the app bar and the composer) and fades after a short idle; it adds no horizontal-swipe rules, so edge swipes behave exactly as on any chat body. Only the thumb takes touches, and only vertical drags. Thumb position and size are measured in turns from the lazy list's native visible items (`minimapVisibleSpan`/`minimapThumb`), with no text-height estimates. Dragging scrolls the list directly (`scrollToItem` with an in-turn fraction only for on-screen turns), reports manual scrolling through `onScrub` so follow stops, and dragging to the bottom resumes it at the end of the latest content.
+- Stopped stream snapshots stay available for the mounted conversation's handoff and are released on navigation/deletion; live streams for other conversations continue independently. Persistence remains at completed/interrupted block boundaries, with temporary chats excluded.
+
+- `chat/ui/ThinkingPlainText.kt` displays raw reasoning with the configured message font and a subdued text color. It does not parse Markdown or own scroll physics. `LiveThinkingBlock` smooths only the drawn auto-follow position with a short graphics-layer animation; native `ScrollState`, manual drag and the inactivity pause remain authoritative. The Actions timeline starts folded; running steps are shown outside the fold and shrink into history on completion. Manually expanded Thinking and Actions states are retained through the transition.

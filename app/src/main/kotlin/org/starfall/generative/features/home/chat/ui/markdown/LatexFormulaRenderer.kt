@@ -30,8 +30,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
+import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderWork
 import ru.noties.jlatexmath.JLatexMathDrawable
 import kotlin.math.roundToInt
 import org.starfall.generative.R
@@ -75,13 +75,13 @@ internal fun LatexFormulaRenderer(
         initialValue = LatexDrawables.peek(cacheKey)?.let { LatexRenderResult.Ready(it) } ?: LatexRenderResult.Loading,
         key1 = cacheKey
     ) {
-        value = withContext(Dispatchers.Default) {
-            try {
-                LatexRenderResult.Ready(LatexDrawables.getOrCreate(cacheKey))
-            } catch (error: Throwable) {
-                android.util.Log.w("LatexRenderer", "Could not render formula: $formula", error)
-                LatexRenderResult.Fallback(formula, error)
-            }
+        value = try {
+            LatexRenderResult.Ready(prepareLatexDrawable(cacheKey))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            android.util.Log.w("LatexRenderer", "Could not render formula", error)
+            LatexRenderResult.Fallback(formula, error)
         }
     }
 
@@ -188,10 +188,15 @@ internal fun latexCacheKey(
 /** The raw source is intentionally preserved when a formula cannot be parsed. */
 internal fun latexFallbackSource(source: String): String = source
 
+/** One budget shared with parsing and off-screen preparation, rather than one worker per formula. */
+internal suspend fun prepareLatexDrawable(key: LatexCacheKey): Drawable = MarkdownRenderWork.run {
+    LatexDrawables.getOrCreate(key)
+}
+
 internal object LatexDrawables : EvictableCache {
-    private const val MAX_ENTRIES = 96
-    private val cache = object : LruCache<LatexCacheKey, Drawable>(MAX_ENTRIES) {
-        override fun sizeOf(key: LatexCacheKey, value: Drawable): Int = 1
+    private const val MAX_CACHE_WEIGHT = 128_000
+    private val cache = object : LruCache<LatexCacheKey, Result<Drawable>>(MAX_CACHE_WEIGHT) {
+        override fun sizeOf(key: LatexCacheKey, value: Result<Drawable>): Int = key.formula.length.coerceAtLeast(1_024)
     }
 
     init {
@@ -200,22 +205,29 @@ internal object LatexDrawables : EvictableCache {
 
     @Synchronized
     override fun trimToFraction(fraction: Float) {
-        if (fraction <= 0f) cache.evictAll() else cache.trimToSize((MAX_ENTRIES * fraction).toInt())
+        if (fraction <= 0f) cache.evictAll() else cache.trimToSize((MAX_CACHE_WEIGHT * fraction).toInt())
     }
 
     @Synchronized
-    fun peek(key: LatexCacheKey): Drawable? = cache.get(key)
+    fun peek(key: LatexCacheKey): Drawable? = cache.get(key)?.getOrNull()
 
-    @Synchronized
+    fun isPrepared(key: LatexCacheKey): Boolean = cache.get(key) != null
+
+    // LruCache protects its short get/put operations. Never hold a cache monitor while TeX
+    // is being laid out: main-thread peek() must remain cheap during background preparation.
     fun getOrCreate(key: LatexCacheKey): Drawable {
-        cache.get(key)?.let { return it }
-        val drawable = JLatexMathDrawable
-            .builder(key.formula)
-            .textSize(key.textSizePx.toFloat())
-            .color(key.colorArgb)
-            .build()
-        cache.put(key, drawable)
-        return drawable
+        cache.get(key)?.let { return it.getOrThrow() }
+        val result = try {
+            Result.success<Drawable>(JLatexMathDrawable.builder(key.formula)
+                .textSize(key.textSizePx.toFloat()).color(key.colorArgb).build())
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Result.failure<Drawable>(error)
+        }
+        // Unsupported formulas are also cached so live preparation cannot repeatedly rebuild them.
+        cache.put(key, result)
+        return result.getOrThrow()
     }
 
     /** Null entries are formulas that could not be laid out (they stay as their source text). */

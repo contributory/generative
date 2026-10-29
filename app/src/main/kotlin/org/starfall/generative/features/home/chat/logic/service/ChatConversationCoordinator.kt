@@ -300,8 +300,8 @@ internal class ChatConversationCoordinator(
             _loadingConversationId.value = null
             return@withRestoreGuard
         }
-        // A live generation already owns the complete in-memory snapshot; no disk read or veil.
-        val live = existingGeneration(conversationId)?.takeIf { it.busy.value }?.snapshot
+        // Active generation or a failed final save still owns the newest complete snapshot.
+        val live = existingGeneration(conversationId)?.snapshot
         if (live != null) {
             _loadingConversationId.value = null
             applySelectedConversation(live)
@@ -454,6 +454,7 @@ internal class ChatConversationCoordinator(
                 val uploads = conversationRepo.allFileReferences().mapNotNull(toolFiles::nameOf).toSet() +
                     uploadsOf(listOfNotNull(previous))
                 conversationRepo.deleteConversations(targets.toList())
+                generationsFor(targets).forEach { it.discardFinalSnapshot() }
                 deleted = true
                 prefsRepo.updateSidebar { it.removeChats(targets) }
                 deleteOrphanedUploads(uploads, attachedFiles, removedConversationIds = targets)
@@ -541,6 +542,7 @@ internal class ChatConversationCoordinator(
                 val uploads = conversationRepo.allFileReferences().mapNotNull(toolFiles::nameOf).toSet() +
                     uploadsOf(listOfNotNull(previous))
                 conversationRepo.deleteAll()
+                allGenerations().forEach { it.discardFinalSnapshot() }
                 deleted = true
                 prefsRepo.updateSidebar { SidebarOrganization() }
                 deleteOrphanedUploads(uploads, attachedFiles, removedConversationIds = emptySet())
@@ -568,6 +570,7 @@ internal class ChatConversationCoordinator(
             cancelTitles()
             cancelSummary()
             allGenerations().forEach { it.stopAndJoin() }
+            allGenerations().forEach { it.discardFinalSnapshot() }
             currentConversation.value?.takeIf { it.isTemporary }?.let { disposeTemporarySession(it.id) }
             currentConversation.value = null
             queuedMessagesByConversation.value = emptyMap()

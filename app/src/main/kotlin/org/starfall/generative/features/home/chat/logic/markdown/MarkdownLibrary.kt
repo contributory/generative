@@ -7,7 +7,7 @@ import org.intellij.markdown.ast.ASTNode
 import org.intellij.markdown.ast.getTextInNode
 
 internal suspend fun parseLibraryMarkdown(content: String): State {
-    return parseMarkdown(content)
+    return MarkdownRenderWork.run { parseMarkdown(content) }
 }
 
 internal data class MarkdownFence(val language: String, val code: String, val closed: Boolean)

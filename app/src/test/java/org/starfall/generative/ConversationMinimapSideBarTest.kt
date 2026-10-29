@@ -1,31 +1,39 @@
 package org.starfall.generative
 
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.starfall.generative.features.home.chat.ui.ChatMessageList
+import org.starfall.generative.features.home.chat.ui.ChatMessageListState
 import org.starfall.generative.features.home.chat.ui.ConversationMinimapSideBar
 import org.starfall.generative.features.home.chat.ui.ConversationMinimapSideBarState
-import org.starfall.generative.features.home.chat.ui.dismissMinimapOnOutsideTap
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
@@ -35,127 +43,151 @@ import org.starfall.generative.shared.model.StoredMessage
 class ConversationMinimapSideBarTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun edgeSwipeOpensTapNavigatesAndOutsideTapOrRightSwipeCloses() {
+    private fun turns(count: Int) = (0 until count).map {
+        StoredMessage("m$it", if (it % 2 == 0) ChatRole.USER else ChatRole.MODEL,
+            listOf(MessageVersion(content = "Message $it\n".repeat(20))))
+    }
+
+    @Test fun scrollbarAppearsByItselfWhileScrollingAndFadesAfterIdle() {
         val list = LazyListState()
-        val drawer = DrawerState(DrawerValue.Closed)
-        var navigated = false
-        var outsideClicked = false
         val minimap = ConversationMinimapSideBarState()
-        val messages = (0..19).map {
-            StoredMessage("m$it", if (it % 2 == 0) ChatRole.USER else ChatRole.MODEL,
-                listOf(MessageVersion(content = "Message $it\n".repeat(20))))
-        }
+        val messages = turns(20)
+        lateinit var scope: CoroutineScope
         compose.setContent { MaterialTheme {
-            ModalNavigationDrawer(drawerState = drawer, drawerContent = {
-                ModalDrawerSheet { Text("Left drawer") }
-            }) {
-                Box(Modifier.fillMaxSize().dismissMinimapOnOutsideTap(minimap)) {
-                    LazyColumn(state = list, modifier = Modifier.fillMaxSize().testTag("chat-list")) {
-                        items(messages, key = { it.id }) {
-                            Text(it.content, Modifier.fillMaxWidth().height(400.dp))
-                        }
-                    }
-                    Button(onClick = { outsideClicked = true }, modifier = Modifier.testTag("outside-action")) {
-                        Text("Outside action")
-                    }
-                    ConversationMinimapSideBar("chat", messages, list, 0, 0, {}, { navigated = true }, minimap)
+            scope = rememberCoroutineScope()
+            Box(Modifier.fillMaxSize()) {
+                LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
+                    items(messages, key = { it.id }) { Text(it.content, Modifier.fillMaxWidth().height(400.dp)) }
                 }
+                ConversationMinimapSideBar("chat", messages, list, 0, 0, {}, minimap)
             }
         } }
-        compose.onNodeWithTag("chat-minimap-edge").performTouchInput {
-            swipe(Offset(width - 2f, height / 2f), Offset(-160f, height / 2f), 300)
-        }
-        compose.onNodeWithTag("chat-minimap-sidebar").assertIsDisplayed()
-            .assertWidthIsEqualTo(44.dp)
-        val railBounds = compose.onNodeWithTag("chat-minimap-sidebar").getUnclippedBoundsInRoot()
-        assertTrue(railBounds.bottom - railBounds.top <= 480.dp)
-        compose.onNodeWithTag("chat-minimap-dismiss").assertDoesNotExist()
-        assertEquals(DrawerValue.Closed, drawer.currentValue)
-        compose.onNodeWithTag("chat-minimap-map").performTouchInput {
-            click(Offset(width / 2f, height * 0.02f))
-        }
-        compose.waitForIdle()
-        assertTrue("Tapping the top reaches older messages", list.firstVisibleItemIndex <= 1)
-        compose.onNodeWithTag("chat-minimap-map").performTouchInput {
-            click(Offset(width / 2f, height * 0.98f))
-        }
-        compose.waitForIdle()
-        assertTrue("Tapping the bottom reaches newer messages", list.firstVisibleItemIndex >= 17)
-        val beforeDrag = compose.onNodeWithTag("chat-minimap-map").getUnclippedBoundsInRoot()
-        compose.onNodeWithTag("chat-minimap-map").performTouchInput {
-            swipe(Offset(width / 2f, height * 0.95f), Offset(width / 2f, height * 0.03f), 700)
-        }
-        compose.waitForIdle()
-        assertEquals(beforeDrag, compose.onNodeWithTag("chat-minimap-map").getUnclippedBoundsInRoot())
-        assertTrue(navigated)
-        assertTrue("The oldest messages are at the low indices of the forward list", list.firstVisibleItemIndex <= 1)
-        compose.onNodeWithTag("outside-action").performTouchInput { click() }
-        assertTrue("Outside controls must remain usable while the sidebar is open", outsideClicked)
-        compose.onNodeWithTag("chat-minimap-sidebar").assertDoesNotExist()
-
-        compose.onNodeWithTag("chat-minimap-edge").performClick()
-        compose.onNodeWithTag("chat-list").performTouchInput {
-            swipe(Offset(width * 0.5f, height * 0.70f), Offset(width * 0.5f, height * 0.35f), 250)
-        }
-        compose.onNodeWithTag("chat-minimap-sidebar").assertDoesNotExist()
-
-        compose.onNodeWithTag("chat-minimap-edge").performClick()
-        compose.onNodeWithTag("chat-minimap-sidebar").performTouchInput {
-            swipe(Offset(5f, height / 2f), Offset(width - 2f, height / 2f), 300)
-        }
-        compose.onNodeWithTag("chat-minimap-sidebar").assertDoesNotExist()
-        assertEquals(DrawerValue.Closed, drawer.currentValue)
-    }
-
-    @Test fun minimapClosesAfterSixIdleSecondsButInteractionRestartsCountdown() {
-        val state = ConversationMinimapSideBarState()
-        val messages = listOf(StoredMessage("message", ChatRole.USER,
-            listOf(MessageVersion(content = "Hello"))))
-        compose.setContent { MaterialTheme {
-            ConversationMinimapSideBar("chat", messages, remember { LazyListState() }, 0, 0, {}, {}, state)
-        } }
-        compose.onNodeWithTag("chat-minimap-edge").performClick()
-        compose.onNodeWithTag("chat-minimap-sidebar").assertIsDisplayed()
+        compose.onNodeWithTag("chat-minimap-thumb").assertDoesNotExist()
+        assertFalse(minimap.isOpen)
         compose.mainClock.autoAdvance = false
-
+        compose.runOnIdle { scope.launch { list.animateScrollBy(3000f) } }
+        compose.mainClock.advanceTimeBy(100)
+        assertTrue("Scrolling shows the scrollbar", minimap.isOpen)
+        compose.onNodeWithTag("chat-minimap-thumb").assertExists()
         compose.mainClock.advanceTimeBy(5_000)
-        compose.onNodeWithTag("chat-minimap-sidebar").assertIsDisplayed()
-        compose.onNodeWithTag("chat-minimap-map").performTouchInput { click(center) }
-        compose.mainClock.advanceTimeBy(5_000)
-        compose.onNodeWithTag("chat-minimap-sidebar").assertIsDisplayed()
-        compose.mainClock.advanceTimeBy(1_500)
-        compose.onNodeWithTag("chat-minimap-edge").assertIsDisplayed()
-        compose.onNodeWithTag("chat-minimap-sidebar").assertDoesNotExist()
+        assertFalse("Idle hides it again", minimap.isOpen)
+        compose.onNodeWithTag("chat-minimap-thumb").assertDoesNotExist()
     }
 
-    @Test fun emptyConversationDoesNotExposeNavigator() {
+    @Test fun draggingTheThumbScrollsTheListAndReportsDirectionChanges() {
+        val list = LazyListState()
+        val minimap = ConversationMinimapSideBarState()
+        val messages = turns(20)
+        val scrubs = mutableListOf<Boolean>()
         compose.setContent { MaterialTheme {
-            ConversationMinimapSideBar("empty", emptyList(), LazyListState(), 0, 0, {}, {}, remember { ConversationMinimapSideBarState() })
+            Box(Modifier.fillMaxSize()) {
+                LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
+                    items(messages, key = { it.id }) { Text(it.content, Modifier.fillMaxWidth().height(400.dp)) }
+                }
+                ConversationMinimapSideBar("chat", messages, list, 0, 0, { scrubs.add(it) }, minimap)
+            }
         } }
-        compose.onNodeWithTag("chat-minimap-edge").assertExists().assertHasNoClickAction()
-        compose.onNodeWithTag("chat-minimap-sidebar").assertDoesNotExist()
+        compose.runOnIdle { minimap.isOpen = true }
+        compose.onNodeWithTag("chat-minimap-thumb").performTouchInput {
+            swipe(center, Offset(center.x, center.y + 3000f), 700)
+        }
+        compose.waitForIdle()
+        assertTrue("Dragging the thumb to the bottom reaches the newest turns", list.firstVisibleItemIndex >= 17)
+        assertEquals(listOf(true), scrubs)
+        compose.runOnIdle { minimap.isOpen = true }
+        compose.onNodeWithTag("chat-minimap-thumb").performTouchInput {
+            swipe(center, Offset(center.x, center.y - 3000f), 700)
+        }
+        compose.waitForIdle()
+        assertEquals("Dragging back to the top reaches the oldest turn", 0, list.firstVisibleItemIndex)
+        assertEquals(listOf(true, false), scrubs)
     }
 
-    @Test fun changingConversationsClosesPreviousMinimap() {
+    @Test fun onlyTheThumbTakesTouchesSoHorizontalSwipesAndTapsPassThrough() {
+        val list = LazyListState()
+        val minimap = ConversationMinimapSideBarState()
+        val messages = turns(20)
+        var dragged = 0f
+        var tapped = false
+        var scrubbed = false
+        compose.setContent { MaterialTheme {
+            Box(Modifier.fillMaxSize().draggable(rememberDraggableState { dragged += it }, Orientation.Horizontal)) {
+                LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
+                    items(messages, key = { it.id }) { Text(it.content, Modifier.fillMaxWidth().height(400.dp)) }
+                }
+                Button(onClick = { tapped = true },
+                    modifier = Modifier.align(Alignment.BottomEnd).testTag("under-rail")) { Text("Action") }
+                ConversationMinimapSideBar("chat", messages, list, 0, 0, { scrubbed = true }, minimap)
+            }
+        } }
+        compose.runOnIdle { minimap.isOpen = true }
+        // The thumb sits at the top; a button further down the same edge stays fully usable.
+        compose.onNodeWithTag("under-rail").performTouchInput { click() }
+        assertTrue("Taps away from the thumb reach what is underneath", tapped)
+        compose.onNodeWithTag("chat-minimap-thumb").performTouchInput {
+            swipe(center, Offset(center.x - 300f, center.y), 300)
+        }
+        compose.waitForIdle()
+        assertTrue("A horizontal swipe that starts on the thumb is not claimed", dragged < 0f)
+        assertFalse(scrubbed)
+        assertEquals(0, list.firstVisibleItemIndex)
+    }
+
+    @Test fun holdingTheThumbPastTheIdleTimeoutKeepsItVisible() {
+        val list = LazyListState()
+        val minimap = ConversationMinimapSideBarState()
+        val messages = turns(20)
+        compose.setContent { MaterialTheme {
+            Box(Modifier.fillMaxSize()) {
+                LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
+                    items(messages, key = { it.id }) { Text(it.content, Modifier.fillMaxWidth().height(400.dp)) }
+                }
+                ConversationMinimapSideBar("chat", messages, list, 0, 0, {}, minimap)
+            }
+        } }
+        compose.runOnIdle { minimap.isOpen = true }
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithTag("chat-minimap-thumb").performTouchInput {
+            down(center)
+            moveBy(Offset(0f, 60f), delayMillis = 50)
+        }
+        compose.mainClock.advanceTimeBy(5_000)
+        assertTrue(minimap.isInteracting)
+        assertTrue(minimap.isOpen)
+        compose.onNodeWithTag("chat-minimap-thumb").performTouchInput { up() }
+        compose.mainClock.advanceTimeBy(3_000)
+        assertFalse(minimap.isOpen)
+    }
+
+    @Test fun emptyConversationNeverShowsAScrollbar() {
+        val minimap = ConversationMinimapSideBarState()
+        compose.setContent { MaterialTheme {
+            ConversationMinimapSideBar("empty", emptyList(), LazyListState(), 0, 0, {}, minimap)
+        } }
+        compose.runOnIdle { minimap.isOpen = true }
+        compose.waitForIdle()
+        compose.onNodeWithTag("chat-minimap-thumb").assertDoesNotExist()
+    }
+
+    @Test fun changingConversationsHidesThePreviousScrollbar() {
         var conversation by mutableStateOf("first")
         val list = LazyListState()
-        val messages = listOf(StoredMessage("message", ChatRole.USER, listOf(MessageVersion(content = "Hello"))))
+        val messages = turns(3)
+        val minimap = ConversationMinimapSideBarState()
         compose.setContent { MaterialTheme {
-            val minimap = remember(conversation) { ConversationMinimapSideBarState() }
-            ConversationMinimapSideBar(conversation, messages, list, 0, 0, {}, {}, minimap)
+            ConversationMinimapSideBar(conversation, messages, list, 0, 0, {}, minimap)
         } }
-        compose.onNodeWithTag("chat-minimap-edge").performClick()
-        compose.onNodeWithTag("chat-minimap-sidebar").assertIsDisplayed()
+        compose.runOnIdle { minimap.isOpen = true }
+        compose.onNodeWithTag("chat-minimap-thumb").assertExists()
         compose.runOnIdle { conversation = "second" }
-        compose.onNodeWithTag("chat-minimap-sidebar").assertDoesNotExist()
-        compose.onNodeWithTag("chat-minimap-edge").assertIsDisplayed()
+        compose.waitForIdle()
+        compose.onNodeWithTag("chat-minimap-thumb").assertDoesNotExist()
     }
 
-
-    @Test fun edgeReachesScreenBottomWhileRailStaysAboveResizingInputPanel() {
+    @Test fun scrollbarStaysBetweenAppBarAndTheResizingComposer() {
         var inputHeight by mutableStateOf(140.dp)
-        val state = ConversationMinimapSideBarState()
-        val messages = listOf(StoredMessage("message", ChatRole.USER, listOf(MessageVersion(content = "Hello"))))
+        val minimap = ConversationMinimapSideBarState()
+        val messages = turns(3)
         compose.setContent { MaterialTheme {
             val density = LocalDensity.current
             Box(Modifier.fillMaxSize()) {
@@ -166,28 +198,59 @@ class ConversationMinimapSideBarTest {
                     "chat", messages, remember { LazyListState() },
                     with(density) { 104.dp.roundToPx() },
                     with(density) { (inputHeight + 8.dp).roundToPx() },
-                    {}, {}, state
+                    {}, minimap
                 )
             }
         } }
-        fun assertInsideGap(tag: String) {
-            val bounds = compose.onNodeWithTag(tag).getUnclippedBoundsInRoot()
+        compose.runOnIdle { minimap.isOpen = true }
+        fun assertInsideGap() {
+            val bounds = compose.onNodeWithTag("chat-minimap-thumb").getUnclippedBoundsInRoot()
             val appBar = compose.onNodeWithTag("minimap-test-appbar").getUnclippedBoundsInRoot()
             val input = compose.onNodeWithTag("minimap-test-input").getUnclippedBoundsInRoot()
             assertTrue(bounds.top >= appBar.bottom + 8.dp)
             assertTrue(bounds.bottom <= input.top - 8.dp)
         }
-        val edge = compose.onNodeWithTag("chat-minimap-edge").getUnclippedBoundsInRoot()
-        val input = compose.onNodeWithTag("minimap-test-input").getUnclippedBoundsInRoot()
-        assertEquals(input.bottom, edge.bottom)
-        assertEquals(104.dp, edge.top)
-        compose.onNodeWithTag("chat-minimap-edge").performClick()
-        assertInsideGap("chat-minimap-sidebar")
-        val anchoredTop = compose.onNodeWithTag("chat-minimap-sidebar").getUnclippedBoundsInRoot().top
-        assertEquals(104.dp, anchoredTop)
+        assertInsideGap()
         compose.runOnIdle { inputHeight = 360.dp }
-        assertInsideGap("chat-minimap-sidebar")
-        assertEquals(anchoredTop, compose.onNodeWithTag("chat-minimap-sidebar").getUnclippedBoundsInRoot().top)
+        assertInsideGap()
     }
 
+    @Test fun realTurnListScrubStaysStableAcrossLargeContentGrowth() {
+        var messages by mutableStateOf((0..2).flatMap { i -> listOf(
+            StoredMessage("u$i", ChatRole.USER, listOf(MessageVersion(content = "Question $i"))),
+            StoredMessage("a$i", ChatRole.MODEL, listOf(MessageVersion(content = "Answer $i")))) })
+        val viewport = ChatMessageListState(messages)
+        val minimap = ConversationMinimapSideBarState()
+        var oldReplyHeight by mutableStateOf(300.dp)
+        compose.setContent { MaterialTheme {
+            val density = LocalDensity.current
+            Box(Modifier.fillMaxSize()) {
+                ChatMessageList(viewport, messages, false, false, false, null, 64.dp, 120.dp) { message ->
+                    Text(message.content, Modifier.fillMaxWidth().height(
+                        if (message.id == "a0") oldReplyHeight else if (message.role == ChatRole.USER) 60.dp else 1200.dp)
+                        .testTag("minimap-message-${message.id}"))
+                }
+                ConversationMinimapSideBar("chat", messages, viewport.listState,
+                    with(density) { 64.dp.roundToPx() }, with(density) { 120.dp.roundToPx() },
+                    { viewport.manualScroll(it) }, minimap)
+            }
+        } }
+        fun drag(toTop: Boolean) {
+            compose.runOnIdle { minimap.isOpen = true }
+            compose.onNodeWithTag("chat-minimap-thumb").performTouchInput {
+                swipe(center, Offset(center.x, center.y + if (toTop) -3000f else 3000f), 700)
+            }
+            compose.waitForIdle()
+        }
+        drag(toTop = true)
+        assertEquals(0, viewport.listState.firstVisibleItemIndex)
+        assertTrue("Scrubbing is manual scrolling and stops following", viewport.detached)
+        compose.runOnIdle {
+            oldReplyHeight = 6000.dp
+            messages = messages.map { if (it.id == "a0") it.copy(
+                versions = listOf(MessageVersion(content = "A much longer streamed answer.\n".repeat(500)))) else it }
+        }
+        drag(toTop = false)
+        compose.onNodeWithTag("chat-content-end-a2").assertIsDisplayed()
+    }
 }

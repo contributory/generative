@@ -43,6 +43,7 @@ import org.starfall.generative.features.home.chat.logic.markdown.MathSplitter
 import org.starfall.generative.features.home.chat.logic.markdown.PersistentMarkdownAstCache
 import org.starfall.generative.features.home.chat.logic.markdown.markdownFenceSource
 import org.starfall.generative.features.home.chat.logic.markdown.parseLibraryMarkdown
+import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderWork
 import org.starfall.generative.features.home.chat.ui.AssetKey
 import org.starfall.generative.features.home.chat.ui.MarkdownParseCache
 import org.starfall.generative.features.home.chat.ui.TrackPendingWork
@@ -247,7 +248,7 @@ private suspend fun collectMarkdownParseUpdates(
             MarkdownParseCache.put(request.content, state, request.identity, result.fingerprint)
             val epoch = result.epoch
             if (request.identity != null && result.diskCacheMiss && epoch != null) {
-                persistentCache.store(request.identity, request.content, state, epoch)
+                MarkdownRenderWork.run { persistentCache.store(request.identity, request.content, state, epoch) }
             }
         }
     }
@@ -265,7 +266,7 @@ private suspend fun resolveMarkdownParseRequest(
         MarkdownParseCache.getFingerprint(request.content, request.identity)
     } else null
     val onDisk = if (inMemory == null && !request.isStreaming && request.identity != null && epoch != null) {
-        persistentCache.load(request.identity, request.content, epoch)
+        MarkdownRenderWork.run { persistentCache.load(request.identity, request.content, epoch) }
     } else null
     val seeded = initialParse()?.takeIf { it is State.Success && it.content == request.content }
     val resolved = resolveMarkdownParseState(inMemory, memoryFingerprint, onDisk, seeded, inheritedFingerprint(), request.content)
@@ -316,7 +317,7 @@ private suspend fun persistSettledMarkdown(
         // runs this effect for every message that is mounted while a chat opens or scrolls.
         withContext(Dispatchers.IO) {
             val epoch = persistentCache.captureEpoch(cacheIdentity)
-            persistentCache.store(cacheIdentity, content, state, epoch)
+            MarkdownRenderWork.run { persistentCache.store(cacheIdentity, content, state, epoch) }
         }
     }
 }

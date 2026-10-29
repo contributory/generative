@@ -4,17 +4,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.starfall.generative.features.home.chat.logic.SentMessageDetector
-import org.starfall.generative.features.home.chat.logic.anchorTailSpacer
-import org.starfall.generative.features.home.chat.ui.replyTailHeight
-import org.starfall.generative.features.home.chat.ui.latestContentDistancePx
-import org.starfall.generative.features.home.chat.ui.chatFollowBottomGapPx
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.features.home.chat.logic.withUpdatedMessageStructure
 
-class ChatScrollAnchorTest {
+class SentMessageDetectorTest {
     private fun user(id: String, text: String = id) =
         StoredMessage(id, ChatRole.USER, listOf(MessageVersion(content = text)))
 
@@ -25,6 +21,13 @@ class ChatScrollAnchorTest {
 
     @Test fun firstSnapshotIsABaselineNotASend() {
         assertNull(SentMessageDetector().observe(chat))
+    }
+
+    @Test fun delayedHistoryAtTheSameRevisionSeedsTheSendBaseline() {
+        val detector = SentMessageDetector()
+        assertNull(detector.observe(emptyList(), structuralRevision = 0L))
+        assertNull(detector.observe(chat, structuralRevision = 0L))
+        assertEquals("u2", detector.observe(chat + user("u2") + model("m2"), structuralRevision = 1L))
     }
 
     @Test fun typingAMessageIsASend() {
@@ -97,54 +100,4 @@ class ChatScrollAnchorTest {
         assertEquals(1L, deleted.structuralRevision)
     }
 
-    @Test fun spacerFillsTheGapToOneVisibleAreaAndShrinksAsTheReplyGrows() {
-        assertEquals(600, anchorTailSpacer(visibleHeight = 600, tailHeight = 0))
-        assertEquals(450, anchorTailSpacer(visibleHeight = 600, tailHeight = 150))
-        assertEquals(0, anchorTailSpacer(visibleHeight = 600, tailHeight = 600))
-        assertEquals(0, anchorTailSpacer(visibleHeight = 600, tailHeight = 2_000))
-    }
-
-    @Test fun newestReplyGapIsThirtyPercentOfScreenHeight() {
-        assertEquals(240, chatFollowBottomGapPx(screenHeightPx = 800, visibleChatHeightPx = 600))
-        assertEquals(300, chatFollowBottomGapPx(screenHeightPx = 1_000, visibleChatHeightPx = 720))
-        assertEquals(180, chatFollowBottomGapPx(screenHeightPx = 600, visibleChatHeightPx = 450))
-        // A tall composer or the IME may reduce the usable chat area below the requested gap.
-        assertEquals(180, chatFollowBottomGapPx(screenHeightPx = 1_000, visibleChatHeightPx = 180))
-        assertEquals(0, chatFollowBottomGapPx(screenHeightPx = 0, visibleChatHeightPx = 0))
-    }
-
-    @Test fun latestReplyKeepsBottomGapAndDoesNotJumpWhenGenerationEnds() {
-        // The initial turn has enough scroll room to pin the user's bubble below the app bar.
-        assertEquals(480, replyTailHeight(naturalHeight = 0, visiblePx = 600, userHeight = 120, bottomGapPx = 120))
-        assertEquals(480, replyTailHeight(naturalHeight = 100, visiblePx = 600, userHeight = 120, bottomGapPx = 120))
-        // Once the reply grows, the persistent bottom gap lifts the newest text above Input Area.
-        assertEquals(620, replyTailHeight(naturalHeight = 500, visiblePx = 600, userHeight = 120, bottomGapPx = 120))
-        assertEquals(1_120, replyTailHeight(naturalHeight = 1_000, visiblePx = 600, userHeight = 120, bottomGapPx = 120))
-        // The extra 30%-of-screen tail stays after the streamed reply becomes stable.
-        assertEquals(1_240, replyTailHeight(naturalHeight = 1_000, visiblePx = 600, userHeight = 120, bottomGapPx = 240))
-    }
-
-    @Test fun followScrollTargetsVisibleAnswerNotInvisibleTailPadding() {
-        // Content ends at 550; the padded item ends at 850. With a 700px viewport
-        // and 200px desired gap, move 50px instead of 150px into the blank padding.
-        assertEquals(50, latestContentDistancePx(
-            itemOffset = 100, itemHeight = 750, trailingSpacerPx = 300,
-            viewportEndPx = 700, bottomGapPx = 200
-        ))
-        // If real content is already inside the view, following must not move it.
-        assertEquals(-150, latestContentDistancePx(
-            itemOffset = 100, itemHeight = 750, trailingSpacerPx = 300,
-            viewportEndPx = 900, bottomGapPx = 200
-        ))
-        // Without padding, long answers still follow the actual final lines.
-        assertEquals(500, latestContentDistancePx(
-            itemOffset = 0, itemHeight = 1_000, trailingSpacerPx = 0,
-            viewportEndPx = 700, bottomGapPx = 200
-        ))
-    }
-
-    @Test fun contentPlusSpacerNeverChangesWhileTheReplyIsShorterThanTheArea() {
-        val totals = (0..600 step 50).map { tail -> tail + anchorTailSpacer(600, tail) }.toSet()
-        assertEquals(setOf(600), totals)
-    }
 }

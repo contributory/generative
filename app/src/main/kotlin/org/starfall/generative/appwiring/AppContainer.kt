@@ -2,6 +2,7 @@ package org.starfall.generative.appwiring
 
 
 import android.content.Context
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -51,7 +52,7 @@ class AppContainer(context: Context) {
     private val toolHttp = ToolHttp(toolFiles)
     private val mcpOAuth = McpOAuthService(appContext, toolHttp)
     private val mcpService = McpService(toolHttp, mcpOAuth)
-    private val conversations = ConversationRepository(database)
+    private val conversations = ConversationRepository(database, File(appContext.noBackupFilesDir, "pending-conversation-saves"))
     private val profiles = ProfileRepository(database)
     private val icons = IconStore(appContext)
     private val providers = ModelRepository(database, aiService, icons)
@@ -68,6 +69,7 @@ class AppContainer(context: Context) {
 
     init {
         PersistentMarkdownAstCache.get(appContext)
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { conversations.recoverPendingSaves() }
         // Keep the debug log's on/off state and scopes in step with App settings, from process start.
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
             preferences.appPreferencesFlow.collect { DebugLog.configure(it.debugMode, it.debugLogCategories) }

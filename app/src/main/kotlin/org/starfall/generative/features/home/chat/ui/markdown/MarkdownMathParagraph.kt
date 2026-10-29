@@ -29,8 +29,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 import org.starfall.generative.features.home.chat.logic.markdown.MATH_PLACEHOLDER_BASE
 import org.starfall.generative.features.home.chat.logic.markdown.MAX_INLINE_FORMULAS
 import org.starfall.generative.features.home.chat.logic.markdown.MathBlock
@@ -85,8 +84,15 @@ private fun InlineMathFlow(pieces: List<MathPiece>, style: TextStyle, fillMaxWid
     LaunchedEffect(keys) {
         val missing = keys.filter { it !in built && LatexDrawables.peek(it) == null }.distinct()
         if (missing.isNotEmpty()) {
-            val results = withContext(Dispatchers.Default) {
-                missing.associateWith { LatexDrawables.buildOrNull(it) }
+            val results = missing.associateWith { key ->
+                try {
+                    prepareLatexDrawable(key)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    android.util.Log.w("LatexRenderer", "Could not render inline formula", error)
+                    null
+                }
             }
             built = built + results
         }

@@ -5,7 +5,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -31,30 +30,6 @@ class ChatOpeningScrollTest {
 
     private fun veilNodes() = compose.onAllNodesWithTag(OPENING_VEIL_TAG).fetchSemanticsNodes()
 
-    /**
-     * Switches chats and steps through the frames one at a time, until the new chat's text shows up.
-     * Returns whether the veil was already up by then: a chat must never appear unveiled while it is
-     * still settling, and a chat that is fully cached must not be veiled at all.
-     */
-    private fun veilWasUpWhenTextAppeared(
-        current: androidx.compose.runtime.MutableState<Conversation?>,
-        to: Conversation,
-        endText: String
-    ): Boolean {
-        compose.mainClock.autoAdvance = false
-        compose.runOnIdle { current.value = to }
-        var veilSeen = false
-        repeat(400) {
-            compose.mainClock.advanceTimeByFrame()
-            veilSeen = veilSeen || veilNodes().isNotEmpty()
-            if (compose.onAllNodesWithText(endText, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()) {
-                return veilSeen
-            }
-            Thread.sleep(5) // parsing runs on real background threads
-        }
-        error("The chat never showed \"$endText\"")
-    }
-
     private fun conversation(id: String) = Conversation(
         id = id, title = id, createdAt = 0, updatedAt = 0,
         messages = listOf(StoredMessage(
@@ -68,14 +43,16 @@ class ChatOpeningScrollTest {
 
     private fun show(
         current: androidx.compose.runtime.State<Conversation?>,
-        loadingId: androidx.compose.runtime.State<String?> = mutableStateOf(null)
+        loadingId: androidx.compose.runtime.State<String?> = mutableStateOf(null),
+        error: androidx.compose.runtime.State<String?> = mutableStateOf(null)
     ) {
+        if (loadingId.value != null) compose.mainClock.autoAdvance = false
         compose.setContent {
             MaterialTheme {
                 ChatScreen(
                     conversation = current.value, isGenerating = false,
                     loadingConversationId = loadingId.value,
-                    generatingConversationId = null, chatError = null,
+                    generatingConversationId = null, chatError = error.value,
                     providers = emptyList(), selectedProviderId = "", selectedModelName = "",
                     onNewChat = {}, onSendMessage = { _, _ -> false }, onSendMedia = { false },
                     onStopGenerating = {}, onOpenDrawer = {}, onOpenSettings = {},
@@ -91,7 +68,7 @@ class ChatOpeningScrollTest {
     }
 
     private fun assertEndVisible(id: String) {
-        // The chat stays behind the veil until it is fully loaded and at the latest message.
+        // Only a pending history read can veil the chat.
         compose.waitUntil(10_000) { veilNodes().isEmpty() }
         // Parsing runs off-main; allow it to finish before checking the settled layout.
         compose.waitUntil(10_000) {
@@ -115,41 +92,17 @@ class ChatOpeningScrollTest {
         assertEndVisible("first")
     }
 
-    @Test fun firstOpenIsVeiledUntilSettledThenReopeningIsInstant() {
-        val current = mutableStateOf<Conversation?>(conversation("first"))
-        compose.mainClock.autoAdvance = false
-        show(current)
-        assertTrue("A cold first open waits behind the veil", veilNodes().isNotEmpty())
-        compose.mainClock.autoAdvance = true
-        assertEndVisible("first")
-
-        compose.runOnIdle { current.value = conversation("second") }
-        assertEndVisible("second")
-
-        assertFalse(
-            "A settled chat reopens with its text already in place and no veil",
-            veilWasUpWhenTextAppeared(current, conversation("first"), "End of first")
-        )
-        compose.mainClock.autoAdvance = true
-        assertEndVisible("first")
-    }
-
-    @Test fun clearingTheCachesMakesTheNextOpenWaitAgain() {
+    @Test fun savedHistoryOpensWithoutAnAssetReadinessVeilEvenAfterCacheEviction() {
         val current = mutableStateOf<Conversation?>(conversation("first"))
         show(current)
+        assertTrue("Loaded history never waits behind a renderer readiness veil", veilNodes().isEmpty())
         assertEndVisible("first")
-        compose.runOnIdle { current.value = conversation("second") }
+        compose.runOnIdle {
+            ChatRenderCaches.clearAll()
+            current.value = conversation("second")
+        }
+        assertTrue(veilNodes().isEmpty())
         assertEndVisible("second")
-
-        // Memory pressure empties the low-priority caches.
-        ChatRenderCaches.onTrimMemory(android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW)
-
-        assertTrue(
-            "Without the cache the chat is veiled again until it has settled",
-            veilWasUpWhenTextAppeared(current, conversation("first"), "End of first")
-        )
-        compose.mainClock.autoAdvance = true
-        assertEndVisible("first")
     }
 
     @Test fun delayedMessagesOpenAtTheEndAndManualScrollingKeepsControl() {
@@ -161,10 +114,30 @@ class ChatOpeningScrollTest {
         val list = compose.onNode(hasScrollAction())
         fun position() = list.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
         val bottom = position()
-        list.performTouchInput { swipeDown() }
+        list.performTouchInput {
+            swipe(androidx.compose.ui.geometry.Offset(width / 2f, height * 0.35f),
+                androidx.compose.ui.geometry.Offset(width / 2f, height * 0.45f), 1_000)
+        }
         compose.waitForIdle()
         assertTrue("Opening must not pull the user back to the bottom", position() < bottom)
+        compose.onNodeWithContentDescription("Jump to latest").assertDoesNotExist()
+        // Larger travel still exposes the actual screen action.
+        repeat(4) { list.performTouchInput { swipeDown() } }
+        compose.waitForIdle()
         compose.onNodeWithContentDescription("Jump to latest").assertIsDisplayed()
+    }
+
+    @Test fun nativeContentInsetsIncludeTheWholeErrorAndComposerPanel() {
+        val current = mutableStateOf<Conversation?>(conversation("with-error"))
+        val error = mutableStateOf<String?>(
+            org.starfall.generative.features.home.chat.logic.SAVE_CONVERSATION_ERROR_PREFIX + " Storage unavailable"
+        )
+        show(current, error = error)
+        assertEndVisible("with-error")
+        compose.onNodeWithText("Storage unavailable", substring = true).assertIsDisplayed()
+        val panelTop = compose.onNodeWithTag("chat-bottom-panel").fetchSemanticsNode().boundsInRoot.top
+        val end = compose.onNodeWithTag("chat-content-end-with-error-answer").fetchSemanticsNode().boundsInRoot.bottom
+        assertTrue("The real content end must be above the entire bottom panel", end <= panelTop)
     }
 
     @Test fun pendingHistoryReadIsVeiledEvenBeforeConversationOrMessagesExist() {
@@ -176,12 +149,14 @@ class ChatOpeningScrollTest {
         compose.onNode(hasSetTextAction()).assertIsEnabled()
         compose.onNode(hasSetTextAction()).performTouchInput { click() }
         compose.onNode(hasSetTextAction()).performTextInput("input remains usable")
+        compose.mainClock.advanceTimeByFrame()
         compose.onNode(hasSetTextAction()).assertTextContains("input remains usable")
 
         compose.runOnIdle {
             current.value = conversation("disk-history")
             loadingId.value = null
         }
+        compose.mainClock.autoAdvance = true
         assertEndVisible("disk-history")
     }
 

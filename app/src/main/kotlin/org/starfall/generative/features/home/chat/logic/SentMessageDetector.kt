@@ -11,7 +11,7 @@ import org.starfall.generative.shared.model.StoredMessage
  * with the same id, while the end-of-response drain builds a brand-new message with a new id. Comparing
  * history before and after covers both, and a plain send, without tracking queue ids or `isQueued`.
  *
- * Not thread-safe; call it from the composition/apply thread only.
+ * Not thread-safe; call it from the UI event/effect thread only.
  */
 internal class SentMessageDetector {
     private var knownIds: Set<String>? = null
@@ -28,7 +28,8 @@ internal class SentMessageDetector {
 
     /** The id of a user message that entered [history] since the previous structural revision, or null. */
     fun observe(history: List<StoredMessage>, structuralRevision: Long): String? {
-        if (lastStructuralRevision == structuralRevision) return null
+        if (lastStructuralRevision == structuralRevision &&
+            lastHistory?.isEmpty() == history.isEmpty()) return null
         lastStructuralRevision = structuralRevision
         lastHistory = history
         idScanCount += 1L
@@ -48,16 +49,3 @@ internal class SentMessageDetector {
         const val MAX_MESSAGES_PER_SEND = 2
     }
 }
-
-/**
- * Minimum height of the newest item while a sent message is anchored, in px: the part of one visible
- * area that the items before it do not already fill.
- *
- * The list can only scroll as far as its content allows. Placing the message flush under the
- * app bar, and letting the user drag it back there, needs the content from the message to the end to
- * be at least one visible area tall. The reply starts out shorter than that, so
- * this fills the difference and shrinks to nothing as the reply grows; the total never changes, which
- * is why the list does not move while a reply streams.
- */
-internal fun anchorTailSpacer(visibleHeight: Int, tailHeight: Int): Int =
-    (visibleHeight - tailHeight).coerceAtLeast(0)

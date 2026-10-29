@@ -136,7 +136,7 @@ class AppLanguageSelectionTest {
             AppLanguage.THAI to "เลือกโมเดลภาษา",
             AppLanguage.INDONESIAN to "Pilih model bahasa",
         )
-        assertEquals(AppLanguage.entries.toSet(), expected.keys.map { it.key }.toSet())
+        assertEquals(AppLanguage.entries.toSet(), expected.keys)
 
         // Indonesian lives in the legacy `values-in` folder, which the resource system matches by
         // qualifier instead of by the BCP-47 tag; it is covered by its own test below.
@@ -172,7 +172,7 @@ class AppLanguageSelectionTest {
             AppLanguage.THAI to "Tiếng Thái",
             AppLanguage.INDONESIAN to "Tiếng Indonesia",
         )
-        assertEquals(AppLanguage.entries.toSet(), expected.keys.map { it.key }.toSet())
+        assertEquals(AppLanguage.entries.toSet(), expected.keys)
 
         val localized = localizedContext(AppLanguage.VIETNAMESE)
         expected.forEach { (language, text) ->

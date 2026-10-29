@@ -569,19 +569,12 @@ private fun CompletedAssistantContent(
                         }
                     }
 
-                    val visibleProcessingItems = block.items.filterNot { item ->
-                        item is ProcessingDropdownItem.Tool && item.activity.responsePreviewLimit == 0 &&
-                            item.activity.name in listOf("generate_image", "generate_video") &&
-                            item.activity.status == "success" && item.activity.files.any {
-                                mediaMimeType(it.removePrefix("tool-file:")).startsWith(
-                                    if (item.activity.name == "generate_video") "video/" else "image/"
-                                )
-                            }
-                    }
-                    val hasActionTurn = visibleProcessingItems.any { it is ProcessingDropdownItem.Tool }
+                    // Keep completed media-generation actions in the timeline. Their preview
+                    // appears below, but success must not make the Actions dropdown disappear.
+                    val hasActionTurn = block.items.any { it is ProcessingDropdownItem.Tool }
                     // Identity is the block's position plus its first item. Keying on every item (or on
                     // the reasoning text) recreated the dropdown on each streamed token or new tool call.
-                    val hasRunningAction = visibleProcessingItems.any {
+                    val hasRunningAction = block.items.any {
                         it is ProcessingDropdownItem.Tool && it.activity.status == "running"
                     }
                     val live = isStreaming && block === blocks.last() && (!answerStarted || hasRunningAction)
@@ -597,7 +590,7 @@ private fun CompletedAssistantContent(
                         // placeholder above is their sole copy/select representation.
                         DisableSelection {
                             ProcessingDropdown(
-                                items = visibleProcessingItems,
+                                items = block.items,
                                 durationMillis = processingDurationMillis.takeIf { blocks.size == 1 },
                                 startNumber = nextItemNumber,
                                 modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),

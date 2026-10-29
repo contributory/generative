@@ -213,7 +213,7 @@ class FullBackupRestoreResilienceTest {
 
             // Repeated deletion after the failed restore must still work and remove the conversation.
             viewModel.deleteConversation("existing")
-            awaitCondition { harness.conversations.loadById("existing") == null }
+            awaitCondition { runBlocking { harness.conversations.loadById("existing") == null } }
         }
     }
 
@@ -259,7 +259,7 @@ class FullBackupRestoreResilienceTest {
                     currentConversation = currentConversation,
                     configuredTextModel = { provider to SystemToolConfig(providerId = provider.id, modelId = "gpt-test") },
                     existingGeneration = { null },
-                    generationFor = { ChatGeneration(scope, harness.conversations::saveConversation) {} },
+                    generationFor = { ChatGeneration(scope, harness.conversations::saveConversation, publish = {}) },
                     isRestoreInProgress = { restoring.get() },
                     withRestoreGuard = { if (!restoring.get()) it() },
                     writeConversation = { block ->

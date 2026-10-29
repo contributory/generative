@@ -68,7 +68,6 @@ import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
-import org.starfall.generative.shared.ui.layout.SlideScreenContent
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 import androidx.compose.foundation.BorderStroke
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder

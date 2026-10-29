@@ -6,6 +6,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.intellij.markdown.ast.ASTNode
+import org.intellij.markdown.MarkdownElementTypes
+import com.mikepenz.markdown.utils.getUnescapedTextInNode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -19,6 +21,10 @@ import org.starfall.generative.features.home.chat.logic.markdown.parseLibraryMar
 import java.nio.file.Files
 
 class PersistentMarkdownAstCacheTest {
+    private fun findLabel(node: ASTNode): ASTNode? =
+        if (node.type == MarkdownElementTypes.LINK_LABEL) node
+        else node.children.firstNotNullOfOrNull(::findLabel)
+
     @Test
     fun roundTripRebuildsAstAndReferenceLinksWithoutSerializingMessageText() = runBlocking {
         val root = Files.createTempDirectory("markdown-render-cache").toFile()
@@ -37,7 +43,10 @@ class PersistentMarkdownAstCacheTest {
             val loaded = cache.load(identity, content, cache.captureEpoch(identity))
             assertNotNull(loaded)
             assertEquals(astShape(parsed.node), astShape(loaded!!.node))
-            assertEquals("https://example.test/guide", loaded.referenceLinkHandler.find("docs"))
+            // The library looks up the AST label, including its brackets; it does not strip them.
+            val label = findLabel(parsed.node)!!
+                .getUnescapedTextInNode(content)
+            assertEquals("https://example.test/guide", loaded.referenceLinkHandler.find(label))
             assertEquals(1L, cache.metrics().hits)
         } finally {
             root.deleteRecursively()

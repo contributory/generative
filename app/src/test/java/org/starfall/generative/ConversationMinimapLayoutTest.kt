@@ -5,75 +5,87 @@ import org.junit.Test
 import org.starfall.generative.features.home.chat.ui.*
 
 class ConversationMinimapLayoutTest {
-    private val spans = minimapSpans(listOf("old" to 100f, "long" to 300f, "new" to 100f))
+    private fun indices(vararg ids: String) = ids.withIndex().associate { it.value to it.index }
 
-    @Test fun mapsChronologicalPositionsToForwardListAndWithinMessageOffsets() {
-        assertEquals(MinimapTarget("old", 0, 0f), minimapTarget(spans, -1f))
-        assertEquals(MinimapTarget("new", 2, 1f), minimapTarget(spans, 2f))
-        val middle = minimapTarget(spans, 0.5f)!!
-        assertEquals("long", middle.id)
-        assertEquals(1, middle.index)
-        assertEquals(0.5f, middle.fraction, 0.0001f)
-        assertEquals("long", minimapTarget(spans, 0.2f)!!.id)
-    }
-
-    @Test fun handlesEmptyAndInvalidPositions() {
-        assertTrue(minimapSpans(emptyList()).isEmpty())
-        assertNull(minimapTarget(emptyList(), 0f))
-        assertNull(minimapTarget(spans, Float.NaN))
-        val invalid = minimapSpans(listOf("a" to Float.NaN, "b" to -5f))
-        assertEquals(0.5f, invalid[0].end, 0f)
-    }
-
-    @Test fun viewportClipsForwardItemsAndIgnoresNonMessageRows() {
+    @Test fun spanUsesRealTurnKeysAndTheReadableViewportOnly() {
         val visible = listOf(
-            MinimapVisibleItem("old", -40, 100),
-            MinimapVisibleItem("long", 60, 300),
-            MinimapVisibleItem("warning", 360, 80)
-        )
-        val viewport = minimapViewport(spans, visible, 0, 160)!!
-        assertEquals(0.08f, viewport.start, 0.0001f)
-        assertEquals(0.4f, viewport.endInclusive, 0.0001f)
+            MinimapVisibleTurn("overscan", -200, 100),
+            MinimapVisibleTurn("old", -20, 100),
+            MinimapVisibleTurn("long", 80, 3000),
+            MinimapVisibleTurn("boundary", 3080, 0))
+        val span = minimapVisibleSpan(indices("old", "long", "new"), visible, 0, 200)!!
+        assertEquals(0.2f, span.start, 1e-4f)
+        assertEquals(1f + 120f / 3000f, span.end, 1e-4f)
     }
 
-    @Test fun viewportTracksPositionWithinOneLongMessage() {
-        val viewport = minimapViewport(spans, listOf(MinimapVisibleItem("long", -100, 300)), 0, 100)!!
-        assertEquals(0.4f, viewport.start, 0.0001f)
-        assertEquals(0.6f, viewport.endInclusive, 0.0001f)
-        assertNull(minimapViewport(spans, emptyList(), 0, 100))
-        assertNull(minimapViewport(spans, emptyList(), 100, 0))
+    @Test fun fractionInsideALongTurnMovesTheThumbContinuously() {
+        val ids = indices("a", "b", "c", "d")
+        val atTop = minimapVisibleSpan(ids, listOf(MinimapVisibleTurn("b", 0, 4000)), 0, 400)!!
+        val scrolled = minimapVisibleSpan(ids, listOf(MinimapVisibleTurn("b", -2000, 4000)), 0, 400)!!
+        assertTrue(scrolled.start > atTop.start)
+        assertTrue(minimapThumb(4, scrolled, 0f).top > minimapThumb(4, atTop, 0f).top)
     }
 
-    @Test fun scrollCentersPointsInsideLongMessages() {
-        assertEquals(900, minimapScrollOffset(2000, 0.5f, 200))
-        assertEquals(-100, minimapScrollOffset(2000, 0f, 200))
-        assertEquals(1900, minimapScrollOffset(2000, 1f, 200))
-    }
-
-    @Test fun indicatorKeepsItsSizeAcrossMessagesWithDifferentEstimationErrors() {
-        val ranges = listOf(0f..0.4f, 0.4f..0.45f, 0.95f..1f)
-        ranges.forEach { visible ->
-            val indicator = minimapIndicatorRange(visible, 0.2f)
-            assertEquals(0.2f, indicator.endInclusive - indicator.start, 0.0001f)
-            assertTrue(indicator.start >= 0f && indicator.endInclusive <= 1f)
+    @Test fun contentGrowthOffScreenDoesNotMoveTheTurnPosition() {
+        val ids = indices("old", "long", "new")
+        for (height in listOf(300, 30000)) {
+            val span = minimapVisibleSpan(ids, listOf(MinimapVisibleTurn("long", 0, height)), 0, 100)!!
+            assertEquals(1f, span.start, 1e-4f)
         }
-        assertEquals(0f..1f, minimapIndicatorRange(0.2f..0.3f, 2f))
     }
 
-    @Test fun shortMessagesAndInsetsKeepTheTargetCenteredWithoutClamping() {
-        assertEquals(-200, minimapScrollOffset(100, 0.5f, 400, 50))
-        // At a message boundary, equivalent points in adjacent items must differ
-        // only by the preceding item's height, not jump by half a viewport.
-        val endOfOlder = minimapScrollOffset(100, 1f, 400)
-        val startOfNewer = minimapScrollOffset(300, 0f, 400)
-        assertEquals(-100, startOfNewer - endOfOlder)
+    @Test fun thumbSizeIsTheVisibleShareAndNeverBelowTheMinimum() {
+        val twoOfTen = MinimapSpan(3f, 5f)
+        assertEquals(0.2f, minimapThumb(10, twoOfTen, 0f).height, 1e-4f)
+        assertEquals(0.1f, minimapThumb(100, MinimapSpan(0f, 1f), 0.1f).height, 1e-4f)
+        assertEquals(0.1f, minimapThumb(100, MinimapSpan(0f, 0.01f), 0.1f).height, 1e-4f)
+        val everything = minimapThumb(3, MinimapSpan(0f, 3f), 0.1f)
+        assertEquals(1f, everything.height, 1e-4f)
+        assertEquals(0f, everything.top, 1e-4f)
     }
 
-    @Test fun appendedOrRemovedMessagesResolveTheirCurrentIndex() {
-        val appended = minimapSpans(listOf("old" to 100f, "long" to 300f, "new" to 100f, "queued" to 100f))
-        assertEquals(0, minimapTarget(appended, 0f)!!.index)
-        val deleted = minimapSpans(listOf("long" to 300f, "new" to 100f))
-        assertEquals("long", minimapTarget(deleted, 0f)!!.id)
-        assertEquals(0, minimapTarget(deleted, 0f)!!.index)
+    @Test fun thumbReachesBothEndsOfTheTrack() {
+        val first = minimapThumb(10, MinimapSpan(0f, 2f), 0.05f)
+        val last = minimapThumb(10, MinimapSpan(8f, 10f), 0.05f)
+        assertEquals(0f, first.top, 1e-4f)
+        assertEquals(0f, first.progress, 1e-4f)
+        assertEquals(1f, last.progress, 1e-4f)
+        assertEquals(1f, last.top + last.height, 1e-4f)
+    }
+
+    @Test fun noSpanOrNoTurnsFillsTheTrack() {
+        assertEquals(MinimapThumb(0f, 1f), minimapThumb(0, MinimapSpan(0f, 1f), 0.1f))
+        assertEquals(MinimapThumb(0f, 1f), minimapThumb(5, null, 0.1f))
+    }
+
+    @Test fun draggingMapsProgressBackToATurnAndFraction() {
+        assertEquals(MinimapPosition(0, 0f), minimapPosition(10, 2f, 0f))
+        assertEquals(MinimapPosition(4, 0f), minimapPosition(10, 2f, 0.5f))
+        val inside = minimapPosition(4, 0.25f, 0.9f)!!
+        assertEquals(3, inside.index)
+        assertEquals(0.375f, inside.fraction, 1e-3f)
+    }
+
+    @Test fun thumbAtTheBottomMeansTheEndOfTheLatestContent() {
+        assertEquals(MinimapPosition(10, 0f), minimapPosition(10, 2.5f, 1f))
+        // Even when the last turn is taller than the viewport.
+        assertEquals(MinimapPosition(4, 0f), minimapPosition(4, 0.25f, 1f))
+    }
+
+    @Test fun positionAndThumbRoundTrip() {
+        val span = MinimapSpan(2.4f, 3.9f)
+        val thumb = minimapThumb(8, span, 0f)
+        val target = minimapPosition(8, span.length, thumb.progress)!!
+        assertEquals(span.start, target.index + target.fraction, 1e-3f)
+    }
+
+    @Test fun rejectsEmptyAndInvalidInput() {
+        assertNull(minimapPosition(0, 1f, 0.5f))
+        assertNull(minimapPosition(3, 1f, Float.NaN))
+        assertNull(minimapPosition(3, Float.POSITIVE_INFINITY, 0.5f))
+        val rows = listOf(MinimapVisibleTurn("deleted", 0, 100), MinimapVisibleTurn("new", 100, 100))
+        assertNull(minimapVisibleSpan(indices("new"), rows, 0, 100))
+        assertNotNull(minimapVisibleSpan(indices("new"), rows, 100, 200))
+        assertNull(minimapVisibleSpan(indices("new"), rows, 200, 100))
     }
 }

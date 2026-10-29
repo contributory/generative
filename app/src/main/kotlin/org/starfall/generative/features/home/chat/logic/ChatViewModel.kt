@@ -205,7 +205,9 @@ class ChatViewModel(
                 },
                 publishStream = { id, stream ->
                     _activeStreams.update { current ->
-                        if (stream == null) current - id else current + (id to stream)
+                        if (stream == null || deletingAllConversations.value || id in deletingConversations.value) {
+                            current - id
+                        } else current + (id to stream)
                     }
                 }
             ).also { generation ->
@@ -214,6 +216,9 @@ class ChatViewModel(
                         GenerationUiState(busy, error, waitingForTool)
                     }.collect { state ->
                         _generationStates.update { it + (conversationId to state) }
+                        if (!state.busy) {
+                            _activeStreams.update { retainChatStreams(it, _currentConversation.value?.id) }
+                        }
                     }
                 }
             }
@@ -444,10 +449,12 @@ class ChatViewModel(
     fun deleteConversation(id: String) = deleteConversations(setOf(id))
     fun deleteConversations(ids: Set<String>, attachedFiles: Collection<String> = emptyList()) {
         _liveConversationPreviews.update { it - ids }
+        _activeStreams.update { it - ids }
         conversationCoordinator.deleteConversations(ids, attachedFiles)
     }
     fun renameConversation(id: String, newTitle: String) = conversationCoordinator.renameConversation(id, newTitle)
     fun clearAllConversations(attachedFiles: Collection<String> = emptyList()) {
+        _activeStreams.value = emptyMap()
         _liveConversationPreviews.value = emptyMap()
         conversationCoordinator.clearAllConversations(attachedFiles)
     }
@@ -478,6 +485,13 @@ class ChatViewModel(
 
 
     init {
+        viewModelScope.launch {
+            currentConversation.map { it?.id }.distinctUntilChanged().collect { currentId ->
+                // The mounted card retains its frozen snapshot. Once that viewport is gone,
+                // stopped streams need no shared RAM entry; active generations remain independent.
+                _activeStreams.update { streams -> retainChatStreams(streams, currentId) }
+            }
+        }
         viewModelScope.launch { modelContext.contextEstimate.collect { automaticSummary.maybeStart() } }
         viewModelScope.launch {
             isGenerating.collect { busy ->
@@ -679,4 +693,12 @@ class ChatViewModel(
         speech.shutdown()
     }
 
+}
+
+/** Keep live generations across navigation, and only the mounted conversation's frozen handoff. */
+internal fun retainChatStreams(
+    streams: Map<String, ActiveChatStreamState>,
+    currentConversationId: String?
+): Map<String, ActiveChatStreamState> = streams.filter { (id, stream) ->
+    id == currentConversationId || !stream.stopSignal.isFrozen
 }

@@ -62,7 +62,7 @@ import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.lists.ListViewToggle
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.layout.SlideScreenContent
+import org.starfall.generative.shared.ui.layout.RetainedScreenContent
 import org.starfall.generative.shared.ui.model.DefaultModelSelector
 import org.starfall.generative.shared.ui.model.ModelPickerSheet
 import org.starfall.generative.shared.storage.preferences.AppPreferences
@@ -242,12 +242,8 @@ fun ChatOptionsScreen(
         else -> null
     }
 
-    SlideScreenContent(
-        editor = editorPage,
-        label = stringResource(
-            if (editorPage is ChatOptionsEditor.SkillEditor) R.string.agent_skill_details
-            else R.string.instruction_details
-        )
+    RetainedScreenContent(
+        editor = editorPage
     ) { editorPage ->
         when (editorPage) {
             is ChatOptionsEditor.InstructionEditor -> {

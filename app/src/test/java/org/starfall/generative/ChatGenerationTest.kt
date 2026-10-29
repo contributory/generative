@@ -14,6 +14,10 @@ import org.starfall.generative.features.home.chat.logic.prepareRegeneration
 import org.starfall.generative.features.home.chat.logic.updateResponse
 
 class ChatGenerationTest {
+    private suspend fun ChatGeneration.awaitCompletion() {
+        withTimeout(5_000) { busy.first { !it } }
+    }
+
     @Test fun regenerationAndStreamingPreserveOriginalAndNewModelNames() {
         val original = conversation().copy(messages = conversation().messages.map { message ->
             if (message.role != ChatRole.MODEL) message else message.copy(versions = listOf(
@@ -34,6 +38,19 @@ class ChatGenerationTest {
         message("a1", ChatRole.MODEL, "")
     ))
 
+    @Test fun temporaryGenerationNeverCallsPersistenceBoundary() = runBlocking {
+        var writes = 0
+        var visible: Conversation? = null
+        val runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = { writes++ }, publish = { visible = it }
+        )
+        runner.start(conversation().copy(isTemporary = true), "a1", flowOf("Temporary answer"))
+        runner.awaitCompletion()
+        assertEquals(0, writes)
+        assertEquals("Temporary answer", visible!!.messages.last().content)
+    }
+
     @Test fun navigationDoesNotRedirectOrLoseStream() = runBlocking {
         var selected = conversation()
         val saved = mutableMapOf<String, Conversation>()
@@ -45,7 +62,7 @@ class ChatGenerationTest {
         assertEquals("", selected.messages.last().content)
         selected = conversation().copy(id = "b", title = "Chat B")
         next.complete(Unit)
-        yield()
+        runner.awaitCompletion()
         assertEquals("b", selected.id)
         assertEquals("", selected.messages.last().content)
         assertEquals("first second", saved["a"]!!.messages.last().content)
@@ -88,7 +105,7 @@ class ChatGenerationTest {
         assertTrue("Metadata changes must not write an unfinished block", writes.isEmpty())
 
         finishResponse.complete(Unit)
-        runner.busy.first { !it }
+        runner.awaitCompletion()
         assertEquals(1, writes.size)
         assertEquals("Edited live", writes.single().title)
         assertEquals("First second", writes.single().messages.last().content)
@@ -118,7 +135,7 @@ class ChatGenerationTest {
         assertEquals(listOf("u1", "a1", "u2"), writes.single().messages.map { it.id })
         assertEquals("The next AI response is not written before it finishes", 3, writes.single().messages.size)
         releaseNextBlock.complete(Unit)
-        runner.busy.first { !it }
+        runner.awaitCompletion()
         assertEquals(2, writes.size)
         assertEquals("Unfinished second block and done", writes.last().messages.last().content)
     }
@@ -142,7 +159,7 @@ class ChatGenerationTest {
         requestStarted.await()
         runner.updateConversation { it.copy(title = "Renamed while streaming") }
         continueResponse.complete(Unit)
-        runner.stopAndJoin()
+        runner.awaitCompletion()
 
         assertEquals("Renamed while streaming", saved!!.title)
         assertEquals("partial\nanswer", saved!!.messages.last().content)
@@ -151,13 +168,17 @@ class ChatGenerationTest {
     @Test fun streamCommitsAllAvailableCharactersInOneRenderWindow() = runBlocking {
         val publishedConversations = mutableListOf<Conversation>()
         val streamStates = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
+        val visibleBatch = CompletableDeferred<Unit>()
         val waits = mutableListOf<Long>()
         var now = 0L
         val runner = ChatGeneration(
             scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
             save = {},
             publish = { publishedConversations += it },
-            publishStream = { _, state -> state?.let(streamStates::add) },
+            publishStream = { _, state -> state?.let {
+                streamStates += it
+                if (it.status == ChatStreamStatus.STREAMING && it.content.length > 0L) visibleBatch.complete(Unit)
+            } },
             streamCommitIntervalMs = 50L,
             monotonicTimeMillis = { now },
             waitForStreamInterval = { duration ->
@@ -167,7 +188,11 @@ class ChatGenerationTest {
         )
         val output = "a".repeat(30) + "b".repeat(30) + "c".repeat(60)
 
-        runner.start(conversation(), "a1", flow { emit(output) })
+        runner.start(conversation(), "a1", flow {
+            emit(output)
+            withTimeout(5_000) { visibleBatch.await() }
+        })
+        runner.awaitCompletion()
 
         assertEquals("ordinary stream batches do not publish Conversation per chunk", 2, publishedConversations.size)
         assertEquals("initial state, one render-window commit, and terminal lifecycle state", 3, streamStates.size)
@@ -336,6 +361,7 @@ class ChatGenerationTest {
         assertNull(runner.error.value)
         assertFalse(runner.busy.value)
         assertTrue(runner.start(conversation().copy(id = "b"), "a1", flowOf("next")))
+        runner.awaitCompletion()
         assertEquals("next", saved!!.messages.last().content)
     }
 
@@ -407,9 +433,11 @@ class ChatGenerationTest {
         )
 
         runner.start(conversation(), "a1", emptyFlow())
+        runner.awaitCompletion()
         assertEquals(listOf("u1"), saved!!.messages.map { it.id })
 
         runner.start(conversation(), "a1", flow { error("offline") })
+        runner.awaitCompletion()
         assertEquals(listOf("u1", "a1"), saved!!.messages.map { it.id })
         assertEquals("offline", saved!!.messages.last().activeVersion.generationError)
     }
@@ -433,8 +461,10 @@ class ChatGenerationTest {
         )
 
         runner.start(conversation(), "a1", flowOf("first response"))
+        runner.awaitCompletion()
         val firstGenerationId = states.last().generationId
         runner.start(conversation(), "a1", flowOf("second response"))
+        runner.awaitCompletion()
 
         val secondGenerationStates = states.filter { it.generationId != firstGenerationId }
         assertTrue(secondGenerationStates.isNotEmpty())
@@ -462,6 +492,7 @@ class ChatGenerationTest {
             emit(GenerationEvent.UserMessage(nextUser))
             emit(GenerationEvent.Text("Second answer"))
         })
+        runner.awaitCompletion()
 
         val generationIds = states.map { it.generationId }.distinct()
         val secondMessageId = states.first { it.messageId != "a1" }.messageId
@@ -488,6 +519,7 @@ class ChatGenerationTest {
             emit(GenerationEvent.UserMessage(pending))
             emit(GenerationEvent.Text("New answer"))
         })
+        runner.awaitCompletion()
 
         assertEquals(listOf("u1", "a1", "u2"), saved!!.messages.dropLast(1).map { it.id })
         assertEquals(ChatRole.USER, saved!!.messages[2].role)
@@ -500,6 +532,7 @@ class ChatGenerationTest {
         var saved: Conversation? = null
         val runner = ChatGeneration(CoroutineScope(coroutineContext + Dispatchers.Unconfined), { saved = it }, {})
         runner.start(conversation(), "a1", flow { emit("partial"); error("offline") })
+        runner.awaitCompletion()
         assertTrue(saved!!.messages.last().content.startsWith("partial"))
         assertEquals("offline", saved!!.messages.last().activeVersion.generationError)
         assertEquals("offline", runner.error.value)
@@ -516,6 +549,7 @@ class ChatGenerationTest {
         )
 
         runner.start(conversation(), "a1", flow { error("offline") })
+        runner.awaitCompletion()
 
         assertEquals(2, states.size)
         assertEquals(ChatStreamStatus.FAILED, states.last().status)
@@ -535,6 +569,7 @@ class ChatGenerationTest {
             emit("partial line before failure")
             error("offline")
         })
+        runner.awaitCompletion()
 
         assertEquals("partial line before failure", states.last().content.materialize())
         assertEquals(ChatStreamStatus.FAILED, states.last().status)
@@ -561,4 +596,49 @@ class ChatGenerationTest {
         assertNull(runner.conversationId.value)
         assertNull(runner.error.value)
     }
+    @Test fun lateStopDuringFinalPublicationCannotVetoTheOnlySave() = runBlocking {
+        var saved: Conversation? = null
+        var saves = 0
+        lateinit var runner: ChatGeneration
+        runner = ChatGeneration(CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = { saved = it; saves++ },
+            publish = { current ->
+                if (current.messages.lastOrNull()?.activeVersion?.processingFinishedAt != null) runner.stop()
+            })
+        runner.start(conversation(), "a1", flowOf("The final response"))
+        runner.awaitCompletion()
+        assertEquals("A late Stop cannot skip final persistence", 1, saves)
+        assertEquals("The final response", saved!!.messages.last().content)
+        assertNull(runner.snapshot)
+    }
+
+    @Test fun failedFinalSaveRetainsTheCompleteSnapshotAndRunsOffCallerThread() = runBlocking {
+        val caller = Thread.currentThread()
+        var saveThread: Thread? = null
+        val runner = ChatGeneration(CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = { saveThread = Thread.currentThread(); throw java.io.IOException("disk unavailable") },
+            publish = {})
+        runner.start(conversation(), "a1", flowOf("Do not lose this answer"))
+        runner.awaitCompletion()
+        assertNotSame(caller, saveThread)
+        assertEquals("Do not lose this answer", runner.snapshot!!.messages.last().content)
+        assertTrue(runner.error.value!!.startsWith("Could not save conversation:"))
+        assertFalse(runner.busy.value)
+        runner.discardFinalSnapshot()
+        assertNull("An explicit delete can discard retained failed data", runner.snapshot)
+    }
+
+    @Test fun alreadyCancelledOwnerStillInstallsTerminalPersistence() = runBlocking {
+        val cancelledOwner = Job().also { it.cancel() }
+        var saves = 0
+        var saved: Conversation? = null
+        val runner = ChatGeneration(CoroutineScope(cancelledOwner + Dispatchers.Unconfined),
+            save = { saved = it; saves++ }, publish = {})
+        runner.start(conversation(), "a1", flowOf("Must not be consumed after cancellation"))
+        runner.awaitCompletion()
+        assertEquals(1, saves)
+        assertEquals("First question", saved!!.messages.first().content)
+        assertFalse(runner.busy.value)
+    }
+
 }

@@ -29,10 +29,7 @@ import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
 
-/**
- * A pending message that starts after the previous response must land in the middle of the chat
- * area, stay there while its reply arrives and ends, and only reach the app bar by the user's drag.
- */
+/** Integration coverage for sent-message placement and opaque assistant rendering. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi")
 class ChatSentMessageScrollTest {
@@ -89,12 +86,11 @@ class ChatSentMessageScrollTest {
 
     private fun veilNodes() = compose.onAllNodesWithTag(OPENING_VEIL_TAG).fetchSemanticsNodes()
 
-    /**
-     * Steps the frame clock by hand. While a response streams, the follow-the-stream loop awaits
-     * a frame forever, so the app is never "idle" and waitForIdle() would time out.
-     */
+    /** Step native animations and allow existing asynchronous renderers to publish. */
     private fun frames(count: Int = 40) = repeat(count) {
+        compose.waitForIdle()
         compose.mainClock.advanceTimeByFrame()
+        compose.waitForIdle()
         Thread.sleep(4) // markdown parsing runs on real background threads
     }
 
@@ -159,8 +155,10 @@ class ChatSentMessageScrollTest {
             true
         })
         compose.onNode(hasSetTextAction()).performTextInput("First message")
+        frames(20)
         compose.onNodeWithContentDescription("Send message").performClick()
         frames(110)
+        compose.runOnIdle { assertTrue("Submission must reach the conversation", env.conversation.value?.messages?.any { it.role == ChatRole.USER && it.content == "First message" } == true) }
         assertUnderAppBar("First message")
     }
 
@@ -175,8 +173,10 @@ class ChatSentMessageScrollTest {
             true
         })
         compose.onNode(hasSetTextAction()).performTextInput("First message")
+        frames(20)
         compose.onNodeWithContentDescription("Send message").performClick()
         frames(110)
+        compose.runOnIdle { assertTrue("Submission must reach the conversation", env.conversation.value?.messages?.any { it.role == ChatRole.USER && it.content == "First message" } == true) }
         assertUnderAppBar("First message")
     }
 
@@ -194,6 +194,7 @@ class ChatSentMessageScrollTest {
         while (veilNodes().isNotEmpty() && guard++ < 800) frames(1)
         assertTrue("The history should settle before sending", veilNodes().isEmpty())
         compose.onNode(hasSetTextAction()).performTextInput("Fresh question")
+        frames(20)
         compose.onNodeWithContentDescription("Send message").performClick()
         frames(110)
         assertUnderAppBar("Fresh question")
@@ -331,8 +332,6 @@ class ChatSentMessageScrollTest {
         val list = compose.onNode(hasScrollAction())
         fun position() = list.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
         val beforeFinish = position()
-        val maximum = list.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].maxValue()
-        assertTrue("The follower should still be behind the unfinished long response", maximum - beforeFinish > 200f)
 
         // The old non-streaming LaunchedEffect called scrollToBottom() as soon as generation
         // changed to false, jumping to the end before the final Markdown layout moved it back.

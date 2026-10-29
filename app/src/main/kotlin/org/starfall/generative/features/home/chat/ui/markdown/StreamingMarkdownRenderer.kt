@@ -26,6 +26,7 @@ import org.starfall.generative.R
 import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 import org.starfall.generative.features.home.chat.logic.markdown.parseLibraryMarkdown
+import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderWork
 import org.starfall.generative.features.home.chat.model.StreamTextSnapshot
 import org.starfall.generative.features.home.chat.model.StreamFreezeSignal
 import org.starfall.generative.features.home.chat.ui.MarkdownParseCache
@@ -49,6 +50,18 @@ internal fun StreamingMarkdownRenderer(
 ) {
     val truncationLabel = stringResource(R.string.chat_response_truncated)
     if (isStreaming && streamSnapshot != null && streamGenerationId != null && streamMessageId != null) {
+        // Freeze protects an already visible row. A row first opened AFTER Stop can render its
+        // immutable source normally and reuse the caches prepared while it was off screen.
+        val openedFrozen = remember(streamGenerationId, streamMessageId, streamStartOffset) {
+            streamFreezeSignal?.isFrozen == true
+        }
+        if (openedFrozen) {
+            val frozenText = remember(streamGenerationId, streamMessageId, streamStartOffset) {
+                streamSnapshot.materialize()
+            }
+            MarkdownRenderer(frozenText, modifier, isStreaming = false, cacheIdentity = cacheIdentity)
+            return
+        }
         IncrementalStreamingMarkdown(
             streamSnapshot = streamSnapshot,
             generationId = streamGenerationId,
@@ -363,11 +376,9 @@ private suspend fun collectIncrementalMarkdownUpdates(
     parsing: MutableState<Boolean>,
     streamFreezeSignal: StreamFreezeSignal?
 ) {
-    var lastSequence = 0L
     snapshotFlow { latestSnapshot.value }.conflate().collect { current ->
         if (streamFreezeSignal?.isFrozen == true) return@collect
         if (renderSnapshot.value.overflowStart != null) {
-            lastSequence = current.latestSegment?.sequence ?: lastSequence
             return@collect
         }
         if (current.length > MAX_MARKDOWN_RENDER_CHARS.toLong()) {
@@ -381,34 +392,17 @@ private suspend fun collectIncrementalMarkdownUpdates(
                 }
                 if (streamFreezeSignal?.isFrozen != true) renderSnapshot.value = overflowSnapshot
             }
-            lastSequence = latestSnapshot.value.latestSegment?.sequence ?: lastSequence
             return@collect
         }
-        appendNewMarkdownSegments(current, lastSequence, parser, renderSnapshot, parsing, streamFreezeSignal).also {
-            lastSequence = it
+        // A virtualized row may have missed thousands of small stream publications. Replay the
+        // unparsed source once; the existing parser owns its bounded internal append sizes.
+        val start = renderSnapshot.value.parsedLength
+        val end = current.length.coerceAtMost(MAX_MARKDOWN_RENDER_CHARS.toLong()).toInt()
+        if (end > start) {
+            appendIncrementalMarkdown(parser, current.slice(start, end), current,
+                renderSnapshot, parsing, streamFreezeSignal)
         }
     }
-}
-
-private suspend fun appendNewMarkdownSegments(
-    current: StreamTextSnapshot,
-    previousSequence: Long,
-    parser: IncrementalMarkdownParser,
-    renderSnapshot: MutableState<IncrementalMarkdownSnapshot>,
-    parsing: MutableState<Boolean>,
-    streamFreezeSignal: StreamFreezeSignal?
-): Long {
-    var lastSequence = previousSequence
-    for (segment in current.segmentsAfter(previousSequence)) {
-        if (streamFreezeSignal?.isFrozen == true) break
-        lastSequence = segment.sequence
-        val remaining = (MAX_MARKDOWN_RENDER_CHARS - renderSnapshot.value.parsedLength).coerceAtLeast(0)
-        val accepted = segment.text.take(remaining)
-        if (accepted.isEmpty()) continue
-        appendIncrementalMarkdown(parser, accepted, current, renderSnapshot, parsing, streamFreezeSignal)
-        if (streamFreezeSignal?.isFrozen == true || renderSnapshot.value.overflowStart != null || accepted.length < segment.text.length) break
-    }
-    return lastSequence
 }
 
 private suspend fun appendIncrementalMarkdown(
@@ -422,7 +416,7 @@ private suspend fun appendIncrementalMarkdown(
     if (streamFreezeSignal?.isFrozen == true) return
     parsing.value = true
     try {
-        val result = withContext(Dispatchers.Default) {
+        val result = MarkdownRenderWork.run {
             parser.append(
                 text = text,
                 source = source,

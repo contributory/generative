@@ -31,8 +31,8 @@ class EdgeToEdgeContentTest {
         compose.runOnIdle {
             assertEquals(40.dp, padding.calculateTopPadding())
             assertEquals(36.dp, padding.calculateBottomPadding())
-            assertEquals(22.dp, padding.calculateStartPadding(LayoutDirection.Ltr))
-            assertEquals(26.dp, padding.calculateEndPadding(LayoutDirection.Ltr))
+            assertEquals(22.dp, padding.calculateLeftPadding(LayoutDirection.Ltr))
+            assertEquals(26.dp, padding.calculateRightPadding(LayoutDirection.Ltr))
         }
     }
 
@@ -47,8 +47,8 @@ class EdgeToEdgeContentTest {
             }
         }
         compose.runOnIdle {
-            assertEquals(24.dp, padding.calculateStartPadding(LayoutDirection.Rtl))
-            assertEquals(10.dp, padding.calculateEndPadding(LayoutDirection.Rtl))
+            assertEquals(24.dp, padding.calculateRightPadding(LayoutDirection.Rtl))
+            assertEquals(10.dp, padding.calculateLeftPadding(LayoutDirection.Rtl))
         }
     }
 }

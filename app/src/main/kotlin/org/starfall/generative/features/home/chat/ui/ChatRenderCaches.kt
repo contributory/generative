@@ -18,9 +18,9 @@ import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderC
 import org.starfall.generative.features.home.chat.ui.markdown.LatexDrawables
 
 /**
- * RAM that only exists to make reopening a chat faster. Everything registered here is low priority:
- * the garbage collector may drop the values at any time (they are held by [SoftReference]) and the app
- * empties the caches itself when Android reports memory pressure ([onTrimMemory]).
+ * Reclaimable chat RAM. Parsed assets use [SoftReference]; retained inactive Compose pages
+ * are strongly held while cached, bounded by count, and explicitly released on memory pressure.
+ * All registered caches honor [onTrimMemory] and [clearAll].
  */
 internal interface EvictableCache {
     /** Keep at most [fraction] (0..1) of the capacity; 0 empties the cache. */
@@ -32,6 +32,10 @@ internal object ChatRenderCaches {
 
     fun register(cache: EvictableCache) {
         caches.addIfAbsent(cache)
+    }
+
+    fun unregister(cache: EvictableCache) {
+        caches.remove(cache)
     }
 
     fun clearAll() = caches.forEach { it.trimToFraction(0f) }
@@ -132,13 +136,16 @@ internal object MarkdownParseCache {
     private val fullParseNanos = AtomicLong()
 
     fun get(content: String, identity: MarkdownRenderCacheIdentity? = null): State.Success? =
-        cache.get(Key(content, identity))?.state.also { if (it == null) misses.incrementAndGet() else hits.incrementAndGet() }
+        entry(content, identity)?.state.also { if (it == null) misses.incrementAndGet() else hits.incrementAndGet() }
+
+    private fun entry(content: String, identity: MarkdownRenderCacheIdentity?): Entry? =
+        cache.get(Key(content, identity)) ?: if (identity != null) cache.get(Key(content, null)) else null
 
     fun getFingerprint(content: String, identity: MarkdownRenderCacheIdentity? = null): String? =
-        cache.get(Key(content, identity))?.contentFingerprint
+        entry(content, identity)?.contentFingerprint
 
     fun contains(content: String, identity: MarkdownRenderCacheIdentity? = null): Boolean =
-        cache.contains(Key(content, identity))
+        entry(content, identity) != null
 
     fun put(
         content: String,
@@ -171,12 +178,12 @@ internal object MarkdownParseCache {
 
     fun invalidateMessage(conversationId: String, messageId: String) {
         cache.removeIf { key ->
-            key.identity?.let { it.conversationId == conversationId && it.messageId == messageId } == true
+            key.identity == null || key.identity.let { it.conversationId == conversationId && it.messageId == messageId }
         }
     }
 
     fun invalidateConversation(conversationId: String) {
-        cache.removeIf { key -> key.identity?.conversationId == conversationId }
+        cache.removeIf { key -> key.identity == null || key.identity.conversationId == conversationId }
     }
 
     fun clearAll() = cache.trimToFraction(0f)

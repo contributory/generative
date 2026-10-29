@@ -1,14 +1,21 @@
 package org.starfall.generative.features.home.chat.ui
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -18,65 +25,71 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlin.math.exp
-import kotlin.math.max
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 
-/** Time constant of the exponential follow; the remaining distance shrinks ~63% per interval. */
-private const val THINKING_FOLLOW_TIME_CONSTANT_SECONDS = 0.1f
-/** Floor speed so the follow always finishes instead of crawling through the last pixels. */
-private const val THINKING_FOLLOW_MIN_SPEED_DP_PER_SECOND = 480f
-
-/**
- * Keep the newest thinking line in view with a continuous, per-frame ease toward the bottom.
- *
- * The follower is stateless (it only looks at the current distance to the bottom), so a new
- * measured line can restart it at any moment without the stop/start stutter that restarting a
- * fixed-duration `animateScrollTo` caused. A user drag stops following until the next new line.
- */
+/** Follow the measured scroll range without per-line animations or distance thresholds. */
 @Composable
 internal fun rememberLiveThinkingScrollState(active: Boolean): ScrollState {
     val state = rememberScrollState()
-    val minSpeedPx = with(LocalDensity.current) { THINKING_FOLLOW_MIN_SPEED_DP_PER_SECOND.dp.toPx() }
-    LaunchedEffect(active, state) {
-        if (active) snapshotFlow { state.maxValue }.collectLatest { target ->
-            // The scroll range is unknown until the first measurement.
-            if (target !in 1 until Int.MAX_VALUE) return@collectLatest
-            var lastFrame = withFrameNanos { it }
-            while (!state.isScrollInProgress) {
-                val frame = withFrameNanos { it }
-                val seconds = ((frame - lastFrame) / 1_000_000_000f).coerceAtMost(0.05f)
-                lastFrame = frame
-                // Re-read the bound each frame: more lines can arrive while easing.
-                val distance = (state.maxValue - state.value).toFloat()
-                if (distance <= 0f) break
-                val eased = distance * (1f - exp(-seconds / THINKING_FOLLOW_TIME_CONSTANT_SECONDS))
-                state.dispatchRawDelta(max(eased, minSpeedPx * seconds).coerceAtMost(distance))
-            }
-        }
-    }
+    LiveThinkingScrollEffect(active, state)
     return state
 }
 
 @Composable
+private fun LiveThinkingScrollEffect(active: Boolean, state: ScrollState) {
+    LaunchedEffect(active, state) {
+        if (active) snapshotFlow { state.maxValue }.collectLatest { target ->
+            // scrollTo() still starts a native scroll mutation when already at the end.
+            // Skip it until layout has actually left new content below the visible edge.
+            if (target in 1 until Int.MAX_VALUE && state.value < target) state.scrollTo(target)
+        }
+    }
+}
+
+@Composable
 internal fun LiveThinkingBlock(reasoning: String, active: Boolean, showHeader: Boolean = true) {
-    var expanded by remember { mutableStateOf(false) }
-    val scrollState = rememberLiveThinkingScrollState(active && !expanded)
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+    val dragging by scrollState.interactionSource.collectIsDraggedAsState()
+    var touchingPreview by remember { mutableStateOf(false) }
+    var lastInteraction by remember { mutableIntStateOf(0) }
+    var followPaused by remember { mutableStateOf(false) }
+    LaunchedEffect(dragging, touchingPreview, lastInteraction) {
+        if (dragging) followPaused = true
+        else if (followPaused && !touchingPreview) {
+            delay(3_000)
+            followPaused = false
+        }
+    }
+    val following = active && !expanded && !followPaused && LocalChatForeground.current
+    LiveThinkingScrollEffect(following, scrollState)
+    // The ScrollState remains authoritative (including gestures and hit testing). Smooth only
+    // the drawn position after native auto-follow jumps; never animate or intercept scroll input.
+    val drawnScroll = remember { Animatable(0f) }
+    LaunchedEffect(scrollState, following) {
+        snapshotFlow { scrollState.value }.collectLatest { offset ->
+            if (following) drawnScroll.animateTo(offset.toFloat(), tween(180, easing = FastOutSlowInEasing))
+            else drawnScroll.snapTo(offset.toFloat()) // Manual scroll remains visually exact.
+        }
+    }
     val density = LocalDensity.current
     val preferences = LocalCodeRenderingPreferences.current
     val bodySize = preferences.effectiveMessageFontSize.sp
     val bodyLineHeight = bodySize * 1.375f
-    val previewHeight = with(density) { (bodyLineHeight * 5f).toDp() }
+    val previewHeight = with(density) { (bodyLineHeight * 3.5f).toDp() }
     val fadeHeight = with(density) { bodyLineHeight.toPx() }
 
     Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
@@ -109,6 +122,7 @@ internal fun LiveThinkingBlock(reasoning: String, active: Boolean, showHeader: B
             )
         }
         if (showHeader) Spacer(Modifier.height(4.dp))
+        // The edge mask belongs to the fixed preview viewport, never the scrolling text.
         val fadingEdges = if (!active) Modifier else Modifier
             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
             .drawWithContent {
@@ -140,20 +154,39 @@ internal fun LiveThinkingBlock(reasoning: String, active: Boolean, showHeader: B
             Modifier
                 .then(if (animateSize) Modifier.animateContentSize() else Modifier)
                 .then(previewModifier)
-                .testTag("live-thinking-preview")
+                .testTag("live-thinking-viewport")
                 .clip(RoundedCornerShape(8.dp))
                 .then(fadingEdges)
-                .then(scrollModifier)
-                .clickable { expanded = !expanded }
         ) {
-            // No per-token fade here: it redraws the whole block once per recent token and double-draws
-            // anti-aliased glyph edges, which shows as flicker (worst with light text on dark). The
-            // preview's own edge mask and smooth scroll already provide the soft entrance.
-            ThinkingMarkdown(
-                reasoning = reasoning,
-                isStreaming = active,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Box(
+                Modifier.fillMaxWidth()
+                    .testTag("live-thinking-preview")
+                    .pointerInput(Unit) {
+                        // Observe touches without consuming them; verticalScroll owns the gesture.
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            touchingPreview = true
+                            try {
+                                do {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                } while (event.changes.any { it.pressed })
+                            } finally {
+                                touchingPreview = false
+                                lastInteraction++
+                            }
+                        }
+                    }
+                    .then(scrollModifier)
+                    .clickable { expanded = !expanded }
+            ) {
+                // Show the original reasoning text. Only the outer viewport applies the edge fade.
+                ThinkingPlainText(
+                    reasoning = reasoning,
+                    modifier = Modifier.fillMaxWidth().graphicsLayer {
+                        translationY = if (following) scrollState.value - drawnScroll.value else 0f
+                    }
+                )
+            }
         }
     }
 }

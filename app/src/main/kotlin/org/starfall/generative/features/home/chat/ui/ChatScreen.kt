@@ -11,11 +11,6 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -23,38 +18,22 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.StateFlow
-import androidx.compose.ui.unit.Velocity
-import kotlin.math.exp
-import kotlin.math.min
-import kotlin.math.roundToInt
-import kotlinx.coroutines.isActive
 import org.starfall.generative.features.home.chat.logic.SAVE_CONVERSATION_ERROR_PREFIX
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.AgentSkill
@@ -80,32 +59,11 @@ import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.defaultAgentSkills
 import org.starfall.generative.features.home.chat.logic.unansweredUserMessageIds
 import org.starfall.generative.features.home.chat.ui.input.UserInputArea
-import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.features.home.shared.ui.ConversationSummarySheet
 import org.starfall.generative.features.home.chat.model.ContextWindowStatus
 import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
-
-// An intentionally large offset lands the initial view at the latest message without flashing history.
-private const val OPEN_AT_BOTTOM_OFFSET = 10_000_000
-
-// Smoothly track the newest reply with velocity, not a fresh per-line scroll animation.
-private const val CHAT_FOLLOW_DISTANCE_TIME_SECONDS = 0.11f
-private const val CHAT_FOLLOW_VELOCITY_EASE_SECONDS = 0.065f
-private const val CHAT_FOLLOW_MAX_SPEED_DP_PER_SECOND = 2_200f
-private const val CHAT_FOLLOW_BOTTOM_GAP_SCREEN_FRACTION = 0.30f
-private const val CHAT_FINISH_SETTLE_STABLE_FRAMES = 20
-private const val CHAT_FINISH_SETTLE_MAX_NANOS = 2_000_000_000L
-
-/** Keep 30% of the window's height below the newest AI text, limited only by usable chat space. */
-internal fun chatFollowBottomGapPx(screenHeightPx: Int, visibleChatHeightPx: Int): Int =
-    (screenHeightPx.coerceAtLeast(0) * CHAT_FOLLOW_BOTTOM_GAP_SCREEN_FRACTION)
-        .roundToInt().coerceAtMost(visibleChatHeightPx.coerceAtLeast(0))
-
-// The opening veil lifts after the list has stayed at its newest message with no background work
-// pending for this many frames.
-private const val OPENING_STABLE_FRAMES = 4
 
 @Composable
 fun ChatScreen(
@@ -172,50 +130,39 @@ fun ChatScreen(
     onOpenSkillsSettings: (() -> Unit)? = null,
     isDrawerOpening: Boolean = false
 ) {
+    SideEffect { ChatRenderMetrics.recordChatScreenRecomposition() }
     val density = LocalDensity.current
-    var appBarHeightPx by remember { mutableIntStateOf(0) }
-    var inputAreaHeightPx by remember { mutableIntStateOf(0) }
-    var bottomPanelHeightPx by remember { mutableIntStateOf(0) }
     var chatRootCoordinates by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     var inputAreaBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-    val appBarHeight = if (appBarHeightPx > 0) with(density) { appBarHeightPx.toDp() }
-        else 72.dp
-    val navigationBarHeight = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
+
+    val conversationMessages = conversation?.messages.orEmpty()
+    val structuralRevision = conversation?.structuralRevision ?: 0L
+
+    val streamingHere = isGenerating && generatingConversationId == conversation?.id
+    // Tool activity and reasoning updates do not necessarily advance updatedAt or the
+    // structural revision. Key by the actual message snapshot so live Actions become visible.
+    val messages = remember(conversationMessages, queuedMessages) {
+        conversationMessages + queuedMessages
+    }
 
     val conversationKey = conversation?.id ?: "__empty_conversation__"
-    // Chronological LazyColumn: start at the last item rather than composing the oldest on open.
-    val initialLastIndex = ((conversation?.messages?.size ?: 0) + queuedMessages.size - 1).coerceAtLeast(0)
-    val listState = remember(conversationKey) {
-        LazyListState(initialLastIndex, OPEN_AT_BOTTOM_OFFSET)
+    val viewport = remember(conversationKey, loadingConversationId, messages.isEmpty()) {
+        ChatMessageListState(initialMessages = messages)
     }
+    val listState = viewport.listState
+    org.starfall.generative.features.home.chat.ui.markdown.PrepareStreamingMarkdown(
+        conversation?.id, conversationMessages.lastOrNull(), activeStream,
+        composedMessageIds = { viewport.ends.keys.toSet() }
+    )
     val minimapState = remember(conversationKey) { ConversationMinimapSideBarState() }
-    // Blank scroll room appended to the newest items; the minimap must not count it as content.
-    val tailSpacers = remember(conversationKey) { mutableStateMapOf<String, Int>() }
     LaunchedEffect(isDrawerOpening) {
         if (isDrawerOpening) minimapState.isOpen = false
     }
-    var followBottom by remember(conversationKey) { mutableStateOf(true) }
-    // An interrupted follow stays paused until a manual swipe actually reaches the newest end.
-    var userPausedFollow by remember(conversationKey) { mutableStateOf(false) }
-    // When streaming ends, loading/toolbar and Markdown's final layout can change the last
-    // item's size. Keep following until it settles without discarding its incremental tree.
-    var finishSettling by remember(conversationKey) { mutableStateOf(false) }
-    var wasStreamingHere by remember(conversationKey) { mutableStateOf(false) }
-    var seenNewestVersionKey by remember(conversationKey) { mutableStateOf<String?>(null) }
-    fun resumeFollowing() {
-        userPausedFollow = false
-        followBottom = true
-    }
-    var openingAtBottom by remember(conversationKey) { mutableStateOf(true) }
-    val anchor = remember(conversationKey) { ChatScrollAnchor() }
-    // Unlike the per-conversation detector, a first-send request survives null -> new chat ID.
+    // This event survives the null -> newly created conversation transition.
     var firstSendAwaitingAnchor by remember { mutableStateOf(false) }
-    var jumpingToBottom by remember(conversationKey) { mutableStateOf(false) }
-    val settleTracker = remember(conversationKey) { ChatSettleTracker() }
-    var revealed by remember(conversationKey) { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
-    val seenMessageIds = remember(conversationKey) { mutableSetOf<String>() }
-    val seenQueuedIds = remember(conversationKey) { mutableSetOf<String>() }
+    fun resumeFollowing() = viewport.resume()
+    val copyLabel = stringResource(R.string.common_copy)
+    val copiedLabel = stringResource(R.string.common_copied_to_clipboard)
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
@@ -223,33 +170,23 @@ fun ChatScreen(
     val selectedModelDisplayName = selectedProvider?.config?.modelConfigs?.get(selectedModelName)
         ?.displayName?.takeIf { it.isNotBlank() } ?: selectedModelName
 
-    val conversationMessages = conversation?.messages.orEmpty()
-    val structuralRevision = conversation?.structuralRevision ?: 0L
-    val streamingHere = isGenerating && generatingConversationId == conversation?.id
-    val messageIds = remember(conversationKey, structuralRevision) { conversationMessages.map { it.id } }
-    val queuedIds = remember(queuedMessages) { queuedMessages.map { it.id } }
-    // Tool activity and reasoning updates do not necessarily advance updatedAt or the
-    // structural revision. Key by the actual message snapshot so live Actions become visible.
-    val messages = remember(conversationMessages, queuedMessages) {
-        conversationMessages + queuedMessages
-    }
-    SideEffect {
-        ChatRenderMetrics.recordChatScreenRecomposition()
-        val newUserId = anchor.detector.observe(conversationMessages, structuralRevision)
+    LaunchedEffect(viewport, structuralRevision, conversationMessages.isEmpty(), firstSendAwaitingAnchor, loadingConversationId) {
+        if (loadingConversationId != null) return@LaunchedEffect
+        val sentId = viewport.sentMessages.observe(conversationMessages, structuralRevision)
             ?: if (firstSendAwaitingAnchor) {
                 conversationMessages.lastOrNull { it.role == ChatRole.USER && !it.isQueued }?.id
             } else null
-        newUserId?.let { id ->
+        if (sentId != null) {
             firstSendAwaitingAnchor = false
-            openingAtBottom = false
-            anchor.start(id)
-            resumeFollowing() // Sending a new message explicitly resumes following.
+            viewport.send(sentId)
         }
-        if (anchor.messageId?.let { id -> messages.none { it.id == id } } == true) anchor.end()
-        if (streamingHere) openingAtBottom = false
-        if (wasStreamingHere && !streamingHere) finishSettling = autoScroll && followBottom && !userPausedFollow
-        if (streamingHere) finishSettling = false
-        wasStreamingHere = streamingHere
+    }
+
+    var knownQueuedIds by remember(viewport) { mutableStateOf(queuedMessages.map { it.id }.toSet()) }
+    LaunchedEffect(viewport, queuedMessages) {
+        val added = queuedMessages.lastOrNull { it.id !in knownQueuedIds }
+        knownQueuedIds = queuedMessages.map { it.id }.toSet()
+        added?.let { viewport.send(it.id) }
     }
 
     var editDraft by remember(conversation?.id) { mutableStateOf<ChatInputEditDraft?>(null) }
@@ -267,6 +204,15 @@ fun ChatScreen(
     var showSummaryDialog by remember(conversation?.id) { mutableStateOf(false) }
     var inlineChatError by remember(conversation?.id) { mutableStateOf<String?>(null) }
     var modelPickerOpenRequest by remember(conversation?.id) { mutableIntStateOf(0) }
+    fun submitMessage(action: () -> Boolean): Boolean {
+        inlineChatError = null
+        return action().also { accepted ->
+            if (accepted) {
+                if (conversationMessages.isEmpty()) firstSendAwaitingAnchor = true
+                if (!isGenerating) resumeFollowing()
+            }
+        }
+    }
     val lastMessage = conversationMessages.lastOrNull()
     val streamingMessage = if (streamingHere) conversationMessages.lastOrNull { it.role == ChatRole.MODEL } else null
     val lastResponseState = conversationMessages.lastOrNull()?.activeVersion
@@ -277,249 +223,9 @@ fun ChatScreen(
         lastResponseState?.generationInterrupted,
         lastResponseState?.processingFinishedAt
     ) { unansweredUserMessageIds(conversationMessages) }
-    // A response is followed only while it is streaming; finishing must not snap the list.
-    // A chat that was already settled at its newest message earlier in this process, and whose parsed
-    // content is still in the (evictable) RAM cache, opens at its final size on the first frame and needs
-    // no veil. Otherwise the first open hides the chat until it is fully loaded and at the latest message.
-    val renderEnvironment = chatRenderEnvironmentKey()
-    val openSignature = remember(
-        conversationKey,
-        structuralRevision,
-        streamingHere,
-        if (streamingHere) 0L else conversation?.updatedAt
-    ) {
-        if (streamingHere) 0 else chatOpenSignature(conversationMessages)
-    }
-    val hasSavedMessages = conversationMessages.isNotEmpty()
-    val openedWarm = remember(conversationKey, hasSavedMessages, openSignature, renderEnvironment) {
-        hasSavedMessages && ChatOpenCache.isWarm(conversationKey, openSignature, renderEnvironment)
-    }
-    // A pending history selection must be hidden even before its first message arrives.
     val historyLoading = loadingConversationId != null
-    val veilActive = historyLoading || (openingAtBottom && !revealed && hasSavedMessages && !openedWarm && !streamingHere)
     fun whenIdle(action: () -> Unit) {
         if (!isGenerating) action()
-    }
-    // A small edge tolerance prevents a gesture from needing an extra swipe for its last pixels.
-    val resumeEdgePx = with(density) { 20.dp.roundToPx() }
-    val appBarTopPx = with(density) { (appBarHeight + 8.dp).roundToPx() }
-    fun visibleContentGapPx(): Int {
-        val layout = listState.layoutInfo
-        return chatFollowBottomGapPx(
-            layout.viewportSize.height, (layout.viewportEndOffset - appBarTopPx).coerceAtLeast(0)
-        )
-    }
-    fun distanceToLatestContent(): Int? {
-        val layout = listState.layoutInfo
-        val index = messages.lastIndex
-        val item = layout.visibleItemsInfo.firstOrNull { it.index == index } ?: return null
-        val spacer = tailSpacers[messages[index].id] ?: 0
-        val gap = if (messages[index].role == ChatRole.MODEL) visibleContentGapPx() else 0
-        return latestContentDistancePx(item.offset, item.size, spacer, layout.viewportEndOffset, gap)
-    }
-    fun reachedLatest(): Boolean {
-        val layout = listState.layoutInfo
-        val item = layout.visibleItemsInfo.firstOrNull { it.index == messages.lastIndex }
-            ?: return !listState.canScrollForward
-        val contentBottom = item.offset + item.size - (tailSpacers[messages.last().id] ?: 0)
-        // Being at the very end of the blank tail is NOT being at the latest answer:
-        // the last line might already be hidden beneath the translucent AppBar.
-        return contentBottom >= appBarTopPx &&
-            (distanceToLatestContent() ?: Int.MAX_VALUE) <= resumeEdgePx
-    }
-    // The nested-scroll connection outlives message-list recompositions. Never keep a callback
-    // from the initial empty conversation that doesn't know the newest reply's ID or spacer.
-    val latestReached by rememberUpdatedState { reachedLatest() }
-    val scrollConnection = remember(listState, resumeEdgePx) {
-        object : NestedScrollConnection {
-            private var swipingTowardsLatest = false
-
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source == NestedScrollSource.UserInput && available.y != 0f) {
-                    val towardsLatest = available.y < 0f
-                    // Once the end is reached, continuing the same forward swipe must not
-                    // pause and resume on every pixel (which would restart scroll effects).
-                    if (!towardsLatest || !swipingTowardsLatest || userPausedFollow) {
-                        openingAtBottom = false
-                        followBottom = false
-                        userPausedFollow = true
-                        anchor.release()
-                    }
-                    swipingTowardsLatest = towardsLatest
-                }
-                return Offset.Zero
-            }
-
-            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                val movingTowardsLatest = consumed.y + available.y < 0f
-                // Fling frames arrive as SideEffect. Resume on the FIRST frame that hits the
-                // bottom, not only when the fling ends (which may report zero velocity).
-                if (userPausedFollow && swipingTowardsLatest && movingTowardsLatest &&
-                    (source == NestedScrollSource.UserInput || source == NestedScrollSource.SideEffect) &&
-                    latestReached()
-                ) resumeFollowing()
-                return Offset.Zero
-            }
-
-            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (userPausedFollow && swipingTowardsLatest && latestReached()) resumeFollowing()
-                swipingTowardsLatest = false
-                return Velocity.Zero
-            }
-        }
-    }
-    val latestMessageVisible by remember(listState, messages.size) {
-        derivedStateOf {
-            messages.isNotEmpty() && listState.layoutInfo.visibleItemsInfo.any { it.index == messages.lastIndex }
-        }
-    }
-    suspend fun scrollToBottom(includeQueued: Boolean = true) {
-        val index = if (includeQueued) messages.lastIndex else conversationMessages.lastIndex
-        if (index < 0) return
-        val id = messages[index].id
-        // Reveal text and actions, NOT the end of the invisible padding inside the item.
-        listState.revealItemBottom(
-            index,
-            trailingSpacerPx = { tailSpacers[id] ?: 0 },
-            bottomGapPx = if (messages[index].role == ChatRole.MODEL) visibleContentGapPx() else 0
-        )
-    }
-    suspend fun animateScrollToBottom() {
-        val index = messages.lastIndex
-        if (index < 0) return
-        if (index - listState.firstVisibleItemIndex > 6) listState.scrollToItem(index - 3)
-        listState.animateScrollToItem(index)
-        scrollToBottom()
-    }
-    LaunchedEffect(conversation?.id, messageIds, autoScroll) {
-        val hasNewMessage = messageIds.any { it !in seenMessageIds }
-        val hasNewUserMessage = conversationMessages.any { it.id !in seenMessageIds && it.role == ChatRole.USER }
-        val firstLoad = seenMessageIds.isEmpty()
-        seenMessageIds.addAll(messageIds)
-        if (firstLoad) {
-            if (messages.isNotEmpty() && openingAtBottom && !firstSendAwaitingAnchor && !anchor.settling) {
-                snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > 0 }
-                if (openingAtBottom && !anchor.settling) scrollToBottom()
-            }
-            return@LaunchedEffect
-        }
-        // Explicit user sends belong to ChatAnchorEffects. A competing jump-to-end can
-        // otherwise undo the placement beneath the AppBar before the first reply frame.
-        if (hasNewMessage && !hasNewUserMessage && !anchor.settling &&
-            autoScroll && followBottom && !userPausedFollow
-        ) {
-            openingAtBottom = false
-            scrollToBottom()
-        }
-    }
-    LaunchedEffect(conversationKey, queuedIds) {
-        val newQueued = queuedIds.any { it !in seenQueuedIds }
-        seenQueuedIds.addAll(queuedIds)
-        // A newly queued user message is still an explicit send, even before it enters history.
-        if (newQueued && !openingAtBottom) {
-            resumeFollowing()
-            scrollToBottom()
-        }
-    }
-    LaunchedEffect(listState, openingAtBottom, messages.size) {
-        if (!openingAtBottom || messages.isEmpty()) return@LaunchedEffect
-        // A saved conversation may continue measuring after the initial scroll. This runs only
-        // while opening it, never while the user scrolls or a new answer is streaming.
-        snapshotFlow { !reachedLatest() }.collect { needsScroll ->
-            if (openingAtBottom && needsScroll && !anchor.settling) {
-                withFrameNanos { }
-                if (openingAtBottom && !anchor.settling) scrollToBottom()
-            }
-        }
-    }
-    LaunchedEffect(conversationKey, veilActive, historyLoading) {
-        if (!veilActive || historyLoading) return@LaunchedEffect
-        // Wait until the newest items exist, then until the list has stopped changing: nothing is still
-        // being parsed or loaded and the view has stayed at the latest message for a few frames.
-        snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > 0 }
-        var stableFrames = 0
-        while (true) {
-            withFrameNanos { }
-            val settled = settleTracker.pending == 0 && reachedLatest()
-            stableFrames = if (settled) stableFrames + 1 else 0
-            if (stableFrames >= OPENING_STABLE_FRAMES) break
-        }
-        revealed = true
-    }
-    LaunchedEffect(conversationKey, openSignature, revealed, openedWarm, streamingHere) {
-        if (!(revealed || openedWarm) || streamingHere || !hasSavedMessages) return@LaunchedEffect
-        // Remember the settled state so the next open of this chat is instant. Only record while the
-        // view is at the newest message with its assets ready, never a half-loaded layout.
-        snapshotFlow {
-            settleTracker.pending == 0 && reachedLatest()
-        }.first { it }
-        ChatOpenCache.remember(conversationKey, openSignature, renderEnvironment, settleTracker.readyAssets())
-    }
-    // Keep the follower coroutine mounted across streaming -> settled. Restarting it on
-    // streamingHere/finishSettling reset its velocity at exactly the completion boundary.
-    // Observe the latest layout and message data without capturing a stale list.
-    val liveStreamState = rememberUpdatedState(streamingHere)
-    val followMessagesState = rememberUpdatedState(conversationMessages)
-    val followGapState = rememberUpdatedState { visibleContentGapPx() }
-    val recoverBottomState = rememberUpdatedState<suspend () -> Unit> {
-        scrollToBottom(includeQueued = false)
-    }
-    val maxFollowSpeedPx = with(LocalDensity.current) { CHAT_FOLLOW_MAX_SPEED_DP_PER_SECOND.dp.toPx() }
-    LaunchedEffect(conversation?.id, autoScroll, followBottom, userPausedFollow, maxFollowSpeedPx) {
-        if (!autoScroll || !followBottom || userPausedFollow) return@LaunchedEffect
-        while (isActive) {
-            // Idle means suspended, not an always-running frame loop.
-            snapshotFlow { liveStreamState.value || finishSettling }.first { it }
-            var previousFrame = 0L
-            var velocity = 0f
-            var settleStartFrame = 0L
-            var lastItemSize = -1
-            var stableFrames = 0
-            while (isActive && (liveStreamState.value || finishSettling)) {
-                val frame = withFrameNanos { it }
-                val seconds = if (previousFrame == 0L) 1f / 60f else
-                    ((frame - previousFrame) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
-                previousFrame = frame
-                val visibleMessages = followMessagesState.value
-                if (anchor.settling || listState.isScrollInProgress || visibleMessages.isEmpty()) {
-                    velocity = 0f
-                    continue
-                }
-                val layout = listState.layoutInfo
-                val item = layout.visibleItemsInfo.firstOrNull { it.index == visibleMessages.lastIndex }
-                if (item == null) {
-                    // Once the response settles, never teleport the user to the end.
-                    if (!liveStreamState.value) {
-                        finishSettling = false
-                        break
-                    }
-                    recoverBottomState.value()
-                    velocity = 0f
-                    continue
-                }
-                val remaining = latestContentDistancePx(
-                    item.offset, item.size, tailSpacers[visibleMessages.last().id] ?: 0,
-                    layout.viewportEndOffset, followGapState.value()
-                ).coerceAtLeast(0).toFloat()
-                if (!liveStreamState.value) {
-                    if (settleStartFrame == 0L) settleStartFrame = frame
-                    stableFrames = if (item.size == lastItemSize && remaining <= 0.5f) stableFrames + 1 else 0
-                    lastItemSize = item.size
-                    if (stableFrames >= CHAT_FINISH_SETTLE_STABLE_FRAMES ||
-                        frame - settleStartFrame > CHAT_FINISH_SETTLE_MAX_NANOS
-                    ) {
-                        finishSettling = false
-                        break
-                    }
-                }
-                val targetVelocity = min(remaining / CHAT_FOLLOW_DISTANCE_TIME_SECONDS, maxFollowSpeedPx)
-                velocity += (targetVelocity - velocity) * (1f - exp(-seconds / CHAT_FOLLOW_VELOCITY_EASE_SECONDS))
-                if (remaining > 0.5f && velocity > 0f) {
-                    // User gestures retain priority; no competing scroll animation is started.
-                    listState.dispatchRawDelta(min(remaining, velocity * seconds))
-                }
-            }
-        }
     }
     val saveConversationFailedPrefix = stringResource(R.string.chat_save_conversation_failed_prefix)
     LaunchedEffect(chatError, saveConversationFailedPrefix) {
@@ -527,21 +233,21 @@ fun ChatScreen(
             inlineChatError = saveConversationFailedPrefix + error.removePrefix(SAVE_CONVERSATION_ERROR_PREFIX)
         }
     }
-    LaunchedEffect(conversation?.id) {
-        focusManager.clearFocus(force = true)
+    val foreground = LocalChatForeground.current
+    LaunchedEffect(conversation?.id, foreground) {
+        if (foreground) focusManager.clearFocus(force = true)
     }
-    LaunchedEffect(listState.isScrollInProgress) {
-        // Scrolling only tucks the keyboard away; it must not clear the text selection (a tap does that).
-        if (listState.isScrollInProgress) keyboardController?.hide()
+    LaunchedEffect(listState.isScrollInProgress, foreground) {
+        // A parked chat cannot dismiss the visible chat's keyboard.
+        if (foreground && listState.isScrollInProgress) keyboardController?.hide()
     }
 
     PlatformTextSelection {
-    BoxWithConstraints(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .onGloballyPositioned { chatRootCoordinates = it }
-            .dismissMinimapOnOutsideTap(minimapState)
             // A plain tap anywhere on the chat screen except the input area (messages, blank space, app bar)
             // drops focus: the input field loses focus and any text selection is cleared. Scrolling and dragging
             // do not. Nothing is consumed, and a press held past the long-press timeout is selection, not a tap.
@@ -565,10 +271,171 @@ fun ChatScreen(
             }
     ) {
         org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage, transparency = backgroundTransparency)
+        // Scaffold measures both overlay regions before the first content layout, including
+        // composer errors/suggestions and system insets. The list still draws edge to edge.
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            topBar = {
+                ChatAppBar(
+                    modelName = selectedModelDisplayName,
+                    providerName = selectedProvider?.name.orEmpty(),
+                    onOpenDrawer = {
+                        minimapState.isOpen = false
+                        onOpenDrawer()
+                    },
+                    onNewChat = onNewChat,
+                    onOpenTemporaryChat = onOpenTemporaryChat,
+                    onOpenSettings = onOpenSettings,
+                    featuresLogoImage = featuresLogoImage,
+                    backgroundTransparency = backgroundTransparency,
+                    isTemporaryChat = conversationMessages.isEmpty() && conversation?.isTemporary != true,
+                    onOpenModelPicker = {
+                        minimapState.isOpen = false
+                        modelPickerOpenRequest++
+                    },
+                    showTerminalButton = connectedMachines.isNotEmpty(),
+                    onOpenTerminal = {
+                        // One running machine opens its terminal directly; several need a choice first.
+                        if (connectedMachines.size == 1) onOpenTerminal(connectedMachines.single())
+                        else showTerminalMachinePicker = true
+                    },
+                    modifier = Modifier
+                )
+            },
+            floatingActionButtonPosition = FabPosition.Center,
+            floatingActionButton = {
+                    if (messages.isNotEmpty() && viewport.showJumpToLatest) {
+                        FilledTonalIconButton(
+                            onClick = { viewport.jump() },
+                            modifier = Modifier
+                        ) {
+                            FluentIcon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = stringResource(R.string.chat_jump_to_latest),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+            },
+            bottomBar = {
+                Column(
+                    modifier = Modifier
+                        .testTag("chat-bottom-panel")
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                ) {
+                    inlineChatError?.let { error ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.errorContainer
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    error,
+                                    modifier = Modifier.weight(1f),
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                IconButton(onClick = { inlineChatError = null }) {
+                                    FluentIcon(Icons.Default.Close, contentDescription = stringResource(R.string.chat_dismiss_error), tint = MaterialTheme.colorScheme.onErrorContainer)
+                                }
+                            }
+                        }
+                    }
+                    var summarySuggestionDismissed by remember(conversation?.id, conversation?.summary?.id) { mutableStateOf(false) }
+                    if (contextWindowStatus?.shouldSuggestSummary == true && !streamingHere && summaryProgress == null &&
+                        !summarySuggestionDismissed &&
+                        org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences.current.summarySuggestionEnabled) {
+                        Surface(color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+                            Row(Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Text(androidx.compose.ui.res.stringResource(org.starfall.generative.R.string.context_summary_suggestion,
+                                    contextWindowStatus.percentage), style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.weight(1f))
+                                TextButton(onClick = { showContextSummarySheet = true }) {
+                                    Text(androidx.compose.ui.res.stringResource(org.starfall.generative.R.string.summarize_now))
+                                }
+                                IconButton(onClick = { summarySuggestionDismissed = true }, modifier = Modifier.size(32.dp)) {
+                                    FluentIcon(Icons.Default.Close,
+                                        androidx.compose.ui.res.stringResource(org.starfall.generative.R.string.common_close),
+                                        modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                    }
+                    // Composer state must not escape a disposable chat when switching sessions.
+                    key(if (conversation?.isTemporary == true) conversationKey else "regular_composer") {
+                    UserInputArea(
+                        temporaryChatId = conversation?.takeIf { it.isTemporary }?.id,
+                        attachments = inputAttachments,
+                        onAttachmentsChange = { inputAttachments = it },
+                        chatModeRequest = chatModeRequest,
+                        modifier = Modifier
+                            .onGloballyPositioned { inputAreaBounds = it.boundsInRoot() },
+                        isGenerating = isGenerating,
+                        onMediaModeChange = onMediaModeChange,
+                        onSendMedia = { request -> submitMessage { onSendMedia(request) } },
+                        onSendMessage = { text, files -> submitMessage { onSendMessage(text, files) } },
+                        onSendMessageWithSkill = { text, files, requested, skillName ->
+                            submitMessage { onSendMessageWithSkill(text, files, requested, skillName) }
+                        },
+                        onEditMessage = { id, text, files ->
+                            val isQueued = editDraft?.isQueued == true
+                            if (isQueued) {
+                                onEditQueuedMessage(id, text, files)
+                            } else {
+                                inlineChatError = null
+                                onEditMessage(id, text, files).also { if (it) resumeFollowing() }
+                            }
+                        },
+                        onSubmissionFailed = { inlineChatError = it },
+                        editDraft = editDraft,
+                        onCancelEdit = { editDraft = null },
+                        onStopGenerating = onStopGenerating,
+                        contextWindowStatus = contextWindowStatus,
+                        onStartSummary = onStartConversationSummary,
+                        selectedModelName = selectedModelName,
+                        providers = providers,
+                        providerGroups = providerGroups,
+                        modelPickerCollapsedGroups = modelPickerCollapsedGroups,
+                        modelPickerCollapsedProviders = modelPickerCollapsedProviders,
+                        onModelPickerCollapsedGroupsChange = onModelPickerCollapsedGroupsChange,
+                        onModelPickerCollapsedProvidersChange = onModelPickerCollapsedProvidersChange,
+                         modelPickerOpenRequest = modelPickerOpenRequest,
+                        selectedProviderId = selectedProviderId,
+                        onSelectModel = onSelectModel,
+                        conversationReasoningEffort = conversation?.reasoningEffort,
+                        onSetReasoningEffort = onSetReasoningEffort,
+                        onSetThinkingPassback = onSetThinkingPassback,
+                         onSetModelReasoningEffort = onSetModelReasoningEffort,
+                         onSetModelTools = onSetModelTools,
+                         onEditModel = onEditModel,
+                         onEditProvider = onEditProvider,
+                         onFetchOllamaModels = onFetchOllamaModels,
+                         onOpenFeatureToolsSettings = onOpenFeatureToolsSettings,
+                          onOpenMcpConnectorsSettings = onOpenMcpConnectorsSettings,
+                          agentSkills = agentSkills,
+                          onOpenSkillsSettings = onOpenSkillsSettings,
+                         onModelSheetOpen = { minimapState.isOpen = false }
+                      )
+                    }
+                }
+
+            }
+        ) { insets ->
         // Let the list occupy the whole edge-to-edge surface. Its top padding keeps the newest
         // content readable initially, while later scrolls visibly pass behind the translucent app bar.
         BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
-        val bottomClearance = with(density) { inputAreaHeightPx.toDp() } + navigationBarHeight + maxHeight * 0.015f
+        val appBarHeight = insets.calculateTopPadding()
+        val bottomClearance = insets.calculateBottomPadding() + maxHeight * 0.015f
         if (messages.isEmpty()) {
             ChatOpeningVeil(
                 active = historyLoading,
@@ -608,94 +475,24 @@ fun ChatScreen(
             }
             }
         } else {
-            val visibleChatPx = with(density) {
-                (maxHeight - (appBarHeight + 8.dp) - bottomClearance).coerceAtLeast(0.dp).roundToPx()
-            }
-            // The newest AI reply reserves 30% of the window below its content, with a cap
-            // for the remaining chat viewport when the keyboard or composer grows.
-            val followBottomGapPx = chatFollowBottomGapPx(constraints.maxHeight, visibleChatPx)
-            val newestMessageId = messages.lastOrNull()?.id
-            val precedingUserId = messages.getOrNull(messages.size - 2)
-                ?.takeIf { it.role == ChatRole.USER && messages.lastOrNull()?.role == ChatRole.MODEL }?.id
-            val tailTurn = remember(conversationKey) { TailTurnAnchor(with(density) { 112.dp.roundToPx() }) }
-            // The floor only guards a stream ending; a new version of the same reply (edited text,
-            // regenerated answer, edited user message) must start from its own height, not the old one.
-            val newestVersionKey = messages.lastOrNull()?.let { "${it.id}:${it.versions.size}:${it.activeVersionIndex}" }
-            val replyHeightFloor = remember(conversationKey, newestVersionKey) { ReplyHeightFloor() }
-            val currentFollowing by rememberUpdatedState { followBottom && !userPausedFollow && !anchor.settling }
-            LaunchedEffect(conversationKey, newestVersionKey) {
-                // An edit that shortens or lengthens the newest message changes its height without any
-                // structural change, so nothing re-reveals it. Skip the initial composition and streams.
-                if (seenNewestVersionKey == null) { seenNewestVersionKey = newestVersionKey; return@LaunchedEffect }
-                if (seenNewestVersionKey == newestVersionKey) return@LaunchedEffect
-                seenNewestVersionKey = newestVersionKey
-                if (liveStreamState.value || !currentFollowing()) return@LaunchedEffect
-                withFrameNanos { }
-                withFrameNanos { }
-                if (!liveStreamState.value && currentFollowing()) scrollToBottom(includeQueued = false)
-            }
-            ChatAnchorEffects(anchor, listState,
-                itemIndexOf = { id -> messages.indexOfFirst { it.id == id } },
-                itemCount = { messages.size },
-                measuredUserHeight = { id -> id != precedingUserId || tailTurn.hasMeasured(id) }
-            )
-            ChatOpeningVeil(active = veilActive, modifier = Modifier.fillMaxSize()) {
-            CompositionLocalProvider(
-                LocalChatSettleTracker provides settleTracker
-            ) {
             PlatformTextSelectionRegion {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    // Fade scrolled messages out BEFORE they cross the app bar/status bar.
-                    // Mask only the chat layer so the profile background remains visible.
-                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                    .drawWithContent {
-                        drawContent()
-                        val fadeEnd = (appBarHeight + 8.dp).toPx().coerceAtLeast(1f)
-                        drawRect(
-                            brush = Brush.verticalGradient(
-                                0f to Color.Transparent,
-                                0.72f to Color.Transparent,
-                                1f to Color.Black,
-                                startY = 0f,
-                                endY = fadeEnd
-                            ),
-                            size = androidx.compose.ui.geometry.Size(size.width, fadeEnd.coerceAtMost(size.height)),
-                            blendMode = BlendMode.DstIn
-                        )
-                    }
-                    .nestedScroll(scrollConnection),
-                contentPadding = PaddingValues(top = appBarHeight + 8.dp, bottom = bottomClearance)
-            ) {
-                items(messages, key = { it.id }) { msg ->
+            ChatMessageList(
+                state = viewport,
+                messages = messages,
+                streaming = streamingHere,
+                autoScroll = autoScroll,
+                historyLoading = historyLoading,
+                activeStream = activeStream,
+                appBarHeight = appBarHeight + 8.dp,
+                bottomClearance = bottomClearance,
+                modifier = Modifier.fillMaxSize(),
+                warning = if (isGenerating && !streamingHere) {
+                    { Text(stringResource(R.string.chat_error_other_conversation),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodySmall) }
+                } else null
+            ) { msg ->
                     val isLast = msg.id == lastMessage?.id
-                    // Pad only after the final message: a sent user's bubble remains just below
-                    // the app bar while the reply starts immediately underneath it.
-                    val isNewest = msg.id == newestMessageId
-                    val tailModifier = when {
-                        msg.role == ChatRole.USER && isNewest -> Modifier.tailScrollPadding(
-                            visibleChatPx,
-                            onNaturalHeight = { tailTurn.recordUser(msg.id, it) },
-                            onSpacer = { if (tailSpacers[msg.id] != it) tailSpacers[msg.id] = it }
-                        )
-                        msg.role == ChatRole.USER && msg.id == precedingUserId ->
-                            Modifier.recordTurnUserHeight(tailTurn, msg.id)
-                        msg.role == ChatRole.MODEL && isNewest ->
-                            Modifier.replyTailPadding(
-                                tailTurn, precedingUserId, visibleChatPx, followBottomGapPx,
-                                heightFloor = replyHeightFloor,
-                                recordFloor = streamingHere || finishSettling
-                            ) {
-                                if (tailSpacers[msg.id] != it) tailSpacers[msg.id] = it
-                            }
-                        else -> Modifier
-                    }
-                    Column(
-                        modifier = tailModifier
-                    ) {
-
                     if (msg.role == ChatRole.USER) {
                         UserMessageCard(
                             message = msg,
@@ -762,8 +559,8 @@ fun ChatScreen(
                             streamStateFlow = activeStream,
                             onCopy = rememberChatAction {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.common_copy), assistantCopyText(msg)))
-                                Toast.makeText(context, context.getString(R.string.common_copied_to_clipboard), Toast.LENGTH_SHORT).show()
+                                clipboard.setPrimaryClip(ClipData.newPlainText(copyLabel, assistantCopyText(msg)))
+                                Toast.makeText(context, copiedLabel, Toast.LENGTH_SHORT).show()
                             },
                             onRegenerate = rememberChatAction {
                                 whenIdle {
@@ -809,241 +606,32 @@ fun ChatScreen(
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }
-                    }
-                }
-                if (isGenerating && !streamingHere) {
-                    item(key = "generation-warning") {
-                        Text(
-                            stringResource(R.string.chat_error_other_conversation),
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
-            }
             }
             }
         }
 
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .onSizeChanged { bottomPanelHeightPx = it.height }
-                .navigationBarsPadding()
-        ) {
-            inlineChatError?.let { error ->
-                Surface(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.errorContainer
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            error,
-                            modifier = Modifier.weight(1f),
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        IconButton(onClick = { inlineChatError = null }) {
-                            FluentIcon(Icons.Default.Close, contentDescription = stringResource(R.string.chat_dismiss_error), tint = MaterialTheme.colorScheme.onErrorContainer)
-                        }
-                    }
-                }
-            }
-            if (messages.isNotEmpty() && !latestMessageVisible && !jumpingToBottom) {
-                FilledTonalIconButton(
-                    onClick = {
-                        openingAtBottom = false
-                        // Resume following only after the animation finishes; setting it first
-                        // would trigger the instant jump in the auto-scroll effect.
-                        coroutineScope.launch {
-                            jumpingToBottom = true
-                            try {
-                                animateScrollToBottom()
-                                resumeFollowing()
-                            } finally {
-                                jumpingToBottom = false
-                            }
-                        }
-                    },
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                ) {
-                    FluentIcon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = stringResource(R.string.chat_jump_to_latest),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-            var summarySuggestionDismissed by remember(conversation?.id, conversation?.summary?.id) { mutableStateOf(false) }
-            if (contextWindowStatus?.shouldSuggestSummary == true && !streamingHere && summaryProgress == null &&
-                !summarySuggestionDismissed &&
-                org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences.current.summarySuggestionEnabled) {
-                Surface(color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-                    Row(Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Text(androidx.compose.ui.res.stringResource(org.starfall.generative.R.string.context_summary_suggestion,
-                            contextWindowStatus.percentage), style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(1f))
-                        TextButton(onClick = { showContextSummarySheet = true }) {
-                            Text(androidx.compose.ui.res.stringResource(org.starfall.generative.R.string.summarize_now))
-                        }
-                        IconButton(onClick = { summarySuggestionDismissed = true }, modifier = Modifier.size(32.dp)) {
-                            FluentIcon(Icons.Default.Close,
-                                androidx.compose.ui.res.stringResource(org.starfall.generative.R.string.common_close),
-                                modifier = Modifier.size(18.dp))
-                        }
-                    }
-                }
-            }
-            // Composer state must not escape a disposable chat when switching sessions.
-            key(if (conversation?.isTemporary == true) conversationKey else "regular_composer") {
-            UserInputArea(
-                temporaryChatId = conversation?.takeIf { it.isTemporary }?.id,
-                attachments = inputAttachments,
-                onAttachmentsChange = { inputAttachments = it },
-                chatModeRequest = chatModeRequest,
-                modifier = Modifier
-                    .onSizeChanged { inputAreaHeightPx = it.height }
-                    .onGloballyPositioned { inputAreaBounds = it.boundsInRoot() },
-                isGenerating = isGenerating,
-                onMediaModeChange = onMediaModeChange,
-                onSendMedia = { request ->
-                    inlineChatError = null
-                    revealed = true
-                    onSendMedia(request).also { sent ->
-                        if (sent) {
-                            if (conversationMessages.isEmpty()) firstSendAwaitingAnchor = true
-                            resumeFollowing()
-                        }
-                    }
-                },
-                onSendMessage = { text, files ->
-                    inlineChatError = null
-                    revealed = true
-                    onSendMessage(text, files).also { sent ->
-                        if (sent) {
-                            if (conversationMessages.isEmpty()) firstSendAwaitingAnchor = true
-                            if (!isGenerating) resumeFollowing()
-                        }
-                    }
-                },
-                onSendMessageWithSkill = { text, files, requested, skillName ->
-                    inlineChatError = null
-                    revealed = true
-                    onSendMessageWithSkill(text, files, requested, skillName).also { sent ->
-                        if (sent) {
-                            if (conversationMessages.isEmpty()) firstSendAwaitingAnchor = true
-                            if (!isGenerating) resumeFollowing()
-                        }
-                    }
-                },
-                onEditMessage = { id, text, files ->
-                    val isQueued = editDraft?.isQueued == true
-                    if (isQueued) {
-                        onEditQueuedMessage(id, text, files)
-                    } else {
-                        inlineChatError = null
-                        revealed = true
-                        onEditMessage(id, text, files).also { if (it) resumeFollowing() }
-                    }
-                },
-                onSubmissionFailed = { inlineChatError = it },
-                editDraft = editDraft,
-                onCancelEdit = { editDraft = null },
-                onStopGenerating = onStopGenerating,
-                contextWindowStatus = contextWindowStatus,
-                onStartSummary = onStartConversationSummary,
-                selectedModelName = selectedModelName,
-                providers = providers,
-                providerGroups = providerGroups,
-                modelPickerCollapsedGroups = modelPickerCollapsedGroups,
-                modelPickerCollapsedProviders = modelPickerCollapsedProviders,
-                onModelPickerCollapsedGroupsChange = onModelPickerCollapsedGroupsChange,
-                onModelPickerCollapsedProvidersChange = onModelPickerCollapsedProvidersChange,
-                 modelPickerOpenRequest = modelPickerOpenRequest,
-                selectedProviderId = selectedProviderId,
-                onSelectModel = onSelectModel,
-                conversationReasoningEffort = conversation?.reasoningEffort,
-                onSetReasoningEffort = onSetReasoningEffort,
-                onSetThinkingPassback = onSetThinkingPassback,
-                 onSetModelReasoningEffort = onSetModelReasoningEffort,
-                 onSetModelTools = onSetModelTools,
-                 onEditModel = onEditModel,
-                 onEditProvider = onEditProvider,
-                 onFetchOllamaModels = onFetchOllamaModels,
-                 onOpenFeatureToolsSettings = onOpenFeatureToolsSettings,
-                  onOpenMcpConnectorsSettings = onOpenMcpConnectorsSettings,
-                  agentSkills = agentSkills,
-                  onOpenSkillsSettings = onOpenSkillsSettings,
-                 onModelSheetOpen = { minimapState.isOpen = false }
-              )
-            }
-        }
-
-        }
-        ChatAppBar(
-            modelName = selectedModelDisplayName,
-            providerName = selectedProvider?.name.orEmpty(),
-            onOpenDrawer = {
-                minimapState.isOpen = false
-                onOpenDrawer()
-            },
-            onNewChat = onNewChat,
-            onOpenTemporaryChat = onOpenTemporaryChat,
-            onOpenSettings = onOpenSettings,
-            featuresLogoImage = featuresLogoImage,
-            backgroundTransparency = backgroundTransparency,
-            isTemporaryChat = conversationMessages.isEmpty() && conversation?.isTemporary != true,
-            onOpenModelPicker = {
-                minimapState.isOpen = false
-                modelPickerOpenRequest++
-            },
-            showTerminalButton = connectedMachines.isNotEmpty(),
-            onOpenTerminal = {
-                // One running machine opens its terminal directly; several need a choice first.
-                if (connectedMachines.size == 1) onOpenTerminal(connectedMachines.single())
-                else showTerminalMachinePicker = true
-            },
-            modifier = Modifier.align(Alignment.TopCenter)
-                .onSizeChanged { appBarHeightPx = it.height }
-        )
         ConversationMinimapSideBar(
             conversationKey = conversationKey,
             messages = messages,
             listState = listState,
             topObscuredPx = with(density) { appBarHeight.roundToPx() },
-            // Measure the entire bottom panel, including suggestions, errors and navigation insets.
-            bottomObscuredPx = bottomPanelHeightPx + with(density) { 8.dp.roundToPx() },
-            onOpen = {
-                keyboardController?.hide()
-                focusManager.clearFocus(force = true)
-            },
-            onNavigate = {
-                followBottom = false
-                revealed = true
-            },
-            state = minimapState,
-            // Only the newest message carries tail padding; earlier entries in the map are stale.
-            tailSpacerPx = { id -> if (id == messages.lastOrNull()?.id) tailSpacers[id] ?: 0 else 0 }
+            bottomObscuredPx = with(density) { (insets.calculateBottomPadding() + 8.dp).roundToPx() },
+            // Dragging the thumb is manual scrolling: it stops following and resumes at the end.
+            onScrub = { towardsEnd -> viewport.manualScroll(towardsEnd) },
+            state = minimapState
         )
-    }
+        }
+        }
 
     }
 
-    if (showContextSummarySheet) {
+    }
+
+    if (foreground && showContextSummarySheet) {
         ConversationSummarySheet(onStart = onStartConversationSummary, onDismiss = { showContextSummarySheet = false })
     }
 
-    if (showTerminalMachinePicker) {
+    if (foreground && showTerminalMachinePicker) {
         AppSheet(
             onDismissRequest = { showTerminalMachinePicker = false }
         ) {
@@ -1102,7 +690,7 @@ fun ChatScreen(
         }
     }
 
-    if (showSummaryDialog) {
+    if (foreground && showSummaryDialog) {
         conversation?.summary?.let { summary ->
             ConversationSummaryDialog(
                 summary = summary,
@@ -1113,7 +701,7 @@ fun ChatScreen(
         } ?: run { showSummaryDialog = false }
     }
 
-    if (regeneratingMessageId != null) {
+    if (foreground && regeneratingMessageId != null) {
         RegenerateResponseDialog(
             onConfirm = {
                 regeneratingMessageId?.let(onRegenerate)
@@ -1125,7 +713,7 @@ fun ChatScreen(
 
     // Delete message/version confirmation dialog
     val deletingMessage = deletingMessageId?.let { id -> messages.firstOrNull { it.id == id } }
-    if (deletingMessage != null) {
+    if (foreground && deletingMessage != null) {
         DeleteMessageDialog(
             message = deletingMessage,
             onDeleteVersion = {
@@ -1139,32 +727,4 @@ fun ChatScreen(
             onDismiss = { deletingMessageId = null }
         )
     }
-}
-
-/** Changes whenever the saved messages change, so a cached open is never reused for different content. */
-private fun chatOpenSignature(messages: List<StoredMessage>): Int =
-    messages.fold(messages.size) { hash, message ->
-        var h = 31 * hash + message.id.hashCode()
-        h = 31 * h + message.activeVersionIndex
-        h = 31 * h + message.content.hashCode()
-        31 * h + message.files.hashCode()
-    }
-
-/** Everything besides the messages that changes how they are laid out. */
-@Composable
-private fun chatRenderEnvironmentKey(): Int {
-    val preferences = LocalCodeRenderingPreferences.current
-    val density = LocalDensity.current
-    val widthDp = LocalConfiguration.current.screenWidthDp
-    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    return java.util.Objects.hash(
-        preferences.effectiveMessageFontSize,
-        preferences.messageFontFamily,
-        preferences.latexMode,
-        preferences.wordWrapMode,
-        density.density,
-        density.fontScale,
-        widthDp,
-        dark
-    )
 }

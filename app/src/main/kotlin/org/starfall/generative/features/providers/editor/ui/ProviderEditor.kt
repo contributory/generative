@@ -78,7 +78,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
-import org.starfall.generative.shared.ui.layout.SlideScreenContent
+import org.starfall.generative.shared.ui.layout.RetainedScreenContent
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.ui.icons.providerInitials
 import org.starfall.generative.shared.ui.auth.rememberOAuthStart
@@ -272,7 +272,7 @@ fun ProviderEditor(
         }
     }
     BackHandler(enabled = LocalScreenTransitionActive.current && editingModel == null, onBack = onDismiss)
-    SlideScreenContent(editor = editingModel, label = stringResource(R.string.model_editor)) { modelId ->
+    RetainedScreenContent(editor = editingModel) { modelId ->
         if (modelId != null) key(modelId) {
             ModelEditor(initialProvider.copy(type = type, config = requestConfig()), modelId, models.keys,
                 customImageMediaProfiles = customImageMediaProfiles,

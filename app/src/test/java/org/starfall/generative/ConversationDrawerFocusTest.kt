@@ -3,7 +3,6 @@ package org.starfall.generative
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextClearance

@@ -1,6 +1,6 @@
 # Chat Screen Refactor Plan
 
-Status: Proposed (not implemented).
+Status: General scrolling experience accepted by the user (current Appendix D). The requested 3.5-line Thinking preview, two-screen Jump threshold and native Thinking auto-scroll are implemented; the latest focused run is 33/33 passing. Remaining full-suite/lint and baseline-measurement limitations are recorded in [chatscreen-refactor-verification.md](chatscreen-refactor-verification.md).
 Scope: ChatScreen, message-list container, initial viewport, **native Jetpack Compose scrolling/gestures**, and generic message-level live-state wiring where unavoidable. Do **not** refactor content/attachment renderers.
 Principle: Refactor **ownership and transitions**, not merely file size. Preserve behavior. Do not rewrite the whole feature. **Markdown, LaTeX and media preview are opaque child/attachment presentation components; they do not define ChatScreen's architecture.**
 
@@ -91,7 +91,7 @@ These are refactor targets, not a claim that every mechanism is unnecessary. Ben
 
 A historical conversation opening is **not navigation inside an existing list**. It creates a fresh viewport whose initial anchor is the last readable history item. The message list/layout owns this initial selection; it does not issue a runtime scroll request.
 
-- Resolve the newest message ID/index from the loaded conversation snapshot **before creating the list state**. Initialize the keyed list/viewport with that anchor using an appropriate native LazyColumn initial-position or bottom-anchored layout strategy; keep chronological reading order and message-ID keys. If the final readable line requires alignment, derive it from layout constraints as part of initial measurement rather than issuing scroll commands after the list appears.
+- Resolve the newest message ID/index from the loaded conversation snapshot **before creating the list state**. Initialize the keyed list/viewport with that anchor using native LazyColumn initial-position initialization in normal chronological order; keep chronological reading order and message-ID keys. If the final readable line requires alignment, derive it from layout constraints as part of initial measurement rather than issuing scroll commands after the list appears.
 - Investigate the current OPEN_AT_BOTTOM_OFFSET = 10_000_000 hack, firstLoad -> scrollToBottom, and LaunchedEffect(openingAtBottom) -> snapshotFlow(!reachedLatest()) -> scrollToBottom. Remove these **initial-open repositioning** mechanisms, not merely transfer them into a controller.
 - Load history before mounting its conversation-keyed message list (or keep a placeholder while loading), so the first real viewport is initialized with the correct items. Do not construct a list at index zero then patch it after asynchronous history arrives.
 - An initial anchor can change only when a different conversation is opened or an explicit history view is created. Ordinary stream updates, generic child-size changes, cache misses, or composition do not reinitialize it. The veil is optional visual polish, not a mechanism for hiding corrective scrolls.
@@ -147,53 +147,56 @@ Avoid new multi-purpose managers, duplicated state holders, callback wrapper lay
 
 ## 4. Execution plan: small validated changes
 
+Implementation boxes below reflect the current source and recorded checks. Unchecked items are verification gaps, not authorization to rewrite the accepted scrolling mechanism. A full pre-change performance baseline and the complete hardware/interaction matrix were not captured; no blanket full-suite/lint success is claimed.
+
 ### Phase 0 — Baseline and regression locks
 
-- [ ] Reinspect the current diff before editing; preserve uncommitted user changes.
+- [x] Reinspect the current diff before editing; preserve uncommitted user changes.
 - [ ] Record first-visible-frame **message-item geometry** on cold/warm history opening (before scroll), container/card remounts, idle frames during tool wait, scroll offset/visible-last-message before/after stream completion, and Room write counts. Do **not** instrument or optimize renderer-internal parsing/caching for this refactor.
-- [ ] Extend current tests with any missing Stop, minimap, gesture, mixed tool/text, and re-entry cases; do not assume existing failing tests are passing.
+- [x] Extend current tests with any missing Stop, minimap, gesture, mixed tool/text, and re-entry cases; do not assume existing failing tests are passing.
 
 ### Phase 1 — Stabilize the message-container data contract (no renderer refactor)
 
-- [ ] Verify that the existing message list passes the correct live/terminal/saved message and flow identity to its existing child component without full-history churn.
-- [ ] Preserve all existing stream-to-stored, text, reasoning, tool, and attachment rendering **as-is**. Do not change StreamingAssistantText, Markdown/LaTeX parsers, media previews, renderer caches, or their internal handoff.
+- [x] Verify that the existing message list passes the correct live/terminal/saved message and flow identity to its existing child component without full-history churn.
+- [x] Preserve all existing stream-to-stored, text, reasoning, tool, and attachment rendering **as-is**. Do not change StreamingAssistantText, Markdown/LaTeX parsers, media previews, renderer caches, or their internal handoff.
 - [ ] Verify normal completion, Stop, failed generation, tool turn boundary, version change, and conversation switching at **message-container integration level** (content stays visible and no list-item remount due to the container).
-- [ ] If terminal stream cleanup is needed in generation/ViewModel ownership, keep it outside renderer implementations and ensure snapshots aren't cleared prematurely.
-- [ ] If the source of a regression lies inside a content/attachment renderer, document it as a **separate task**; do not expand this plan.
+- [x] If terminal stream cleanup is needed in generation/ViewModel ownership, keep it outside renderer implementations and ensure snapshots aren't cleared prematurely.
+- [x] If the source of a regression lies inside a content/attachment renderer, document it as a **separate task**; do not expand this plan.
 
 ### Phase 2 — Correct initial viewport; replace manual scrolling with native Compose
 
-- [ ] **First fix opening as layout, not a scroll operation:** select the newest readable item as the initial viewport anchor when conversation history is ready and the keyed LazyColumn is first created. Retain chronological ordering. Remove OPEN_AT_BOTTOM_OFFSET, firstLoad scrollToBottom, and the opening-only snapshotFlow/reposition loop; do **not** move them to another controller.
-- [ ] Prove on the **first displayed frame** that old history is at the correct latest **message item** without a scroll command, regardless of whether that child later renders longer text or attachments. Do not wait for renderer readiness.
-- [ ] Replace the custom frame/velocity/raw-delta scroll engine with native Compose bring-into-view and index-based list navigation; Compose determines displacement from current layout and manages motion. **Preserve smooth visual movement via Compose's native animation layer**, without independent scroll-speed regulation, delayed content publication, or a per-chunk animation queue. No custom ChatScrollController.
-- [ ] Retain only one tiny gate for follow eligibility and serialized one-shot intents (send, Jump, minimap). Use Compose-native gestures to suspend follow. No imperative item-height calculations, scroll-distance math, or simulated touch.
-- [ ] Replace SideEffect state transitions with explicit event handling; content revisions can request bring-into-view without monitoring item heights.
-- [ ] Let Compose determine all inner message/attachment dimensions and remeasure children when their content changes. Delete **ChatScreen/list-level** calculations that reserve or adjust empty space specifically for LaTeX or media cells; do not touch their internal composables.
-- [ ] Place the content-end marker before a declarative 30% trailing viewport allowance and provide sufficient room for short-message anchoring via Compose list layout. Preserve AppBar alignment, pointer arbitration and edge-to-edge insets **without outer-item height/distance calculations**.
-- [ ] Eliminate idle frame polling, raw-delta writes, **logic-level** custom easing/speed constants, any throughput measurement, and separate animations queued for each chunk. Keep permitted **Compose-native visual easing/spring** independent of content-generation events. Native Compose relocation follows changes in **visible content position**, with no auto-jump at Stop/completion.
-- [ ] Delete superseded flags/effects **only after** integration tests and minimap/drawer gesture tests pass.
+- [x] **First fix opening as layout, not a scroll operation:** select the newest readable item as the initial viewport anchor when conversation history is ready and the keyed LazyColumn is first created. Retain chronological ordering. Remove OPEN_AT_BOTTOM_OFFSET, firstLoad scrollToBottom, and the opening-only snapshotFlow/reposition loop; do **not** move them to another controller.
+- [x] Prove on the **first displayed frame** that old history is at the correct latest **message item** without a scroll command, regardless of whether that child later renders longer text or attachments. Do not wait for renderer readiness.
+- [x] Replace the custom frame/velocity/raw-delta scroll engine with native Compose bring-into-view and index-based list navigation; Compose determines displacement from current layout and manages motion. **Preserve smooth visual movement via Compose's native animation layer**, without independent scroll-speed regulation, delayed content publication, or a per-chunk animation queue. No custom ChatScrollController.
+- [x] Retain only one tiny gate for follow eligibility and serialized one-shot intents (send, Jump, minimap). Use Compose-native gestures to suspend follow. No imperative item-height calculations, scroll-distance math, or simulated touch.
+- [x] Replace SideEffect state transitions with explicit event handling; content revisions can request bring-into-view without monitoring item heights.
+- [x] Let Compose determine all inner message/attachment dimensions and remeasure children when their content changes. Delete **ChatScreen/list-level** calculations that reserve or adjust empty space specifically for LaTeX or media cells; do not touch their internal composables.
+- [x] Place the content-end marker before a declarative 30% trailing viewport allowance and provide sufficient room for short-message anchoring via Compose list layout. Preserve AppBar alignment, pointer arbitration and edge-to-edge insets **without outer-item height/distance calculations**.
+- [x] Eliminate idle frame polling, raw-delta writes, **logic-level** custom easing/speed constants, any throughput measurement, and separate animations queued for each chunk. Keep permitted **Compose-native visual easing/spring** independent of content-generation events. Native Compose relocation follows changes in **visible content position**, with no auto-jump at Stop/completion.
+- [x] Delete superseded flags/effects **only after** integration tests and minimap/drawer gesture tests pass.
 
 ### Phase 3 — Reduce ChatScreen responsibilities
 
-- [ ] Extract cohesive list, overlay, or composer wiring without changing the external navigation/callback behavior.
-- [ ] Consolidate repeated send/error-handling paths while preserving special behavior for queue, first message, skill, media, and retry.
-- [ ] Keep stable item keys and existing selection/input state; avoid remounting content children on stream status changes. Do not alter their own internal state or dropdown/render logic.
+- [x] Extract cohesive list, overlay, or composer wiring without changing the external navigation/callback behavior.
+- [x] Consolidate repeated send/error-handling paths while preserving special behavior for queue, first message, skill, media, and retry.
+- [x] Keep stable item keys and existing selection/input state; avoid remounting content children on stream status changes. Do not alter their own internal state or dropdown/render logic.
 
 ### Phase 4 — Prune proven redundancy and measure
 
-- [ ] Remove the custom size/scroll calculation machinery (reply-height floors, tail-height bookkeeping, pixel-distance helpers, manual settling), replacing any required list-level trailing room with declarative Compose layout. Remove renderer-ready gates and format-specific LaTeX/media padding in the chat container. Do not touch attachment rendering.
-- [ ] Eliminate avoidable history scans, broad **container-level** state subscriptions, and excess per-frame work. **Do not** optimize/alter Markdown, LaTeX or media materialization, parsing, rendering or caches.
-- [ ] Verify bounded lifetime of stopped, completed, replaced, and deleted stream snapshots.
+- [x] Remove the custom size/scroll calculation machinery (reply-height floors, tail-height bookkeeping, pixel-distance helpers, manual settling), replacing any required list-level trailing room with declarative Compose layout. Remove renderer-ready gates and format-specific LaTeX/media padding in the chat container. Do not touch attachment rendering.
+- [x] Eliminate avoidable history scans, broad **container-level** state subscriptions, and excess per-frame work. **Do not** optimize/alter Markdown, LaTeX or media materialization, parsing, rendering or caches.
+- [x] Verify bounded lifetime of stopped, completed, replaced, and deleted stream snapshots.
 - [ ] Compare with Phase 0; no hidden regressions disguised as lower line count.
 
 ### Phase 5 — Verification
 
-- [ ] Unit: initial viewport anchor selection, send detector, native scroll-intent gating/priority, list-level bottom-gap policy, message-state routing, Stop freeze and database write boundaries. **No custom geometry/distance/velocity math tests should be needed for scrolling.** Existing renderer tests stay unchanged.
+- [x] Unit: initial viewport anchor selection, send detector, native scroll-intent gating/priority, list-level bottom-gap policy, message-state routing, Stop freeze and database write boundaries. **No custom geometry/distance/velocity math tests should be needed for scrolling.** Existing renderer tests stay unchanged.
 - [ ] Compose: cold/warm history first frame at latest item with **zero opening scroll calls**; new/empty/existing/queued sends; short and very long answers; opaque dynamically resizing children; native manual drag/fling; user interruption of native auto-scroll; Jump; minimap tap/drag; actual 30% trailing gap; Stop/completion; edits/regeneration; reopen and chat switch. **Feed visible text at slow, fast and bursty cadences, including tool waits; verify smooth native visual interpolation without fixed-speed lag, a per-chunk animation backlog, delayed text, or artificial continued movement during idle.** Assert native requests without item-height or generation-speed measurement.
 - [ ] Test keyboard/composer size, portrait/landscape, light/dark themes, backgrounds, system insets, temporary chats, selection and gesture conflicts.
-- [ ] Assess first-frame item visibility, stable scroll position, gesture priority, and parent/list remounts. No custom speed/delta/height calculations or renderer-specific callbacks; do **not** require zero Compose recompositions.
-- [ ] Run focused tests/lint together after implementation **only when explicitly permitted to run Gradle in this workspace**. Never run Gradle merely to author this plan.
-- [ ] Update docs/structure.md only if the implementation moves files. Do not build, commit, push, change version, or touch unrelated code as part of planning.
+- [x] Assess first-frame item visibility, stable scroll position, gesture priority, and parent/list remounts. No custom speed/delta/height calculations or renderer-specific callbacks; do **not** require zero Compose recompositions.
+- [x] Run focused tests/lint together after implementation **only when explicitly permitted to run Gradle in this workspace**. Never run Gradle merely to author this plan.
+- [x] Update docs/structure.md only if the implementation moves files. Do not build, commit, push, change version, or touch unrelated code as part of planning.
+
 
 ## 5. Definition of done
 
@@ -209,3 +212,49 @@ Avoid new multi-purpose managers, duplicated state holders, callback wrapper lay
 
 **All Markdown, LaTeX, and media-preview rendering logic**, their parsers, async loading, caching, lifecycle and UI implementation; other rich-content renderers; API provider protocols, feature tools, Room schema, app-wide navigation redesign, new settings, gesture hitboxes, unrelated services, or eliminating normal Compose recomposition. Do not touch renderer files to resolve ChatScreen-specific architectural problems.
 
+
+---
+
+## Appendix — Current real-time user feedback (2026-10-29)
+
+**Independent of original Sections 1–5. This appendix is the current feedback/acceptance record, not a second implementation plan.** The user reports that the current chat scrolling and general experience are **acceptable**. Earlier reports about the reversed list, latest-reply truncation, completely nonfunctional auto-scroll and Thinking contrast were handled in source and documented in [chatscreen-refactor-verification.md](chatscreen-refactor-verification.md); their obsolete feedback checklists and historical implementation narrative have been removed from *this* appendix. Do not resurrect them as open tasks without a new reproduced regression. The original plan and independent verification history remain intact; no claim of perfect performance or full test/lint success is implied.
+
+### A. Open user observation — large LaTeX blocks may outpace scrolling
+
+- **User experience (current):** Behavior is acceptable overall. When **many large LaTeX blocks are being rendered**, the main chat's automatic scrolling may **fall behind the growing visible content**. This is an occasional performance/coordination limitation, **not** a report that auto-scroll is entirely broken.
+- **Root cause NOT established:** Do not assume native Jetpack Compose scrolling is defective, that the LaTeX renderer is at fault, or that more scrolling code will help. Asynchronous Compose measure/relayout, content-end marker placement, overlapping native relocation requests and rendering workload are possible *areas to inspect*, not diagnoses.
+- **Priority: do no harm.** Preserve the now-acceptable user experience, text publication, input responsiveness, manual gestures, content visibility, Thinking presentation and existing navigation. If a simple, evidence-backed source-level improvement cannot be identified, **leave the behavior as is rather than making it worse**. An uncertain or speculative fix is explicitly **not required**.
+- **Forbidden workarounds:** No second scroll controller, frame-by-frame delta/speed engine for the main list, delayed LaTeX/text publication, artificial maximum scroll speed, per-block special casing, height guessing, corrective spacer/overlay, aggressive retries, repeated animation queues or competing effects. Do not change LaTeX parsing/rendering/cache or content measurement merely to force auto-follow. Avoid additional work on every token or each remeasure.
+- **If investigating:** Reproduce a real multi-large-LaTeX stream, distinguish delayed rendering/layout from a failed/suppressed follow request, and measure whether the current native target/visible-region logic actually loses ground. Only change the *existing responsible mechanism* after evidence of cause and improvement. Verify no regressions in normal messages, small LaTeX, long Thinking, Stop, manual scroll, Jump/minimap and first-frame history positioning.
+
+### B. Current auto-scroll implementation — technical note, not a new UX failure
+
+- **Main chat:** `ChatMessageList.kt` now uses a normally ordered `LazyColumn(reverseLayout = false)`, native `bringIntoView()`, `scrollToItem()`/`animateScrollToItem()`. It still contains app-owned follow eligibility/request arbitration, a `NestedScrollConnection` drag gate, an inset-aware `BringIntoViewSpec` and layout-triggered follow requests. These coordinate **when/what** to reveal; Compose handles the chat list's actual scrolling. Do not automatically replace them just because they are app-level coordination.
+- **Collapsed live Thinking preview — native migration explicitly requested and implemented:** `rememberLiveThinkingScrollState()` now observes Compose's measured scroll bound and calls `ScrollState.animateScrollTo()` with its default spring. Flow conflation retains only the newest pending bound while native animation runs; a child coroutine scopes native gesture cancellation so the growth subscription survives dragging. The former frame loop, raw deltas, speed/easing formula and tuning constants were removed. This migration is scoped to the preview; its local ScrollState does not relocate chat ancestors. The 3.5-line cap, expansion, colors and fades remain unchanged. Main-chat scrolling and LaTeX rendering are not being redesigned.
+- **New user request — Thinking preview height:** Reduce the **collapsed** Thinking preview's visible height from **5 lines to 3.5 lines**. In `LiveThinkingBlock.kt`, the existing height policy is now `bodyLineHeight * 3.5f` (previously `5f`). The final half line is intentionally partially visible, not rounded up to four lines. This is a maximum height: shorter content should keep its natural height. Keep the **expanded** view fully readable with no 3.5-line cap, and preserve font scaling, existing edge fade, text contrast, in-preview scroll, header, and smooth generation behavior. **Do not introduce a new scroll controller, wrapper, fixed dp height, or compensating effect.** Verify collapsed 3.5-line viewport across font sizes and expanded behavior without regression.
+
+### C. Open user observation — Scroll to Bottom button appears too early
+
+- **Observed behavior:** The **Scroll to Bottom / Jump to latest** button appears as soon as the latest content-end anchor leaves the visible area, even when the user has scrolled away only a very short distance. This is too sensitive.
+- **Expected behavior (explicit user request):** Show this button **only when the distance from the current viewport to the real latest-content bottom anchor is at least 2 × the screen height**. Do not show it merely because the last-line/end marker is no longer visible. Hide it again when the distance drops below that threshold or the latest content is reached.
+- **Original cause, now corrected:** the floating action button previously used `!viewport.isLatestVisible(...)`, a Boolean marker-visibility check. It now reads `viewport.showJumpToLatest`, a derived button-only policy. Native layout bounds provide the actual latest-content end and readable viewport; when the end is virtualized, the native LazyListState scroll-indicator estimate is used, as explicitly chosen by the user. Trailing content padding, including the 30% allowance, is excluded from that estimate. This does not control scrolling.
+- **Implementation constraint:** Apply the threshold only to **button visibility**. Do **not** modify native auto-follow, initial history positioning, scroll physics, manual drag priority, minimap/Jump navigation or content placement to achieve it. Prefer existing Compose-native layout/viewport information and a single, simple visibility policy owned by the existing list/screen; do not implement a custom scroll engine, repeated measurement loops, a second controller, or per-frame distance polling. The 30% trailing breathing room must **not** be mistaken for real message content or treated as the end anchor.
+- **Acceptance check (covered by the focused UI tests):** The button remains hidden when moving away by less than two screen heights, appears upon reaching the two-height threshold, and disappears again on returning closer. Check with short/long final replies, dynamic LaTeX growth, screen/inset changes, Stop/stream completion and user-driven versus automatic scroll. Preserve the already-acceptable scrolling experience.
+
+### D. Mandatory approach for any subsequent work
+
+**Fix the root cause, not the symptom.** Do not add new code to compensate for a problem introduced by existing code. Correct the original responsible layout/modifier/state/scroll mechanism, or replace an intrinsically flawed mechanism with a simpler one **only when its benefit is demonstrated**. Keep unrelated renderers untouched. Preserve all existing working behavior. Do not treat successfully building an APK as proof of improved scrolling.
+
+**Current acceptance:** General experience accepted by the user; multi-large-LaTeX follow lag is a *known possible limitation*, to be investigated conservatively and **not at the cost of making current performance worse**. Historical implementation and verification outcomes are kept in the linked verification report rather than in this live-feedback section.
+
+
+Current request verification: `LiveThinkingBlockHeightTest` passes both tests across custom font sizes, system font scale, short content and expansion. `ChatJumpButtonVisibilityTest` passes four tests for below/exactly-at/return-below two screens, virtualized history, real latest anchors, asynchronous growth, completion and screen/composer changes. The updated opening-screen test verifies a short drag hides the button and larger travel reveals it. The follow-up run is **43/43 passing** including existing list, Send/follow, history, Thinking color and minimap cases. The accepted main-list mechanics and LaTeX renderer were not changed; Thinking preview mechanics were subsequently migrated under the user's explicit native-scroll request. Multi-large-LaTeX lag remains the conservatively accepted limitation in Appendix A, with no speculative fix.
+
+The final follow-up lint recheck loaded Compose's actual UI/runtime rules and found no findings in the nine modified production files for the three related rules. Unchanged files elsewhere still produce 68 errors and six warnings; full-application lint is not green. Server preflight checks passed, allocation failures remained zero, and no additional Gradle invocation was used. See the current section of the verification report for exact scope and results.
+
+
+Native Thinking follow-up: **33/33 focused checks passed** on the final implementation, including five new cases for continuous/slow/bursty growth and idle waits, native drag interruption and next-growth resumption, Stop/reactivation, expansion/recollapse with updated content, and no relocation of scrollable ancestors. Existing height/font-scale (2), color (2), actual-screen Send/follow (12) and message-list (12) cases were rerun. A trial using cancel/restart on every bound change failed the continuous-growth test and was corrected at that mechanism: native animation is allowed to progress while Flow conflation keeps only the latest pending target. No custom frame loop, speed formula, polling timer or per-chunk animation queue remains. Physical-device visual feel and full-app baseline issues are not claimed resolved by these focused tests.
+
+## Subsequent request — controlled offscreen rendering and durable saves
+
+The user's later request explicitly authorizes the targeted Markdown/LaTeX preparation and storage work that was outside this original scrolling plan. See [the separate implementation and verification record](chat-render-preparation-and-durable-save.md). The existing block-boundary save contract in section 1 is preserved; there is no periodic database polling. Accepted native scrolling behavior and the remaining historical hardware-verification limitations are unchanged.

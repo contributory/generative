@@ -1,6 +1,9 @@
 package org.starfall.generative.database
 
 import androidx.room.withTransaction
+import java.io.File
+import org.starfall.generative.shared.logging.DebugLog
+import org.starfall.generative.shared.model.logging.DebugLogCategory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
@@ -34,7 +37,8 @@ class ConversationMigrationException(
     val issueCodes: List<String>
 ) : IllegalStateException("Conversation $conversationId needs recovery before it can be opened.")
 
-class ConversationRepository(private val db: AppDatabase) {
+class ConversationRepository @JvmOverloads constructor(private val db: AppDatabase, journalDirectory: File? = null) {
+    private val journal = journalDirectory?.let(::ConversationSaveJournal)
     private val dao = db.conversationDao()
     private val writeLock = Mutex()
 
@@ -53,21 +57,52 @@ class ConversationRepository(private val db: AppDatabase) {
 
     /** Loads exactly one conversation and its relational children. */
     suspend fun loadById(id: String): Conversation? = withContext(Dispatchers.IO) {
-        val entity = dao.getConversationById(id) ?: return@withContext null
-        entityToModel(entity)
+        writeLock.withLock {
+            restorePendingSave(id)
+            db.withTransaction {
+                dao.getConversationById(id)?.let { entityToModel(it) }
+            }
+        }
     }
 
     suspend fun saveConversation(conversation: Conversation) {
         // Central persistence boundary for settled conversations and completed response blocks.
         if (conversation.isTemporary) return
-        val persisted = conversation.pruningEmptyResponses()
         withContext(Dispatchers.IO) {
+            val persisted = conversation.pruningEmptyResponses()
             writeLock.withLock {
-                db.withTransaction {
-                    upsertConversation(modelToEntity(persisted))
-                    persistChildren(persisted)
+                journal?.write(persisted)
+                commitConversation(persisted)
+                journal?.remove(persisted.id)
+            }
+        }
+    }
+
+    /** Startup/event-driven recovery only. A failed record remains available for another attempt. */
+    suspend fun recoverPendingSaves() = withContext(Dispatchers.IO) {
+        writeLock.withLock {
+            journal?.pending()?.forEach { file ->
+                try {
+                    journal.read(file)?.let { commitConversation(it) }
+                    file.delete()
+                } catch (error: Exception) {
+                    DebugLog.error(DebugLogCategory.ERRORS, "Conversation save", "Pending save recovery failed", error)
                 }
             }
+        }
+    }
+
+    private suspend fun restorePendingSave(id: String) {
+        val pending = journal?.read(id) ?: return
+        commitConversation(pending)
+        journal.remove(id)
+    }
+
+    private suspend fun commitConversation(conversation: Conversation) {
+        if (conversation.isTemporary) return
+        db.withTransaction {
+            upsertConversation(modelToEntity(conversation))
+            persistChildren(conversation)
         }
     }
 
@@ -75,6 +110,7 @@ class ConversationRepository(private val db: AppDatabase) {
         val now = System.currentTimeMillis()
         withContext(Dispatchers.IO) {
             writeLock.withLock {
+                restorePendingSave(id)
                 db.withTransaction {
                     // REPLACE deletes the parent first and cascades into its history.
                     dao.renameConversation(id, title, now)
@@ -86,6 +122,7 @@ class ConversationRepository(private val db: AppDatabase) {
     suspend fun deleteConversation(id: String) {
         withContext(Dispatchers.IO) {
             writeLock.withLock {
+                journal?.remove(id)
                 db.withTransaction { dao.deleteById(id) }
             }
         }
@@ -94,6 +131,7 @@ class ConversationRepository(private val db: AppDatabase) {
     suspend fun deleteConversations(ids: List<String>) {
         withContext(Dispatchers.IO) {
             writeLock.withLock {
+                ids.forEach { journal?.remove(it) }
                 db.withTransaction { ids.chunked(500).forEach { dao.deleteByIds(it) } }
             }
         }
@@ -102,6 +140,7 @@ class ConversationRepository(private val db: AppDatabase) {
     suspend fun deleteAll() {
         withContext(Dispatchers.IO) {
             writeLock.withLock {
+                journal?.clear()
                 db.withTransaction { dao.deleteAll() }
             }
         }
@@ -192,12 +231,15 @@ class ConversationRepository(private val db: AppDatabase) {
 
         // Message sequence is unique. Shift only when the message set/order changed so a reorder
         // can be applied without deleting and rebuilding any message's descendants.
-        if (existingMessages.map { it.id } != messageIds) dao.shiftMessageSequences(conversation.id, 1_000_000)
+        val resequence = existingMessages.map { it.id } != messageIds
+        if (resequence) dao.shiftMessageSequences(conversation.id, 1_000_000)
+        val existingById = existingMessages.associateBy { it.id }
 
         conversation.messages.forEachIndexed { sequence, message ->
             val entity = MessageEntity(conversation.id, message.id, sequence, message.role.persistedValue, message.activeVersionIndex)
-            val previous = existingMessages.firstOrNull { it.id == message.id }
-            if (previous == null) dao.insertMessage(entity) else if (previous != entity) dao.updateMessage(entity)
+            val previous = existingById[message.id]
+            // Every shifted row must be restored, even if its final sequence equals its OLD value.
+            if (previous == null) dao.insertMessage(entity) else if (resequence || previous != entity) dao.updateMessage(entity)
             persistMessage(conversation.id, message)
         }
 

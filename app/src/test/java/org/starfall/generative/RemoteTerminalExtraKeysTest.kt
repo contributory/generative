@@ -1,9 +1,9 @@
 package org.starfall.generative
 
 import android.content.Context
-import androidx.compose.ui.test.assertDoesNotExist
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.unit.DpRect
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
@@ -18,6 +18,9 @@ import org.starfall.generative.shared.model.remote.TerminalInputMode
 import org.starfall.generative.shared.terminal.RemoteTerminalBridge
 import org.starfall.generative.shared.theme.GenerativeTheme
 import org.starfall.generative.shared.ui.terminal.TerminalExtraKeys
+
+private val DpRect.center: Offset
+    get() = Offset((left.value + right.value) / 2f, (top.value + bottom.value) / 2f)
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi", application = LibraryTestApplication::class)

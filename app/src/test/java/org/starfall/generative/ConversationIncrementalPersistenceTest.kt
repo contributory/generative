@@ -33,6 +33,8 @@ class ConversationIncrementalPersistenceTest {
             repository.saveConversation(original.copy(messages = original.messages +
                 StoredMessage("tail", ChatRole.USER, listOf(MessageVersion(content = "Follow-up")))))
             assertEquals(rowIds, rowIds(db).filterKeys { it != "new-message" })
+            assertEquals("Appending must keep the last message at the end",
+                listOf("first", "answer", "tail"), repository.loadById(original.id)!!.messages.map { it.id })
 
             val edited = original.copy(messages = listOf(
                 first,

@@ -1212,7 +1212,7 @@
     <string name="conversation_summary_invalid_chunk">Enter a whole number of tokens per pass from 1 to 100,000.</string>
     <string name="chat_minimap_open">Open conversation minimap</string>
     <string name="chat_minimap_close">Close conversation minimap</string>
-    <string name="chat_minimap_navigate">Conversation minimap. Tap a position to jump there.</string>
+    <string name="chat_minimap_navigate">Conversation scrollbar. Drag to scroll through the conversation.</string>
     <string name="tool_agent_skills_search_title" translatable="false">Agent Skills Search</string>
     <string name="tool_agent_skills_search_description">Let the AI find and load skills on demand</string>
     <string name="user_profile_title">User Profile</string>

@@ -93,6 +93,7 @@ import org.starfall.generative.features.home.chat.ui.ContextWindowRing
 import org.starfall.generative.features.home.BottomSheetsLink
 import org.starfall.generative.shared.model.ConversationSummaryRequest
 import org.starfall.generative.features.home.BottomSheetsLinkState
+import org.starfall.generative.features.home.chat.ui.LocalChatForeground
 import org.starfall.generative.shared.ui.model.modelInitial
 
 @Composable
@@ -250,10 +251,14 @@ fun UserInputArea(
         }
     }
     // Regenerate/resend follow the composer: media mode uses the selected media model, chat mode sends as chat.
-    LaunchedEffect(mediaKind, mediaProviderId, mediaModelId, mediaModel) {
-        onMediaModeChange(mediaKind.takeIf { mediaModel != null }, mediaProviderId, mediaModelId)
+    val foreground = LocalChatForeground.current
+    LaunchedEffect(mediaKind, mediaProviderId, mediaModelId, mediaModel, foreground) {
+        if (foreground) onMediaModeChange(mediaKind.takeIf { mediaModel != null }, mediaProviderId, mediaModelId)
     }
-    DisposableEffect(Unit) { onDispose { onMediaModeChange(null, "", "") } }
+    val currentForeground by rememberUpdatedState(foreground)
+    DisposableEffect(Unit) {
+        onDispose { if (currentForeground) onMediaModeChange(null, "", "") }
+    }
     val focusManager = LocalFocusManager.current
     val bottomSheets = remember { BottomSheetsLinkState() }
     val latestOnModelSheetOpen by rememberUpdatedState(onModelSheetOpen)
@@ -275,7 +280,8 @@ fun UserInputArea(
     val dynamicProviders = providers.filter { it.type == ModelApiType.OLLAMA && it.config.modelIds == null }
         .map { it.id to it.baseUrl }.sortedBy { it.first }
     val fetchOllamaModels by rememberUpdatedState(onFetchOllamaModels)
-    LaunchedEffect(dynamicProviders) {
+    LaunchedEffect(dynamicProviders, foreground) {
+        if (!foreground) return@LaunchedEffect
         dynamicModelsMap.keys.retainAll(dynamicProviders.map { it.first }.toSet())
         dynamicModelEndpoints.keys.retainAll(dynamicProviders.map { it.first }.toSet())
         // Publish disk snapshots before any network discovery; one slow/offline host
@@ -648,7 +654,7 @@ fun UserInputArea(
                 }
             }
         }
-        if (skillsMenuOpen) {
+        if (foreground && skillsMenuOpen) {
             Popup(
                 popupPositionProvider = AgentSkillsMenuPositionProvider(
                     verticalGapPx = with(density) { 4.dp.roundToPx() }
@@ -695,7 +701,7 @@ fun UserInputArea(
         val content: @Composable (Boolean) -> Unit = { onDarkBackground -> ContextWindowBar(status, onDarkBackground) }
         content
     }
-    BottomSheetsLink(
+    if (foreground) BottomSheetsLink(
         sheets = bottomSheets,
         mediaKind = mediaKind,
         onMediaKindChange = { mediaKind = it },

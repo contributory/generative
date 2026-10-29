@@ -63,6 +63,7 @@ internal class ChatGeneration(
     ): Boolean =
         startEvents(conversation, messageId, chunks.map { GenerationEvent.Text(it) }, rollbackConversation)
 
+    @OptIn(DelicateCoroutinesApi::class)
     fun startEvents(
         conversation: Conversation,
         messageId: String,
@@ -84,7 +85,8 @@ internal class ChatGeneration(
         publish(conversation)
         job = scope.launch(
             context = if (conversation.isTemporary) TemporaryChatFiles(conversation.id) else EmptyCoroutineContext,
-            start = CoroutineStart.LAZY
+            // Install finalization even if the owner is cancelled before the first dispatch.
+            start = CoroutineStart.ATOMIC
         ) {
             suspend fun persist(
                 conversation: Conversation,
@@ -92,8 +94,8 @@ internal class ChatGeneration(
             ) {
                 // Only completed or interrupted assistant blocks reach storage. A Stop that
                 // races with a block boundary is saved by the finalization path instead.
-                if (stopSession.isRequested() && !allowStoppedSnapshot) return
-                save(conversation.pruningEmptyResponses())
+                if (conversation.isTemporary || (stopSession.isRequested() && !allowStoppedSnapshot)) return
+                withContext(Dispatchers.IO) { save(conversation.pruningEmptyResponses()) }
             }
 
             val initialVersion = snapshot?.messages?.firstOrNull { it.id == messageId }?.activeVersion
@@ -347,6 +349,7 @@ internal class ChatGeneration(
                 _error.value = generationErrorMessage
                 streamDisplay.finish(ChatStreamStatus.FAILED)
             } finally {
+                var savedSuccessfully = false
                 try {
                     // A stopped stream must retain its partial response before allowing another send.
                     withContext(NonCancellable) {
@@ -390,21 +393,25 @@ internal class ChatGeneration(
                             })
                         }
                         publish(snapshot!!)
-                        persist(snapshot!!, allowStoppedSnapshot = stoppedAtClick)
+                        // Stop may arrive while responseSnapshot() is suspended. Once finalizing,
+                        // its only durable save must never be vetoed by that late Stop.
+                        persist(snapshot!!, allowStoppedSnapshot = true)
+                        savedSuccessfully = true
                     }
                 } catch (e: Exception) {
                     _error.value = "$SAVE_CONVERSATION_ERROR_PREFIX ${e.localizedMessage}"
                 } finally {
                     if (!stopSession.isRequested()) publishStream(conversation.id, null)
                     if (activeStopSession === stopSession) activeStopSession = null
-                    snapshot = null
+                    // Keep failed terminal saves in RAM even if durable staging itself failed.
+                    // A successfully staged journal also survives an interrupted Room commit.
+                    if (savedSuccessfully) snapshot = null
                     _conversationId.value = null
                     _waitingForTool.value = false
                     _busy.value = false
                 }
             }
         }
-        job!!.start()
         return true
     }
 
@@ -415,6 +422,11 @@ internal class ChatGeneration(
         snapshotMutationRevision++
         publish(updated)
         // Metadata changes remain in this generation's RAM snapshot until its block settles.
+    }
+
+    /** Explicit deletion/restore supersedes even a retained failed save. Never used for navigation. */
+    fun discardFinalSnapshot() {
+        if (!_busy.value) snapshot = null
     }
 
     /** Synchronous UI cutoff first, network/job cancellation second. */
