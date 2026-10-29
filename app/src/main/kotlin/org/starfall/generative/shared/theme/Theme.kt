@@ -13,69 +13,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 
-private val DefaultLight = lightColorScheme(
-    primary = Color(0xFF0B57D0),
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFD3E3FD),
-    onPrimaryContainer = Color(0xFF041E49),
-    secondary = Color(0xFF00639B),
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFC2E7FF),
-    onSecondaryContainer = Color(0xFF001D33),
-    surface = Color(0xFFF8F9FA),
-    onSurface = Color(0xFF1F1F1F),
-    surfaceVariant = Color(0xFFE1E3E1),
-    onSurfaceVariant = Color(0xFF444746),
-    background = Color(0xFFF8F9FA),
-    onBackground = Color(0xFF1F1F1F)
-)
-
-private val DefaultDark = darkColorScheme(
-    primary = Color(0xFFA8C7FA),
-    onPrimary = Color(0xFF002F6C),
-    primaryContainer = Color(0xFF041E49),
-    onPrimaryContainer = Color(0xFFD3E3FD),
-    secondary = Color(0xFF7FCFFF),
-    onSecondary = Color(0xFF003355),
-    secondaryContainer = Color(0xFF004B75),
-    onSecondaryContainer = Color(0xFFC2E7FF),
-    surface = Color(0xFF141218),
-    onSurface = Color(0xFFE6E0E9),
-    surfaceVariant = Color(0xFF444746),
-    onSurfaceVariant = Color(0xFFC4C7C5),
-    background = Color(0xFF141218),
-    onBackground = Color(0xFFE6E0E9)
-)
-
-// Emerald palette
-private val EmeraldLight = lightColorScheme(
-    primary = Color(0xFF006C4C),
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFF89F8C7),
-    onPrimaryContainer = Color(0xFF002114),
-    secondary = Color(0xFF4D6356),
-    onSecondary = Color.White,
-    surface = Color(0xFFF6FBF6),
-    onSurface = Color(0xFF181D1A),
-    background = Color(0xFFF6FBF6),
-    onBackground = Color(0xFF181D1A)
-)
-
-private val EmeraldDark = darkColorScheme(
-    primary = Color(0xFF6CDBAC),
-    onPrimary = Color(0xFF003825),
-    primaryContainer = Color(0xFF005138),
-    onPrimaryContainer = Color(0xFF89F8C7),
-    secondary = Color(0xFFB4CCBD),
-    onSecondary = Color(0xFF1F3529),
-    surface = Color(0xFF0F1512),
-    onSurface = Color(0xFFDFE4DF),
-    background = Color(0xFF0F1512),
-    onBackground = Color(0xFFDFE4DF)
-)
-
-// Sunset palette
-private val SunsetLight = lightColorScheme(
+// Orange palette
+private val OrangeLight = lightColorScheme(
     primary = Color(0xFFA04000),
     onPrimary = Color.White,
     primaryContainer = Color(0xFFFFDBCF),
@@ -88,7 +27,7 @@ private val SunsetLight = lightColorScheme(
     onBackground = Color(0xFF231916)
 )
 
-private val SunsetDark = darkColorScheme(
+private val OrangeDark = darkColorScheme(
     primary = Color(0xFFFFB59D),
     onPrimary = Color(0xFF5B1B00),
     primaryContainer = Color(0xFF7D2C00),
@@ -99,33 +38,6 @@ private val SunsetDark = darkColorScheme(
     onSurface = Color(0xFFF1DFD9),
     background = Color(0xFF1A110E),
     onBackground = Color(0xFFF1DFD9)
-)
-
-// Crimson palette
-private val CrimsonLight = lightColorScheme(
-    primary = Color(0xFFB3261E),
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFF9DEDC),
-    onPrimaryContainer = Color(0xFF410E0B),
-    secondary = Color(0xFF775656),
-    onSecondary = Color.White,
-    surface = Color(0xFFFFF8F7),
-    onSurface = Color(0xFF201A1A),
-    background = Color(0xFFFFF8F7),
-    onBackground = Color(0xFF201A1A)
-)
-
-private val CrimsonDark = darkColorScheme(
-    primary = Color(0xFFF2B8B5),
-    onPrimary = Color(0xFF601410),
-    primaryContainer = Color(0xFF8C1D18),
-    onPrimaryContainer = Color(0xFFF9DEDC),
-    secondary = Color(0xFFE6BDBC),
-    onSecondary = Color(0xFF442929),
-    surface = Color(0xFF191212),
-    onSurface = Color(0xFFEDE0DF),
-    background = Color(0xFF191212),
-    onBackground = Color(0xFFEDE0DF)
 )
 
 // Violet palette
@@ -155,7 +67,8 @@ private val VioletDark = darkColorScheme(
     onBackground = Color(0xFFE7E0E8)
 )
 
-private val MonochromeLight = lightColorScheme(
+// Slate palette
+private val SlateLight = lightColorScheme(
     primary = Color(0xFF202124), onPrimary = Color.White,
     primaryContainer = Color(0xFFE3E3E3), onPrimaryContainer = Color(0xFF171717),
     secondary = Color(0xFF5F6368), onSecondary = Color.White,
@@ -165,7 +78,7 @@ private val MonochromeLight = lightColorScheme(
     background = Color(0xFFFAFAFA), onBackground = Color(0xFF1F1F1F)
 )
 
-private val MonochromeDark = darkColorScheme(
+private val SlateDark = darkColorScheme(
     primary = Color(0xFFE8EAED), onPrimary = Color(0xFF202124),
     primaryContainer = Color(0xFF3C4043), onPrimaryContainer = Color(0xFFF1F3F4),
     secondary = Color(0xFFBDC1C6), onSecondary = Color(0xFF292A2D),
@@ -178,16 +91,16 @@ private val MonochromeDark = darkColorScheme(
 data class ThemePreset(val name: String, val preview: Color)
 
 val ThemePresets = listOf(
-    ThemePreset("DEFAULT", Color(0xFF0B57D0)), ThemePreset("EMERALD", Color(0xFF006C4C)),
-    ThemePreset("SUNSET", Color(0xFFA04000)), ThemePreset("CRIMSON", Color(0xFFB3261E)),
-    ThemePreset("VIOLET", Color(0xFF6B4FA0)), ThemePreset("MONOCHROME", Color(0xFF444746))
+    ThemePreset("ORANGE", Color(0xFFA04000)),
+    ThemePreset("VIOLET", Color(0xFF6B4FA0)),
+    ThemePreset("SLATE", Color(0xFF444746))
 )
 
-private fun completeScheme(source: ColorScheme, dark: Boolean): ColorScheme = source.copy(
-    tertiary = source.secondary,
-    onTertiary = source.onSecondary,
-    tertiaryContainer = source.secondaryContainer,
-    onTertiaryContainer = source.onSecondaryContainer,
+private fun completeScheme(source: ColorScheme, dark: Boolean, custom: Boolean = false): ColorScheme = source.copy(
+    tertiary = if (custom) source.tertiary else source.secondary,
+    onTertiary = if (custom) source.onTertiary else source.onSecondary,
+    tertiaryContainer = if (custom) source.tertiaryContainer else source.secondaryContainer,
+    onTertiaryContainer = if (custom) source.onTertiaryContainer else source.onSecondaryContainer,
     error = if (dark) Color(0xFFFFB4AB) else Color(0xFFBA1A1A),
     onError = if (dark) Color(0xFF690005) else Color.White,
     errorContainer = if (dark) Color(0xFF93000A) else Color(0xFFFFDAD6),
@@ -244,7 +157,8 @@ fun GenerativeTheme(
     darkTheme: Boolean? = null,
     amoledMode: Boolean = false,
     dynamicColor: Boolean = true,
-    colorSchemeName: String = "DEFAULT",
+    colorSchemeName: String = "SLATE",
+    customPalette: CustomPalette = CustomPalette(),
     content: @Composable () -> Unit
 ) {
     val systemDark = isSystemInDarkTheme()
@@ -260,16 +174,15 @@ fun GenerativeTheme(
             val context = LocalContext.current
             if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        colorSchemeName == "EMERALD" -> if (isDark) EmeraldDark else EmeraldLight
-        colorSchemeName == "SUNSET" -> if (isDark) SunsetDark else SunsetLight
-        colorSchemeName == "CRIMSON" -> if (isDark) CrimsonDark else CrimsonLight
+        colorSchemeName == "CUSTOM" -> customColorScheme(customPalette, isDark)
+        colorSchemeName == "ORANGE" || colorSchemeName == "SUNSET" -> if (isDark) OrangeDark else OrangeLight
         colorSchemeName == "VIOLET" -> if (isDark) VioletDark else VioletLight
-        colorSchemeName == "MONOCHROME" -> if (isDark) MonochromeDark else MonochromeLight
-        else -> if (isDark) DefaultDark else DefaultLight
+        else -> if (isDark) SlateDark else SlateLight
     }
     // Keep screen and modal surface tokens opaque. Only individual items apply
     // LocalItemTransparency when drawing their own backgrounds.
-    val colorScheme = completeScheme(selectedScheme, isDark).let {
+    val colorScheme = completeScheme(selectedScheme, isDark, custom = colorSchemeName == "CUSTOM" &&
+        !(dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)).let {
         if (isAmoled) it.withAmoledSurfaces() else it
     }
 

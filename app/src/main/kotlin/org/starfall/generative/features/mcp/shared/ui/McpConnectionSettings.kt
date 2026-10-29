@@ -1,6 +1,6 @@
 package org.starfall.generative.features.mcp.shared.ui
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,11 +16,11 @@ import org.starfall.generative.shared.model.McpAuthMethod
 import org.starfall.generative.shared.model.McpProtocol
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.auth.bearerHeaderValue
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.text.ApiKeyField
 import org.starfall.generative.shared.ui.icons.providerInitials
 
@@ -53,7 +53,7 @@ internal fun McpConnectionSettings(
     Column(modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         IconPickerRow(icon, onIconChange, text = providerInitials(name), fallback = Icons.Outlined.Extension,
             onBusyChange = onIconBusyChange, matchName = name, faviconBaseUrl = url)
-        SelectableOutlinedTextField(
+        OutlinedTextField(
             value = name,
             onValueChange = onNameChange,
             label = { Text(stringResource(R.string.common_name)) },
@@ -68,7 +68,7 @@ internal fun McpConnectionSettings(
         Text(stringResource(R.string.server_url), style = MaterialTheme.typography.titleMedium)
         Text(stringResource(R.string.server_url_help, mcpTransportLabel(protocol)), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        SelectableOutlinedTextField(url, onUrlChange, placeholder = { Text(stringResource(R.string.common_url)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(url, onUrlChange, placeholder = { Text(stringResource(R.string.common_url)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         if (url.trim().startsWith("http://", true)) Text(stringResource(R.string.http_unencrypted_mcp_warning),
             color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         HorizontalDivider()
@@ -79,11 +79,11 @@ internal fun McpConnectionSettings(
             OutlinedButton(onClick = { expanded = true }) { Text(stringResource(R.string.mcp_auth_type, mcpAuthenticationLabel(authMethod))) }
             DropdownMenu(expanded, onDismissRequest = { expanded = false }) {
                 listOf(McpAuthMethod.BEARER_TOKEN, McpAuthMethod.QUERY_PARAM, McpAuthMethod.OAUTH2, McpAuthMethod.NONE).forEach { method ->
-                    RoundedDropdownMenuItem(text = { Text(mcpAuthenticationLabel(method)) }, onClick = { onAuthMethodChange(method); expanded = false })
+                    DropdownMenuItem(text = { Text(mcpAuthenticationLabel(method)) }, onClick = { onAuthMethodChange(method); expanded = false })
                 }
             }
         }
-        if (authMethod in listOf(McpAuthMethod.BEARER_TOKEN, McpAuthMethod.QUERY_PARAM)) SelectableOutlinedTextField(authKey, onAuthKeyChange,
+        if (authMethod in listOf(McpAuthMethod.BEARER_TOKEN, McpAuthMethod.QUERY_PARAM)) OutlinedTextField(authKey, onAuthKeyChange,
             label = { Text(stringResource(if (authMethod == McpAuthMethod.BEARER_TOKEN) R.string.header_key else R.string.query_parameter_name)) },
             isError = !authValid, singleLine = true, modifier = Modifier.fillMaxWidth())
         if (authMethod == McpAuthMethod.OAUTH2) McpOAuthFields(url, oauthClientId, onOauthClientIdChange,
@@ -100,15 +100,15 @@ internal fun McpConnectionSettings(
         HorizontalDivider()
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.custom_headers), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-            IconButton(onClick = { onHeadersChange(headers + ("" to "")) }) { FluentIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
+            IconButton(onClick = { onHeadersChange(headers + ("" to "")) }) { SharedIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
         }
         headers.forEachIndexed { index, header ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SelectableOutlinedTextField(header.first, { value -> onHeadersChange(headers.toMutableList().also { it[index] = value to header.second }) },
+                OutlinedTextField(header.first, { value -> onHeadersChange(headers.toMutableList().also { it[index] = value to header.second }) },
                     label = { Text(stringResource(R.string.common_key)) }, singleLine = true, modifier = Modifier.weight(1f))
-                SelectableOutlinedTextField(header.second, { value -> onHeadersChange(headers.toMutableList().also { it[index] = header.first to value }) },
+                OutlinedTextField(header.second, { value -> onHeadersChange(headers.toMutableList().also { it[index] = header.first to value }) },
                     label = { Text(stringResource(R.string.common_value)) }, singleLine = true, modifier = Modifier.weight(1f))
-                IconButton(onClick = { onHeadersChange(headers.filterIndexed { i, _ -> i != index }) }) { FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove)) }
+                IconButton(onClick = { onHeadersChange(headers.filterIndexed { i, _ -> i != index }) }) { SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove)) }
             }
         }
         Spacer(Modifier.height(24.dp))

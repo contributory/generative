@@ -1,6 +1,5 @@
 package org.starfall.generative.features.providers.list.ui
 
-import org.starfall.generative.features.providers.list.model.ProviderDragSurfaces
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -18,6 +17,12 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import com.mohamedrejeb.compose.dnd.DragAndDropState
+import com.mohamedrejeb.compose.dnd.annotation.ExperimentalDndApi
+import com.mohamedrejeb.compose.dnd.reorder.reorderableItem
+import com.mohamedrejeb.compose.dnd.scroll.dragAutoScroll
+import com.mohamedrejeb.compose.dnd.drag.DropStrategy
+import org.starfall.generative.shared.model.provider.ProviderRootOrderItem
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,7 +47,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.icons.EntityIcon
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.providerInitials
 import org.starfall.generative.shared.ui.lists.ListViewToggle
@@ -128,6 +133,7 @@ internal fun folderExpansionRect(source: Rect?, width: Float, height: Float, pro
 }
 
 /** Full-screen folder page. Its header belongs to the folder, never to ProvidersScreen's app bar. */
+@OptIn(ExperimentalDndApi::class)
 @Composable
 internal fun ProviderFolderOverlay(
     group: ProviderGroup,
@@ -136,8 +142,11 @@ internal fun ProviderFolderOverlay(
     originBounds: Rect?,
     hostOrigin: Offset,
     animateExitImmediately: Boolean,
-    surfaces: ProviderDragSurfaces,
-    draggingKey: String?,
+    dndState: DragAndDropState<ProviderRootOrderItem>,
+    onBeginDrag: (String) -> Unit,
+    onEndDrag: (String) -> Unit,
+    onReorderMember: (String, String) -> Unit,
+    onDropMember: () -> Unit,
     showExitHint: Boolean,
     visible: Boolean,
     animateEnter: Boolean = true,
@@ -152,14 +161,6 @@ internal fun ProviderFolderOverlay(
     onDeleteProvider: (String) -> Unit
 ) {
     val gridState = rememberLazyGridState()
-    SideEffect { surfaces.folderGrid = gridState }
-    DisposableEffect(Unit) {
-        onDispose {
-            surfaces.folderGrid = null
-            surfaces.panelBounds = null
-            surfaces.folderGridOrigin = androidx.compose.ui.geometry.Offset.Zero
-        }
-    }
     // Keep the detail expansion and full-screen backdrop fade on the same reversible timeline.
     // The scaled starting rect stays centred on the tapped card, even after root scrolling.
     val progress = remember { Animatable(if (animateEnter) 0f else 1f) }
@@ -252,12 +253,11 @@ internal fun ProviderFolderOverlay(
                     if (providers.isEmpty()) {
                         Column(
                             modifier = Modifier.weight(1f).fillMaxWidth()
-                                .windowInsetsPadding(WindowInsets.navigationBars)
-                                .onGloballyPositioned { surfaces.panelBounds = it.boundsInRoot() },
+                                .windowInsetsPadding(WindowInsets.navigationBars),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            FluentIcon(
+                            SharedIcon(
                                 imageVector = Icons.Outlined.FolderOpen,
                                 contentDescription = null,
                                 modifier = Modifier.size(52.dp),
@@ -274,11 +274,7 @@ internal fun ProviderFolderOverlay(
                             state = gridState,
                             columns = GridCells.Fixed(if (isGrid) 2 else 1),
                             modifier = Modifier.weight(1f).fillMaxWidth()
-                                .onGloballyPositioned {
-                                    surfaces.folderGridOrigin = it.positionInRoot()
-                                    // Dragging above the list, into the header, ejects a provider.
-                                    surfaces.panelBounds = it.boundsInRoot()
-                                }
+                                .dragAutoScroll(state = dndState, lazyGridState = gridState)
                                 .testTag("provider_folder_grid_${group.id}"),
                             contentPadding = PaddingValues(
                                 start = 16.dp, top = 8.dp, end = 16.dp,
@@ -294,9 +290,31 @@ internal fun ProviderFolderOverlay(
                                     onEdit = { onEditProvider(provider) },
                                     onMoveToGroup = { onMoveProvider(provider) },
                                     onDelete = { onDeleteProvider(provider.id) },
-                                    modifier = Modifier.animateItem().graphicsLayer {
-                                        alpha = if (draggingKey == "provider_${provider.id}") 0.25f else 1f
-                                    }
+                                    modifier = Modifier.animateItem()
+                                        .graphicsLayer {
+                                            alpha = if (dndState.isDragging("provider_${provider.id}")) 0f else 1f
+                                        }
+                                        .reorderableItem(
+                                            key = "provider_${provider.id}",
+                                            data = ProviderRootOrderItem(provider.id, false),
+                                            state = dndState, dropStrategy = DropStrategy.CenterDistance,
+                                            enabled = visible && fraction >= 0.999f, canDrop = visible && fraction >= 0.999f,
+                                            onDragStart = { onBeginDrag("provider_${provider.id}") },
+                                            onDragEnd = { onEndDrag("provider_${provider.id}") },
+                                            onDragEnter = { dragged ->
+                                                if (!dragged.data.isGroup && dragged.data.id != provider.id)
+                                                    onReorderMember(dragged.data.id, provider.id)
+                                            },
+                                            onDrop = { onDropMember() },
+                                            dropAnimationEnabled = false,
+                                            draggableContent = {
+                                                ProviderFolderProviderTile(
+                                                    provider = provider, isGrid = isGrid,
+                                                    onEdit = {}, onMoveToGroup = {}, onDelete = {},
+                                                    testTag = false, modifier = Modifier.testTag("dragged_provider")
+                                                )
+                                            }
+                                        )
                                 )
                             }
                         }
@@ -350,7 +368,7 @@ private fun ProviderFolderHeader(
                 modifier = Modifier.testTag("provider_folder_toolbar_${group.id}")
             ) {
                 IconButton(onClick = onAddProvider, modifier = Modifier.testTag("add_folder_provider")) {
-                    FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
+                    SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
                 }
                 ListViewToggle(isGrid, onToggleGridView)
                 ProviderGroupContextMenu(onEdit = onEditGroup, onDelete = onDeleteGroup, compact = false)

@@ -82,7 +82,7 @@ class StreamingToolActivityUiTest {
         compose.setContent { MaterialTheme {
             AssistantMessageCard(
                 StoredMessage("assistant", ChatRole.MODEL, listOf(version)),
-                isStreaming, {}, {}, {}, {}, {}, {}, onSwitchVersion = {},
+                isStreaming, {}, {}, {}, {}, {}, {}, onRead = {}, onSwitchVersion = {},
                 conversationId = "conversation", streamStateFlow = streamFlow
             )
         } }
@@ -116,7 +116,7 @@ class StreamingToolActivityUiTest {
         }
         compose.onNodeWithText("Before the action.").assertIsDisplayed()
         compose.onNodeWithText(after).assertIsDisplayed()
-        compose.onNodeWithText("Tool executed").performClick()
+        compose.onNodeWithTag("processing-dropdown-toggle").performClick()
         compose.onNodeWithText("search documents").assertIsDisplayed()
     }
 
@@ -160,9 +160,9 @@ class StreamingToolActivityUiTest {
         compose.onNodeWithText("finished action").assertDoesNotExist()
         compose.onNodeWithText("Earlier reasoning").assertDoesNotExist()
 
-        compose.onNodeWithText("Generating...").performClick()
+        compose.onNodeWithTag("processing-dropdown-toggle").performClick()
         compose.onNodeWithText("finished action").assertIsDisplayed()
-        compose.onNodeWithText("Generating...").performClick()
+        compose.onNodeWithTag("processing-dropdown-toggle").performClick()
         compose.onNodeWithText("finished action").assertDoesNotExist()
 
         compose.runOnIdle {
@@ -179,7 +179,7 @@ class StreamingToolActivityUiTest {
             ProcessingDropdown(items = items, durationMillis = null, startNumber = 1, isStreaming = live)
         } }
         // The dropdown header and the running thinking step are visible without expanding.
-        compose.onNodeWithText("Thinking...").assertIsDisplayed()
+        compose.onNodeWithText(InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.thinking_streaming)).assertIsDisplayed()
         compose.onNodeWithTag("live-thinking-preview").assertIsDisplayed()
 
         compose.runOnIdle {
@@ -192,9 +192,9 @@ class StreamingToolActivityUiTest {
             items = listOf(items.first(), ProcessingDropdownItem.Tool(ToolActivity("tool", "search_documents", status = "success")))
         }
         compose.waitUntil(5_000) { compose.onAllNodesWithText("search documents").fetchSemanticsNodes().isEmpty() }
-        compose.onNodeWithText("Generating...").assertIsDisplayed()
+        compose.onNodeWithText(InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.generating)).assertIsDisplayed()
 
-        compose.onNodeWithText("Generating...").performClick()
+        compose.onNodeWithTag("processing-dropdown-toggle").performClick()
         compose.onNodeWithText("search documents").assertIsDisplayed()
     }
 
@@ -218,7 +218,7 @@ class StreamingToolActivityUiTest {
         compose.setContent { MaterialTheme {
             AssistantMessageCard(
                 StoredMessage("assistant", ChatRole.MODEL, listOf(stored)),
-                true, {}, {}, {}, {}, {}, {}, onSwitchVersion = {},
+                true, {}, {}, {}, {}, {}, {}, onRead = {}, onSwitchVersion = {},
                 conversationId = "conversation", streamStateFlow = streamFlow
             )
         } }

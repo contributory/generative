@@ -97,7 +97,7 @@ internal fun buildAssistantActionBlocks(version: MessageVersion): List<Assistant
     return blocks
 }
 
-internal enum class AssistantBlockKind { ACTIONS, MEDIA }
+internal enum class AssistantBlockKind { ACTIONS, MEDIA, ERROR }
 
 internal data class AssistantVisibleBlock(
     val number: Int,
@@ -107,8 +107,9 @@ internal data class AssistantVisibleBlock(
     val key: String = ""
 ) {
     val placeholder: String get() = when (kind) {
-        AssistantBlockKind.ACTIONS -> "[ActionTurnsBlock$number]"
+        AssistantBlockKind.ACTIONS -> "[ActionsBlock$number]"
         AssistantBlockKind.MEDIA -> "[MediaBlock$number]"
+        AssistantBlockKind.ERROR -> "[ErrorBlock]"
     }
 }
 
@@ -147,7 +148,12 @@ internal fun assistantVisibleBlocks(
     if (blocks.isEmpty() && version.toolActivity.isNotEmpty()) {
         blocks += AssistantVisibleBlock(0, AssistantBlockKind.ACTIONS, 0, key = "actions:internal")
     }
+    if (!version.generationError.isNullOrBlank()) {
+        blocks += AssistantVisibleBlock(0, AssistantBlockKind.ERROR,
+            version.content.length, key = "error:generation")
+    }
     return blocks.sortedWith(compareBy<AssistantVisibleBlock> { it.offset }
+        .thenBy { it.kind == AssistantBlockKind.ERROR }
         .thenBy { version.blockOrder[it.key] ?: Int.MAX_VALUE })
         .mapIndexed { i, block -> block.copy(number = i + 1) }
 }
@@ -165,7 +171,7 @@ internal fun editedAssistantVersion(
     val explicitOrder = mutableListOf<String>()
     val result = StringBuilder()
     var cursor = 0
-    val markers = Regex("""\[(ActionTurnsBlock|MediaBlock)(\d+)]""")
+    val markers = Regex("""\[(?:ActionsBlock\d+|MediaBlock\d+|ErrorBlock)]""")
     markers.findAll(draft).forEach { match ->
         val block = blocks.firstOrNull { it.placeholder == match.value }
         if (block != null) {
@@ -223,6 +229,7 @@ internal fun editedAssistantVersion(
 /** Delete one numbered visual block, without touching Content or any other block. */
 internal fun deleteAssistantBlock(version: MessageVersion, number: Int): MessageVersion {
     val target = assistantVisibleBlocks(version).firstOrNull { it.number == number } ?: return version
+    if (target.kind == AssistantBlockKind.ERROR) return version.copy(generationError = null, generationInterrupted = false)
     if (target.kind == AssistantBlockKind.MEDIA) {
         val group = target.actionIndex?.let { buildAssistantActionBlocks(version).getOrNull(it) }
         val toolIds = group?.items?.filterIsInstance<AssistantTimelineItem.Tool>()

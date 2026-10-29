@@ -12,6 +12,7 @@ import java.util.UUID
 import org.starfall.generative.shared.helpers.media.MAX_MEDIA_INPUT_BYTES
 import org.starfall.generative.shared.helpers.media.MAX_MEDIA_INPUT_VIDEO_BYTES
 import org.starfall.generative.shared.helpers.media.detectInputMediaMime
+import org.starfall.generative.shared.helpers.media.imagePreviewAspectRatio
 import org.starfall.generative.integrations.media.SystemMediaTools
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.shared.model.ToolActivity
@@ -68,7 +69,8 @@ internal class ToolMediaGenerationService(
         require(kind == ModelType.IMAGE_GENERATION || kind == ModelType.VIDEO_GENERATION)
         val name = if (kind == ModelType.IMAGE_GENERATION) "generate_image" else "generate_video"
         var activity = ToolActivity(UUID.randomUUID().toString(), name,
-            arguments = obj("prompt" to str(prompt)).toString())
+            arguments = obj("prompt" to str(prompt)).toString(),
+            previewAspectRatio = if (kind == ModelType.IMAGE_GENERATION) imagePreviewAspectRatio(imageOptions) else null)
         emit(GenerationEvent.Tool(activity))
         try {
             require(kind != ModelType.VIDEO_GENERATION || attachments.size <= 1) {

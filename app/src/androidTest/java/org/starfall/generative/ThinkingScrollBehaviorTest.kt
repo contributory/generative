@@ -19,7 +19,7 @@ import org.starfall.generative.features.home.chat.ui.rememberLiveThinkingScrollS
 class ThinkingScrollBehaviorTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun growingThinkingAnimatesInsteadOfJumpingAndStopsFollowingWhenInactive() {
+    @Test fun nativeThinkingScrollFollowsMeasuredGrowthAndStopsWhenInactive() {
         compose.mainClock.autoAdvance = false
         var text by mutableStateOf("Starting")
         var active by mutableStateOf(true)
@@ -34,8 +34,10 @@ class ThinkingScrollBehaviorTest {
         compose.mainClock.advanceTimeByFrame()
         compose.mainClock.advanceTimeBy(64)
         compose.runOnIdle {
-            assertTrue("New lines should slide up", scroll.value > 0)
-            assertTrue("Scrolling must not jump straight to the new bottom", scroll.value < scroll.maxValue)
+            assertTrue("New content should cause a native scroll", scroll.value > 0)
+            // The native ScrollState jumps directly to the newly measured bottom.
+            // LiveThinkingBlock separately animates its drawn offset for visual smoothness.
+            assertEquals("Native scroll should follow actual layout growth", scroll.maxValue, scroll.value)
         }
         compose.runOnIdle { text += "\nA newer line\nAnother new line" }
         compose.mainClock.advanceTimeBy(400)

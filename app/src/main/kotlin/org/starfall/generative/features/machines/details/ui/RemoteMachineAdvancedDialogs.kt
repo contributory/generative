@@ -35,8 +35,8 @@ import org.starfall.generative.features.machines.shared.ui.RemoteTextField
 import org.starfall.generative.features.machines.shared.ui.RemoteToggle
 import org.starfall.generative.features.machines.shared.ui.remoteLiteralKeyboardOptions
 import org.starfall.generative.shared.model.WebSocketProxyConfig
-import org.starfall.generative.shared.ui.dialogs.AppDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.Dialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 
 /**
@@ -63,7 +63,7 @@ internal fun SshOptionsEditor(
                         keyboardOptions = remoteLiteralKeyboardOptions()
                     )
                     IconButton(onClick = { onChange(options - key) }) {
-                        FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove), tint = MaterialTheme.colorScheme.error)
+                        SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove), tint = MaterialTheme.colorScheme.error)
                     }
                 }
                 RemoteTextField(
@@ -97,7 +97,7 @@ internal fun SshOptionsEditor(
                         draftValue = ""
                     }
                 ) {
-                    FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
+                    SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
                 }
             }
         }
@@ -105,7 +105,7 @@ internal fun SshOptionsEditor(
 }
 
 /**
- * WebSocket Proxy configuration. The shared [AppDialog] keeps advanced settings in an
+ * WebSocket Proxy configuration. The shared [Dialog] keeps advanced settings in an
  * expandable section within the content area.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -133,7 +133,7 @@ internal fun WebSocketProxyDialog(
     fun numeric(update: (String) -> Unit): (String) -> Unit =
         { value -> if (value.all(Char::isDigit)) update(value) }
 
-    AppDialog(
+    Dialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.remote_machine_websocket_proxy)) },
         content = {
@@ -186,7 +186,7 @@ internal fun WebSocketProxyDialog(
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f)
                     )
-                    FluentIcon(
+                    SharedIcon(
                         if (advancedExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                         null,
                         tint = MaterialTheme.colorScheme.primary,

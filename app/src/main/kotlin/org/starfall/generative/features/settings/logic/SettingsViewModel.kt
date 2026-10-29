@@ -9,6 +9,7 @@ import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.storage.LocalWriteErrors
 import org.starfall.generative.shared.storage.preferences.AppPreferences
+import org.starfall.generative.shared.theme.CustomPalette
 import org.starfall.generative.shared.storage.preferences.UserProfile
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.storage.preferences.CodeBlockDisplayMode
@@ -34,6 +35,12 @@ class SettingsViewModel(
     fun setUseAmoled(value: Boolean) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setUseAmoled(value) }
     }
+    fun setInputAreaTransparency(value: Float) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setInputAreaTransparency(value) }
+    }
+    fun setInputAreaBlur(value: Float) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setInputAreaBlur(value) }
+    }
     fun setItemTransparency(value: Float) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setItemTransparency(value) }
     }
@@ -48,6 +55,9 @@ class SettingsViewModel(
     }
     fun setColorSchemeName(value: String) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setColorSchemeName(value) }
+    }
+    fun setCustomPalette(value: CustomPalette) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setCustomPalette(value) }
     }
     fun setContinueLastConversation(value: Boolean) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setContinueLastConversation(value) }

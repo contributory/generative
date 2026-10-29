@@ -39,9 +39,9 @@ import org.starfall.generative.shared.preview.CodePreviewActivity
 import org.starfall.generative.shared.preview.canPreviewCode
 import org.starfall.generative.shared.storage.preferences.WordWrapMode
 import org.starfall.generative.shared.theme.LocalAmoledMode
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.LoadingIndicator
 
 /** Header shared by every code surface: language badge, wrap toggle, preview, download and copy. */
 @Composable
@@ -69,25 +69,25 @@ internal fun CodeBlockHeader(
             }
             if (isStreaming) {
                 Spacer(Modifier.width(8.dp))
-                GenerativeLoadingIndicator(Modifier.size(10.dp), color = MaterialTheme.colorScheme.primary)
+                LoadingIndicator(Modifier.size(10.dp), color = MaterialTheme.colorScheme.primary)
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             if (preferences.wordWrapMode == WordWrapMode.OFF) {
                 IconButton(onClick = onToggleWrap, modifier = Modifier.size(28.dp)) {
-                    FluentIcon(Icons.Outlined.WrapText, stringResource(if (sessionWrap) R.string.code_wrap_disable else R.string.code_wrap_enable),
+                    SharedIcon(Icons.Outlined.WrapText, stringResource(if (sessionWrap) R.string.code_wrap_disable else R.string.code_wrap_enable),
                         tint = if (sessionWrap) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
                 }
             }
             if (preferences.codePreviewEnabled && canPreviewCode(language)) {
                 IconButton(onClick = { CodePreviewActivity.open(context, language, originalCode) }, modifier = Modifier.size(28.dp)) {
-                    FluentIcon(Icons.Outlined.Visibility, stringResource(R.string.preview_code),
+                    SharedIcon(Icons.Outlined.Visibility, stringResource(R.string.preview_code),
                         tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
                 }
             }
             if (onDownload != null) {
                 IconButton(onClick = onDownload, modifier = Modifier.size(28.dp)) {
-                    FluentIcon(Icons.Outlined.Download, stringResource(R.string.file_download),
+                    SharedIcon(Icons.Outlined.Download, stringResource(R.string.file_download),
                         tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
                 }
             }
@@ -100,7 +100,7 @@ internal fun CodeBlockHeader(
                 if (result.isSuccess) copied = true
                 Toast.makeText(context, context.getString(if (result.isSuccess) R.string.code_copied else R.string.code_too_large_to_copy), Toast.LENGTH_SHORT).show()
             }, modifier = Modifier.size(28.dp)) {
-                FluentIcon(if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, stringResource(R.string.code_copy),
+                SharedIcon(if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, stringResource(R.string.code_copy),
                     tint = if (copied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
             }
         }

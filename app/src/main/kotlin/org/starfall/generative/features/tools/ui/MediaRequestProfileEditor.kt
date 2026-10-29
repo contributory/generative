@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
+import org.starfall.generative.shared.ui.text.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -42,22 +42,25 @@ import org.starfall.generative.shared.helpers.media.videoOptionFields
 import org.starfall.generative.shared.helpers.media.optionAt
 import org.starfall.generative.shared.helpers.media.selectMediaPath
 import org.starfall.generative.shared.helpers.media.withOption
+import org.starfall.generative.shared.helpers.media.suggestedImageOptions
+import org.starfall.generative.shared.helpers.media.suggestedVideoOptions
+import org.starfall.generative.shared.helpers.media.effectiveMediaDisabledParams
 import org.starfall.generative.shared.helpers.media.validateImageOptions
 import org.starfall.generative.shared.helpers.media.validateVideoOptions
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
+import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.media.MediaFinalResponse
 import org.starfall.generative.shared.model.media.MediaRequestProfile
 import org.starfall.generative.shared.model.media.MediaRequestStep
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.sheets.AppSheet
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
 
@@ -96,6 +99,7 @@ fun MediaRequestProfileEditor(
     var testPrompt by rememberSaveable(profile.id) { mutableStateOf(defaultTestPrompt) }
     var testOutput by remember { mutableStateOf<String?>(null) }
     var testResponse by remember { mutableStateOf<JsonElement?>(null) }
+    val testedResponsePaths = remember(profile.id) { mutableStateMapOf<Int, List<String>>() }
     var testing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     var testJob by remember { mutableStateOf<Job?>(null) }
@@ -135,6 +139,7 @@ fun MediaRequestProfileEditor(
         draft = draft.copy(chain = draft.chain.copy(
             steps = draft.chain.steps.filterIndexed { stepIndex, _ -> stepIndex != index }
         ))
+        testedResponsePaths.clear() // Indices have changed.
         closeStepEditor()
     }
     BackHandler(enabled = LocalScreenTransitionActive.current) { leave() }
@@ -149,18 +154,18 @@ fun MediaRequestProfileEditor(
                 },
                 navigationIcon = {
                     IconButton(onClick = ::leave) {
-                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     }
                 },
                 actions = {
                     if (!music) Box {
                         TextButton(onClick = { modeMenu = true }, enabled = profile.id != defaultMediaProfile(video).id) {
                             Text(stringResource(if (draft.mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom))
-                            FluentIcon(Icons.Default.ArrowDropDown, null)
+                            SharedIcon(Icons.Default.ArrowDropDown, null)
                         }
-                        AppDropdownMenu(modeMenu, { modeMenu = false }) {
+                        DropdownMenu(modeMenu, { modeMenu = false }) {
                             MediaGenerationMode.entries.forEach { mode ->
-                                RoundedDropdownMenuItem(
+                                DropdownMenuItem(
                                     text = { Text(stringResource(if (mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom)) },
                                     onClick = { draft = draft.copy(mode = mode); modeMenu = false }
                                 )
@@ -177,7 +182,7 @@ fun MediaRequestProfileEditor(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                SelectableOutlinedTextField(
+                OutlinedTextField(
                     value = draft.name,
                     onValueChange = { draft = draft.copy(name = it) },
                     label = { Text(stringResource(R.string.profile_name)) },
@@ -210,12 +215,25 @@ fun MediaRequestProfileEditor(
                             style = MaterialTheme.typography.bodySmall)
                     } else {
                         Spacer(Modifier.height(10.dp))
+                        Text(stringResource(R.string.media_default_params_tip),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (!video && org.starfall.generative.shared.helpers.media.isDalleImageModel(provider.type, config.modelId)) {
+                            Text(stringResource(R.string.media_default_base64_note),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         ToolSwitch(stringResource(R.string.image_tool_advanced_json), advancedOptions) { advancedOptions = it }
                     }
                 }
+                if (video && provider != null && config.modelId.isNotBlank()) {
+                    item { Text(stringResource(R.string.media_default_video_options),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                }
                 if (advancedOptions || provider == null || config.modelId.isBlank()) {
                     item {
-                        SelectableOutlinedTextField(
+                        OutlinedTextField(
                             value = optionsJson, onValueChange = { if (it.length <= 65536) optionsJson = it },
                             label = { Text(stringResource(R.string.image_tool_additional_body)) },
                             isError = parsedOptions == null, minLines = 8, maxLines = 18,
@@ -223,18 +241,24 @@ fun MediaRequestProfileEditor(
                         )
                     }
                 } else if (parsedOptions != null) {
+                    val suggested = if (video) suggestedVideoOptions(provider.type) else suggestedImageOptions(provider.type, config.modelId)
+                    val enabledParams = effectiveMediaDisabledParams(draft,
+                        if (video) "generate_video" else "generate_image", config.disabledParams)
                     items(if (video) videoOptionFields(provider, config.modelId) else imageOptionFields(provider, config.modelId), key = { it.path }) { field ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                ImageOptionInput(field, parsedOptions.optionAt(field.path)) { value ->
+                                ImageOptionInput(field, parsedOptions.optionAt(field.path) ?: suggested.optionAt(field.path)) { value ->
                                     val next = parsedOptions.withOption(field.path, value)
                                     optionsJson = next.toString()
                                 }
                             }
                             Switch(
-                                checked = field.path !in draft.disabledParams,
+                                checked = field.path !in enabledParams,
                                 onCheckedChange = { enabled ->
-                                    draft = draft.copy(disabledParams = if (enabled) draft.disabledParams - field.path else draft.disabledParams + field.path)
+                                    draft = draft.copy(
+                                        disabledParams = if (enabled) enabledParams - field.path else enabledParams + field.path,
+                                        paramsConfigured = true
+                                    )
                                 }
                             )
                         }
@@ -257,7 +281,7 @@ fun MediaRequestProfileEditor(
                             draft = draft.copy(chain = draft.chain.copy(steps = draft.chain.steps + MediaRequestStep()))
                             editingStep = draft.chain.steps.lastIndex
                         }) {
-                            FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
+                            SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
                         }
                     }
                     draft.chain.steps.forEachIndexed { index, step ->
@@ -281,7 +305,7 @@ fun MediaRequestProfileEditor(
                                         style = MaterialTheme.typography.bodySmall
                                     )
                                 }
-                                FluentIcon(Icons.Outlined.Edit, stringResource(R.string.common_edit))
+                                SharedIcon(Icons.Outlined.Edit, stringResource(R.string.common_edit))
                             }
                         }
                     }
@@ -299,7 +323,7 @@ fun MediaRequestProfileEditor(
                             )
                         }
                         IconButton(onClick = { editingFinalResponse = true }) {
-                            FluentIcon(Icons.Outlined.Edit, stringResource(R.string.common_edit))
+                            SharedIcon(Icons.Outlined.Edit, stringResource(R.string.common_edit))
                         }
                     }
                 }
@@ -318,7 +342,7 @@ fun MediaRequestProfileEditor(
 
     editingStep?.let { selectedIndex ->
         val index = selectedIndex.coerceIn(0, draft.chain.steps.lastIndex)
-        AppSheet(onDismissRequest = ::closeStepEditor, fixedHeightFraction = 0.92f) {
+        BottomSheet(onDismissRequest = ::closeStepEditor, fixedHeightFraction = 0.92f) {
             Column(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -333,11 +357,11 @@ fun MediaRequestProfileEditor(
                         enabled = draft.chain.steps.size > 1,
                         onClick = { removeStep(index) }
                     ) {
-                        FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove))
+                        SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove))
                     }
                 }
                 if (music || (provider != null && config.modelId.isNotBlank())) {
-                    SelectableOutlinedTextField(
+                    OutlinedTextField(
                         value = testPrompt,
                         onValueChange = { testPrompt = it },
                         label = { Text(stringResource(R.string.media_chain_test_prompt)) },
@@ -349,6 +373,7 @@ fun MediaRequestProfileEditor(
                             testJob?.cancel()
                             testOutput = null
                             testResponse = null
+                            testedResponsePaths.keys.filter { it >= index + 1 }.forEach { testedResponsePaths.remove(it) }
                             testing = true
                             val currentProvider = provider
                             val currentChain = draft.chain
@@ -363,6 +388,7 @@ fun MediaRequestProfileEditor(
                                     }
                                     testOutput = "HTTP ${result.statusCode}\n${result.body}"
                                     testResponse = runCatching { Json.parseToJsonElement(result.body) }.getOrNull()
+                                    testResponse?.let { testedResponsePaths[index + 1] = discoverMediaJsonPaths(it) }
                                 } catch (cancelled: kotlinx.coroutines.CancellationException) {
                                     throw cancelled
                                 } catch (error: Exception) {
@@ -419,7 +445,10 @@ fun MediaRequestProfileEditor(
                 MediaRequestStepEditor(
                     stepNumber = index + 1,
                     step = draft.chain.steps[index],
+                    previousSteps = draft.chain.steps.take(index),
+                    testedResponsePaths = testedResponsePaths,
                     onChange = { updated ->
+                        testedResponsePaths.keys.filter { it >= index + 1 }.forEach { testedResponsePaths.remove(it) }
                         draft = draft.copy(
                             chain = draft.chain.copy(
                                 steps = draft.chain.steps.mapIndexed { stepIndex, current ->
@@ -434,7 +463,7 @@ fun MediaRequestProfileEditor(
     }
 
     if (editingFinalResponse) {
-        AppSheet(onDismissRequest = { editingFinalResponse = false }, fixedHeightFraction = 0.72f) {
+        BottomSheet(onDismissRequest = { editingFinalResponse = false }, fixedHeightFraction = 0.72f) {
             Column(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)

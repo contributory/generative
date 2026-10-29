@@ -37,10 +37,10 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.agentSkillDocument
 import org.starfall.generative.shared.model.parseAgentSkillDocument
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.text.FullScreenEditorTextField
+import org.starfall.generative.shared.ui.text.EditorTextField
 
 /** Edit and exchange one complete SKILL.md, not three disconnected form fields. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,12 +77,12 @@ internal fun SkillEditor(
                 },
                 navigationIcon = {
                     IconButton(onClick = { onBack(draft()) }) {
-                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     }
                 },
                 actions = {
                     IconButton(enabled = parsed != null, onClick = { onBack(draft()) }) {
-                        FluentIcon(Icons.Outlined.Save, stringResource(R.string.agent_skill_save))
+                        SharedIcon(Icons.Outlined.Save, stringResource(R.string.agent_skill_save))
                     }
                     Spacer(Modifier.width(4.dp))
                 }
@@ -112,7 +112,7 @@ internal fun SkillEditor(
                 )
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
-            FullScreenEditorTextField(
+            EditorTextField(
                 value = document,
                 onValueChange = { document = it },
                 keyboardOptions = KeyboardOptions(

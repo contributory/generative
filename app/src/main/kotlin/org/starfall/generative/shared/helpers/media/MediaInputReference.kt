@@ -3,6 +3,9 @@ package org.starfall.generative.shared.helpers.media
 import org.starfall.generative.shared.model.media.MediaInputImage
 import org.starfall.generative.shared.model.media.MediaInputVideo
 import org.starfall.generative.shared.model.media.ImageOptionField
+import org.starfall.generative.shared.model.media.MediaRequestProfile
+import org.starfall.generative.shared.model.media.MediaGenerationMode
+import org.starfall.generative.shared.model.media.defaultMediaProfile
 import org.starfall.generative.shared.model.provider.ModelProvider
 
 import kotlinx.serialization.json.*
@@ -129,6 +132,40 @@ fun mediaToolOptionalParams(name: String, provider: ModelProvider? = null, model
     val options = if (provider == null || model.isBlank()) emptyList() else mediaToolOptionFields(name, provider, model)
         .map { MediaToolParameter(it.path, it.label, it) }
     return inputs + options
+}
+
+/** Keep only useful per-call controls available to the model by default.
+ * Other settings remain editable in the profile and are still applied as saved defaults.
+ */
+fun suggestedMediaDisabledParams(name: String): Set<String> {
+    val exposed = when (name) {
+        "generate_image" -> setOf("input_images", "n", "size", "quality", "parameters.sampleCount",
+            "parameters.aspectRatio", "generationConfig.imageConfig.aspectRatio", "generationConfig.imageConfig.imageSize")
+        "generate_video" -> setOf("input_image", "input_video", "seconds", "size",
+            "parameters.durationSeconds", "parameters.aspectRatio")
+        else -> emptySet()
+    }
+    // A profile can be reused with other models; keep the preset independent of the current provider.
+    val options = when (name) {
+        "generate_image" -> (
+            imageOptionFields(ModelApiType.OPENAI, "gpt-image-1") +
+            imageOptionFields(ModelApiType.GOOGLE, "imagen-4") +
+            imageOptionFields(ModelApiType.GOOGLE, "gemini-image")
+        ).map { it.path } + "input_images"
+        "generate_video" -> listOf("input_image", "input_image_url", "input_video", "input_video_url",
+            "seconds", "size", "parameters.durationSeconds", "parameters.aspectRatio", "parameters.resolution")
+        else -> emptyList()
+    }
+    return (options.toSet() - exposed)
+}
+
+fun effectiveMediaDisabledParams(
+    profile: MediaRequestProfile, name: String, legacyDisabled: Set<String> = emptySet()
+): Set<String> = when {
+    profile.mode != MediaGenerationMode.DEFAULT -> profile.disabledParams
+    profile.paramsConfigured || profile.disabledParams.isNotEmpty() -> profile.disabledParams
+    profile.id == defaultMediaProfile(name == "generate_video").id && legacyDisabled.isNotEmpty() -> legacyDisabled
+    else -> suggestedMediaDisabledParams(name)
 }
 
 private fun mediaToolOptionFields(name: String, provider: ModelProvider, model: String): List<ImageOptionField> = when (name) {

@@ -1,6 +1,5 @@
 package org.starfall.generative.shared.ui.layout
 
-import org.starfall.generative.shared.ui.menus.AppPopup as Popup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -12,12 +11,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import org.starfall.generative.shared.theme.modalScrimColor
 
 /**
@@ -31,21 +27,15 @@ fun ScreenCover(
     scrimColor: Color = modalScrimColor(Color.Black.copy(alpha = 0.60f)),
     content: @Composable BoxScope.() -> Unit
 ) {
-    Popup(
-        popupPositionProvider = FullWindowPopupPositionProvider,
+    Dialog(
         onDismissRequest = onDismiss,
-        properties = PopupProperties(
-            focusable = true,
-            dismissOnBackPress = true,
-            dismissOnClickOutside = false,
-            usePlatformDefaultWidth = false,
-            clippingEnabled = true
-        )
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(scrimColor)
+                .testTag("screen-cover")
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -56,14 +46,4 @@ fun ScreenCover(
             Box(modifier = modifier, content = content)
         }
     }
-}
-
-/** Pins the cover to the window rather than to the message or file tile that opened it. */
-internal object FullWindowPopupPositionProvider : PopupPositionProvider {
-    override fun calculatePosition(
-        anchorBounds: IntRect,
-        windowSize: IntSize,
-        layoutDirection: LayoutDirection,
-        popupContentSize: IntSize
-    ): IntOffset = IntOffset.Zero
 }

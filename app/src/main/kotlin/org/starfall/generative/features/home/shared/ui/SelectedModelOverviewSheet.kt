@@ -32,8 +32,8 @@ import org.starfall.generative.shared.model.language.ThinkingPassback
 import org.starfall.generative.shared.model.language.passbackMode
 import org.starfall.generative.shared.model.language.supportedReasoningEfforts
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.ui.sheets.AppSheet
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.model.ModelPickerCard
 import org.starfall.generative.shared.ui.model.drawMaximumEffortStreaks
@@ -93,7 +93,7 @@ internal fun SelectedModelOverviewSheet(
         previewTier.intValue == 6 && config.supportsThinking,
         screenBurst?.isRetracting == true
     )
-    AppSheet(onDismissRequest = {
+    BottomSheet(onDismissRequest = {
         screenBurst?.hide()
         onDismiss()
     }, containerColor = style.color, containerBrush = style.brush,
@@ -184,7 +184,7 @@ internal fun SelectedModelOverviewContent(
                     modifier = Modifier.weight(1f, fill = false)
                 )
                 Spacer(Modifier.width(6.dp))
-                FluentIcon(
+                SharedIcon(
                     Icons.Outlined.ArrowForward,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
@@ -205,7 +205,7 @@ internal fun SelectedModelOverviewContent(
                     contentPadding = PaddingValues(start = 12.dp, end = 16.dp),
                     modifier = Modifier.testTag("summarize-conversation-button")
                 ) {
-                    FluentIcon(
+                    SharedIcon(
                         Icons.Outlined.Summarize,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
@@ -268,7 +268,7 @@ internal fun SelectedModelOverviewContent(
                         style = MaterialTheme.typography.titleSmall,
                         modifier = Modifier.weight(1f)
                     )
-                    FluentIcon(
+                    SharedIcon(
                         imageVector = if (modelOptionsExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -292,7 +292,7 @@ internal fun SelectedModelOverviewContent(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                FluentIcon(
+                                SharedIcon(
                                     Icons.Outlined.Psychology,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,

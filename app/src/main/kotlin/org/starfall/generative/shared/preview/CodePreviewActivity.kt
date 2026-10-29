@@ -21,7 +21,7 @@ import org.starfall.generative.shared.storage.preferences.AppLocale
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.theme.GenerativeTheme
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.enableTransparentSystemBars
 import org.starfall.generative.shared.ui.layout.LocalItemTransparency
@@ -48,7 +48,8 @@ class CodePreviewActivity : ComponentActivity() {
                 themeMode = appearance.themeMode,
                 amoledMode = appearance.useAmoled,
                 dynamicColor = appearance.useDynamicColor,
-                colorSchemeName = appearance.colorSchemeName
+                colorSchemeName = appearance.colorSchemeName,
+                customPalette = appearance.customPalette
             ) {
                 CompositionLocalProvider(LocalItemTransparency provides appearance.itemTransparency) {
                     var webView by remember { mutableStateOf<WebView?>(null) }
@@ -57,11 +58,11 @@ class CodePreviewActivity : ComponentActivity() {
                         TopAppBar(
                             colors = edgeToEdgeTopAppBarColors(),
                 title = { Text(stringResource(R.string.code_preview_title)) }, navigationIcon = {
-                            IconButton(onClick = { finish() }) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) }
+                            IconButton(onClick = { finish() }) { SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) }
                         }, actions = {
                             if (document != null) IconButton(onClick = {
                                 webView?.loadDataWithBaseURL(PREVIEW_ORIGIN, document, "text/html", "UTF-8", null)
-                            }) { FluentIcon(Icons.Outlined.Refresh, stringResource(R.string.code_preview_reload)) }
+                            }) { SharedIcon(Icons.Outlined.Refresh, stringResource(R.string.code_preview_reload)) }
                         })
                     }) { padding ->
                         if (document == null) Text(stringResource(R.string.code_preview_unavailable), Modifier.padding(padding))

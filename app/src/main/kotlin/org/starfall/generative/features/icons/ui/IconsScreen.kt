@@ -12,9 +12,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.saveable.rememberSaveable
-import org.starfall.generative.shared.ui.lists.AppListItem
-import org.starfall.generative.shared.ui.lists.EmptyListContent
+import org.starfall.generative.shared.ui.lists.ItemCard
+import org.starfall.generative.shared.ui.lists.EmptyState
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import org.starfall.generative.shared.ui.lists.ListViewToggle
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +24,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.focus.FocusRequester
@@ -43,9 +46,10 @@ import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.icons.model.StoredIcon
-import org.starfall.generative.shared.ui.GenerativeLinearWavyProgressIndicator
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.LinearWavyProgressIndicator
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
@@ -165,7 +169,7 @@ fun IconsScreen(onBack: () -> Unit) {
                                     },
                                 singleLine = true,
                                 placeholder = { Text(stringResource(R.string.icon_cache_search)) },
-                                leadingIcon = { Icon(FluentUi.Regular.Search, contentDescription = null) },
+                                leadingIcon = { SharedIcon(FluentUi.Regular.Search, contentDescription = null) },
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = Color.Transparent,
                                     unfocusedContainerColor = Color.Transparent,
@@ -191,20 +195,20 @@ fun IconsScreen(onBack: () -> Unit) {
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     }
                 },
                 actions = {
                     if (!searchExpanded) {
                         ListViewToggle(isGrid = isGrid, onToggle = { isGrid = !isGrid })
                         IconButton(onClick = { searchExpanded = true }) {
-                            Icon(FluentUi.Regular.Search, contentDescription = stringResource(R.string.icon_cache_search))
+                            SharedIcon(FluentUi.Regular.Search, contentDescription = stringResource(R.string.icon_cache_search))
                         }
                     }
                     IconButton(enabled = !busy, onClick = {
                         picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     }) {
-                        Icon(FluentUi.Regular.ImageAdd, contentDescription = stringResource(R.string.common_add))
+                        SharedIcon(FluentUi.Regular.ImageAdd, contentDescription = stringResource(R.string.common_add))
                     }
                 }
             )
@@ -214,9 +218,9 @@ fun IconsScreen(onBack: () -> Unit) {
             Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (busy) GenerativeLinearWavyProgressIndicator(Modifier.fillMaxWidth())
+            if (busy) LinearWavyProgressIndicator(Modifier.fillMaxWidth())
             if (visible.isEmpty()) {
-                EmptyListContent(
+                EmptyState(
                     Icons.Outlined.Image,
                     stringResource(if (query.isBlank()) R.string.icon_cache_empty else R.string.icon_cache_no_results),
                     Modifier.weight(1f)
@@ -230,7 +234,7 @@ fun IconsScreen(onBack: () -> Unit) {
                         contentPadding = PaddingValues(bottom = padding.calculateBottomPadding() + 16.dp)
                     ) {
                         items(visible, key = { it.image }) { entry ->
-                            AppListItem(
+                            ItemCard(
                                 isGrid = gridMode,
                                 onClick = { if (!busy) edit(entry) },
                                 icon = { StoredIconPreview(entry.image, Modifier.size(42.dp)) },
@@ -305,7 +309,7 @@ fun IconsScreen(onBack: () -> Unit) {
                                             busy = false
                                         }
                                     }
-                                }) { Icon(FluentUi.Regular.Dismiss, stringResource(R.string.common_remove)) }
+                                }) { SharedIcon(FluentUi.Regular.Dismiss, stringResource(R.string.common_remove)) }
                             }
                         }
                     }
@@ -320,17 +324,22 @@ fun IconsScreen(onBack: () -> Unit) {
                                     modifier = Modifier.weight(1f),
                                     enabled = !busy,
                                     label = { Text(stringResource(R.string.icon_cache_regex)) },
+                                    keyboardOptions = KeyboardOptions(
+                                        capitalization = KeyboardCapitalization.None,
+                                        autoCorrectEnabled = false,
+                                        keyboardType = KeyboardType.Password
+                                    ),
                                     isError = invalid,
                                     supportingText = if (invalid) ({ Text(stringResource(R.string.icon_cache_invalid_regex)) }) else null
                                 )
                                 IconButton(enabled = !busy, onClick = {
                                     patterns = patterns.filterIndexed { i, _ -> i != index }
-                                }) { Icon(FluentUi.Regular.Dismiss, stringResource(R.string.common_delete)) }
+                                }) { SharedIcon(FluentUi.Regular.Dismiss, stringResource(R.string.common_delete)) }
                             }
                         }
                     }
                     TextButton(enabled = !busy, onClick = { patterns = patterns + "" }) {
-                        Icon(FluentUi.Regular.Add, contentDescription = null)
+                        SharedIcon(FluentUi.Regular.Add, contentDescription = null)
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.icon_cache_add_match))
                     }
@@ -372,7 +381,7 @@ private fun StoredIconPreview(
                 contentScale = ContentScale.Fit)
         } else {
             Box(contentAlignment = Alignment.Center) {
-                Icon(FluentUi.Regular.ImageOff, null,
+                SharedIcon(FluentUi.Regular.ImageOff, null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

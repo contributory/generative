@@ -32,7 +32,7 @@ internal class VideoGeneration(
         validateVideoOptions(provider, model, options)
         val configuredBase = providerBase(provider).removeSuffix("/videos")
         val videos = provider.config.customEndpoints["video"]?.takeIf { it.isNotBlank() }?.trimEnd('/') ?: "$configuredBase/videos"
-        var job = http.json(http.request(videos, provider).post(openAiVideoRequest(model, prompt, image, video)).build())
+        var job = http.json(http.request(videos, provider).post(openAiVideoRequest(model, prompt, image, video, options)).build())
         val id = videoJobId(job)
         validateVideoJobId(id)
         if (!isTerminalVideoJob(job)) {

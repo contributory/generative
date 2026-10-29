@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupPositionProvider
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.AgentSkill
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 
 @Composable
@@ -71,14 +71,14 @@ internal fun AgentSkillsMenu(
                         onClick = openSettings,
                         modifier = Modifier.testTag("agent-skills-manage")
                     ) {
-                        FluentIcon(
+                        SharedIcon(
                             Icons.Outlined.Settings,
                             stringResource(R.string.agent_skills_manage)
                         )
                     }
                 }
                 IconButton(onClick = onDismiss) {
-                    FluentIcon(Icons.Default.Close, stringResource(R.string.common_close))
+                    SharedIcon(Icons.Default.Close, stringResource(R.string.common_close))
                 }
             }
             when {

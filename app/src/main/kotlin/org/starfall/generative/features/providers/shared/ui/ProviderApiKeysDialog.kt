@@ -1,6 +1,6 @@
 package org.starfall.generative.features.providers.shared.ui
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import org.starfall.generative.features.providers.shared.model.maskedProviderApiKey
 
 import org.starfall.generative.features.providers.shared.model.ProviderApiKeysState
@@ -31,11 +31,11 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.features.providers.shared.logic.isEmpty
 import org.starfall.generative.shared.ui.text.ApiKeyMask
-import org.starfall.generative.shared.ui.dialogs.AppDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.Dialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
@@ -59,7 +59,7 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
     val backLabel = stringResource(R.string.common_back)
     val closeLabel = stringResource(R.string.common_close)
     val saveKeyLabel = stringResource(R.string.provider_save_api_key)
-    AppDialog(
+    Dialog(
         onDismissRequest = { if (editing) editing = false else onDismiss() },
         title = {
             Text(stringResource(if (editing) R.string.provider_edit_api_key else R.string.provider_manage_api_keys),
@@ -68,13 +68,13 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
         content = {
             if (editing) Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SelectableOutlinedTextField(label, { label = it }, label = { Text(stringResource(R.string.common_label)) },
+                OutlinedTextField(label, { label = it }, label = { Text(stringResource(R.string.common_label)) },
                     singleLine = true, modifier = Modifier.fillMaxWidth().testTag("provider_api_key_label"))
-                SelectableOutlinedTextField(value, { value = it; error = null }, label = { Text(stringResource(R.string.provider_api_key_value)) },
+                OutlinedTextField(value, { value = it; error = null }, label = { Text(stringResource(R.string.provider_api_key_value)) },
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
                     visualTransformation = if (revealed) VisualTransformation.None else ApiKeyMask,
                     trailingIcon = { IconButton(onClick = { revealed = !revealed }) {
-                        FluentIcon(if (revealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                        SharedIcon(if (revealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
                             stringResource(if (revealed) R.string.provider_hide_api_key else R.string.provider_show_api_key))
                     } }, maxLines = 3, isError = error != null, modifier = Modifier.fillMaxWidth().testTag("provider_managed_api_key"))
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
@@ -121,15 +121,15 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                                     if (selected) Text(stringResource(R.string.common_selected), style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 }
-                                if (selected) FluentIcon(Icons.Default.Check, stringResource(R.string.common_selected))
+                                if (selected) SharedIcon(Icons.Default.Check, stringResource(R.string.common_selected))
                                 Box {
-                                    IconButton(onClick = { menu = true }) { FluentIcon(Icons.Default.MoreVert,
+                                    IconButton(onClick = { menu = true }) { SharedIcon(Icons.Default.MoreVert,
                                         stringResource(R.string.provider_api_key_actions, entry.label.ifBlank { maskedProviderApiKey(entry.value) })) }
                                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                                        RoundedDropdownMenuItem(text = { Text(stringResource(R.string.common_edit)) },
-                                            leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) }, onClick = { menu = false; edit(entry.id) })
-                                        RoundedDropdownMenuItem(text = { Text(stringResource(R.string.common_delete)) },
-                                            leadingIcon = { FluentIcon(Icons.Outlined.Delete, null) }, onClick = { menu = false; state.delete(entry.id, identity) })
+                                        DropdownMenuItem(text = { Text(stringResource(R.string.common_edit)) },
+                                            leadingIcon = { SharedIcon(Icons.Outlined.Edit, null) }, onClick = { menu = false; edit(entry.id) })
+                                        DropdownMenuItem(text = { Text(stringResource(R.string.common_delete)) },
+                                            leadingIcon = { SharedIcon(Icons.Outlined.Delete, null) }, onClick = { menu = false; state.delete(entry.id, identity) })
                                     }
                                 }
                             }

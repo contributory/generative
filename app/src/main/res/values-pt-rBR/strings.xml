@@ -521,7 +521,6 @@
     <string name="code_block_include_undefined_hint">O modo de exibição dos blocos longos também vale para blocos de código sem indicação de linguagem.</string>
     <string name="code_block_extend">Expandir</string>
     <string name="code_block_close">Fechar o bloco de código</string>
-    <string name="sheet_resize">Redimensionar a folha inferior</string>
     <string name="oauth_opening_browser">Abrindo o login…</string>
     <string name="oauth_browser_unavailable">Instale o Chrome ou um navegador com suporte a abas personalizadas para entrar.</string>
     <string name="provider_multiple_accounts">Várias contas</string>
@@ -1100,4 +1099,9 @@
     <string name="settings_item_transparency">Transparência dos componentes</string>
     <string name="settings_item_transparency_description">Ajuste a transparência de cartões, botões e itens. No AMOLED, os itens ficam transparentes e contornados.</string>
     <string name="settings_item_transparency_reset">Restaurar transparência dos componentes</string>
+    <string name="customization_input_title">Área de entrada</string>
+    <string name="customization_input_transparency">Transparência do fundo</string>
+    <string name="customization_input_blur">Desfoque do fundo</string>
+    <string name="customization_input_blur_description">Desfoca a conversa atrás da área de entrada no Android 12 ou posterior. O texto e os botões permanecem nítidos.</string>
+    <string name="settings_website">Site</string>
 </resources>

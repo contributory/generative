@@ -41,7 +41,7 @@ import org.starfall.generative.features.machines.shared.ui.RemoteSection
 import org.starfall.generative.shared.model.GCloudOAuthClient
 import org.starfall.generative.shared.model.GoogleOAuthClientType
 import org.starfall.generative.shared.model.RemoteMachineState
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 
@@ -109,13 +109,13 @@ internal fun RemoteMachineSettings(
                 description = stringResource(R.string.remote_machine_oauth_clients_help),
                 actions = {
                     IconButton(onClick = { oauthLauncher.launch(arrayOf("application/json", "text/json", "*/*")) }) {
-                        FluentIcon(
+                        SharedIcon(
                             Icons.Outlined.UploadFile,
                             stringResource(R.string.remote_machine_import_oauth_json)
                         )
                     }
                     IconButton(onClick = { clientEditor = viewModel.newOAuthClient() }) {
-                        FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
+                        SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
                     }
                 }
             ) {
@@ -138,10 +138,10 @@ internal fun RemoteMachineSettings(
                             leading = { RemoteIconTile(Icons.Outlined.Key) },
                             trailing = {
                                 IconButton(onClick = { clientEditor = client }) {
-                                    FluentIcon(Icons.Outlined.Edit, stringResource(R.string.common_edit))
+                                    SharedIcon(Icons.Outlined.Edit, stringResource(R.string.common_edit))
                                 }
                                 IconButton(onClick = { viewModel.deleteOAuthClient(client.id) }) {
-                                    FluentIcon(
+                                    SharedIcon(
                                         Icons.Outlined.Delete,
                                         stringResource(R.string.common_delete),
                                         tint = MaterialTheme.colorScheme.error
@@ -159,7 +159,7 @@ internal fun RemoteMachineSettings(
                     IconButton(onClick = {
                         identityLauncher.launch(arrayOf("application/octet-stream", "text/plain", "*/*"))
                     }) {
-                        FluentIcon(
+                        SharedIcon(
                             Icons.Outlined.UploadFile,
                             stringResource(R.string.remote_machine_upload_ssh_key)
                         )
@@ -199,10 +199,10 @@ internal fun RemoteMachineSettings(
                                     publicKeyTarget = key.id
                                     publicKeyLauncher.launch(arrayOf("text/plain", "application/octet-stream", "*/*"))
                                 }) {
-                                    FluentIcon(Icons.Outlined.UploadFile, stringResource(R.string.remote_machine_upload_public_key))
+                                    SharedIcon(Icons.Outlined.UploadFile, stringResource(R.string.remote_machine_upload_public_key))
                                 }
                                 IconButton(enabled = users == 0, onClick = { viewModel.deleteIdentityKey(key.id) }) {
-                                    FluentIcon(
+                                    SharedIcon(
                                         Icons.Outlined.Delete,
                                         stringResource(R.string.common_delete),
                                         tint = if (users == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant

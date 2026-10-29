@@ -13,9 +13,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -35,13 +38,15 @@ import org.starfall.generative.shared.model.generation.hasToolCalls
 import org.starfall.generative.shared.model.language.DEFAULT_CONTEXT_WINDOW_TOKENS
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.sendsThinkingBack
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.TemporaryChatIcon
-import org.starfall.generative.shared.ui.FeaturesLogoImage
-import org.starfall.generative.shared.ui.GenerativeLinearWavyProgressIndicator
+import org.starfall.generative.shared.ui.FeaturesLogo
+import org.starfall.generative.shared.ui.LinearWavyProgressIndicator
 import org.starfall.generative.features.home.chat.model.ContextWindowStatus
-import org.starfall.generative.shared.ui.background.backgroundPhotoAlpha
+/** Themed scrim over scrolling content: 60% at the status bar, fully clear at the bottom. */
+internal fun chatAppBarOverlayAlpha(fractionFromTop: Float): Float =
+    0.6f * (1f - fractionFromTop.coerceIn(0f, 1f))
 
 @Composable
 fun ChatAppBar(
@@ -52,7 +57,6 @@ fun ChatAppBar(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     featuresLogoImage: String? = null,
-    backgroundTransparency: Float = 0.5f,
     isTemporaryChat: Boolean = false,
     onOpenTemporaryChat: () -> Unit = onNewChat,
     onOpenModelPicker: () -> Unit = {},
@@ -67,13 +71,16 @@ fun ChatAppBar(
 
     Box(
         modifier = modifier
+            // The scrim must be above the scrolling content, but below these app-bar controls.
+            .zIndex(1f)
             .testTag("chat-app-bar")
             .fillMaxWidth()
             .height(72.dp + statusBarHeight)
-            // Fade by percentage of Chat's configured background opacity, not absolute opacity.
+            // Use the actual themed chat background: light in light theme, dark in dark theme.
+            // Fade only this overlay, never individual messages, text, or media blocks.
             .background(Brush.verticalGradient(
-                0f to MaterialTheme.colorScheme.surface.copy(alpha = backgroundPhotoAlpha(backgroundTransparency)),
-                1f to MaterialTheme.colorScheme.surface.copy(alpha = 0f)
+                0f to MaterialTheme.colorScheme.background.copy(alpha = chatAppBarOverlayAlpha(0f)),
+                1f to MaterialTheme.colorScheme.background.copy(alpha = chatAppBarOverlayAlpha(1f))
             ))
             .padding(top = statusBarHeight)
             .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -84,7 +91,7 @@ fun ChatAppBar(
             onClick = onOpenDrawer,
             modifier = Modifier.align(Alignment.CenterStart).size(44.dp)
         ) {
-            FluentIcon(
+            SharedIcon(
                 imageVector = Icons.Default.Menu,
                 contentDescription = stringResource(R.string.chat_open_side_navigation),
                 tint = MaterialTheme.colorScheme.onSurface,
@@ -136,7 +143,7 @@ fun ChatAppBar(
                 if (showTerminalButton) {
                     Box(Modifier.size(44.dp)) {
                         IconButton(onClick = onOpenTerminal, modifier = Modifier.fillMaxSize()) {
-                            FluentIcon(
+                            SharedIcon(
                                 imageVector = Icons.Outlined.Terminal,
                                 contentDescription = stringResource(R.string.remote_machine_open_terminal),
                                 tint = MaterialTheme.colorScheme.onSurface,
@@ -166,7 +173,7 @@ fun ChatAppBar(
                             modifier = Modifier.size(24.dp)
                         )
                     } else {
-                        FluentIcon(
+                        SharedIcon(
                             imageVector = Icons.Outlined.Compose,
                             contentDescription = stringResource(R.string.sidebar_new_chat),
                             tint = MaterialTheme.colorScheme.onSurface,
@@ -175,8 +182,10 @@ fun ChatAppBar(
                     }
                 }
 
-                IconButton(onClick = onOpenSettings, modifier = Modifier.size(44.dp)) {
-                    FeaturesLogoImage(featuresLogoImage, Modifier.size(32.dp).clip(CircleShape))
+                val appMenuLabel = stringResource(R.string.chat_open_app_menu)
+                IconButton(onClick = onOpenSettings, modifier = Modifier.size(44.dp)
+                    .semantics { contentDescription = appMenuLabel }) {
+                    FeaturesLogo(featuresLogoImage, Modifier.size(32.dp).clip(CircleShape))
                 }
             }
         }
@@ -239,7 +248,7 @@ internal fun ContextWindowBar(
                 color = detailColor
             )
         }
-        GenerativeLinearWavyProgressIndicator(
+        LinearWavyProgressIndicator(
             progress = { (status.usedTokens.toFloat() / status.limit.coerceAtLeast(1)).coerceIn(0f, 1f) },
             modifier = Modifier.fillMaxWidth(),
             color = color,

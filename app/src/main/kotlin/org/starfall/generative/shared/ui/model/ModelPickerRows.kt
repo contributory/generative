@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.sp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.theme.LocalAmoledMode
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 
 /** Muted divider between the folder sections in the shared picker list. */
@@ -96,7 +96,7 @@ internal fun ModelPickerProviderRow(
             Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            FluentIcon(
+            SharedIcon(
                 if (collapsed) Icons.Default.KeyboardArrowRight else Icons.Default.KeyboardArrowDown,
                 contentDescription = stringResource(if (collapsed) R.string.expand_group else R.string.collapse_group, provider.name),
                 modifier = Modifier.size(18.dp)
@@ -118,7 +118,7 @@ internal fun ModelPickerProviderRow(
                  fontWeight = FontWeight.Medium
              )
              if (hasSelectedModel) {
-                 FluentIcon(
+                 SharedIcon(
                      Icons.Filled.Check,
                      contentDescription = null,
                      tint = MaterialTheme.colorScheme.primary,

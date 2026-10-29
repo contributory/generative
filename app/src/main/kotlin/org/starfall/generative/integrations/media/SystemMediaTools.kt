@@ -70,10 +70,11 @@ class SystemMediaTools(private val http: ToolHttp) {
                         else googleImageEditRequest(model, prompt, imageOptions, referenceImages)
                     http.post(provider.config.customEndpoints["generate"]?.takeIf { it.isNotBlank() }?.replace("{model}", model)?.replace("{method}", method) ?: "$root/models/$model:$method", body, provider)
                 } else {
-                    require(videoOptions.isEmpty() && inputImageUrl == null) { "Google video generation uses attached images and provider defaults." }
+                    require(inputImageUrl == null) { "Google video generation needs an attached source image, not an image URL." }
+                    validateVideoOptions(provider, model, videoOptions)
                     require(image == null || (video == null && inputVideoUrl == null)) { "Google video generation accepts either a source image or a source video, not both." }
                     require(video == null || inputVideoUrl == null) { "Use one source video: an attachment or input_video_url." }
-                    var job = http.post(provider.config.customEndpoints["generate"]?.takeIf { it.isNotBlank() }?.replace("{model}", model)?.replace("{method}", "predictLongRunning") ?: "$root/models/$model:predictLongRunning", googleVideoRequest(prompt, image, video, inputVideoUrl), provider)
+                    var job = http.post(provider.config.customEndpoints["generate"]?.takeIf { it.isNotBlank() }?.replace("{model}", model)?.replace("{method}", "predictLongRunning") ?: "$root/models/$model:predictLongRunning", googleVideoRequest(prompt, image, video, inputVideoUrl, videoOptions), provider)
                     val name = googleVideoOperationName(job)
                     job = withTimeout(15*60*1000L) {
                         var state = job

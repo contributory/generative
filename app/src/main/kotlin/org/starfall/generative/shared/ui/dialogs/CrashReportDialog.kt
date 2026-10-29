@@ -3,8 +3,9 @@ package org.starfall.generative.shared.ui.dialogs
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
+import org.starfall.generative.shared.ui.ErrorContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -12,14 +13,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.files.CrashReport
 
 @Composable
 internal fun CrashReportDialog(report: CrashReport, onCreateIssue: () -> Unit, onSaveLog: () -> Unit, onDismiss: () -> Unit) {
-    AppDialog(
+    val fullError = "${report.cause}\n\n${report.stackTrace}"
+    Dialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.crash_report_title)) },
         content = {
@@ -27,13 +28,12 @@ internal fun CrashReportDialog(report: CrashReport, onCreateIssue: () -> Unit, o
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.crash_report_description))
                 Text("${report.appVersion} · ${report.androidVersion}", style = MaterialTheme.typography.bodySmall)
-                SelectionContainer {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(report.cause, style = MaterialTheme.typography.bodyMedium)
-                        Text(report.stackTrace, style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace)
-                    }
-                }
+                ErrorContainer(
+                    message = fullError,
+                    title = stringResource(R.string.common_error),
+                    initiallyExpanded = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         buttons = {

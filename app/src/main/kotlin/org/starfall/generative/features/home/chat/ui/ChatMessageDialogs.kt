@@ -11,7 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.StoredMessage
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
 
 /** Confirms that a response is regenerated, which removes every later message. */
 @Composable

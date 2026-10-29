@@ -57,7 +57,7 @@ class ChatMessageEditVersionTest {
         assertEquals("New answer", updated.content)
         assertEquals(initial.toolActivity.map { it.id }, updated.toolActivity.map { it.id })
         assertEquals(initial.files, updated.files)
-        assertEquals("[ActionTurnsBlock1][ActionTurnsBlock2][ActionTurnsBlock3][MediaBlock4][MediaBlock5]New answer",
+        assertEquals("[ActionsBlock1][ActionsBlock2][ActionsBlock3][MediaBlock4][MediaBlock5]New answer",
             assistantCopyText(StoredMessage("reply", ChatRole.MODEL, listOf(updated))))
     }
 
@@ -67,12 +67,12 @@ class ChatMessageEditVersionTest {
             ToolActivity("b", "search", contentOffset = 6)
         ))
         val message = StoredMessage("reply", ChatRole.MODEL, listOf(original))
-        assertEquals("[ActionTurnsBlock1]first [ActionTurnsBlock2]second", assistantCopyText(message))
+        assertEquals("[ActionsBlock1]first [ActionsBlock2]second", assistantCopyText(message))
         val edited = editedMessageVersion(message,
-            "[ActionTurnsBlock2]front [ActionTurnsBlock1]back", emptyList(), "2")
+            "[ActionsBlock2]front [ActionsBlock1]back", emptyList(), "2")
         assertEquals("front back", edited.content)
         assertEquals(listOf("a", "b"), edited.toolActivity.map { it.id })
-        assertEquals("[ActionTurnsBlock1]front [ActionTurnsBlock2]back",
+        assertEquals("[ActionsBlock1]front [ActionsBlock2]back",
             assistantCopyText(message.copy(versions = listOf(edited))))
     }
 
@@ -82,10 +82,10 @@ class ChatMessageEditVersionTest {
         ), files = listOf("attachment.png"))
         val message = StoredMessage("reply", ChatRole.MODEL, listOf(original))
         val edited = editedMessageVersion(message,
-            "[MediaBlock2]before [ActionTurnsBlock1]after [MediaBlock3]",
+            "[MediaBlock2]before [ActionsBlock1]after [MediaBlock3]",
             original.files, "3")
         assertEquals("before after ", edited.content)
-        assertEquals("[MediaBlock1]before [ActionTurnsBlock2]after [MediaBlock3]",
+        assertEquals("[MediaBlock1]before [ActionsBlock2]after [MediaBlock3]",
             assistantCopyText(message.copy(versions = listOf(edited))))
         assertEquals(listOf("tool-file:photo.png"), edited.toolActivity.single().files)
     }
@@ -106,10 +106,10 @@ class ChatMessageEditVersionTest {
             ToolActivity("image", "generate_image", files = listOf("tool-file:image.png"))
         ))
         val source = StoredMessage("reply", ChatRole.MODEL, listOf(version))
-        assertEquals("[ActionTurnsBlock1][MediaBlock2]", assistantCopyText(source))
-        val moved = editedMessageVersion(source, "[MediaBlock2][ActionTurnsBlock1]", emptyList(), "3")
+        assertEquals("[ActionsBlock1][MediaBlock2]", assistantCopyText(source))
+        val moved = editedMessageVersion(source, "[MediaBlock2][ActionsBlock1]", emptyList(), "3")
         assertEquals("", moved.content)
-        assertEquals("[MediaBlock1][ActionTurnsBlock2]",
+        assertEquals("[MediaBlock1][ActionsBlock2]",
             assistantCopyText(source.copy(versions = listOf(moved))))
     }
 
@@ -121,7 +121,7 @@ class ChatMessageEditVersionTest {
         val withoutMedia = deleteAssistantBlock(original, 2)
         assertEquals(listOf("tool-file:trace.json"), withoutMedia.toolActivity.single().files)
         assertEquals("answer", withoutMedia.content)
-        assertEquals("[ActionTurnsBlock1]answer",
+        assertEquals("[ActionsBlock1]answer",
             assistantCopyText(StoredMessage("reply", ChatRole.MODEL, listOf(withoutMedia))))
         val withoutActions = deleteAssistantBlock(original, 1)
         assertEquals(emptyList<ToolActivity>(), withoutActions.toolActivity)
@@ -147,6 +147,25 @@ class ChatMessageEditVersionTest {
         val removed = deleteAssistantBlock(message, 1)
         assertNull(removed.reasoningContent)
         assertEquals("answer", removed.content)
+    }
+
+    @Test fun errorMarkerCanBeEditedAndDeletedWithoutRemovingActions() {
+        val original = MessageVersion(
+            content = "partial",
+            toolActivity = listOf(ToolActivity("search", "search_documents")),
+            generationError = "Connection failed"
+        )
+        val source = StoredMessage("reply", ChatRole.MODEL, listOf(original))
+        assertEquals("[ActionsBlock1]partial[ErrorBlock]", assistantCopyText(source))
+        val edited = editedMessageVersion(source, "[ActionsBlock1]Fixed [ErrorBlock]", emptyList(), "2")
+        assertEquals("Fixed ", edited.content)
+        assertNull(edited.generationError)
+        assertEquals(original.toolActivity.map { it.id }, edited.toolActivity.map { it.id })
+        assertEquals("[ActionsBlock1]Fixed ", assistantCopyText(source.copy(versions = listOf(edited))))
+        val deleted = deleteAssistantBlock(original, 2)
+        assertNull(deleted.generationError)
+        assertEquals(original.toolActivity, deleted.toolActivity)
+        assertEquals("[ActionsBlock1]partial", assistantCopyText(source.copy(versions = listOf(deleted))))
     }
 
     @Test fun editingUserMessageKeepsNormalUserVersionSemantics() {

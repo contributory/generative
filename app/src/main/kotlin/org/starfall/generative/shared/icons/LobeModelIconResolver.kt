@@ -16,15 +16,14 @@ internal object LobeModelIconResolver {
         Rule("gemini", Regex("gemini", RegexOption.IGNORE_CASE)),
         Rule("gemma", Regex("gemma", RegexOption.IGNORE_CASE)),
         Rule("meta", Regex("(?:^|/)llama(?:[-./]|$)", RegexOption.IGNORE_CASE)),
-        Rule("meta", Regex("(?:^|/)muse-spark(?:[-./]|$)", RegexOption.IGNORE_CASE)),
-        Rule("deepseek", Regex("deepseek", RegexOption.IGNORE_CASE)),
+        Rule("meta", Regex("(?:^|/)muse(?:[-./]|$)", RegexOption.IGNORE_CASE)),
         Rule("qwen", Regex("(?:^|/)(?:qwen|qwq)(?:[0-9]|[-./]|$)", RegexOption.IGNORE_CASE)),
-        Rule("mistral", Regex("(?:mistral|mixtral|codestral)", RegexOption.IGNORE_CASE)),
+        Rule("mistral", Regex("(?:mistral|mixtral|codestral|devstral)", RegexOption.IGNORE_CASE)),
         Rule("perplexity", Regex("(?:^|/)(?:sonar|pplx)(?:[-./]|$)", RegexOption.IGNORE_CASE)),
         Rule("moonshot", Regex("(?:^|/)(?:kimi|moonshot)(?:[-./]|$)", RegexOption.IGNORE_CASE)),
         Rule("grok", Regex("(?:^|/)grok(?:[-./]|$)", RegexOption.IGNORE_CASE)),
         Rule("cohere", Regex("(?:^|/)command(?:[-./]|$)", RegexOption.IGNORE_CASE)),
-        Rule("microsoft", Regex("(?:^|/)phi(?:[-./]|$)", RegexOption.IGNORE_CASE))
+        Rule("microsoft", Regex("(?:^|/)mai|phi(?:[-./]|$)", RegexOption.IGNORE_CASE))
     )
 
     fun resolve(modelId: String): String? {

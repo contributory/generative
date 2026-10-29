@@ -2,7 +2,7 @@ package org.starfall.generative.features.tools.ui
 
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
+import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -38,14 +38,14 @@ import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.media.MediaGenerationMode
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.model.DefaultModelSelector
 import org.starfall.generative.shared.ui.model.ModelPickerSheet
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,7 +79,7 @@ fun ToolsEditor(
                 title = { Text(stringResource(R.string.common_feature_tools)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     }
                 }
             )
@@ -150,7 +150,7 @@ fun ToolsEditor(
                             onExpandedChange = { if (hasModel) apiTypeExpanded = !apiTypeExpanded },
                             modifier = Modifier.weight(1f)
                         ) {
-                            SelectableOutlinedTextField(
+                            OutlinedTextField(
                                 value = selectedProfile.name,
                                 onValueChange = {},
                                 readOnly = true,
@@ -161,7 +161,7 @@ fun ToolsEditor(
                                     ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = hasModel
                                 ).fillMaxWidth().testTag("media_profile_picker_$name")
                             )
-                            AppExposedDropdownMenu(apiTypeExpanded && hasModel, { apiTypeExpanded = false }) {
+                            ExposedDropdownMenu(apiTypeExpanded && hasModel, { apiTypeExpanded = false }) {
                                 profiles.values.forEach { profile ->
                                     DropdownMenuItem(
                                         text = { Text(profile.name + " · " +
@@ -191,7 +191,7 @@ fun ToolsEditor(
                             onClick = { openMediaSettings(name) },
                             modifier = Modifier.padding(start = 6.dp).testTag("media_profile_library_$name")
                         ) {
-                            FluentIcon(Icons.Outlined.FormatListBulleted,
+                            SharedIcon(Icons.Outlined.FormatListBulleted,
                                 stringResource(if (image) R.string.media_image_gen_profiles else R.string.media_video_gen_profiles))
                         }
                     }

@@ -26,7 +26,7 @@ import org.starfall.generative.shared.model.REMOTE_TOOL_UPDATE_IP
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.remoteMachineToolNames
 import org.starfall.generative.shared.ui.ToolSwitch
-import org.starfall.generative.shared.ui.dialogs.AppDialog
+import org.starfall.generative.shared.ui.dialogs.Dialog
 
 /** Shared per-machine tool editor used by the drawer and the Remote Machines context menu. */
 @Composable
@@ -43,7 +43,7 @@ fun MachineToolsDialog(
         )
     }
 
-    AppDialog(
+    Dialog(
         onDismissRequest = onDismiss,
         title = { MachineDialogTitle(stringResource(R.string.remote_machine_tools_section), machine) },
         content = {

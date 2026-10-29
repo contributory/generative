@@ -17,6 +17,8 @@ import org.starfall.generative.shared.helpers.media.mediaInputVideoArgument
 import org.starfall.generative.shared.helpers.media.mediaInputVideoUrlArgument
 import org.starfall.generative.shared.helpers.media.mediaToolSchema
 import org.starfall.generative.shared.helpers.media.configuredMediaOptions
+import org.starfall.generative.shared.helpers.media.effectiveMediaDisabledParams
+import org.starfall.generative.shared.helpers.media.imagePreviewAspectRatio
 import org.starfall.generative.shared.helpers.media.toolAttachmentReferences
 import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.integrations.mcp.McpSession
@@ -82,6 +84,32 @@ private fun sentFileNames(result: JsonObject): List<String> {
     }
     val legacy = result.text("uri").removePrefix("tool-file:").takeIf { it.isNotBlank() }
     return (listed + legacy.orEmpty()).distinct()
+}
+
+/** Resolve the preview shape from the same saved defaults and per-call overrides as the request.
+ * Store it on the running activity so a subsequent settings change cannot resize the tile. */
+internal fun imageToolPreviewRatio(
+    rawArguments: String,
+    toolSettings: ToolSettings,
+    providers: List<ModelProvider>
+): Float? {
+    val args = runCatching { Json.parseToJsonElement(rawArguments) as? JsonObject }.getOrNull() ?: obj()
+    val config = toolSettings.system["generate_image"] ?: return imagePreviewAspectRatio(args)
+    val provider = providers.firstOrNull { it.id == config.providerId }
+        ?: return imagePreviewAspectRatio(args)
+    val profile = toolSettings.resolveMediaProfile(false, provider.config.modelConfigs[config.modelId])
+    val defaults = if (profile.id == org.starfall.generative.shared.model.media.DEFAULT_IMAGE_GEN_PROFILE_ID &&
+        profile.options.isEmpty()) config.imageOptions else profile.options
+    val effective = if (profile.mode == MediaGenerationMode.DEFAULT) {
+        configuredMediaOptions("generate_image", provider, config.modelId, defaults, args,
+            effectiveMediaDisabledParams(profile, "generate_image", config.disabledParams))
+    } else defaults
+    return imagePreviewAspectRatio(effective) ?: if (profile.mode == MediaGenerationMode.CUSTOM) {
+        profile.chain.steps.firstNotNullOfOrNull { step ->
+            runCatching { Json.parseToJsonElement(step.body) as? JsonObject }.getOrNull()
+                ?.let(::imagePreviewAspectRatio)
+        }
+    } else null
 }
 
 /**
@@ -301,8 +329,9 @@ class ToolChatViewModel internal constructor(
                     val mediaModel = mediaProvider?.config?.modelConfigs?.get(config.modelId)
                     val profile = settings().resolveMediaProfile(name == "generate_video", mediaModel)
                     val generationMode = profile.mode
-                    val disabledParams = if (profile.id == org.starfall.generative.shared.model.media.defaultMediaProfile(name == "generate_video").id &&
-                        profile.disabledParams.isEmpty()) config.disabledParams else profile.disabledParams
+                    val disabledParams = org.starfall.generative.shared.helpers.media.effectiveMediaDisabledParams(
+                        profile, name, config.disabledParams
+                    )
                     tools += ToolDefinition(
                         name = name,
                         description = if (name == "generate_image") {
@@ -500,6 +529,8 @@ class ToolChatViewModel internal constructor(
                         is JsonPrimitive -> raw.content
                         else -> raw.toString()
                     }
+                    val mediaTool = tool != null && tool.serverId == null && tool.remoteMachineId == null &&
+                        name in setOf("generate_image", "generate_video", "generate_music")
                     val activity = ToolActivity(
                         id = UUID.randomUUID().toString(),
                         name = when (name) {
@@ -514,13 +545,14 @@ class ToolChatViewModel internal constructor(
                             } ?: name
                         },
                         wireName = name,
-                        arguments = rawArguments
+                        arguments = rawArguments,
+                        previewAspectRatio = if (mediaTool && name == "generate_image") {
+                            imageToolPreviewRatio(rawArguments, settings(), providers)
+                        } else null
                     )
                     val contentApi = tool?.serverId?.let { serverId ->
                         servers.find { it.id == serverId }?.isContentApiPreset()
                     } == true
-                    val mediaTool = tool != null && tool.serverId == null && tool.remoteMachineId == null &&
-                        name in setOf("generate_image", "generate_video", "generate_music")
                     val mcpAttachmentTool = tool != null && tool.serverId == null && tool.remoteMachineId == null &&
                         name in mcpDynamicToolNames
                     send(GenerationEvent.Tool(activity))
@@ -627,7 +659,9 @@ class ToolChatViewModel internal constructor(
                              val profile = settings().resolveMediaProfile(name == "generate_video", mediaModel)
                              val generationMode = profile.mode
                              val builtIn = profile.id == org.starfall.generative.shared.model.media.defaultMediaProfile(name == "generate_video").id
-                             val effectiveDisabled = if (builtIn && profile.disabledParams.isEmpty()) cfg.disabledParams else profile.disabledParams
+                             val effectiveDisabled = org.starfall.generative.shared.helpers.media.effectiveMediaDisabledParams(
+                                 profile, name, cfg.disabledParams
+                             )
                              val effectiveOptions = if (builtIn && profile.options.isEmpty()) {
                                  if (name == "generate_image") cfg.imageOptions else cfg.videoOptions
                              } else profile.options

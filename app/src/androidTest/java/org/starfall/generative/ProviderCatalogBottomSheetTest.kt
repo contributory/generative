@@ -1,20 +1,24 @@
 package org.starfall.generative
 
+import android.content.ClipboardManager
+import android.content.Context
+
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.*
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.starfall.generative.features.providers.editor.ui.ProviderModelCatalogSheet
+import org.starfall.generative.features.providers.editor.ui.ModelCatalogSheet
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.DiscoveredModel
 import org.starfall.generative.shared.model.provider.ModelProvider
@@ -23,13 +27,18 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 class ProviderCatalogBottomSheetTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun catalogFetchFailureShowsErrorContainerAndCopyAction() {
+    @Test fun catalogFetchFailureCopiesDetailsAndRetryRecovers() {
         val failure = "Catalog fetch failed"
+        var fail by mutableStateOf(true)
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         compose.setContent { MaterialTheme {
-            ProviderModelCatalogSheet(
+            ModelCatalogSheet(
                 provider = ModelProvider("catalog", "Catalog", ModelApiType.OPENAI, baseUrl = "https://example.test"),
                 selectedModels = emptySet(),
-                onFetchModels = { throw IllegalStateException(failure) },
+                onFetchModels = {
+                    if (fail) throw IllegalStateException(failure)
+                    listOf(DiscoveredModel("recovered", displayName = "Recovered model"))
+                },
                 onCatalogLoaded = {}, onToggle = {}, onSetSelection = { _, _ -> }, onDismiss = {}
             )
         } }
@@ -38,13 +47,22 @@ class ProviderCatalogBottomSheetTest {
         }
         compose.onNodeWithText(failure).assertIsDisplayed()
         compose.onNodeWithTag("provider-model-catalog-copy-error").assertIsDisplayed().performClick()
-        compose.onNodeWithText("Retry").assertIsDisplayed()
+        compose.runOnIdle {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            assertEquals(failure, clipboard.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString())
+            fail = false
+        }
+        compose.onNodeWithText(context.getString(R.string.common_retry)).assertIsDisplayed().performClick()
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithText("Recovered model").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("provider-model-catalog-error").assertDoesNotExist()
     }
 
     @Test fun smallCatalogShrinksAfterStartingAtSeventyEightPercent() {
         val fetched = CompletableDeferred<List<DiscoveredModel>>()
         compose.setContent { MaterialTheme {
-            ProviderModelCatalogSheet(
+            ModelCatalogSheet(
                 provider = ModelProvider("catalog", "Catalog", ModelApiType.OPENAI, baseUrl = "https://example.test"),
                 selectedModels = emptySet(),
                 onFetchModels = { fetched.await() },
@@ -65,7 +83,7 @@ class ProviderCatalogBottomSheetTest {
     @Test fun largeCatalogExpandsToMaximumAfterLoading() {
         val fetched = CompletableDeferred<List<DiscoveredModel>>()
         compose.setContent { MaterialTheme {
-            ProviderModelCatalogSheet(
+            ModelCatalogSheet(
                 provider = ModelProvider("catalog", "Catalog", ModelApiType.OPENAI, baseUrl = "https://example.test"),
                 selectedModels = emptySet(),
                 onFetchModels = { fetched.await() },
@@ -99,7 +117,7 @@ class ProviderCatalogBottomSheetTest {
         var refreshes = 0
         compose.setContent {
             MaterialTheme {
-                ProviderModelCatalogSheet(
+                ModelCatalogSheet(
                     provider = ModelProvider("catalog", "Catalog", ModelApiType.OPENAI, baseUrl = "https://example.test"),
                     selectedModels = selected,
                     onFetchModels = {
@@ -118,7 +136,7 @@ class ProviderCatalogBottomSheetTest {
         }
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Alpha model").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("app-bottom-sheet").assertIsDisplayed()
-        compose.onNodeWithTag("bottom-sheet-drag-handle").assertExists()
+        compose.onNodeWithTag("bottom-sheet-drag-handle", useUnmergedTree = true).assertExists()
         val toolbar = compose.onNodeWithTag("provider-model-catalog-toolbar")
             .assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         val list = compose.onNodeWithTag("provider-model-catalog-list")

@@ -6,15 +6,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipe
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.constrainHeight
-import org.starfall.generative.shared.ui.sheets.AppSheet
+import org.starfall.generative.shared.ui.sheets.BottomSheet
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -53,6 +50,7 @@ class ModelSheetTransitionTest {
                 mediaKind = null,
                 onMediaKindChange = {},
                 onCancelEdit = {},
+                onShowSkillsMenu = {},
                 providers = listOf(provider),
                 providerGroups = emptyList(),
                 selectedProviderId = "p",
@@ -69,7 +67,6 @@ class ModelSheetTransitionTest {
                 modelPickerCollapsedProviders = emptySet(),
                 onModelPickerCollapsedGroupsChange = {},
                 onModelPickerCollapsedProvidersChange = {},
-                modelPickerOpenRequest = 0,
                 dynamicModelsMap = emptyMap(),
                 mediaProviders = emptyList(),
                 mediaProviderId = "",
@@ -93,7 +90,7 @@ class ModelSheetTransitionTest {
 
         val initial = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode()
         val sheetNodeId = initial.id
-        val overviewHeight = initial.boundsInRoot.height
+        assertTrue(initial.boundsInRoot.height > 0f)
 
         compose.onNodeWithTag("open-model-picker-button").performClick()
         compose.mainClock.advanceTimeBy(100)
@@ -104,32 +101,29 @@ class ModelSheetTransitionTest {
         }
         assertTrue("The picker should slide in from the right", enteringLeftPx > 40f)
 
-        compose.mainClock.advanceTimeBy(350)
-        val pickerHeight = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
-        assertTrue("The picker page is taller than the overview", pickerHeight > overviewHeight + 80f)
-        assertTrue(
-            "Height should interpolate while sliding",
-            mid.boundsInRoot.height > overviewHeight - 1f && mid.boundsInRoot.height < pickerHeight - 10f
-        )
+        compose.mainClock.advanceTimeBy(700)
+        // Material 3 owns the two sheet-height anchors; switching pages must preserve the
+        // same sheet and expose the picker, not require a particular resized height.
+        assertEquals(sheetNodeId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
+        compose.onNodeWithTag("model-picker-list").assertIsDisplayed()
         compose.onNodeWithTag("open-selected-model-button").assertIsDisplayed()
 
         compose.onNodeWithTag("open-selected-model-button").performClick()
         compose.mainClock.advanceTimeBy(100)
         assertEquals(sheetNodeId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
-        compose.mainClock.advanceTimeBy(350)
+        compose.mainClock.advanceTimeBy(700)
         val restored = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode()
         assertEquals(sheetNodeId, restored.id)
-        assertEquals(overviewHeight, restored.boundsInRoot.height, 2f)
+        assertTrue("The shared sheet must retain a measurable height", restored.boundsInRoot.height > 0f)
         compose.onNodeWithTag("open-model-picker-button").assertIsDisplayed()
     }
 
     @Test
-    fun resizeHandleUsesLatestHeightAfterContentOnlyRemeasures() {
+    fun contentRemeasuresWithoutManualSheetResizeState() {
         val contentHeight = mutableIntStateOf(300)
         compose.setContent {
             MaterialTheme {
-                AppSheet(onDismissRequest = {}) {
-                    // Read the height during measurement, without recomposing the caller.
+                BottomSheet(onDismissRequest = {}) {
                     Layout(content = {}, modifier = Modifier) { _, constraints ->
                         layout(constraints.maxWidth, constraints.constrainHeight(contentHeight.intValue.dp.roundToPx())) {}
                     }
@@ -143,15 +137,8 @@ class ModelSheetTransitionTest {
         val grown = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
         val growth = with(compose.density) { 100.dp.toPx() }
         assertEquals(growth, grown - before, 2f)
-
-        val dragDistance = with(compose.density) { 80.dp.toPx() }
-        compose.onNodeWithTag("bottom-sheet-drag-handle").performTouchInput {
-            swipe(center, center - Offset(0f, dragDistance), 300)
-        }
-        compose.waitForIdle()
-        val resized = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
-        assertTrue("Dragging must start from the latest measured height", resized > grown + dragDistance / 2f)
-        assertTrue("Resizing must not jump beyond the gesture distance", resized <= grown + dragDistance + 2f)
+        // Material's handle is present; its native anchors now own drags and scroll flings.
+        compose.onNodeWithTag("bottom-sheet-drag-handle", useUnmergedTree = true).assertExists()
     }
 
     @Test
@@ -176,15 +163,17 @@ class ModelSheetTransitionTest {
         compose.mainClock.advanceTimeBy(350)
         compose.onNodeWithText("Conversation Summarization").assertIsDisplayed()
         compose.onNodeWithContentDescription("Back").performClick()
-        compose.mainClock.advanceTimeBy(350)
+        compose.mainClock.advanceTimeBy(800)
         assertEquals(sheetId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
-        compose.onNodeWithTag("summarize-conversation-button").performClick()
+        compose.onNodeWithTag("summarize-conversation-button").assertIsDisplayed().performClick()
         compose.mainClock.advanceTimeBy(350)
         compose.onNodeWithText("Start summarization").performScrollTo().performClick()
         assertEquals(6000, startedRequest!!.targetTokens)
+        // A paused Compose clock needs a frame to publish the failed-submit message.
+        compose.mainClock.advanceTimeBy(100)
         compose.onNodeWithText(
             "Summarization can’t start. Set a Chat Summary language model in Chat Options, and make sure no response or summarization is already running."
-        ).assertIsDisplayed()
+        ).performScrollTo().assertIsDisplayed()
         assertEquals(sheetId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
 
         allowStart = true

@@ -42,6 +42,9 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.theme.GenerativeTheme
 import org.starfall.generative.shared.theme.ThemePresets
 import org.starfall.generative.shared.ui.layout.LocalItemTransparency
+import org.starfall.generative.shared.ui.layout.appearanceContainerColor
+import org.starfall.generative.shared.ui.layout.appearanceContainerBorder
+import org.starfall.generative.shared.ui.layout.modalContainerColor
 import org.starfall.generative.shared.ui.layout.groupedItemShape
 import org.starfall.generative.shared.ui.layout.appTabRowColor
 import org.starfall.generative.shared.ui.layout.appBarSurfaceColor
@@ -140,6 +143,45 @@ class AppSurfaceAndClipConsistencyTest {
             assertEquals(BorderStroke(1.dp, outlineVariant), prominentBorder)
             assertEquals(BorderStroke(1.dp, outlineVariant), nestedBorder)
         }
+    }
+
+    @Test
+    fun sharedAppearancePoliciesFollowTransparencyAndKeepProfileSurfaceOpaque() {
+        var transparency by mutableStateOf(0.5f)
+        var dark by mutableStateOf(false)
+        var amoled by mutableStateOf(false)
+        val accentBase = Color(0xFF6482A6)
+        val modalBase = Color(0xAA345678)
+        var accent = Color.Unspecified
+        var boosted = Color.Unspecified
+        var modal = Color.Unspecified
+        var border: BorderStroke? = null
+        compose.setContent {
+            GenerativeTheme(darkTheme = dark, amoledMode = amoled, dynamicColor = false) {
+                CompositionLocalProvider(LocalItemTransparency provides transparency) {
+                    accent = appearanceContainerColor(accentBase)
+                    boosted = prominentContainerColor(opacityBoost = 0.42f)
+                    modal = modalContainerColor(modalBase)
+                    border = appearanceContainerBorder(1.5.dp)
+                }
+            }
+        }
+        for (t in listOf(0f, 0.5f, 1f)) {
+            transparency = t
+            compose.waitForIdle()
+            assertEquals(1f - t, accent.alpha, 1f / 255f)
+            assertEquals((1f - t + 0.42f).coerceAtMost(1f), boosted.alpha, 1f / 255f)
+            assertEquals(modalBase.copy(alpha = 1f), modal)
+            assertNull(border)
+        }
+        dark = true
+        amoled = true
+        compose.waitForIdle()
+        assertEquals(Color.Transparent, accent)
+        assertEquals(Color.Transparent, boosted)
+        assertEquals(Color.Black, modal)
+        assertNotNull(border)
+        assertEquals(1.5.dp, border!!.width)
     }
 
     @Test

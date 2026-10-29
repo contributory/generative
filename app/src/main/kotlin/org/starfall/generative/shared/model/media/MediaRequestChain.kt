@@ -106,6 +106,8 @@ data class MediaRequestProfile(
     val mode: MediaGenerationMode = MediaGenerationMode.CUSTOM,
     val options: JsonObject = JsonObject(emptyMap()),
     val disabledParams: Set<String> = emptySet(),
+    /** Distinguishes an intentional "enable everything" selection from an unconfigured profile. */
+    val paramsConfigured: Boolean = false,
     /** Android-keystore encrypted; backups on another installation require re-entering the key. */
     val encryptedCredential: String = ""
 )

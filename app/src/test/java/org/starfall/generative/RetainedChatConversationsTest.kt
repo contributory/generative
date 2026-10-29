@@ -1,27 +1,38 @@
 package org.starfall.generative
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.starfall.generative.features.home.BottomSheetsLinkState
+import org.starfall.generative.features.home.ModelSheetPage
 import org.starfall.generative.features.home.chat.ui.RetainedChatConversations
+import org.starfall.generative.features.home.chat.ui.BlockContextPadding
 import org.starfall.generative.features.home.chat.ui.RetainedChatPages
 import org.starfall.generative.features.home.chat.ui.retainedHeapFraction
 import org.starfall.generative.shared.model.Conversation
@@ -69,6 +80,62 @@ class RetainedChatConversationsTest {
         compose.runOnIdle { current = b }
         compose.onNodeWithTag("b").assertIsDisplayed()
         compose.runOnIdle { assertEquals(2, mounts["b"]) }
+    }
+
+    @Test fun returningToRetainedChatStartsWithClosedModelSheet() {
+        val a = chat("a")
+        val b = chat("b")
+        var current by mutableStateOf<Conversation?>(a)
+        val retained = RetainedChatPages()
+        var activeSheets: BottomSheetsLinkState? = null
+        compose.setContent {
+            RetainedChatConversations(retained, current, setOf("a", "b"), true) { conversation, foreground ->
+                // The chat's content is retained, but its sheet routing is foreground-scoped.
+                val sheets = remember(conversation?.id, foreground) { BottomSheetsLinkState() }
+                SideEffect { if (foreground) activeSheets = sheets }
+                Box(Modifier.fillMaxSize().testTag(conversation?.id ?: "empty"))
+            }
+        }
+        compose.onNodeWithTag("a").assertIsDisplayed()
+        val originallyOpen = activeSheets!!
+        compose.runOnIdle { originallyOpen.openModelPicker() }
+        compose.runOnIdle { assertEquals(ModelSheetPage.MODEL_PICKER, originallyOpen.modelSheetPage); current = b }
+        compose.onNodeWithTag("b").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(null, activeSheets!!.modelSheetPage); current = a }
+        compose.onNodeWithTag("a").assertIsDisplayed()
+        compose.runOnIdle {
+            assertNotSame(originallyOpen, activeSheets)
+            assertEquals(null, activeSheets!!.modelSheetPage)
+        }
+    }
+
+    @Test fun inactiveChatDoesNotKeepItsContextMenuOpen() {
+        val a = chat("a")
+        val b = chat("b")
+        var current by mutableStateOf<Conversation?>(a)
+        val retained = RetainedChatPages()
+        compose.setContent {
+            MaterialTheme {
+                RetainedChatConversations(retained, current, setOf("a", "b"), true) { conversation, _ ->
+                    Box(Modifier.fillMaxSize().testTag(conversation!!.id)) {
+                        BlockContextPadding(
+                            onTap = null,
+                            onDelete = {},
+                            modifier = Modifier.testTag("message-menu-padding")
+                        )
+                    }
+                }
+            }
+        }
+        compose.onNodeWithTag("a").assertIsDisplayed()
+        compose.onNodeWithTag("message-menu-padding").performTouchInput { longClick() }
+        compose.onNodeWithText("Delete").assertIsDisplayed()
+        compose.runOnIdle { current = b }
+        compose.onNodeWithTag("b").assertIsDisplayed()
+        compose.onNodeWithText("Delete").assertDoesNotExist()
+        compose.runOnIdle { current = a }
+        compose.onNodeWithTag("a").assertIsDisplayed()
+        compose.onNodeWithText("Delete").assertDoesNotExist()
     }
 
     @Test fun recentlyVisitedChatsAreBoundedAndSelectionsFollowThePage() {

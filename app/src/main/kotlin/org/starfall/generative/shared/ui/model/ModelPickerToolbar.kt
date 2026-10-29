@@ -54,9 +54,9 @@ import kotlinx.coroutines.flow.first
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.ui.icons.EntityIcon
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 /** Expandable search, section controls, and an optional shortcut to the selected model. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -128,7 +128,7 @@ internal fun ModelPickerToolbar(
                 onClick = onToggleAllCollapsed,
                 modifier = Modifier.size(40.dp)
             ) {
-                FluentIcon(
+                SharedIcon(
                     if (allCollapsed) Icons.Outlined.ExpandMore else Icons.Outlined.ExpandLess,
                     contentDescription = stringResource(
                         if (allCollapsed) R.string.expand_all_model_sections else R.string.collapse_all_model_sections
@@ -139,14 +139,14 @@ internal fun ModelPickerToolbar(
             Box(Modifier.width(searchWidth).clipToBounds(), contentAlignment = Alignment.CenterStart) {
                 if (searchExpanded || searchWidth > 40.dp) {
                     LaunchedEffect(Unit) { searchFocus.requestFocus() }
-                    SelectableOutlinedTextField(
+                    OutlinedTextField(
                         value = query,
                         onValueChange = onQueryChange,
-                        leadingIcon = { FluentIcon(Icons.Outlined.Search, contentDescription = null) },
+                        leadingIcon = { SharedIcon(Icons.Outlined.Search, contentDescription = null) },
                         trailingIcon = if (query.isNotEmpty()) {
                             {
                                 IconButton(onClick = { onQueryChange("") }) {
-                                    FluentIcon(Icons.Default.Close, stringResource(R.string.common_clear))
+                                    SharedIcon(Icons.Default.Close, stringResource(R.string.common_clear))
                                 }
                             }
                         } else null,
@@ -181,7 +181,7 @@ internal fun ModelPickerToolbar(
                         onClick = { searchExpanded = true },
                         modifier = Modifier.size(40.dp).testTag("model-picker-search-button")
                     ) {
-                        FluentIcon(
+                        SharedIcon(
                             Icons.Outlined.Search,
                             contentDescription = stringResource(R.string.search_models),
                             tint = if (query.isNotEmpty()) MaterialTheme.colorScheme.primary

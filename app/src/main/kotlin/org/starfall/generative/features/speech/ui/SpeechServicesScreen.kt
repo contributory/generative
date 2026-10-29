@@ -10,6 +10,11 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material3.*
+import com.mohamedrejeb.compose.dnd.DragAndDropContainer
+import com.mohamedrejeb.compose.dnd.rememberDragAndDropState
+import com.mohamedrejeb.compose.dnd.annotation.ExperimentalDndApi
+import com.mohamedrejeb.compose.dnd.reorder.ReorderableItem
+import com.mohamedrejeb.compose.dnd.scroll.dragAutoScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -21,18 +26,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.starfall.generative.R
 import java.util.UUID
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyGridState
-import sh.calvin.reorderable.ScrollMoveMode
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.effectiveTtsProviderId
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
-import org.starfall.generative.shared.ui.lists.AppListItem
+import org.starfall.generative.shared.ui.lists.ItemCard
 import org.starfall.generative.shared.ui.lists.ListViewToggle
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.ItemContextMenu
 import org.starfall.generative.shared.ui.lists.moved
@@ -43,7 +45,7 @@ import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 private data class SpeechEditorPage(val service: SpeechService, val isNew: Boolean)
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalDndApi::class)
 @Composable
 fun SpeechServicesScreen(
     speechServices: List<SpeechService>,
@@ -106,7 +108,7 @@ fun SpeechServicesScreen(
                         },
                         navigationIcon = {
                             IconButton(onClick = onBack) {
-                                FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
+                                SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                             }
                         },
                         actions = {
@@ -125,7 +127,7 @@ fun SpeechServicesScreen(
                                     ), true)
                                 }
                             ) {
-                                FluentIcon(Icons.Default.Add, contentDescription = stringResource(R.string.speech_add_service))
+                                SharedIcon(Icons.Default.Add, contentDescription = stringResource(R.string.speech_add_service))
                             }
                         }
                     )
@@ -136,18 +138,22 @@ fun SpeechServicesScreen(
                     modifier = Modifier.fillMaxSize()
                 ) { gridMode ->
                     val gridState = rememberLazyGridState()
-                    val reorderState = rememberReorderableLazyGridState(gridState, scrollMoveMode = ScrollMoveMode.INSERT) { from, to ->
-                        orderedServices = orderedServices.moved(from.index, to.index)
-                    }
+                    val dndState = rememberDragAndDropState<String>(dragAfterLongPress = true)
+                    DragAndDropContainer(state = dndState, modifier = Modifier.fillMaxSize()) {
                     LazyVerticalGrid(state = gridState,
                         columns = GridCells.Fixed(if (gridMode) 2 else 1),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize().dragAutoScroll(state = dndState, lazyGridState = gridState)
                     ) {
                         itemsIndexed(orderedServices, key = { _, item -> item.id }) { _, service ->
-                            ReorderableItem(reorderState, key = service.id) { _ ->
+                            ReorderableItem(modifier = Modifier.animateItem(), state = dndState, key = service.id, data = service.id,
+                                onDragEnter = { dragged ->
+                                    val from = orderedServices.indexOfFirst { it.id == dragged.data }
+                                    val to = orderedServices.indexOfFirst { it.id == service.id }
+                                    if (from >= 0 && to >= 0 && from != to) orderedServices = orderedServices.moved(from, to)
+                                }, onDragEnd = { onReorderServices(orderedServices.map { it.id }) }) {
                                 val providerName = when {
                                     service.engine == org.starfall.generative.shared.model.SpeechEngine.SYSTEM -> stringResource(R.string.speech_system_tts)
                                     service.engine.standalone -> speechEngineLabel(service.engine)
@@ -158,9 +164,7 @@ fun SpeechServicesScreen(
                                     service = service,
                                     provider = provider,
                                     isGrid = gridMode,
-                                    modifier = Modifier.longPressDraggableHandle(
-                                        onDragStopped = { onReorderServices(orderedServices.map { it.id }) }
-                                    ),
+                                    modifier = Modifier,
                                     providerName = providerName,
                                     selected = service.id == effectiveSelectedId,
                                     isPlaying = service.id == activeTestServiceId,
@@ -174,6 +178,7 @@ fun SpeechServicesScreen(
                                 )
                             }
                         }
+                    }
                     }
                 }
             }
@@ -206,7 +211,7 @@ private fun SpeechServiceUnifiedCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    AppListItem(
+    ItemCard(
         isGrid = isGrid,
         onClick = onEdit,
         color = if (selected) {
@@ -236,7 +241,7 @@ private fun SpeechServiceUnifiedCard(
                         modifier = Modifier.size(36.dp),
                         colors = if (isPlaying) IconButtonDefaults.filledIconButtonColors() else IconButtonDefaults.iconButtonColors()
                     ) {
-                        FluentIcon(
+                        SharedIcon(
                             if (isPlaying) Icons.Outlined.StopCircle else Icons.Default.PlayArrow,
                             contentDescription = stringResource(if (isPlaying) R.string.speech_stop else R.string.speech_test_voice),
                             tint = if (isPlaying) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
@@ -274,7 +279,7 @@ private fun SpeechServiceUnifiedCard(
                             modifier = Modifier.weight(1f, fill = false)
                         )
                         if (selected) {
-                            FluentIcon(
+                            SharedIcon(
                                 Icons.Default.Check,
                                 contentDescription = stringResource(R.string.common_selected),
                                 tint = MaterialTheme.colorScheme.primary,

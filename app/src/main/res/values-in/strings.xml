@@ -521,7 +521,6 @@
     <string name="code_block_include_undefined_hint">Terapkan mode blok panjang yang dipilih bahkan pada blok kode tanpa label bahasa.</string>
     <string name="code_block_extend">Perluas</string>
     <string name="code_block_close">Tutup blok kode</string>
-    <string name="sheet_resize">Ubah ukuran lembar</string>
     <string name="oauth_opening_browser">Membuka halaman masuk…</string>
     <string name="oauth_browser_unavailable">Pasang Chrome atau peramban dengan dukungan Custom Tabs untuk masuk.</string>
     <string name="provider_multiple_accounts">Beberapa Akun</string>
@@ -1100,4 +1099,9 @@
     <string name="settings_item_transparency">Transparansi komponen</string>
     <string name="settings_item_transparency_description">Atur transparansi kartu, tombol, dan item. Mode AMOLED menggunakan item transparan dengan garis tepi.</string>
     <string name="settings_item_transparency_reset">Atur ulang transparansi komponen</string>
+    <string name="customization_input_title">Area input</string>
+    <string name="customization_input_transparency">Transparansi latar belakang</string>
+    <string name="customization_input_blur">Keburaman latar belakang</string>
+    <string name="customization_input_blur_description">Buramkan chat di belakang area input pada Android 12 dan yang lebih baru. Teks dan tombol tetap tajam.</string>
+    <string name="settings_website">Situs web</string>
 </resources>

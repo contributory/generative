@@ -521,7 +521,6 @@
     <string name="code_block_include_undefined_hint">长代码块的显示方式也适用于未标注语言的代码块。</string>
     <string name="code_block_extend">展开</string>
     <string name="code_block_close">关闭代码块</string>
-    <string name="sheet_resize">调整底部面板大小</string>
     <string name="oauth_opening_browser">正在打开登录…</string>
     <string name="oauth_browser_unavailable">请安装 Chrome 或支持自定义标签页的浏览器后再登录。</string>
     <string name="provider_multiple_accounts">多个账户</string>
@@ -1099,4 +1098,9 @@
     <string name="settings_item_transparency">组件透明度</string>
     <string name="settings_item_transparency_description">调整卡片、按钮和列表项的透明度。AMOLED 模式下项目背景完全透明，并显示边框。</string>
     <string name="settings_item_transparency_reset">重置组件透明度</string>
+    <string name="customization_input_title">输入区域</string>
+    <string name="customization_input_transparency">背景透明度</string>
+    <string name="customization_input_blur">背景模糊</string>
+    <string name="customization_input_blur_description">在 Android 12 及更高版本上模糊输入区域后方的聊天内容。文字和按钮保持清晰。</string>
+    <string name="settings_website">网站</string>
 </resources>

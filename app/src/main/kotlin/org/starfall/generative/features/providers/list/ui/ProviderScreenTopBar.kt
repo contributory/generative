@@ -1,7 +1,7 @@
 package org.starfall.generative.features.providers.list.ui
 
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -16,10 +16,10 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import org.starfall.generative.R
 import org.starfall.generative.features.providers.list.logic.ProviderSearchField
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.lists.ListViewToggle
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 
 /** App bar for the providers root screen only. Open folders draw their own full-screen header. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,7 +55,7 @@ internal fun ProviderScreenTopBar(
                     trailingIcon = {
                         Box {
                             IconButton(onClick = { onSearchFilterOpenChange(true) }) {
-                                FluentIcon(
+                                SharedIcon(
                                     Icons.Outlined.FilterList,
                                     stringResource(R.string.provider_search_filter),
                                     tint = if (searchFields == setOf(ProviderSearchField.PROVIDER_NAME))
@@ -106,24 +106,24 @@ internal fun ProviderScreenTopBar(
         },
         navigationIcon = {
             IconButton(onClick = onBack) {
-                FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
             }
         },
         actions = {
             if (searching) {
                 IconButton(onClick = onCloseSearch) {
-                    FluentIcon(Icons.Default.Close, stringResource(R.string.close_provider_search))
+                    SharedIcon(Icons.Default.Close, stringResource(R.string.close_provider_search))
                 }
             } else {
                 IconButton(onClick = onOpenSearch) {
-                    FluentIcon(Icons.Default.Search, stringResource(R.string.search_providers))
+                    SharedIcon(Icons.Default.Search, stringResource(R.string.search_providers))
                 }
                 ListViewToggle(isGridView) { onToggleGridView?.invoke(!isGridView) }
                 IconButton(onClick = onCreateGroup, modifier = Modifier.testTag("add_provider_group")) {
-                    FluentIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.common_add))
+                    SharedIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.common_add))
                 }
                 IconButton(onClick = onAddProvider, modifier = Modifier.testTag("add_provider")) {
-                    FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
+                    SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
                 }
             }
         }

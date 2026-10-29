@@ -14,10 +14,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.dialogs.AppDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.Dialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 /** Manages a provider's custom HTTP headers; edits are applied to [rows] immediately. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,7 +29,7 @@ internal fun ProviderHeadersDialog(
 ) {
     val addLabel = stringResource(R.string.common_add)
     val closeLabel = stringResource(R.string.common_close)
-    AppDialog(
+    Dialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.headers), maxLines = 1, overflow = TextOverflow.Ellipsis) },
         content = {
@@ -44,18 +44,18 @@ internal fun ProviderHeadersDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        SelectableOutlinedTextField(
+                        OutlinedTextField(
                             row.first, { rows[index] = it to rows[index].second },
                             label = { Text(stringResource(R.string.common_key)) },
                             maxLines = 2, modifier = Modifier.weight(1f)
                         )
-                        SelectableOutlinedTextField(
+                        OutlinedTextField(
                             row.second, { rows[index] = rows[index].first to it },
                             label = { Text(stringResource(R.string.common_value)) },
                             maxLines = 2, modifier = Modifier.weight(1f)
                         )
                         IconButton(onClick = { rows.removeAt(index) }) {
-                            FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete))
+                            SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete))
                         }
                     }
                 }

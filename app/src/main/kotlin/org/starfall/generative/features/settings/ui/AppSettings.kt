@@ -2,8 +2,8 @@ package org.starfall.generative.features.settings.ui
 
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import androidx.compose.ui.platform.LocalLayoutDirection
-import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -62,15 +62,11 @@ import org.starfall.generative.shared.storage.preferences.MessageFontFamily
 import org.starfall.generative.shared.storage.preferences.ScreenWakelockMode
 import org.starfall.generative.shared.storage.preferences.ToolCallStrategy
 import org.starfall.generative.shared.storage.preferences.WordWrapMode
-import org.starfall.generative.shared.theme.ThemePresets
-import org.starfall.generative.shared.theme.LocalAmoledMode
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.layout.windowHeightIn
-import androidx.compose.foundation.BorderStroke
-import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 
 @Composable
 fun PreferenceToggle(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
@@ -96,9 +92,6 @@ fun AppearanceSettingsView(
     appPreferences: AppPreferences,
     onThemeChange: (String) -> Unit,
     onAmoledChange: (Boolean) -> Unit,
-    onDynamicColorChange: (Boolean) -> Unit,
-    onColorSchemeChange: (String) -> Unit,
-    onItemTransparencyChange: (Float) -> Unit = {},
     onHideStatusBarChange: (Boolean) -> Unit = {},
     onWordWrapModeChange: (WordWrapMode) -> Unit = {},
     onWordWrapColumnChange: (Int) -> Unit = {},
@@ -111,11 +104,6 @@ fun AppearanceSettingsView(
     onMessageFontFamilyChange: (MessageFontFamily) -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(bottom = 24.dp)
 ) {
-    // Keep drag feedback local and write the preference only when the user releases the slider.
-    var itemTransparencyDraft by remember { mutableFloatStateOf(appPreferences.itemTransparency) }
-    LaunchedEffect(appPreferences.itemTransparency) {
-        itemTransparencyDraft = appPreferences.itemTransparency
-    }
     LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             SettingsSection(stringResource(R.string.settings_theme)) {
@@ -132,78 +120,6 @@ fun AppearanceSettingsView(
                     }
                 }
                 PreferenceToggle(stringResource(R.string.settings_amoled), stringResource(R.string.settings_amoled_description), appPreferences.useAmoled, onAmoledChange)
-            }
-        }
-        item {
-            SettingsSection(stringResource(R.string.settings_color)) {
-                PreferenceToggle(stringResource(R.string.settings_dynamic_color), stringResource(R.string.settings_dynamic_color_description),
-                    appPreferences.useDynamicColor, onDynamicColorChange)
-                if (!appPreferences.useDynamicColor) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                    Text(stringResource(R.string.settings_color_palette), style = MaterialTheme.typography.titleMedium)
-                    androidx.compose.foundation.layout.FlowRow(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        ThemePresets.forEach { preset ->
-                            val name = preset.name
-                            val color = preset.preview
-                            val selected = appPreferences.colorSchemeName == name
-                            val swatchShape = RoundedCornerShape(16.dp)
-                            Surface(
-                                shape = swatchShape,
-                                color = color.copy(alpha = 0.18f),
-                                border = if (selected) {
-                                    BorderStroke(2.dp, color)
-                                } else {
-                                    nestedContainerBorder()
-                                },
-                                modifier = Modifier
-                                    .width(58.dp)
-                                    .height(56.dp)
-                                    .clip(swatchShape)
-                                    .toggleable(selected, role = Role.RadioButton, onValueChange = { onColorSchemeChange(name) })
-                                    .then(Modifier.semantics { contentDescription = name.lowercase().replaceFirstChar { it.uppercase() } })
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Box(Modifier.size(26.dp).clip(CircleShape).background(color))
-                                    if (selected) FluentIcon(Icons.Outlined.Check, null, tint = MaterialTheme.colorScheme.inverseOnSurface, modifier = Modifier.size(18.dp))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        item {
-            SettingsSection(stringResource(R.string.settings_item_transparency)) {
-                Text(
-                    stringResource(R.string.settings_item_transparency_description),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = {
-                        itemTransparencyDraft = 0.5f
-                        onItemTransparencyChange(0.5f)
-                    }, enabled = !LocalAmoledMode.current) {
-                        FluentIcon(Icons.Default.RestartAlt, stringResource(R.string.settings_item_transparency_reset))
-                    }
-                    val sliderState = remember { SliderState(value = itemTransparencyDraft.coerceIn(0f, 1f)) }
-                    sliderState.value = itemTransparencyDraft.coerceIn(0f, 1f)
-                    Slider(
-                        state = sliderState,
-                        onValueChange = { itemTransparencyDraft = it },
-                        onValueChangeFinished = { onItemTransparencyChange(itemTransparencyDraft) },
-                        modifier = Modifier.weight(1f),
-                        enabled = !LocalAmoledMode.current
-                    )
-                    Text(
-                        "${(itemTransparencyDraft.coerceIn(0f, 1f) * 100).toInt()}%",
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
             }
         }
         item {
@@ -237,6 +153,7 @@ fun PreferencesSettingsView(
     onEnableVibrationChange: (Boolean) -> Unit,
     onDebugModeChange: (Boolean) -> Unit,
     onDebugLogCategoriesChange: (Set<DebugLogCategory>) -> Unit = {},
+    onOpenLauncherDragTest: () -> Unit = {},
     onLatexModeChange: (String) -> Unit,
     onTtsReadCodeBlocksChange: (Boolean) -> Unit = {},
     onToolRoundLimitEnabledChange: (Boolean) -> Unit = {},
@@ -265,14 +182,14 @@ fun PreferencesSettingsView(
                     var expanded by remember { mutableStateOf(false) }
                     val selectedLanguage = AppLanguage.fromTag(appPreferences.selectedLanguage)
                     ExposedDropdownMenuBox(expanded, { expanded = !expanded }) {
-                        SelectableOutlinedTextField(
+                        OutlinedTextField(
                             value = stringResource(selectedLanguage.nameRes),
                             onValueChange = {}, readOnly = true,
                             label = { Text(stringResource(R.string.app_language)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                             modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("app-language")
                         )
-                        AppExposedDropdownMenu(expanded, { expanded = false }) {
+                        ExposedDropdownMenu(expanded, { expanded = false }) {
                             AppLanguage.entries.forEach { language ->
                                 DropdownMenuItem(text = {
                                     // The name in the app language leads, the native name supports it.
@@ -308,14 +225,14 @@ fun PreferencesSettingsView(
                 Text(stringResource(R.string.screen_wakelock_description),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 ExposedDropdownMenuBox(wakelockExpanded, { wakelockExpanded = !wakelockExpanded }) {
-                    SelectableOutlinedTextField(
+                    OutlinedTextField(
                         value = wakelockLabels.getValue(appPreferences.screenWakelockMode),
                         onValueChange = {}, readOnly = true,
                         label = { Text(stringResource(R.string.screen_wakelock_title)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(wakelockExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
                     )
-                    AppExposedDropdownMenu(wakelockExpanded, { wakelockExpanded = false }) {
+                    ExposedDropdownMenu(wakelockExpanded, { wakelockExpanded = false }) {
                         wakelockLabels.forEach { (mode, label) ->
                             DropdownMenuItem(text = { Text(label) }, onClick = {
                                 onScreenWakelockModeChange(mode)
@@ -347,14 +264,14 @@ fun PreferencesSettingsView(
                     ToolCallStrategy.PARALLEL to stringResource(R.string.tool_call_strategy_parallel)
                 )
                 ExposedDropdownMenuBox(strategyExpanded, { strategyExpanded = !strategyExpanded }) {
-                    SelectableOutlinedTextField(
+                    OutlinedTextField(
                         value = strategyLabels.getValue(appPreferences.toolCallStrategy),
                         onValueChange = {}, readOnly = true,
                         label = { Text(stringResource(R.string.tool_call_strategy)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(strategyExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("tool-call-strategy")
                     )
-                    AppExposedDropdownMenu(strategyExpanded, { strategyExpanded = false }) {
+                    ExposedDropdownMenu(strategyExpanded, { strategyExpanded = false }) {
                         strategyLabels.forEach { (strategy, label) ->
                             DropdownMenuItem(text = { Text(label) }, onClick = {
                                 onToolCallStrategyChange(strategy)
@@ -370,7 +287,7 @@ fun PreferencesSettingsView(
                         }?.toString().orEmpty())
                     }
                     val parsed = limit.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_CALL_CONCURRENT_LIMIT }
-                    SelectableOutlinedTextField(
+                    OutlinedTextField(
                         value = limit,
                         onValueChange = { text ->
                             if (text.length <= 2 && text.all(Char::isDigit)) {
@@ -399,7 +316,7 @@ fun PreferencesSettingsView(
                         }?.toString().orEmpty())
                     }
                     val parsed = rounds.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_ROUND_LIMIT }
-                    SelectableOutlinedTextField(
+                    OutlinedTextField(
                         value = rounds,
                         onValueChange = { text ->
                             if (text.length <= 4 && text.all(Char::isDigit)) {
@@ -450,7 +367,7 @@ fun PreferencesSettingsView(
             }
         }
         item {
-            DeveloperSettingsSection(appPreferences, onDebugModeChange, onDebugLogCategoriesChange)
+            DeveloperSettingsSection(appPreferences, onDebugModeChange, onDebugLogCategoriesChange, onOpenLauncherDragTest)
         }
     }
 }
@@ -460,9 +377,6 @@ fun AppSettings(
     appPreferences: AppPreferences,
     onThemeChange: (String) -> Unit,
     onAmoledChange: (Boolean) -> Unit,
-    onDynamicColorChange: (Boolean) -> Unit,
-    onColorSchemeChange: (String) -> Unit,
-    onItemTransparencyChange: (Float) -> Unit = {},
     onHideStatusBarChange: (Boolean) -> Unit,
     onWordWrapModeChange: (WordWrapMode) -> Unit,
     onWordWrapColumnChange: (Int) -> Unit,
@@ -479,6 +393,7 @@ fun AppSettings(
     onEnableVibrationChange: (Boolean) -> Unit,
     onDebugModeChange: (Boolean) -> Unit,
     onDebugLogCategoriesChange: (Set<DebugLogCategory>) -> Unit = {},
+    onOpenLauncherDragTest: () -> Unit = {},
     onLatexModeChange: (String) -> Unit,
     onTtsReadCodeBlocksChange: (Boolean) -> Unit,
     onToolRoundLimitEnabledChange: (Boolean) -> Unit,
@@ -535,6 +450,7 @@ fun AppSettings(
                     onEnableVibrationChange = onEnableVibrationChange,
                     onDebugModeChange = onDebugModeChange,
                     onDebugLogCategoriesChange = onDebugLogCategoriesChange,
+                    onOpenLauncherDragTest = onOpenLauncherDragTest,
                     onLatexModeChange = onLatexModeChange,
                     onTtsReadCodeBlocksChange = onTtsReadCodeBlocksChange,
                     onToolRoundLimitEnabledChange = onToolRoundLimitEnabledChange,
@@ -553,9 +469,6 @@ fun AppSettings(
                     appPreferences = appPreferences,
                     onThemeChange = onThemeChange,
                     onAmoledChange = onAmoledChange,
-                    onDynamicColorChange = onDynamicColorChange,
-                    onColorSchemeChange = onColorSchemeChange,
-                    onItemTransparencyChange = onItemTransparencyChange,
                     onHideStatusBarChange = onHideStatusBarChange,
                     onWordWrapModeChange = onWordWrapModeChange,
                     onWordWrapColumnChange = onWordWrapColumnChange,

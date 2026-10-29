@@ -147,7 +147,8 @@ class MainActivity : ComponentActivity() {
                 themeMode = appPrefs.themeMode,
                 amoledMode = appPrefs.useAmoled,
                 dynamicColor = appPrefs.useDynamicColor,
-                colorSchemeName = appPrefs.colorSchemeName
+                colorSchemeName = appPrefs.colorSchemeName,
+                customPalette = appPrefs.customPalette
             ) {
                 val darkBars = MaterialTheme.colorScheme.background.luminance() < 0.5f
                 SideEffect {

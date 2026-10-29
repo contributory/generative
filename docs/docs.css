@@ -1,0 +1,130 @@
+/* User guide: long-form text stays comfortably readable on every screen. */
+.docs-hero { padding: 76px 0 56px; max-width: 900px; }
+.docs-hero h1 { font-size: clamp(47px,7vw,76px); margin: 20px 0 24px; }
+.docs-hero p { max-width: 750px; color: var(--muted); font-size: 18px; line-height: 1.75; }
+.docs-pills { display: flex; gap: 10px; flex-wrap: wrap; margin: 28px 0 0; }
+.docs-pills a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 43px;
+  padding: 10px 15px;
+  border: 1px solid rgba(201,219,249,.25);
+  border-radius: 11px;
+  background: #192638;
+  color: #e0dcff;
+  font-size: 14px;
+}
+.docs-pills a:hover { background: #26364b; }
+.docs-layout {
+  display: grid;
+  grid-template-columns: 238px minmax(0,1fr);
+  align-items: start;
+  gap: clamp(32px,5vw,68px);
+  padding-bottom: 112px;
+}
+.docs-toc {
+  position: sticky;
+  top: 24px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: #172334;
+}
+.docs-toc strong {
+  display: block;
+  margin: 0 0 12px;
+  color: #d7d1ff;
+  font: 12px "DM Mono",monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.docs-toc a {
+  display: block;
+  padding: 8px 0;
+  color: #c4d0e1;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.docs-toc a:hover { color: white; }
+.docs-content { min-width: 0; }
+.docs-section {
+  padding: 0 0 41px;
+  margin: 0 0 41px;
+  border-bottom: 1px solid var(--line);
+  scroll-margin-top: 24px;
+}
+.docs-section h2 { font-size: clamp(29px,3.3vw,38px); margin: 0 0 18px; }
+.docs-section h3 { font-size: 21px; margin: 32px 0 12px; }
+.docs-section p,.docs-section li { color: var(--muted); font-size: 16px; line-height: 1.82; }
+.docs-section ul,.docs-section ol { padding-left: 24px; }
+.docs-section li { padding: 3px 0; }
+.docs-section strong { color: #f1f4fc; }
+.docs-callout {
+  padding: 20px 23px;
+  border: 1px solid rgba(126,228,202,.2);
+  background: #173039;
+  border-radius: 14px;
+  color: #c6dae0;
+  font-size: 15px;
+  line-height: 1.75;
+  margin: 24px 0;
+}
+.docs-callout strong { color: #edfff9; }
+.docs-steps { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 13px; margin: 25px 0; }
+.docs-step { padding: 21px; border: 1px solid var(--line); border-radius: 14px; background: #1a2839; }
+.docs-step span { font: 12px "DM Mono",monospace; color: var(--mint); }
+.docs-step strong { display: block; font-size: 16px; margin: 12px 0 7px; }
+.docs-step p { font-size: 14px; line-height: 1.65; margin: 0; }
+.docs-content a:not(.button) { color: #c6bcff; text-decoration: underline; text-decoration-color: rgba(198,188,255,.45); text-underline-offset: 3px; }
+.docs-content a:hover { color: white; }
+.docs-endpoint {
+  display: block;
+  overflow-wrap: anywhere;
+  padding: 15px;
+  border-radius: 10px;
+  background: #101b2b;
+  border: 1px solid var(--line);
+  color: #d0daeb;
+  font: 13px/1.65 "DM Mono",monospace;
+  margin: 15px 0;
+}
+.docs-faq { padding: 18px 0; border-bottom: 1px solid var(--line); }
+.docs-faq summary { cursor: pointer; font-size: 16px; font-weight: 700; color: #f2f4fd; }
+.docs-faq summary:hover { color: var(--mint); }
+.docs-faq p { margin: 12px 0 0; }
+.docs-note { color: #bdc8dc!important; font-size: 14px!important; }
+@media (max-width: 900px) {
+  .docs-layout { grid-template-columns: 200px minmax(0,1fr); gap: 28px; }
+  .docs-steps { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .docs-hero { padding: 52px 0 41px; }
+  .docs-hero p { font-size: 16px; }
+  .docs-layout { grid-template-columns: 1fr; gap: 33px; padding-bottom: 70px; }
+  .docs-toc { position: static; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 18px; }
+  .docs-toc strong { grid-column: 1 / -1; }
+  .docs-section { padding-bottom: 31px; margin-bottom: 31px; }
+  .docs-section p,.docs-section li { font-size: 15px; }
+  .docs-step p { font-size: 14px; }
+  .docs-pills a { font-size: 13px; }
+}
+
+/* Plain-language glossary for first-time users. */
+.docs-glossary {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 13px;
+  margin: 26px 0 0;
+}
+.docs-glossary>div {
+  padding: 19px 21px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #192a3c;
+}
+.docs-glossary dt { color: #f0f4fc; font-size: 16px; font-weight: 750; }
+.docs-glossary dd { margin: 8px 0 0; color: var(--muted); font-size: 15px; line-height: 1.7; }
+@media (max-width: 760px) {
+  .docs-glossary { grid-template-columns: 1fr; }
+  .docs-glossary>div { padding: 17px 19px; }
+}

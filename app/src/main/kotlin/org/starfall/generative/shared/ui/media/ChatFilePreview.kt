@@ -13,7 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
+import org.starfall.generative.shared.ui.text.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,10 +36,10 @@ import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.files.AttachmentResolver
 import org.starfall.generative.shared.theme.LocalAmoledMode
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.layout.windowHeightIn
@@ -81,19 +81,21 @@ fun ChatFilePreview(
     selectedForChat: Boolean = false,
     onToggleAttachment: ((String) -> Unit)? = null,
     playVideoInline: Boolean = true,
+    overlayActive: Boolean = true,
     onOpen: () -> Unit
 ) {
     val sharedSelection = LocalChatAttachmentSelection.current
     val toggle = onToggleAttachment ?: sharedSelection?.let { it::toggle }
     val selected = if (onToggleAttachment == null && sharedSelection != null) reference in sharedSelection.attachments.value else selectedForChat
     val actions: @Composable BoxScope.() -> Unit = {
-        FileCornerActions(reference, name, mime, selected, toggle, Modifier.align(Alignment.TopEnd).padding(6.dp))
+        FileCornerActions(reference, name, mime, selected, toggle,
+            Modifier.align(Alignment.TopEnd).padding(6.dp), overlayActive)
     }
     when {
         mime.startsWith("image/") -> BoundedMediaFrame(thumbnail?.let { it.width.toFloat() / it.height.coerceAtLeast(1) } ?: 1f, modifier) {
             Box(Modifier.fillMaxSize().clickable(onClick = onOpen), contentAlignment = Alignment.Center) {
                 thumbnail?.let { Image(it, stringResource(R.string.media_generated_image), Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
-                if (loading) GenerativeLoadingIndicator(Modifier.size(24.dp))
+                if (loading) LoadingIndicator(Modifier.size(24.dp))
                 else if (thumbnail == null) Text(stringResource(R.string.media_image_preview_unavailable), color = Color.White)
             }
             actions()
@@ -111,7 +113,7 @@ fun ChatFilePreview(
                     color = Color.Black.copy(alpha = 0.68f),
                     modifier = Modifier.size(44.dp)
                 ) {
-                    FluentIcon(
+                    SharedIcon(
                         Icons.Outlined.PlayArrow,
                         contentDescription = stringResource(R.string.media_open_video),
                         tint = Color.White,
@@ -139,7 +141,7 @@ fun ChatFilePreview(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        FluentIcon(Icons.Outlined.InsertDriveFile, null)
+                        SharedIcon(Icons.Outlined.InsertDriveFile, null)
                         Text(name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
@@ -151,11 +153,11 @@ fun ChatFilePreview(
 
 @Composable
 private fun FileCornerActions(reference: String, name: String, mime: String, selected: Boolean,
-    onToggle: ((String) -> Unit)?, modifier: Modifier) {
+    onToggle: ((String) -> Unit)?, modifier: Modifier, overlayActive: Boolean) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var downloading by remember(reference) { mutableStateOf(false) }
-    var saveError by remember(reference) { mutableStateOf<String?>(null) }
+    var saveError by remember(reference, overlayActive) { mutableStateOf<String?>(null) }
     val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(mime)) { uri ->
         if (uri != null) scope.launch {
             downloading = true
@@ -187,7 +189,7 @@ private fun FileCornerActions(reference: String, name: String, mime: String, sel
     Surface(modifier = modifier, shape = RoundedCornerShape(12.dp), color = Color.Black.copy(alpha = 0.62f)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(enabled = !downloading, onClick = { save.launch(name) }, modifier = Modifier.size(40.dp)) {
-                FluentIcon(Icons.Outlined.Download, stringResource(R.string.file_download), tint = Color.White, modifier = Modifier.size(20.dp))
+                SharedIcon(Icons.Outlined.Download, stringResource(R.string.file_download), tint = Color.White, modifier = Modifier.size(20.dp))
             }
             Checkbox(selected, onCheckedChange = { onToggle?.invoke(reference) }, enabled = onToggle != null,
                 modifier = Modifier.size(40.dp).semantics { contentDescription = selectionLabel },
@@ -195,8 +197,8 @@ private fun FileCornerActions(reference: String, name: String, mime: String, sel
                     checkmarkColor = Color.Black, disabledUncheckedColor = Color.Gray))
         }
     }
-    saveError?.let { error ->
-        AppAlertDialog(
+    saveError?.takeIf { overlayActive }?.let { error ->
+        AlertDialog(
             onDismissRequest = { saveError = null },
             title = { Text(stringResource(R.string.file_download_failed)) },
             scrollableContent = false,

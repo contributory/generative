@@ -7,9 +7,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import org.starfall.generative.shared.ui.lists.AppListContainer
+import org.starfall.generative.shared.ui.lists.ItemSurface
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -22,8 +22,8 @@ import org.starfall.generative.integrations.speech.VoicePage
 import org.starfall.generative.integrations.speech.StandaloneSpeechClient
 import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.shared.model.SpeechService
-import org.starfall.generative.shared.ui.sheets.AppSheet
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 @Composable
 internal fun SpeechVoiceSheet(
@@ -63,10 +63,10 @@ internal fun SpeechVoiceSheet(
             fetch(null, false)
         }
         DisposableEffect(Unit) { onDispose { pageJob?.cancel() } }
-        AppSheet(onDismissRequest = onDismiss, fixedHeightFraction = 0.8f) {
+        BottomSheet(onDismissRequest = onDismiss, fixedHeightFraction = 0.8f) {
             Column(Modifier.fillMaxWidth().imePadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.speech_choose_voice), style = MaterialTheme.typography.titleLarge)
-                SelectableOutlinedTextField(query, { query = it }, label = { Text(stringResource(R.string.speech_search_voices)) },
+                OutlinedTextField(query, { query = it }, label = { Text(stringResource(R.string.speech_search_voices)) },
                     singleLine = true, modifier = Modifier.fillMaxWidth())
                 if (service.engine != SpeechEngine.ELEVENLABS) Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(owned, { owned = it })
@@ -81,7 +81,7 @@ internal fun SpeechVoiceSheet(
                     if (!loading && error == null && voices.isEmpty()) item { Text(stringResource(R.string.speech_no_voices)) }
                     items(voices, key = { it.id }) { voice ->
                         val selected = voice.id == service.voice
-                        AppListContainer(isGrid = false, onClick = { onChoose(voice) },
+                        ItemSurface(isGrid = false, onClick = { onChoose(voice) },
                             color = if (selected) MaterialTheme.colorScheme.primaryContainer else prominentContainerColor()) {
                             Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -92,7 +92,7 @@ internal fun SpeechVoiceSheet(
                                     if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
-                                if (selected) FluentIcon(Icons.Default.Check, stringResource(R.string.common_selected))
+                                if (selected) SharedIcon(Icons.Default.Check, stringResource(R.string.common_selected))
                             }
                         }
                     }

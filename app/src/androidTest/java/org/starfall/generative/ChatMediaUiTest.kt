@@ -1,5 +1,7 @@
 package org.starfall.generative
 
+import org.starfall.generative.features.home.BottomSheetsLinkState
+
 
 import android.graphics.Bitmap
 import androidx.compose.material3.MaterialTheme
@@ -49,11 +51,11 @@ class ChatMediaUiTest {
         try {
             val message = StoredMessage("assistant", ChatRole.MODEL,
                 listOf(MessageVersion(content = "Image", files = listOf(image.path))))
-            compose.setContent { MaterialTheme { AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {}, onSwitchVersion = {}) } }
-            compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Generated image").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithContentDescription("Generated image").assertHeightIsAtLeast(120.dp).performClick()
-            compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Image preview").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithContentDescription("Close viewer").performClick()
+            compose.setContent { MaterialTheme { AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {}, onRead = {}, onSwitchVersion = {}) } }
+            compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription(context.getString(R.string.media_generated_image)).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithContentDescription(context.getString(R.string.media_generated_image)).assertHeightIsAtLeast(120.dp).performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription(context.getString(R.string.media_image_preview)).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithContentDescription(context.getString(R.string.media_close_viewer)).performClick()
         } finally { image.delete() }
     }
 
@@ -77,16 +79,16 @@ class ChatMediaUiTest {
             val second = compose.onNodeWithTag("attachment-tile_${document.path}").fetchSemanticsNode().boundsInRoot
             assertEquals(first.top, second.top, 0.5f)
             assertEquals(first.bottom, second.bottom, 0.5f)
-            compose.onNodeWithContentDescription("Generated image").assertDoesNotExist()
-            compose.onNodeWithContentDescription("Image preview").assertDoesNotExist()
+            compose.onNodeWithContentDescription(context.getString(R.string.media_generated_image)).assertDoesNotExist()
+            compose.onNodeWithContentDescription(context.getString(R.string.media_image_preview)).assertDoesNotExist()
             compose.waitUntil(5_000) {
                 compose.onAllNodesWithContentDescription(image.name).fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithTag("attachment-tile_${image.path}").performClick()
             compose.waitUntil(5_000) {
-                compose.onAllNodesWithContentDescription("Image preview").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodesWithContentDescription(context.getString(R.string.media_image_preview)).fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithContentDescription("Close viewer").performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.media_close_viewer)).performClick()
             compose.runOnIdle { input = true }
             val inputTile = compose.onNodeWithTag("attachment-tile_${image.path}").fetchSemanticsNode().boundsInRoot
             assertEquals(inputTile.width, first.width, 0.5f)
@@ -109,22 +111,22 @@ class ChatMediaUiTest {
             ChatFilePreview("/document.pdf", "document.pdf", "application/pdf", null, false,
                 selectedForChat = checked, onToggleAttachment = { checked = !checked; selected = checked }, onOpen = {})
         } }
-        compose.onNodeWithContentDescription("Download file").assertIsEnabled()
-        compose.onNodeWithContentDescription("Attach file to next message").performClick()
+        compose.onNodeWithContentDescription(context.getString(R.string.file_download)).assertIsEnabled()
+        compose.onNodeWithContentDescription(context.getString(R.string.file_attach_next_message)).performClick()
         compose.runOnIdle { assertTrue(selected) }
-        compose.onNodeWithContentDescription("Remove file from next message").performClick()
+        compose.onNodeWithContentDescription(context.getString(R.string.file_remove_next_message)).performClick()
         compose.runOnIdle { assertFalse(selected) }
     }
 
     @Test fun portraitMediaIsBoundedAndVideoFullscreenCanBeOpenedAndClosed() {
         val bitmap = Bitmap.createBitmap(16, 1600, Bitmap.Config.ARGB_8888)
         compose.setContent { MaterialTheme { InlineVideoPreview("${context.cacheDir}/missing.mp4", bitmap.asImageBitmap()) } }
-        val bounds = compose.onNodeWithContentDescription("Video preview").fetchSemanticsNode().boundsInRoot
+        val bounds = compose.onNodeWithContentDescription(context.getString(R.string.media_video_preview)).fetchSemanticsNode().boundsInRoot
         val maximum = context.resources.configuration.screenHeightDp * context.resources.displayMetrics.density / 2
         assertTrue(bounds.height <= maximum + 1)
-        compose.onNodeWithContentDescription("Open fullscreen video").performClick()
-        compose.onNodeWithContentDescription("Exit fullscreen video").assertExists().performClick()
-        compose.onNodeWithContentDescription("Exit fullscreen video").assertDoesNotExist()
+        compose.onNodeWithContentDescription(context.getString(R.string.video_fullscreen)).performClick()
+        compose.onNodeWithContentDescription(context.getString(R.string.video_exit_fullscreen)).assertExists().performClick()
+        compose.onNodeWithContentDescription(context.getString(R.string.video_exit_fullscreen)).assertDoesNotExist()
     }
     @Test fun returnedVideoHasNoFileLabelsAndPlaybackErrorsStayInline() {
         val store = ToolFiles(context)
@@ -134,11 +136,11 @@ class ChatMediaUiTest {
             compose.setContent { MaterialTheme { MediaFileCard(store, name, imageOnly = true) } }
             compose.onNodeWithText(name).assertDoesNotExist()
             compose.onNodeWithText("▶ View video").assertDoesNotExist()
-            compose.onNodeWithContentDescription("Play video").performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.media_play_video)).performClick()
             compose.waitUntil(5_000) {
-                compose.onAllNodesWithText("Unable to play this video.", substring = true).fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodesWithText(context.getString(R.string.media_video_play_failed), substring = true).fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithContentDescription("Close viewer").assertDoesNotExist()
+            compose.onNodeWithContentDescription(context.getString(R.string.media_close_viewer)).assertDoesNotExist()
         } finally { store.delete(listOf(name)) }
     }
 
@@ -157,17 +159,17 @@ class ChatMediaUiTest {
                     "videos", "Content API / extract", status = "success", files = names, inlineMedia = true
                 ))
             )))
-            compose.setContent { MaterialTheme { AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {}, onSwitchVersion = {}) } }
+            compose.setContent { MaterialTheme { AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {}, onRead = {}, onSwitchVersion = {}) } }
             compose.waitUntil(5_000) {
-                compose.onAllNodesWithContentDescription("Open video").fetchSemanticsNodes().size == 2
+                compose.onAllNodesWithContentDescription(context.getString(R.string.media_open_video)).fetchSemanticsNodes().size == 2
             }
-            compose.onAllNodesWithContentDescription("Play video").assertCountEquals(0)
-            compose.onAllNodesWithContentDescription("Open video").onFirst().performClick()
+            compose.onAllNodesWithContentDescription(context.getString(R.string.media_play_video)).assertCountEquals(0)
+            compose.onAllNodesWithContentDescription(context.getString(R.string.media_open_video)).onFirst().performClick()
             compose.waitUntil(5_000) {
-                compose.onAllNodesWithText("Unable to play this video.", substring = true)
+                compose.onAllNodesWithText(context.getString(R.string.media_video_play_failed), substring = true)
                     .fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithContentDescription("Close viewer").performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.media_close_viewer)).performClick()
         } finally { store.delete(names) }
     }
     @Test fun readButtonTogglesToStopAndShowsModelForActiveVersion() {
@@ -176,13 +178,14 @@ class ChatMediaUiTest {
         compose.setContent {
             var reading by remember { mutableStateOf(false) }
             MaterialTheme {
-                AssistantMessageCard(message, false, {}, {}, {}, {}, { reading = !reading }, {}, isReading = reading, onSwitchVersion = {})
+                AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {}, isReading = reading,
+                    onRead = { reading = !reading }, onSwitchVersion = {})
             }
         }
         compose.onNodeWithText("Actual model").assertExists()
-        compose.onNodeWithContentDescription("Read aloud").performClick()
-        compose.onNodeWithContentDescription("Stop reading").performClick()
-        compose.onNodeWithContentDescription("Read aloud").assertExists()
+        compose.onNodeWithContentDescription(context.getString(R.string.message_read_aloud)).performClick()
+        compose.onNodeWithContentDescription(context.getString(R.string.message_stop_reading)).performClick()
+        compose.onNodeWithContentDescription(context.getString(R.string.message_read_aloud)).assertExists()
     }
     @get:Rule val compose = createComposeRule()
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
@@ -200,6 +203,7 @@ class ChatMediaUiTest {
                     isGenerating = false,
                     onSendMessage = { _, _ -> textSubmissions++; true },
                     onSendMedia = { submitted = it; true },
+                    bottomSheets = BottomSheetsLinkState(),
                     onEditMessage = { _, _, _ -> false },
                     editDraft = null,
                     onCancelEdit = {},
@@ -214,24 +218,28 @@ class ChatMediaUiTest {
             }
         }
         val original = compose.onNodeWithTag("chat-input").fetchSemanticsNode().boundsInRoot.size
-        listOf("Image" to ModelType.IMAGE_GENERATION, "Video" to ModelType.VIDEO_GENERATION).forEach { (label, kind) ->
-            compose.onNodeWithContentDescription("Attachments and tools").performClick()
+        listOf(
+            context.getString(R.string.common_image) to ModelType.IMAGE_GENERATION,
+            context.getString(R.string.common_video) to ModelType.VIDEO_GENERATION
+        ).forEach { (label, kind) ->
+            compose.onNodeWithContentDescription(context.getString(R.string.chat_attachments_and_tools)).performClick()
             compose.onNodeWithText(label, useUnmergedTree = true).performScrollTo().performClick()
             compose.waitForIdle()
             val size = compose.onNodeWithTag("chat-input").fetchSemanticsNode().boundsInRoot.size
             assertEquals(original.width, size.width, 1f)
             assertEquals(original.height, size.height, 1f)
             compose.onNode(hasSetTextAction()).performTextInput("A quiet lake")
-            compose.onNodeWithContentDescription("Generate $label").performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.chat_generate_media, label)).performClick()
             compose.runOnIdle {
                 assertEquals(kind, submitted?.kind)
-                assertEquals(label.lowercase(), submitted?.modelId)
+                assertEquals(if (kind == ModelType.IMAGE_GENERATION) "image" else "video", submitted?.modelId)
                 assertEquals("A quiet lake", submitted?.prompt)
                 assertEquals(0, textSubmissions)
             }
         }
-        compose.onNodeWithContentDescription("Exit Video generation mode").performClick()
-        compose.onNodeWithContentDescription("Send message").assertDoesNotExist()
+        compose.onNodeWithContentDescription(context.getString(R.string.chat_exit_generation_mode,
+            context.getString(R.string.common_video))).performClick()
+        compose.onNodeWithContentDescription(context.getString(R.string.chat_send_message)).assertDoesNotExist()
     }
 
     @Test fun generatedImageIsVisibleInChatAndOpensViewerWithoutTextResponse() {
@@ -246,17 +254,17 @@ class ChatMediaUiTest {
                 ToolActivity("duplicate", "other", status = "success", files = listOf(name))
             ))))
             compose.setContent {
-                MaterialTheme { AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {}, onSwitchVersion = {}) }
+                MaterialTheme { AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {}, onRead = {}, onSwitchVersion = {}) }
             }
             compose.waitUntil(5_000) {
-                compose.onAllNodesWithContentDescription("Generated image").fetchSemanticsNodes().size == 1
+                compose.onAllNodesWithContentDescription(context.getString(R.string.media_generated_image)).fetchSemanticsNodes().size == 1
             }
-            compose.onNodeWithContentDescription("Generated image").performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.media_generated_image)).performClick()
             compose.waitUntil(5_000) {
-                compose.onAllNodesWithContentDescription("Image preview").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodesWithContentDescription(context.getString(R.string.media_image_preview)).fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithContentDescription("Close viewer").performClick()
-            compose.onNodeWithContentDescription("Image preview").assertDoesNotExist()
+            compose.onNodeWithContentDescription(context.getString(R.string.media_close_viewer)).performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.media_image_preview)).assertDoesNotExist()
         } finally { store.delete(listOf(name)) }
     }
 
@@ -271,20 +279,20 @@ class ChatMediaUiTest {
         }.array())
         try {
             compose.setContent { MaterialTheme { AttachmentStrip(listOf(file.path), removable = false) } }
-            compose.onNodeWithContentDescription("Play audio").assertDoesNotExist()
+            compose.onNodeWithContentDescription(context.getString(R.string.media_play_audio)).assertDoesNotExist()
             compose.waitUntil(5_000) {
-                compose.onAllNodesWithContentDescription("Play media").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodesWithContentDescription(context.getString(R.string.attachment_play_media)).fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithTag("attachment-tile_${file.path}").performClick()
             compose.waitUntil(5_000) {
-                compose.onAllNodesWithContentDescription("Play audio").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodesWithContentDescription(context.getString(R.string.media_play_audio)).fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithContentDescription("Play audio").performClick()
-            compose.onNodeWithContentDescription("Pause audio").assertExists().performClick()
-            compose.onNodeWithContentDescription("Play audio").assertExists()
+            compose.onNodeWithContentDescription(context.getString(R.string.media_play_audio)).performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.media_pause_audio)).assertExists().performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.media_play_audio)).assertExists()
             compose.onNode(SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.ProgressBarRangeInfo)).assertExists()
-            compose.onNodeWithContentDescription("Close viewer").assertExists().performClick()
-            compose.onNodeWithContentDescription("Play audio").assertDoesNotExist()
+            compose.onNodeWithContentDescription(context.getString(R.string.media_close_viewer)).assertExists().performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.media_play_audio)).assertDoesNotExist()
         } finally { file.delete() }
     }
 
@@ -293,9 +301,9 @@ class ChatMediaUiTest {
             MaterialTheme { MediaPreviewCover("${context.cacheDir}/missing-video.mp4", "Video", "video/mp4", {}) }
         }
         compose.waitUntil(5_000) {
-            compose.onAllNodesWithText("Unable to play this video.", substring = true).fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodesWithText(context.getString(R.string.media_video_play_failed), substring = true).fetchSemanticsNodes().isNotEmpty()
         }
-        compose.onNodeWithContentDescription("Close viewer").assertIsEnabled()
+        compose.onNodeWithContentDescription(context.getString(R.string.media_close_viewer)).assertIsEnabled()
     }
 
     @Test fun selectedGeneratedImageIsAttachedToNextMessageAndClearedAfterSend() {
@@ -314,13 +322,14 @@ class ChatMediaUiTest {
                 MaterialTheme {
                     Box(Modifier.fillMaxSize()) {
                         AssistantMessageCard(message, false, {}, {}, {}, {}, {}, {},
-                            onSwitchVersion = {},
+                            onRead = {}, onSwitchVersion = {},
                             selectedImageAttachments = attachments,
                             onToggleChatImage = { ref -> attachments = if (ref in attachments) attachments - ref else attachments + ref })
                         UserInputArea(
                             isGenerating = false,
                             onSendMessage = { _, files -> sentFiles = files; true },
                             onSendMedia = { false },
+                            bottomSheets = BottomSheetsLinkState(),
                             onEditMessage = { _, _, _ -> false },
                             editDraft = null,
                             onCancelEdit = {},
@@ -339,15 +348,15 @@ class ChatMediaUiTest {
                 }
             }
             compose.waitUntil(5_000) {
-                compose.onAllNodesWithContentDescription("Attach image to next message").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodesWithContentDescription(context.getString(R.string.attachment_attach_to_next)).fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithContentDescription("Attach image to next message").performClick()
-            compose.onNodeWithContentDescription("Remove image from next message").assertIsOn().performClick()
-            compose.onNodeWithContentDescription("Attach image to next message").performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.attachment_attach_to_next)).performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.attachment_remove_from_next)).assertIsOn().performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.attachment_attach_to_next)).performClick()
             compose.onNode(hasSetTextAction()).performTextInput("Describe this image")
-            compose.onNodeWithContentDescription("Send message").performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.chat_send_message)).performClick()
             compose.runOnIdle { assertEquals(listOf(store.resolve(name)!!.path), sentFiles) }
-            compose.onNodeWithContentDescription("Attach image to next message").assertIsOff()
+            compose.onNodeWithContentDescription(context.getString(R.string.attachment_attach_to_next)).assertIsOff()
         } finally { store.delete(listOf(name)) }
     }
 
@@ -360,7 +369,7 @@ class ChatMediaUiTest {
         compose.setContent { MaterialTheme {
             AssistantMessageCard(
                 StoredMessage("assistant-pending", ChatRole.MODEL, listOf(version)),
-                streaming, {}, {}, {}, {}, {}, {}, onSwitchVersion = {}
+                streaming, {}, {}, {}, {}, {}, {}, onRead = {}, onSwitchVersion = {}
             )
         } }
 
@@ -370,8 +379,8 @@ class ChatMediaUiTest {
             .assertExists().assertHeightIsAtLeast(100.dp)
         compose.onNodeWithTag("media-generation-placeholder_video-pending")
             .assertExists().assertHeightIsAtLeast(100.dp)
-        compose.onNodeWithContentDescription("Generating image").assertExists()
-        compose.onNodeWithContentDescription("Generating video").assertExists()
+        compose.onNodeWithContentDescription(context.getString(R.string.tool_generating_image)).assertExists()
+        compose.onNodeWithContentDescription(context.getString(R.string.tool_generating_video)).assertExists()
 
         compose.runOnIdle {
             version = version.copy(toolActivity = listOf(
@@ -383,9 +392,9 @@ class ChatMediaUiTest {
             .assertExists().fetchSemanticsNode().boundsInRoot
         assertEquals(originalImageBounds.width, failedImageBounds.width, 0.5f)
         assertEquals(originalImageBounds.height, failedImageBounds.height, 0.5f)
-        compose.onNodeWithTag("media-generation-failed_image-pending", useUnmergedTree = true).assertExists()
-        compose.onNodeWithContentDescription("Image generation failed").assertExists()
-        compose.onNodeWithContentDescription("Generating image").assertDoesNotExist()
+        compose.onNodeWithTag("media-generation-failed_image-pending", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithContentDescription(context.getString(R.string.media_image_generation_failed)).assertExists()
+        compose.onNodeWithContentDescription(context.getString(R.string.tool_generating_image)).assertDoesNotExist()
         compose.onNodeWithTag("media-generation-placeholder_video-pending").assertExists()
 
         compose.runOnIdle {
@@ -397,7 +406,7 @@ class ChatMediaUiTest {
 
         compose.runOnIdle { streaming = false }
         compose.onNodeWithTag("media-generation-placeholder_image-pending").assertExists()
-        compose.onNodeWithContentDescription("Image generation failed").assertExists()
+        compose.onNodeWithContentDescription(context.getString(R.string.media_image_generation_failed)).assertExists()
 
         // A restored or stopped message must not resurrect placeholders for stale running calls.
         compose.runOnIdle {
@@ -414,13 +423,13 @@ class ChatMediaUiTest {
         compose.setContent { MaterialTheme {
             AssistantMessageCard(
                 StoredMessage("assistant-video-failed", ChatRole.MODEL, listOf(version)),
-                false, {}, {}, {}, {}, {}, {}, onSwitchVersion = {}
+                false, {}, {}, {}, {}, {}, {}, onRead = {}, onSwitchVersion = {}
             )
         } }
         compose.onNodeWithTag("media-generation-placeholder_video-failed").assertExists().assertHeightIsAtLeast(100.dp)
-        compose.onNodeWithTag("media-generation-failed_video-failed", useUnmergedTree = true).assertExists()
-        compose.onNodeWithContentDescription("Video generation failed").assertExists()
-        compose.onNodeWithContentDescription("Generating video").assertDoesNotExist()
+        compose.onNodeWithTag("media-generation-failed_video-failed", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithContentDescription(context.getString(R.string.media_video_generation_failed)).assertExists()
+        compose.onNodeWithContentDescription(context.getString(R.string.tool_generating_video)).assertDoesNotExist()
     }
 
     @Test fun successfulMediaReplacesItsPendingPreviewWithoutMovingEarlierFailure() {
@@ -438,7 +447,7 @@ class ChatMediaUiTest {
             compose.setContent { MaterialTheme {
                 AssistantMessageCard(
                     StoredMessage("assistant-rendering", ChatRole.MODEL, listOf(version)),
-                    true, {}, {}, {}, {}, {}, {}, onSwitchVersion = {}
+                    true, {}, {}, {}, {}, {}, {}, onRead = {}, onSwitchVersion = {}
                 )
             } }
             compose.onNodeWithTag("media-generation-placeholder_rendering").assertExists()
@@ -452,11 +461,11 @@ class ChatMediaUiTest {
             }
             compose.onNodeWithTag("media-generation-placeholder_rendering").assertDoesNotExist()
             compose.waitUntil(5_000) {
-                compose.onAllNodesWithContentDescription("Generated image").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodesWithContentDescription(context.getString(R.string.media_generated_image)).fetchSemanticsNodes().isNotEmpty()
             }
             val failureBounds = compose.onNodeWithTag("media-generation-placeholder_earlier-failure")
                 .assertExists().fetchSemanticsNode().boundsInRoot
-            val imageBounds = compose.onNodeWithContentDescription("Generated image").fetchSemanticsNode().boundsInRoot
+            val imageBounds = compose.onNodeWithContentDescription(context.getString(R.string.media_generated_image)).fetchSemanticsNode().boundsInRoot
             assertEquals(failedLeft, failureBounds.left, 0.5f)
             assertTrue(failureBounds.left < imageBounds.left)
         } finally { store.delete(listOf(name)) }
@@ -475,13 +484,13 @@ class ChatMediaUiTest {
                 ToolActivity("image", "generate_image", status = "success", files = listOf(name), contentOffset = before.length)
             ))
             compose.setContent { MaterialTheme {
-                AssistantMessageCard(StoredMessage("assistant", ChatRole.MODEL, listOf(version)), false, {}, {}, {}, {}, {}, {}, onSwitchVersion = {})
+                AssistantMessageCard(StoredMessage("assistant", ChatRole.MODEL, listOf(version)), false, {}, {}, {}, {}, {}, {}, onRead = {}, onSwitchVersion = {})
             } }
             compose.waitUntil(5_000) {
-                compose.onAllNodesWithContentDescription("Generated image").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodesWithContentDescription(context.getString(R.string.media_generated_image)).fetchSemanticsNodes().isNotEmpty()
             }
             val beforeBounds = compose.onNodeWithText("Before the tool call.").fetchSemanticsNode().boundsInRoot
-            val imageBounds = compose.onNodeWithContentDescription("Generated image").fetchSemanticsNode().boundsInRoot
+            val imageBounds = compose.onNodeWithContentDescription(context.getString(R.string.media_generated_image)).fetchSemanticsNode().boundsInRoot
             val afterBounds = compose.onNodeWithText(after).fetchSemanticsNode().boundsInRoot
             assertTrue(beforeBounds.bottom <= imageBounds.top)
             assertTrue(imageBounds.bottom <= afterBounds.top)

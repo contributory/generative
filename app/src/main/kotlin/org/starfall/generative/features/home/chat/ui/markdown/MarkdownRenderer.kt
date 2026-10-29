@@ -49,7 +49,7 @@ import org.starfall.generative.features.home.chat.ui.MarkdownParseCache
 import org.starfall.generative.features.home.chat.ui.TrackPendingWork
 import org.starfall.generative.features.home.chat.ui.TrackReadyAssets
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 import org.starfall.generative.shared.ui.text.messageMarkdownTypography
@@ -466,7 +466,7 @@ private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String, fi
                         },
                         modifier = Modifier.size(28.dp)
                     ) {
-                        FluentIcon(
+                        SharedIcon(
                             imageVector = Icons.Outlined.ContentCopy,
                             contentDescription = stringResource(R.string.message_copy_error),
                             tint = errorColor,

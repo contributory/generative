@@ -1,8 +1,8 @@
 package org.starfall.generative.shared.ui.terminal
 
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
@@ -24,7 +24,7 @@ import androidx.compose.ui.semantics.semantics
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.remote.TerminalInputMode
 import org.starfall.generative.shared.terminal.RemoteTerminalBridge
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,7 +46,7 @@ internal fun TerminalAppBar(
         windowInsets = WindowInsets(0, 0, 0, 0),
         navigationIcon = {
             IconButton(onClick = onDisconnect) {
-                FluentIcon(Icons.Outlined.LinkOff, stringResource(R.string.remote_machine_terminal_disconnect_close))
+                SharedIcon(Icons.Outlined.LinkOff, stringResource(R.string.remote_machine_terminal_disconnect_close))
             }
         },
         actions = {
@@ -70,8 +70,8 @@ internal fun TerminalAppBar(
                     R.string.remote_machine_terminal_input_local_short else R.string.remote_machine_terminal_input_remote_short)
                 IconButton(enabled = bridge != null, onClick = { inputMenuOpen = true }) {
                     val description = stringResource(R.string.remote_machine_terminal_input_settings) + ": " + modeLabel
-                    if (mode == TerminalInputMode.LOCAL) FluentIcon(Icons.Outlined.Edit, description)
-                    else FluentIcon(Icons.Outlined.Terminal, description)
+                    if (mode == TerminalInputMode.LOCAL) SharedIcon(Icons.Outlined.Edit, description)
+                    else SharedIcon(Icons.Outlined.Terminal, description)
                 }
                 DropdownMenu(expanded = inputMenuOpen, onDismissRequest = { inputMenuOpen = false }) {
                     TerminalInputMode.entries.forEach { option ->
@@ -79,7 +79,7 @@ internal fun TerminalAppBar(
                             text = { Text(stringResource(if (option == TerminalInputMode.LOCAL)
                                 R.string.remote_machine_terminal_input_local_short else R.string.remote_machine_terminal_input_remote_short)) },
                             leadingIcon = {
-                                if (option == mode) FluentIcon(Icons.Default.Check, null)
+                                if (option == mode) SharedIcon(Icons.Default.Check, null)
                             },
                             // Do not switch away while either editor has an unsent draft.
                             enabled = bridge != null && (option == mode || canUseRemoteInput),
@@ -97,10 +97,10 @@ internal fun TerminalAppBar(
                 onCheckedChange = { onToggleForceMouse() },
                 enabled = bridge != null
             ) {
-                FluentIcon(R.drawable.ic_mouse_24, stringResource(R.string.remote_machine_terminal_force_mouse))
+                SharedIcon(R.drawable.ic_mouse_24, stringResource(R.string.remote_machine_terminal_force_mouse))
             }
             IconButton(onClick = onToggleSessions) {
-                FluentIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.remote_machine_terminal_toggle_sessions))
+                SharedIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.remote_machine_terminal_toggle_sessions))
             }
         }
     )

@@ -1,30 +1,33 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package org.starfall.generative.features.home.chat.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.LoadingIndicatorDefaults
+import androidx.compose.material3.MaterialTheme
+import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.shared.ui.icons.EntityIcon
-import kotlin.math.PI
-import kotlin.math.sin
+import kotlinx.coroutines.delay
 
-private const val MIN_DEGREES_PER_SECOND = 60f
-private const val MAX_DEGREES_PER_SECOND = 720f
-private const val SPEED_CYCLE_SECONDS = 2.4f
-
-/** The model icon spins in place, continuously speeding up and slowing down. */
+/** Stationary model logo revealed through Material's morphing LoadingIndicator silhouette. */
 @Composable
 internal fun GenerationLoadingIndicator(
     modelName: String,
@@ -32,37 +35,60 @@ internal fun GenerationLoadingIndicator(
     modelId: String? = null,
     modelIcon: String? = null
 ) {
-    var angle by remember { mutableFloatStateOf(0f) }
-
+    val indicatorSize = LoadingIndicatorDefaults.IndicatorSize
+    val indicatorColor = MaterialTheme.colorScheme.primary
+    var showLogo by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        var last = 0L
-        var elapsed = 0f
         while (true) {
-            withFrameNanos { now ->
-                if (last != 0L) {
-                    val dt = (now - last) / 1_000_000_000f
-                    elapsed += dt
-                    // Speed eases smoothly between slow and fast; the angle is integrated so it never jumps.
-                    val wave = (sin(2.0 * PI * elapsed / SPEED_CYCLE_SECONDS).toFloat() + 1f) / 2f
-                    val speed = MIN_DEGREES_PER_SECOND + (MAX_DEGREES_PER_SECOND - MIN_DEGREES_PER_SECOND) * wave
-                    angle = (angle + speed * dt) % 360f
-                }
-                last = now
-            }
+            delay(3_000)
+            showLogo = true
+            delay(2_000)
+            showLogo = false
         }
     }
-
     Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-        EntityIcon(
-            image = modelIcon,
-            modifier = Modifier
-                .size(26.dp)
-                .graphicsLayer { rotationZ = angle }
-                .clip(CircleShape), // after graphicsLayer so the clip follows the icon
-            text = modelName,
-            matchName = modelName,
-            fallbackMatchName = modelId,
-            model = true
-        )
+        Box(
+            Modifier.size(indicatorSize)
+                .testTag("generation-logo-mask")
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen },
+            contentAlignment = Alignment.Center
+        ) {
+            // Keep the loading shape visible while the logo is hidden.
+            if (!showLogo) {
+                Box(
+                    Modifier.size(indicatorSize)
+                        .background(indicatorColor)
+                        .testTag("generation-logo-fallback")
+                )
+            }
+            // Keep the logo composed so its image remains loaded between visibility cycles.
+            EntityIcon(
+                image = modelIcon,
+                modifier = Modifier.size(indicatorSize)
+                    .testTag("generation-model-logo")
+                    .graphicsLayer { alpha = if (showLogo) 1f else 0f },
+                text = modelName,
+                matchName = modelName,
+                fallbackMatchName = modelId,
+                model = true
+            )
+            // Material draws its changing polygon into a DstIn layer. Only the polygon's
+            // silhouette remains visible from the full-sized, unanimated logo underneath.
+            LoadingIndicator(
+                modifier = Modifier.size(indicatorSize)
+                    .testTag("generation-loading-indicator")
+                    .drawWithCache {
+                        val maskPaint = Paint().apply { blendMode = BlendMode.DstIn }
+                        onDrawWithContent {
+                            drawContext.canvas.saveLayer(
+                                androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height), maskPaint
+                            )
+                            drawContent()
+                            drawContext.canvas.restore()
+                        }
+                    },
+                color = Color.White
+            )
+        }
     }
 }

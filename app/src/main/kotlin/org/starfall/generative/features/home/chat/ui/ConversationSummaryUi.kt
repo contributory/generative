@@ -15,9 +15,9 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.ConversationSummary
 import org.starfall.generative.shared.model.ConversationSummaryProgress
 import org.starfall.generative.shared.model.SummaryRole
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
-import org.starfall.generative.shared.ui.GenerativeLinearWavyProgressIndicator
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.LinearWavyProgressIndicator
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -42,7 +42,7 @@ fun ConversationSummaryDivider(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 HorizontalDivider(modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(10.dp))
-                FluentIcon(
+                SharedIcon(
                     Icons.Outlined.Summarize,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
@@ -62,7 +62,7 @@ fun ConversationSummaryDivider(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    GenerativeLinearWavyProgressIndicator(
+                    LinearWavyProgressIndicator(
                         progress = { progress.progress.coerceIn(0f, 1f) },
                         modifier = Modifier.weight(1f)
                     )
@@ -71,7 +71,7 @@ fun ConversationSummaryDivider(
                         onClick = onCancelSummary,
                         modifier = Modifier.size(40.dp)
                     ) {
-                        FluentIcon(
+                        SharedIcon(
                             Icons.Outlined.Close,
                             contentDescription = stringResource(R.string.common_cancel),
                             modifier = Modifier.size(20.dp)
@@ -155,7 +155,7 @@ fun ConversationSummaryDialog(
                 },
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
             ) {
-                FluentIcon(Icons.Outlined.Delete, contentDescription = null)
+                SharedIcon(Icons.Outlined.Delete, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
                 Text(stringResource(R.string.summary_delete))
             }

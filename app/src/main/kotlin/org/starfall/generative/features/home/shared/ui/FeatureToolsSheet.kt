@@ -23,15 +23,15 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.icons.EntityIcon
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.sheets.AppSheet
+import org.starfall.generative.shared.ui.sheets.BottomSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeatureToolsSheet(onDismiss: () -> Unit) {
-    AppSheet(onDismissRequest = onDismiss) {
+    BottomSheet(onDismissRequest = onDismiss) {
         FeatureToolsSheetContent()
     }
 }
@@ -59,7 +59,7 @@ internal fun FeatureToolsSheetContent(
             val webSearchProvider = controls.servers.firstOrNull { it.id == controls.settings.webSearchProviderId }
             SettingsCard {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    FluentIcon(
+                    SharedIcon(
                         Icons.Outlined.Language,
                         contentDescription = null,
                         modifier = Modifier.size(44.dp).padding(10.dp),
@@ -106,7 +106,7 @@ internal fun FeatureToolsSheetContent(
                                 model = true
                             )
                         } else {
-                            FluentIcon(icon, contentDescription = null, modifier = Modifier.size(44.dp))
+                            SharedIcon(icon, contentDescription = null, modifier = Modifier.size(44.dp))
                         }
                         Spacer(Modifier.size(12.dp))
                         Column(Modifier.weight(1f)) {
@@ -138,7 +138,7 @@ internal fun FeatureToolsSheetContent(
             }
             SettingsCard {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    FluentIcon(
+                    SharedIcon(
                         Icons.Outlined.InsertDriveFile,
                         contentDescription = null,
                         modifier = Modifier.size(44.dp).padding(10.dp),
@@ -167,7 +167,7 @@ internal fun FeatureToolsSheetContent(
             }
             SettingsCard {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    FluentIcon(Icons.Outlined.Search, contentDescription = null,
+                    SharedIcon(Icons.Outlined.Search, contentDescription = null,
                         modifier = Modifier.size(44.dp).padding(10.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.size(12.dp))
@@ -184,7 +184,7 @@ internal fun FeatureToolsSheetContent(
             }
             SettingsCard {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    FluentIcon(Icons.Outlined.Search, contentDescription = null,
+                    SharedIcon(Icons.Outlined.Search, contentDescription = null,
                         modifier = Modifier.size(44.dp).padding(10.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.size(12.dp))

@@ -22,8 +22,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.shared.theme.GenerativeTheme
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
-import org.starfall.generative.shared.ui.dialogs.AppDialog
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.dialogs.Dialog
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h640dp-xhdpi", application = LibraryTestApplication::class)
@@ -35,7 +35,7 @@ class AppDialogLayoutTest {
         var confirmed = false
         compose.setContent {
             GenerativeTheme(darkTheme = false, amoledMode = false) {
-                AppAlertDialog(
+                AlertDialog(
                     onDismissRequest = {},
                     title = { Text("Confirm change") },
                     text = { Column { repeat(40) { Text("Paragraph $it") } } },
@@ -57,7 +57,7 @@ class AppDialogLayoutTest {
         var saved = false
         compose.setContent {
             GenerativeTheme(darkTheme = false, amoledMode = false) {
-                AppDialog(
+                Dialog(
                     onDismissRequest = {},
                     title = { Text("Choose an item") },
                     content = {

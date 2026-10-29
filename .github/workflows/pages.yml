@@ -18,7 +18,7 @@ permissions:
 
 concurrency:
   group: github-pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -29,14 +29,28 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-      - name: Refresh Models.dev provider catalog
+      # External API outages must not block publishing the static website.
+      # The repository includes a working docs/providers-data.json fallback.
+      - name: Refresh Models.dev provider catalog (best effort)
+        id: providers
+        continue-on-error: true
+        timeout-minutes: 2
         run: python3 scripts/sync-models-dev-providers.py
+      - name: Report provider refresh failure
+        if: ${{ steps.providers.outcome == 'failure' }}
+        run: echo "::warning::Models.dev refresh failed; deploying the checked-in website and provider catalog."
+      - name: Verify static website
+        run: |
+          test -s docs/index.html
+          test -s docs/docs.html
+          test -s docs/providers.html
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload static site
         uses: actions/upload-pages-artifact@v4
         with:
           path: docs
+          include-hidden-files: true
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

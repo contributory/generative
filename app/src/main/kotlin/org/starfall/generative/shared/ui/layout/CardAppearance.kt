@@ -9,53 +9,51 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.theme.LocalAmoledMode
 
+/** Appearance-controlled item fill; optional boost preserves extra contrast for overlay controls. */
+@Composable
+fun appearanceContainerColor(base: Color, opacityBoost: Float = 0f): Color =
+    if (LocalAmoledMode.current) Color.Transparent else base.copy(
+        alpha = (1f - LocalItemTransparency.current.coerceIn(0f, 1f) + opacityBoost).coerceIn(0f, 1f)
+    )
+
+/** Shared Appearance policy for container outlines in AMOLED mode. */
+@Composable
+fun appearanceContainerBorder(width: Dp = 1.dp): BorderStroke? =
+    if (LocalAmoledMode.current) BorderStroke(width, MaterialTheme.colorScheme.outlineVariant) else null
+
+/** Opaque modal/drawer surface: images are placed behind content, never painted through the surface. */
+@Composable
+fun modalContainerColor(base: Color): Color =
+    if (LocalAmoledMode.current) Color.Black else base.copy(alpha = 1f)
+
 /**
  * Container fill for primary cards, tiles, and list items:
  * configurable translucent item fill in normal Light/Dark themes; no fill in AMOLED dark mode.
  */
 @Composable
-fun prominentContainerColor(): Color =
-    if (LocalAmoledMode.current) {
-        Color.Transparent
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 1f).itemFill(LocalItemTransparency.current)
-    }
+fun prominentContainerColor(opacityBoost: Float = 0f): Color =
+    appearanceContainerColor(MaterialTheme.colorScheme.surfaceContainerHigh, opacityBoost)
 
 /**
  * Container border for primary cards, tiles, and list items:
  * no routine border in normal Light/Dark themes, visible outline border in AMOLED dark mode.
  */
 @Composable
-fun prominentContainerBorder(width: Dp = 1.dp): BorderStroke? =
-    if (LocalAmoledMode.current) {
-        BorderStroke(width, MaterialTheme.colorScheme.outlineVariant)
-    } else {
-        null
-    }
+fun prominentContainerBorder(width: Dp = 1.dp): BorderStroke? = appearanceContainerBorder(width)
 
 /**
  * Container fill for interactive or elevated sub-containers nested inside a [prominentContainerColor] card,
  * or standalone code/media blocks.
  */
 @Composable
-fun nestedContainerColor(): Color =
-    if (LocalAmoledMode.current) {
-        Color.Transparent
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 1f).itemFill(LocalItemTransparency.current)
-    }
+fun nestedContainerColor(): Color = appearanceContainerColor(MaterialTheme.colorScheme.surfaceContainerHighest)
 
 /**
  * Container border for nested sub-containers and code/media blocks:
  * no routine border in normal Light/Dark themes, visible outline border in AMOLED dark mode.
  */
 @Composable
-fun nestedContainerBorder(width: Dp = 1.dp): BorderStroke? =
-    if (LocalAmoledMode.current) {
-        BorderStroke(width, MaterialTheme.colorScheme.outlineVariant)
-    } else {
-        null
-    }
+fun nestedContainerBorder(width: Dp = 1.dp): BorderStroke? = appearanceContainerBorder(width)
 
 /**
  * Shape for an item in a vertically stacked group: [outerCorner] on the group's exposed top/bottom

@@ -35,7 +35,7 @@ import java.io.File
 import org.starfall.generative.R
 import org.starfall.generative.shared.files.AttachmentResolver
 import org.starfall.generative.shared.ui.media.ChatFilePreview
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.media.MediaPreviewCover
 import org.starfall.generative.shared.ui.media.mediaThumbnail
@@ -100,7 +100,8 @@ private fun AttachmentTile(
     inlinePreview: Boolean = false
 ) {
     val context = LocalContext.current
-    var showPreview by remember(reference) { mutableStateOf(false) }
+    val foreground = LocalChatForeground.current
+    var showPreview by remember(reference, foreground) { mutableStateOf(false) }
     val data by produceState<AttachmentPreviewData?>(initialValue = AttachmentPreviewCache.get(reference), reference) {
         value = AttachmentPreviewCache.get(reference)
             ?: withContext(Dispatchers.IO) { loadPreview(context, reference) }
@@ -115,8 +116,10 @@ private fun AttachmentTile(
     if (inlinePreview && data != null) {
         val preview = data!!
         ChatFilePreview(reference, preview.name, preview.mimeType, preview.bitmap, false,
-            selectedForChat = selectedForChat, onToggleAttachment = onToggleChatImage, onOpen = { showPreview = true })
-        if (showPreview) MediaPreviewCover(reference, preview.name, preview.mimeType) { showPreview = false }
+            selectedForChat = selectedForChat, onToggleAttachment = onToggleChatImage,
+            playVideoInline = foreground, overlayActive = foreground,
+            onOpen = { if (foreground) showPreview = true })
+        if (foreground && showPreview) MediaPreviewCover(reference, preview.name, preview.mimeType) { showPreview = false }
         return
     }
 
@@ -147,7 +150,7 @@ private fun AttachmentTile(
                 modifier = Modifier.fillMaxSize().padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                FluentIcon(
+                SharedIcon(
                     if (preview?.mimeType?.startsWith("audio/") == true) Icons.Outlined.Audiotrack
                     else Icons.Outlined.InsertDriveFile,
                     contentDescription = null,
@@ -167,7 +170,7 @@ private fun AttachmentTile(
         if (preview?.mimeType?.startsWith("video/") == true || preview?.mimeType?.startsWith("audio/") == true) {
             Surface(modifier = Modifier.align(Alignment.Center), shape = CircleShape,
                 color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.65f)) {
-                FluentIcon(Icons.Default.PlayArrow, stringResource(R.string.attachment_play_media), Modifier.padding(8.dp), tint = MaterialTheme.colorScheme.inverseOnSurface)
+                SharedIcon(Icons.Default.PlayArrow, stringResource(R.string.attachment_play_media), Modifier.padding(8.dp), tint = MaterialTheme.colorScheme.inverseOnSurface)
             }
         }
         preview?.durationMs?.let { duration ->
@@ -193,7 +196,7 @@ private fun AttachmentTile(
                     .padding(6.dp)
                     .size(30.dp),
                 shape = CircleShape,
-                color = prominentContainerColor().copy(alpha = 0.92f),
+                color = prominentContainerColor(opacityBoost = 0.42f),
                 border = prominentContainerBorder()
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -209,13 +212,13 @@ private fun AttachmentTile(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f)
                 )
             ) {
-                FluentIcon(if (selectedForChat) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
+                SharedIcon(if (selectedForChat) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
                     if (selectedForChat) stringResource(R.string.attachment_remove_from_next) else stringResource(R.string.attachment_attach_to_next))
             }
         }
     }
     val preview = data
-    if (showPreview && preview != null) {
+    if (foreground && showPreview && preview != null) {
         MediaPreviewCover(reference, preview.name, preview.mimeType) { showPreview = false }
     }
 }

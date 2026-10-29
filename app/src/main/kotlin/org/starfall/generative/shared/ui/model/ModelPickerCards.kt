@@ -68,14 +68,14 @@ import org.starfall.generative.shared.model.language.passbackMode
 import org.starfall.generative.shared.model.language.supportedReasoningEfforts
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.shared.ui.sheets.AppSheet
+import org.starfall.generative.shared.ui.sheets.BottomSheet
 import org.starfall.generative.shared.ui.icons.EntityIcon
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.theme.LocalAmoledMode
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.icons.providerInitials
 import org.starfall.generative.shared.ui.model.revealThinkingColor
 import org.starfall.generative.shared.ui.model.drawMaximumEffortStreaks
@@ -226,7 +226,7 @@ internal fun ModelPickerCard(
                         modifier = Modifier.size(22.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            FluentIcon(
+                            SharedIcon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = stringResource(R.string.common_selected),
                                 tint = MaterialTheme.colorScheme.onPrimary,
@@ -258,7 +258,7 @@ internal fun ModelPickerCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        FluentIcon(
+                        SharedIcon(
                             imageVector = Icons.Outlined.Psychology,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
@@ -490,7 +490,7 @@ private fun ModelBadge(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            icon?.let { FluentIcon(it, contentDescription = if (iconOnly) label else null, modifier = Modifier.size(12.dp)) }
+            icon?.let { SharedIcon(it, contentDescription = if (iconOnly) label else null, modifier = Modifier.size(12.dp)) }
             if (!iconOnly) Text(label, fontSize = 10.sp)
         }
     }

@@ -1,0 +1,77 @@
+package org.starfall.generative
+
+import android.content.Context
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.ColorUtils
+import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import org.junit.Assert.*
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.starfall.generative.shared.storage.preferences.AppPreferences
+import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
+import org.starfall.generative.shared.theme.CustomPalette
+import org.starfall.generative.shared.theme.ThemePresets
+import org.starfall.generative.shared.theme.customColorScheme
+import org.starfall.generative.shared.theme.parsePaletteHex
+import org.starfall.generative.shared.theme.toPaletteHex
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [28], application = LibraryTestApplication::class)
+class CustomPaletteTest {
+    @Test fun onlyThreeFixedPresetsRemainAndHexRoundTrips() {
+        assertEquals(listOf("ORANGE", "VIOLET", "SLATE"), ThemePresets.map { it.name })
+        assertEquals("#00ABF3", parsePaletteHex("#00abf3")!!.toPaletteHex())
+        assertEquals("#FFFFFF", Color.White.toPaletteHex())
+        assertNull(parsePaletteHex("#GG0000"))
+        assertNull(parsePaletteHex("#123"))
+        assertNull(parsePaletteHex("#12345678"))
+    }
+
+    @Test fun customColorSchemeCreatesReadableLightAndDarkRoles() {
+        val palette = CustomPalette(primary = "#00FF00", secondary = "#0000FF",
+            tertiary = "#FF00FF", neutral = "#5D4C89")
+        for (dark in listOf(false, true)) {
+            val colors = customColorScheme(palette, dark)
+            for ((background, foreground) in listOf(
+                colors.primary to colors.onPrimary,
+                colors.primaryContainer to colors.onPrimaryContainer,
+                colors.secondary to colors.onSecondary,
+                colors.tertiary to colors.onTertiary,
+                colors.background to colors.onBackground,
+                colors.surface to colors.onSurface
+            )) {
+                assertTrue("Unreadable custom role in dark=$dark",
+                    ColorUtils.calculateContrast(foreground.toArgb(), background.toArgb()) >= 4.5)
+            }
+            assertNotEquals(colors.primary, colors.secondary)
+            assertNotEquals(colors.secondary, colors.tertiary)
+        }
+    }
+
+    @Test fun customPalettePersistsAndIsIncludedInRestoredPreferences() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = AppPreferencesRepository(context)
+        val palette = CustomPalette(primary = "#ED6622", secondary = "#228B7E",
+            tertiary = "#D9A020", neutral = "#445566")
+        try {
+            repository.setCustomPalette(palette)
+            val restored = AppPreferencesRepository(context).appPreferencesFlow.first()
+            assertEquals("CUSTOM", restored.colorSchemeName)
+            assertFalse(restored.useDynamicColor)
+            assertEquals(palette, restored.customPalette)
+            val backup = Json.decodeFromString<AppPreferences>(Json.encodeToString(restored))
+            assertEquals(palette, backup.customPalette)
+            repository.replace(backup)
+            assertEquals(palette, AppPreferencesRepository(context).appPreferencesFlow.first().customPalette)
+        } finally {
+            repository.replace(AppPreferences())
+        }
+    }
+}

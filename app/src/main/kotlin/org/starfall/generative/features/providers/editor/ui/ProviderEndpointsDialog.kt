@@ -13,10 +13,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.api.ModelApiType
-import org.starfall.generative.shared.ui.dialogs.AppDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.Dialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 internal fun endpointFields(type: ModelApiType): List<Pair<String, String>> = when (type) {
     ModelApiType.ANTHROPIC -> listOf("catalog" to "Model catalog", "messages" to "Messages")
@@ -31,7 +31,7 @@ internal fun endpointFields(type: ModelApiType): List<Pair<String, String>> = wh
 
 @Composable
 internal fun ProviderEndpointsDialog(type: ModelApiType, baseUrl: String, endpoints: Map<String, String>, onChange: (Map<String, String>) -> Unit, onDismiss: () -> Unit) {
-    AppDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.provider_custom_endpoints)) }, content = {
+    Dialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.provider_custom_endpoints)) }, content = {
         LazyColumn(Modifier.fillMaxWidth().heightIn(max = 400.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Text(stringResource(R.string.provider_custom_endpoints_hint), style = MaterialTheme.typography.bodySmall) }
             items(endpointFields(type), key = { it.first }) { (key, label) ->
@@ -39,14 +39,14 @@ internal fun ProviderEndpointsDialog(type: ModelApiType, baseUrl: String, endpoi
                 val valid = value.isBlank() || validEndpoint(value, key)
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(label, style = MaterialTheme.typography.labelLarge)
-                    SelectableOutlinedTextField(value, { onChange(endpoints + (key to it)) },
+                    OutlinedTextField(value, { onChange(endpoints + (key to it)) },
                         label = { Text(defaultEndpoint(type, baseUrl, key, endpoints).let { endpoint ->
                             val base = baseUrl.trim().trimEnd('/')
                             if (base.isNotEmpty() && endpoint.startsWith("$base/")) endpoint.removePrefix(base) else endpoint
                         }, maxLines = 1) },
                         modifier = Modifier.fillMaxWidth(), isError = !valid,
                         trailingIcon = { IconButton(onClick = { onChange(endpoints - key) }, enabled = value.isNotEmpty()) {
-                            FluentIcon(Icons.Default.Close, stringResource(R.string.common_clear))
+                            SharedIcon(Icons.Default.Close, stringResource(R.string.common_clear))
                         } },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Password))
                 }

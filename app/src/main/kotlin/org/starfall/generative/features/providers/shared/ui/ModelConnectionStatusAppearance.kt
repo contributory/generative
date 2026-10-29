@@ -18,7 +18,7 @@ import org.starfall.generative.R
 import org.starfall.generative.features.providers.shared.model.ModelConnectionProgress
 import org.starfall.generative.features.providers.shared.model.ModelConnectionStatus
 import org.starfall.generative.shared.theme.warningColor
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.FluentUi
 
 /**
@@ -96,7 +96,7 @@ private fun CountChip(icon: ImageVector, tint: Color, display: String, descripti
         horizontalArrangement = Arrangement.spacedBy(3.dp),
         modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = description }
     ) {
-        FluentIcon(icon, null, tint = tint, modifier = Modifier.size(14.dp))
+        SharedIcon(icon, null, tint = tint, modifier = Modifier.size(14.dp))
         Text(display, style = MaterialTheme.typography.labelLarge, color = tint)
     }
 }

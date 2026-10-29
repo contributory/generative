@@ -34,13 +34,13 @@ class VideoProtocolTest {
     private fun video() = MockResponse().setHeader("Content-Type", "video/mp4").setBody(okio.Buffer().write(
         ByteArray(32).also { "ftyp".toByteArray().copyInto(it, 4) }))
 
-    @Test fun modelNamesDoNotEnableCustomProtocolsOrSettings() = runBlocking {
+    @Test fun modelNamesUseGenericProtocolAndOnlySupportedVideoSettings() = runBlocking {
         val server = MockWebServer().apply { start() }
         val root = Files.createTempDirectory("generic-video-models").toFile()
         try {
             val generation = VideoGeneration(ToolHttp(ToolFiles(root)), 0)
             for (model in listOf("video-6s", "video-10s", "video-15s", "custom-video")) {
-                assertTrue(videoOptionFields(provider(server), model).isEmpty())
+                assertEquals(listOf("seconds", "size"), videoOptionFields(provider(server), model).map { it.path })
                 assertTrue(runCatching { validateVideoOptions(provider(server), model, obj("cf_token" to str("token"))) }.isFailure)
                 assertTrue(runCatching { validateVideoOptions(provider(server), model, obj("image_url" to str("https://example.com/image.png"))) }.isFailure)
                 server.enqueue(response("""{"id":"job","status":"completed"}"""))
@@ -55,7 +55,30 @@ class VideoProtocolTest {
                 assertFalse(body.contains("seconds"))
                 assertEquals("/videos/job/content", server.takeRequest().path)
             }
+            server.enqueue(response("""{"id":"job","status":"completed"}"""))
+            server.enqueue(video())
+            generation.generate(provider(server, "/"), "sora-2", "move", null,
+                obj("seconds" to str("8"), "size" to str("1280x720")), null)
+            val configured = server.takeRequest().body.readUtf8()
+            assertTrue(configured.contains("name=\"seconds\""))
+            assertTrue(configured.contains("1280x720"))
+            assertEquals("/videos/job/content", server.takeRequest().path)
         } finally { server.shutdown(); root.deleteRecursively() }
+    }
+
+    @Test fun veoSettingsAreValidatedAndWrittenIntoRequestParameters() {
+        val provider = ModelProvider("g", "google", ModelApiType.GOOGLE, baseUrl = "https://generativelanguage.googleapis.com/v1beta")
+        val options = obj("parameters" to obj(
+            "durationSeconds" to JsonPrimitive(8), "aspectRatio" to str("9:16"), "resolution" to str("1080p")
+        ))
+        validateVideoOptions(provider, "veo-3.1-generate-preview", options)
+        val request = googleVideoRequest("sunrise", options = options)
+        assertEquals("9:16", request.optionAt("parameters.aspectRatio")?.jsonPrimitive?.content)
+        assertEquals(8, request.optionAt("parameters.durationSeconds")?.jsonPrimitive?.int)
+        assertTrue(runCatching { validateVideoOptions(provider, "veo-3.1-generate-preview",
+            obj("parameters" to obj("durationSeconds" to JsonPrimitive(5)))) }.isFailure)
+        assertTrue(runCatching { validateVideoOptions(provider, "veo-3.1-generate-preview",
+            obj("parameters" to obj("resolution" to str("4k")))) }.isFailure)
     }
 
     @Test fun failedCancelledMissingIdsAndTimeoutNeverDownloadContent() = runBlocking {

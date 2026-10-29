@@ -1,7 +1,7 @@
 package org.starfall.generative.features.settings.ui
 
-import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
@@ -20,9 +20,9 @@ import org.starfall.generative.shared.storage.preferences.CodeBlockDisplayMode
 import org.starfall.generative.shared.storage.preferences.DEFAULT_MESSAGE_FONT_SIZE
 import org.starfall.generative.shared.storage.preferences.MessageFontFamily
 import org.starfall.generative.shared.storage.preferences.WordWrapMode
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,13 +47,13 @@ internal fun CodeRenderingPreferences(
     )
     Text(stringResource(R.string.word_wrap), style = MaterialTheme.typography.titleMedium)
     ExposedDropdownMenuBox(expanded, { expanded = !expanded }) {
-        SelectableOutlinedTextField(
+        OutlinedTextField(
             value = labels.getValue(preferences.wordWrapMode), onValueChange = {}, readOnly = true,
             label = { Text(stringResource(R.string.word_wrap)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("word-wrap-mode")
         )
-        AppExposedDropdownMenu(expanded, { expanded = false }) {
+        ExposedDropdownMenu(expanded, { expanded = false }) {
             labels.forEach { (mode, label) ->
                 DropdownMenuItem(text = { Text(label) }, onClick = { onModeChange(mode); expanded = false })
             }
@@ -62,7 +62,7 @@ internal fun CodeRenderingPreferences(
     if (preferences.wordWrapMode == WordWrapMode.COLUMN || preferences.wordWrapMode == WordWrapMode.BOUNDED) {
         var column by remember(preferences.wordWrapColumn) { mutableStateOf(preferences.wordWrapColumn.toString()) }
         val parsed = column.toIntOrNull()?.takeIf { it > 0 }
-        SelectableOutlinedTextField(
+        OutlinedTextField(
             value = column,
             onValueChange = { text ->
                 if (text.all(Char::isDigit)) {
@@ -87,7 +87,7 @@ internal fun CodeRenderingPreferences(
     )
     Text(stringResource(R.string.code_block_display), style = MaterialTheme.typography.titleMedium)
     ExposedDropdownMenuBox(codeBlockExpanded, { codeBlockExpanded = !codeBlockExpanded }) {
-        SelectableOutlinedTextField(
+        OutlinedTextField(
             value = codeBlockLabels.getValue(preferences.codeBlockDisplayMode),
             onValueChange = {}, readOnly = true,
             label = { Text(stringResource(R.string.code_block_display)) },
@@ -95,7 +95,7 @@ internal fun CodeRenderingPreferences(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(codeBlockExpanded) },
             modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("code-block-display-mode")
         )
-        AppExposedDropdownMenu(codeBlockExpanded, { codeBlockExpanded = false }) {
+        ExposedDropdownMenu(codeBlockExpanded, { codeBlockExpanded = false }) {
             codeBlockLabels.forEach { (mode, label) ->
                 DropdownMenuItem(text = { Text(label) }, onClick = {
                     onCodeBlockDisplayModeChange(mode)
@@ -110,7 +110,7 @@ internal fun CodeRenderingPreferences(
             mutableStateOf(preferences.codeBlockMaxLines.toString())
         }
         val parsedMaxLines = maxLines.toIntOrNull()?.takeIf { it > 0 }
-        SelectableOutlinedTextField(
+        OutlinedTextField(
             value = maxLines,
             onValueChange = { value ->
                 if (value.all(Char::isDigit)) {
@@ -174,7 +174,7 @@ internal fun TextAppearancePreferences(
                 enabled = preferences.messageFontSize != DEFAULT_MESSAGE_FONT_SIZE,
                 modifier = Modifier.size(36.dp).testTag("message-font-size-reset")
             ) {
-                FluentIcon(Icons.Outlined.RestartAlt, stringResource(R.string.message_text_size_reset),
+                SharedIcon(Icons.Outlined.RestartAlt, stringResource(R.string.message_text_size_reset),
                     modifier = Modifier.size(20.dp))
             }
         }
@@ -190,13 +190,13 @@ internal fun TextAppearancePreferences(
         MessageFontFamily.CURSIVE to stringResource(R.string.font_family_cursive)
     )
     ExposedDropdownMenuBox(fontExpanded, { fontExpanded = !fontExpanded }) {
-        SelectableOutlinedTextField(
+        OutlinedTextField(
             value = fontLabels.getValue(preferences.messageFontFamily), onValueChange = {}, readOnly = true,
             label = { Text(stringResource(R.string.font_family_label)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(fontExpanded) },
             modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("message-font-family")
         )
-        AppExposedDropdownMenu(fontExpanded, { fontExpanded = false }) {
+        ExposedDropdownMenu(fontExpanded, { fontExpanded = false }) {
             fontLabels.forEach { (family, label) ->
                 DropdownMenuItem(text = { Text(label) }, onClick = {
                     onFontFamilyChange(family)

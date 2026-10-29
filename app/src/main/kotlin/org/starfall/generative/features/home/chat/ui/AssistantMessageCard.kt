@@ -1,17 +1,12 @@
 package org.starfall.generative.features.home.chat.ui
 
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 import org.starfall.generative.shared.ui.text.SelectionOnlyPlaceholder
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.content.Intent
-import android.widget.Toast
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -43,9 +38,10 @@ import org.starfall.generative.features.home.chat.model.ChatStreamStatus
 import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
 import kotlinx.coroutines.flow.StateFlow
 import org.starfall.generative.shared.model.countedVersionIndices
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.ErrorContainer
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.features.home.chat.ui.markdown.MarkdownRenderer
 import org.starfall.generative.features.home.chat.ui.markdown.StreamingMarkdownRenderer
@@ -77,7 +73,8 @@ fun AssistantMessageCard(
 ) {
     val context = LocalContext.current
     SideEffect { ChatRenderMetrics.recordMessageCardRecomposition() }
-    var showMoreMenu by remember { mutableStateOf(false) }
+    val foreground = LocalChatForeground.current
+    var showMoreMenu by remember(foreground) { mutableStateOf(false) }
     val storedVersion = message.activeVersion
     // A card that streamed here keeps its incremental Markdown tree through Stop and natural
     // completion. Reopening the chat instead uses saved text, never a stale/frozen parser.
@@ -111,8 +108,8 @@ fun AssistantMessageCard(
         activeVersion.timestamp.toLongOrNull()?.let { startedAt -> (finishedAt - startedAt).coerceAtLeast(0L) }
     }
 
-    val toolSheetState = remember(message.id) { ToolSheetState() }
-    ToolDetailsSheetHost(toolSheetState, activeVersion.toolActivity)
+    val toolSheetState = remember(message.id, foreground) { ToolSheetState() }
+    if (foreground) ToolDetailsSheetHost(toolSheetState, activeVersion.toolActivity)
 
     CompositionLocalProvider(LocalToolSheetState provides toolSheetState) {
     Column(
@@ -137,16 +134,6 @@ fun AssistantMessageCard(
             streamConversationId = conversationId,
             streamMessageId = message.id
         )
-        if (!isStreaming && hasContent && activeVersion.content.isBlank()) {
-            OutlinedButton(
-                onClick = onEdit,
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp).testTag("assistant-empty-content")
-            ) {
-                FluentIcon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.common_edit))
-            }
-        }
         if (isStreaming) {
             GenerationLoadingIndicator(
                 modelName = generatedModelName,
@@ -156,19 +143,21 @@ fun AssistantMessageCard(
             )
         }
 
-        activeVersion.generationError?.let { error ->
-            GenerationErrorBlock(
-                error = error,
+        activeVersion.generationError?.takeIf { it.isNotBlank() }?.let { error ->
+            GatedSelectionContainer { SelectionOnlyPlaceholder("[ErrorBlock]") }
+            val errorFontSize = (LocalCodeRenderingPreferences.current.effectiveMessageFontSize * 0.78f).sp
+            ErrorContainer(
+                message = error,
+                title = stringResource(R.string.message_generation_error),
                 onRetry = onRetryError,
-                onCopy = {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.message_error_clip_label), error))
-                    Toast.makeText(context, context.getString(R.string.message_error_copied), Toast.LENGTH_SHORT).show()
-                },
+                messageStyle = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = errorFontSize,
+                    lineHeight = errorFontSize * 1.44f
+                ),
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
-
 
         if (!isStreaming && versionIndices.size > 1) {
             Row(
@@ -184,7 +173,7 @@ fun AssistantMessageCard(
                     enabled = displayedVersionIndex > 0,
                     modifier = Modifier.size(30.dp)
                 ) {
-                    FluentIcon(
+                    SharedIcon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(R.string.message_previous_version),
                         modifier = Modifier.size(16.dp)
@@ -204,7 +193,7 @@ fun AssistantMessageCard(
                     enabled = displayedVersionIndex < versionIndices.lastIndex,
                     modifier = Modifier.size(30.dp)
                 ) {
-                    FluentIcon(
+                    SharedIcon(
                         Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = stringResource(R.string.message_next_version),
                         modifier = Modifier.size(16.dp)
@@ -223,7 +212,7 @@ fun AssistantMessageCard(
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 MessageActionButton(onClick = onRegenerate, contentDescription = stringResource(R.string.message_regenerate)) {
-                    FluentIcon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    SharedIcon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
                 MessageActionButton(
                     onClick = {
@@ -235,11 +224,11 @@ fun AssistantMessageCard(
                     },
                     contentDescription = stringResource(R.string.common_share)
                 ) {
-                    FluentIcon(Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    SharedIcon(Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
                 MessageActionButton(onClick = onCopy,
                     contentDescription = stringResource(R.string.common_copy)) {
-                    FluentIcon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                    SharedIcon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
 
                 Box {
@@ -247,15 +236,15 @@ fun AssistantMessageCard(
                         onClick = { showMoreMenu = true },
                         contentDescription = stringResource(R.string.common_more)
                     ) {
-                        FluentIcon(Icons.Default.MoreHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
+                        SharedIcon(Icons.Default.MoreHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
                     DropdownMenu(
-                        expanded = showMoreMenu,
+                        expanded = foreground && showMoreMenu,
                         onDismissRequest = { showMoreMenu = false }
                     ) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.common_edit)) },
-                            leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
+                            leadingIcon = { SharedIcon(Icons.Outlined.Edit, contentDescription = null) },
                             onClick = {
                                 showMoreMenu = false
                                 onEdit()
@@ -263,7 +252,7 @@ fun AssistantMessageCard(
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.common_delete)) },
-                            leadingIcon = { FluentIcon(Icons.Outlined.Delete, contentDescription = null) },
+                            leadingIcon = { SharedIcon(Icons.Outlined.Delete, contentDescription = null) },
                             onClick = {
                                 showMoreMenu = false
                                 onDelete()
@@ -281,97 +270,13 @@ fun AssistantMessageCard(
                 } else Spacer(modifier = Modifier.weight(1f))
 
                 MessageActionButton(onClick = onRead, contentDescription = stringResource(if (isReading) R.string.message_stop_reading else R.string.message_read_aloud)) {
-                    FluentIcon(if (isReading) Icons.Outlined.StopCircle else Icons.Outlined.VolumeUp,
+                    SharedIcon(if (isReading) Icons.Outlined.StopCircle else Icons.Outlined.VolumeUp,
                         contentDescription = null, modifier = Modifier.size(18.dp),
                         tint = if (isReading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
     }
-    }
-}
-
-@Composable
-private fun GenerationErrorBlock(
-    error: String,
-    onCopy: () -> Unit,
-    modifier: Modifier = Modifier,
-    onRetry: (() -> Unit)? = null
-) {
-    var expanded by remember(error) { mutableStateOf(false) }
-    val errorFontSize = (LocalCodeRenderingPreferences.current.effectiveMessageFontSize * 0.78f).sp
-
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.errorContainer
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .animateContentSize()
-                .padding(horizontal = 12.dp, vertical = 10.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { expanded = !expanded },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                FluentIcon(
-                    Icons.Outlined.ErrorOutline,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.message_generation_error),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-                Spacer(Modifier.weight(1f))
-                if (onRetry != null) {
-                    IconButton(onClick = onRetry, modifier = Modifier.size(32.dp)) {
-                        FluentIcon(
-                            Icons.Outlined.Refresh,
-                            contentDescription = stringResource(R.string.message_retry_from_error),
-                            tint = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-                IconButton(onClick = onCopy, modifier = Modifier.size(32.dp)) {
-                    FluentIcon(
-                        Icons.Outlined.ContentCopy,
-                        contentDescription = stringResource(R.string.message_copy_error),
-                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                FluentIcon(
-                    imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = stringResource(if (expanded) R.string.message_collapse_error else R.string.message_expand_error),
-                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            GatedSelectionContainer {
-                Text(
-                    text = error,
-                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = errorFontSize,
-                    lineHeight = errorFontSize * 1.44f
-                ),
-                    maxLines = if (expanded) Int.MAX_VALUE else 3,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
     }
 }
 
@@ -483,7 +388,19 @@ private fun CompletedAssistantContent(
     // Tool details have their own sheet. Keep the answer text canonical here; redacting matching tool
     // responses made the rendered message look truncated while copy/edit still showed the full value.
     val content = version.content
-    val shownFiles = mutableSetOf<String>()
+    // Compute deduplication from immutable block data, not by mutating a set while
+    // composing. Recomposition must never make an already-visible media file disappear.
+    val mediaItemsByNumber = remember(blocks, numberedBlocks, isStreaming) {
+        val seenFiles = mutableSetOf<String>()
+        numberedBlocks.filter { it.kind == AssistantBlockKind.MEDIA }.associate { visual ->
+            val items = visual.actionIndex?.let(blocks::getOrNull)
+                ?.let { assistantMediaPreviewItems(it, isStreaming) }
+                .orEmpty().filter { item ->
+                    item !is MediaPreviewItem.File || seenFiles.add(item.name)
+                }
+            visual.number to items
+        }
+    }
 
     GatedSelectionContainer {
         Column {
@@ -547,6 +464,8 @@ private fun CompletedAssistantContent(
                                 }
                             }
                         }
+                        // The error container is drawn by the card after its content timeline.
+                        AssistantBlockKind.ERROR -> Unit
                         AssistantBlockKind.MEDIA -> AssistantMediaBlock(
                             block = block,
                             files = version.files,
@@ -556,7 +475,7 @@ private fun CompletedAssistantContent(
                             onToggleChatImage = onToggleChatImage,
                             onDelete = if (!isStreaming && onDeleteBlock != null)
                                 ({ onDeleteBlock(visual.number) }) else null,
-                            shownFiles = shownFiles
+                            mediaItems = mediaItemsByNumber[visual.number].orEmpty()
                         )
                     }
                     cursor = offset

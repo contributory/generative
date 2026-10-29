@@ -2,9 +2,9 @@
 
 package org.starfall.generative.features.machines.details.ui
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.LoadingIndicator
 
 import android.app.Activity
 import androidx.activity.compose.BackHandler
@@ -71,7 +71,7 @@ import org.starfall.generative.shared.model.RemoteAuthentication
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineState
 import org.starfall.generative.shared.model.RemoteMachineType
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 
@@ -263,8 +263,8 @@ internal fun MachineDetailsScreen(
                                 loadingIp = false
                             }
                         }) {
-                            if (loadingIp) GenerativeLoadingIndicator(Modifier.size(16.dp))
-                            else FluentIcon(Icons.Outlined.Refresh, null, Modifier.size(18.dp))
+                            if (loadingIp) LoadingIndicator(Modifier.size(16.dp))
+                            else SharedIcon(Icons.Outlined.Refresh, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.remote_machine_get_ip))
                         }
@@ -277,7 +277,7 @@ internal fun MachineDetailsScreen(
                         readOnly = true,
                         keyboardOptions = remoteLiteralKeyboardOptions(),
                         trailingIcon = if (fetchingUsername) {
-                            { GenerativeLoadingIndicator(Modifier.size(18.dp)) }
+                            { LoadingIndicator(Modifier.size(18.dp)) }
                         } else null
                     )
                 } else {
@@ -301,7 +301,7 @@ internal fun MachineDetailsScreen(
                         keyboardOptions = remoteLiteralKeyboardOptions(),
                         trailingIcon = {
                             IconButton(onClick = { showPassword = !showPassword }) {
-                                FluentIcon(
+                                SharedIcon(
                                     if (showPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                                     contentDescription = stringResource(
                                         if (showPassword) R.string.remote_machine_hide_password else R.string.remote_machine_show_password
@@ -325,7 +325,7 @@ internal fun MachineDetailsScreen(
                     var keyMenu by remember { mutableStateOf(false) }
                     Box {
                         OutlinedButton(onClick = { keyMenu = true }) {
-                            FluentIcon(Icons.Outlined.Key, null, Modifier.size(18.dp))
+                            SharedIcon(Icons.Outlined.Key, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.remote_machine_choose_key))
                         }
@@ -359,11 +359,11 @@ internal fun MachineDetailsScreen(
                     trailing = {
                         if (websocketProxy != null) {
                             IconButton(onClick = { websocketProxy = null }) {
-                                FluentIcon(Icons.Default.Close, stringResource(R.string.common_remove))
+                                SharedIcon(Icons.Default.Close, stringResource(R.string.common_remove))
                             }
                         }
                         IconButton(onClick = { websocketDialog = true }) {
-                            FluentIcon(Icons.Outlined.Edit, stringResource(R.string.common_edit))
+                            SharedIcon(Icons.Outlined.Edit, stringResource(R.string.common_edit))
                         }
                     }
                 )
@@ -467,8 +467,8 @@ internal fun MachineDetailsScreen(
                                 }
                             }
                         ) {
-                            if (authorizing) GenerativeLoadingIndicator(Modifier.size(16.dp))
-                            else FluentIcon(Icons.Outlined.Key, null, Modifier.size(18.dp))
+                            if (authorizing) LoadingIndicator(Modifier.size(16.dp))
+                            else SharedIcon(Icons.Outlined.Key, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.remote_machine_oauth_sign_in))
                         }

@@ -521,7 +521,6 @@
     <string name="code_block_include_undefined_hint">Applica la modalità scelta anche ai blocchi di codice senza etichetta di linguaggio.</string>
     <string name="code_block_extend">Estendi</string>
     <string name="code_block_close">Chiudi il blocco di codice</string>
-    <string name="sheet_resize">Ridimensiona il pannello</string>
     <string name="oauth_opening_browser">Apertura dell\'accesso…</string>
     <string name="oauth_browser_unavailable">Installa Chrome o un browser con supporto per Custom Tabs per accedere.</string>
     <string name="provider_multiple_accounts">Più account</string>
@@ -1100,4 +1099,9 @@
     <string name="settings_item_transparency">Trasparenza dei componenti</string>
     <string name="settings_item_transparency_description">Regola la trasparenza di schede, pulsanti ed elementi. In AMOLED gli elementi sono trasparenti e bordati.</string>
     <string name="settings_item_transparency_reset">Ripristina la trasparenza dei componenti</string>
+    <string name="customization_input_title">Area di inserimento</string>
+    <string name="customization_input_transparency">Trasparenza dello sfondo</string>
+    <string name="customization_input_blur">Sfocatura dello sfondo</string>
+    <string name="customization_input_blur_description">Sfoca la chat dietro l’area di inserimento su Android 12 e versioni successive. Testo e pulsanti rimangono nitidi.</string>
+    <string name="settings_website">Sito web</string>
 </resources>

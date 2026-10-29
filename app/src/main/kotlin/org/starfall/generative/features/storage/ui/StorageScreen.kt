@@ -11,8 +11,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.saveable.rememberSaveable
-import org.starfall.generative.shared.ui.lists.AppListItem
-import org.starfall.generative.shared.ui.lists.EmptyListContent
+import org.starfall.generative.shared.ui.lists.ItemCard
+import org.starfall.generative.shared.ui.lists.EmptyState
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import org.starfall.generative.shared.ui.lists.ListViewToggle
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,8 +33,8 @@ import java.io.File
 import org.starfall.generative.R
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.files.openAppStorageInDocumentsUi
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
@@ -108,7 +108,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                             inSelectMode = false
                             selected = emptySet()
                         }) {
-                            FluentIcon(
+                            SharedIcon(
                                 FluentUi.Regular.Dismiss,
                                 contentDescription = stringResource(R.string.common_close)
                             )
@@ -122,7 +122,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                             },
                             enabled = files.isNotEmpty()
                         ) {
-                            FluentIcon(
+                            SharedIcon(
                                 imageVector = if (allSelected) FluentUi.Regular.DismissCircle else FluentUi.Regular.CheckmarkCircle,
                                 contentDescription = stringResource(
                                     if (allSelected) R.string.storage_clear_selection else R.string.storage_select_all
@@ -133,7 +133,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                             onClick = { if (selected.isNotEmpty()) confirmDelete = true },
                             enabled = selected.isNotEmpty()
                         ) {
-                            FluentIcon(
+                            SharedIcon(
                                 Icons.Outlined.Delete,
                                 contentDescription = stringResource(R.string.common_delete),
                                 tint = if (selected.isNotEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
@@ -155,7 +155,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            FluentIcon(
+                            SharedIcon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = stringResource(R.string.common_back)
                             )
@@ -168,14 +168,14 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                                 Toast.makeText(context, R.string.storage_open_in_files_failed, Toast.LENGTH_SHORT).show()
                             }
                         }) {
-                            FluentIcon(
+                            SharedIcon(
                                 Icons.Outlined.OpenInBrowser,
                                 contentDescription = stringResource(R.string.storage_open_in_files)
                             )
                         }
                         if (files.isNotEmpty()) {
                             IconButton(onClick = { inSelectMode = true }) {
-                                FluentIcon(
+                                SharedIcon(
                                     FluentUi.Regular.CheckmarkCircle,
                                     contentDescription = stringResource(R.string.sidebar_select)
                                 )
@@ -189,7 +189,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
         Box(Modifier.fillMaxSize()) {
             if (files.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(padding)) {
-                    EmptyListContent(Icons.Outlined.FolderOpen, stringResource(R.string.storage_empty))
+                    EmptyState(Icons.Outlined.FolderOpen, stringResource(R.string.storage_empty))
                 }
             } else {
                 FadeGridListContent(isGrid = isGrid, modifier = Modifier.fillMaxSize()) { gridMode ->
@@ -265,7 +265,7 @@ private fun StorageFileRow(
     LaunchedEffect(file.path, file.lastModified()) {
         thumbnail = mediaThumbnail(context, file.path, mime, 112)
     }
-    AppListItem(
+    ItemCard(
         isGrid = isGrid,
         onClick = { if (inSelectMode) onToggleSelect(!selected) else onOpenViewer() },
         onLongClick = { if (!inSelectMode) onEnterSelectMode() },
@@ -279,7 +279,7 @@ private fun StorageFileRow(
                 Box(contentAlignment = Alignment.Center) {
                     thumbnail?.let {
                         Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    } ?: FluentIcon(
+                    } ?: SharedIcon(
                         when {
                             mime.startsWith("audio/") -> Icons.Outlined.Audiotrack
                             mime.startsWith("video/") -> Icons.Outlined.Videocam

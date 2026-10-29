@@ -30,7 +30,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.generative.shared.ui.sheets.AppSheet
+import org.starfall.generative.shared.ui.sheets.BottomSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 class BottomSheetInsetsTest {
@@ -54,7 +54,7 @@ class BottomSheetInsetsTest {
         }
         compose.setContent {
             MaterialTheme {
-                AppSheet(onDismissRequest = {}, contentBehindNavigationBar = true) {
+                BottomSheet(onDismissRequest = {}, contentBehindNavigationBar = true) {
                     Box(Modifier.fillMaxWidth().fillMaxHeight().testTag("edge-to-edge-content"))
                 }
             }
@@ -72,7 +72,7 @@ class BottomSheetInsetsTest {
         }
         compose.setContent {
             MaterialTheme {
-                AppSheet(
+                BottomSheet(
                     onDismissRequest = {},
                     containerColor = Color(0xFF285A78)
                 ) {

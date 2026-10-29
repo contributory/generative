@@ -10,7 +10,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.assertIsFocused
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -47,17 +47,17 @@ class ModelPickerToolbarTest {
 
         compose.onNodeWithText(modelName, useUnmergedTree = true).assertIsDisplayed()
         val toolbar = compose.onNodeWithTag("model-picker-toolbar")
-        val collapsedHeight = toolbar.getUnclippedBoundsInRoot().height
+        val collapsedHeight = toolbar.getUnclippedBoundsInRoot().let { (it.bottom - it.top).value }
         compose.onNodeWithTag("model-picker-search-button").performClick()
         compose.onNodeWithTag("model-picker-search").assertIsFocused().performTextInput("hello")
         compose.onNodeWithText(modelName, useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithTag("selected-model-icon", useUnmergedTree = true).assertIsDisplayed()
         // Focus changes must not alter the toolbar's measured height while the IME resizes.
-        assertEquals(collapsedHeight, toolbar.getUnclippedBoundsInRoot().height, 1f)
+        assertEquals(collapsedHeight, toolbar.getUnclippedBoundsInRoot().let { (it.bottom - it.top).value }, 1f)
 
         compose.runOnIdle { focusManager.clearFocus() }
         compose.onNodeWithTag("model-picker-search-button").assertIsDisplayed()
-        assertEquals(collapsedHeight, toolbar.getUnclippedBoundsInRoot().height, 1f)
+        assertEquals(collapsedHeight, toolbar.getUnclippedBoundsInRoot().let { (it.bottom - it.top).value }, 1f)
         compose.onNodeWithText(modelName, useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithTag("model-picker-search-button").performClick()
         compose.onNodeWithTag("model-picker-search").assertIsFocused()

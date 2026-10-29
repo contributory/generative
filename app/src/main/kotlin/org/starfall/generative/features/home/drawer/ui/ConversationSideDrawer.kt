@@ -2,7 +2,7 @@
 
 package org.starfall.generative.features.home.drawer.ui
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -51,17 +51,18 @@ import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.theme.LocalAmoledMode
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.EntityIcon
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
-import org.starfall.generative.shared.ui.FeaturesLogoImage
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.FeaturesLogo
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 import org.starfall.generative.features.home.drawer.logic.lastModelIcon
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
+import org.starfall.generative.shared.ui.layout.modalContainerColor
 
 private val DrawerActionSize = 52.dp
 private val DrawerNewChatSearchSize = 42.dp
@@ -187,7 +188,7 @@ fun ConversationSideDrawer(
     ModalDrawerSheet(
         modifier = modifier.fillMaxWidth().testTag("conversation_side_drawer"),
         drawerShape = RectangleShape,
-        drawerContainerColor = if (LocalAmoledMode.current) Color.Black else MaterialTheme.colorScheme.surface.copy(alpha = 1f),
+        drawerContainerColor = modalContainerColor(MaterialTheme.colorScheme.surface),
         // Inset the interactive content only; do not inset the drawer surface/photo.
         windowInsets = WindowInsets(0, 0, 0, 0)
     ) {
@@ -210,7 +211,7 @@ fun ConversationSideDrawer(
             ) {
             if (selecting) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = ::stopSelecting) { FluentIcon(Icons.Default.Close, stringResource(R.string.sidebar_exit_selection)) }
+                    IconButton(onClick = ::stopSelecting) { SharedIcon(Icons.Default.Close, stringResource(R.string.sidebar_exit_selection)) }
                     Text("${selected.size}", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                     val allSelected = matchingIds.isNotEmpty() && selected.containsAll(matchingIds)
                     Checkbox(
@@ -220,8 +221,8 @@ fun ConversationSideDrawer(
                         },
                         enabled = matchingIds.isNotEmpty()
                     )
-                    IconButton(enabled = selected.isNotEmpty(), onClick = { folderName = ""; grouping = true }) { FluentIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.sidebar_move_selected_to_folder)) }
-                    IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { FluentIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
+                    IconButton(enabled = selected.isNotEmpty(), onClick = { folderName = ""; grouping = true }) { SharedIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.sidebar_move_selected_to_folder)) }
+                    IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
                 }
             } else {
                 Column(
@@ -273,15 +274,15 @@ fun ConversationSideDrawer(
                                 Row(Modifier.fillMaxWidth().combinedClickable(onClick = {
                                     onUpdateOrganization { state -> state.copy(folders = state.folders.map { if (it.id == folder.id) it.copy(expanded = !it.expanded) else it }) }
                                 }).padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    FluentIcon(if (folder.expanded || search.isNotBlank()) Icons.Default.ExpandMore else Icons.Default.ChevronRight, stringResource(R.string.sidebar_toggle_folder))
-                                    FluentIcon(Icons.Outlined.Folder, null, modifier = Modifier.size(20.dp))
+                                    SharedIcon(if (folder.expanded || search.isNotBlank()) Icons.Default.ExpandMore else Icons.Default.ChevronRight, stringResource(R.string.sidebar_toggle_folder))
+                                    SharedIcon(Icons.Outlined.Folder, null, modifier = Modifier.size(20.dp))
                                     Text(folder.name, Modifier.weight(1f).padding(8.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     Text("${chats.size}", style = MaterialTheme.typography.labelSmall)
-                                    if (folder.pinned) FluentIcon(Icons.Default.PushPin, stringResource(R.string.sidebar_pinned_folder), Modifier.size(14.dp))
+                                    if (folder.pinned) SharedIcon(Icons.Default.PushPin, stringResource(R.string.sidebar_pinned_folder), Modifier.size(14.dp))
                                     Box {
-                                        IconButton(onClick = { menu = true }) { FluentIcon(Icons.Default.MoreVert, stringResource(R.string.sidebar_folder_options)) }
+                                        IconButton(onClick = { menu = true }) { SharedIcon(Icons.Default.MoreVert, stringResource(R.string.sidebar_folder_options)) }
                                         DropdownMenu(menu, { menu = false }) {
-                                            DropdownMenuItem(text = { Text(stringResource(if (folder.pinned) R.string.sidebar_unpin else R.string.sidebar_pin)) }, leadingIcon = { FluentIcon(Icons.Outlined.PushPin, null) }, onClick = {
+                                            DropdownMenuItem(text = { Text(stringResource(if (folder.pinned) R.string.sidebar_unpin else R.string.sidebar_pin)) }, leadingIcon = { SharedIcon(Icons.Outlined.PushPin, null) }, onClick = {
                                                 menu = false
                                                 onUpdateOrganization { state -> state.copy(folders = state.folders.map { if (it.id == folder.id) it.copy(pinned = !it.pinned) else it }) }
                                             })
@@ -362,11 +363,11 @@ fun ConversationSideDrawer(
                     contentAlignment = Alignment.CenterStart
                 ) {
                     if (showSearchField) {
-                        SelectableOutlinedTextField(
+                        OutlinedTextField(
                             value = search, onValueChange = { search = it }, singleLine = true,
                             placeholder = { Text(stringResource(R.string.search_history), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            leadingIcon = { FluentIcon(Icons.Default.Search, stringResource(R.string.sidebar_search)) },
-                            trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { FluentIcon(Icons.Default.Close, stringResource(R.string.sidebar_clear_search)) } },
+                            leadingIcon = { SharedIcon(Icons.Default.Search, stringResource(R.string.sidebar_search)) },
+                            trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { SharedIcon(Icons.Default.Close, stringResource(R.string.sidebar_clear_search)) } },
                             shape = RoundedCornerShape(28.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 // Soft outline: muted when idle, only a gentle accent when focused.
@@ -394,7 +395,7 @@ fun ConversationSideDrawer(
                                 .graphicsLayer { alpha = (1f - searchProgress.value / 0.35f).coerceIn(0f, 1f) }
                                 .testTag("conversation_drawer_search_button")
                         ) {
-                            FluentIcon(
+                            SharedIcon(
                                 Icons.Default.Search,
                                 stringResource(R.string.sidebar_search),
                                 tint = if (search.isNotBlank()) MaterialTheme.colorScheme.primary
@@ -428,7 +429,7 @@ fun ConversationSideDrawer(
                                     .heightIn(min = DrawerActionSize)
                                     .testTag("conversation_drawer_menu_button")
                             ) {
-                                FeaturesLogoImage(featuresLogoImage, Modifier.size(28.dp).clip(CircleShape))
+                                FeaturesLogo(featuresLogoImage, Modifier.size(28.dp).clip(CircleShape))
                                 Spacer(Modifier.width(8.dp))
                                 Text(stringResource(R.string.sidebar_menu), maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                             }
@@ -443,7 +444,7 @@ fun ConversationSideDrawer(
                         modifier = newChatModifier,
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
                         colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-                    ) { FluentIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
+                    ) { SharedIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
                 } else {
                     FilledIconButton(
                         onClick = { stopSelecting(); onNewChat(); onCloseDrawer() },
@@ -452,7 +453,7 @@ fun ConversationSideDrawer(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                    ) { FluentIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
+                    ) { SharedIcon(Icons.Outlined.Compose, stringResource(R.string.sidebar_new_chat)) }
                 }
             }
         }
@@ -463,7 +464,7 @@ fun ConversationSideDrawer(
         ) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.sidebar_create_folder)) },
-                leadingIcon = { FluentIcon(Icons.Outlined.CreateNewFolder, null) },
+                leadingIcon = { SharedIcon(Icons.Outlined.CreateNewFolder, null) },
                 onClick = {
                     blankContextMenu = false
                     folderName = ""
@@ -472,7 +473,7 @@ fun ConversationSideDrawer(
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.sidebar_select)) },
-                leadingIcon = { FluentIcon(Icons.Outlined.CheckCircle, null) },
+                leadingIcon = { SharedIcon(Icons.Outlined.CheckCircle, null) },
                 onClick = {
                     blankContextMenu = false
                     selecting = true
@@ -484,7 +485,7 @@ fun ConversationSideDrawer(
     if (creatingFolder) AlertDialog(
         onDismissRequest = { creatingFolder = false },
         title = { Text(stringResource(R.string.sidebar_create_folder)) },
-        text = { SelectableOutlinedTextField(folderName, { folderName = it }, label = { Text(stringResource(R.string.common_folder_name)) }, singleLine = true) },
+        text = { OutlinedTextField(folderName, { folderName = it }, label = { Text(stringResource(R.string.common_folder_name)) }, singleLine = true) },
         confirmButton = {
             TextButton(enabled = folderName.isNotBlank(), onClick = {
                 val name = folderName.trim()
@@ -499,9 +500,9 @@ fun ConversationSideDrawer(
         scrollableContent = false,
         text = {
             LazyColumn(Modifier.windowHeightIn(maxFraction = 0.5f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(organization.folders, key = { it.id }) { folder -> TextButton(onClick = { moveToFolder(folder.id) }, modifier = Modifier.fillMaxWidth()) { FluentIcon(Icons.Outlined.Folder, null); Spacer(Modifier.width(8.dp)); Text(folder.name) } }
+                items(organization.folders, key = { it.id }) { folder -> TextButton(onClick = { moveToFolder(folder.id) }, modifier = Modifier.fillMaxWidth()) { SharedIcon(Icons.Outlined.Folder, null); Spacer(Modifier.width(8.dp)); Text(folder.name) } }
                 item { TextButton(onClick = { moveToFolder(null) }) { Text(stringResource(R.string.sidebar_move_to_history)) } }
-                item { SelectableOutlinedTextField(folderName, { folderName = it }, label = { Text(stringResource(R.string.sidebar_new_folder_name)) }, singleLine = true) }
+                item { OutlinedTextField(folderName, { folderName = it }, label = { Text(stringResource(R.string.sidebar_new_folder_name)) }, singleLine = true) }
             }
         },
         confirmButton = { TextButton(enabled = folderName.isNotBlank(), onClick = {
@@ -516,10 +517,10 @@ fun ConversationSideDrawer(
         confirmButton = { TextButton(onClick = { val ids = deleting; deleting = emptySet(); if (ids.size == 1) onDeleteConversation(ids.first()) else onDeleteConversations(ids); stopSelecting() }) { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) } },
         dismissButton = { TextButton(onClick = { deleting = emptySet() }) { Text(stringResource(R.string.common_cancel)) } })
     if (renaming != null) AlertDialog(onDismissRequest = { renaming = null }, title = { Text(stringResource(R.string.sidebar_rename_chat)) },
-        text = { SelectableOutlinedTextField(title, { title = it }, singleLine = true, label = { Text(stringResource(R.string.sidebar_chat_title)) }) },
+        text = { OutlinedTextField(title, { title = it }, singleLine = true, label = { Text(stringResource(R.string.sidebar_chat_title)) }) },
         confirmButton = { TextButton(enabled = title.isNotBlank(), onClick = { renaming?.let { onRenameConversation(it.id, title.trim()) }; renaming = null }) { Text(stringResource(R.string.common_save)) } }, dismissButton = { TextButton(onClick = { renaming = null }) { Text(stringResource(R.string.common_cancel)) } })
     if (editingFolder != null) AlertDialog(onDismissRequest = { editingFolder = null }, title = { Text(stringResource(R.string.sidebar_rename_folder)) },
-        text = { SelectableOutlinedTextField(folderName, { folderName = it }, singleLine = true) },
+        text = { OutlinedTextField(folderName, { folderName = it }, singleLine = true) },
         confirmButton = { TextButton(enabled = folderName.isNotBlank(), onClick = { val id = editingFolder!!.id; val name = folderName.trim(); onUpdateOrganization { state -> state.copy(folders = state.folders.map { if (it.id == id) it.copy(name = name) else it }) }; editingFolder = null }) { Text(stringResource(R.string.common_save)) } }, dismissButton = { TextButton(onClick = { editingFolder = null }) { Text(stringResource(R.string.common_cancel)) } })
     if (deletingFolder != null) AlertDialog(onDismissRequest = { deletingFolder = null }, title = { Text(stringResource(R.string.dialog_remove_folder_title)) }, text = { Text(stringResource(R.string.sidebar_remove_folder_message)) },
         confirmButton = { TextButton(onClick = { val id = deletingFolder!!.id; onUpdateOrganization { it.removeFolder(id) }; deletingFolder = null }) { Text(stringResource(R.string.common_remove)) } }, dismissButton = { TextButton(onClick = { deletingFolder = null }) { Text(stringResource(R.string.common_cancel)) } })

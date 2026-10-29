@@ -35,9 +35,9 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 
 /** Follow the measured scroll range without per-line animations or distance thresholds. */
@@ -108,13 +108,13 @@ internal fun LiveThinkingBlock(reasoning: String, active: Boolean, showHeader: B
             Spacer(Modifier.weight(1f))
             if (active) {
                 Spacer(Modifier.width(6.dp))
-                GenerativeLoadingIndicator(
+                LoadingIndicator(
                     Modifier.size(12.dp),
                     color = MaterialTheme.colorScheme.outline
                 )
             }
             Spacer(Modifier.width(6.dp))
-            FluentIcon(
+            SharedIcon(
                 imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                 contentDescription = stringResource(if (expanded) R.string.collapse else R.string.expand),
                 tint = MaterialTheme.colorScheme.outline,

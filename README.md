@@ -10,7 +10,9 @@
 
 <p align="center">
   <a href="https://github.com/starfall-org/generative/releases">Download</a> ·
+  <a href="https://starfall-org.github.io/generative/">Website</a> ·
   <a href="https://github.com/starfall-org/generative/issues">Report a problem</a> ·
+  <a href="https://discord.gg/fBwePdCxFP">Discord community</a> ·
   <a href="CONTRIBUTING.md">Contribute</a>
 </p>
 
@@ -46,6 +48,8 @@ Provider features depend on the service, model, and configuration. You may need 
 1. **Install** the latest available APK from [GitHub Releases](https://github.com/starfall-org/generative/releases) on an Android device running Android 8.0 or later.
 2. **Add a provider** from the Providers screen. Enter its endpoint and credentials, or use the provider's sign-in flow when available.
 3. **Choose a model** and start chatting. Add MCP servers, remote machines, speech services, or media tools when you need them.
+
+Need a walkthrough? Read the [user guide](https://starfall-org.github.io/generative/docs.html) or visit our [Discord community](https://discord.gg/fBwePdCxFP).
 
 Only connect services and MCP servers you trust. Your chosen provider processes the messages you send according to its own policies. Keep API keys and sign-in links private, and prefer HTTPS for remote endpoints.
 

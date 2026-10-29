@@ -1,6 +1,6 @@
 package org.starfall.generative.features.tools.ui
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -13,8 +13,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.media.MediaFileTransport
 import org.starfall.generative.shared.model.media.MediaFinalResponse
@@ -28,8 +26,10 @@ import org.starfall.generative.shared.model.media.MediaRetryPolicy
 import org.starfall.generative.shared.model.media.MediaValueKind
 import org.starfall.generative.shared.helpers.media.isValidMediaEndpointTemplate
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.icons.SharedIcon
 
 private const val MAX_ATTEMPTS = 20
 private const val MAX_DELAY_MILLIS = 300_000L
@@ -40,14 +40,19 @@ private val requestMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE")
 internal fun MediaRequestStepEditor(
     stepNumber: Int,
     step: MediaRequestStep,
+    previousSteps: List<MediaRequestStep> = emptyList(),
+    testedResponsePaths: Map<Int, List<String>> = emptyMap(),
     onChange: (MediaRequestStep) -> Unit
 ) {
+    var advanced by remember(stepNumber) { mutableStateOf(false) }
     SettingsCard {
-        Text(stringResource(R.string.media_chain_editing_step, stepNumber), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.media_chain_request_details), style = MaterialTheme.typography.titleMedium)
         MediaTemplateAutocompleteField(
             value = step.endpoint,
             onValueChange = { onChange(step.copy(endpoint = it)) },
             stepNumber = stepNumber,
+            previousSteps = previousSteps,
+            testedResponsePaths = testedResponsePaths,
             label = { Text(stringResource(R.string.media_chain_endpoint)) },
             supportingText = { Text(stringResource(R.string.media_chain_endpoint_help)) },
             singleLine = true,
@@ -60,7 +65,6 @@ internal fun MediaRequestStepEditor(
             optionLabel = { it },
             onSelect = { onChange(step.copy(method = it)) }
         )
-        HeaderEditor(stepNumber, step.headers) { headers -> onChange(step.copy(headers = headers)) }
         MediaChoiceField(
             label = stringResource(R.string.media_chain_content_type),
             selected = modeLabel(step.mode),
@@ -68,83 +72,64 @@ internal fun MediaRequestStepEditor(
             optionLabel = { mode -> modeLabel(mode) },
             onSelect = { onChange(step.copy(mode = it)) }
         )
-        MediaChoiceField(
-            label = stringResource(R.string.media_chain_file_transport),
-            selected = fileTransportLabel(step.fileTransport),
-            options = MediaFileTransport.entries,
-            optionLabel = { transport -> fileTransportLabel(transport) },
-            onSelect = { onChange(step.copy(fileTransport = it)) }
-        )
-        SelectableOutlinedTextField(
-            value = step.contentType,
-            onValueChange = { onChange(step.copy(contentType = it)) },
-            label = { Text(stringResource(R.string.media_chain_custom_content_type)) },
-            supportingText = { Text(stringResource(R.string.media_chain_custom_content_type_help)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
+    }
+    SettingsCard {
+        MediaRequestHeadersEditor(stepNumber, step.headers, previousSteps, testedResponsePaths) { headers ->
+            onChange(step.copy(headers = headers))
+        }
+    }
+    SettingsCard {
+        Text(stringResource(R.string.media_chain_body_editor), style = MaterialTheme.typography.titleMedium)
         MediaTemplateAutocompleteField(
             value = step.body,
             onValueChange = { onChange(step.copy(body = it)) },
             stepNumber = stepNumber,
-            label = { Text(stringResource(R.string.media_chain_body_editor)) },
+            previousSteps = previousSteps,
+            testedResponsePaths = testedResponsePaths,
             supportingText = { Text(stringResource(R.string.media_chain_request_body_help)) },
             textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
-            minLines = 8,
-            maxLines = 18,
+            minLines = 6,
+            maxLines = 16,
             modifier = Modifier.fillMaxWidth()
         )
+    }
+    SettingsCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.media_chain_advanced_request), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.media_chain_advanced_request_help),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(onClick = { advanced = !advanced }) {
+                SharedIcon(if (advanced) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    stringResource(R.string.media_chain_advanced_request))
+            }
+        }
+        if (advanced) {
+            MediaChoiceField(
+                label = stringResource(R.string.media_chain_file_transport),
+                selected = fileTransportLabel(step.fileTransport),
+                options = MediaFileTransport.entries,
+                optionLabel = { transport -> fileTransportLabel(transport) },
+                onSelect = { onChange(step.copy(fileTransport = it)) }
+            )
+            OutlinedTextField(
+                value = step.contentType,
+                onValueChange = { onChange(step.copy(contentType = it)) },
+                label = { Text(stringResource(R.string.media_chain_custom_content_type)) },
+                supportingText = { Text(stringResource(R.string.media_chain_custom_content_type_help)) },
+                keyboardOptions = mediaLiteralKeyboardOptions,
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+    SettingsCard {
         ResponseObserverEditor(stepNumber, step.observation) { observation ->
             onChange(step.copy(observation = observation))
         }
     }
-}
-
-@Composable
-private fun HeaderEditor(stepNumber: Int, headers: Map<String, String>, onChange: (Map<String, String>) -> Unit) {
-    val prettyJson = remember { Json { prettyPrint = true } }
-    var text by remember(stepNumber) { mutableStateOf(formatHeaders(prettyJson, headers)) }
-    var invalid by remember(stepNumber) { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.media_chain_headers), style = MaterialTheme.typography.titleSmall)
-        MediaTemplateAutocompleteField(
-            value = text,
-            onValueChange = { value ->
-                text = value
-                parseHeaders(value)?.let {
-                    invalid = false
-                    onChange(it)
-                } ?: run { invalid = true }
-            },
-            stepNumber = stepNumber,
-            label = { Text(stringResource(R.string.media_chain_headers_editor)) },
-            supportingText = {
-                Text(stringResource(if (invalid) R.string.media_chain_headers_json_invalid else R.string.media_chain_headers_help))
-            },
-            isError = invalid,
-            textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
-            minLines = 4,
-            maxLines = 12,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-private fun formatHeaders(json: Json, headers: Map<String, String>): String = json.encodeToString(
-    JsonObject.serializer(),
-    buildJsonObject { headers.forEach { (key, value) -> put(key, JsonPrimitive(value)) } }
-)
-
-private fun parseHeaders(value: String): Map<String, String>? = runCatching {
-    Json.parseToJsonElement(value) as? JsonObject
-}.getOrNull()?.let { objectValue ->
-    val result = linkedMapOf<String, String>()
-    objectValue.forEach { (key, child) ->
-        val primitive = child as? JsonPrimitive ?: return null
-        if (!primitive.isString) return null
-        result[key] = primitive.content
-    }
-    result
 }
 
 @Composable
@@ -162,7 +147,7 @@ private fun ResponseObserverEditor(
             )
         }
         if (observation.isEnabled) {
-            SelectableOutlinedTextField(
+            OutlinedTextField(
                 value = observation.statusPath,
                 onValueChange = { onChange(observation.copy(statusPath = it)) },
                 label = { Text(stringResource(R.string.media_chain_status_path)) },
@@ -202,7 +187,7 @@ private fun ObservationValuesField(
     onChange: (List<String>) -> Unit
 ) {
     var text by remember(stepNumber, kind) { mutableStateOf(values.joinToString(", ")) }
-    SelectableOutlinedTextField(
+    OutlinedTextField(
         value = text,
         onValueChange = {
             text = it
@@ -267,7 +252,7 @@ private fun RetryNumberField(
     modifier: Modifier,
     onValueChange: (String) -> Unit
 ) {
-    SelectableOutlinedTextField(
+    OutlinedTextField(
         value = value,
         onValueChange = { input -> onValueChange(input.filter(Char::isDigit)) },
         label = { Text(label) },
@@ -311,7 +296,7 @@ internal fun MediaFinalResponseEditor(
             }
         )
         if (finalResponse.type == MediaResponseType.JSON) {
-            SelectableOutlinedTextField(
+            OutlinedTextField(
                 value = finalResponse.mediaPath,
                 onValueChange = { onChange(finalResponse.copy(mediaPath = it)) },
                 label = { Text(stringResource(R.string.media_chain_media_path)) },
@@ -339,14 +324,21 @@ private fun <T> MediaChoiceField(
     onSelect: (T) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(onClick = { expanded = true }) { Text("$label: $selected") }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            options.forEach { option ->
-                RoundedDropdownMenuItem(
-                    text = { Text(optionLabel(option)) },
-                    onClick = { onSelect(option); expanded = false }
-                )
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box {
+            OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+                Text(selected, modifier = Modifier.weight(1f))
+                SharedIcon(Icons.Default.ArrowDropDown, null)
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(optionLabel(option)) },
+                        onClick = { onSelect(option); expanded = false }
+                    )
+                }
             }
         }
     }

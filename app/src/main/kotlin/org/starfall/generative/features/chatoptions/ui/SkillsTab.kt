@@ -16,8 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.lists.AppListItem
-import org.starfall.generative.shared.ui.lists.EmptyListContent
+import org.starfall.generative.shared.ui.lists.ItemCard
+import org.starfall.generative.shared.ui.lists.EmptyState
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.Dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.DEFAULT_AGENT_SKILL_ID
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.menus.ItemContextMenu
 
 @Composable
@@ -50,7 +50,7 @@ internal fun SkillsTab(
     var viewingBundledSkill by remember { mutableStateOf<AgentSkill?>(null) }
 
     if (skills.isEmpty()) {
-        EmptyListContent(Icons.Outlined.Extension, stringResource(R.string.agent_skills_empty))
+        EmptyState(Icons.Outlined.Extension, stringResource(R.string.agent_skills_empty))
     } else {
         FadeGridListContent(isGrid = isGrid, modifier = Modifier.fillMaxSize()) { gridMode ->
             LazyVerticalGrid(
@@ -61,7 +61,7 @@ internal fun SkillsTab(
             ) {
                 items(skills, key = { it.id }) { skill ->
                     val bundled = skill.id == DEFAULT_AGENT_SKILL_ID
-                    AppListItem(
+                    ItemCard(
                         isGrid = gridMode,
                         onClick = { if (bundled) viewingBundledSkill = skill else onEditSkill(skill) },
                         icon = { EntityIcon(null, Modifier.size(42.dp), fallback = Icons.Outlined.Extension) },

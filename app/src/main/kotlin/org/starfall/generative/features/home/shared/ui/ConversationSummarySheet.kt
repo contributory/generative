@@ -15,8 +15,8 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.ConversationSummaryRequest
-import org.starfall.generative.shared.ui.sheets.AppSheet
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 /** Slider default; a custom target can still go above [MAX_SLIDER_TARGET_TOKENS]. */
 private const val DEFAULT_TARGET_TOKENS = 6_000
@@ -28,7 +28,7 @@ fun ConversationSummarySheet(
     onStart: (ConversationSummaryRequest) -> Boolean,
     onDismiss: () -> Unit
 ) {
-    AppSheet(onDismissRequest = onDismiss) {
+    BottomSheet(onDismissRequest = onDismiss) {
         ConversationSummarySheetContent(onStart = onStart, onDismiss = onDismiss)
     }
 }
@@ -89,7 +89,7 @@ internal fun ConversationSummarySheetContent(
             Text(stringResource(R.string.conversation_summary_custom_target))
         }
         if (customTarget) {
-            SelectableOutlinedTextField(
+            OutlinedTextField(
                 value = customTargetText,
                 onValueChange = { customTargetText = it; error = null },
                 label = { Text(stringResource(R.string.conversation_summary_target_tokens)) },
@@ -132,7 +132,7 @@ internal fun ConversationSummarySheetContent(
                 Text(stringResource(R.string.conversation_summary_custom_pass))
             }
             if (customChunk) {
-                SelectableOutlinedTextField(
+                OutlinedTextField(
                     value = customChunkText,
                     onValueChange = { customChunkText = it; error = null },
                     label = { Text(stringResource(R.string.conversation_summary_tokens_per_pass)) },

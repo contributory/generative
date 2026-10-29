@@ -1,38 +1,44 @@
 package org.starfall.generative.features.tools.ui
 
-import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import org.starfall.generative.R
-import org.starfall.generative.shared.ui.text.selectAllOnTripleClick
+import org.starfall.generative.shared.model.media.MediaRequestStep
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
-private data class MediaVariableSuggestion(
-    val value: String,
-    val description: String,
-    val pathHint: String? = null
-)
-
+/** Cursor-aware completion shared by endpoint, request JSON and header-value editors. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MediaTemplateAutocompleteField(
@@ -46,10 +52,18 @@ internal fun MediaTemplateAutocompleteField(
     textStyle: TextStyle = LocalTextStyle.current,
     singleLine: Boolean = false,
     minLines: Int = 1,
-    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
+    previousSteps: List<MediaRequestStep> = emptyList(),
+    testedResponsePaths: Map<Int, List<String>> = emptyMap()
 ) {
     var fieldValue by remember { mutableStateOf(TextFieldValue(value)) }
     var focused by remember { mutableStateOf(false) }
+    var dismissedAt by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    var activeIndex by remember { mutableIntStateOf(0) }
+    val responsePaths = testedResponsePaths.toMap()
+    val candidates = remember(stepNumber, previousSteps, responsePaths) {
+        mediaVariableCandidates(stepNumber, previousSteps, responsePaths)
+    }
 
     LaunchedEffect(value) {
         if (fieldValue.text != value) {
@@ -57,90 +71,100 @@ internal fun MediaTemplateAutocompleteField(
         }
     }
 
-    val cursor = fieldValue.selection.end.coerceIn(0, fieldValue.text.length)
-    val opening = fieldValue.text.lastIndexOf("{{", (cursor - 1).coerceAtLeast(0))
-    val closing = if (opening >= 0) fieldValue.text.indexOf("}}", opening + 2) else -1
-    val activeToken = focused && fieldValue.selection.collapsed && opening >= 0 && (closing < 0 || closing >= cursor)
-    val prefix = if (activeToken) fieldValue.text.substring(opening + 2, cursor).trim() else ""
-    val suggestions = if (activeToken) {
-        mediaVariableSuggestions(stepNumber).filter { suggestion ->
-            suggestion.value.startsWith(prefix, ignoreCase = true) ||
-                (suggestion.pathHint != null && prefix.startsWith(suggestion.value, ignoreCase = true))
-        }.take(12)
+    val cursor = fieldValue.selection.end
+    val token = if (focused && fieldValue.selection.collapsed) {
+        mediaVariableToken(fieldValue.text, cursor)
+    } else null
+    val suggestions = if (token != null && dismissedAt != (fieldValue.text to cursor)) {
+        mediaVariableMatches(candidates, token.prefix)
     } else emptyList()
+    LaunchedEffect(token?.prefix, token?.start, suggestions.size) { activeIndex = 0 }
 
-    ExposedDropdownMenuBox(
-        expanded = suggestions.isNotEmpty(),
-        onExpandedChange = {}
-    ) {
+    fun apply(candidate: MediaVariableCandidate) {
+        val current = mediaVariableToken(fieldValue.text, fieldValue.selection.end) ?: return
+        val updated = completeMediaVariable(fieldValue, current, candidate)
+        fieldValue = updated
+        dismissedAt = updated.text to updated.selection.end
+        onValueChange(updated.text)
+    }
+
+    ExposedDropdownMenuBox(expanded = suggestions.isNotEmpty(), onExpandedChange = {}) {
         OutlinedTextField(
             value = fieldValue,
             onValueChange = { updated ->
                 fieldValue = updated
-                onValueChange(updated.text)
+                if (updated.text != value) onValueChange(updated.text)
             },
             modifier = modifier
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, enabled = true)
                 .onFocusChanged { focused = it.isFocused }
-                .selectAllOnTripleClick {
-                    fieldValue = fieldValue.copy(selection = TextRange(0, fieldValue.text.length))
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown || suggestions.isEmpty()) false
+                    else when (event.key) {
+                        Key.DirectionDown -> {
+                            activeIndex = (activeIndex + 1) % suggestions.size
+                            true
+                        }
+                        Key.DirectionUp -> {
+                            activeIndex = (activeIndex - 1 + suggestions.size) % suggestions.size
+                            true
+                        }
+                        Key.Tab, Key.Enter, Key.NumPadEnter -> {
+                            apply(suggestions[activeIndex.coerceIn(suggestions.indices)])
+                            true
+                        }
+                        Key.Escape -> {
+                            dismissedAt = fieldValue.text to cursor
+                            true
+                        }
+                        else -> false
+                    }
                 },
             textStyle = textStyle,
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.None,
+                autoCorrectEnabled = false,
+                keyboardType = KeyboardType.Password
+            ),
             label = label,
             supportingText = supportingText,
             isError = isError,
             singleLine = singleLine,
             minLines = minLines,
-            maxLines = maxLines,
-            colors = OutlinedTextFieldDefaults.colors()
+            maxLines = maxLines
         )
-        AppExposedDropdownMenu(
+        ExposedDropdownMenu(
             expanded = suggestions.isNotEmpty(),
-            onDismissRequest = {},
-            modifier = Modifier.heightIn(max = 280.dp)
+            onDismissRequest = { dismissedAt = fieldValue.text to cursor },
+            modifier = Modifier.heightIn(max = 288.dp)
         ) {
-            suggestions.forEach { suggestion ->
+            suggestions.forEachIndexed { index, suggestion ->
                 DropdownMenuItem(
+                    modifier = Modifier.testTag("media-variable-option-${suggestion.value}"),
                     text = {
-                        androidx.compose.foundation.layout.Column {
-                            androidx.compose.material3.Text(
-                            "{{${suggestion.value}${suggestion.pathHint?.let { "<$it>" }.orEmpty()}}}",
-                                fontFamily = FontFamily.Monospace
+                        Column {
+                            Text(
+                                "{{${suggestion.value}${suggestion.pathHint?.let { "<$it>" }.orEmpty()}}}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontFamily = FontFamily.Monospace,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = if (activeIndex == index) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurface
                             )
-                            androidx.compose.material3.Text(
-                                suggestion.description,
-                                style = MaterialTheme.typography.bodySmall
+                            Text(
+                                if (suggestion.step > 0) stringResource(suggestion.description, suggestion.step)
+                                else stringResource(suggestion.description),
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     },
-                    onClick = {
-                        val replacement = "{{${suggestion.value}}}"
-                        val updatedText = fieldValue.text.replaceRange(opening, cursor, replacement)
-                        val caret = opening + replacement.length - if (suggestion.pathHint != null) 2 else 0
-                        fieldValue = TextFieldValue(updatedText, TextRange(caret))
-                        onValueChange(updatedText)
-                    }
+                    onClick = { apply(suggestion) }
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun mediaVariableSuggestions(stepNumber: Int): List<MediaVariableSuggestion> = buildList {
-    add(MediaVariableSuggestion("prompt", stringResource(R.string.media_var_prompt)))
-    add(MediaVariableSuggestion("model", stringResource(R.string.media_var_model)))
-    add(MediaVariableSuggestion("api_token", stringResource(R.string.media_var_api_token)))
-    add(MediaVariableSuggestion("input_files", stringResource(R.string.media_var_input_files)))
-    add(MediaVariableSuggestion("input_file[0]", stringResource(R.string.media_var_first_input_file)))
-    for (step in 1 until stepNumber) {
-        add(MediaVariableSuggestion("step$step.response.body", stringResource(R.string.media_var_step_response_body, step)))
-        add(MediaVariableSuggestion("step$step.response.body.", stringResource(R.string.media_var_step_response_body_path, step), pathHint = "path"))
-        add(MediaVariableSuggestion("step$step.response.headers.", stringResource(R.string.media_var_step_response_header, step), pathHint = "header"))
-        add(MediaVariableSuggestion("step$step.request.headers.", stringResource(R.string.media_var_step_request_header, step), pathHint = "header"))
-        add(MediaVariableSuggestion("step$step.request.body.", stringResource(R.string.media_var_step_request_body, step), pathHint = "path"))
-        add(MediaVariableSuggestion("step$step.url", stringResource(R.string.media_var_step_url, step)))
-        add(MediaVariableSuggestion("step$step.request.method", stringResource(R.string.media_var_step_method, step)))
-        add(MediaVariableSuggestion("step$step.response.status", stringResource(R.string.media_var_step_status, step)))
     }
 }

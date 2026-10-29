@@ -17,15 +17,15 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.media.*
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
-import org.starfall.generative.shared.ui.lists.AppListContainer
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
+import org.starfall.generative.shared.ui.lists.ItemSurface
+import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 
 /** A reusable profile library. Selection belongs to the tool's model dropdown, not this list. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,12 +60,12 @@ fun MediaRequestChainSettings(
             title = { Text(stringResource(if (music) R.string.music_profiles else if (video) R.string.media_video_gen_profiles else R.string.media_image_gen_profiles)) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
-                    FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                    SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                 }
             },
             actions = {
                 IconButton(onClick = onAddProfile) {
-                    FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
+                    SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
                 }
             }
         )
@@ -82,7 +82,7 @@ fun MediaRequestChainSettings(
                 val canDelete = profile.id != protectedId &&
                     (profile.mode != MediaGenerationMode.DEFAULT ||
                         profiles.values.count { it.mode == MediaGenerationMode.DEFAULT } > 1)
-                AppListContainer(
+                ItemSurface(
                     isGrid = false,
                     onClick = { onOpenProfile(profile.id) },
                     modifier = Modifier.testTag("media-profile-item_${profile.id}")
@@ -92,7 +92,7 @@ fun MediaRequestChainSettings(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        FluentIcon(Icons.Outlined.FormatListBulleted, contentDescription = null)
+                        SharedIcon(Icons.Outlined.FormatListBulleted, contentDescription = null)
                         Column(Modifier.weight(1f)) {
                             Text(profile.name, style = MaterialTheme.typography.titleMedium,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -107,15 +107,15 @@ fun MediaRequestChainSettings(
                         var menuExpanded by remember { mutableStateOf(false) }
                         Box {
                             IconButton(onClick = { menuExpanded = true }) {
-                                FluentIcon(Icons.Default.MoreVert, stringResource(R.string.common_more_options))
+                                SharedIcon(Icons.Default.MoreVert, stringResource(R.string.common_more_options))
                             }
-                            AppDropdownMenu(menuExpanded, { menuExpanded = false }) {
-                                RoundedDropdownMenuItem(
+                            DropdownMenu(menuExpanded, { menuExpanded = false }) {
+                                DropdownMenuItem(
                                     text = { Text(stringResource(R.string.common_edit)) },
-                                    leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) },
+                                    leadingIcon = { SharedIcon(Icons.Outlined.Edit, null) },
                                     onClick = { menuExpanded = false; onOpenProfile(profile.id) }
                                 )
-                                if (music) RoundedDropdownMenuItem(
+                                if (music) DropdownMenuItem(
                                     text = { Text(stringResource(R.string.music_duplicate_profile)) },
                                     onClick = {
                                         menuExpanded = false
@@ -124,9 +124,9 @@ fun MediaRequestChainSettings(
                                         onOpenProfile(id)
                                     }
                                 )
-                                if (canDelete) RoundedDropdownMenuItem(
+                                if (canDelete) DropdownMenuItem(
                                     text = { Text(stringResource(R.string.common_remove), color = MaterialTheme.colorScheme.error) },
-                                    leadingIcon = { FluentIcon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) },
+                                    leadingIcon = { SharedIcon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) },
                                     onClick = { menuExpanded = false; deletingProfileId = profile.id }
                                 )
                             }

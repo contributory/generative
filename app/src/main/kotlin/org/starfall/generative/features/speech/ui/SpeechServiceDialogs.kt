@@ -8,7 +8,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
 
 /** Confirms removal of a speech service. The caller clears the selection and deletes the saved service. */
 @Composable

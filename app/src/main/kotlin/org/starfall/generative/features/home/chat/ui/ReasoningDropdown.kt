@@ -38,16 +38,16 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.features.home.chat.ui.tool.ToolActivityCards
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
-import org.starfall.generative.shared.ui.text.IndependentSelectionContainer
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
+import org.starfall.generative.shared.ui.text.SelectionContainer
+import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 
 @Composable
 fun ReasoningDropdown(
@@ -72,7 +72,7 @@ fun ReasoningDropdown(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                FluentIcon(
+                SharedIcon(
                     imageVector = Icons.Outlined.Lightbulb,
                     contentDescription = stringResource(R.string.thinking),
                     tint = MaterialTheme.colorScheme.primary,
@@ -86,13 +86,13 @@ fun ReasoningDropdown(
                     modifier = Modifier.weight(1f)
                 )
                 if (isStreaming) {
-                    GenerativeLoadingIndicator(
+                    LoadingIndicator(
                         modifier = Modifier.size(14.dp),
                         color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                FluentIcon(
+                SharedIcon(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = if (isExpanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
                     tint = MaterialTheme.colorScheme.outline,
@@ -105,7 +105,7 @@ fun ReasoningDropdown(
                 thickness = 0.5.dp,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
-            IndependentSelectionContainer {
+            SelectionContainer {
                 CollapsibleThinkingText(
                     reasoning = reasoning,
                     expanded = isExpanded,
@@ -179,7 +179,7 @@ internal fun ProcessingDropdown(
                         color = MaterialTheme.colorScheme.outline
                     )
                     Spacer(Modifier.width(4.dp))
-                    FluentIcon(
+                    SharedIcon(
                         imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
                         contentDescription = if (expanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
                         tint = MaterialTheme.colorScheme.outline,
@@ -264,7 +264,7 @@ internal fun ProcessingDropdown(
                                                 is ProcessingDropdownItem.Thinking -> {
                                                     // One composition owns expansion across streaming and
                                                     // completion; changing its renderer reset manual state.
-                                                    IndependentSelectionContainer {
+                                                    SelectionContainer {
                                                         LiveThinkingBlock(item.reasoning, active = running, showHeader = false)
                                                     }
                                                 }
@@ -304,15 +304,16 @@ internal fun BlockContextPadding(
     onDelete: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
-    var menuOpen by remember { mutableStateOf(false) }
+    val foreground = LocalChatForeground.current
+    var menuOpen by remember(foreground) { mutableStateOf(false) }
     Box(modifier.width(8.dp).fillMaxHeight()
         .combinedClickable(onClick = { onTap?.invoke() }, onLongClick = {
             if (onDelete != null) menuOpen = true
         })) {
-        AppDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            RoundedDropdownMenuItem(
+        DropdownMenu(expanded = foreground && menuOpen, onDismissRequest = { menuOpen = false }) {
+            DropdownMenuItem(
                 text = { Text(stringResource(R.string.common_delete)) },
-                leadingIcon = { FluentIcon(Icons.Outlined.Delete, contentDescription = null) },
+                leadingIcon = { SharedIcon(Icons.Outlined.Delete, contentDescription = null) },
                 onClick = {
                     menuOpen = false
                     onDelete?.invoke()

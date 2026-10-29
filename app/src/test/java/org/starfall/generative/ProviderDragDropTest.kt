@@ -81,6 +81,67 @@ class ProviderDragDropTest {
     private val members = listOf(provider("m1", "g", 0), provider("m2", "g", 1))
 
     @Test
+    fun longPressOnProviderBesideFolderPicksProviderNotFolder() {
+        show(listOf(provider("right", order = 11), provider("member", "g")), listOf(g))
+        val root = compose.onRoot()
+        root.performTouchInput { down(center("provider_right")) }
+        compose.mainClock.advanceTimeBy(700)
+        compose.waitForIdle()
+        assertTrue("the touched provider has the shadow", exists("dragged_provider"))
+        assertFalse("the neighboring folder must not be picked up", exists("dragged_group"))
+        root.performTouchInput { cancel() }
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun longPressOnProviderLeftOfFolderPicksProviderNotFolder() {
+        show(listOf(provider("left", order = 9), provider("member", "g")), listOf(g))
+        val root = compose.onRoot()
+        root.performTouchInput { down(center("provider_left")) }
+        compose.mainClock.advanceTimeBy(700)
+        compose.waitForIdle()
+        assertTrue(exists("dragged_provider"))
+        assertFalse(exists("dragged_group"))
+        root.performTouchInput { cancel() }
+    }
+
+    @Test
+    fun listModeLongPressSelectsProviderNotFolder() {
+        show(listOf(provider("left", order = 9), provider("member", "g")), listOf(g), grid = false)
+        val root = compose.onRoot()
+        root.performTouchInput { down(center("provider_left")) }
+        compose.mainClock.advanceTimeBy(700)
+        compose.waitForIdle()
+        assertTrue(exists("dragged_provider"))
+        assertFalse(exists("dragged_group"))
+        root.performTouchInput { cancel() }
+    }
+
+    @Test
+    fun draggingMemberOutOfFolderKeepsShadowAttachedToFinger() {
+        show(rootProviders + members, listOf(g))
+        compose.onNodeWithTag("provider_group_g", useUnmergedTree = true).performClick()
+        compose.waitForIdle()
+        val list = compose.onNodeWithTag("provider_folder_grid_g", useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot
+        val source = center("provider_folder_provider_m1")
+        val destination = Offset(source.x, list.top - 140f)
+        val root = compose.onRoot()
+        root.performTouchInput { down(source) }
+        compose.mainClock.advanceTimeBy(700)
+        compose.waitForIdle()
+        val before = center("dragged_provider")
+        root.performTouchInput { moveTo(destination) }
+        compose.mainClock.advanceTimeBy(300)
+        compose.waitForIdle()
+        val after = center("dragged_provider")
+        assertEquals("shadow x must not jump", destination.x - source.x, after.x - before.x, 32f)
+        assertEquals("shadow y must not jump", destination.y - source.y, after.y - before.y, 32f)
+        root.performTouchInput { up() }
+        compose.waitForIdle()
+    }
+
+    @Test
     fun draggingAProviderOntoAnotherRootTileReordersTheRoot() {
         val writes = mutableListOf<ProviderPlacement>()
         show(rootProviders + members, listOf(g), writes)
@@ -190,6 +251,29 @@ class ProviderDragDropTest {
         assertTrue(placement.rootOrder.any { it.id == "m1" && !it.isGroup })
         assertEquals(listOf("m2"), placement.groupOrders.getValue("g"))
         assertTrue(exists("provider_m1"))
+    }
+
+    @Test
+    fun cancelAfterExitingFolderMustNotPersistThePreview() {
+        val writes = mutableListOf<ProviderPlacement>()
+        show(rootProviders + members, listOf(g), writes)
+        compose.onNodeWithTag("provider_group_g", useUnmergedTree = true).performClick()
+        compose.waitForIdle()
+        val panel = compose.onNodeWithTag("provider_folder_grid_g", useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot
+        val outside = Offset(panel.left + 40f, panel.top - 140f)
+        val root = compose.onRoot()
+        root.performTouchInput { down(center("provider_folder_provider_m1")) }
+        compose.mainClock.advanceTimeBy(650)
+        root.performTouchInput { moveTo(outside) }
+        compose.mainClock.advanceTimeBy(300)
+        root.performTouchInput { cancel() }
+        compose.waitForIdle()
+        assertTrue("cancel must not persist folder exit", writes.isEmpty())
+        assertFalse("provider must not be in root after cancel", exists("provider_m1"))
+        compose.onNodeWithTag("provider_group_g", useUnmergedTree = true).performClick()
+        compose.waitForIdle()
+        assertTrue("provider returns to its original folder", exists("provider_folder_provider_m1"))
     }
 
     @Test

@@ -521,7 +521,6 @@
     <string name="code_block_include_undefined_hint">Режим отображения длинных блоков применяется и к блокам кода без указания языка.</string>
     <string name="code_block_extend">Развернуть</string>
     <string name="code_block_close">Закрыть блок кода</string>
-    <string name="sheet_resize">Изменить размер нижнего листа</string>
     <string name="oauth_opening_browser">Открывается вход…</string>
     <string name="oauth_browser_unavailable">Установите Chrome или браузер с поддержкой пользовательских вкладок, чтобы войти.</string>
     <string name="provider_multiple_accounts">Несколько аккаунтов</string>
@@ -1102,4 +1101,9 @@
     <string name="settings_item_transparency">Прозрачность компонентов</string>
     <string name="settings_item_transparency_description">Настройте прозрачность карточек, кнопок и элементов. В режиме AMOLED элементы прозрачны и имеют контур.</string>
     <string name="settings_item_transparency_reset">Сбросить прозрачность компонентов</string>
+    <string name="customization_input_title">Область ввода</string>
+    <string name="customization_input_transparency">Прозрачность фона</string>
+    <string name="customization_input_blur">Размытие фона</string>
+    <string name="customization_input_blur_description">Размывает чат за областью ввода на Android 12 и новее. Текст и кнопки остаются чёткими.</string>
+    <string name="settings_website">Веб-сайт</string>
 </resources>

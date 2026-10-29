@@ -1,6 +1,6 @@
 package org.starfall.generative.features.mcp.shared.ui
 
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.LoadingIndicator
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,9 +20,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.auth.rememberOAuthStart
 import org.starfall.generative.integrations.mcp.McpOAuthService
 
@@ -41,20 +41,20 @@ internal fun McpOAuthFields(url: String, clientId: String, onClientIdChange: (St
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        FluentIcon(if (advanced) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.primary)
+        SharedIcon(if (advanced) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.primary)
         Text(stringResource(R.string.advanced_client_credentials), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
             color = MaterialTheme.colorScheme.onSurface)
     }
     if (advanced) {
         Text(stringResource(R.string.client_id), style = MaterialTheme.typography.titleSmall)
-        SelectableOutlinedTextField(clientId, onClientIdChange, placeholder = { Text(stringResource(R.string.mcp_oauth_client_id_optional)) },
+        OutlinedTextField(clientId, onClientIdChange, placeholder = { Text(stringResource(R.string.mcp_oauth_client_id_optional)) },
             supportingText = { Text(stringResource(R.string.mcp_oauth_client_id_help)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        SelectableOutlinedTextField(clientSecret, onClientSecretChange, label = { Text(stringResource(R.string.client_secret)) },
+        OutlinedTextField(clientSecret, onClientSecretChange, label = { Text(stringResource(R.string.client_secret)) },
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
             supportingText = { Text(stringResource(R.string.mcp_oauth_client_secret_help)) }, singleLine = true,
             visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
         Text(stringResource(R.string.redirect_uri), style = MaterialTheme.typography.titleSmall)
-        SelectableOutlinedTextField(redirectUri, onRedirectUriChange, singleLine = true, modifier = Modifier.fillMaxWidth(),
+        OutlinedTextField(redirectUri, onRedirectUriChange, singleLine = true, modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant),
             supportingText = { Text(stringResource(R.string.mcp_oauth_redirect_uri_help, McpOAuthService.REDIRECT_URI)) })
@@ -77,7 +77,7 @@ internal fun McpOAuthFields(url: String, clientId: String, onClientIdChange: (St
             }
         }
     }, enabled = !busy && url.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
-        if (busy) { GenerativeLoadingIndicator(Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)) }
+        if (busy) { LoadingIndicator(Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)) }
         Text(stringResource(if (authorized) R.string.mcp_reauthorize_oauth else R.string.authorize_in_browser))
     }
     if (authorizeJob?.isActive == true) {

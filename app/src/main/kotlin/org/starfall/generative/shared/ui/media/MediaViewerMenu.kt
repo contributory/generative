@@ -1,6 +1,6 @@
 package org.starfall.generative.shared.ui.media
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,9 +25,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 
 internal data class MediaViewerAction(
     val label: String,
@@ -55,7 +55,7 @@ internal fun MediaViewerMenu(
         ) {
             ViewerOverlayButton {
                 IconButton(onClick = onDismiss) {
-                    FluentIcon(
+                    SharedIcon(
                         Icons.Default.Close,
                         contentDescription = stringResource(R.string.media_close_viewer),
                         tint = Color.White
@@ -65,7 +65,7 @@ internal fun MediaViewerMenu(
             Box {
                 ViewerOverlayButton {
                     IconButton(onClick = { expanded = true }) {
-                        FluentIcon(
+                        SharedIcon(
                             Icons.Default.MoreVert,
                             contentDescription = stringResource(R.string.common_more_options),
                             tint = Color.White
@@ -78,10 +78,10 @@ internal fun MediaViewerMenu(
                 ) {
                     actions.forEach { action ->
                         val contentColor = action.tint ?: Color.Unspecified
-                        RoundedDropdownMenuItem(
+                        DropdownMenuItem(
                             text = { Text(action.label, color = contentColor) },
                             leadingIcon = {
-                                FluentIcon(
+                                SharedIcon(
                                     action.icon,
                                     contentDescription = null,
                                     tint = action.tint ?: MaterialTheme.colorScheme.onSurfaceVariant

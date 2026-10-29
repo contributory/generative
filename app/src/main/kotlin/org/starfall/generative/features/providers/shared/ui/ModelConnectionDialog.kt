@@ -27,8 +27,8 @@ import org.starfall.generative.features.providers.shared.model.ModelConnectionSt
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.ui.dialogs.AppDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.Dialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
@@ -55,7 +55,7 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
     }
     val showCounts = testingAny || progress.tested > 0
     val removedDescription = stringResource(R.string.model_removed_on_dialog_close)
-    AppDialog(
+    Dialog(
         onDismissRequest = ::close,
         title = { Text(stringResource(R.string.check_connection)) },
         content = {
@@ -94,7 +94,7 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
                                         val status = tests.status(id) ?: ModelConnectionStatus.PASSED
                                         Row(verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            FluentIcon(status.icon(), null,
+                                            SharedIcon(status.icon(), null,
                                                 tint = if (removed) mutedText else status.accent(),
                                                 modifier = Modifier.size(16.dp))
                                             Text(status.message(tested), style = MaterialTheme.typography.bodySmall,
@@ -107,7 +107,7 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
                                     enabled = available && (testing || (!removed && !testingAny)),
                                     onClick = { if (testing) tests.cancel(id) else tests.test(provider, id) }
                                 ) {
-                                    FluentIcon(if (testing) Icons.Outlined.StopCircle else Icons.Outlined.NetworkCheck,
+                                    SharedIcon(if (testing) Icons.Outlined.StopCircle else Icons.Outlined.NetworkCheck,
                                         if (testing) stringResource(R.string.common_cancel) else stringResource(R.string.test_model, id),
                                         modifier = Modifier.size(20.dp))
                                 }
@@ -115,7 +115,7 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
                                     modifier = Modifier.size(40.dp),
                                     onClick = { if (!removed && testing) tests.cancel(id); removals.toggle(id) }
                                 ) {
-                                    FluentIcon(if (removed) Icons.Outlined.Restore else Icons.Outlined.Delete,
+                                    SharedIcon(if (removed) Icons.Outlined.Restore else Icons.Outlined.Delete,
                                         stringResource(if (removed) R.string.restore_model else R.string.delete_model, id),
                                         modifier = Modifier.size(20.dp),
                                         tint = if (removed) mutedText else MaterialTheme.colorScheme.error)
@@ -131,7 +131,7 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
                 if (showUnavailableAction) {
                     val restore = unavailable.isEmpty()
                     IconButton(onClick = { if (restore) removals.restoreAll() else removals.mark(unavailable) }) {
-                        FluentIcon(if (restore) Icons.Outlined.Restore else Icons.Outlined.DeleteSweep,
+                        SharedIcon(if (restore) Icons.Outlined.Restore else Icons.Outlined.DeleteSweep,
                             stringResource(if (restore) R.string.restore_removed_models else R.string.remove_unavailable_models),
                             tint = if (restore) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                     }
@@ -139,8 +139,8 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { if (testingAny) tests.cancelAll() else tests.testAll(provider, testableModels, skip = { it in removals.pending }) },
                     enabled = (testingAny || testableModels.isNotEmpty()) && available) {
-                    if (testingAny) FluentIcon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
-                    else FluentIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.common_test_all_text_models))
+                    if (testingAny) SharedIcon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
+                    else SharedIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.common_test_all_text_models))
                 }
                 TextButton(onClick = ::close) { Text(stringResource(R.string.common_close)) }
             }

@@ -33,18 +33,18 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.ui.LocalInstructionControls
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.groupedItemShape
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
-import org.starfall.generative.shared.ui.sheets.AppSheet
+import org.starfall.generative.shared.ui.sheets.BottomSheet
 
 /** Bottom sheet that turns each saved instruction on or off for the open chat. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InstructionsSheet(onDismiss: () -> Unit) {
-    AppSheet(
+    BottomSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
@@ -78,7 +78,7 @@ internal fun InstructionsSheetContent(
                     },
                     modifier = Modifier.size(40.dp)
                 ) {
-                    FluentIcon(
+                    SharedIcon(
                         Icons.Outlined.Settings,
                         stringResource(R.string.instruction_open_instructions)
                     )

@@ -169,7 +169,9 @@ data class ToolActivity(
     /** Non-zero marks a generic MCP tool response (not media / Content-API). It does not limit [response]. */
     val responsePreviewLimit: Int = 0,
     /** Keeps distinct Actions groups when editing moves them to one Content offset. */
-    val actionGroup: Int? = null
+    val actionGroup: Int? = null,
+    /** In-flight preview shape from effective image options. Room does not persist pending UI. */
+    @kotlinx.serialization.Transient val previewAspectRatio: Float? = null,
 )
 
 @Serializable

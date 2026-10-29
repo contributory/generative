@@ -25,10 +25,10 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.icons.FaviconResult
 import org.starfall.generative.shared.icons.FaviconService
 import org.starfall.generative.shared.icons.IconStore
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.LoadingIndicator
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import androidx.compose.foundation.BorderStroke
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
@@ -133,7 +133,7 @@ internal fun FaviconDialog(
     val busy = state.fetching
     val onClose = { state.close(onSave) }
 
-    AppAlertDialog(
+    AlertDialog(
         onDismissRequest = onClose,
         title = { Text(context.getString(R.string.favicon_get_logo)) },
         scrollableContent = false,
@@ -142,7 +142,7 @@ internal fun FaviconDialog(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                SelectableOutlinedTextField(
+                OutlinedTextField(
                     value = state.customUrl,
                     onValueChange = { state.customUrl = it; state.error = null },
                     enabled = !busy,
@@ -155,22 +155,22 @@ internal fun FaviconDialog(
                             if (busy) {
                                 // Stops the search; the dialog stays open.
                                 IconButton(onClick = { state.cancel() }) {
-                                    FluentIcon(Icons.Outlined.Stop, contentDescription = context.getString(R.string.common_cancel))
+                                    SharedIcon(Icons.Outlined.Stop, contentDescription = context.getString(R.string.common_cancel))
                                 }
                             } else {
                                 if (state.customUrl.isNotEmpty()) {
                                     IconButton(onClick = { state.customUrl = ""; state.error = null }) {
-                                        FluentIcon(Icons.Outlined.Close, contentDescription = context.getString(R.string.common_clear))
+                                        SharedIcon(Icons.Outlined.Close, contentDescription = context.getString(R.string.common_clear))
                                     }
                                 }
                                 IconButton(onClick = { state.fetch(baseUrl) }) {
-                                    FluentIcon(Icons.Outlined.Search, contentDescription = context.getString(R.string.favicon_fetch))
+                                    SharedIcon(Icons.Outlined.Search, contentDescription = context.getString(R.string.favicon_fetch))
                                 }
                             }
                         }
                     }
                 )
-                if (busy) GenerativeLoadingIndicator(Modifier.align(Alignment.CenterHorizontally))
+                if (busy) LoadingIndicator(Modifier.align(Alignment.CenterHorizontally))
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 if (state.results.isNotEmpty()) {
                     FlowRow(

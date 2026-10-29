@@ -31,6 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -42,7 +43,9 @@ import org.starfall.generative.R
 import org.starfall.generative.features.about.logic.GitHubReleaseInfo
 import org.starfall.generative.features.about.logic.compareReleaseVersions
 import org.starfall.generative.features.about.logic.fetchLatestGitHubRelease
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.icons.SharedIcon
+import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -74,7 +77,10 @@ fun AboutScreen(modifier: Modifier = Modifier, contentPadding: PaddingValues = P
             Text(stringResource(R.string.settings_universal_description), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         UpdateSection()
-        AboutNavigationItem(stringResource(R.string.settings_source_code), "starfall-org/generative", "</>") {
+        AboutNavigationItem(stringResource(R.string.settings_website), "starfall-org.github.io/generative", Icons.Outlined.Language) {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://starfall-org.github.io/generative/")))
+        }
+        AboutNavigationItem(stringResource(R.string.settings_source_code), "starfall-org/generative", Icons.Outlined.Code) {
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/starfall-org/generative")))
         }
         AboutCard {
@@ -117,7 +123,7 @@ private fun UpdateSection() {
         val latest = latestRelease
         when {
             isChecking -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GenerativeLoadingIndicator(modifier = Modifier.size(18.dp))
+                LoadingIndicator(modifier = Modifier.size(18.dp))
                 Text(stringResource(R.string.settings_checking_releases))
             }
             error != null -> {
@@ -174,7 +180,7 @@ private fun AboutCard(content: @Composable androidx.compose.foundation.layout.Co
 }
 
 @Composable
-private fun AboutNavigationItem(title: String, subtitle: String, icon: String, onClick: () -> Unit) {
+private fun AboutNavigationItem(title: String, subtitle: String, icon: ImageVector, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -183,7 +189,7 @@ private fun AboutNavigationItem(title: String, subtitle: String, icon: String, o
         border = prominentContainerBorder()
     ) {
         Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(icon, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)
+            SharedIcon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

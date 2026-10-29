@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,13 +23,17 @@ import org.starfall.generative.shared.ui.logging.labelRes
 internal fun DeveloperSettingsSection(
     appPreferences: AppPreferences,
     onDebugModeChange: (Boolean) -> Unit,
-    onDebugLogCategoriesChange: (Set<DebugLogCategory>) -> Unit
+    onDebugLogCategoriesChange: (Set<DebugLogCategory>) -> Unit,
+    onOpenLauncherDragTest: () -> Unit
 ) {
     SettingsSection(stringResource(R.string.settings_developer)) {
         PreferenceToggle(
             stringResource(R.string.settings_debug_logs), stringResource(R.string.settings_debug_logs_description),
             appPreferences.debugMode, onDebugModeChange
         )
+        OutlinedButton(onClick = onOpenLauncherDragTest) {
+            Text(stringResource(R.string.launcher_drag_test_title))
+        }
         AnimatedVisibility(visible = appPreferences.debugMode) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.settings_debug_log_scope), style = MaterialTheme.typography.titleMedium)

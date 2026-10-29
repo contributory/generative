@@ -42,7 +42,7 @@ fun HeaderNameField(
     enabled: Boolean = true
 ) {
     var fieldValue by remember { mutableStateOf(TextFieldValue(value)) }
-    // Same IME-safe sync as SelectableOutlinedTextField: only apply genuinely external changes.
+    // Same IME-safe sync as OutlinedTextField: only apply genuinely external changes.
     LaunchedEffect(value) {
         val synced = fieldValue.withExternalText(value)
         if (synced !== fieldValue) fieldValue = synced

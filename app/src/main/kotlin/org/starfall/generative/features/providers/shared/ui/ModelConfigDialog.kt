@@ -2,6 +2,7 @@ package org.starfall.generative.features.providers.shared.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.rememberScrollState
@@ -20,9 +21,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Switch
 import androidx.compose.ui.Alignment
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
-import org.starfall.generative.shared.ui.dialogs.AppDialog
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.dialogs.Dialog
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 @Composable
 fun ModelConfigDialog(
@@ -41,23 +42,23 @@ fun ModelConfigDialog(
     val topPValid = topP.isBlank() || topP.toDoubleOrNull()?.let { it.isFinite() && it in 0.0..1.0 } == true
     val topKValid = !supportsTopK || topK.isBlank() || topK.toIntOrNull()?.let { it > 0 } == true
 
-    AppDialog(
+    Dialog(
         onDismissRequest = onDismiss,
         title = { Text(modelId, maxLines = 2, overflow = TextOverflow.Ellipsis) },
         content = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(provider.name, style = MaterialTheme.typography.labelLarge)
                 Text(stringResource(R.string.model_stream_settings_description))
-                SelectableOutlinedTextField(temperature, { temperature = it }, label = { Text(stringResource(R.string.model_temperature_label, tempMax)) },
+                OutlinedTextField(temperature, { temperature = it }, label = { Text(stringResource(R.string.model_temperature_label, tempMax)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                      supportingText = { if (!tempValid) Text(stringResource(R.string.model_temperature_invalid, tempMax)) },
                     isError = !tempValid, singleLine = true, modifier = Modifier.fillMaxWidth())
-                SelectableOutlinedTextField(topP, { topP = it }, label = { Text(stringResource(R.string.model_top_p_label)) },
+                OutlinedTextField(topP, { topP = it }, label = { Text(stringResource(R.string.model_top_p_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                      supportingText = { if (!topPValid) Text(stringResource(R.string.model_top_p_invalid)) },
                     isError = !topPValid, singleLine = true, modifier = Modifier.fillMaxWidth())
                 if (supportsTopK) {
-                    SelectableOutlinedTextField(topK, { topK = it }, label = { Text(stringResource(R.string.model_top_k_label)) },
+                    OutlinedTextField(topK, { topK = it }, label = { Text(stringResource(R.string.model_top_k_label)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                          supportingText = { if (!topKValid) Text(stringResource(R.string.model_top_k_invalid)) },
                         isError = !topKValid, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -130,11 +131,16 @@ fun ModelToolsDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         if (tool !in defaultTools) {
-                            androidx.compose.material3.OutlinedTextField(
+                            OutlinedTextField(
                                 value = tool,
                                 onValueChange = { toolNames[index] = it },
                                 modifier = Modifier.weight(1f),
                                 label = { Text(stringResource(R.string.model_tool_name)) },
+                                keyboardOptions = KeyboardOptions(
+                                    capitalization = KeyboardCapitalization.None,
+                                    autoCorrectEnabled = false,
+                                    keyboardType = KeyboardType.Password
+                                ),
                                 singleLine = true
                             )
                         } else {

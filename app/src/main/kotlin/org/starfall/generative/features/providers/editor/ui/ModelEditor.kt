@@ -1,7 +1,7 @@
 package org.starfall.generative.features.providers.editor.ui
 
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
+import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -36,13 +36,13 @@ import org.starfall.generative.shared.model.language.supportedReasoningEfforts
 import org.starfall.generative.shared.model.language.withThinkingPassback
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.storage.preferences.ModelConfigurationMemory
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.code.CodeBlockSurface
 import org.starfall.generative.shared.ui.model.modelInitial
 
@@ -134,7 +134,7 @@ fun ModelEditor(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
+                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                     }
                 },
                 actions = {
@@ -160,7 +160,7 @@ fun ModelEditor(
                 model = true,
                 faviconBaseUrl = provider.baseUrl
             )
-            SelectableOutlinedTextField(
+            OutlinedTextField(
                 value = config.displayName,
                 onValueChange = { config = config.copy(displayName = it) },
                 label = { Text(stringResource(R.string.common_name)) },
@@ -172,7 +172,7 @@ fun ModelEditor(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
-            SelectableOutlinedTextField(
+            OutlinedTextField(
                 value = modelId,
                 onValueChange = { modelId = it },
                 label = { Text(stringResource(R.string.model_id)) },
@@ -182,7 +182,7 @@ fun ModelEditor(
                 modifier = Modifier.fillMaxWidth()
             )
             ExposedDropdownMenuBox(expanded = typeExpanded, onExpandedChange = { typeExpanded = !typeExpanded }) {
-                SelectableOutlinedTextField(
+                OutlinedTextField(
                     value = config.modelType.displayName,
                     onValueChange = {},
                     readOnly = true,
@@ -190,7 +190,7 @@ fun ModelEditor(
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).fillMaxWidth()
                 )
-                AppExposedDropdownMenu(expanded = typeExpanded, onDismissRequest = { typeExpanded = false }) {
+                ExposedDropdownMenu(expanded = typeExpanded, onDismissRequest = { typeExpanded = false }) {
                     ModelType.entries.forEach { type ->
                         DropdownMenuItem(
                             text = { Text(type.displayName) },
@@ -208,7 +208,7 @@ fun ModelEditor(
                 }
             }
             if (config.modelType == ModelType.TEXT_GENERATION) {
-                SelectableOutlinedTextField(
+                OutlinedTextField(
                     value = contextWindowText,
                     onValueChange = { if (it.all(Char::isDigit)) contextWindowText = it },
                     label = { Text(stringResource(R.string.context_window)) },
@@ -225,21 +225,21 @@ fun ModelEditor(
                         checked = config.supportsVision,
                         onCheckedChange = { config = config.copy(supportsVision = it) },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-                        icon = { FluentIcon(Icons.Outlined.Image, contentDescription = null) },
+                        icon = { SharedIcon(Icons.Outlined.Image, contentDescription = null) },
                         label = { Text(stringResource(R.string.common_image)) }
                     )
                     SegmentedButton(
                         checked = config.supportsVideoInput,
                         onCheckedChange = { config = config.copy(supportsVideoInput = it) },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-                        icon = { FluentIcon(Icons.Outlined.Videocam, contentDescription = null) },
+                        icon = { SharedIcon(Icons.Outlined.Videocam, contentDescription = null) },
                         label = { Text(stringResource(R.string.common_video)) }
                     )
                     SegmentedButton(
                         checked = config.supportsAudioInput,
                         onCheckedChange = { config = config.copy(supportsAudioInput = it) },
                         shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                        icon = { FluentIcon(Icons.Outlined.Audiotrack, contentDescription = null) },
+                        icon = { SharedIcon(Icons.Outlined.Audiotrack, contentDescription = null) },
                         label = { Text(stringResource(R.string.common_audio)) }
                     )
                 }
@@ -347,7 +347,7 @@ fun ModelEditor(
                     expanded = profileExpanded,
                     onExpandedChange = { profileExpanded = !profileExpanded }
                 ) {
-                    SelectableOutlinedTextField(
+                    OutlinedTextField(
                         value = chosenMediaProfile.name,
                         onValueChange = {}, readOnly = true,
                         label = { Text(stringResource(if (isVideoGen) R.string.media_video_profile else R.string.media_image_profile)) },
@@ -356,7 +356,7 @@ fun ModelEditor(
                             ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true
                         ).fillMaxWidth().testTag("media-profile-selector")
                     )
-                    AppExposedDropdownMenu(profileExpanded, { profileExpanded = false }) {
+                    ExposedDropdownMenu(profileExpanded, { profileExpanded = false }) {
                         mediaProfiles.values.forEach { profile ->
                             DropdownMenuItem(
                                 text = { Text(profile.name + " · " +

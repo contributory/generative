@@ -4,7 +4,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.selection.DisableSelection
-import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.SelectionContainer as ComposeSelectionContainer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
@@ -92,7 +92,7 @@ internal fun GatedSelectionContainer(content: @Composable () -> Unit) {
     when {
         LocalSelectionBlocked.current -> DisableSelection(content = content)
         LocalSelectionContainerActive.current -> content()
-        else -> SelectionContainer {
+        else -> ComposeSelectionContainer {
             androidx.compose.runtime.CompositionLocalProvider(
                 LocalSelectionContainerActive provides true,
                 content = content
@@ -103,8 +103,8 @@ internal fun GatedSelectionContainer(content: @Composable () -> Unit) {
 
 /** A deliberate selection island, used for reasoning text that is separate from answer content. */
 @Composable
-internal fun IndependentSelectionContainer(content: @Composable () -> Unit) {
-    androidx.compose.foundation.text.selection.SelectionContainer(content = content)
+internal fun SelectionContainer(content: @Composable () -> Unit) {
+    ComposeSelectionContainer(content = content)
 }
 
 /**

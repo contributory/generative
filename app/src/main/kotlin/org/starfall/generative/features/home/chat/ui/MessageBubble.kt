@@ -17,9 +17,9 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.StoredMessage
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.features.home.chat.ui.markdown.MarkdownRenderer
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -47,7 +47,7 @@ fun MessageBubble(
                     .padding(end = 8.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    FluentIcon(
+                    SharedIcon(
                         Icons.Outlined.ChatBubbleOutline,
                         contentDescription = stringResource(R.string.message_ai_role),
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -75,7 +75,7 @@ fun MessageBubble(
                 modifier = Modifier.padding(14.dp)
             ) {
                 if (message.content.isBlank()) {
-                    GenerativeLoadingIndicator(modifier = Modifier.size(18.dp))
+                    LoadingIndicator(modifier = Modifier.size(18.dp))
                 } else {
                     GatedSelectionContainer {
                         MarkdownRenderer(content = message.content)
@@ -98,7 +98,7 @@ fun MessageBubble(
                             },
                             modifier = Modifier.size(28.dp)
                         ) {
-                            FluentIcon(
+                            SharedIcon(
                                 Icons.Outlined.ContentCopy,
                                 contentDescription = stringResource(R.string.common_copy),
                                 tint = MaterialTheme.colorScheme.outline,

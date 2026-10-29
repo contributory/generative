@@ -31,8 +31,9 @@ internal fun AssistantMediaBlock(
     selectedImageAttachments: List<String>,
     onToggleChatImage: ((String) -> Unit)?,
     onDelete: (() -> Unit)?,
-    shownFiles: MutableSet<String>
+    mediaItems: List<MediaPreviewItem>
 ) {
+    val foreground = LocalChatForeground.current
     if (block == null) {
         if (files.isEmpty()) return
         val context = LocalContext.current
@@ -46,7 +47,8 @@ internal fun AssistantMediaBlock(
                         val name = reference.removePrefix("tool-file:")
                         MediaFileCard(store, name, imageOnly = true,
                             selectedForChat = store.resolve(name)?.path in selectedImageAttachments,
-                            onToggleChatImage = onToggleChatImage)
+                            onToggleChatImage = onToggleChatImage,
+                            overlayActive = foreground)
                     } else {
                         AttachmentStrip(listOf(reference), removable = false,
                             selectedImageAttachments = selectedImageAttachments,
@@ -64,30 +66,6 @@ internal fun AssistantMediaBlock(
     }
     val context = LocalContext.current
     val store = remember(context) { ToolFiles(context) }
-    val mediaItems = block.items.filterIsInstance<AssistantTimelineItem.Tool>()
-        .flatMap { item ->
-            val activity = item.activity
-            val activityFiles = if (activity.name == "send_file" && activity.inlineMedia) {
-                activity.files
-            } else if (activity.inlineMedia || activity.responsePreviewLimit == 0 &&
-                activity.name in listOf("generate_image", "generate_video")) {
-                activity.files.filter { file ->
-                    val mime = mediaMimeType(file.removePrefix("tool-file:"))
-                    mime.startsWith("image/") || mime.startsWith("video/") || mime.startsWith("audio/")
-                }
-            } else if (activity.responsePreviewLimit > 0) emptyList()
-            else activity.files.filterNot { it.endsWith(".json", ignoreCase = true) }
-            val files = activityFiles.map { it.removePrefix("tool-file:") }
-                .filter { shownFiles.add(it) }
-            // Preserve each call's position when its pending tile becomes a file or failure.
-            when {
-                activityFiles.isNotEmpty() -> files.map { MediaPreviewItem.File(it) }
-                activity.name in setOf("generate_image", "generate_video") &&
-                    (activity.status == "error" || isStreaming && activity.status == "running") ->
-                    listOf(MediaPreviewItem.Placeholder(activity))
-                else -> emptyList()
-            }
-        }
     val visibleFiles = mediaItems.filterIsInstance<MediaPreviewItem.File>()
     if (mediaItems.isNotEmpty()) {
         if (visibleFiles.isNotEmpty()) SelectionOnlyPlaceholder("[MediaBlock$number]")
@@ -109,7 +87,8 @@ internal fun AssistantMediaBlock(
                                             MediaFileCard(store, item.name, imageOnly = true,
                                                 selectedForChat = store.resolve(item.name)?.path in selectedImageAttachments,
                                                 onToggleChatImage = onToggleChatImage,
-                                                playVideoInline = columns == 1)
+                                                playVideoInline = columns == 1,
+                                                overlayActive = foreground)
                                         }
                                         is MediaPreviewItem.Placeholder -> key(item.activity.id) {
                                             GeneratedMediaPlaceholder(item.activity)
@@ -130,4 +109,34 @@ internal fun AssistantMediaBlock(
             }
         }
     }
+}
+
+/** Pure media selection; callers remove duplicates once before composing blocks. */
+internal fun assistantMediaPreviewItems(
+    block: AssistantActionBlock,
+    isStreaming: Boolean
+): List<MediaPreviewItem> {
+    return block.items.filterIsInstance<AssistantTimelineItem.Tool>()
+        .flatMap { item ->
+            val activity = item.activity
+            val activityFiles = if (activity.name == "send_file" && activity.inlineMedia) {
+                activity.files
+            } else if (activity.inlineMedia || activity.responsePreviewLimit == 0 &&
+                activity.name in listOf("generate_image", "generate_video")) {
+                activity.files.filter { file ->
+                    val mime = mediaMimeType(file.removePrefix("tool-file:"))
+                    mime.startsWith("image/") || mime.startsWith("video/") || mime.startsWith("audio/")
+                }
+            } else if (activity.responsePreviewLimit > 0) emptyList()
+            else activity.files.filterNot { it.endsWith(".json", ignoreCase = true) }
+            val files = activityFiles.map { it.removePrefix("tool-file:") }
+            // Preserve each call's position when its pending tile becomes a file or failure.
+            when {
+                activityFiles.isNotEmpty() -> files.map { MediaPreviewItem.File(it) }
+                activity.name in setOf("generate_image", "generate_video") &&
+                    (activity.status == "error" || isStreaming && activity.status == "running") ->
+                    listOf(MediaPreviewItem.Placeholder(activity))
+                else -> emptyList()
+            }
+        }
 }

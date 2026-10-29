@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.features.userprofile.ui.MediaStoragePhotoSheet
+import org.starfall.generative.features.customization.ui.MediaStoragePhotoSheet
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.theme.GenerativeTheme
 

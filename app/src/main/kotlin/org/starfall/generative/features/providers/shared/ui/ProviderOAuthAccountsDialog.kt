@@ -1,6 +1,6 @@
 package org.starfall.generative.features.providers.shared.ui
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,11 +26,11 @@ import org.starfall.generative.R
 import org.starfall.generative.features.providers.shared.logic.isEmpty
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderOAuthAccount
-import org.starfall.generative.shared.ui.dialogs.AppDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.Dialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.auth.rememberOAuthStart
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -67,7 +67,7 @@ internal fun ProviderOAuthAccountsDialog(
     val backLabel = stringResource(R.string.common_back)
     val closeLabel = stringResource(R.string.common_close)
     val saveLabel = stringResource(R.string.common_save)
-    AppDialog(
+    Dialog(
         onDismissRequest = { if (editing && !busy) editing = false else dismiss() },
         title = { Text(stringResource(if (editing) {
             if (editingId == null) R.string.provider_add_account else R.string.provider_edit_account
@@ -77,7 +77,7 @@ internal fun ProviderOAuthAccountsDialog(
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 if (editing) Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SelectableOutlinedTextField(label, { label = it }, singleLine = true, enabled = !busy,
+                    OutlinedTextField(label, { label = it }, singleLine = true, enabled = !busy,
                         label = { Text(stringResource(R.string.common_label)) },
                         modifier = Modifier.fillMaxWidth().testTag("oauth-account-label"))
                     accounts.firstOrNull { it.id == editingId }?.identity?.let { Text(it) }
@@ -121,15 +121,15 @@ internal fun ProviderOAuthAccountsDialog(
                                     if (selected) Text(stringResource(R.string.provider_selected_account),
                                         style = MaterialTheme.typography.labelMedium)
                                 }
-                                if (selected) FluentIcon(Icons.Default.Check, stringResource(R.string.provider_selected_account))
+                                if (selected) SharedIcon(Icons.Default.Check, stringResource(R.string.provider_selected_account))
                                 Box {
                                     IconButton(enabled = !busy, onClick = { menu = true }) {
-                                        FluentIcon(Icons.Default.MoreVert, stringResource(R.string.oauth_account_actions))
+                                        SharedIcon(Icons.Default.MoreVert, stringResource(R.string.oauth_account_actions))
                                     }
                                     DropdownMenu(menu, onDismissRequest = { menu = false }) {
-                                        RoundedDropdownMenuItem(text = { Text(stringResource(R.string.common_edit)) },
+                                        DropdownMenuItem(text = { Text(stringResource(R.string.common_edit)) },
                                             onClick = { menu = false; edit(account) })
-                                        RoundedDropdownMenuItem(enabled = canDelete, text = { Text(stringResource(R.string.common_delete)) },
+                                        DropdownMenuItem(enabled = canDelete, text = { Text(stringResource(R.string.common_delete)) },
                                             onClick = {
                                                 menu = false
                                                 scope.launch {

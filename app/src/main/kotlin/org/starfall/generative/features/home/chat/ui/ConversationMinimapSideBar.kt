@@ -4,6 +4,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +20,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -35,8 +38,9 @@ import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.StoredMessage
 import kotlin.math.roundToInt
+import kotlin.math.abs
 
-/** [isOpen] means "the scrollbar is currently shown"; it is driven by list scrolling, not by a gesture. */
+/** Visibility is opened only by an inward swipe from the chat's right edge. */
 internal class ConversationMinimapSideBarState {
     var isOpen by mutableStateOf(false)
     var isInteracting by mutableStateOf(false)
@@ -53,9 +57,53 @@ private val MinimapThumbMinHeight = 48.dp
 private val MinimapBubbleHeight = 28.dp
 
 /**
- * A conventional list scrollbar for the chat. It appears by itself while the list scrolls and
- * fades after a short idle. Only the thumb takes touches, and only vertical drags: everything
- * else (taps, horizontal swipes, pager and drawer gestures) passes through untouched.
+ * Observe the gesture on the chat list's parent, rather than covering its right edge with an
+ * invisible hit target. Children keep receiving taps and vertical scrolling normally.
+ * Claim only an inward horizontal swipe that started within the existing 32 dp thumb width.
+ */
+internal fun Modifier.minimapEdgeSwipe(state: ConversationMinimapSideBarState, enabled: Boolean = true): Modifier =
+    pointerInput(state, enabled) {
+        val edgeWidthPx = MinimapHandleWidth.toPx()
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            if (!enabled || state.isOpen || down.position.x < size.width - edgeWidthPx) return@awaitEachGesture
+            var claimed = false
+            try {
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    if (event.changes.size != 1) break
+                    val change = event.changes.first()
+                    if (!change.pressed) break
+                    if (claimed) {
+                        change.consume()
+                        continue
+                    }
+                    if (change.isConsumed) break
+                    val movement = change.position - down.position
+                    val horizontal = abs(movement.x)
+                    val vertical = abs(movement.y)
+                    if (vertical > viewConfiguration.touchSlop && vertical >= horizontal) break
+                    if (horizontal > viewConfiguration.touchSlop) {
+                        if (movement.x < 0f && horizontal > vertical) {
+                            change.consume()
+                            state.isOpen = true
+                            state.isInteracting = true
+                            claimed = true
+                        } else break
+                    }
+                }
+            } finally {
+                if (claimed) {
+                    state.isInteracting = false
+                    state.markInteraction()
+                }
+            }
+        }
+    }
+
+/**
+ * A chat minimap opened by an inward swipe from the right edge. It fades after inactivity;
+ * only the visible thumb handles vertical drags. Taps and ordinary chat scrolling never open it.
  * Position and thumb size come from the native lazy-list layout in turn units.
  */
 @Composable
@@ -103,18 +151,12 @@ internal fun ConversationMinimapSideBar(
             dragProgress?.let { minimapPosition(latestCount, dragLength, it)?.index?.plus(1)?.coerceAtMost(latestCount) }
         }
     }
-    val scrolling = listState.isScrollInProgress
     LaunchedEffect(conversationKey, turns.isEmpty()) { state.isOpen = false }
-    LaunchedEffect(conversationKey, listState) {
-        snapshotFlow { listState.isScrollInProgress }.collect { active ->
-            if (active && latestCount > 0) state.isOpen = true
-        }
-    }
     LaunchedEffect(state.isOpen) {
         if (!state.isOpen) { dragProgress = null; state.isInteracting = false }
     }
-    LaunchedEffect(state.isOpen, state.isInteracting, state.interactionRevision, scrolling) {
-        if (state.isOpen && !state.isInteracting && !scrolling) {
+    LaunchedEffect(state.isOpen, state.isInteracting, state.interactionRevision) {
+        if (state.isOpen && !state.isInteracting) {
             delay(MINIMAP_IDLE_TIMEOUT_MS)
             state.isOpen = false
         }

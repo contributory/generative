@@ -46,8 +46,8 @@ import org.starfall.generative.shared.model.MAX_TITLE_GENERATION_MIN_MESSAGES
 import org.starfall.generative.shared.model.MAX_TITLE_GENERATION_MIN_WORDS
 import org.starfall.generative.shared.model.MIN_TITLE_GENERATION_MIN_MESSAGES
 import org.starfall.generative.shared.model.MIN_TITLE_GENERATION_MIN_WORDS
-import org.starfall.generative.shared.ui.sheets.AppSheet
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 @Composable
 internal fun HelperSettingsSheet(
@@ -79,10 +79,9 @@ internal fun HelperSettingsSheet(
     val parsedMinimumWords = minimumWords.toIntOrNull()
         ?.takeIf { it in MIN_TITLE_GENERATION_MIN_WORDS..MAX_TITLE_GENERATION_MIN_WORDS }
 
-    AppSheet(
+    BottomSheet(
         onDismissRequest = onDismiss,
-        fixedHeightFraction = 0.92f,
-        contentKey = name
+        fixedHeightFraction = 0.92f
     ) {
         Column(
             modifier = Modifier
@@ -105,7 +104,7 @@ internal fun HelperSettingsSheet(
                     }
                 }
                 item {
-                    SelectableOutlinedTextField(
+                    OutlinedTextField(
                         value = prompt,
                         onValueChange = { prompt = it },
                         label = { Text(stringResource(R.string.common_instructions)) },
@@ -129,7 +128,7 @@ internal fun HelperSettingsSheet(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            SelectableOutlinedTextField(
+                            OutlinedTextField(
                                 value = minimumMessages,
                                 onValueChange = { text ->
                                     if (text.length <= 2 && text.all(Char::isDigit)) minimumMessages = text
@@ -150,7 +149,7 @@ internal fun HelperSettingsSheet(
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 modifier = Modifier.fillMaxWidth()
                             )
-                            SelectableOutlinedTextField(
+                            OutlinedTextField(
                                 value = minimumWords,
                                 onValueChange = { text ->
                                     if (text.length <= 4 && text.all(Char::isDigit)) minimumWords = text

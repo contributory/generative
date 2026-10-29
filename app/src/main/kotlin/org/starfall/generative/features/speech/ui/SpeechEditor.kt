@@ -1,7 +1,7 @@
 package org.starfall.generative.features.speech.ui
 
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -27,14 +27,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.providerInitials
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.text.ApiKeyField
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 /** Full-screen speech service editor. All configuration and preview actions are kept inline. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -160,7 +160,7 @@ fun SpeechEditor(
                     title = { Text(stringResource(if (isNew) R.string.speech_add_service else R.string.speech_edit_title)) },
                     navigationIcon = {
                         IconButton(onClick = onDismiss) {
-                            FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                            SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                         }
                     },
                     actions = {
@@ -179,7 +179,7 @@ fun SpeechEditor(
                     .imePadding().verticalScroll(rememberScrollState()).padding(padding)
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                SelectableOutlinedTextField(
+                OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text(stringResource(R.string.speech_service_name)) },
@@ -214,7 +214,7 @@ fun SpeechEditor(
                             },
                             modifier = Modifier.weight(1f)
                         )
-                        FluentIcon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                        SharedIcon(Icons.Default.KeyboardArrowDown, contentDescription = null)
                     }
                     DropdownMenu(
                         expanded = providerExpanded,
@@ -272,7 +272,7 @@ fun SpeechEditor(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(modelId ?: stringResource(R.string.speech_select_tts_model), modifier = Modifier.weight(1f))
-                            FluentIcon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                            SharedIcon(Icons.Default.KeyboardArrowDown, contentDescription = null)
                         }
                         DropdownMenu(
                             expanded = modelExpanded,
@@ -304,11 +304,11 @@ fun SpeechEditor(
                     )
                 }
 
-                SelectableOutlinedTextField(
+                OutlinedTextField(
                     value = voice,
                     onValueChange = { voice = it; voiceName = "" },
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
-                    trailingIcon = if (standalone) { { IconButton(onClick = { showVoices = true }, enabled = apiKey.isNotBlank()) { FluentIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.speech_choose_voice)) } } } else null,
+                    trailingIcon = if (standalone) { { IconButton(onClick = { showVoices = true }, enabled = apiKey.isNotBlank()) { SharedIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.speech_choose_voice)) } } } else null,
                     supportingText = if (voiceName.isNotBlank()) { { Text(voiceName) } } else null,
                     label = {
                         Text(
@@ -339,7 +339,7 @@ fun SpeechEditor(
 
                 if (!system) {
                     if (supportsInstructions) {
-                        SelectableOutlinedTextField(
+                        OutlinedTextField(
                             value = instructions, onValueChange = { instructions = it },
                             label = { Text(stringResource(R.string.speech_voice_instructions)) },
                             supportingText = { Text(stringResource(if (google) R.string.speech_voice_instructions_help_google else R.string.speech_voice_instructions_help, "")) },
@@ -347,7 +347,7 @@ fun SpeechEditor(
                         )
                     }
                     if (google || engine == SpeechEngine.SPEECHIFY) {
-                        SelectableOutlinedTextField(
+                        OutlinedTextField(
                             value = languageCode, onValueChange = { languageCode = it },
                             label = { Text(stringResource(R.string.speech_language_code)) },
                             placeholder = { Text("vi-VN") }, singleLine = true,
@@ -360,7 +360,7 @@ fun SpeechEditor(
                         Box {
                             OutlinedButton(onClick = { formatExpanded = true }, modifier = Modifier.fillMaxWidth()) {
                                 Text(stringResource(R.string.speech_audio_format, responseFormat), Modifier.weight(1f))
-                                FluentIcon(Icons.Default.KeyboardArrowDown, null)
+                                SharedIcon(Icons.Default.KeyboardArrowDown, null)
                             }
                             DropdownMenu(expanded = formatExpanded, onDismissRequest = { formatExpanded = false }) {
                                 (when(engine) {
@@ -375,7 +375,7 @@ fun SpeechEditor(
                             }
                         }
                     }
-                    SelectableOutlinedTextField(
+                    OutlinedTextField(
                         value = chunkSizeText, onValueChange = { chunkSizeText = it },
                         label = { Text(stringResource(R.string.speech_sentences_per_chunk)) },
                         supportingText = { Text(stringResource(R.string.speech_chunk_boundaries)) },
@@ -386,9 +386,9 @@ fun SpeechEditor(
                     )
                     if (standalone) TextButton(onClick = { advancedExpanded = !advancedExpanded }) {
                         Text(stringResource(R.string.image_tool_advanced_json), Modifier.weight(1f))
-                        FluentIcon(if (advancedExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, null)
+                        SharedIcon(if (advancedExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, null)
                     }
-                    if (!standalone || advancedExpanded) SelectableOutlinedTextField(
+                    if (!standalone || advancedExpanded) OutlinedTextField(
                         value = extraBodyText, onValueChange = { extraBodyText = it },
                         label = { Text(stringResource(R.string.speech_additional_parameters)) },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
@@ -420,7 +420,7 @@ fun SpeechEditor(
                     enabled = isPlaying || canSave,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    FluentIcon(
+                    SharedIcon(
                         if (isPlaying) Icons.Outlined.StopCircle else Icons.Default.PlayArrow,
                         contentDescription = null
                     )

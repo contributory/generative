@@ -1,6 +1,6 @@
 package org.starfall.generative.features.providers.shared.ui
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -20,10 +20,10 @@ import org.starfall.generative.shared.model.provider.DEFAULT_ANTIGRAVITY_VERSION
 import org.starfall.generative.shared.model.provider.DEFAULT_CODEX_CLIENT_VERSION
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.ui.text.ApiKeyField
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 private val literalInputKeyboardOptions = KeyboardOptions(
     capitalization = KeyboardCapitalization.None,
@@ -57,14 +57,14 @@ fun AuthMethod.displayName(): String = when (this) {
 @Composable
 internal fun ProviderBaseUrlField(type: ModelApiType, value: String, valid: Boolean, onChange: (String) -> Unit) {
     val defaultUrl = if (type == ModelApiType.OPENAI) "https://api.openai.com/v1" else type.defaultBaseUrl
-    SelectableOutlinedTextField(
+    OutlinedTextField(
         value = value, onValueChange = onChange,
         label = { Text(stringResource(R.string.provider_base_url)) },
         isError = !valid,
         supportingText = if (!valid) ({ Text(stringResource(R.string.provider_invalid_base_url)) }) else null,
         trailingIcon = {
             IconButton(onClick = { onChange(defaultUrl) }) {
-                FluentIcon(Icons.Outlined.Language, stringResource(R.string.provider_restore_default_url))
+                SharedIcon(Icons.Outlined.Language, stringResource(R.string.provider_restore_default_url))
             }
         },
         keyboardOptions = literalInputKeyboardOptions,
@@ -75,7 +75,7 @@ internal fun ProviderBaseUrlField(type: ModelApiType, value: String, valid: Bool
 
 @Composable
 internal fun CodexClientVersionField(value: String, valid: Boolean, onChange: (String) -> Unit) {
-    SelectableOutlinedTextField(
+    OutlinedTextField(
         value = value, onValueChange = onChange,
         label = { Text(stringResource(R.string.provider_codex_client_version)) },
         placeholder = { Text(DEFAULT_CODEX_CLIENT_VERSION) },
@@ -97,7 +97,7 @@ internal fun AntigravityVersionFields(
     changelistValid: Boolean,
     onChangelistChange: (String) -> Unit
 ) {
-    SelectableOutlinedTextField(
+    OutlinedTextField(
         value = version, onValueChange = onVersionChange,
         label = { Text(stringResource(R.string.provider_antigravity_version)) },
         placeholder = { Text(DEFAULT_ANTIGRAVITY_VERSION) },
@@ -108,7 +108,7 @@ internal fun AntigravityVersionFields(
         visualTransformation = VisualTransformation.None,
         singleLine = true, modifier = Modifier.fillMaxWidth()
     )
-    SelectableOutlinedTextField(
+    OutlinedTextField(
         value = changelist, onValueChange = onChangelistChange,
         label = { Text(stringResource(R.string.provider_antigravity_changelist)) },
         placeholder = { Text(DEFAULT_ANTIGRAVITY_CHANGELIST) },
@@ -122,7 +122,7 @@ internal fun AntigravityVersionFields(
 
 @Composable
 internal fun AntigravityProjectIdField(value: String, onChange: (String) -> Unit) {
-    SelectableOutlinedTextField(
+    OutlinedTextField(
         value = value, onValueChange = onChange,
         label = { Text(stringResource(R.string.provider_antigravity_project_id)) },
         keyboardOptions = literalInputKeyboardOptions,
@@ -153,14 +153,14 @@ internal fun ProviderAuthField(
         leadingIcon = if (canSelect) ({
             Box {
                 IconButton(onClick = { expanded = true }) {
-                    FluentIcon(
+                    SharedIcon(
                         if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                         stringResource(R.string.provider_select_auth_type)
                     )
                 }
                 DropdownMenu(expanded, onDismissRequest = { expanded = false }) {
                     listOf(AuthMethod.PLATFORM_DEFAULT, AuthMethod.BEARER_TOKEN, AuthMethod.QUERY_PARAM, AuthMethod.OAUTH, AuthMethod.NONE).forEach { option ->
-                        RoundedDropdownMenuItem(text = { Text(option.displayName()) }, onClick = {
+                        DropdownMenuItem(text = { Text(option.displayName()) }, onClick = {
                             onMethodChange(option)
                             expanded = false
                         })

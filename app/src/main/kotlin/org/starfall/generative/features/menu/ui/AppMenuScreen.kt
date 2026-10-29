@@ -1,12 +1,12 @@
 package org.starfall.generative.features.menu.ui
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,8 +28,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.Icon
+import org.starfall.generative.shared.ui.icons.SharedIcon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,13 +38,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -55,11 +58,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.icons.IconStore
-import org.starfall.generative.shared.theme.LocalAmoledMode
-import org.starfall.generative.shared.ui.layout.LocalItemTransparency
-import org.starfall.generative.shared.ui.layout.itemFill
-import org.starfall.generative.shared.ui.FeaturesLogoImage
+import org.starfall.generative.shared.ui.FeaturesLogo
+import org.starfall.generative.shared.ui.layout.appearanceContainerColor
+import org.starfall.generative.shared.ui.layout.appearanceContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.icons.FluentUi
+import org.starfall.generative.shared.ui.icons.Icons
 
 internal val GroupOuterCorner = 24.dp
 internal val GroupInnerCorner = 6.dp
@@ -87,7 +92,7 @@ fun AppMenuScreen(
     modifier: Modifier = Modifier,
     logoImage: String? = null,
     onLogoImageChange: (String?) -> Unit = {},
-    onNavigateToUserProfile: () -> Unit = {},
+    onNavigateToCustomization: () -> Unit = {},
     onNavigateToChatOptions: () -> Unit = {},
     onNavigateToToolsEditor: () -> Unit = {},
     onNavigateToProviders: () -> Unit = {},
@@ -98,14 +103,33 @@ fun AppMenuScreen(
     onNavigateToAppSettings: () -> Unit = {},
     onNavigateToIcons: () -> Unit = {},
     onNavigateToAppData: () -> Unit = {},
-    onNavigateToAbout: () -> Unit = {}
+    onNavigateToAbout: () -> Unit = {},
+    onNavigateToChat: () -> Unit = {}
 ) {
     val safeDrawing = WindowInsets.safeDrawing.asPaddingValues()
     val layoutDirection = LocalLayoutDirection.current
+    val currentNavigateToChat by rememberUpdatedState(onNavigateToChat)
 
     // Background is owned once by AppNavigation for every destination in the Menu
     // family. Only this screen's content participates in nested navigation slides.
-    Box(modifier.fillMaxSize()) {
+    Box(
+        modifier.fillMaxSize().testTag("app-menu-root").pointerInput(Unit) {
+            val backSwipeDistance = 72.dp.toPx()
+            var horizontalDrag = 0f
+            detectHorizontalDragGestures(
+                onDragStart = { horizontalDrag = 0f },
+                onHorizontalDrag = { change, amount ->
+                    horizontalDrag += amount
+                    change.consume()
+                },
+                onDragEnd = {
+                    if (horizontalDrag >= backSwipeDistance) currentNavigateToChat()
+                    horizontalDrag = 0f
+                },
+                onDragCancel = { horizontalDrag = 0f }
+            )
+        }
+    ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         // Draw the list itself behind transparent system bars, but keep interactive content inside
@@ -134,12 +158,12 @@ fun AppMenuScreen(
                 Box(
                     modifier = Modifier.size(84.dp).clip(CircleShape)
                         .combinedClickable(
-                            onClick = onNavigateToUserProfile,
-                            onLongClick = onNavigateToUserProfile
+                            onClick = onNavigateToCustomization,
+                            onLongClick = onNavigateToCustomization
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    FeaturesLogoImage(logoImage, Modifier.size(84.dp))
+                    FeaturesLogo(logoImage, Modifier.size(84.dp))
                 }
             }
         }
@@ -149,11 +173,18 @@ fun AppMenuScreen(
         item(key = "configuration-group") {
             FeatureGroup {
                 FeatureButton(
+                    stringResource(R.string.customization_title),
+                    stringResource(R.string.customization_description),
+                    FluentUi.Regular.Image,
+                    onNavigateToCustomization,
+                    shape = GroupTopShape
+                )
+                FeatureButton(
                     stringResource(R.string.settings_chat_options),
                     stringResource(R.string.settings_chat_options_description),
                     FluentUi.Regular.Chat,
                     onNavigateToChatOptions,
-                    shape = GroupTopShape
+                    shape = GroupMiddleShape
                 )
                 FeatureButton(
                     stringResource(R.string.common_feature_tools),
@@ -252,6 +283,22 @@ fun AppMenuScreen(
             }
         }
     }
+    IconButton(
+        onClick = onNavigateToChat,
+        modifier = Modifier.align(Alignment.TopStart)
+            .padding(
+                start = 16.dp + safeDrawing.calculateStartPadding(layoutDirection),
+                top = 16.dp + safeDrawing.calculateTopPadding()
+            )
+            .size(48.dp)
+            .testTag("app-menu-back")
+    ) {
+        SharedIcon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = stringResource(R.string.common_back),
+            modifier = Modifier.size(24.dp)
+        )
+    }
     }
 }
 
@@ -276,26 +323,6 @@ private fun FeatureGroup(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-internal fun featureButtonContainerColor(
-    colorScheme: ColorScheme = MaterialTheme.colorScheme,
-    amoledMode: Boolean = LocalAmoledMode.current
-): Color = if (amoledMode) {
-    Color.Transparent
-} else {
-    colorScheme.surfaceContainerHigh.copy(alpha = 1f).itemFill(LocalItemTransparency.current)
-}
-
-@Composable
-internal fun featureButtonBorder(
-    colorScheme: ColorScheme = MaterialTheme.colorScheme,
-    amoledMode: Boolean = LocalAmoledMode.current
-): BorderStroke? = if (amoledMode) {
-    BorderStroke(1.5.dp, colorScheme.outlineVariant)
-} else {
-    null
-}
-
-@Composable
 private fun FeatureButton(
     title: String,
     subtitle: String,
@@ -307,8 +334,8 @@ private fun FeatureButton(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = shape,
-        color = featureButtonContainerColor(),
-        border = featureButtonBorder()
+        color = prominentContainerColor(),
+        border = prominentContainerBorder(1.5.dp)
     ) {
         Row(
             modifier = Modifier.padding(18.dp),
@@ -317,20 +344,19 @@ private fun FeatureButton(
         ) {
             Surface(
                 shape = RoundedCornerShape(14.dp),
-                color = if (LocalAmoledMode.current) Color.Transparent else
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 1f).itemFill(LocalItemTransparency.current),
-                border = if (LocalAmoledMode.current) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null,
+                color = appearanceContainerColor(MaterialTheme.colorScheme.primaryContainer),
+                border = appearanceContainerBorder(),
                 modifier = Modifier.size(46.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(24.dp))
+                    SharedIcon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(24.dp))
                 }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Icon(imageVector = FluentUi.Regular.ArrowForward, contentDescription = null,
+            SharedIcon(imageVector = FluentUi.Regular.ArrowForward, contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
         }
     }

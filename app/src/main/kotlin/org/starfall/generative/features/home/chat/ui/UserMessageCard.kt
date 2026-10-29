@@ -1,6 +1,6 @@
 package org.starfall.generative.features.home.chat.ui
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.text.GlyphHitRegistry
 import org.starfall.generative.shared.ui.text.LocalGlyphHitRegistry
@@ -15,7 +15,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,9 +25,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.model.StoredMessage
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.features.home.chat.ui.markdown.MarkdownRenderer
 import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
@@ -54,7 +53,8 @@ fun UserMessageCard(
     val renderCacheIdentity = remember(conversationId, message.id, cacheEnabled) {
         conversationId?.takeIf { cacheEnabled && !message.isQueued }?.let { MarkdownRenderCacheIdentity(it, message.id) }
     }
-    var showMenu by remember { mutableStateOf(false) }
+    val foreground = LocalChatForeground.current
+    var showMenu by remember(foreground) { mutableStateOf(false) }
 
     BoxWithConstraints(
         modifier = modifier
@@ -138,7 +138,7 @@ fun UserMessageCard(
                                 enabled = message.activeVersionIndex > 0,
                                 modifier = Modifier.size(24.dp)
                             ) {
-                                FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.message_previous_version), modifier = Modifier.size(14.dp))
+                                SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.message_previous_version), modifier = Modifier.size(14.dp))
                             }
                             Text(
                                 text = "${message.activeVersionIndex + 1}/${message.versions.size}",
@@ -155,19 +155,19 @@ fun UserMessageCard(
                                 enabled = message.activeVersionIndex < message.versions.size - 1,
                                 modifier = Modifier.size(24.dp)
                             ) {
-                                FluentIcon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = stringResource(R.string.message_next_version), modifier = Modifier.size(14.dp))
+                                SharedIcon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = stringResource(R.string.message_next_version), modifier = Modifier.size(14.dp))
                             }
                         }
                     }
 
                     // Dropdown Context Menu
                     DropdownMenu(
-                        expanded = showMenu,
+                        expanded = foreground && showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
                         if (!message.isQueued) DropdownMenuItem(
                             text = { Text(stringResource(R.string.common_copy)) },
-                            leadingIcon = { FluentIcon(Icons.Outlined.ContentCopy, contentDescription = null) },
+                            leadingIcon = { SharedIcon(Icons.Outlined.ContentCopy, contentDescription = null) },
                             onClick = {
                                 showMenu = false
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -177,7 +177,7 @@ fun UserMessageCard(
                         )
                         if (onResendFromMenu != null) DropdownMenuItem(
                             text = { Text(stringResource(org.starfall.generative.R.string.resend_message)) },
-                            leadingIcon = { FluentIcon(Icons.AutoMirrored.Filled.Send, contentDescription = null) },
+                            leadingIcon = { SharedIcon(Icons.AutoMirrored.Filled.Send, contentDescription = null) },
                             enabled = resendEnabled,
                             onClick = {
                                 showMenu = false
@@ -186,7 +186,7 @@ fun UserMessageCard(
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.common_edit)) },
-                            leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
+                            leadingIcon = { SharedIcon(Icons.Outlined.Edit, contentDescription = null) },
                             onClick = {
                                 showMenu = false
                                 onEdit(message.id)
@@ -194,7 +194,7 @@ fun UserMessageCard(
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(if (message.isQueued) R.string.common_cancel else R.string.common_delete)) },
-                            leadingIcon = { FluentIcon(if (message.isQueued) Icons.Outlined.Close else Icons.Outlined.Delete, contentDescription = null) },
+                            leadingIcon = { SharedIcon(if (message.isQueued) Icons.Outlined.Close else Icons.Outlined.Delete, contentDescription = null) },
                             onClick = {
                                 showMenu = false
                                 onDelete(message.id)
@@ -205,7 +205,7 @@ fun UserMessageCard(
             }
             if (onResend != null) {
                 IconButton(onClick = onResend, enabled = resendEnabled, modifier = Modifier.size(40.dp)) {
-                    FluentIcon(Icons.AutoMirrored.Filled.Send,
+                    SharedIcon(Icons.AutoMirrored.Filled.Send,
                         contentDescription = stringResource(org.starfall.generative.R.string.resend_message),
                         modifier = Modifier.size(20.dp))
                 }

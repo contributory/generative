@@ -9,7 +9,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 
 /** Shared credential input with explicit visibility and literal keyboard input. */
@@ -27,7 +27,7 @@ fun ApiKeyField(
     visibilityKey: Any? = null
 ) {
     var revealed by remember(visibilityKey) { mutableStateOf(false) }
-    SelectableOutlinedTextField(
+    OutlinedTextField(
         value = value, onValueChange = onValueChange, modifier = modifier,
         label = label, leadingIcon = leadingIcon, supportingText = supportingText,
         readOnly = readOnly, singleLine = singleLine, maxLines = maxLines,
@@ -36,7 +36,7 @@ fun ApiKeyField(
         visualTransformation = if (revealed || readOnly) VisualTransformation.None else ApiKeyMask,
         trailingIcon = if (readOnly) null else { {
             IconButton(onClick = { revealed = !revealed }) {
-                FluentIcon(if (revealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                SharedIcon(if (revealed) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
                     stringResource(if (revealed) R.string.provider_hide_api_key else R.string.provider_show_api_key))
             }
         } }

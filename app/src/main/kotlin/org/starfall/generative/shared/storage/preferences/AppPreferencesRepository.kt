@@ -23,6 +23,7 @@ import org.starfall.generative.shared.model.normalizeAgentSkillName
 import org.starfall.generative.shared.files.AgentSkillsStore
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.storage.ImmediateState
+import org.starfall.generative.shared.theme.CustomPalette
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "app_preferences")
 
@@ -106,8 +107,11 @@ data class AppPreferences(
     val themeMode: String = "SYSTEM", // SYSTEM, LIGHT, DARK
     val useAmoled: Boolean = false,
     val useDynamicColor: Boolean = true,
-    val colorSchemeName: String = "DEFAULT", // DEFAULT, EMERALD, SUNSET, CRIMSON, VIOLET
+    val colorSchemeName: String = "SLATE", // ORANGE, VIOLET, SLATE, CUSTOM
+    val customPalette: CustomPalette = CustomPalette(),
     val itemTransparency: Float = 0.5f,
+    val inputAreaTransparency: Float = 0.08f,
+    val inputAreaBlur: Float = 0f,
     val instructionLibrary: InstructionLibrary = InstructionLibrary(),
     val agentSkills: AgentSkills = AgentSkills(),
     val continueLastConversation: Boolean = false,
@@ -188,6 +192,9 @@ class AppPreferencesRepository(private val context: Context) {
         val USE_AMOLED = booleanPreferencesKey("use_amoled")
         val USE_DYNAMIC_COLOR = booleanPreferencesKey("use_dynamic_color")
         val COLOR_SCHEME_NAME = stringPreferencesKey("color_scheme_name")
+        val CUSTOM_PALETTE = stringPreferencesKey("custom_color_palette")
+        val INPUT_AREA_TRANSPARENCY = floatPreferencesKey("input_area_transparency")
+        val INPUT_AREA_BLUR = floatPreferencesKey("input_area_blur")
         val ITEM_TRANSPARENCY = floatPreferencesKey("item_transparency")
         val INSTRUCTION_LIBRARY = stringPreferencesKey("prompt_library")
         val AGENT_SKILLS = stringPreferencesKey("agent_skills")
@@ -262,7 +269,17 @@ class AppPreferencesRepository(private val context: Context) {
                 themeMode = if (legacyAmoled) "DARK" else storedThemeMode,
                 useAmoled = preferences[PreferenceKeys.USE_AMOLED] ?: legacyAmoled,
                 useDynamicColor = preferences[PreferenceKeys.USE_DYNAMIC_COLOR] ?: true,
-                colorSchemeName = preferences[PreferenceKeys.COLOR_SCHEME_NAME] ?: "DEFAULT",
+                colorSchemeName = when (preferences[PreferenceKeys.COLOR_SCHEME_NAME]) {
+                    "ORANGE", "SUNSET" -> "ORANGE"
+                    "VIOLET" -> "VIOLET"
+                    "CUSTOM" -> "CUSTOM"
+                    else -> "SLATE" // Old blue/green/red/monochrome choices are retired.
+                },
+                customPalette = preferences[PreferenceKeys.CUSTOM_PALETTE]?.let { raw ->
+                    runCatching { Json.decodeFromString<CustomPalette>(raw) }.getOrNull()
+                } ?: CustomPalette(),
+                inputAreaTransparency = (preferences[PreferenceKeys.INPUT_AREA_TRANSPARENCY] ?: 0.08f).coerceIn(0f, 1f),
+                inputAreaBlur = (preferences[PreferenceKeys.INPUT_AREA_BLUR] ?: 0f).coerceIn(0f, 32f),
                 itemTransparency = (preferences[PreferenceKeys.ITEM_TRANSPARENCY] ?: 0.5f).coerceIn(0f, 1f),
                 instructionLibrary = decodeInstructionLibrary(preferences),
                 agentSkills = agentSkillsFromFiles(),
@@ -510,6 +527,20 @@ class AppPreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun setInputAreaTransparency(value: Float) {
+        val adjusted = value.coerceIn(0f, 1f)
+        state.mutate({ it.copy(inputAreaTransparency = adjusted) }) {
+            context.dataStore.edit { it[PreferenceKeys.INPUT_AREA_TRANSPARENCY] = adjusted }
+        }
+    }
+
+    suspend fun setInputAreaBlur(value: Float) {
+        val adjusted = value.coerceIn(0f, 32f)
+        state.mutate({ it.copy(inputAreaBlur = adjusted) }) {
+            context.dataStore.edit { it[PreferenceKeys.INPUT_AREA_BLUR] = adjusted }
+        }
+    }
+
     suspend fun setUseDynamicColor(useDynamic: Boolean) {
         state.mutate({ it.copy(useDynamicColor = useDynamic) }) {
             context.dataStore.edit { preferences ->
@@ -535,6 +566,17 @@ class AppPreferencesRepository(private val context: Context) {
     }
 
     suspend fun setFeaturesLogoImage(image: String?) = updateUserProfile { it.copy(photo = image) }
+
+    /** Persist the entire palette and activate it atomically; cancelling the editor writes nothing. */
+    suspend fun setCustomPalette(palette: CustomPalette) {
+        state.mutate({ it.copy(customPalette = palette, colorSchemeName = "CUSTOM", useDynamicColor = false) }) {
+            context.dataStore.edit { preferences ->
+                preferences[PreferenceKeys.CUSTOM_PALETTE] = Json.encodeToString(palette)
+                preferences[PreferenceKeys.COLOR_SCHEME_NAME] = "CUSTOM"
+                preferences[PreferenceKeys.USE_DYNAMIC_COLOR] = false
+            }
+        }
+    }
 
     suspend fun setColorSchemeName(scheme: String) {
         state.mutate({ it.copy(colorSchemeName = scheme) }) {
@@ -894,6 +936,9 @@ class AppPreferencesRepository(private val context: Context) {
                 stored[PreferenceKeys.USE_AMOLED] = preferences.useAmoled
                 stored[PreferenceKeys.USE_DYNAMIC_COLOR] = preferences.useDynamicColor
                 stored[PreferenceKeys.COLOR_SCHEME_NAME] = preferences.colorSchemeName
+                stored[PreferenceKeys.CUSTOM_PALETTE] = Json.encodeToString(preferences.customPalette)
+                stored[PreferenceKeys.INPUT_AREA_TRANSPARENCY] = preferences.inputAreaTransparency.coerceIn(0f, 1f)
+                stored[PreferenceKeys.INPUT_AREA_BLUR] = preferences.inputAreaBlur.coerceIn(0f, 32f)
                 stored[PreferenceKeys.ITEM_TRANSPARENCY] = preferences.itemTransparency.coerceIn(0f, 1f)
                 stored[PreferenceKeys.INSTRUCTION_LIBRARY] = Json.encodeToString(preferences.instructionLibrary)
                 stored[PreferenceKeys.CONTINUE_LAST_CONVERSATION] = preferences.continueLastConversation

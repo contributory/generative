@@ -7,33 +7,19 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.sheets.AppSheet
-import org.starfall.generative.shared.ui.sheets.LocalBottomSheetMaxContentHeight
-import org.starfall.generative.shared.ui.sheets.LocalBottomSheetMinContentHeight
-import org.starfall.generative.shared.ui.sheets.LocalBottomSheetManuallyResized
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
-
-/** Initial Quick Actions height, leaving the rest of the actions accessible by scrolling or dragging. */
-internal const val QUICK_ACTIONS_INITIAL_HEIGHT_FRACTION = 0.52f
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,7 +35,7 @@ fun QuickActionsSheet(
     onDismiss: () -> Unit,
     onOpenSkills: () -> Unit = {}
 ) {
-    AppSheet(
+    BottomSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
@@ -63,8 +49,7 @@ fun QuickActionsSheet(
             onOpenFeatureTools = onOpenFeatureTools,
             onOpenMcpConnectors = onOpenMcpConnectors,
             onDismiss = onDismiss,
-            onOpenSkills = onOpenSkills,
-            useInitialSheetHeight = true
+            onOpenSkills = onOpenSkills
         )
     }
 }
@@ -80,38 +65,12 @@ internal fun QuickActionsSheetContent(
     onOpenFeatureTools: () -> Unit,
     onOpenMcpConnectors: () -> Unit,
     onDismiss: () -> Unit,
-    onOpenSkills: () -> Unit = {},
-    useInitialSheetHeight: Boolean = false
+    onOpenSkills: () -> Unit = {}
 ) {
-    // SlideSheetContent saves the base page while a linked sheet is open. Keep its last
-    // manual viewport there because AppSheet releases its drag height on page changes.
-    var savedViewportHeight by rememberSaveable { mutableStateOf<Float?>(null) }
-    val isActivePage = LocalScreenTransitionActive.current
-    val maxContentHeight = LocalBottomSheetMaxContentHeight.current
-    val minContentHeight = LocalBottomSheetMinContentHeight.current
-    val manuallyResized = LocalBottomSheetManuallyResized.current
-    LaunchedEffect(isActivePage, useInitialSheetHeight, manuallyResized, minContentHeight) {
-        if (isActivePage && useInitialSheetHeight && manuallyResized) {
-            savedViewportHeight = minContentHeight.value
-        }
-    }
-    val sheetViewport = if (useInitialSheetHeight && maxContentHeight > 0.dp) {
-        val bottomInset = with(LocalDensity.current) {
-            WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).getBottom(this).toDp()
-        }
-        val chromeHeight = 48.dp + bottomInset // AppSheet's drag handle and navigation inset.
-        val initialHeight = (maxContentHeight + chromeHeight) * QUICK_ACTIONS_INITIAL_HEIGHT_FRACTION - chromeHeight
-        val viewportHeight = if (manuallyResized) minContentHeight else savedViewportHeight?.dp ?: initialHeight
-        Modifier.height(viewportHeight.coerceIn(0.dp, maxContentHeight))
-    } else Modifier
     val scrollState = rememberScrollState()
-    LaunchedEffect(isActivePage, useInitialSheetHeight) {
-        if (useInitialSheetHeight && isActivePage) scrollState.scrollTo(0)
-    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .then(sheetViewport)
             .verticalScroll(scrollState)
             .testTag("quick-actions-content")
             .padding(horizontal = 16.dp)
@@ -207,7 +166,7 @@ internal fun QuickActionsSubpageHeader(
                 onClick = onBack,
                 modifier = Modifier.size(40.dp)
             ) {
-                FluentIcon(
+                SharedIcon(
                     Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.common_back)
                 )
@@ -228,7 +187,7 @@ internal fun QuickActionsSettingsButton(
     onClick: () -> Unit
 ) {
     IconButton(onClick = onClick, modifier = Modifier.size(40.dp)) {
-        FluentIcon(
+        SharedIcon(
             Icons.Outlined.Settings,
             stringResource(R.string.tool_settings_accessibility, title)
         )
@@ -254,7 +213,7 @@ private fun AddActionTile(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            FluentIcon(
+            SharedIcon(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
@@ -289,7 +248,7 @@ private fun AddActionRow(
             modifier = Modifier.size(40.dp),
             contentAlignment = Alignment.Center
         ) {
-            FluentIcon(
+            SharedIcon(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),

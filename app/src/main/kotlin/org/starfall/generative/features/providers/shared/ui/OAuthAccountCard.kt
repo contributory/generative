@@ -1,7 +1,7 @@
 package org.starfall.generative.features.providers.shared.ui
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.LoadingIndicator
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -13,9 +13,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
 
@@ -60,9 +60,9 @@ internal fun OAuthAccountCard(
                 ) {
                     Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
                         if (busy) {
-                            GenerativeLoadingIndicator(Modifier.size(20.dp))
+                            LoadingIndicator(Modifier.size(20.dp))
                         } else {
-                            FluentIcon(
+                            SharedIcon(
                                 if (signedIn) Icons.Outlined.CheckCircle else Icons.Outlined.AccountCircle,
                                 contentDescription = null,
                                 tint = accent,
@@ -90,19 +90,19 @@ internal fun OAuthAccountCard(
                 if (signedIn) {
                     Box {
                         IconButton(onClick = { menuExpanded = true }, enabled = !busy) {
-                            FluentIcon(Icons.Outlined.MoreVert, stringResource(R.string.oauth_account_actions))
+                            SharedIcon(Icons.Outlined.MoreVert, stringResource(R.string.oauth_account_actions))
                         }
                         DropdownMenu(menuExpanded && !busy, onDismissRequest = { menuExpanded = false }) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.oauth_sign_in_again)) },
-                                leadingIcon = { FluentIcon(Icons.Outlined.OpenInBrowser, null) },
+                                leadingIcon = { SharedIcon(Icons.Outlined.OpenInBrowser, null) },
                                 enabled = canSignIn,
                                 onClick = { menuExpanded = false; onSignIn() }
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.oauth_sign_out),
                                     color = MaterialTheme.colorScheme.error) },
-                                leadingIcon = { FluentIcon(Icons.AutoMirrored.Outlined.Logout, null,
+                                leadingIcon = { SharedIcon(Icons.AutoMirrored.Outlined.Logout, null,
                                     tint = MaterialTheme.colorScheme.error) },
                                 enabled = canSignOut,
                                 onClick = { menuExpanded = false; onSignOut() }
@@ -113,7 +113,7 @@ internal fun OAuthAccountCard(
             }
             if (!signedIn && !busy) {
                 Button(onClick = onSignIn, enabled = canSignIn, modifier = Modifier.fillMaxWidth()) {
-                    FluentIcon(Icons.Outlined.OpenInBrowser, null, Modifier.size(18.dp))
+                    SharedIcon(Icons.Outlined.OpenInBrowser, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.oauth_sign_in))
                 }

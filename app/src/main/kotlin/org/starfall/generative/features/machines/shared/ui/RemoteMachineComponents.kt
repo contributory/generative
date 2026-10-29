@@ -3,8 +3,9 @@
 package org.starfall.generative.features.machines.shared.ui
 
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.ErrorContainer
+import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,10 +47,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 
 /**
@@ -91,7 +92,7 @@ internal fun RemoteMachinesTopBar(
         },
         navigationIcon = {
             IconButton(onClick = onBack) {
-                FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
             }
         },
         actions = { actions() }
@@ -154,7 +155,7 @@ internal fun RemoteTextField(
     singleLine: Boolean = minLines == 1,
     font: FontFamily? = null
 ) {
-    SelectableOutlinedTextField(
+    OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
@@ -181,7 +182,7 @@ internal fun <T> RemoteDropdownField(
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded, { expanded = !expanded }, modifier) {
-        SelectableOutlinedTextField(
+        OutlinedTextField(
             value = options.firstOrNull { it.first == selected }?.second.orEmpty(),
             onValueChange = {},
             readOnly = true,
@@ -190,7 +191,7 @@ internal fun <T> RemoteDropdownField(
             trailingIcon = { TrailingIcon(expanded) },
             modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
         )
-        AppExposedDropdownMenu(expanded, { expanded = false }) {
+        ExposedDropdownMenu(expanded, { expanded = false }) {
             options.forEach { (value, text) ->
                 DropdownMenuItem(text = { Text(text) }, onClick = { onSelect(value); expanded = false })
             }
@@ -229,7 +230,7 @@ internal fun RemoteIconTile(
 ) {
     Surface(modifier = modifier.size(48.dp), shape = RoundedCornerShape(14.dp), color = containerColor) {
         Box(contentAlignment = Alignment.Center) {
-            FluentIcon(icon, null, tint = contentColor, modifier = Modifier.size(24.dp))
+            SharedIcon(icon, null, tint = contentColor, modifier = Modifier.size(24.dp))
         }
     }
 }
@@ -244,7 +245,7 @@ internal fun RemoteIconTile(
 ) {
     Surface(modifier = modifier.size(48.dp), shape = RoundedCornerShape(14.dp), color = containerColor) {
         Box(contentAlignment = Alignment.Center) {
-            FluentIcon(iconRes, null, tint = contentColor, modifier = Modifier.size(24.dp))
+            SharedIcon(iconRes, null, tint = contentColor, modifier = Modifier.size(24.dp))
         }
     }
 }
@@ -289,8 +290,8 @@ internal fun RemoteStatusDot(connected: Boolean, modifier: Modifier = Modifier) 
     )
 }
 
-/** Inline error text in the shared error style. */
+/** Existing machine dialogs share the application's error surface. */
 @Composable
 internal fun RemoteErrorText(message: String, modifier: Modifier = Modifier) {
-    Text(message, modifier = modifier, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+    ErrorContainer(message = message, modifier = modifier, expandable = false)
 }

@@ -21,7 +21,7 @@ class AssistantMessageCopyTextTest {
             role = ChatRole.MODEL,
             versions = listOf(MessageVersion(toolActivity = listOf(ToolActivity(id = "tool", name = "search"))))
         )
-        assertEquals("[ActionTurnsBlock1]", assistantCopyText(message))
+        assertEquals("[ActionsBlock1]", assistantCopyText(message))
     }
 
     @Test
@@ -29,7 +29,7 @@ class AssistantMessageCopyTextTest {
         val message = StoredMessage("internal", ChatRole.MODEL, listOf(
             MessageVersion(toolActivity = listOf(ToolActivity(id = "internal", name = "remote: connect")))
         ))
-        assertEquals("[ActionTurnsBlock1]", assistantCopyText(message))
+        assertEquals("[ActionsBlock1]", assistantCopyText(message))
     }
 
     @Test
@@ -47,20 +47,31 @@ class AssistantMessageCopyTextTest {
         ))
         assertEquals("[MediaBlock1]", assistantCopyText(sendFile))
         assertEquals("[MediaBlock1]", assistantCopyText(attached))
-        assertEquals("[ActionTurnsBlock1]", assistantCopyText(unfinishedSendFile))
+        assertEquals("[ActionsBlock1]", assistantCopyText(unfinishedSendFile))
     }
 
     @Test
-    fun thinkingAndErrorWithoutAnswerUseTheSameCopyRepresentationAsShare() {
+    fun thinkingAndErrorWithoutAnswerUseDistinctCopyBlockMarkers() {
         val thinking = StoredMessage("thinking", ChatRole.MODEL,
             listOf(MessageVersion(reasoningContent = "**Original reasoning**")))
         val error = StoredMessage("error", ChatRole.MODEL,
             listOf(MessageVersion(generationError = "Request failed")))
         val answered = StoredMessage("answered", ChatRole.MODEL,
             listOf(MessageVersion(content = "Answer", reasoningContent = "Thinking")))
-        assertEquals("[ActionTurnsBlock1]", assistantCopyText(thinking))
-        assertEquals("Request failed", assistantCopyText(error))
-        assertEquals("[ActionTurnsBlock1]Answer", assistantCopyText(answered))
+        assertEquals("[ActionsBlock1]", assistantCopyText(thinking))
+        assertEquals("[ErrorBlock]", assistantCopyText(error))
+        assertEquals("[ActionsBlock1]Answer", assistantCopyText(answered))
+    }
+
+    @Test
+    fun errorFollowingActionsAndMediaKeepsItsOwnMarkerAtTheEnd() {
+        val message = StoredMessage("failed", ChatRole.MODEL, listOf(MessageVersion(
+            content = "Partial answer",
+            toolActivity = listOf(ToolActivity("tool", "generate_image", status = "error",
+                files = listOf("tool-file:image.png"))),
+            generationError = "Generation failed"
+        )))
+        assertEquals("[ActionsBlock1][MediaBlock2]Partial answer[ErrorBlock]", assistantCopyText(message))
     }
 
     @Test
@@ -90,6 +101,6 @@ class AssistantMessageCopyTextTest {
             )
         )
 
-        assertEquals("before [ActionTurnsBlock1][MediaBlock2]after", assistantCopyText(message))
+        assertEquals("before [ActionsBlock1][MediaBlock2]after", assistantCopyText(message))
     }
 }

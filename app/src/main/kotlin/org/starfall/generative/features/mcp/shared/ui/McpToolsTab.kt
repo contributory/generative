@@ -3,11 +3,14 @@ package org.starfall.generative.features.mcp.shared.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -17,11 +20,12 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.ToolDefinition
 import org.starfall.generative.shared.model.McpToolParameterConfig
 import org.starfall.generative.shared.model.ToolSettings
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.EntityIcon
-import org.starfall.generative.shared.ui.GenerativeLinearWavyProgressIndicator
-import org.starfall.generative.shared.ui.lists.AppListContainer
+import org.starfall.generative.shared.ui.LinearWavyProgressIndicator
+import org.starfall.generative.shared.ui.lists.ItemSurface
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 @Composable
 internal fun McpToolsTab(
@@ -41,7 +45,7 @@ internal fun McpToolsTab(
                 Text(stringResource(if (loading) R.string.refreshing else R.string.refresh))
             }
         }
-        if (loading) GenerativeLinearWavyProgressIndicator(Modifier.fillMaxWidth())
+        if (loading) LinearWavyProgressIndicator(Modifier.fillMaxWidth())
         if (!ready) {
             ToolListPlaceholder(R.string.mcp_enter_server_first)
             return@Column
@@ -88,7 +92,7 @@ private fun McpToolItem(
     var expanded by remember(tool.name) { mutableStateOf(false) }
     val properties = tool.schema["properties"] as? JsonObject ?: JsonObject(emptyMap())
     val required = (tool.schema["required"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }?.toSet().orEmpty()
-    AppListContainer(
+    ItemSurface(
         isGrid = false,
         onClick = { expanded = !expanded },
         modifier = Modifier.fillMaxWidth()
@@ -104,7 +108,7 @@ private fun McpToolItem(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(enabled, onCheckedChange = onEnabledChange)
                         Spacer(Modifier.width(6.dp))
-                        FluentIcon(if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                        SharedIcon(if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
                             stringResource(if (expanded) R.string.collapse_tool_details else R.string.expand_tool_details))
                     }
                 })
@@ -171,6 +175,11 @@ private fun McpToolParameter(
             modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(R.string.common_default)) },
             placeholder = { Text(type) },
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.None,
+                autoCorrectEnabled = false,
+                keyboardType = KeyboardType.Password
+            ),
             singleLine = true,
             supportingText = if (required && !config.enabled && config.defaultValue.isBlank()) {
                 { Text(stringResource(R.string.mcp_required_parameter_default_needed), color = MaterialTheme.colorScheme.error) }

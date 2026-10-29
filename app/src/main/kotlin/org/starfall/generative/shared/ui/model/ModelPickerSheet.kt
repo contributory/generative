@@ -31,7 +31,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.shared.ui.sheets.AppSheet
+import org.starfall.generative.shared.ui.sheets.BottomSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,9 +53,9 @@ fun ModelPickerSheet(
     onEditProvider: (providerId: String) -> Unit = {},
     onDismiss: () -> Unit
 ) {
-    // Match Fetch Models: let list content determine the initial height, while AppSheet
+    // Match Fetch Models: let list content determine the initial height, while BottomSheet
     // continues to support handle dragging up to the top safe inset.
-    AppSheet(onDismissRequest = onDismiss, contentBehindNavigationBar = true) {
+    BottomSheet(onDismissRequest = onDismiss, contentBehindNavigationBar = true) {
         ModelPickerSheetContent(
             providers = providers,
             providerGroups = providerGroups,

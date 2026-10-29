@@ -42,7 +42,7 @@ import org.starfall.generative.features.machines.list.ui.RemoteMachinesScreen
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
 import org.starfall.generative.shared.ui.terminal.RemoteTerminalScreen
 import org.starfall.generative.features.menu.ui.AppMenuScreen
-import org.starfall.generative.features.userprofile.ui.UserProfileScreen
+import org.starfall.generative.features.customization.ui.CustomizationScreen
 import org.starfall.generative.features.mcp.editor.ui.ServerEditor
 import org.starfall.generative.features.mcp.list.ui.ServerListScreen
 import org.starfall.generative.features.providers.editor.ui.ProviderEditor
@@ -50,6 +50,7 @@ import org.starfall.generative.features.providers.list.ui.ProvidersScreen
 import org.starfall.generative.features.providers.shared.logic.ConfigurationViewModel
 import org.starfall.generative.features.settings.logic.SettingsViewModel
 import org.starfall.generative.features.settings.ui.AppSettings
+import org.starfall.generative.features.settings.ui.LauncherDragTestScreen
 import org.starfall.generative.features.settings.ui.MainAppbar
 import org.starfall.generative.features.speech.ui.SpeechServicesScreen
 import org.starfall.generative.features.storage.ui.MediaStorageSheet
@@ -81,7 +82,7 @@ import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.theme.modalScrimColor
 import org.starfall.generative.shared.ui.InstructionControls
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.shared.ui.LocalInstructionControls
 import org.starfall.generative.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.ToolControls
@@ -115,13 +116,14 @@ enum class AppDestination(val route: String) {
     MCP("mcp"),
     SPEECH("speech"),
     FEATURES("features"),
-    USER_PROFILE("user_profile"),
+    CUSTOMIZATION("user_profile"),
     CHAT_OPTIONS("chat_options"),
     TOOLS_EDITOR("system_tools"),
     STORAGE("storage"),
     REMOTE_MACHINES("remote_machines"),
     MENU("menu"),
     APP_SETTINGS("AppSettings"),
+    LAUNCHER_DRAG_TEST("launcher_drag_test"),
     ICONS("Icons"),
     APP_DATA("AppData"),
     ABOUT("About"),
@@ -408,6 +410,8 @@ fun AppNavigation(
                 appPrefs.userProfile.sheetBackground, appPrefs.userProfile.dialogBackground,
                 appPrefs.userProfile.sheetTransparency, appPrefs.userProfile.dialogTransparency
             ),
+        org.starfall.generative.shared.ui.layout.LocalInputAreaAppearance provides
+            org.starfall.generative.shared.ui.layout.InputAreaAppearance(appPrefs.inputAreaTransparency, appPrefs.inputAreaBlur),
         LocalChatAttachmentSelection provides chatAttachments,
         LocalInstructionControls provides InstructionControls(
             library = appPrefs.instructionLibraryForSelection(currentConvInstructionIds),
@@ -666,7 +670,7 @@ fun AppNavigation(
                         } else {
                             // Wait for stored machines to load on a cold notification launch.
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                GenerativeLoadingIndicator()
+                                LoadingIndicator()
                             }
                         }
                     }
@@ -676,7 +680,7 @@ fun AppNavigation(
                         if (page == null) {
                             LaunchedEffect(Unit) { navController.popBackStack() }
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                GenerativeLoadingIndicator()
+                                LoadingIndicator()
                             }
                         } else {
                             // Clear the pending page only once this screen has left composition. Clearing it
@@ -1054,10 +1058,17 @@ fun AppNavigation(
                             }
                         }
                     }
-                    composable(AppDestination.USER_PROFILE.route) {
-                        UserProfileScreen(
+                    composable(AppDestination.CUSTOMIZATION.route) {
+                        CustomizationScreen(
                             profile = appPrefs.userProfile,
+                            appearance = appPrefs,
                             onChange = settingsViewModel::updateUserProfile,
+                            onDynamicColorChange = settingsViewModel::setUseDynamicColor,
+                            onColorSchemeChange = settingsViewModel::setColorSchemeName,
+                            onCustomPaletteChange = settingsViewModel::setCustomPalette,
+                            onItemTransparencyChange = settingsViewModel::setItemTransparency,
+                            onInputAreaTransparencyChange = settingsViewModel::setInputAreaTransparency,
+                            onInputAreaBlurChange = settingsViewModel::setInputAreaBlur,
                             onBack = { navController.popBackStack() }
                         )
                     }
@@ -1066,7 +1077,7 @@ fun AppNavigation(
                             modifier = Modifier.fillMaxSize(),
                             logoImage = appPrefs.featuresLogoImage,
                             onLogoImageChange = settingsViewModel::setFeaturesLogoImage,
-                            onNavigateToUserProfile = { openConfiguration(AppDestination.USER_PROFILE) },
+                            onNavigateToCustomization = { openConfiguration(AppDestination.CUSTOMIZATION) },
                             onNavigateToChatOptions = { openConfiguration(AppDestination.CHAT_OPTIONS) },
                             onNavigateToToolsEditor = { openConfiguration(AppDestination.TOOLS_EDITOR) },
                             onNavigateToProviders = { openConfiguration(AppDestination.PROVIDERS) },
@@ -1077,7 +1088,8 @@ fun AppNavigation(
                             onNavigateToAppSettings = { openConfiguration(AppDestination.APP_SETTINGS) },
                             onNavigateToIcons = { openConfiguration(AppDestination.ICONS) },
                             onNavigateToAppData = { openConfiguration(AppDestination.APP_DATA) },
-                            onNavigateToAbout = { openConfiguration(AppDestination.ABOUT) }
+                            onNavigateToAbout = { openConfiguration(AppDestination.ABOUT) },
+                            onNavigateToChat = { showChat() }
                         )
                     }
 
@@ -1101,13 +1113,6 @@ fun AppNavigation(
                                     onAmoledChange = { use ->
                                         settingsViewModel.setUseAmoled(use)
                                     },
-                                    onDynamicColorChange = { use ->
-                                        settingsViewModel.setUseDynamicColor(use)
-                                    },
-                                    onColorSchemeChange = { scheme ->
-                                        settingsViewModel.setColorSchemeName(scheme)
-                                    },
-                                    onItemTransparencyChange = settingsViewModel::setItemTransparency,
                                     onHideStatusBarChange = { value ->
                                         settingsViewModel.setHideStatusBar(value)
                                     },
@@ -1134,6 +1139,7 @@ fun AppNavigation(
                                         settingsViewModel.setDebugMode(value)
                                     },
                                     onDebugLogCategoriesChange = settingsViewModel::setDebugLogCategories,
+                                    onOpenLauncherDragTest = { openConfiguration(AppDestination.LAUNCHER_DRAG_TEST) },
                                     onLatexModeChange = { mode ->
                                         settingsViewModel.setLatexMode(mode)
                                     },
@@ -1148,6 +1154,10 @@ fun AppNavigation(
                                  )
                             }
                         }
+                    }
+
+                    composable(AppDestination.LAUNCHER_DRAG_TEST.route) {
+                        LauncherDragTestScreen(onBack = { navController.popBackStack() })
                     }
 
                     composable(AppDestination.ICONS.route) {

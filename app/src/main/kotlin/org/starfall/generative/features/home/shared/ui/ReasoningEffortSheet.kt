@@ -14,8 +14,8 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.DEFAULT_REASONING_EFFORTS
 import org.starfall.generative.shared.ui.model.localizedReasoningEffortLabels
-import org.starfall.generative.shared.ui.sheets.AppSheet
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.model.ReasoningEffortControl
 import org.starfall.generative.shared.ui.model.reasoningEffortOptions
 import org.starfall.generative.shared.ui.model.reasoningEffortIndex
@@ -37,7 +37,7 @@ fun ReasoningEffortSheet(
         reasoningEffortOptions(supportedEfforts, reasoningLabels)
     }
 
-    AppSheet(
+    BottomSheet(
         onDismissRequest = onDismiss
     ) {
         Column(

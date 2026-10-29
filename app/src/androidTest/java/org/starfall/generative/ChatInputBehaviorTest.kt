@@ -1,5 +1,7 @@
 package org.starfall.generative
 
+import org.starfall.generative.features.home.BottomSheetsLinkState
+
 
 import androidx.room.Room
 import androidx.test.platform.app.InstrumentationRegistry
@@ -44,6 +46,7 @@ class ChatInputBehaviorTest {
                     isGenerating = true,
                     onSendMessage = { text, _ -> sent = text; true },
                     onSendMedia = { false },
+                    bottomSheets = BottomSheetsLinkState(),
                     onEditMessage = { _, _, _ -> false },
                     editDraft = null,
                     onCancelEdit = {},

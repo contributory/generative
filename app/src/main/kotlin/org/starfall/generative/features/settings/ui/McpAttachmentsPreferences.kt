@@ -1,7 +1,7 @@
 package org.starfall.generative.features.settings.ui
 
-import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,7 +37,7 @@ import org.starfall.generative.shared.storage.preferences.MAX_MCP_LOAD_LIMIT
 import org.starfall.generative.shared.storage.preferences.McpAttachmentMode
 import org.starfall.generative.shared.storage.preferences.McpAttachmentSettings
 import org.starfall.generative.shared.storage.preferences.McpDynamicStrategy
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 /** MCP strategy controls embedded in the single General Settings "MCP & Tools" group. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +54,7 @@ fun McpAttachmentsPreferences(
         McpAttachmentMode.CLASSIC to stringResource(R.string.mcp_attachments_mode_classic)
     )
     ExposedDropdownMenuBox(expanded = modeExpanded, onExpandedChange = { modeExpanded = it }) {
-        SelectableOutlinedTextField(
+        OutlinedTextField(
             value = modeLabels.getValue(settings.mode),
             onValueChange = {},
             readOnly = true,
@@ -64,7 +64,7 @@ fun McpAttachmentsPreferences(
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
                 .testTag("mcp-attachment-mode")
         )
-        AppExposedDropdownMenu(expanded = modeExpanded, onDismissRequest = { modeExpanded = false }) {
+        ExposedDropdownMenu(expanded = modeExpanded, onDismissRequest = { modeExpanded = false }) {
             modeLabels.forEach { (mode, label) ->
                 DropdownMenuItem(text = { Text(label) }, onClick = {
                     onChange(settings.copy(mode = mode))
@@ -112,7 +112,7 @@ fun McpAttachmentsPreferences(
         McpDynamicStrategy.ALL to stringResource(R.string.mcp_attachments_strategy_all)
     )
     ExposedDropdownMenuBox(expanded = strategyExpanded, onExpandedChange = { strategyExpanded = it }) {
-        SelectableOutlinedTextField(
+        OutlinedTextField(
             value = strategyLabels.getValue(settings.strategy),
             onValueChange = {},
             readOnly = true,
@@ -122,7 +122,7 @@ fun McpAttachmentsPreferences(
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
                 .testTag("mcp-attachment-strategy")
         )
-        AppExposedDropdownMenu(expanded = strategyExpanded, onDismissRequest = { strategyExpanded = false }) {
+        ExposedDropdownMenu(expanded = strategyExpanded, onDismissRequest = { strategyExpanded = false }) {
             strategyLabels.forEach { (strategy, label) ->
                 DropdownMenuItem(text = { Text(label) }, onClick = {
                     onChange(settings.copy(strategy = strategy))
@@ -162,7 +162,7 @@ private fun McpNumberField(
         mutableStateOf(value.takeUnless { it == defaultValue }?.toString().orEmpty())
     }
     val parsed = text.toIntOrNull()?.takeIf { it in range }
-    SelectableOutlinedTextField(
+    OutlinedTextField(
         value = text,
         onValueChange = { input ->
             if (input.length <= range.last.toString().length && input.all(Char::isDigit)) {

@@ -16,18 +16,18 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import org.junit.Assert.assertEquals
-import org.starfall.generative.shared.ui.sheets.AppSheet
+import org.starfall.generative.shared.ui.sheets.BottomSheet
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.shared.model.language.DiscoveredModel
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.api.ModelApiType
-import org.starfall.generative.features.providers.editor.ui.ProviderModelCatalogSheet
+import org.starfall.generative.features.providers.editor.ui.ModelCatalogSheet
 
 class BottomSheetScrollBehaviorTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
@@ -37,7 +37,7 @@ class BottomSheetScrollBehaviorTest {
         compose.activityRule.scenario.onActivity { WindowCompat.setDecorFitsSystemWindows(it.window, false) }
         compose.setContent { MaterialTheme {
             listState = rememberLazyListState()
-            AppSheet(onDismissRequest = {}, fixedHeightFraction = 0.5f) {
+            BottomSheet(onDismissRequest = {}, fixedHeightFraction = 0.5f) {
                 LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().fillMaxHeight().testTag("growing-list")) {
                     items(80) { Text("Row $it", Modifier.fillMaxWidth().height(52.dp)) }
                 }
@@ -94,7 +94,7 @@ class BottomSheetScrollBehaviorTest {
         lateinit var listState: LazyListState
         compose.setContent { MaterialTheme {
             listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
-            AppSheet(onDismissRequest = {}) {
+            BottomSheet(onDismissRequest = {}) {
                 LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().height(320.dp).testTag("edge-list")) {
                     items(60) { Text("Row $it", Modifier.fillMaxWidth().height(48.dp)) }
                 }
@@ -128,7 +128,7 @@ class BottomSheetScrollBehaviorTest {
         lateinit var listState: LazyListState
         compose.setContent { MaterialTheme {
             listState = rememberLazyListState(initialFirstVisibleItemIndex = 59)
-            AppSheet(onDismissRequest = {}) {
+            BottomSheet(onDismissRequest = {}) {
                 LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().height(320.dp).testTag("edge-list")) {
                     items(60) { Text("Row $it", Modifier.fillMaxWidth().height(48.dp)) }
                 }
@@ -177,7 +177,7 @@ class BottomSheetScrollBehaviorTest {
     @Test fun fetchModelsKeepsScrollingTowardTheEndWithoutAReverseSwipe() {
         val models = (0 until 150).map { DiscoveredModel(id = "scroll-model-$it", displayName = "Catalog model $it") }
         compose.setContent { MaterialTheme {
-            ProviderModelCatalogSheet(
+            ModelCatalogSheet(
                 provider = ModelProvider("test", "Test", ModelApiType.OPENAI, baseUrl = "https://example.test"),
                 selectedModels = emptySet(), onFetchModels = { models }, onCatalogLoaded = {},
                 onToggle = {}, onSetSelection = { _, _ -> }, onDismiss = {}

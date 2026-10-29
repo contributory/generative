@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.text.selection.SelectionContainer
+import org.starfall.generative.shared.ui.text.SelectionContainer
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -37,7 +37,7 @@ import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.SavedInstruction
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.text.messageMarkdownTypography
@@ -63,12 +63,12 @@ internal fun InstructionPreview(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = onEdit) {
-                        FluentIcon(
+                        SharedIcon(
                             Icons.Outlined.Edit,
                             stringResource(R.string.instruction_preview_edit)
                         )

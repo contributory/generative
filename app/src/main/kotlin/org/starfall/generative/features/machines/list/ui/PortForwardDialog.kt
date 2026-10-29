@@ -23,7 +23,7 @@ import org.starfall.generative.features.machines.shared.ui.RemoteErrorText
 import org.starfall.generative.features.machines.shared.ui.RemoteTextField
 import org.starfall.generative.features.machines.shared.ui.remoteLiteralKeyboardOptions
 import org.starfall.generative.shared.model.RemoteMachine
-import org.starfall.generative.shared.ui.dialogs.AppDialog
+import org.starfall.generative.shared.ui.dialogs.Dialog
 import org.starfall.generative.shared.ui.machines.MachineDialogTitle
 
 private enum class ForwardType(val labelRes: Int) {
@@ -55,7 +55,7 @@ internal fun PortForwardDialog(
         ForwardType.DYNAMIC -> dynamicPorts.isNotEmpty()
     }
 
-    AppDialog(
+    Dialog(
         onDismissRequest = onDismiss,
         title = { MachineDialogTitle(stringResource(R.string.remote_machine_start_port_forward), machine) },
         content = {

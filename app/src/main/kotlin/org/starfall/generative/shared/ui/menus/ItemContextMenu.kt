@@ -8,9 +8,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 
 @Composable
 fun ItemContextMenu(
@@ -30,10 +30,10 @@ fun ItemContextMenu(
 
     Box {
         IconButton(enabled = enabled, onClick = { expanded = true }, modifier = modifier) {
-            FluentIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.common_more_options))
+            SharedIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.common_more_options))
         }
 
-        AppDropdownMenu(
+        DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
@@ -44,9 +44,9 @@ fun ItemContextMenu(
                     text = { Text(firstActionText) },
                     leadingIcon = {
                         if (firstActionImageVector != null) {
-                            FluentIcon(firstActionImageVector, contentDescription = null)
+                            SharedIcon(firstActionImageVector, contentDescription = null)
                         } else {
-                            FluentIcon(firstActionIcon!!, contentDescription = null)
+                            SharedIcon(firstActionIcon!!, contentDescription = null)
                         }
                     },
                     onClick = {
@@ -57,7 +57,7 @@ fun ItemContextMenu(
             }
             if (showEdit) DropdownMenuItem(
                 text = { Text(stringResource(R.string.common_edit)) },
-                leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
+                leadingIcon = { SharedIcon(Icons.Outlined.Edit, contentDescription = null) },
                 onClick = {
                     expanded = false
                     onEdit()
@@ -66,7 +66,7 @@ fun ItemContextMenu(
             if (showDelete) DropdownMenuItem(
                 text = { Text(stringResource(R.string.common_delete), color = deleteColor) },
                 leadingIcon = {
-                    FluentIcon(
+                    SharedIcon(
                         Icons.Outlined.Delete,
                         contentDescription = null,
                         tint = deleteColor

@@ -1,5 +1,7 @@
 package org.starfall.generative.features.home.chat.ui.markdown
 
+import org.starfall.generative.features.home.chat.ui.LocalChatForeground
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -14,7 +16,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import org.starfall.generative.shared.ui.dialogs.AppDialog
+import org.starfall.generative.shared.ui.dialogs.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,7 +24,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.storage.preferences.CodeBlockDisplayMode
 import org.starfall.generative.shared.ui.code.CodeBlockSurface
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
@@ -52,7 +54,8 @@ internal fun RenderCodeBlock(
         }
     }
     var expanded by remember(language, source, start, end) { mutableStateOf(false) }
-    var drawerVisible by remember(language, source, start, end) { mutableStateOf(false) }
+    val foreground = LocalChatForeground.current
+    var drawerVisible by remember(language, source, start, end, foreground) { mutableStateOf(false) }
 
     if (isHugeCode(codeLength, lineCount)) {
         RenderHugeCodeBlock(language, source, start, end, isStreaming)
@@ -217,7 +220,7 @@ private fun CodeBlockDialog(
     onDismiss: () -> Unit
 ) {
     val closeLabel = stringResource(R.string.code_block_close)
-    AppDialog(
+    Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
         edgeToEdge = true,

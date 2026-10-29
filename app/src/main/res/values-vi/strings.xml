@@ -521,7 +521,6 @@
     <string name="code_block_include_undefined_hint">Cách hiển thị khối dài cũng áp dụng cho các khối mã không ghi rõ ngôn ngữ.</string>
     <string name="code_block_extend">Mở rộng</string>
     <string name="code_block_close">Đóng khối mã</string>
-    <string name="sheet_resize">Đổi kích thước bottom sheet</string>
     <string name="oauth_opening_browser">Đang mở đăng nhập…</string>
     <string name="oauth_browser_unavailable">Hãy cài Chrome hoặc trình duyệt có hỗ trợ thẻ tuỳ chỉnh để đăng nhập.</string>
     <string name="provider_multiple_accounts">Nhiều tài khoản</string>
@@ -1099,4 +1098,9 @@
     <string name="settings_item_transparency">Độ trong suốt của thành phần</string>
     <string name="settings_item_transparency_description">Điều chỉnh độ trong suốt của thẻ, nút và các mục. AMOLED sử dụng nền trong suốt hoàn toàn và có viền.</string>
     <string name="settings_item_transparency_reset">Đặt lại độ trong suốt thành phần</string>
+    <string name="customization_input_title">Vùng nhập</string>
+    <string name="customization_input_transparency">Độ trong suốt của nền</string>
+    <string name="customization_input_blur">Độ mờ của nền</string>
+    <string name="customization_input_blur_description">Làm mờ nội dung chat phía sau vùng nhập trên Android 12 trở lên. Chữ và nút bấm vẫn rõ nét.</string>
+    <string name="settings_website">Trang web</string>
 </resources>

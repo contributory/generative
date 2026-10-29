@@ -11,7 +11,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
+import org.starfall.generative.shared.ui.text.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,8 +38,8 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.ui.media.MediaViewer
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.model.ToolActivity
-import org.starfall.generative.shared.ui.sheets.AppSheet
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.code.CodeBlockSurface
 import org.starfall.generative.shared.ui.code.LazyCodeBlock
@@ -86,7 +86,7 @@ internal fun ToolDetailsSheet(
     }
     val canDownload = responseText.isNotBlank()
 
-    AppSheet(
+    BottomSheet(
         onDismissRequest = onDismiss
     ) {
         Column(
@@ -254,7 +254,7 @@ private fun ToolFileRow(name: String, file: File?, onOpen: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            FluentIcon(Icons.Outlined.InsertDriveFile, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            SharedIcon(Icons.Outlined.InsertDriveFile, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Column(Modifier.weight(1f)) {
                 Text(
                     name, style = MaterialTheme.typography.bodyMedium, maxLines = 2,

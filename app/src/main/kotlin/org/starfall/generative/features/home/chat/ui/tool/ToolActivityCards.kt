@@ -53,7 +53,7 @@ import org.starfall.generative.shared.ui.media.MediaViewer
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.model.ToolActivity
 import org.starfall.generative.shared.storage.preferences.WordWrapMode
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.features.home.shared.ui.LocalToolSheetState
 import org.starfall.generative.features.home.shared.ui.ToolSheetState

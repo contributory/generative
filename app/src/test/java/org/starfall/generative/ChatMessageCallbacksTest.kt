@@ -143,7 +143,7 @@ class ChatMessageCallbacksTest {
         compose.onNodeWithContentDescription(context.getString(R.string.common_copy))
             .assertExists().performClick()
         compose.runOnIdle {
-            assertEquals("[ActionTurnsBlock1]", copiedText)
+            assertEquals("[ActionsBlock1]", copiedText)
             assertEquals(1, copyCalls)
             assertEquals(1, editCalls)
         }

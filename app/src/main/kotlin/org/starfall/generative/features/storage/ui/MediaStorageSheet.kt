@@ -28,14 +28,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.LoadingIndicator
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.media.MediaViewer
 import org.starfall.generative.shared.ui.media.isPreviewableMedia
 import org.starfall.generative.shared.ui.media.mediaMimeType
 import org.starfall.generative.shared.ui.media.mediaThumbnail
-import org.starfall.generative.shared.ui.sheets.AppSheet
+import org.starfall.generative.shared.ui.sheets.BottomSheet
 
 /** Quick media browsing from the drawer, with the same three-column layout as profile photos. */
 @Composable
@@ -52,7 +52,7 @@ fun MediaStorageSheet(store: ToolFiles, onDismiss: () -> Unit) {
         }
         if (viewingFile != null && media.orEmpty().none { it.file == viewingFile }) viewingFile = null
     }
-    AppSheet(
+    BottomSheet(
         onDismissRequest = onDismiss,
         fixedHeightFraction = 0.82f,
         contentBehindNavigationBar = true
@@ -60,7 +60,7 @@ fun MediaStorageSheet(store: ToolFiles, onDismiss: () -> Unit) {
         Column(Modifier.fillMaxSize().padding(horizontal = 16.dp).testTag("media-storage-sheet")) {
             if (media.isNullOrEmpty()) {
                 Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                    if (media == null) GenerativeLoadingIndicator()
+                    if (media == null) LoadingIndicator()
                     else Text(stringResource(R.string.storage_media_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
@@ -107,7 +107,7 @@ private fun MediaStorageTile(item: StoredMedia, onOpen: () -> Unit) {
     ) {
         Box(contentAlignment = Alignment.Center) {
             thumbnail?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
-                ?: FluentIcon(icon, null, modifier = Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                ?: SharedIcon(icon, null, modifier = Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             // Keep photos unobstructed like the UserProfile picker. Other media need a label.
             if (!item.mime.startsWith("image/")) {
                 Surface(
@@ -115,7 +115,7 @@ private fun MediaStorageTile(item: StoredMedia, onOpen: () -> Unit) {
                     modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                 ) {
                     Row(Modifier.padding(horizontal = 5.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        FluentIcon(icon, null, modifier = Modifier.size(14.dp))
+                        SharedIcon(icon, null, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
                         Text(item.file.name, style = MaterialTheme.typography.labelSmall,
                             maxLines = 1, overflow = TextOverflow.Ellipsis)

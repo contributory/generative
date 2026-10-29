@@ -521,7 +521,6 @@
     <string name="code_block_include_undefined_hint">Der gewählte Anzeigemodus für lange Blöcke gilt auch für Codeblöcke ohne Sprachkennzeichnung.</string>
     <string name="code_block_extend">Ausklappen</string>
     <string name="code_block_close">Codeblock schließen</string>
-    <string name="sheet_resize">Bottom-Sheet skalieren</string>
     <string name="oauth_opening_browser">Anmeldung wird geöffnet…</string>
     <string name="oauth_browser_unavailable">Installiere Chrome oder einen Browser mit Custom-Tabs-Unterstützung, um dich anzumelden.</string>
     <string name="provider_multiple_accounts">Mehrere Konten</string>
@@ -1100,4 +1099,9 @@
     <string name="settings_item_transparency">Transparenz der Komponenten</string>
     <string name="settings_item_transparency_description">Transparenz von Karten, Schaltflächen und Listeneinträgen. In AMOLED sind die Elemente transparent und umrandet.</string>
     <string name="settings_item_transparency_reset">Komponententransparenz zurücksetzen</string>
+    <string name="customization_input_title">Eingabebereich</string>
+    <string name="customization_input_transparency">Hintergrundtransparenz</string>
+    <string name="customization_input_blur">Hintergrundunschärfe</string>
+    <string name="customization_input_blur_description">Den Chat hinter dem Eingabebereich ab Android 12 weichzeichnen. Text und Schaltflächen bleiben scharf.</string>
+    <string name="settings_website">Website</string>
 </resources>

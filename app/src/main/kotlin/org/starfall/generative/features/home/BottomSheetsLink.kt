@@ -10,15 +10,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.model.LocalThinkingScreenBurst
-import org.starfall.generative.shared.ui.model.reasoningEffortOptions
-import org.starfall.generative.shared.ui.model.reasoningEffortIndex
-import org.starfall.generative.shared.ui.model.reasoningEffortTier
 import org.starfall.generative.shared.ui.model.ThinkingScreenBurstLayer
 import org.starfall.generative.shared.ui.model.rememberThinkingColorBurst
 import org.starfall.generative.shared.model.language.ModelConfiguration
@@ -27,11 +23,10 @@ import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.language.ThinkingPassback
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,10 +43,11 @@ import org.starfall.generative.features.home.shared.ui.selectedModelSheetStyle
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.model.ModelPickerSheetContent
 import org.starfall.generative.shared.ui.model.chatModelPickerFilter
-import org.starfall.generative.shared.ui.sheets.AppSheet
+import org.starfall.generative.shared.ui.sheets.BottomSheet
 import org.starfall.generative.shared.ui.sheets.SlideSheetContent
 
 internal enum class QuickActionsPage {
+    ROOT,
     INSTRUCTIONS,
     FEATURE_TOOLS,
     MCP_CONNECTORS,
@@ -60,6 +56,7 @@ internal enum class QuickActionsPage {
 internal enum class ModelSheetPage {
     SELECTED_MODEL,
     MODEL_PICKER,
+    MODEL_PICKER_FROM_OVERVIEW,
     SUMMARY,
 }
 
@@ -67,80 +64,36 @@ internal class BottomSheetsLinkState {
     /** The selected-model overview, model picker, and summarization share one sheet. */
     var modelSheetPage by mutableStateOf<ModelSheetPage?>(null)
         private set
-    /** True when the picker was reached from the overview, so Back returns there instead of closing. */
-    private var pickerOpenedFromOverview by mutableStateOf(false)
-    val showModelPicker: Boolean get() = modelSheetPage == ModelSheetPage.MODEL_PICKER
     val showSelectedModelOverview: Boolean get() = modelSheetPage == ModelSheetPage.SELECTED_MODEL
-    var showAddMenu by mutableStateOf(false)
-        private set
     var quickActionsPage by mutableStateOf<QuickActionsPage?>(null)
         private set
+    val showAddMenu: Boolean get() = quickActionsPage != null
     var showFilesSheet by mutableStateOf(false)
         private set
-    var skillsMenuRequest by mutableStateOf(0)
-        private set
 
-    val showInstructions: Boolean
-        get() = showAddMenu && quickActionsPage == QuickActionsPage.INSTRUCTIONS
-    val showFeatureTools: Boolean
-        get() = showAddMenu && quickActionsPage == QuickActionsPage.FEATURE_TOOLS
-    val showMcpConnectors: Boolean
-        get() = showAddMenu && quickActionsPage == QuickActionsPage.MCP_CONNECTORS
-
-    fun openAddMenu() {
-        quickActionsPage = null
-        showAddMenu = true
-    }
-    fun openSkillsMenu() {
-        dismissAddMenu()
-        skillsMenuRequest++
-    }
-    fun openModelPicker() {
-        pickerOpenedFromOverview = false
-        modelSheetPage = ModelSheetPage.MODEL_PICKER
-    }
+    fun openAddMenu() { quickActionsPage = QuickActionsPage.ROOT }
+    fun openModelPicker() { modelSheetPage = ModelSheetPage.MODEL_PICKER }
     fun openSelectedModelOverview() { modelSheetPage = ModelSheetPage.SELECTED_MODEL }
     /** Moves the open sheet from the overview to the picker in place. */
-    fun switchToModelPicker() {
-        pickerOpenedFromOverview = true
-        modelSheetPage = ModelSheetPage.MODEL_PICKER
-    }
+    fun switchToModelPicker() { modelSheetPage = ModelSheetPage.MODEL_PICKER_FROM_OVERVIEW }
     fun openSummary() { modelSheetPage = ModelSheetPage.SUMMARY }
     fun backFromModelPicker() {
-        if (pickerOpenedFromOverview) openSelectedModelOverview() else dismissModelSheet()
+        if (modelSheetPage == ModelSheetPage.MODEL_PICKER_FROM_OVERVIEW)
+            openSelectedModelOverview() else dismissModelSheet()
     }
     fun openInstructions() {
         quickActionsPage = QuickActionsPage.INSTRUCTIONS
-        showAddMenu = true
     }
     fun openFeatureTools() {
         quickActionsPage = QuickActionsPage.FEATURE_TOOLS
-        showAddMenu = true
     }
     fun openMcpConnectors() {
         quickActionsPage = QuickActionsPage.MCP_CONNECTORS
-        showAddMenu = true
     }
-    fun backToQuickActions() {
-        quickActionsPage = null
-    }
+    fun backToQuickActions() { quickActionsPage = QuickActionsPage.ROOT }
     fun openFilesUnavailableDialog() { showFilesSheet = true }
-    fun dismissAddMenu() {
-        showAddMenu = false
-        quickActionsPage = null
-    }
+    fun dismissAddMenu() { quickActionsPage = null }
     fun dismissModelSheet() { modelSheetPage = null }
-    fun dismissModelPicker() { if (showModelPicker) modelSheetPage = null }
-    fun dismissSelectedModelOverview() { if (showSelectedModelOverview) modelSheetPage = null }
-    fun dismissInstructions() {
-        if (quickActionsPage == QuickActionsPage.INSTRUCTIONS) quickActionsPage = null
-    }
-    fun dismissFeatureTools() {
-        if (quickActionsPage == QuickActionsPage.FEATURE_TOOLS) quickActionsPage = null
-    }
-    fun dismissMcpConnectors() {
-        if (quickActionsPage == QuickActionsPage.MCP_CONNECTORS) quickActionsPage = null
-    }
     fun dismissFilesUnavailableDialog() { showFilesSheet = false }
 }
 
@@ -151,6 +104,7 @@ internal fun BottomSheetsLink(
     mediaKind: ModelType?,
     onMediaKindChange: (ModelType?) -> Unit,
     onCancelEdit: () -> Unit,
+    onShowSkillsMenu: () -> Unit,
     providers: List<ModelProvider>,
     providerGroups: List<ProviderGroup>,
     selectedProviderId: String,
@@ -167,7 +121,6 @@ internal fun BottomSheetsLink(
     modelPickerCollapsedProviders: Set<String>,
     onModelPickerCollapsedGroupsChange: (Set<String>) -> Unit,
     onModelPickerCollapsedProvidersChange: (Set<String>) -> Unit,
-    modelPickerOpenRequest: Int,
     dynamicModelsMap: Map<String, List<String>>,
     mediaProviders: List<ModelProvider>,
     mediaProviderId: String,
@@ -208,27 +161,23 @@ internal fun BottomSheetsLink(
         onAttachmentsChange((attachments + picked.map(Uri::toString)).distinct())
     }
     val selectedModelScreenBurst = rememberThinkingColorBurst()
-    LaunchedEffect(modelPickerOpenRequest) {
-        if (modelPickerOpenRequest > 0) sheets.openModelPicker()
-    }
     LaunchedEffect(sheets.showSelectedModelOverview) {
         if (!sheets.showSelectedModelOverview) selectedModelScreenBurst.hide()
     }
     if (sheets.showAddMenu) {
-        AppSheet(
+        BottomSheet(
             onDismissRequest = { sheets.dismissAddMenu() },
+            dismissOnBack = sheets.quickActionsPage == QuickActionsPage.ROOT,
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            contentKey = sheets.quickActionsPage
         ) {
             SlideSheetContent(
-                page = sheets.quickActionsPage,
+                page = sheets.quickActionsPage.takeUnless { it == QuickActionsPage.ROOT },
                 onBack = { sheets.backToQuickActions() },
                 label = "Quick actions sheet"
             ) { page ->
                 val pageActive = LocalScreenTransitionActive.current
                 when (page) {
-                    null -> QuickActionsSheetContent(
-                        useInitialSheetHeight = true,
+                    null, QuickActionsPage.ROOT -> QuickActionsSheetContent(
                         onPickImage = {
                             if (!pageActive) return@QuickActionsSheetContent
                             photoPicker.launch(PickVisualMediaRequest(
@@ -265,7 +214,10 @@ internal fun BottomSheetsLink(
                             if (pageActive) sheets.openInstructions()
                         },
                         onOpenSkills = {
-                            if (pageActive) sheets.openSkillsMenu()
+                            if (pageActive) {
+                                sheets.dismissAddMenu()
+                                onShowSkillsMenu()
+                            }
                         },
                         onOpenFeatureTools = {
                             if (pageActive) sheets.openFeatureTools()
@@ -304,7 +256,10 @@ internal fun BottomSheetsLink(
         }
     }
 
-    val modelSheetPage = sheets.modelSheetPage
+    val modelSheetPage = when (sheets.modelSheetPage) {
+        ModelSheetPage.MODEL_PICKER_FROM_OVERVIEW -> ModelSheetPage.MODEL_PICKER
+        else -> sheets.modelSheetPage
+    }
     if (modelSheetPage != null && (modelSheetPage == ModelSheetPage.MODEL_PICKER || mediaKind == null)) {
         val selectedProvider = providers.firstOrNull { it.id == selectedProviderId }
         val selectedConfigEntry = selectedProvider?.config?.modelConfigs?.entries?.firstOrNull { it.key == selectedModelName }
@@ -334,11 +289,12 @@ internal fun BottomSheetsLink(
         CompositionLocalProvider(LocalThinkingScreenBurst provides selectedModelScreenBurst) {
             ThinkingScreenBurstLayer(selectedModelScreenBurst)
             // One sheet for all pages: switching slides the content and animates the height in place.
-            AppSheet(
+            BottomSheet(
                 onDismissRequest = {
                     selectedModelScreenBurst.hide()
                     sheets.dismissModelSheet()
                 },
+                dismissOnBack = modelSheetPage == ModelSheetPage.SELECTED_MODEL,
                 containerColor = style.color,
                 containerBrush = style.brush,
                 navigationBarColor = style.navigationBarColor,
@@ -351,7 +307,6 @@ internal fun BottomSheetsLink(
                     selectedModelScreenBurst.retractionProgress.value.takeIf { selectedModelScreenBurst.isRetracting }
                 },
                 containerOverlay = style.overlay,
-                contentKey = modelSheetPage
             ) {
                 // The sheet is its own window, so the screen-owned star overlay must also be attached to it.
                 ThinkingScreenBurstLayer(selectedModelScreenBurst)

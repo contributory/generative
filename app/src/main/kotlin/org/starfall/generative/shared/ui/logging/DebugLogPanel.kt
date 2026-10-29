@@ -42,7 +42,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.logging.DebugLog
 import org.starfall.generative.shared.logging.DebugLogEntry
 import org.starfall.generative.shared.model.logging.DebugLogLevel
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
@@ -66,7 +66,7 @@ internal fun DebugLogPanel(modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(24.dp),
-        color = prominentContainerColor().copy(alpha = 0.97f),
+        color = prominentContainerColor(opacityBoost = 0.47f),
         border = prominentContainerBorder(),
         shadowElevation = 8.dp
     ) {
@@ -86,10 +86,10 @@ internal fun DebugLogPanel(modifier: Modifier = Modifier) {
                     onClick = { copyLog(context, DebugLog.exportAll(entries)) },
                     enabled = entries.isNotEmpty()
                 ) {
-                    FluentIcon(Icons.Outlined.ContentCopy, stringResource(R.string.debug_log_copy_all), Modifier.size(22.dp))
+                    SharedIcon(Icons.Outlined.ContentCopy, stringResource(R.string.debug_log_copy_all), Modifier.size(22.dp))
                 }
                 IconButton(onClick = DebugLog::clear, enabled = entries.isNotEmpty()) {
-                    FluentIcon(Icons.Outlined.Delete, stringResource(R.string.debug_log_clear_all), Modifier.size(22.dp))
+                    SharedIcon(Icons.Outlined.Delete, stringResource(R.string.debug_log_clear_all), Modifier.size(22.dp))
                 }
             }
             if (entries.isEmpty()) {
@@ -147,7 +147,7 @@ private fun DebugLogEntryBlock(entry: DebugLogEntry, onCopy: () -> Unit) {
                     )
                 }
                 IconButton(onClick = onCopy, modifier = Modifier.size(40.dp)) {
-                    FluentIcon(Icons.Outlined.ContentCopy, stringResource(R.string.debug_log_copy_entry), Modifier.size(18.dp))
+                    SharedIcon(Icons.Outlined.ContentCopy, stringResource(R.string.debug_log_copy_entry), Modifier.size(18.dp))
                 }
             }
             Text(

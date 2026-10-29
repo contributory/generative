@@ -2,7 +2,7 @@
 
 package org.starfall.generative.features.home.chat.ui.input
 
-import org.starfall.generative.shared.ui.menus.AppPopup as Popup
+import androidx.compose.ui.window.Popup
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -67,8 +67,11 @@ import org.starfall.generative.shared.model.language.DEFAULT_REASONING_EFFORTS
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
+import org.starfall.generative.shared.ui.layout.InputAreaBackdrop
+import org.starfall.generative.shared.ui.layout.InputAreaBackdropLayer
+import org.starfall.generative.shared.ui.layout.LocalInputAreaAppearance
 import org.starfall.generative.shared.theme.LocalAmoledMode
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.model.localizedReasoningEffortLabels
 import org.starfall.generative.shared.ui.text.selectAllOnTripleClick
@@ -97,7 +100,8 @@ import org.starfall.generative.features.home.chat.ui.LocalChatForeground
 import org.starfall.generative.shared.ui.model.modelInitial
 
 @Composable
-fun UserInputArea(
+internal fun UserInputArea(
+    backdrop: InputAreaBackdrop? = null,
     isGenerating: Boolean,
     onSendMessage: (String, List<String>) -> Boolean,
     onSendMedia: (DirectMediaRequest) -> Boolean,
@@ -116,7 +120,7 @@ fun UserInputArea(
     modelPickerCollapsedProviders: Set<String> = emptySet(),
     onModelPickerCollapsedGroupsChange: (Set<String>) -> Unit = {},
     onModelPickerCollapsedProvidersChange: (Set<String>) -> Unit = {},
-    modelPickerOpenRequest: Int = 0,
+    bottomSheets: BottomSheetsLinkState,
     selectedProviderId: String,
     onSelectModel: (providerId: String, modelId: String) -> Unit,
     conversationReasoningEffort: String?,
@@ -260,20 +264,15 @@ fun UserInputArea(
         onDispose { if (currentForeground) onMediaModeChange(null, "", "") }
     }
     val focusManager = LocalFocusManager.current
-    val bottomSheets = remember { BottomSheetsLinkState() }
     val latestOnModelSheetOpen by rememberUpdatedState(onModelSheetOpen)
     LaunchedEffect(bottomSheets.modelSheetPage) {
         if (bottomSheets.modelSheetPage != null) latestOnModelSheetOpen()
     }
-    var skillsMenuOpen by remember { mutableStateOf(false) }
+    var skillsMenuOpen by remember(foreground) { mutableStateOf(false) }
     var inputBoxWidthPx by remember { mutableIntStateOf(0) }
     LaunchedEffect(textState) {
         skillsMenuOpen = textState.startsWith("/") && selectedSkill == null
     }
-    LaunchedEffect(bottomSheets.skillsMenuRequest) {
-        if (bottomSheets.skillsMenuRequest > 0) skillsMenuOpen = true
-    }
-
     val dynamicModelsMap = remember { mutableStateMapOf<String, List<String>>() }
     val dynamicModelEndpoints = remember { mutableMapOf<String, String>() }
     val ollamaCache = remember(context) { org.starfall.generative.integrations.modelapis.ollama.OllamaModelCache(context) }
@@ -335,14 +334,16 @@ fun UserInputArea(
                 .widthIn(max = 720.dp)
                 .fillMaxWidth()
                 .onSizeChanged { inputBoxWidthPx = it.width }
+                .clip(RoundedCornerShape(36.dp))
         ) {
+        InputAreaBackdropLayer(backdrop, Modifier.matchParentSize())
         Surface(
             modifier = Modifier
                 .widthIn(max = 720.dp)
                 .fillMaxWidth()
                 .testTag("chat-input"),
             shape = RoundedCornerShape(36.dp),
-            color = (if (amoledMode) MaterialTheme.colorScheme.surface else inputColor).copy(alpha = 0.92f),
+            color = LocalInputAreaAppearance.current.surfaceColor(if (amoledMode) MaterialTheme.colorScheme.surface else inputColor),
             border = when {
                 mediaKind != null -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                 amoledMode -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
@@ -370,7 +371,7 @@ fun UserInputArea(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            FluentIcon(
+                            SharedIcon(
                                 if (mediaKind == ModelType.IMAGE_GENERATION) Icons.Outlined.Image else Icons.Outlined.Videocam,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -439,7 +440,7 @@ fun UserInputArea(
                         },
                         modifier = Modifier.size(48.dp)
                     ) {
-                        FluentIcon(
+                        SharedIcon(
                             imageVector = Icons.Default.Add,
                             contentDescription = stringResource(R.string.chat_attachments_and_tools),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -547,14 +548,14 @@ fun UserInputArea(
                         contentAlignment = Alignment.Center
                     ) {
                         if (showStop) {
-                            FluentIcon(
+                            SharedIcon(
                                 imageVector = Icons.Default.Stop,
                                 contentDescription = stringResource(R.string.chat_stop_generation),
                                 tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(20.dp)
                             )
                         } else {
-                            FluentIcon(
+                            SharedIcon(
                                 imageVector = when (mediaKind) {
                                     ModelType.IMAGE_GENERATION -> Icons.Outlined.Image
                                     ModelType.VIDEO_GENERATION -> Icons.Outlined.Videocam
@@ -706,6 +707,7 @@ fun UserInputArea(
         mediaKind = mediaKind,
         onMediaKindChange = { mediaKind = it },
         onCancelEdit = onCancelEdit,
+        onShowSkillsMenu = { skillsMenuOpen = true },
         providers = providers,
         providerGroups = providerGroups,
         selectedProviderId = selectedProviderId,
@@ -722,7 +724,6 @@ fun UserInputArea(
         modelPickerCollapsedProviders = modelPickerCollapsedProviders,
         onModelPickerCollapsedGroupsChange = onModelPickerCollapsedGroupsChange,
         onModelPickerCollapsedProvidersChange = onModelPickerCollapsedProvidersChange,
-        modelPickerOpenRequest = modelPickerOpenRequest,
         dynamicModelsMap = if (mediaKind != null) emptyMap() else dynamicModelsMap.toMap(),
         mediaProviders = mediaProviders,
         mediaProviderId = mediaProviderId,

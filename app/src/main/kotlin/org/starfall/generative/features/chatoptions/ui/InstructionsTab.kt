@@ -13,10 +13,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.lists.AppListItem
-import org.starfall.generative.shared.ui.lists.EmptyListContent
+import org.starfall.generative.shared.ui.lists.ItemCard
+import org.starfall.generative.shared.ui.lists.EmptyState
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,7 +46,7 @@ internal fun InstructionsTab(
     var instructionPendingDelete by remember { mutableStateOf<SavedInstruction?>(null) }
 
     if (library.instructions.isEmpty()) {
-        EmptyListContent(Icons.Outlined.Description, stringResource(R.string.instruction_library_empty))
+        EmptyState(Icons.Outlined.Description, stringResource(R.string.instruction_library_empty))
     } else {
         FadeGridListContent(isGrid = isGrid, modifier = Modifier.fillMaxSize()) { gridMode ->
             LazyVerticalGrid(
@@ -56,7 +56,7 @@ internal fun InstructionsTab(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(library.instructions, key = { it.id }) { instruction ->
-                    AppListItem(
+                    ItemCard(
                         isGrid = gridMode,
                         onClick = { onPreviewInstruction(instruction) },
                         icon = {

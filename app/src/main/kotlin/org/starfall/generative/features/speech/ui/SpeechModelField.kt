@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -18,11 +19,13 @@ import org.starfall.generative.R
 import org.starfall.generative.integrations.speech.SpeechSynthesisModel
 import org.starfall.generative.integrations.speech.StandaloneSpeechClient
 import org.starfall.generative.shared.model.SpeechService
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.sheets.BottomSheet
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 @Composable
 internal fun SpeechModelField(
@@ -63,7 +66,7 @@ internal fun SpeechModelField(
             }
         }
         Box {
-            SelectableOutlinedTextField(service.modelId.orEmpty(), onChange,
+            OutlinedTextField(service.modelId.orEmpty(), onChange,
                 label = { Text(stringResource(R.string.speech_engine_model)) }, singleLine = true,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
                     autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
@@ -79,31 +82,43 @@ internal fun SpeechModelField(
                             },
                             modifier = Modifier.testTag("speech-model-dropdown")
                         ) {
-                            FluentIcon(Icons.Default.KeyboardArrowDown, stringResource(R.string.speech_engine_model))
+                            SharedIcon(Icons.Default.KeyboardArrowDown, stringResource(R.string.speech_engine_model))
                         }
                     }
                 }, modifier = Modifier.fillMaxWidth().testTag("speech-model-id"))
-            AppDropdownMenu(expanded, { expanded = false }) {
-                error?.let { detail ->
-                    Text(detail, Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
-                    RoundedDropdownMenuItem(text = { Text(stringResource(R.string.common_retry)) }, onClick = {
-                        fetchRequested = true
-                        expanded = false
-                    })
-                }
-                if (loading || fetchRequested) {
-                    CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
-                }
-                if (!loading && !fetchRequested && error == null && models.isEmpty()) {
-                    RoundedDropdownMenuItem(text = { Text(stringResource(R.string.no_models_returned)) }, enabled = false, onClick = {})
-                }
-                models.forEach { model ->
-                    RoundedDropdownMenuItem(text = {
-                        Column {
-                            Text(model.name)
-                            if (model.name != model.id) Text(model.id, style = MaterialTheme.typography.bodySmall)
+            if (expanded) {
+                BottomSheet(onDismissRequest = { expanded = false }) {
+                    Text(stringResource(R.string.speech_engine_model), Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.titleLarge)
+                    LazyColumn(Modifier.fillMaxWidth(), contentPadding = PaddingValues(bottom = 16.dp)) {
+                        error?.let { detail ->
+                            item {
+                                Text(detail, Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
+                                TextButton(onClick = { fetchRequested = true }) {
+                                    Text(stringResource(R.string.common_retry))
+                                }
+                            }
                         }
-                    }, onClick = { onChange(model.id); expanded = false })
+                        if (loading || fetchRequested) item {
+                            CircularProgressIndicator(Modifier.padding(16.dp).size(24.dp), strokeWidth = 2.dp)
+                        }
+                        if (!loading && !fetchRequested && error == null && models.isEmpty()) item {
+                            Text(stringResource(R.string.no_models_returned), Modifier.padding(16.dp))
+                        }
+                        items(models, key = { it.id }) { model ->
+                            ListItem(
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                headlineContent = { Text(model.name) },
+                                supportingContent = {
+                                    if (model.name != model.id) Text(model.id)
+                                },
+                                trailingContent = {
+                                    if (model.id == service.modelId) SharedIcon(Icons.Default.Check, stringResource(R.string.common_selected))
+                                },
+                                modifier = Modifier.clickable { onChange(model.id); expanded = false }
+                            )
+                        }
+                    }
                 }
             }
         }

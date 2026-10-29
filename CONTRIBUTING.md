@@ -45,6 +45,8 @@ Useful commands:
 
 ## Code organization and architecture
 
+See the [Android developer documentation](app/docs/README.md) for the project structure, UI conventions, and profiling notes. The public `docs/` folder contains the user-facing website.
+
 The current implementation is under `app/src/main/kotlin/org/starfall/generative/`. Place changes according to responsibility and who uses the code:
 
 - `features/`: feature-oriented vertical slices in the project’s UI-First Clean Architecture–inspired structure. Each capability groups presentation (`ui/`), application workflow/use-case coordination and state holders (`logic/`), and feature-specific state/data types (`model/`). A feature may span multiple screens and is not defined by a `FeaturesScreen`/`AppMenuScreen` entry. The project uses `logic/` and `model/` rather than a canonical `domain/`/`data/` split, so place code by responsibility and dependency direction.

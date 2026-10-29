@@ -521,7 +521,6 @@
     <string name="code_block_include_undefined_hint">긴 블록 표시 모드는 언어가 지정되지 않은 코드 블록에도 적용됩니다.</string>
     <string name="code_block_extend">펼치기</string>
     <string name="code_block_close">코드 블록 닫기</string>
-    <string name="sheet_resize">하단 시트 크기 조정</string>
     <string name="oauth_opening_browser">로그인을 여는 중...</string>
     <string name="oauth_browser_unavailable">로그인하려면 Chrome 또는 사용자 지정 탭을 지원하는 브라우저를 설치하세요.</string>
     <string name="provider_multiple_accounts">여러 계정</string>
@@ -1099,4 +1098,9 @@
     <string name="settings_item_transparency">컴포넌트 투명도</string>
     <string name="settings_item_transparency_description">카드, 버튼, 항목의 투명도를 조절합니다. AMOLED에서는 배경이 완전히 투명하고 테두리가 표시됩니다.</string>
     <string name="settings_item_transparency_reset">컴포넌트 투명도 초기화</string>
+    <string name="customization_input_title">입력 영역</string>
+    <string name="customization_input_transparency">배경 투명도</string>
+    <string name="customization_input_blur">배경 흐림</string>
+    <string name="customization_input_blur_description">Android 12 이상에서 입력 영역 뒤의 채팅을 흐리게 표시합니다. 텍스트와 버튼은 선명하게 유지됩니다.</string>
+    <string name="settings_website">웹사이트</string>
 </resources>

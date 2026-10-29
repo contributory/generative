@@ -1,8 +1,8 @@
 package org.starfall.generative.features.providers.editor.ui
 
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import org.starfall.generative.shared.ui.menus.AppExposedDropdownMenu
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
+import org.starfall.generative.shared.ui.LoadingIndicator
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
@@ -72,12 +72,12 @@ import org.starfall.generative.shared.model.provider.removeOAuthAccount
 import org.starfall.generative.shared.model.provider.withModelApiType
 import org.starfall.generative.shared.networking.providerBase
 import org.starfall.generative.shared.storage.preferences.ModelConfigurationMemory
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.layout.RetainedScreenContent
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.ui.icons.providerInitials
@@ -287,7 +287,7 @@ fun ProviderEditor(
             title = {
                     Text(name.trim().ifEmpty { type.defaultName }, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
-                    navigationIcon = { IconButton(onClick = onDismiss) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
+                    navigationIcon = { IconButton(onClick = onDismiss) { SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                     actions = {
                         if (pager.currentPage == 0) Button(enabled = valid && !oauthAuthorizing && !iconImporting,
                             onClick = { onSave(draft()); providerPersisted = true }, modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(R.string.common_save)) }
@@ -295,12 +295,12 @@ fun ProviderEditor(
                             IconButton(onClick = { showTestDialog = true },
                                 enabled = testingConnection || (onTestConnection != null && (type.isAccountProvider || baseUrl.isNotBlank()) && valid && models.isNotEmpty())) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    if (testingConnection && !showTestDialog) GenerativeLoadingIndicator(Modifier.size(36.dp))
-                                    FluentIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.test_connection))
+                                    if (testingConnection && !showTestDialog) LoadingIndicator(Modifier.size(36.dp))
+                                    SharedIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.test_connection))
                                 }
                             }
-                            IconButton(onClick = { editingModel = "" }) { FluentIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
-                            IconButton(onClick = { showCatalog = true }) { FluentIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.open_model_catalog)) }
+                            IconButton(onClick = { editingModel = "" }) { SharedIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
+                            IconButton(onClick = { showCatalog = true }) { SharedIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.open_model_catalog)) }
                         }
                     })
             }) { padding ->
@@ -312,7 +312,7 @@ fun ProviderEditor(
                     HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
                         if (page == 0) Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             IconPickerRow(providerIcon, { providerIcon = it }, text = providerInitials(name), onBusyChange = { iconImporting = it }, matchName = name, faviconBaseUrl = baseUrl, fetchState = faviconFetch)
-                            SelectableOutlinedTextField(
+                            OutlinedTextField(
                                 value = name,
                                 onValueChange = { name = it },
                                 label = { Text(stringResource(R.string.common_name)) },
@@ -321,10 +321,10 @@ fun ProviderEditor(
                                 modifier = Modifier.fillMaxWidth()
                             )
                             ExposedDropdownMenuBox(typeExpanded, { typeExpanded = !typeExpanded }, modifier = Modifier.fillMaxWidth()) {
-                                SelectableOutlinedTextField(type.displayName, {}, readOnly = true, label = { Text(stringResource(R.string.common_type)) },
+                                OutlinedTextField(type.displayName, {}, readOnly = true, label = { Text(stringResource(R.string.common_type)) },
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(typeExpanded) }, modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).fillMaxWidth())
-                                AppExposedDropdownMenu(typeExpanded, { typeExpanded = false }) {
-                                    ModelApiType.entries.forEach { next -> RoundedDropdownMenuItem(text = { Text(next.displayName) }, onClick = {
+                                ExposedDropdownMenu(typeExpanded, { typeExpanded = false }) {
+                                    ModelApiType.entries.forEach { next -> DropdownMenuItem(text = { Text(next.displayName) }, onClick = {
                                         if (next != type) {
                                             val updated = initialProvider.copy(name = name, type = type, baseUrl = baseUrl).withModelApiType(next)
                                             name = updated.name; baseUrl = updated.baseUrl; type = updated.type
@@ -348,7 +348,7 @@ fun ProviderEditor(
                             if (type == ModelApiType.ANTIGRAVITY) AntigravityVersionFields(
                                 antigravityVersion, antigravityVersionValid, { antigravityVersion = it },
                                 antigravityChangelist, antigravityChangelistValid, { antigravityChangelist = it })
-                            if (authMethod in listOf(AuthMethod.BEARER_TOKEN, AuthMethod.QUERY_PARAM)) SelectableOutlinedTextField(authName, { authName = it },
+                            if (authMethod in listOf(AuthMethod.BEARER_TOKEN, AuthMethod.QUERY_PARAM)) OutlinedTextField(authName, { authName = it },
                                 label = { Text(stringResource(if (authMethod == AuthMethod.BEARER_TOKEN) R.string.header_key else R.string.query_parameter_name)) },
                                 isError = !authValid, singleLine = true, modifier = Modifier.fillMaxWidth())
                             if (!type.isAccountProvider || authMethod != AuthMethod.OAUTH) ProviderAuthField(authMethod, apiKey, !type.isAccountProvider,
@@ -440,7 +440,7 @@ fun ProviderEditor(
             if (showApiKeys) ProviderApiKeysDialog(apiKeys, ::keyIdentity, onDismiss = { showApiKeys = false })
             if (showTestDialog) ModelConnectionDialog(draft().copy(name = name.trim().ifEmpty { context.getString(R.string.provider_fallback_name) }), tests, onTestConnection != null,
                 onRemoveModels = { updateModels(models - it) }, onDismiss = { showTestDialog = false })
-            if (showCatalog) ProviderModelCatalogSheet(
+            if (showCatalog) ModelCatalogSheet(
                 provider = initialProvider.copy(name = name, type = type, baseUrl = baseUrl.trim(),
                     auth = authorization(), config = requestConfig()),
                 selectedModels = models.keys,

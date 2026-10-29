@@ -521,7 +521,6 @@
     <string name="code_block_include_undefined_hint">長いブロックの表示モードは、言語の指定がないコードブロックにも適用されます。</string>
     <string name="code_block_extend">展開</string>
     <string name="code_block_close">コードブロックを閉じる</string>
-    <string name="sheet_resize">ボトムシートのサイズ変更</string>
     <string name="oauth_opening_browser">サインインを開いています...</string>
     <string name="oauth_browser_unavailable">サインインするには Chrome またはカスタムタブに対応したブラウザーをインストールしてください。</string>
     <string name="provider_multiple_accounts">複数のアカウント</string>
@@ -1099,4 +1098,9 @@
     <string name="settings_item_transparency">コンポーネントの透明度</string>
     <string name="settings_item_transparency_description">カードやボタン、項目の透明度を調整します。AMOLEDでは背景が透明になり、枠線が表示されます。</string>
     <string name="settings_item_transparency_reset">コンポーネントの透明度を初期値に戻す</string>
+    <string name="customization_input_title">入力エリア</string>
+    <string name="customization_input_transparency">背景の透明度</string>
+    <string name="customization_input_blur">背景のぼかし</string>
+    <string name="customization_input_blur_description">Android 12 以降では入力エリアの背後にあるチャットをぼかします。文字とボタンは鮮明に表示されます。</string>
+    <string name="settings_website">ウェブサイト</string>
 </resources>

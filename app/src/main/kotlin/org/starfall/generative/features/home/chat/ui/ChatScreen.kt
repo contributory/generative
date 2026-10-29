@@ -1,7 +1,6 @@
 package org.starfall.generative.features.home.chat.ui
 
 import org.starfall.generative.R
-import org.starfall.generative.features.home.BottomSheetsLink
 import org.starfall.generative.features.home.BottomSheetsLinkState
 
 import android.content.ClipData
@@ -46,11 +45,15 @@ import org.starfall.generative.shared.model.SummaryRole
 import org.starfall.generative.shared.model.language.ThinkingPassback
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
+import org.starfall.generative.shared.ui.layout.rememberInputAreaBackdrop
+import org.starfall.generative.shared.ui.layout.inputAreaBackdropSource
+import org.starfall.generative.shared.ui.layout.LocalInputAreaAppearance
+import org.starfall.generative.shared.ui.ErrorContainer
 import org.starfall.generative.shared.ui.media.ChatAttachmentSelection
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
-import org.starfall.generative.shared.ui.sheets.AppSheet
+import org.starfall.generative.shared.ui.sheets.BottomSheet
 import org.starfall.generative.shared.ui.text.PlatformTextSelection
 import org.starfall.generative.shared.ui.text.PlatformTextSelectionRegion
 import org.starfall.generative.features.home.chat.logic.input.ChatInputEditDraft
@@ -147,6 +150,10 @@ fun ChatScreen(
     }
 
     val conversationKey = conversation?.id ?: "__empty_conversation__"
+    val foreground = LocalChatForeground.current
+    // Keep sheet navigation only for the current foreground chat; parked pages retain
+    // their scroll/composer state but receive a fresh, closed sheet state on return.
+    val bottomSheets = remember(conversationKey, foreground) { BottomSheetsLinkState() }
     val viewport = remember(conversationKey, loadingConversationId, messages.isEmpty()) {
         ChatMessageListState(initialMessages = messages)
     }
@@ -197,14 +204,13 @@ fun ChatScreen(
     val toggleChatImage: (String) -> Unit = remember(selection) { selection::toggle }
 
     // Dialog state for deleting a message
-    var deletingMessageId by remember(conversation?.id) { mutableStateOf<String?>(null) }
+    var deletingMessageId by remember(conversationKey, foreground) { mutableStateOf<String?>(null) }
 
-    var regeneratingMessageId by remember(conversation?.id) { mutableStateOf<String?>(null) }
-    var showContextSummarySheet by remember(conversation?.id) { mutableStateOf(false) }
-    var showTerminalMachinePicker by remember { mutableStateOf(false) }
-    var showSummaryDialog by remember(conversation?.id) { mutableStateOf(false) }
+    var regeneratingMessageId by remember(conversationKey, foreground) { mutableStateOf<String?>(null) }
+    var showContextSummarySheet by remember(conversationKey, foreground) { mutableStateOf(false) }
+    var showTerminalMachinePicker by remember(conversationKey, foreground) { mutableStateOf(false) }
+    var showSummaryDialog by remember(conversationKey, foreground) { mutableStateOf(false) }
     var inlineChatError by remember(conversation?.id) { mutableStateOf<String?>(null) }
-    var modelPickerOpenRequest by remember(conversation?.id) { mutableIntStateOf(0) }
     fun submitMessage(action: () -> Boolean): Boolean {
         inlineChatError = null
         return action().also { accepted ->
@@ -234,7 +240,6 @@ fun ChatScreen(
             inlineChatError = saveConversationFailedPrefix + error.removePrefix(SAVE_CONVERSATION_ERROR_PREFIX)
         }
     }
-    val foreground = LocalChatForeground.current
     LaunchedEffect(conversation?.id, foreground) {
         if (foreground) focusManager.clearFocus(force = true)
     }
@@ -243,6 +248,8 @@ fun ChatScreen(
         if (foreground && listState.isScrollInProgress) keyboardController?.hide()
     }
 
+    val inputBackdrop = rememberInputAreaBackdrop()
+    val blurInputBackdrop = LocalInputAreaAppearance.current.blurRadius > 0f && android.os.Build.VERSION.SDK_INT >= 31
     PlatformTextSelection {
     Box(
         modifier = modifier
@@ -271,7 +278,6 @@ fun ChatScreen(
                 }
             }
     ) {
-        org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage, transparency = backgroundTransparency)
         // Scaffold measures both overlay regions before the first content layout, including
         // composer errors/suggestions and system insets. The list still draws edge to edge.
         Scaffold(
@@ -290,11 +296,10 @@ fun ChatScreen(
                     onOpenTemporaryChat = onOpenTemporaryChat,
                     onOpenSettings = onOpenSettings,
                     featuresLogoImage = featuresLogoImage,
-                    backgroundTransparency = backgroundTransparency,
                     isTemporaryChat = conversationMessages.isEmpty() && conversation?.isTemporary != true,
                     onOpenModelPicker = {
                         minimapState.isOpen = false
-                        modelPickerOpenRequest++
+                        bottomSheets.openModelPicker()
                     },
                     showTerminalButton = connectedMachines.isNotEmpty(),
                     onOpenTerminal = {
@@ -312,7 +317,7 @@ fun ChatScreen(
                             onClick = { viewport.jump() },
                             modifier = Modifier
                         ) {
-                            FluentIcon(
+                            SharedIcon(
                                 imageVector = Icons.Default.KeyboardArrowDown,
                                 contentDescription = stringResource(R.string.chat_jump_to_latest),
                                 modifier = Modifier.size(24.dp)
@@ -328,26 +333,12 @@ fun ChatScreen(
                         .navigationBarsPadding()
                 ) {
                     inlineChatError?.let { error ->
-                        Surface(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.errorContainer
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    error,
-                                    modifier = Modifier.weight(1f),
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                IconButton(onClick = { inlineChatError = null }) {
-                                    FluentIcon(Icons.Default.Close, contentDescription = stringResource(R.string.chat_dismiss_error), tint = MaterialTheme.colorScheme.onErrorContainer)
-                                }
-                            }
-                        }
+                        ErrorContainer(
+                            message = error,
+                            onDismiss = { inlineChatError = null },
+                            expandable = false,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                        )
                     }
                     var summarySuggestionDismissed by remember(conversation?.id, conversation?.summary?.id) { mutableStateOf(false) }
                     if (contextWindowStatus?.shouldSuggestSummary == true && !streamingHere && summaryProgress == null &&
@@ -365,7 +356,7 @@ fun ChatScreen(
                                     Text(androidx.compose.ui.res.stringResource(org.starfall.generative.R.string.summarize_now))
                                 }
                                 IconButton(onClick = { summarySuggestionDismissed = true }, modifier = Modifier.size(32.dp)) {
-                                    FluentIcon(Icons.Default.Close,
+                                    SharedIcon(Icons.Default.Close,
                                         androidx.compose.ui.res.stringResource(org.starfall.generative.R.string.common_close),
                                         modifier = Modifier.size(18.dp))
                                 }
@@ -375,6 +366,7 @@ fun ChatScreen(
                     // Composer state must not escape a disposable chat when switching sessions.
                     key(if (conversation?.isTemporary == true) conversationKey else "regular_composer") {
                     UserInputArea(
+                        backdrop = inputBackdrop,
                         temporaryChatId = conversation?.takeIf { it.isTemporary }?.id,
                         attachments = inputAttachments,
                         onAttachmentsChange = { inputAttachments = it },
@@ -410,7 +402,7 @@ fun ChatScreen(
                         modelPickerCollapsedProviders = modelPickerCollapsedProviders,
                         onModelPickerCollapsedGroupsChange = onModelPickerCollapsedGroupsChange,
                         onModelPickerCollapsedProvidersChange = onModelPickerCollapsedProvidersChange,
-                         modelPickerOpenRequest = modelPickerOpenRequest,
+                         bottomSheets = bottomSheets,
                         selectedProviderId = selectedProviderId,
                         onSelectModel = onSelectModel,
                         conversationReasoningEffort = conversation?.reasoningEffort,
@@ -434,7 +426,13 @@ fun ChatScreen(
         ) { insets ->
         // Let the list occupy the whole edge-to-edge surface. Its top padding keeps the newest
         // content readable initially, while later scrolls visibly pass behind the translucent app bar.
-        BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
+        BoxWithConstraints(
+            Modifier.fillMaxSize().clipToBounds()
+                .inputAreaBackdropSource(inputBackdrop, blurInputBackdrop)
+                .background(MaterialTheme.colorScheme.background)
+                .minimapEdgeSwipe(minimapState, enabled = foreground && messages.isNotEmpty() && !isDrawerOpening)
+        ) {
+        org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage, transparency = backgroundTransparency)
         val appBarHeight = insets.calculateTopPadding()
         val bottomClearance = insets.calculateBottomPadding() + maxHeight * 0.015f
         if (messages.isEmpty()) {
@@ -636,7 +634,7 @@ fun ChatScreen(
     }
 
     if (foreground && showTerminalMachinePicker) {
-        AppSheet(
+        BottomSheet(
             onDismissRequest = { showTerminalMachinePicker = false }
         ) {
             Column(
@@ -665,7 +663,7 @@ fun ChatScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            FluentIcon(
+                            SharedIcon(
                                 Icons.Outlined.Terminal, null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(24.dp)
@@ -685,7 +683,7 @@ fun ChatScreen(
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
-                            FluentIcon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp))
+                            SharedIcon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp))
                         }
                     }
                 }

@@ -26,12 +26,12 @@ import org.starfall.generative.shared.model.mcpServerEnabled
 import org.starfall.generative.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.sheets.AppSheet
+import org.starfall.generative.shared.ui.sheets.BottomSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun McpConnectorsSheet(onDismiss: () -> Unit) {
-    AppSheet(onDismissRequest = onDismiss) {
+    BottomSheet(onDismissRequest = onDismiss) {
         McpConnectorsSheetContent()
     }
 }

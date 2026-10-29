@@ -42,9 +42,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.starfall.generative.shared.files.AttachmentResolver
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.shared.ui.layout.windowHeight
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 
@@ -145,7 +145,7 @@ private fun ZoomableMediaImage(reference: String, onZoomChanged: (Boolean) -> Un
                 onSuccess = { loaded = true }, onError = { loaded = true; error = true }
             )
             if (error) Text(stringResource(R.string.media_image_open_failed), color = Color.White)
-            else if (!loaded) GenerativeLoadingIndicator()
+            else if (!loaded) LoadingIndicator()
         }
     }
 }
@@ -167,10 +167,10 @@ fun InlineVideoPreview(reference: String, thumbnail: ImageBitmap?, modifier: Mod
             contentAlignment = Alignment.Center) {
             thumbnail?.let { Image(it, stringResource(R.string.media_video_preview), Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
             Surface(shape = MaterialTheme.shapes.extraLarge, color = Color.Black.copy(alpha = 0.55f)) {
-                FluentIcon(Icons.Default.PlayArrow, stringResource(R.string.media_play_video), Modifier.padding(12.dp), tint = Color.White)
+                SharedIcon(Icons.Default.PlayArrow, stringResource(R.string.media_play_video), Modifier.padding(12.dp), tint = Color.White)
             }
             IconButton(onClick = { activated = true; fullscreen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp)) {
-                FluentIcon(Icons.Outlined.Fullscreen, stringResource(R.string.video_fullscreen), tint = Color.White)
+                SharedIcon(Icons.Outlined.Fullscreen, stringResource(R.string.video_fullscreen), tint = Color.White)
             }
         }
         overlay()
@@ -190,7 +190,7 @@ fun InlineVideoPreview(reference: String, thumbnail: ImageBitmap?, modifier: Mod
                     onClick = { fullscreen = false },
                     modifier = Modifier.align(Alignment.TopStart).padding(8.dp).statusBarsPadding()
                 ) {
-                    FluentIcon(
+                    SharedIcon(
                         Icons.Outlined.Close,
                         stringResource(R.string.video_exit_fullscreen),
                         tint = Color.White
@@ -237,7 +237,7 @@ private fun VideoPlayback(reference: String, inline: Boolean = false,
     val controls: @Composable () -> Unit = {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = ::togglePlayback) {
-                FluentIcon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                SharedIcon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                     stringResource(if (playing) R.string.media_pause_video else R.string.media_play_video), tint = Color.White)
             }
             MediaSeekBar(value = seekPosition ?: position.toFloat().coerceIn(0f, duration.toFloat()),
@@ -247,7 +247,7 @@ private fun VideoPlayback(reference: String, inline: Boolean = false,
                 }, duration = duration.coerceAtLeast(1).toFloat(), modifier = Modifier.weight(1f))
             onFullscreen?.let { open ->
                 IconButton(onClick = open) {
-                    FluentIcon(if (fullscreen) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
+                    SharedIcon(if (fullscreen) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
                         stringResource(if (fullscreen) R.string.video_exit_fullscreen else R.string.video_fullscreen), tint = Color.White)
                 }
             }
@@ -283,7 +283,7 @@ private fun VideoPlayback(reference: String, inline: Boolean = false,
                 },
                 onRelease = { texture -> player.clearVideoTextureView(texture); textureView = null }
             )
-            if (!ready) GenerativeLoadingIndicator()
+            if (!ready) LoadingIndicator()
         } else Text(stringResource(R.string.media_video_play_failed),
             color = MaterialTheme.colorScheme.inverseOnSurface, modifier = Modifier.padding(16.dp))
         if ((inline || fullscreen) && ready && !error) {
@@ -344,7 +344,7 @@ private fun AudioPlayback(reference: String, onDarkBackground: Boolean = false) 
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (error) Text(stringResource(R.string.media_audio_play_failed), color = MaterialTheme.colorScheme.error)
-        else if (!ready) GenerativeLoadingIndicator(Modifier.align(Alignment.CenterHorizontally))
+        else if (!ready) LoadingIndicator(Modifier.align(Alignment.CenterHorizontally))
         else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 FilledIconButton(
@@ -356,7 +356,7 @@ private fun AudioPlayback(reference: String, onDarkBackground: Boolean = false) 
                         )
                     } else IconButtonDefaults.filledIconButtonColors()
                 ) {
-                    FluentIcon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    SharedIcon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                         stringResource(if (playing) R.string.media_pause_audio else R.string.media_play_audio))
                 }
                 val seekValue = seekPosition ?: position.toFloat().coerceIn(0f, duration.toFloat())

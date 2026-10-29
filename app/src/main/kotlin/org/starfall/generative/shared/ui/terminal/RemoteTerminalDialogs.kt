@@ -18,10 +18,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.terminal.PendingRemoteSecretRequest
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 @Composable
 internal fun RemoteTerminalSecretDialog(
@@ -33,7 +33,7 @@ internal fun RemoteTerminalSecretDialog(
     onDismiss: () -> Unit
 ) {
     val request = pending.request
-    AppAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
@@ -50,7 +50,7 @@ internal fun RemoteTerminalSecretDialog(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                SelectableOutlinedTextField(
+                OutlinedTextField(
                     value = passwordInput,
                     onValueChange = onPasswordInputChange,
                     label = {
@@ -66,7 +66,7 @@ internal fun RemoteTerminalSecretDialog(
                     visualTransformation = if (showPromptPassword) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
                         IconButton(onClick = onTogglePromptPassword) {
-                            FluentIcon(
+                            SharedIcon(
                                 if (showPromptPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                                 contentDescription = stringResource(
                                     if (showPromptPassword) R.string.remote_machine_hide_password

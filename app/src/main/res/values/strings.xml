@@ -86,6 +86,7 @@
     <string name="common_close">Close</string>
     <string name="common_clear">Clear</string>
     <string name="common_remove">Remove</string>
+    <string name="common_error">Error</string>
     <string name="common_retry">Retry</string>
     <string name="common_copy">Copy</string>
     <string name="common_name">Name</string>
@@ -220,6 +221,7 @@
     <string name="chat_context_window">Context window</string>
     <string name="chat_context_window_tokens">%1$s / %2$s tokens</string>
     <string name="chat_open_side_navigation">Open side navigation</string>
+    <string name="chat_open_app_menu">Open app menu</string>
     <string name="chat_error_other_conversation">A response is running in another conversation. Use Stop to cancel it.</string>
     <string name="chat_save_conversation_failed_prefix">Could not save conversation:</string>
     <string name="notification_generation_channel_name">AI Background Generation</string>
@@ -603,7 +605,6 @@
     <string name="code_block_include_undefined_hint">Apply the selected long-block display mode even when a code block has no language label.</string>
     <string name="code_block_extend">Extend</string>
     <string name="code_block_close">Close code block</string>
-    <string name="sheet_resize">Resize sheet</string>
     <string name="oauth_opening_browser">Opening sign-in…</string>
     <string name="oauth_browser_unavailable">Install Chrome or a browser with Custom Tabs support to sign in.</string>
     <string name="provider_multiple_accounts">Multiple Accounts</string>
@@ -719,6 +720,18 @@
     <string name="settings_dynamic_color">Dynamic color</string>
     <string name="settings_dynamic_color_description">Use colors from your wallpaper on Android 12 and later.</string>
     <string name="settings_color_palette">Color palette</string>
+    <string name="settings_customize_palette">Customize</string>
+    <string name="settings_customize_palette_help">Mix your own palette. Choose a role, drag on the color field or adjust HSV and HEX. Colors are tuned for contrast in Light and Dark mode.</string>
+    <string name="settings_palette_primary">Primary</string>
+    <string name="settings_palette_secondary">Secondary</string>
+    <string name="settings_palette_accent">Accent</string>
+    <string name="settings_palette_neutral">Neutral</string>
+    <string name="settings_palette_hue">Hue</string>
+    <string name="settings_palette_saturation">Saturation</string>
+    <string name="settings_palette_brightness">Brightness</string>
+    <string name="settings_palette_hex">HEX color (#RRGGBB)</string>
+    <string name="settings_palette_preview">Preview</string>
+    <string name="settings_palette_sample">Sample themed surface</string>
     <string name="settings_code_blocks">Code blocks</string>
     <string name="settings_text_appearance">Text appearance</string>
     <string name="settings_system_bars">Status bar</string>
@@ -1078,6 +1091,21 @@
     <string name="media_chain_endpoint" translatable="false">Endpoint URL or path</string>
     <string name="media_chain_endpoint_help">Provider-relative path or HTTP(S) URL. Supports {{model}} and previous step values.</string>
     <string name="media_chain_method" translatable="false">HTTP method</string>
+    <string name="media_chain_request_details">Request</string>
+    <string name="media_chain_advanced_request">Advanced request settings</string>
+    <string name="media_chain_advanced_request_help">Optional file transfer and MIME settings.</string>
+    <string name="media_chain_provider_auth_note">Provider authentication is added automatically. Add only extra headers.</string>
+    <string name="media_chain_add_header">Add header</string>
+    <string name="media_chain_header_name">Name</string>
+    <string name="media_chain_header_value">Value</string>
+    <string name="media_chain_header_empty">No extra headers. Tap + to add one.</string>
+    <string name="media_chain_header_invalid">Use a unique, valid HTTP header name and a single-line value.</string>
+    <string name="media_default_params_tip">Only the most useful options are enabled for AI by default. Turn on other options below when needed.</string>
+    <string name="media_default_base64_note">DALL·E image output defaults to Base64 JSON (b64_json), not a URL.</string>
+    <string name="media_default_video_options">Duration and framing use safe defaults; enable extra controls only when your video model supports them.</string>
+    <string name="video_option_duration">Duration (seconds)</string>
+    <string name="video_option_size">Video size</string>
+    <string name="video_option_resolution">Video resolution</string>
     <string name="media_chain_headers" translatable="false">Headers</string>
     <string name="media_chain_headers_editor" translatable="false">Headers JSON</string>
     <string name="media_chain_headers_json_invalid">Enter a valid JSON object with string header values.</string>
@@ -1215,6 +1243,9 @@
     <string name="chat_minimap_navigate">Conversation scrollbar. Drag to scroll through the conversation.</string>
     <string name="tool_agent_skills_search_title" translatable="false">Agent Skills Search</string>
     <string name="tool_agent_skills_search_description">Let the AI find and load skills on demand</string>
+    <string name="customization_title">Customization</string>
+    <string name="customization_description">Colors, component transparency, profile photo and backgrounds</string>
+    <string name="customization_backgrounds_title">Background images</string>
     <string name="user_profile_title">User Profile</string>
     <string name="user_profile_photo_options">Profile photo options</string>
     <string name="user_profile_photo_title">Profile Photo</string>
@@ -1226,6 +1257,7 @@
     <string name="user_profile_background_dialog">Dialog Background</string>
     <string name="user_profile_background_transparency">Background transparency</string>
     <string name="user_profile_background_transparency_reset">Reset background transparency to default</string>
+    <string name="user_profile_background_preview_sample">Sample content with background image</string>
     <string name="user_profile_background_options">%1$s options</string>
     <string name="user_profile_background_unavailable">%1$s (unavailable)</string>
     <string name="user_profile_image_error">Unable to use image</string>
@@ -1273,4 +1305,24 @@
     <string name="provider_custom_endpoints">Custom endpoints</string>
     <string name="provider_custom_endpoints_hint">Enter full URLs. Leave blank to use the default. Gemini generation URLs can use {model} and {method}.</string>
     <string name="provider_endpoints_invalid">Enter valid HTTP or HTTPS endpoint URLs.</string>
+    <string name="launcher_drag_test_title">Launcher drag test</string>
+    <string name="launcher_drag_test_help">Long-press to move tiles. Tap the folder to open it; drag out of its panel to move to the workspace. Hold over the folder to move a tile inside.</string>
+    <string name="launcher_drag_test_workspace">Workspace / Folder</string>
+    <string name="launcher_drag_test_initial">Long-press and drag a tile</string>
+    <string name="launcher_drag_test_reset">Reset</string>
+    <string name="launcher_drag_test_cancel">Cancel</string>
+    <string name="launcher_drag_test_reset_result">Layout reset</string>
+    <string name="launcher_drag_test_cancelled">Cancelled / rejected: layout restored</string>
+    <string name="launcher_drag_test_dropped">Dropped on %1$s</string>
+    <string name="launcher_drag_test_dragging">Dragging %1$s from %2$s</string>
+    <string name="launcher_drag_test_status">Source: %1$s · Target: %2$s</string>
+    <string name="launcher_drag_test_none">none</string>
+    <string name="launcher_drag_test_folder_alpha">Folder Alpha</string>
+    <string name="launcher_drag_test_folder">Folder</string>
+    <string name="launcher_drag_test_close">Close</string>
+    <string name="customization_input_title">Input area</string>
+    <string name="customization_input_transparency">Background transparency</string>
+    <string name="customization_input_blur">Background blur</string>
+    <string name="customization_input_blur_description">Blur the chat behind the input area on Android 12 and later. Text and buttons stay sharp.</string>
+    <string name="settings_website">Website</string>
 </resources>

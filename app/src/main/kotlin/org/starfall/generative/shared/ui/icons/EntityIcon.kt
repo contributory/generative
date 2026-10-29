@@ -86,13 +86,13 @@ fun EntityIcon(
                     // Wait for the first lookup so a folder logo never flashes the substitute first.
                     if (resolved) fallbackContent()
                 } else when (val fallbackIcon = fallback) {
-                    is ImageVector -> FluentIcon(
+                    is ImageVector -> SharedIcon(
                         imageVector = fallbackIcon,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.fillMaxSize().padding(9.dp)
                     )
-                    is Int -> FluentIcon(
+                    is Int -> SharedIcon(
                         imageVector = fallbackIcon,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
@@ -181,7 +181,7 @@ fun IconPickerRow(
                 contentColor = MaterialTheme.colorScheme.onSurface,
                 border = prominentContainerBorder()
             ) {
-                FluentIcon(
+                SharedIcon(
                     Icons.Outlined.AddPhotoAlternate,
                     contentDescription = context.getString(R.string.entity_icon),
                     modifier = Modifier.padding(3.dp).size(14.dp)
@@ -208,7 +208,7 @@ fun IconPickerRow(
         }
         if (image != null) {
             IconButton(enabled = !busy, onClick = { error = null; onChange(null) }) {
-                FluentIcon(Icons.Outlined.Close, contentDescription = context.getString(R.string.common_remove))
+                SharedIcon(Icons.Outlined.Close, contentDescription = context.getString(R.string.common_remove))
             }
         }
     }

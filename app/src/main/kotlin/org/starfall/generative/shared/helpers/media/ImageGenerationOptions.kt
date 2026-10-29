@@ -107,6 +107,22 @@ fun imageOptionFields(type: ModelApiType, model: String): List<ImageOptionField>
 fun JsonObject.optionAt(path: String): JsonElement? =
     path.split('.').fold(this as JsonElement?) { node, key -> (node as? JsonObject)?.get(key) }
 
+/** Width / height for the image placeholder. Pixel sizes and image aspect-ratio options
+ * describe its shape; resolution-only values such as "2K" do not. */
+fun imagePreviewAspectRatio(options: JsonObject): Float? {
+    val dimensions = Regex("""^(\d+)\s*[xX×:]\s*(\d+)$""")
+    return listOf("size", "parameters.aspectRatio", "generationConfig.imageConfig.aspectRatio", "aspect_ratio", "aspectRatio")
+        .firstNotNullOfOrNull { path ->
+            val value = ((options.optionAt(path) ?: options[path]) as? JsonPrimitive)?.content
+                ?: return@firstNotNullOfOrNull null
+            val match = dimensions.matchEntire(value.trim()) ?: return@firstNotNullOfOrNull null
+            val width = match.groupValues[1].toDoubleOrNull() ?: return@firstNotNullOfOrNull null
+            val height = match.groupValues[2].toDoubleOrNull() ?: return@firstNotNullOfOrNull null
+            (width / height).takeIf { width > 0 && height > 0 && it.isFinite() }
+                ?.toFloat()?.takeIf { it.isFinite() && it > 0f }
+        }
+}
+
 fun JsonObject.withOption(path: String, value: JsonElement?): JsonObject {
     val key = path.substringBefore('.')
     val updated = if ('.' in path) ((this[key] as? JsonObject) ?: obj()).withOption(path.substringAfter('.'), value).takeIf { it.isNotEmpty() } else value
@@ -154,10 +170,23 @@ fun validateImageOptions(type: ModelApiType, model: String, options: JsonObject)
     }
 }
 
+/** DALL·E accepts response_format; newer GPT image models always return base64 and reject that key. */
+fun isDalleImageModel(type: ModelApiType, model: String): Boolean =
+    type.isOpenAi && model.startsWith("dall-e-", ignoreCase = true)
+
+/** Minimal initial values for a new Default profile; never replace existing user settings. */
+fun suggestedImageOptions(type: ModelApiType, model: String): JsonObject = when {
+    isDalleImageModel(type, model) -> obj("n" to JsonPrimitive(1), "response_format" to str("b64_json"))
+    type.isOpenAi -> obj("n" to JsonPrimitive(1))
+    type == ModelApiType.GOOGLE && model.contains("imagen", true) ->
+        obj("parameters" to obj("sampleCount" to JsonPrimitive(1)))
+    else -> obj()
+}
+
 internal fun imageGenerationRequest(type: ModelApiType, model: String, prompt: String, options: JsonObject): JsonObject {
     validateImageOptions(type, model, options)
     return when (type) {
-        ModelApiType.OPENAI, ModelApiType.OPENAI_RESPONSES -> JsonObject(mergeImageOptions(obj("n" to JsonPrimitive(1)), options) +
+        ModelApiType.OPENAI, ModelApiType.OPENAI_RESPONSES -> JsonObject(mergeImageOptions(suggestedImageOptions(type, model), options) +
             mapOf("model" to str(model), "prompt" to str(prompt)))
         ModelApiType.GOOGLE -> if (model.contains("imagen", true)) {
             val defaults = obj("parameters" to obj("sampleCount" to JsonPrimitive(1)))

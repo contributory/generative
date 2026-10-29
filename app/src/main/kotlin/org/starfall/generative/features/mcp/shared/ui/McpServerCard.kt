@@ -18,9 +18,9 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.isWebSearchProvider
 import org.starfall.generative.shared.model.ToolSettings
-import org.starfall.generative.shared.ui.lists.AppListItem
+import org.starfall.generative.shared.ui.lists.ItemCard
 import org.starfall.generative.shared.ui.icons.EntityIcon
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.ItemContextMenu
 import org.starfall.generative.shared.ui.icons.providerInitials
@@ -30,7 +30,7 @@ fun McpUnifiedCard(server: McpInfo, isGrid: Boolean, modifier: Modifier = Modifi
     loading: Boolean, isEnabled: Boolean, onToggleEnabled: () -> Unit,
     onToolErrorClick: (String) -> Unit, onEdit: () -> Unit, onDelete: () -> Unit,
     managedSettings: ToolSettings = ToolSettings()) {
-    AppListItem(
+    ItemCard(
         isGrid = isGrid,
         onClick = onEdit,
         modifier = modifier,
@@ -58,7 +58,7 @@ fun McpUnifiedCard(server: McpInfo, isGrid: Boolean, modifier: Modifier = Modifi
                         toolError != null -> Row(Modifier.clip(RoundedCornerShape(6.dp))
                             .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)).clickable { onToolErrorClick(toolError) }
                             .padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                            FluentIcon(Icons.Outlined.ErrorOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(12.dp))
+                            SharedIcon(Icons.Outlined.ErrorOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(12.dp))
                             Spacer(Modifier.width(4.dp))
                             Text(stringResource(R.string.mcp_error_details), style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                                 color = MaterialTheme.colorScheme.error)

@@ -12,9 +12,14 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
+import org.starfall.generative.shared.ui.text.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import com.mohamedrejeb.compose.dnd.DragAndDropContainer
+import com.mohamedrejeb.compose.dnd.rememberDragAndDropState
+import com.mohamedrejeb.compose.dnd.annotation.ExperimentalDndApi
+import com.mohamedrejeb.compose.dnd.reorder.ReorderableItem
+import com.mohamedrejeb.compose.dnd.scroll.dragAutoScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,9 +28,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyGridState
-import sh.calvin.reorderable.ScrollMoveMode
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import java.util.UUID
 import org.starfall.generative.features.mcp.shared.ui.McpUnifiedCard
@@ -34,15 +36,15 @@ import org.starfall.generative.shared.model.McpProtocol
 import org.starfall.generative.shared.model.ToolDefinition
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.mcpServerEnabled
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import org.starfall.generative.shared.ui.lists.ListViewToggle
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalDndApi::class)
 @Composable
 fun ServerListScreen(
     mcpServers: List<McpInfo>, isGridView: Boolean = false, onToggleGridView: ((Boolean) -> Unit)? = null,
@@ -65,38 +67,40 @@ fun ServerListScreen(
                     Text(stringResource(R.string.mcp_servers_title), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
                     Text(stringResource(R.string.mcp_servers_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                 }
-            }, navigationIcon = { IconButton(onClick = onBack) { FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
+            }, navigationIcon = { IconButton(onClick = onBack) { SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                 actions = {
                     ListViewToggle(isGridView) { onToggleGridView?.invoke(!isGridView) }
                     IconButton(onClick = {
                         onOpenEditor(McpInfo(id = UUID.randomUUID().toString(), name = "", protocol = McpProtocol.STREAMABLE_HTTP,
                             url = null, headers = emptyMap()), true)
-                    }) { FluentIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
+                    }) { SharedIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
                 })
         }) { padding ->
             Box(Modifier.fillMaxSize()) {
                 if (mcpServers.isEmpty()) Box(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        FluentIcon(Icons.Outlined.Extension, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(48.dp))
+                        SharedIcon(Icons.Outlined.Extension, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(48.dp))
                         Spacer(Modifier.height(12.dp))
                         Text(stringResource(R.string.no_mcp_servers), style = MaterialTheme.typography.titleMedium)
                         Text(stringResource(R.string.no_mcp_servers_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                     }
                 } else FadeGridListContent(isGrid = isGridView, modifier = Modifier.fillMaxSize()) { gridMode ->
                     val gridState = rememberLazyGridState()
-                    val reorderState = rememberReorderableLazyGridState(gridState, scrollMoveMode = ScrollMoveMode.INSERT) { from, to ->
-                        orderedServers = orderedServers.moved(from.index, to.index)
-                    }
+                    val dndState = rememberDragAndDropState<String>(dragAfterLongPress = true)
+                    DragAndDropContainer(state = dndState, modifier = Modifier.fillMaxSize()) {
                     LazyVerticalGrid(state = gridState, columns = GridCells.Fixed(if (gridMode) 2 else 1),
                         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
-                        modifier = Modifier.fillMaxSize()) {
+                        modifier = Modifier.fillMaxSize().dragAutoScroll(state = dndState, lazyGridState = gridState)) {
                         itemsIndexed(orderedServers, key = { _, item -> item.id }) { _, server ->
-                            ReorderableItem(reorderState, key = server.id) { _ ->
+                            ReorderableItem(modifier = Modifier.animateItem(), state = dndState, key = server.id, data = server.id,
+                                onDragEnter = { dragged ->
+                                    val from = orderedServers.indexOfFirst { it.id == dragged.data }
+                                    val to = orderedServers.indexOfFirst { it.id == server.id }
+                                    if (from >= 0 && to >= 0 && from != to) orderedServers = orderedServers.moved(from, to)
+                                }, onDragEnd = { onReorderMcpServers(orderedServers.map { it.id }) }) {
                                 McpUnifiedCard(server = server, isGrid = gridMode,
-                                    modifier = Modifier.longPressDraggableHandle(
-                                        onDragStopped = { onReorderMcpServers(orderedServers.map { it.id }) }
-                                    ),
+                                    modifier = Modifier,
                                     toolCount = (toolsCache[server.id] ?: server.cachedTools)?.size, toolError = toolErrors[server.id], loading = server.id in toolsLoading,
                                     isEnabled = mcpServerEnabled(toolSettings, server.id),
                                     onToggleEnabled = { onSetMcpEnabled(server.id, !mcpServerEnabled(toolSettings, server.id)) },
@@ -105,6 +109,7 @@ fun ServerListScreen(
                                     onEdit = { onOpenEditor(server, false) }, onDelete = { deletingServerId = server.id })
                             }
                         }
+                    }
                     }
                 }
             }

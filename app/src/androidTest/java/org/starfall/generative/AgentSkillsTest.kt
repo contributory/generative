@@ -1,5 +1,7 @@
 package org.starfall.generative
 
+import org.starfall.generative.features.home.BottomSheetsLinkState
+
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
@@ -166,6 +168,7 @@ Write clearly.
                     isGenerating = false,
                     onSendMessage = { _, _ -> true },
                     onSendMedia = { false },
+                    bottomSheets = BottomSheetsLinkState(),
                     onEditMessage = { _, _, _ -> false },
                     editDraft = null,
                     onCancelEdit = {},
@@ -208,6 +211,7 @@ Write clearly.
                         true
                     },
                     onSendMedia = { false },
+                    bottomSheets = BottomSheetsLinkState(),
                     onEditMessage = { _, _, _ -> false },
                     editDraft = null,
                     onCancelEdit = {},
@@ -243,6 +247,7 @@ Write clearly.
                     isGenerating = false,
                     onSendMessage = { _, _ -> true },
                     onSendMedia = { false },
+                    bottomSheets = BottomSheetsLinkState(),
                     onEditMessage = { _, _, _ -> false },
                     editDraft = null,
                     onCancelEdit = {},

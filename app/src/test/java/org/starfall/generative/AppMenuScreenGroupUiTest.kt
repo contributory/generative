@@ -41,8 +41,8 @@ import org.starfall.generative.features.menu.ui.GroupInnerCorner
 import org.starfall.generative.features.menu.ui.GroupMiddleShape
 import org.starfall.generative.features.menu.ui.GroupOuterCorner
 import org.starfall.generative.features.menu.ui.GroupTopShape
-import org.starfall.generative.features.menu.ui.featureButtonBorder
-import org.starfall.generative.features.menu.ui.featureButtonContainerColor
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.theme.GenerativeTheme
 import org.starfall.generative.shared.theme.ThemePresets
 
@@ -152,8 +152,8 @@ class AppMenuScreenGroupUiTest {
                 colorSchemeName = presetName
             ) {
                 screenBackground = MaterialTheme.colorScheme.background
-                buttonColor = featureButtonContainerColor()
-                buttonBorder = featureButtonBorder()
+                buttonColor = prominentContainerColor()
+                buttonBorder = prominentContainerBorder(1.5.dp)
                 expectedOutlineVariant = MaterialTheme.colorScheme.outlineVariant
                 AppMenuScreen()
             }

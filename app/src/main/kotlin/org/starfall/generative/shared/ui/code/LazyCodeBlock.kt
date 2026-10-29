@@ -38,7 +38,7 @@ import org.starfall.generative.shared.code.highlightedCode
 import org.starfall.generative.shared.storage.preferences.WordWrapMode
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.LoadingIndicator
 
 /**
  * Code surface for texts that may be huge: only the chunks on screen are composed (and highlighted).
@@ -87,7 +87,7 @@ internal fun LazyCodeBlock(
             val chunks = starts
             if (chunks == null) {
                 Box(Modifier.fillMaxWidth().height(56.dp), contentAlignment = Alignment.Center) {
-                    GenerativeLoadingIndicator(Modifier.size(24.dp))
+                    LoadingIndicator(Modifier.size(24.dp))
                 }
             } else {
                 BoxWithConstraints(Modifier.fillMaxWidth()) {

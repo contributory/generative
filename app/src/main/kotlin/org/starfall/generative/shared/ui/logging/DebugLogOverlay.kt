@@ -33,7 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import kotlin.math.roundToInt
 
@@ -88,7 +88,7 @@ fun DebugLogOverlay(modifier: Modifier = Modifier) {
             shadowElevation = 6.dp
         ) {
             Box(contentAlignment = Alignment.Center) {
-                FluentIcon(Icons.Outlined.Code, stringResource(R.string.debug_log_toggle), Modifier.size(24.dp))
+                SharedIcon(Icons.Outlined.Code, stringResource(R.string.debug_log_toggle), Modifier.size(24.dp))
             }
         }
     }

@@ -1,7 +1,7 @@
 package org.starfall.generative.navigation
 
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.LoadingIndicator
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
@@ -16,7 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 
@@ -66,7 +66,7 @@ internal fun <T : Any> TargetedEditorContent(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     }
                 }
             )
@@ -79,7 +79,7 @@ internal fun <T : Any> TargetedEditorContent(
         ) {
             val error = failure
             if (error == null) {
-                GenerativeLoadingIndicator()
+                LoadingIndicator()
                 Text(loadingMessage, textAlign = TextAlign.Center)
             } else {
                 Text(stringResource(R.string.editor_open_failed), style = MaterialTheme.typography.titleMedium)

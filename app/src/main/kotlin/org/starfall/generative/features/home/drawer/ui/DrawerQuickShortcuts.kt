@@ -1,6 +1,6 @@
 package org.starfall.generative.features.home.drawer.ui
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -47,13 +47,13 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.remoteMachineEnabled
 import org.starfall.generative.shared.ui.LocalToolControls
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.machines.MachineToolsDialog
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 
 /**
  * Single combined card at the top of the left drawer.
@@ -111,7 +111,7 @@ internal fun DrawerQuickShortcuts(
                     modifier = Modifier.size(42.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        FluentIcon(
+                        SharedIcon(
                             imageVector = FluentUi.Regular.Desktop,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -141,7 +141,7 @@ internal fun DrawerQuickShortcuts(
                     onClick = onOpenRemoteMachines,
                     modifier = Modifier.size(36.dp)
                 ) {
-                    FluentIcon(
+                    SharedIcon(
                         imageVector = FluentUi.Regular.Settings,
                         contentDescription = stringResource(
                             R.string.tool_settings_accessibility,
@@ -155,7 +155,7 @@ internal fun DrawerQuickShortcuts(
                     onClick = { expanded = !expanded },
                     modifier = Modifier.size(36.dp)
                 ) {
-                    FluentIcon(
+                    SharedIcon(
                         imageVector = if (expanded) FluentUi.Regular.ChevronUp else FluentUi.Regular.ChevronDown,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -208,7 +208,7 @@ internal fun DrawerQuickShortcuts(
                                             .testTag("drawer_machine_row_${machine.id}"),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        FluentIcon(
+                                        SharedIcon(
                                             imageVector = icon,
                                             contentDescription = null,
                                             modifier = Modifier.size(20.dp),
@@ -232,7 +232,7 @@ internal fun DrawerQuickShortcuts(
                                                 modifier = Modifier.size(36.dp)
                                                     .testTag("drawer_machine_options_${machine.id}")
                                             ) {
-                                                FluentIcon(
+                                                SharedIcon(
                                                     Icons.Default.MoreVert,
                                                     stringResource(R.string.common_more_options),
                                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -248,7 +248,7 @@ internal fun DrawerQuickShortcuts(
                                                 )
                                                 DropdownMenuItem(
                                                     text = { Text(toggleLabel) },
-                                                    leadingIcon = { FluentIcon(icon, null) },
+                                                    leadingIcon = { SharedIcon(icon, null) },
                                                     trailingIcon = {
                                                         Switch(
                                                             checked = checked,
@@ -261,7 +261,7 @@ internal fun DrawerQuickShortcuts(
                                                 )
                                                 DropdownMenuItem(
                                                     text = { Text(stringResource(R.string.remote_machine_open_terminal)) },
-                                                    leadingIcon = { FluentIcon(Icons.Outlined.Terminal, null) },
+                                                    leadingIcon = { SharedIcon(Icons.Outlined.Terminal, null) },
                                                     onClick = {
                                                         menuExpanded = false
                                                         onOpenTerminal(machine)
@@ -269,7 +269,7 @@ internal fun DrawerQuickShortcuts(
                                                 )
                                                 DropdownMenuItem(
                                                     text = { Text(stringResource(R.string.common_tools)) },
-                                                    leadingIcon = { FluentIcon(FluentUi.Regular.WrenchScrewdriver, null) },
+                                                    leadingIcon = { SharedIcon(FluentUi.Regular.WrenchScrewdriver, null) },
                                                     onClick = {
                                                         menuExpanded = false
                                                         toolsMachine = machine
@@ -277,7 +277,7 @@ internal fun DrawerQuickShortcuts(
                                                 )
                                                 DropdownMenuItem(
                                                     text = { Text(stringResource(R.string.common_edit)) },
-                                                    leadingIcon = { FluentIcon(FluentUi.Regular.Edit, null) },
+                                                    leadingIcon = { SharedIcon(FluentUi.Regular.Edit, null) },
                                                     onClick = {
                                                         menuExpanded = false
                                                         onEditRemoteMachine(machine)
@@ -313,7 +313,7 @@ internal fun DrawerQuickShortcuts(
                     modifier = Modifier.size(42.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        FluentIcon(
+                        SharedIcon(
                             imageVector = FluentUi.Regular.FolderOpen,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -340,7 +340,7 @@ internal fun DrawerQuickShortcuts(
                     )
                 }
                 Spacer(Modifier.width(8.dp))
-                FluentIcon(
+                SharedIcon(
                     imageVector = FluentUi.Regular.ChevronRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,

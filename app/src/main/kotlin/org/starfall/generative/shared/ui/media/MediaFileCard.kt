@@ -22,13 +22,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.media.ChatFilePreview
 import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 import org.starfall.generative.shared.ui.media.MediaContent
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.windowHeightIn
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.shared.ui.media.isPreviewableMedia
 import org.starfall.generative.shared.ui.media.mediaMimeType
 import org.starfall.generative.shared.ui.media.mediaThumbnail
@@ -67,12 +67,13 @@ fun MediaFileCard(
     imageOnly: Boolean = false,
     selectedForChat: Boolean = false,
     onToggleChatImage: ((String) -> Unit)? = null,
-    playVideoInline: Boolean = true
+    playVideoInline: Boolean = true,
+    overlayActive: Boolean = true
 ) {
     val context = LocalContext.current
     val revision by ToolFiles.revision.collectAsStateWithLifecycle()
     val file = remember(name, revision) { store.resolve(name) }
-    var view by remember(name) { mutableStateOf(false) }
+    var view by remember(name, overlayActive) { mutableStateOf(false) }
     var bitmap by remember(name) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
     var loaded by remember(name) { mutableStateOf(false) }
     LaunchedEffect(name, revision) {
@@ -83,12 +84,13 @@ fun MediaFileCard(
     if (file != null) Column {
         ChatFilePreview(file.path, name, file.mime(), bitmap, !loaded,
             selectedForChat = selectedForChat, onToggleAttachment = onToggleChatImage,
-            playVideoInline = playVideoInline, onOpen = { view = true })
+            playVideoInline = playVideoInline && overlayActive,
+            overlayActive = overlayActive, onOpen = { if (overlayActive) view = true })
         if (!imageOnly) Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     } else Text(stringResource(R.string.file_deleted), style = MaterialTheme.typography.bodySmall)
-    if (view && file != null) MediaViewer(store, file) { view = false }
+    if (overlayActive && view && file != null) MediaViewer(store, file) { view = false }
 }
 
 @Composable
@@ -197,7 +199,7 @@ internal fun MediaViewer(store: ToolFiles, file: File, onDismiss: () -> Unit) {
                                     color = androidx.compose.ui.graphics.Color.White
                                 )
                             } ?: Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                                GenerativeLoadingIndicator()
+                                LoadingIndicator()
                             }
                             else -> Text(
                                 stringResource(R.string.media_preview_unsupported),

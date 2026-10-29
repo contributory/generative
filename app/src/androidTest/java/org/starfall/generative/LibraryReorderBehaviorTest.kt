@@ -28,8 +28,10 @@ class LibraryReorderBehaviorTest {
         val source = compose.onNodeWithText("First")
         val from = source.fetchSemanticsNode().boundsInRoot
         val to = compose.onNodeWithText("Third").fetchSemanticsNode().boundsInRoot
-        source.performTouchInput {
-            down(center)
+        val root = compose.onRoot()
+        val origin = root.fetchSemanticsNode().boundsInRoot.topLeft
+        root.performTouchInput {
+            down(from.center - origin)
             advanceEventTime(650)
             moveBy(Offset(0f, to.center.y - from.center.y), delayMillis = 200)
         }
@@ -38,7 +40,7 @@ class LibraryReorderBehaviorTest {
             assertEquals("First", order.value.last())
             assertTrue(saved.isEmpty())
         }
-        source.performTouchInput { up() }
+        root.performTouchInput { up() }
         compose.waitForIdle()
         compose.runOnIdle { assertEquals(listOf(order.value), saved) }
     }

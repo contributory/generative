@@ -7,7 +7,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -216,7 +216,7 @@ class ModelPickerToggleTest {
             }
         }
         compose.waitForIdle()
-        val sheetHeight = compose.onNodeWithTag("bottom-sheet-window").getUnclippedBoundsInRoot().height.value
+        val sheetHeight = compose.onNodeWithTag("bottom-sheet-window").getUnclippedBoundsInRoot().let { (it.bottom - it.top).value }
         val screenHeight = compose.activity.resources.configuration.screenHeightDp.toFloat()
         assertTrue("Short model lists must not force the sheet to full height", sheetHeight < screenHeight * 0.85f)
         compose.onNodeWithTag("model-picker-toolbar").assertIsDisplayed()

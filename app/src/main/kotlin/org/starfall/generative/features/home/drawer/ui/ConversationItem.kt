@@ -2,7 +2,7 @@
 
 package org.starfall.generative.features.home.drawer.ui
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
@@ -38,9 +38,9 @@ import org.starfall.generative.features.home.drawer.logic.ConversationModelIcon
 import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.icons.EntityIcon
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.model.modelInitial
 
 @Composable
@@ -81,14 +81,14 @@ internal fun ConversationItem(
                 Text(chat.title.ifBlank { stringResource(R.string.conversation_untitled) }, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
                 Text(formatTimestamp(chat.updatedAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             }
-            if (pinned) FluentIcon(Icons.Default.PushPin, stringResource(R.string.conversation_pinned), Modifier.padding(end = 10.dp).size(14.dp))
+            if (pinned) SharedIcon(Icons.Default.PushPin, stringResource(R.string.conversation_pinned), Modifier.padding(end = 10.dp).size(14.dp))
             if (!selecting) {
                 DropdownMenu(expanded = menu, onDismissRequest = onContextMenuDismiss) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_select)) }, leadingIcon = { FluentIcon(Icons.Outlined.CheckCircle, null) }, onClick = onSelect)
-                    DropdownMenuItem(text = { Text(stringResource(if (pinned) R.string.sidebar_unpin else R.string.sidebar_pin)) }, leadingIcon = { FluentIcon(Icons.Outlined.PushPin, null) }, onClick = { onContextMenuDismiss(); onPin() })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_move_to_folder)) }, leadingIcon = { FluentIcon(Icons.Outlined.Folder, null) }, onClick = { onContextMenuDismiss(); onMove() })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_rename)) }, leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) }, onClick = { onContextMenuDismiss(); onRename() })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) }, leadingIcon = { FluentIcon(Icons.Outlined.Delete, null) }, onClick = { onContextMenuDismiss(); onDelete() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_select)) }, leadingIcon = { SharedIcon(Icons.Outlined.CheckCircle, null) }, onClick = onSelect)
+                    DropdownMenuItem(text = { Text(stringResource(if (pinned) R.string.sidebar_unpin else R.string.sidebar_pin)) }, leadingIcon = { SharedIcon(Icons.Outlined.PushPin, null) }, onClick = { onContextMenuDismiss(); onPin() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_move_to_folder)) }, leadingIcon = { SharedIcon(Icons.Outlined.Folder, null) }, onClick = { onContextMenuDismiss(); onMove() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_rename)) }, leadingIcon = { SharedIcon(Icons.Outlined.Edit, null) }, onClick = { onContextMenuDismiss(); onRename() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) }, leadingIcon = { SharedIcon(Icons.Outlined.Delete, null) }, onClick = { onContextMenuDismiss(); onDelete() })
                 }
             }
         }

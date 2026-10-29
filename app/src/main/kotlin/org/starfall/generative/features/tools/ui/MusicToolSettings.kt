@@ -9,11 +9,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.SystemToolConfig
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem
+import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 
 /** Profile selection belongs to this tool, independent of every Provider/model. */
 @Composable
@@ -31,17 +31,17 @@ internal fun MusicToolSettings(config: SystemToolConfig, onChange: (SystemToolCo
             Box(Modifier.weight(1f)) {
                 OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth().testTag("music-profile-picker")) {
                     Text(config.musicRequestProfiles[config.activeMusicRequestProfileId]?.name ?: stringResource(R.string.music_select_profile), Modifier.weight(1f))
-                    FluentIcon(Icons.Default.KeyboardArrowDown, null)
+                    SharedIcon(Icons.Default.KeyboardArrowDown, null)
                 }
-                AppDropdownMenu(expanded, { expanded = false }) {
+                DropdownMenu(expanded, { expanded = false }) {
                     config.profiles(org.starfall.generative.shared.model.media.MediaKind.MUSIC).values.forEach { profile ->
-                        RoundedDropdownMenuItem(text = { Text(profile.name) }, onClick = {
+                        DropdownMenuItem(text = { Text(profile.name) }, onClick = {
                             expanded = false; onChange(config.copy(activeMusicRequestProfileId = profile.id))
                         })
                     }
                 }
             }
-            IconButton(onClick = onOpenProfiles) { FluentIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.music_profiles)) }
+            IconButton(onClick = onOpenProfiles) { SharedIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.music_profiles)) }
         }
     }
 }

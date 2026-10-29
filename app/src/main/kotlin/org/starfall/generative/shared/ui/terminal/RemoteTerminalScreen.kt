@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -81,12 +80,13 @@ import org.starfall.generative.shared.terminal.RemoteTerminalBridge
 import org.starfall.generative.shared.terminal.RemoteTerminalView
 import org.starfall.generative.shared.terminal.RemoteTerminalSessions
 import org.starfall.generative.shared.terminal.TerminalSlot
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
-import org.starfall.generative.shared.ui.GenerativeLoadingIndicator
+import org.starfall.generative.shared.ui.LoadingIndicator
+import org.starfall.generative.shared.ui.ErrorContainer
 
 @Composable
 internal fun RemoteTerminalScreen(
@@ -360,7 +360,7 @@ internal fun RemoteTerminalScreen(
                                     Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    GenerativeLoadingIndicator(Modifier.size(18.dp))
+                                    LoadingIndicator(Modifier.size(18.dp))
                                     Spacer(Modifier.width(10.dp))
                                     Text(stringResource(R.string.remote_machine_terminal_connecting))
                                 }
@@ -372,7 +372,7 @@ internal fun RemoteTerminalScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                FluentIcon(
+                                SharedIcon(
                                     Icons.Outlined.Terminal, null,
                                     tint = terminalForeground.copy(alpha = 0.55f),
                                     modifier = Modifier.size(48.dp)
@@ -388,38 +388,19 @@ internal fun RemoteTerminalScreen(
                                     color = terminalForeground.copy(alpha = 0.65f)
                                 )
                                 FilledTonalButton(onClick = { openTerminal() }) {
-                                    FluentIcon(Icons.Default.Add, null, Modifier.size(18.dp))
+                                    SharedIcon(Icons.Default.Add, null, Modifier.size(18.dp))
                                     Spacer(Modifier.width(6.dp))
                                     Text(stringResource(R.string.remote_machine_terminal_add))
                                 }
                             }
                         }
                         if (!connecting && error != null && secretRequest == null) {
-                            Surface(
-                                Modifier.align(Alignment.Center).padding(16.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                color = MaterialTheme.colorScheme.errorContainer
-                            ) {
-                                Column(
-                                    Modifier.padding(20.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Text(
-                                        stringResource(R.string.remote_machine_terminal_connection_error),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                    Text(
-                                        error.orEmpty(),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                    Button(onClick = { openTerminal() }) {
-                                        Text(stringResource(R.string.common_retry))
-                                    }
-                                }
-                            }
+                            ErrorContainer(
+                                message = error.orEmpty(),
+                                title = stringResource(R.string.remote_machine_terminal_connection_error),
+                                onRetry = { openTerminal() },
+                                modifier = Modifier.align(Alignment.Center).padding(16.dp)
+                            )
                         }
                     }
                     if (activeBridge != null) TerminalExtraKeys(activeBridge)

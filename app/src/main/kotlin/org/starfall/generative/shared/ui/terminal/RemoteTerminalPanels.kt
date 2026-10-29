@@ -47,7 +47,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.terminal.RemoteTerminalBridge
 import org.starfall.generative.shared.terminal.TerminalSlot
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.theme.LocalAmoledMode
 
@@ -90,7 +90,7 @@ internal fun TerminalSessionsSideBar(
                     )
                 }
                 IconButton(enabled = !connecting, onClick = onNew) {
-                    FluentIcon(Icons.Default.Add, stringResource(R.string.remote_machine_terminal_add))
+                    SharedIcon(Icons.Default.Add, stringResource(R.string.remote_machine_terminal_add))
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -136,7 +136,7 @@ internal fun TerminalSessionsSideBar(
                                 )
                             }
                             IconButton(onClick = { onClose(slot) }, modifier = Modifier.size(32.dp)) {
-                                FluentIcon(
+                                SharedIcon(
                                     Icons.Default.Close,
                                     stringResource(R.string.remote_machine_terminal_close_session),
                                     modifier = Modifier.size(16.dp)

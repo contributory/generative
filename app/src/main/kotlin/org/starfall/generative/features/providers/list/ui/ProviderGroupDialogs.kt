@@ -1,8 +1,7 @@
 package org.starfall.generative.features.providers.list.ui
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import org.starfall.generative.features.providers.list.logic.*
-import org.starfall.generative.features.providers.list.model.*
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -22,13 +21,13 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.EntityIcon
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -43,7 +42,7 @@ internal fun ProviderGroupContextMenu(onEdit: () -> Unit, onDelete: () -> Unit, 
             onClick = { expanded = true },
             modifier = if (compact) Modifier.size(36.dp) else Modifier
         ) {
-            FluentIcon(
+            SharedIcon(
                 Icons.Default.MoreVert,
                 contentDescription = stringResource(R.string.common_more_options),
                 modifier = if (compact) Modifier.size(20.dp) else Modifier
@@ -52,13 +51,13 @@ internal fun ProviderGroupContextMenu(onEdit: () -> Unit, onDelete: () -> Unit, 
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.common_edit)) },
-                leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
+                leadingIcon = { SharedIcon(Icons.Outlined.Edit, contentDescription = null) },
                 onClick = { expanded = false; onEdit() }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.delete_group), color = MaterialTheme.colorScheme.error) },
                 leadingIcon = {
-                    FluentIcon(
+                    SharedIcon(
                         Icons.Outlined.Delete,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error
@@ -94,7 +93,7 @@ internal fun ProviderGroupNameDialog(
                     onBusyChange = { iconImporting = it },
                     matchName = trimmed.ifBlank { name }
                 )
-                SelectableOutlinedTextField(
+                OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text(stringResource(R.string.provider_group_name)) },
@@ -199,7 +198,7 @@ private fun ProviderGroupChoiceCard(
                 modifier = Modifier.weight(1f)
             )
             if (selected) {
-                FluentIcon(
+                SharedIcon(
                     Icons.Default.Check,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary

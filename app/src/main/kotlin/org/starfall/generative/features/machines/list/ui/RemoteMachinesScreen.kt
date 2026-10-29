@@ -3,8 +3,8 @@
 package org.starfall.generative.features.machines.list.ui
 
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
+import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,7 +22,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.saveable.rememberSaveable
-import org.starfall.generative.shared.ui.lists.AppListItem
+import org.starfall.generative.shared.ui.lists.ItemCard
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import org.starfall.generative.shared.ui.lists.ListViewToggle
 import androidx.compose.material3.Button
@@ -55,8 +55,8 @@ import org.starfall.generative.features.machines.shared.ui.RemoteMachinesTopBar
 import org.starfall.generative.features.machines.shared.ui.RemoteStatusDot
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.machines.MachineToolsDialog
 
@@ -89,10 +89,10 @@ fun RemoteMachinesScreen(
                 actions = {
                     ListViewToggle(isGrid = isGrid, onToggle = { isGrid = !isGrid })
                     IconButton(onClick = { onOpenEditor(viewModel.newMachine(), true) }) {
-                        FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
+                        SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
                     }
                     IconButton(onClick = onOpenSettings) {
-                        FluentIcon(Icons.Outlined.Settings, stringResource(R.string.remote_machine_settings))
+                        SharedIcon(Icons.Outlined.Settings, stringResource(R.string.remote_machine_settings))
                     }
                 }
             )
@@ -105,7 +105,7 @@ fun RemoteMachinesScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    FluentIcon(Icons.Outlined.Computer, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(64.dp))
+                    SharedIcon(Icons.Outlined.Computer, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(64.dp))
                     Spacer(Modifier.height(16.dp))
                     Text(stringResource(R.string.remote_machine_empty), style = MaterialTheme.typography.titleMedium)
                     Text(
@@ -115,7 +115,7 @@ fun RemoteMachinesScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = { onOpenEditor(viewModel.newMachine(), true) }) {
-                        FluentIcon(Icons.Default.Add, null)
+                        SharedIcon(Icons.Default.Add, null)
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.common_add))
                     }
@@ -194,7 +194,7 @@ fun RemoteMachinesScreen(
     }
 
     deleting?.let { machine ->
-        AppAlertDialog(
+        AlertDialog(
             onDismissRequest = { deleting = null },
             title = { Text(stringResource(R.string.dialog_delete_machine_title)) },
             text = { Text(stringResource(R.string.remote_machine_delete_message, machine.name)) },
@@ -211,7 +211,7 @@ fun RemoteMachinesScreen(
     }
 
     ipUpdateNotice?.let { notice ->
-        AppAlertDialog(
+        AlertDialog(
             onDismissRequest = { ipUpdateNotice = null },
             title = { Text(stringResource(R.string.remote_machine_update_ip_title, notice.machineName)) },
             text = { Text(notice.message) },
@@ -240,7 +240,7 @@ private fun RemoteMachineCard(
 ) {
     var menu by remember { mutableStateOf(false) }
     val gcloud = machine.type == RemoteMachineType.GCLOUD_SHELL
-    AppListItem(
+    ItemCard(
         isGrid = isGrid,
         onClick = onEdit,
         icon = {
@@ -254,59 +254,59 @@ private fun RemoteMachineCard(
           Row(verticalAlignment = Alignment.CenterVertically) {
             if (connected && !isGrid) {
                 IconButton(onClick = onDisconnect) {
-                    FluentIcon(Icons.Outlined.LinkOff, stringResource(R.string.remote_machine_disconnect))
+                    SharedIcon(Icons.Outlined.LinkOff, stringResource(R.string.remote_machine_disconnect))
                 }
             }
             if (!isGrid) {
                 IconButton(onClick = onTerminal) {
-                    FluentIcon(Icons.Outlined.Terminal, stringResource(R.string.remote_machine_open_terminal))
+                    SharedIcon(Icons.Outlined.Terminal, stringResource(R.string.remote_machine_open_terminal))
                 }
             }
             Box {
                 IconButton(onClick = { menu = true }) {
-                    FluentIcon(Icons.Default.MoreVert, stringResource(R.string.common_more_options))
+                    SharedIcon(Icons.Default.MoreVert, stringResource(R.string.common_more_options))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     if (isGrid) DropdownMenuItem(
                         text = { Text(stringResource(R.string.remote_machine_open_terminal)) },
-                        leadingIcon = { FluentIcon(Icons.Outlined.Terminal, null) },
+                        leadingIcon = { SharedIcon(Icons.Outlined.Terminal, null) },
                         onClick = { menu = false; onTerminal() }
                     )
                     if (connected && isGrid) DropdownMenuItem(
                         text = { Text(stringResource(R.string.remote_machine_disconnect)) },
-                        leadingIcon = { FluentIcon(Icons.Outlined.LinkOff, null) },
+                        leadingIcon = { SharedIcon(Icons.Outlined.LinkOff, null) },
                         onClick = { menu = false; onDisconnect() }
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.remote_machine_start_port_forward)) },
-                        leadingIcon = { FluentIcon(Icons.Outlined.Hub, null) },
+                        leadingIcon = { SharedIcon(Icons.Outlined.Hub, null) },
                         onClick = { menu = false; onStartPortForward() }
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.remote_machine_tools_section)) },
-                        leadingIcon = { FluentIcon(Icons.Outlined.Build, null) },
+                        leadingIcon = { SharedIcon(Icons.Outlined.Build, null) },
                         onClick = { menu = false; onMachineTools() }
                     )
                     if (gcloud) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.remote_machine_update_ip)) },
-                            leadingIcon = { FluentIcon(Icons.Outlined.Refresh, null) },
+                            leadingIcon = { SharedIcon(Icons.Outlined.Refresh, null) },
                             onClick = { menu = false; onUpdateIp() }
                         )
                     }
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.common_files)) },
-                        leadingIcon = { FluentIcon(Icons.Outlined.Folder, null) },
+                        leadingIcon = { SharedIcon(Icons.Outlined.Folder, null) },
                         onClick = { menu = false; onFiles() }
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.common_edit)) },
-                        leadingIcon = { FluentIcon(Icons.Outlined.Edit, null) },
+                        leadingIcon = { SharedIcon(Icons.Outlined.Edit, null) },
                         onClick = { menu = false; onEdit() }
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
-                        leadingIcon = { FluentIcon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) },
+                        leadingIcon = { SharedIcon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) },
                         onClick = { menu = false; onDelete() }
                     )
                 }

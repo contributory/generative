@@ -2,7 +2,7 @@ package org.starfall.generative.features.tools.ui
 
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,12 +20,12 @@ import androidx.compose.ui.res.stringResource
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.networking.text
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog as AlertDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
-import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.model.media.ImageOptionField
 import org.starfall.generative.shared.helpers.media.imageOptionFields
 import org.starfall.generative.shared.helpers.media.validateImageOptions
@@ -59,7 +59,7 @@ fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave:
                 title = { Text(stringResource(if (video) R.string.tool_video_settings else R.string.tool_image_settings)) },
                 navigationIcon = {
                     IconButton(onClick = { back() }) {
-                        FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     }
                 },
                 actions = {
@@ -84,7 +84,7 @@ fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave:
             }
             item { ToolSwitch(stringResource(R.string.image_tool_advanced_json), advanced) { advanced = it } }
             if (advanced) item {
-                SelectableOutlinedTextField(
+                OutlinedTextField(
                     value = draft, onValueChange = { if (it.length <= 65536) draft = it },
                     label = { Text(stringResource(R.string.image_tool_additional_body)) },
                     supportingText = { Text(stringResource(R.string.image_tool_request_body_help)) },
@@ -139,7 +139,7 @@ internal fun ImageOptionInput(
         else -> false
     }
     Column {
-        SelectableOutlinedTextField(
+        OutlinedTextField(
             value = text,
             onValueChange = { input ->
                 text = input
@@ -162,7 +162,12 @@ internal fun ImageOptionInput(
                 DropdownMenuItem(text = { Text(stringResource(R.string.image_tool_provider_default)) }, onClick = { onChange(null); text = ""; choosing = false })
                 choices.forEach { choice ->
                     DropdownMenuItem(text = { Text(choice) }, onClick = {
-                        onChange(if (field.kind == "boolean") JsonPrimitive(choice.toBoolean()) else JsonPrimitive(choice))
+                        onChange(when (field.kind) {
+                            "boolean" -> JsonPrimitive(choice.toBoolean())
+                            "integer" -> JsonPrimitive(choice.toLong())
+                            "number" -> JsonPrimitive(choice.toDouble())
+                            else -> JsonPrimitive(choice)
+                        })
                         text = choice; choosing = false
                     })
                 }

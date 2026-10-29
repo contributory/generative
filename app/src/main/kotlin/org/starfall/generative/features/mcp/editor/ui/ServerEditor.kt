@@ -25,7 +25,7 @@ import org.starfall.generative.shared.model.McpToolParameterConfig
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.auth.bearerHeaderValue
 import org.starfall.generative.shared.model.isContentApiName
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 
@@ -92,7 +92,7 @@ fun ServerEditor(
                     Text(name.trim().ifEmpty { stringResource(R.string.common_name) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
                 navigationIcon = { IconButton(onClick = onDismiss) {
-                    FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                    SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                 } },
                 actions = { Button(onClick = { onSave(currentServer()) }, enabled = canSave && !iconImporting,
                     modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(R.string.common_save)) } }

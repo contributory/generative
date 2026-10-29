@@ -1,8 +1,7 @@
 package org.starfall.generative.features.providers.list.ui
 
-import org.starfall.generative.shared.ui.menus.AppDropdownMenu as DropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import org.starfall.generative.features.providers.list.logic.*
-import org.starfall.generative.features.providers.list.model.*
 
 import org.starfall.generative.features.providers.list.logic.ProviderRootItem
 
@@ -25,10 +24,10 @@ import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.icons.EntityIcon
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
-import org.starfall.generative.shared.ui.lists.AppListItem
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.lists.ItemCard
 import org.starfall.generative.shared.ui.icons.providerInitials
 
 private val ProviderListCardHeight = 88.dp
@@ -77,7 +76,7 @@ private fun ProviderGroupCollapsedCard(
     onOpen: () -> Unit
 ) {
     val height = if (isGrid) ProviderGridCardHeight else ProviderListCardHeight
-    AppListItem(
+    ItemCard(
         isGrid = isGrid,
         onClick = onOpen,
         modifier = modifier.height(height),
@@ -141,7 +140,7 @@ fun ProviderUnifiedCard(
     onMoveToGroup: () -> Unit,
     onDelete: () -> Unit
 ) {
-    AppListItem(
+    ItemCard(
         isGrid = isGrid,
         onClick = onEdit,
         modifier = modifier
@@ -191,22 +190,22 @@ private fun ProviderContextMenu(
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
-            FluentIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.common_more_options))
+            SharedIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.common_more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.common_edit)) },
-                leadingIcon = { FluentIcon(Icons.Outlined.Edit, contentDescription = null) },
+                leadingIcon = { SharedIcon(Icons.Outlined.Edit, contentDescription = null) },
                 onClick = { expanded = false; onEdit() }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.move_to_group)) },
-                leadingIcon = { FluentIcon(Icons.Outlined.Folder, contentDescription = null) },
+                leadingIcon = { SharedIcon(Icons.Outlined.Folder, contentDescription = null) },
                 onClick = { expanded = false; onMoveToGroup() }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
-                leadingIcon = { FluentIcon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                leadingIcon = { SharedIcon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                 onClick = { expanded = false; onDelete() }
             )
         }

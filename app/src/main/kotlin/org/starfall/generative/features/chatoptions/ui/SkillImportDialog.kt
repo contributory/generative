@@ -8,7 +8,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
+import org.starfall.generative.shared.ui.text.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,11 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 
 @Composable
@@ -36,7 +37,7 @@ internal fun SkillImportDialog(
     onDismiss: () -> Unit
 ) {
     var url by rememberSaveable { mutableStateOf("") }
-    AppAlertDialog(
+    AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
         title = { Text(stringResource(R.string.agent_skill_import)) },
         text = {
@@ -46,7 +47,7 @@ internal fun SkillImportDialog(
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth().testTag("agent_skill_import_file")
                 ) {
-                    FluentIcon(Icons.Outlined.FileOpen, contentDescription = null)
+                    SharedIcon(Icons.Outlined.FileOpen, contentDescription = null)
                     Text(stringResource(R.string.agent_skill_choose_file), Modifier.padding(start = 8.dp))
                 }
                 OutlinedTextField(
@@ -58,7 +59,7 @@ internal fun SkillImportDialog(
                     singleLine = true,
                     enabled = !busy,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
-                        autoCorrectEnabled = false)
+                        autoCorrectEnabled = false, keyboardType = KeyboardType.Password)
                 )
                 if (busy) CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
                 error?.let { Text(it, color = androidx.compose.material3.MaterialTheme.colorScheme.error) }
@@ -70,7 +71,7 @@ internal fun SkillImportDialog(
                 enabled = !busy && url.isNotBlank(),
                 modifier = Modifier.testTag("agent_skill_import_github")
             ) {
-                FluentIcon(Icons.Outlined.Download, contentDescription = null)
+                SharedIcon(Icons.Outlined.Download, contentDescription = null)
                 Text(stringResource(R.string.agent_skill_import_from_github), Modifier.padding(start = 8.dp))
             }
         },

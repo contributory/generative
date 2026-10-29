@@ -34,6 +34,7 @@ import org.starfall.generative.features.home.chat.ui.ChatMessageList
 import org.starfall.generative.features.home.chat.ui.ChatMessageListState
 import org.starfall.generative.features.home.chat.ui.ConversationMinimapSideBar
 import org.starfall.generative.features.home.chat.ui.ConversationMinimapSideBarState
+import org.starfall.generative.features.home.chat.ui.minimapEdgeSwipe
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
@@ -48,7 +49,7 @@ class ConversationMinimapSideBarTest {
             listOf(MessageVersion(content = "Message $it\n".repeat(20))))
     }
 
-    @Test fun scrollbarAppearsByItselfWhileScrollingAndFadesAfterIdle() {
+    @Test fun scrollingChatNeverOpensMinimap() {
         val list = LazyListState()
         val minimap = ConversationMinimapSideBarState()
         val messages = turns(20)
@@ -67,11 +68,53 @@ class ConversationMinimapSideBarTest {
         compose.mainClock.autoAdvance = false
         compose.runOnIdle { scope.launch { list.animateScrollBy(3000f) } }
         compose.mainClock.advanceTimeBy(100)
-        assertTrue("Scrolling shows the scrollbar", minimap.isOpen)
-        compose.onNodeWithTag("chat-minimap-thumb").assertExists()
-        compose.mainClock.advanceTimeBy(5_000)
-        assertFalse("Idle hides it again", minimap.isOpen)
+        assertTrue("The chat must scroll normally", list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0)
+        assertFalse("Scrolling must not open the minimap", minimap.isOpen)
         compose.onNodeWithTag("chat-minimap-thumb").assertDoesNotExist()
+        compose.mainClock.advanceTimeBy(5_000)
+        assertFalse(minimap.isOpen)
+        compose.onNodeWithTag("chat-minimap-thumb").assertDoesNotExist()
+    }
+
+    @Test fun onlyInwardSwipeStartingAtRightEdgeOpensMinimap() {
+        val list = LazyListState()
+        val minimap = ConversationMinimapSideBarState()
+        val messages = turns(20)
+        compose.setContent { MaterialTheme {
+            Box(Modifier.fillMaxSize().minimapEdgeSwipe(minimap).testTag("minimap-gesture-host")) {
+                LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
+                    items(messages, key = { it.id }) { Text(it.content, Modifier.fillMaxWidth().height(400.dp)) }
+                }
+                ConversationMinimapSideBar("chat", messages, list, 0, 0, {}, minimap)
+            }
+        } }
+        val host = compose.onNodeWithTag("minimap-gesture-host")
+        host.performTouchInput { click(Offset(width - 8.dp.toPx(), height * 0.4f)) }
+        assertFalse("A right-edge tap must not open the minimap", minimap.isOpen)
+        host.performTouchInput {
+            swipe(Offset(width - 8.dp.toPx(), height * 0.7f),
+                Offset(width - 8.dp.toPx(), height * 0.35f), 400)
+        }
+        assertFalse("Vertical scrolling at the right edge must not open it", minimap.isOpen)
+        host.performTouchInput {
+            swipe(Offset(width * 0.6f, height * 0.4f),
+                Offset(width * 0.2f, height * 0.4f), 300)
+        }
+        assertFalse("Horizontal swipes away from the edge must not open it", minimap.isOpen)
+        host.performTouchInput {
+            swipe(Offset(width - 80.dp.toPx(), height * 0.4f),
+                Offset(width - 8.dp.toPx(), height * 0.4f), 300)
+        }
+        assertFalse("Outward swipes ending at the right edge must not open it", minimap.isOpen)
+        host.performTouchInput {
+            swipe(Offset(width - 8.dp.toPx(), height * 0.4f),
+                Offset(width - 160.dp.toPx(), height * 0.4f), 300)
+        }
+        assertTrue("Only the inward right-edge swipe opens the minimap", minimap.isOpen)
+        compose.onNodeWithTag("chat-minimap-thumb").assertExists()
+        compose.mainClock.autoAdvance = false
+        compose.mainClock.advanceTimeBy(3_000)
+        assertFalse("The minimap closes after interaction becomes idle", minimap.isOpen)
     }
 
     @Test fun draggingTheThumbScrollsTheListAndReportsDirectionChanges() {

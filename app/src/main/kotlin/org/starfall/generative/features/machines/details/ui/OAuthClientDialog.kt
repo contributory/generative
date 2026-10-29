@@ -18,7 +18,7 @@ import org.starfall.generative.features.machines.shared.ui.RemoteDropdownField
 import org.starfall.generative.features.machines.shared.ui.RemoteTextField
 import org.starfall.generative.shared.model.GCloudOAuthClient
 import org.starfall.generative.shared.model.GoogleOAuthClientType
-import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
 
 /** Creates or edits a Google OAuth client used to sign in to Cloud Shell machines. */
 @Composable
@@ -31,7 +31,7 @@ internal fun OAuthClientDialog(
     var clientId by remember(initial.id) { mutableStateOf(initial.clientId) }
     var secret by remember(initial.id) { mutableStateOf(initial.clientSecret) }
     var clientType by remember(initial.id) { mutableStateOf(initial.type) }
-    AppAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.remote_machine_oauth_client)) },
         text = {

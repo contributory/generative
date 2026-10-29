@@ -19,7 +19,7 @@ import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.theme.LocalDarkMode
 
 @Composable
-fun FeaturesLogoImage(
+fun FeaturesLogo(
     image: String?,
     modifier: Modifier = Modifier
 ) {

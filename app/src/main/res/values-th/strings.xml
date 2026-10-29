@@ -521,7 +521,6 @@
     <string name="code_block_include_undefined_hint">ใช้โหมดการแสดงบล็อกยาวที่เลือกไว้ แม้บล็อกโค้ดนั้นไม่มีป้ายระบุภาษา</string>
     <string name="code_block_extend">ขยาย</string>
     <string name="code_block_close">ปิดบล็อกโค้ด</string>
-    <string name="sheet_resize">ปรับขนาดแผง</string>
     <string name="oauth_opening_browser">กำลังเปิดหน้าเข้าสู่ระบบ…</string>
     <string name="oauth_browser_unavailable">ติดตั้ง Chrome หรือเบราว์เซอร์ที่รองรับ Custom Tabs เพื่อเข้าสู่ระบบ</string>
     <string name="provider_multiple_accounts">บัญชีหลายรายการ</string>
@@ -1099,4 +1098,9 @@
     <string name="settings_item_transparency">ความโปร่งใสของส่วนประกอบ</string>
     <string name="settings_item_transparency_description">ปรับความโปร่งใสของการ์ด ปุ่ม และรายการ ในโหมด AMOLED พื้นหลังจะโปร่งใสและมีเส้นขอบ</string>
     <string name="settings_item_transparency_reset">คืนค่าความโปร่งใสของส่วนประกอบ</string>
+    <string name="customization_input_title">พื้นที่ป้อนข้อความ</string>
+    <string name="customization_input_transparency">ความโปร่งใสของพื้นหลัง</string>
+    <string name="customization_input_blur">ความเบลอของพื้นหลัง</string>
+    <string name="customization_input_blur_description">เบลอแชทด้านหลังพื้นที่ป้อนข้อความบน Android 12 ขึ้นไป โดยข้อความและปุ่มยังคงคมชัด</string>
+    <string name="settings_website">เว็บไซต์</string>
 </resources>

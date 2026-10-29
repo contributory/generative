@@ -3,7 +3,6 @@ package org.starfall.generative
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.generative.features.providers.list.logic.*
-import org.starfall.generative.features.providers.list.model.*
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider

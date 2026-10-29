@@ -56,7 +56,7 @@ import kotlinx.coroutines.launch
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.shared.ui.icons.FluentIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.lists.ListViewToggle
@@ -292,7 +292,7 @@ fun ChatOptionsScreen(
                         },
                         navigationIcon = {
                             IconButton(onClick = onBack) {
-                                FluentIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                                SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                             }
                         },
                         actions = {
@@ -301,7 +301,7 @@ fun ChatOptionsScreen(
                                 IconButton(onClick = {
                                     if (pager.currentPage == 1) creatingInstruction = true else creatingSkill = true
                                 }) {
-                                    FluentIcon(Icons.Default.Add, stringResource(R.string.common_add))
+                                    SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
                                 }
                             }
                             if (pager.currentPage == 2) {
@@ -309,7 +309,7 @@ fun ChatOptionsScreen(
                                     skillImportError = null
                                     showSkillImport = true
                                 }) {
-                                    FluentIcon(Icons.Outlined.UploadFile,
+                                    SharedIcon(Icons.Outlined.UploadFile,
                                         stringResource(R.string.agent_skill_import))
                                 }
                             }
@@ -394,7 +394,7 @@ fun ChatOptionsScreen(
                                                 )
                                             }
                                             IconButton(onClick = { helperSettings = name }) {
-                                                FluentIcon(
+                                                SharedIcon(
                                                     Icons.Outlined.Settings,
                                                     stringResource(R.string.tool_settings_accessibility, title)
                                                 )
