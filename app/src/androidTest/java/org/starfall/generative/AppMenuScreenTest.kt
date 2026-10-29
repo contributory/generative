@@ -192,7 +192,6 @@ class AppMenuScreenTest {
             compose.onNodeWithText(label).assertIsDisplayed()
         }
         val items = listOf(
-            R.string.customization_title to "Customization",
             R.string.settings_chat_options to "Chat Options",
             R.string.common_feature_tools to "Feature Tools",
             R.string.providers_title to "Model Providers",
@@ -211,6 +210,16 @@ class AppMenuScreenTest {
             compose.onNodeWithText(label).performClick()
         }
         compose.runOnIdle { assertEquals(items.map { it.second }, destinations) }
+    }
+
+    @Test fun customizationOpensFromLogoWithoutDuplicateMenuItem() {
+        val destinations = mutableListOf<String>()
+        showFeatures(destinations)
+        compose.onNodeWithText(context.getString(R.string.customization_title)).assertDoesNotExist()
+        compose.onNodeWithTag("app-menu-customization-logo")
+            .assertIsDisplayed()
+            .performClick()
+        compose.runOnIdle { assertEquals(listOf("Customization"), destinations) }
     }
 
     @Test fun aboutContainsUpdatesAndBackReturnsToFeatures() {

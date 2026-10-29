@@ -160,7 +160,8 @@ fun AppMenuScreen(
                         .combinedClickable(
                             onClick = onNavigateToCustomization,
                             onLongClick = onNavigateToCustomization
-                        ),
+                        )
+                        .testTag("app-menu-customization-logo"),
                     contentAlignment = Alignment.Center
                 ) {
                     FeaturesLogo(logoImage, Modifier.size(84.dp))
@@ -173,18 +174,11 @@ fun AppMenuScreen(
         item(key = "configuration-group") {
             FeatureGroup {
                 FeatureButton(
-                    stringResource(R.string.customization_title),
-                    stringResource(R.string.customization_description),
-                    FluentUi.Regular.Image,
-                    onNavigateToCustomization,
-                    shape = GroupTopShape
-                )
-                FeatureButton(
                     stringResource(R.string.settings_chat_options),
                     stringResource(R.string.settings_chat_options_description),
                     FluentUi.Regular.Chat,
                     onNavigateToChatOptions,
-                    shape = GroupMiddleShape
+                    shape = GroupTopShape
                 )
                 FeatureButton(
                     stringResource(R.string.common_feature_tools),
