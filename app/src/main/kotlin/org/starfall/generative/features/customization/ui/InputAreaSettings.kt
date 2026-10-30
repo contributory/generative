@@ -10,6 +10,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import org.starfall.generative.shared.ui.inputs.ControlledSlider
 import org.starfall.generative.R
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -33,14 +34,14 @@ internal fun InputAreaSettings(
         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.customization_input_title), style = MaterialTheme.typography.titleMedium)
             Text("$transparencyLabel · ${(transparency * 100).roundToInt()}%")
-            Slider(
+            ControlledSlider(
                 value = transparency, onValueChange = { transparency = it },
                 onValueChangeFinished = { onTransparencyChange(transparency) },
                 modifier = Modifier.testTag("input-area-transparency-slider")
                     .semantics { contentDescription = transparencyLabel }
             )
             Text("$blurLabel · ${blur.roundToInt()} dp")
-            Slider(
+            ControlledSlider(
                 value = blur, onValueChange = { blur = it }, valueRange = 0f..32f,
                 onValueChangeFinished = { onBlurChange(blur) },
                 modifier = Modifier.testTag("input-area-blur-slider")

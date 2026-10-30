@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import org.starfall.generative.extensions.launcher.Launcher
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -56,6 +57,7 @@ fun ServerListScreen(
     var selectedToolError by remember { mutableStateOf<Pair<String, String>?>(null) }
     var orderedServers by remember(mcpServers) { mutableStateOf(mcpServers) }
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,topBar = {
             TopAppBar(
@@ -151,7 +153,7 @@ fun ServerListScreen(
                 }
             }, confirmButton = { TextButton(onClick = {
                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.mcp_tool_discovery_error_clipboard), error))
+                clipboard.setPrimaryClip(ClipData.newPlainText(localizedResources.getString(R.string.mcp_tool_discovery_error_clipboard), error))
             }) { Text(stringResource(R.string.common_copy)) } },
             dismissButton = { TextButton(onClick = { selectedToolError = null }) { Text(stringResource(R.string.common_close)) } })
     }

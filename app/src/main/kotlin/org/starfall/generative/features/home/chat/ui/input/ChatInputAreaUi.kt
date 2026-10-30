@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -153,6 +154,7 @@ internal fun UserInputArea(
     var inputFocusAllowed by remember { mutableStateOf(false) }
     val textState = textFieldValue.text
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val coroutineScope = rememberCoroutineScope()
     val toolFiles = remember(context) { ToolFiles(context) }
     val latestAttachments by rememberUpdatedState(attachments)
@@ -540,7 +542,7 @@ internal fun UserInputArea(
                                             onAttachmentsChange(emptyList())
                                             if (editDraft != null) onCancelEdit()
                                         } else {
-                                            onSubmissionFailed(context.getString(R.string.chat_submit_failed))
+                                            onSubmissionFailed(localizedResources.getString(R.string.chat_submit_failed))
                                         }
                                     }
                                 }
@@ -704,6 +706,7 @@ internal fun UserInputArea(
     }
     if (foreground) BottomSheetsLink(
         sheets = bottomSheets,
+        temporaryChatId = temporaryChatId,
         mediaKind = mediaKind,
         onMediaKindChange = { mediaKind = it },
         onCancelEdit = onCancelEdit,

@@ -64,7 +64,7 @@ fun validateVideoOptions(provider: ModelProvider, model: String, options: JsonOb
             require(options.keys.all { it == "parameters" }) { "Unsupported video settings." }
             val params = options["parameters"]
             require(params == null || params is JsonObject) { "parameters must be a JSON object." }
-            require((params as? JsonObject)?.keys.orEmpty().all { "parameters.$it" in validPaths }) {
+            require(params?.keys.orEmpty().all { "parameters.$it" in validPaths }) {
                 "Unsupported Veo parameters."
             }
         }

@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
@@ -31,6 +32,7 @@ fun MessageBubble(
 ) {
     val isUser = message.role == ChatRole.USER
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
 
     Row(
         modifier = modifier
@@ -92,9 +94,9 @@ fun MessageBubble(
                         IconButton(
                             onClick = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val clip = ClipData.newPlainText(context.getString(R.string.common_copy), message.content)
+                                val clip = ClipData.newPlainText(localizedResources.getString(R.string.common_copy), message.content)
                                 clipboard.setPrimaryClip(clip)
-                                Toast.makeText(context, context.getString(R.string.common_copied_to_clipboard), Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, localizedResources.getString(R.string.common_copied_to_clipboard), Toast.LENGTH_SHORT).show()
                             },
                             modifier = Modifier.size(28.dp)
                         ) {

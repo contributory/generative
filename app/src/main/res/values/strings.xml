@@ -340,7 +340,7 @@
     <string name="save_change_failed">Could not save the change. Please try again.</string>
     <string name="loading_provider_editor">Loading model provider and saved credentials…</string>
     <string name="camera_unavailable_title">Camera unavailable</string>
-    <string name="camera_unavailable_message">Camera capture is not connected yet. Use Photos or Files to attach existing media.</string>
+    <string name="camera_unavailable_message">Unable to capture a photo. Check that a camera app is available, or use Photos or Files to attach existing media.</string>
     <string name="common_ok">OK</string>
     <string name="instruction_details">Instruction details</string>
     <string name="model_editor">Model editor</string>
@@ -1328,6 +1328,7 @@
     <string name="launcher_drag_test_status">Source: %1$s · Target: %2$s</string>
     <string name="launcher_drag_test_none">none</string>
     <string name="launcher_drag_test_folder_alpha">Folder Alpha</string>
+    <string name="launcher_drag_test_folder_beta">Folder Beta</string>
     <string name="launcher_drag_test_folder">Folder</string>
     <string name="launcher_drag_test_close">Close</string>
     <string name="customization_input_title">Input area</string>

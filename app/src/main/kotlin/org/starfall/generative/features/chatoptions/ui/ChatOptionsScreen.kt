@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import org.starfall.generative.features.chatoptions.logic.readAgentSkillDocument
 import org.starfall.generative.features.chatoptions.logic.writeAgentSkillDocument
 import org.starfall.generative.integrations.github.downloadGitHubSkill
@@ -137,6 +138,7 @@ fun ChatOptionsScreen(
     var skillImportError by remember { mutableStateOf<String?>(null) }
     var exportingSkill by remember { mutableStateOf<AgentSkill?>(null) }
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     var library by remember(instructionLibrary) { mutableStateOf(instructionLibrary) }
     fun updateLibrary(next: InstructionLibrary) {
         library = next
@@ -179,9 +181,9 @@ fun ChatOptionsScreen(
     fun acceptImportedSkill(document: String) {
         val imported = parseAgentSkillDocument(document, preserveEmptyExtras = true)
         when {
-            imported == null -> skillImportError = context.getString(R.string.agent_skill_import_invalid)
+            imported == null -> skillImportError = localizedResources.getString(R.string.agent_skill_import_invalid)
             skills.any { it.name == imported.name } ->
-                skillImportError = context.getString(R.string.agent_skill_import_duplicate)
+                skillImportError = localizedResources.getString(R.string.agent_skill_import_duplicate)
             else -> {
                 val next = skills + imported
                 skills = next
@@ -197,7 +199,7 @@ fun ChatOptionsScreen(
             coroutineScope.launch {
                 runCatching { readAgentSkillDocument(context, uri) }
                     .onSuccess(::acceptImportedSkill)
-                    .onFailure { skillImportError = context.getString(R.string.agent_skill_import_failed,
+                    .onFailure { skillImportError = localizedResources.getString(R.string.agent_skill_import_failed,
                         it.message.orEmpty()) }
                 skillImportBusy = false
             }
@@ -473,7 +475,7 @@ fun ChatOptionsScreen(
             },
             onImportGithub = { url ->
                 if (parseGitHubSkillUrl(url) == null) {
-                    skillImportError = context.getString(R.string.agent_skill_github_invalid)
+                    skillImportError = localizedResources.getString(R.string.agent_skill_github_invalid)
                 } else {
                     skillImportBusy = true
                     skillImportError = null
@@ -481,7 +483,7 @@ fun ChatOptionsScreen(
                         runCatching { downloadGitHubSkill(url) }
                             .onSuccess(::acceptImportedSkill)
                             .onFailure {
-                                skillImportError = context.getString(R.string.agent_skill_import_failed,
+                                skillImportError = localizedResources.getString(R.string.agent_skill_import_failed,
                                     it.message.orEmpty())
                             }
                         skillImportBusy = false

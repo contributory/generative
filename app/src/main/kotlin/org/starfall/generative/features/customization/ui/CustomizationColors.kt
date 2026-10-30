@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import org.starfall.generative.shared.ui.inputs.ControlledSlider
 import org.starfall.generative.R
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.theme.CustomPalette
@@ -138,7 +139,7 @@ internal fun CustomizationColors(
                         SharedIcon(Icons.Default.RestartAlt,
                             stringResource(R.string.settings_item_transparency_reset))
                     }
-                    Slider(
+                    ControlledSlider(
                         value = opacity, onValueChange = { opacity = it },
                         onValueChangeFinished = { onItemTransparencyChange(opacity) },
                         modifier = Modifier.weight(1f).testTag("customization-opacity-slider"),

@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.model.StoredMessage
@@ -50,6 +51,7 @@ fun UserMessageCard(
     cacheEnabled: Boolean = true
 ) {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val renderCacheIdentity = remember(conversationId, message.id, cacheEnabled) {
         conversationId?.takeIf { cacheEnabled && !message.isQueued }?.let { MarkdownRenderCacheIdentity(it, message.id) }
     }
@@ -171,8 +173,8 @@ fun UserMessageCard(
                             onClick = {
                                 showMenu = false
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.common_copy), message.content))
-                                Toast.makeText(context, context.getString(R.string.common_copied_to_clipboard), Toast.LENGTH_SHORT).show()
+                                clipboard.setPrimaryClip(ClipData.newPlainText(localizedResources.getString(R.string.common_copy), message.content))
+                                Toast.makeText(context, localizedResources.getString(R.string.common_copied_to_clipboard), Toast.LENGTH_SHORT).show()
                             }
                         )
                         if (onResendFromMenu != null) DropdownMenuItem(

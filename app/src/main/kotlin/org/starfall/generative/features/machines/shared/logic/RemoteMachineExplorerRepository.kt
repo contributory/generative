@@ -3,6 +3,8 @@ package org.starfall.generative.features.machines.shared.logic
 import android.content.Context
 import android.net.Uri
 import java.io.FileNotFoundException
+import java.io.InputStream
+import java.io.OutputStream
 import org.starfall.generative.extensions.explorer.logic.ExplorerItem
 import org.starfall.generative.extensions.explorer.logic.ExplorerLocation
 import org.starfall.generative.extensions.explorer.logic.ExplorerRepository
@@ -44,6 +46,17 @@ class RemoteMachineExplorerRepository(
     override suspend fun delete(item: ExplorerItem) {
         requireMachine(item.location)
         remote.delete(machineId, item.location.path)
+    }
+
+    suspend fun upload(parent: ExplorerLocation, name: String, input: InputStream) {
+        requireMachine(parent)
+        remote.upload(machineId, parent.path, name, input)
+    }
+
+    suspend fun download(item: ExplorerItem, output: OutputStream) {
+        requireMachine(item.location)
+        if (item.directory) throw FileNotFoundException("Not a file")
+        remote.download(machineId, item.location.path, output)
     }
 
     fun documentUri(item: ExplorerItem): Uri {

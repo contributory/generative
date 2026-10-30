@@ -5,6 +5,7 @@ import android.text.InputType
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import androidx.test.core.app.ApplicationProvider
 import java.io.ByteArrayOutputStream
 import org.junit.Assert.*
@@ -12,6 +13,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.Implementation
+import org.robolectric.annotation.Implements
+import org.robolectric.shadow.api.Shadow
+import org.robolectric.shadows.ShadowInputMethodManager
 import org.starfall.generative.shared.model.remote.TerminalInputMode
 import org.starfall.generative.shared.storage.preferences.remoteTerminalImePreferenceKey
 import org.starfall.generative.shared.storage.preferences.remoteTerminalInputModePreferenceKey
@@ -69,6 +74,52 @@ class RemoteTerminalInputTest {
         terminal.connection.setComposingText("echo chào", 1)
         terminal.connection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
         assertEquals("echo chào\r", terminal.text())
+    }
+
+    @Implements(InputMethodManager::class)
+    class ImeSelectionShadow : ShadowInputMethodManager() {
+        var selection: List<Int>? = null
+
+        @Implementation
+        protected fun updateSelection(
+            view: View, start: Int, end: Int, composingStart: Int, composingEnd: Int
+        ) {
+            selection = listOf(start, end, composingStart, composingEnd)
+        }
+    }
+
+    @Test
+    @Config(shadows = [ImeSelectionShadow::class])
+    fun everyEnterRouteNotifiesImeThatThePreviousWordIsFinished() {
+        val ime = Shadow.extract<ImeSelectionShadow>(context.getSystemService(InputMethodManager::class.java))
+        val submitActions: List<(RemoteTerminalInputConnection) -> Unit> = listOf(
+            { it.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER)) },
+            { it.performEditorAction(EditorInfo.IME_ACTION_SEND) },
+            { it.commitText("\n", 1) }
+        )
+        submitActions.forEach { submit ->
+            val terminal = Terminal(TerminalInputMode.LOCAL, context)
+            terminal.connection.setComposingText("chào", 1)
+            assertEquals(listOf(4, 4, 0, 4), ime.selection)
+
+            submit(terminal.connection)
+            assertEquals("chào\r", terminal.text())
+            assertEquals(listOf(0, 0, -1, -1), ime.selection)
+
+            terminal.connection.setComposingText("mới", 1)
+            submit(terminal.connection)
+            assertEquals("chào\rmới\r", terminal.text())
+        }
+    }
+
+    @Test
+    @Config(shadows = [ImeSelectionShadow::class])
+    fun externalDraftChangesClearThePreviousImeComposition() {
+        val terminal = Terminal(TerminalInputMode.LOCAL, context)
+        val ime = Shadow.extract<ImeSelectionShadow>(context.getSystemService(InputMethodManager::class.java))
+        terminal.connection.setComposingText("chào", 1)
+        terminal.connection.syncLocalDraft("", 0)
+        assertEquals(listOf(0, 0, -1, -1), ime.selection)
     }
 
     @Test

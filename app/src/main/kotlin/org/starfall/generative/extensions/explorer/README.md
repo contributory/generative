@@ -30,7 +30,11 @@ The **host** implements the suspending `ExplorerRepository` methods:
 | `delete(item)` | Delete the specified entry. |
 
 The host must enforce permissions, validate names and paths, and decide how
-deletion works for non-empty directories. The explorer does not assume a
+deletion works for non-empty directories. Optional suspending transfer callbacks
+`onUploadFile(location, uri)` and `onDownloadFile(item, uri)` are supplied to
+`ExplorerScreen` by the host. They handle all bytes and backend access; the
+extension only launches Android's document picker and passes its selected
+`content://` URI to the host. Omitting either callback hides that action. The explorer does not assume a
 particular filesystem or network protocol. It delegates file opening to the
 separate suspending `onOpenFile(ExplorerItem)` callback, so the host can select
 a viewer or launch an external application.
@@ -54,7 +58,10 @@ fun MyFiles(
         repository = repository,
         initialLocation = ExplorerLocation(sourceId = "files", label = "My files"),
         onClose = onClose,
-        onOpenFile = openFile
+        onOpenFile = openFile,
+        // Optional: integrate with the host's local, virtual, or remote backend.
+        onUploadFile = { directory, pickedUri -> /* host imports pickedUri */ },
+        onDownloadFile = { item, destinationUri -> /* host exports item */ }
     )
 }
 ```
@@ -67,7 +74,8 @@ accessibility descriptions without application resource imports.
 ## User interaction
 
 The Appbar displays the current source/folder, Back, a compact search button,
-and (when not searching) New folder, List/Grid and Refresh actions. Tapping
+and (when not searching) New folder, Upload (when supported), List/Grid and
+Refresh actions. Tapping
 Search expands a single-line search field **in the Appbar**, focuses it, and
 replaces the other actions with Close search. Submitting the IME search action,
 tapping Close, pressing Back or losing input focus retracts the field. Its query remains in
@@ -77,13 +85,26 @@ current directory only; it does not recursively search descendants or call the
 repository again. Changing directories clears the query.
 
 Tap a directory to enter it, or a file to invoke `onOpenFile`. Per-entry menus
-offer Rename and Delete; the Appbar offers New folder within a source. These
+offer Download (files only, when supported), Rename and Delete; the Appbar
+offers New folder within a source. Upload accepts multiple documents from the
+system file picker; Download opens the system Save As picker with the original
+name and inferred MIME type. Canceled pickers do nothing, and transfers are
+performed through the supplied suspending callbacks. Successful uploads reload
+the directory; after a partially successful batch, the listing is also refreshed
+when a later file fails. These
 operations use confirmation dialogs, call the injected repository, then reload
 the current location. A spinner indicates loading; errors from repository or
 viewer callbacks show a snackbar. The screen maintains view mode, query,
 current location and dialogs in Compose memory only.
 
 ## Dependency boundary and host integrations
+
+The MediaStorage and SFTP hosts both implement upload/download using streams,
+so files are not loaded into memory all at once. The local adapter refuses to
+overwrite existing names and removes incomplete uploads; the SFTP adapter
+uploads to a temporary remote path before publishing the file. Download failure
+may leave a partial document in a third-party destination (Android's provider
+owns it), which the user can remove with their file manager.
 
 The extension may depend on Kotlin, Compose, coroutines and platform APIs, but
 **must not import** `shared/`, `integrations/`, `database/`, `features/`,
@@ -107,7 +128,11 @@ system integration, not the explorer's navigation backend.
   simple Compose integration and location behavior.
 - `app/src/androidTest/java/org/starfall/generative/extensions/explorer/ExplorerScreenDeviceTest.kt`
   exercises navigation, searching, collapsing/reopening the Appbar search,
-  file opening and repository operations using an in-memory fake.
+  file opening, transfer-action visibility and repository operations using an
+  in-memory fake.
+- `app/src/test/java/org/starfall/generative/ExplorerStorageTest.kt` covers
+  local upload/download bytes, name collisions, invalid paths and interrupted
+  transfer cleanup.
 
 Build or run instrumentation tests only in a provisioned Android environment,
 with an explicitly selected device. No backend credentials are needed for the

@@ -56,10 +56,16 @@ internal val LauncherWorkspaceOrder = SemanticsPropertyKey<List<String>>("Launch
 private const val Workspace = "workspace"
 private const val Folder = "folder"
 private const val FolderItem = "folder-alpha"
+private const val SecondFolderItem = "folder-beta"
+private const val SecondFolder = "folder-beta-content"
+private fun isFolderTile(item: String) = item == FolderItem || item == SecondFolderItem
+private fun folderContent(item: String) = if (item == SecondFolderItem) SecondFolder else Folder
+private fun folderDropKey(item: String) = if (item == SecondFolderItem) "folder-icon-beta" else "folder-icon"
 
 private fun sampleLayout(): Map<String, List<String>> = mapOf(
-    Workspace to listOf(FolderItem) + (1..18).map { "Tile $it" },
-    Folder to (19..24).map { "Tile $it" }
+    Workspace to listOf(FolderItem) + (1..3).map { "Tile $it" } + listOf(SecondFolderItem) + (4..18).map { "Tile $it" },
+    Folder to (19..24).map { "Tile $it" },
+    SecondFolder to (25..28).map { "Tile $it" }
 )
 
 /**
@@ -72,7 +78,9 @@ fun LauncherDragTestScreen(onBack: () -> Unit) = with(Launcher) {
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val state = Launcher.rememberState<String>()
     val layout = remember { Launcher.Layout({ it }, sampleLayout()) }
-    var openFolder by remember { mutableStateOf(false) }
+    var openFolderItem by remember { mutableStateOf<String?>(null) }
+    val openFolder = openFolderItem != null
+    val openFolderContent = folderContent(openFolderItem ?: FolderItem)
     var options by remember { mutableStateOf(LauncherDragTestOptions()) }
     val initial = stringResource(R.string.launcher_drag_test_initial)
     val cancelled = stringResource(R.string.launcher_drag_test_cancelled)
@@ -88,7 +96,7 @@ fun LauncherDragTestScreen(onBack: () -> Unit) = with(Launcher) {
         if (outcome.accepted) {
             layout.commit()
             if (outcome.targetKey == Workspace || outcome.targetKey?.startsWith("slot:$Workspace:") == true) {
-                openFolder = false
+                openFolderItem = null
             }
             lastOutcome = resources.getString(R.string.launcher_drag_test_dropped, outcome.targetKey.orEmpty())
         } else {
@@ -118,7 +126,7 @@ fun LauncherDragTestScreen(onBack: () -> Unit) = with(Launcher) {
 
     fun handleBack() {
         if (state.session != null) state.cancel()
-        else if (openFolder) openFolder = false
+        else if (openFolder) openFolderItem = null
         else onBack()
     }
     BackHandler { handleBack() }
@@ -137,13 +145,14 @@ fun LauncherDragTestScreen(onBack: () -> Unit) = with(Launcher) {
         }
     }
     Launcher.HoverAction(state, intentKey = hoverIntentKey, delayMillis =
-        if (state.hoveredTargetKey == "folder-icon") options.folderOpenDelayMillis else options.reorderDelayMillis
+        if (state.hoveredTargetKey?.startsWith("folder-icon") == true) options.folderOpenDelayMillis else options.reorderDelayMillis
     ) { target, drag ->
         when {
-            target == "folder-icon" && drag.item.key != FolderItem -> {
-                val changed = layout.hover(Folder)
-                val opened = !openFolder
-                openFolder = true
+            target.startsWith("folder-icon") && !isFolderTile(drag.item.key) -> {
+                val folder = if (target == folderDropKey(SecondFolderItem)) SecondFolderItem else FolderItem
+                val changed = layout.hover(folderContent(folder))
+                val opened = openFolderItem != folder
+                openFolderItem = folder
                 changed || opened
             }
             target.startsWith("slot:") -> {
@@ -158,7 +167,7 @@ fun LauncherDragTestScreen(onBack: () -> Unit) = with(Launcher) {
                 } else false
             }
             target == Workspace -> enterWorkspace(drag)
-            target == Folder -> layout.enter(Folder)
+            (target == Folder || target == SecondFolder) -> layout.enter(target)
             else -> false
         }
     }
@@ -166,8 +175,8 @@ fun LauncherDragTestScreen(onBack: () -> Unit) = with(Launcher) {
         state = state,
         folderTargetKey = "folder-region",
         open = openFolder,
-        fromFolder = { it.key in layout.preview[Folder].orEmpty() },
-        onExit = { openFolder = false },
+        fromFolder = { it.key in layout.preview[openFolderContent].orEmpty() },
+        onExit = { openFolderItem = null },
         delayMillis = Launcher.defaults.FolderExitDelayMillis
     )
 
@@ -187,7 +196,7 @@ fun LauncherDragTestScreen(onBack: () -> Unit) = with(Launcher) {
                 OutlinedButton(onClick = {
                     state.cancel()
                     layout.update(sampleLayout())
-                    openFolder = false
+                    openFolderItem = null
                     lastOutcome = reset
                 }, modifier = Modifier.testTag("launcher_reset")) { Text(stringResource(R.string.launcher_drag_test_reset)) }
                 if (state.session != null) {
@@ -244,8 +253,9 @@ fun LauncherDragTestScreen(onBack: () -> Unit) = with(Launcher) {
                             layout.begin(item)
                             lastOutcome = resources.getString(R.string.launcher_drag_test_dragging, item, Workspace)
                         },
-                        onEnd = ::finish, onOpenFolder = { openFolder = true },
+                        onEnd = ::finish, onOpenFolder = { openFolderItem = item },
                         positions = positions, layout = layout, previewedTarget = previewedTarget,
+                        onPreviewInsertion = { previewedTarget = it },
                         slotBounds = slot, folderHitFraction = options.folderHitFraction, horizontal = !options.list,
                         reorderPolicy = reorderPolicy, folderJoinEnabled = options.folderJoinEnabled, rtl = rtl
                     )
@@ -262,34 +272,35 @@ fun LauncherDragTestScreen(onBack: () -> Unit) = with(Launcher) {
                             .dropTarget(
                                 state, "folder-region", priority = 20, enabled = openFolder,
                                 hitTest = Launcher.Collision.VisualCenter,
-                                accepts = { it.key != FolderItem },
-                                onDrop = { layout.enter(Folder); true }
+                                accepts = { !isFolderTile(it.key) },
+                                onDrop = { layout.enter(openFolderContent); true }
                             )
                             .testTag("launcher_folder_panel"),
                         shape = RoundedCornerShape(24.dp)
                     ) {
                         Column(Modifier.fillMaxWidth().padding(12.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(stringResource(R.string.launcher_drag_test_folder_alpha), Modifier.weight(1f),
+                                Text(stringResource(if (openFolderItem == SecondFolderItem) R.string.launcher_drag_test_folder_beta else R.string.launcher_drag_test_folder_alpha), Modifier.weight(1f),
                                     style = MaterialTheme.typography.titleMedium)
-                                OutlinedButton(onClick = { openFolder = false }) { Text(stringResource(R.string.launcher_drag_test_close)) }
+                                OutlinedButton(onClick = { openFolderItem = null }) { Text(stringResource(R.string.launcher_drag_test_close)) }
                             }
                             Spacer(Modifier.height(6.dp))
                             LauncherDragTestCollection(
-                                items = layout.preview[Folder].orEmpty(), state = state, options = options,
+                                items = layout.preview[openFolderContent].orEmpty(), state = state, options = options,
                                 modifier = Modifier.fillMaxWidth().height(232.dp).testTag("launcher_folder_grid"),
                                 padding = 4.dp, enabled = openFolder
                             ) { item, modifier, slot ->
                                 TestDragTile(
-                                    item = item, modifier = modifier, container = Folder, state = state,
+                                    item = item, modifier = modifier, container = openFolderContent, state = state,
                                     sourceEnabled = openFolder, targetEnabled = openFolder,
                                     onBegin = {
                                         previewedTarget = null
                                         layout.begin(item)
-                                        lastOutcome = resources.getString(R.string.launcher_drag_test_dragging, item, Folder)
+                                        lastOutcome = resources.getString(R.string.launcher_drag_test_dragging, item, openFolderContent)
                                     },
                                     onEnd = ::finish, onOpenFolder = {},
                                     positions = positions, layout = layout, previewedTarget = previewedTarget,
+                                    onPreviewInsertion = { previewedTarget = it },
                                     slotBounds = slot, folderHitFraction = options.folderHitFraction, horizontal = !options.list,
                         reorderPolicy = reorderPolicy, folderJoinEnabled = options.folderJoinEnabled, rtl = rtl
                                 )
@@ -316,6 +327,7 @@ private fun TestDragTile(
     positions: MutableMap<String, Rect>,
     layout: Launcher.Layout<String>,
     previewedTarget: LauncherPreviewedInsertion?,
+    onPreviewInsertion: (LauncherPreviewedInsertion) -> Unit,
     slotBounds: Rect?,
     folderHitFraction: Float,
     horizontal: Boolean,
@@ -323,24 +335,25 @@ private fun TestDragTile(
     folderJoinEnabled: Boolean,
     rtl: Boolean
 ) = with(Launcher) {
-    val isFolder = item == FolderItem
+    val isFolder = isFolderTile(item)
     val targetKey = "slot:$container:$item"
+    val joinKey = folderDropKey(item)
     SideEffect { if (slotBounds != null) positions[targetKey] = slotBounds }
     TestTile(
         item = item,
         modifier = modifier
             .onGloballyPositioned {
                 positions[targetKey] = slotBounds ?: it.boundsInWindow()
-                if (isFolder) positions["folder-icon"] = it.boundsInWindow()
+                if (isFolder) positions[joinKey] = it.boundsInWindow()
             }
             .dragSource(
                 state = state, key = item, data = item,
-                enabled = sourceEnabled, priority = if (container == Folder) 30 else 0,
+                enabled = sourceEnabled, priority = if (container != Workspace) 30 else 0,
                 onDragStart = { onBegin() }, onDragEnd = onEnd,
-                returnBounds = if (container == Folder) ({ positions["folder-icon"] }) else null
+                returnBounds = if (container != Workspace) ({ positions[folderDropKey(if (container == SecondFolder) SecondFolderItem else FolderItem)] }) else null
             )
             .itemDropTarget(
-                state, targetKey, priority = if (container == Folder) 30 else 6,
+                state, targetKey, priority = if (container != Workspace) 30 else 6,
                 enabled = targetEnabled,
                 policy = Launcher.DropPolicy(
                     joinHitTest = if (isFolder && folderJoinEnabled)
@@ -348,10 +361,21 @@ private fun TestDragTile(
                 ),
                 hitBounds = slotBounds,
                 acceptsReorder = { it.key != item },
-                joinKey = "folder-icon",
-                acceptsJoin = { it.key != FolderItem },
-                joinLandingBounds = { positions["folder-icon"] },
-                onJoinDrop = if (isFolder && folderJoinEnabled) ({ layout.hover(Folder); true }) else null,
+                joinKey = joinKey,
+                acceptsJoin = { !isFolderTile(it.key) },
+                joinLandingBounds = { positions[joinKey] },
+                onJoinDrop = if (isFolder && folderJoinEnabled) ({ layout.hover(folderContent(item)); true }) else null,
+                onReorderEnter = { drag ->
+                    if (isFolder && isFolderTile(drag.item.key) && drag.item.key != item) {
+                        (slotBounds ?: positions[targetKey])?.let { bounds ->
+                            val moved = layout.hover(container, item, drag, bounds,
+                                Launcher.Reorder.OnEntry, horizontal, rtl)
+                            if (moved) onPreviewInsertion(LauncherPreviewedInsertion(
+                                targetKey, bounds, drag.visualCenter, Launcher.Reorder.OnEntry, horizontal, rtl
+                            ))
+                        }
+                    }
+                },
                 onReorderDrop = { drag ->
                     (slotBounds ?: positions[targetKey])?.let { bounds ->
                         if (previewedTarget?.matches(targetKey, bounds, drag.visualCenter, reorderPolicy, horizontal, rtl) != true) {
@@ -361,7 +385,7 @@ private fun TestDragTile(
                     true
                 }
             )
-            .then(if (state.hoveredTargetKey == targetKey || isFolder && state.hoveredTargetKey == "folder-icon")
+            .then(if (state.hoveredTargetKey == targetKey || isFolder && state.hoveredTargetKey == joinKey)
                 Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp))
                 else Modifier)
             .then(if (isFolder) Modifier.clickable(onClick = onOpenFolder) else Modifier)
@@ -384,12 +408,14 @@ private fun TestTile(
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(if (item == FolderItem) "▣" else "◆",
+                Text(if (isFolderTile(item)) "▣" else "◆",
                     color = if (dragging) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.headlineMedium)
                 Text(
-                    if (item == FolderItem) stringResource(R.string.launcher_drag_test_folder) else item,
+                    if (item == FolderItem) stringResource(R.string.launcher_drag_test_folder_alpha)
+                    else if (item == SecondFolderItem) stringResource(R.string.launcher_drag_test_folder_beta)
+                    else item,
                     style = MaterialTheme.typography.labelMedium
                 )
             }

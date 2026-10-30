@@ -16,6 +16,8 @@ import org.starfall.generative.extensions.explorer.logic.ExplorerLocation
 import org.starfall.generative.extensions.explorer.ui.ExplorerScreen
 import org.starfall.generative.features.storage.logic.MediaStorageExplorerRepository
 import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.files.explorerImport
+import org.starfall.generative.shared.files.explorerExport
 import org.starfall.generative.shared.ui.media.MediaViewer
 import org.starfall.generative.shared.ui.media.isPreviewableMedia
 import org.starfall.generative.shared.ui.media.isTextFile
@@ -39,6 +41,16 @@ fun StorageExplorerScreen(
             initialLocation = ExplorerLocation(),
             onClose = onClose,
             refreshKey = refreshKey,
+            onUploadFile = { parent, uri ->
+                context.contentResolver.explorerImport(uri) { name, input ->
+                    repository.upload(parent, name, input)
+                }
+            },
+            onDownloadFile = { item, uri ->
+                context.contentResolver.explorerExport(uri) { output ->
+                    repository.download(item, output)
+                }
+            },
             onOpenFile = { item ->
                 val file = repository.fileFor(item)
                 val mime = mediaMimeType(item.name)

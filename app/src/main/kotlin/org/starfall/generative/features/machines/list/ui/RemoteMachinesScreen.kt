@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -78,6 +79,7 @@ fun RemoteMachinesScreen(
     var ipUpdateNotice by remember { mutableStateOf<MachineIpUpdateNotice?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
 
     Scaffold(
 
@@ -170,7 +172,7 @@ fun RemoteMachinesScreen(
                 portForwardMachine = null
                 viewModel.saveMachineAndStartPortForward(updated) { result ->
                     val message = result.fold(
-                        onSuccess = { context.getString(R.string.remote_machine_port_forward_started) },
+                        onSuccess = { localizedResources.getString(R.string.remote_machine_port_forward_started) },
                         onFailure = { it.message ?: it.toString() }
                     )
                     Toast.makeText(context, message, Toast.LENGTH_LONG).show()

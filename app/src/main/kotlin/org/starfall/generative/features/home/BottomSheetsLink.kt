@@ -10,10 +10,14 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.core.content.FileProvider
+import java.io.File
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import org.starfall.generative.R
+import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.ui.model.LocalThinkingScreenBurst
 import org.starfall.generative.shared.ui.model.ThinkingScreenBurstLayer
 import org.starfall.generative.shared.ui.model.rememberThinkingColorBurst
@@ -133,7 +137,8 @@ internal fun BottomSheetsLink(
     /** Context window indicator shown above the model card; null hides it. */
     contextWindowContent: (@Composable (onDarkBackground: Boolean) -> Unit)? = null,
     /** Starts summarization; null hides the Summarize button. */
-    onStartSummary: ((ConversationSummaryRequest) -> Boolean)? = null
+    onStartSummary: ((ConversationSummaryRequest) -> Boolean)? = null,
+    temporaryChatId: String? = null
 ) {
     val context = LocalContext.current
     fun retainReadPermission(uri: Uri) {
@@ -159,6 +164,18 @@ internal fun BottomSheetsLink(
         }.distinct()
         picked.forEach(::retainReadPermission)
         onAttachmentsChange((attachments + picked.map(Uri::toString)).distinct())
+    }
+    // Keep the destination across activity recreation while the external camera is open.
+    var pendingPhotoPath by rememberSaveable(temporaryChatId) { mutableStateOf<String?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { captured ->
+        val photo = pendingPhotoPath?.let(::File)
+        pendingPhotoPath = null
+        if (captured && photo != null && photo.length() > 0L) {
+            onAttachmentsChange((attachments + Uri.fromFile(photo).toString()).distinct())
+        } else {
+            photo?.delete()
+            if (captured) sheets.openFilesUnavailableDialog()
+        }
     }
     val selectedModelScreenBurst = rememberThinkingColorBurst()
     LaunchedEffect(sheets.showSelectedModelOverview) {
@@ -196,7 +213,26 @@ internal fun BottomSheetsLink(
                             })
                         },
                         onTakePhoto = {
-                            if (pageActive) sheets.openFilesUnavailableDialog()
+                            if (pageActive && pendingPhotoPath == null) {
+                                try {
+                                    val directory = temporaryChatId?.let { id ->
+                                        // The temporary session owns this directory and removes it on close.
+                                        File(context.cacheDir, "temporary_chat_media/$id").also {
+                                            check(it.isDirectory) { "Temporary chat was discarded" }
+                                        }
+                                    } ?: ToolFiles.appStorageDirectory(context)
+                                    val photo = File.createTempFile("capture_", ".jpg", directory)
+                                    pendingPhotoPath = photo.absolutePath
+                                    cameraLauncher.launch(FileProvider.getUriForFile(
+                                        context, "${context.packageName}.tool-files", photo
+                                    ))
+                                } catch (error: Exception) {
+                                    android.util.Log.w("QuickActions", "Unable to launch camera capture", error)
+                                    pendingPhotoPath?.let { File(it).delete() }
+                                    pendingPhotoPath = null
+                                    sheets.openFilesUnavailableDialog()
+                                }
+                            }
                         },
                         onCreateImage = {
                             if (pageActive) {

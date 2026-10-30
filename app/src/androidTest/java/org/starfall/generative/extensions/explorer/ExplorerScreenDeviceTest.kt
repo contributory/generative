@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import android.net.Uri
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
@@ -109,12 +110,17 @@ class ExplorerScreenDeviceTest {
 
     private fun start(
         repo: ExplorerRepository, initial: ExplorerLocation = home,
-        onClose: () -> Unit = {}, onOpen: suspend (ExplorerItem) -> Unit = {}
+        onClose: () -> Unit = {}, onOpen: suspend (ExplorerItem) -> Unit = {},
+        onUpload: (suspend (ExplorerLocation, Uri) -> Unit)? = null,
+        onDownload: (suspend (ExplorerItem, Uri) -> Unit)? = null
     ) {
         compose.setContent {
             val focusManager = LocalFocusManager.current
             clearExplorerFocus = { focusManager.clearFocus() }
-            MaterialTheme { ExplorerScreen(repo, initial, onClose = onClose, onOpenFile = onOpen) }
+            MaterialTheme {
+                ExplorerScreen(repo, initial, onClose = onClose, onOpenFile = onOpen,
+                    onUploadFile = onUpload, onDownloadFile = onDownload)
+            }
         }
     }
 
@@ -244,6 +250,38 @@ class ExplorerScreenDeviceTest {
         }
         compose.onNodeWithText("renamed.txt").assertDoesNotExist()
         compose.runOnIdle { assertFalse(repo.contents.getValue(local).any { it.name == "renamed.txt" }) }
+    }
+
+    @Test fun transferActionsAreOnlyOfferedWhenHostSupportsThem() {
+        val repo = MemoryRepository()
+        start(repo, local, onUpload = { _, _ -> }, onDownload = { _, _ -> })
+        waitFor("report.txt")
+        compose.onNodeWithTag("explorer-upload").assertIsDisplayed()
+
+        compose.onNodeWithTag(menu("report.txt")).performClick()
+        compose.onNodeWithText("Download").assertIsDisplayed()
+        compose.onNodeWithText("Rename").assertIsDisplayed()
+        compose.onNodeWithText("Delete").assertIsDisplayed()
+    }
+
+    @Test fun uploadDoesNotAppearAtSourceHomeAndFoldersCannotBeDownloaded() {
+        val repo = MemoryRepository()
+        start(repo, onUpload = { _, _ -> }, onDownload = { _, _ -> })
+        waitFor("LocalFiles")
+        compose.onNodeWithTag("explorer-upload").assertDoesNotExist()
+        compose.onNodeWithText("LocalFiles").performClick()
+        waitFor("Projects")
+        compose.onNodeWithTag(menu("Projects")).performClick()
+        compose.onNodeWithText("Download").assertDoesNotExist()
+    }
+
+    @Test fun transferActionsStayHiddenWhenHostDoesNotProvideCallbacks() {
+        val repo = MemoryRepository()
+        start(repo, local)
+        waitFor("report.txt")
+        compose.onNodeWithTag("explorer-upload").assertDoesNotExist()
+        compose.onNodeWithTag(menu("report.txt")).performClick()
+        compose.onNodeWithText("Download").assertDoesNotExist()
     }
 
     @Test fun refreshReadsRepositoryAgainAndEmptyDirectoryShowsPlaceholder() {

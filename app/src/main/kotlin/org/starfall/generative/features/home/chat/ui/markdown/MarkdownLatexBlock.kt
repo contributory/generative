@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
@@ -28,6 +29,7 @@ import org.starfall.generative.shared.ui.text.SelectionOnlyPlaceholder
 @Composable
 internal fun RenderLatexBlock(source: String, formula: String) {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     var widthMode by rememberSaveable(source) { mutableStateOf(LatexDisplayMode.Overflow) }
     val nextMode = widthMode.next()
     val modeLabel = widthMode.label()
@@ -62,8 +64,8 @@ internal fun RenderLatexBlock(source: String, formula: String) {
                     Spacer(Modifier.width(4.dp))
                     IconButton(onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.latex_formula_clip_label), source))
-                        Toast.makeText(context, context.getString(R.string.latex_formula_copied), Toast.LENGTH_SHORT).show()
+                        clipboard.setPrimaryClip(ClipData.newPlainText(localizedResources.getString(R.string.latex_formula_clip_label), source))
+                        Toast.makeText(context, localizedResources.getString(R.string.latex_formula_copied), Toast.LENGTH_SHORT).show()
                     }, modifier = Modifier.size(24.dp)) {
                         SharedIcon(Icons.Outlined.ContentCopy, stringResource(R.string.latex_copy_formula), tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(14.dp))
                     }

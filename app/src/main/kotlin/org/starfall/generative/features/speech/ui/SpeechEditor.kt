@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -53,6 +54,7 @@ fun SpeechEditor(
     fetchModels: (suspend (SpeechService) -> List<SpeechSynthesisModel>)? = null
 ) {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     LaunchedEffect(context) { requestSpeechEngineIcons(context) }
     val ttsModelsByProvider = remember(providers) {
         providers.filter(::supportsSpeechProvider).associate { provider ->
@@ -421,7 +423,7 @@ fun SpeechEditor(
                 engineValidationError?.takeIf { apiKey.isNotBlank() && !modelId.isNullOrBlank() && voice.isNotBlank() }?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 OutlinedButton(
                     onClick = {
-                        onTest(currentService(), context.getString(R.string.speech_test_announcement))
+                        onTest(currentService(), localizedResources.getString(R.string.speech_test_announcement))
                     },
                     enabled = isPlaying || canSave,
                     modifier = Modifier.fillMaxWidth()

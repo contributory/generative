@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -51,6 +52,7 @@ fun ErrorContainer(
     copyButtonModifier: Modifier = Modifier.testTag("error-container-copy")
 ) {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     var expanded by remember(message, initiallyExpanded) { mutableStateOf(initiallyExpanded) }
     val foreground = MaterialTheme.colorScheme.onErrorContainer
     Surface(
@@ -88,8 +90,8 @@ fun ErrorContainer(
                 IconButton(
                     onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.message_error_clip_label), copyText))
-                        Toast.makeText(context, context.getString(R.string.message_error_copied), Toast.LENGTH_SHORT).show()
+                        clipboard.setPrimaryClip(ClipData.newPlainText(localizedResources.getString(R.string.message_error_clip_label), copyText))
+                        Toast.makeText(context, localizedResources.getString(R.string.message_error_copied), Toast.LENGTH_SHORT).show()
                     },
                     modifier = copyButtonModifier.size(32.dp)
                 ) {

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -130,12 +131,13 @@ internal fun FaviconDialog(
     onSave: (String) -> Unit
 ) {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val busy = state.fetching
     val onClose = { state.close(onSave) }
 
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text(context.getString(R.string.favicon_get_logo)) },
+        title = { Text(localizedResources.getString(R.string.favicon_get_logo)) },
         scrollableContent = false,
         text = {
             Column(
@@ -146,8 +148,8 @@ internal fun FaviconDialog(
                     value = state.customUrl,
                     onValueChange = { state.customUrl = it; state.error = null },
                     enabled = !busy,
-                    label = { Text(context.getString(R.string.favicon_homepage_url)) },
-                    supportingText = { Text(context.getString(R.string.favicon_homepage_help)) },
+                    label = { Text(localizedResources.getString(R.string.favicon_homepage_url)) },
+                    supportingText = { Text(localizedResources.getString(R.string.favicon_homepage_help)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
@@ -155,16 +157,16 @@ internal fun FaviconDialog(
                             if (busy) {
                                 // Stops the search; the dialog stays open.
                                 IconButton(onClick = { state.cancel() }) {
-                                    SharedIcon(Icons.Outlined.Stop, contentDescription = context.getString(R.string.common_cancel))
+                                    SharedIcon(Icons.Outlined.Stop, contentDescription = localizedResources.getString(R.string.common_cancel))
                                 }
                             } else {
                                 if (state.customUrl.isNotEmpty()) {
                                     IconButton(onClick = { state.customUrl = ""; state.error = null }) {
-                                        SharedIcon(Icons.Outlined.Close, contentDescription = context.getString(R.string.common_clear))
+                                        SharedIcon(Icons.Outlined.Close, contentDescription = localizedResources.getString(R.string.common_clear))
                                     }
                                 }
                                 IconButton(onClick = { state.fetch(baseUrl) }) {
-                                    SharedIcon(Icons.Outlined.Search, contentDescription = context.getString(R.string.favicon_fetch))
+                                    SharedIcon(Icons.Outlined.Search, contentDescription = localizedResources.getString(R.string.favicon_fetch))
                                 }
                             }
                         }
@@ -198,7 +200,7 @@ internal fun FaviconDialog(
                             ) {
                                 Image(
                                     bitmap = item.bitmap.asImageBitmap(),
-                                    contentDescription = context.getString(R.string.favicon_preview),
+                                    contentDescription = localizedResources.getString(R.string.favicon_preview),
                                     contentScale = ContentScale.Fit,
                                     modifier = Modifier.fillMaxSize().padding(6.dp)
                                 )
@@ -212,7 +214,7 @@ internal fun FaviconDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onClose) { Text(context.getString(R.string.common_close)) }
+            TextButton(onClick = onClose) { Text(localizedResources.getString(R.string.common_close)) }
         }
     )
 }

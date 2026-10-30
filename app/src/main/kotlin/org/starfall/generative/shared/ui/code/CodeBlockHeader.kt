@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -54,6 +55,7 @@ internal fun CodeBlockHeader(
     onDownload: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val preferences = LocalCodeRenderingPreferences.current
     var copied by remember(language, originalCode) { mutableStateOf(false) }
     LaunchedEffect(copied) { if (copied) { delay(2000); copied = false } }
@@ -95,10 +97,10 @@ internal fun CodeBlockHeader(
                 // Very large texts exceed the clipboard binder limit; fail softly instead of crashing.
                 val result = runCatching {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.code_copy), originalCode))
+                    clipboard.setPrimaryClip(ClipData.newPlainText(localizedResources.getString(R.string.code_copy), originalCode))
                 }
                 if (result.isSuccess) copied = true
-                Toast.makeText(context, context.getString(if (result.isSuccess) R.string.code_copied else R.string.code_too_large_to_copy), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, localizedResources.getString(if (result.isSuccess) R.string.code_copied else R.string.code_too_large_to_copy), Toast.LENGTH_SHORT).show()
             }, modifier = Modifier.size(28.dp)) {
                 SharedIcon(if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, stringResource(R.string.code_copy),
                     tint = if (copied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))

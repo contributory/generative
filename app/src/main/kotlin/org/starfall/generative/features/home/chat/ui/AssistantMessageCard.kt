@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -72,6 +73,7 @@ fun AssistantMessageCard(
     cacheEnabled: Boolean = true
 ) {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     SideEffect { ChatRenderMetrics.recordMessageCardRecomposition() }
     val foreground = LocalChatForeground.current
     var showMoreMenu by remember(foreground) { mutableStateOf(false) }
@@ -220,7 +222,7 @@ fun AssistantMessageCard(
                             type = "text/plain"
                          putExtra(Intent.EXTRA_TEXT, toolbarText)
                         }
-                        context.startActivity(Intent.createChooser(share, context.getString(R.string.message_share_response)))
+                        context.startActivity(Intent.createChooser(share, localizedResources.getString(R.string.message_share_response)))
                     },
                     contentDescription = stringResource(R.string.common_share)
                 ) {

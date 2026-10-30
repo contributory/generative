@@ -1,2 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<paths><files-path name="tool_media" path="tool_media/" /></paths>
+<paths>
+    <files-path name="tool_media" path="tool_media/" />
+    <cache-path name="temporary_chat_media" path="temporary_chat_media/" />
+</paths>

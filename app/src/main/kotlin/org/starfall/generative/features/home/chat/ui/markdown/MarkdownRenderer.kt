@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
@@ -419,6 +420,7 @@ private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String, fi
     }
     val text = model.node.getTextInNode(model.content).toString()
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val presentation = rememberStreamingTextPresentation(text)
     val isError = remember(text) { isErrorText(text) }
     // Null when the paragraph holds no math (or rendering is disabled): the plain Markdown path is kept.
@@ -461,8 +463,8 @@ private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String, fi
                     IconButton(
                         onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.markdown_error_clip_label), text))
-                            Toast.makeText(context, context.getString(R.string.markdown_copied_error_text), Toast.LENGTH_SHORT).show()
+                            clipboard.setPrimaryClip(ClipData.newPlainText(localizedResources.getString(R.string.markdown_error_clip_label), text))
+                            Toast.makeText(context, localizedResources.getString(R.string.markdown_copied_error_text), Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.size(28.dp)
                     ) {

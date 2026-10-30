@@ -5,11 +5,12 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 
 /** Local-only IME editor. Keeps committed text editable so keyboards can revise syllables
  * and select Pinyin candidates without duplicating characters in the terminal draft. */
 internal class RemoteTerminalInputConnection(
-    view: View,
+    private val view: View,
     private val onEdit: (String, Int) -> Unit,
     private val onKey: (Int, KeyEvent) -> Boolean,
     initialText: String = "",
@@ -29,6 +30,20 @@ internal class RemoteTerminalInputConnection(
         val buffer = editable ?: return
         val text = buffer.toString()
         onEdit(text, Selection.getSelectionEnd(buffer).coerceIn(0, text.length))
+        notifyImeSelection()
+    }
+
+    private fun notifyImeSelection() {
+        val buffer = editable ?: return
+        // A custom editor must report selection/composition changes back to the keyboard.
+        // Clearing the buffer alone leaves its previous word active in the candidate strip.
+        view.context.getSystemService(InputMethodManager::class.java)?.updateSelection(
+            view,
+            Selection.getSelectionStart(buffer),
+            Selection.getSelectionEnd(buffer),
+            getComposingSpanStart(buffer),
+            getComposingSpanEnd(buffer)
+        )
     }
 
     override fun setComposingText(text: CharSequence?, newCursorPosition: Int): Boolean {
@@ -72,11 +87,13 @@ internal class RemoteTerminalInputConnection(
         if (buffer.toString() == text && Selection.getSelectionEnd(buffer) == position) return
         syncingExternal = true
         try {
+            removeComposingSpans(buffer)
             buffer.replace(0, buffer.length, text)
             Selection.setSelection(buffer, position)
         } finally {
             syncingExternal = false
         }
+        notifyImeSelection()
     }
 
     private fun submit() {

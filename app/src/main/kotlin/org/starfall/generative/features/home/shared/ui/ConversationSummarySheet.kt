@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.res.stringResource
@@ -49,6 +50,7 @@ internal fun ConversationSummarySheetContent(
     var customChunkText by remember { mutableStateOf("20000") }
     var error by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
 
     val targetTokens = if (customTarget) customTargetText.toIntOrNull() else targetSlider.roundToInt()
     val chunkTokens = if (customChunk) customChunkText.toIntOrNull() else chunkSlider.roundToInt()
@@ -159,7 +161,7 @@ internal fun ConversationSummarySheetContent(
                     tokensPerChunk = chunkTokens ?: 20_000
                 )
                 if (onStart(request)) onDismiss()
-                else error = context.getString(R.string.conversation_summary_model_missing)
+                else error = localizedResources.getString(R.string.conversation_summary_model_missing)
             },
             enabled = targetValid && chunkValid,
             modifier = Modifier.fillMaxWidth()

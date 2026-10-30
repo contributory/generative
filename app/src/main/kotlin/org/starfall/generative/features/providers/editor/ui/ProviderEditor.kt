@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -160,8 +161,9 @@ fun ProviderEditor(
     var showTestDialog by remember { mutableStateOf(false) }
     val currentTest by rememberUpdatedState(onTestConnection)
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val tests = remember(scope, initialProvider.id) { ModelConnectionTests(scope) { provider, id ->
-        currentTest?.invoke(provider, id) ?: Result.failure(IllegalStateException(context.getString(R.string.connection_testing_unavailable)))
+        currentTest?.invoke(provider, id) ?: Result.failure(IllegalStateException(localizedResources.getString(R.string.connection_testing_unavailable)))
     } }
     val memory = remember(context) { ModelConfigurationMemory(context) }
     LaunchedEffect(initialProvider.id) { initialProvider.config.modelConfigs.forEach { (id, config) -> memory.remember(id, config, onlyIfMissing = true) } }
@@ -247,17 +249,17 @@ fun ProviderEditor(
         activeOAuthRequest = request
         try {
             val result = onAuthorizeProvider?.invoke(request)
-                ?: Result.failure(IllegalStateException(context.getString(R.string.provider_oauth_unavailable)))
+                ?: Result.failure(IllegalStateException(localizedResources.getString(R.string.provider_oauth_unavailable)))
             result.onSuccess { signedIn ->
                 val authorized = signedIn.recordOAuthAccount(label)
                 providerPersisted = true; oauthAuthorized = true; oauthIdentity = authorized.auth.key
                 oauthMarker = authorized.auth.value.orEmpty(); oauthAccountId = authorized.auth.oauthAccountId
                 oauthAccounts = authorized.config.oauthAccounts; baseUrl = authorized.baseUrl
                 if (authorized.type == ModelApiType.ANTIGRAVITY) antigravityProjectIds = authorized.config.antigravityProjectIds
-            }.onFailure { oauthAuthError = it.message ?: context.getString(R.string.provider_oauth_failed) }
+            }.onFailure { oauthAuthError = it.message ?: localizedResources.getString(R.string.provider_oauth_failed) }
             return result
         } catch (e: CancellationException) {
-            oauthAuthError = context.getString(R.string.oauth_sign_in_cancelled)
+            oauthAuthError = localizedResources.getString(R.string.oauth_sign_in_cancelled)
             throw e
         } finally { activeOAuthRequest = null; oauthAuthorizing = false }
     }
@@ -268,14 +270,14 @@ fun ProviderEditor(
         try {
             val request = draft().copy(auth = account?.authorization() ?: originalAuth)
             val result = onClearOAuthCredentials?.invoke(request)
-                ?: Result.failure(IllegalStateException(context.getString(R.string.provider_oauth_removal_unavailable)))
+                ?: Result.failure(IllegalStateException(localizedResources.getString(R.string.provider_oauth_removal_unavailable)))
             result.onSuccess { cleared ->
                 oauthAccounts = cleared.config.oauthAccounts
                 antigravityProjectIds = cleared.config.antigravityProjectIds
                 val auth = if ((originalAuth.oauthAccountId ?: initialProvider.id) != accountId) originalAuth else cleared.auth
                 oauthAccountId = auth.oauthAccountId; oauthIdentity = auth.key; oauthMarker = auth.value.orEmpty()
                 oauthAuthorized = !auth.value.isNullOrBlank()
-            }.onFailure { oauthAuthError = it.message ?: context.getString(R.string.provider_oauth_remove_failed) }
+            }.onFailure { oauthAuthError = it.message ?: localizedResources.getString(R.string.provider_oauth_remove_failed) }
             return result
         } finally { oauthClearing = false; oauthAuthorizing = false }
     }
@@ -461,7 +463,7 @@ fun ProviderEditor(
             if (showEndpoints) ProviderEndpointsDialog(type, baseUrl, endpoints, { endpoints = it }, onDismiss = { showEndpoints = false })
             if (showHeaders) ProviderHeadersDialog(headerRows, headersValid, onDismiss = { showHeaders = false })
             if (showApiKeys) ProviderApiKeysDialog(apiKeys, ::keyIdentity, onDismiss = { showApiKeys = false })
-            if (showTestDialog) ModelConnectionDialog(draft().copy(name = name.trim().ifEmpty { context.getString(R.string.provider_fallback_name) }), tests, onTestConnection != null,
+            if (showTestDialog) ModelConnectionDialog(draft().copy(name = name.trim().ifEmpty { localizedResources.getString(R.string.provider_fallback_name) }), tests, onTestConnection != null,
                 onRemoveModels = { updateModels(models - it) }, onDismiss = { showTestDialog = false })
             if (showCatalog) ModelCatalogSheet(
                 provider = initialProvider.copy(name = name, type = type, baseUrl = baseUrl.trim(),

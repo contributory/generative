@@ -30,6 +30,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
@@ -64,6 +65,7 @@ suspend fun mediaThumbnail(context: Context, reference: String, mime: String, si
 @Composable
 fun MediaPreviewCover(reference: String, name: String, mime: String, onDismiss: () -> Unit) {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val scope = rememberCoroutineScope()
     val saveMime = mime.ifBlank { "application/octet-stream" }
     val saveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(saveMime)) { target ->
@@ -73,8 +75,8 @@ fun MediaPreviewCover(reference: String, name: String, mime: String, onDismiss: 
                 withContext(Dispatchers.IO) {
                     AttachmentResolver(context).open(reference)?.use { input ->
                         context.contentResolver.openOutputStream(target)?.use { output -> input.copyTo(output) }
-                            ?: error(context.getString(R.string.file_download_failed))
-                    } ?: error(context.getString(R.string.file_download_failed))
+                            ?: error(localizedResources.getString(R.string.file_download_failed))
+                    } ?: error(localizedResources.getString(R.string.file_download_failed))
                 }
             }
             Toast.makeText(

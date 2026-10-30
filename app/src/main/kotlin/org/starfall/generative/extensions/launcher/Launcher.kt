@@ -115,10 +115,11 @@ object Launcher {
         acceptsJoin: (Item<T>) -> Boolean = { true },
         joinLandingBounds: (() -> Rect?)? = null,
         onJoinDrop: ((Session<T>) -> Boolean)? = null,
+        onReorderEnter: (Session<T>) -> Unit = {},
         onReorderDrop: (Session<T>) -> Boolean
     ): Modifier = launcherItemDropTarget(
         state, key, policy, enabled, priority, hitBounds, acceptsReorder,
-        joinKey, joinPriority, acceptsJoin, joinLandingBounds, onJoinDrop, onReorderDrop
+        joinKey, joinPriority, acceptsJoin, joinLandingBounds, onJoinDrop, onReorderEnter, onReorderDrop
     )
 
     @Composable

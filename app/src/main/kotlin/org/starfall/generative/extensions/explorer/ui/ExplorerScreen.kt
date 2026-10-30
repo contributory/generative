@@ -1,5 +1,11 @@
 package org.starfall.generative.extensions.explorer.ui
 
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.webkit.MimeTypeMap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.Canvas
@@ -81,7 +87,9 @@ fun ExplorerScreen(
     onClose: () -> Unit,
     onOpenFile: suspend (ExplorerItem) -> Unit,
     refreshKey: Int = 0,
-    labels: ExplorerLabels = ExplorerLabels()
+    labels: ExplorerLabels = ExplorerLabels(),
+    onUploadFile: (suspend (ExplorerLocation, Uri) -> Unit)? = null,
+    onDownloadFile: (suspend (ExplorerItem, Uri) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
@@ -98,6 +106,8 @@ fun ExplorerScreen(
     var action by remember { mutableStateOf<ExplorerAction?>(null) }
     var target by remember { mutableStateOf<ExplorerItem?>(null) }
     var name by remember { mutableStateOf("") }
+    var pendingUpload by remember { mutableStateOf<ExplorerLocation?>(null) }
+    var pendingDownload by remember { mutableStateOf<ExplorerItem?>(null) }
 
     fun closeSearch() {
         focusManager.clearFocus()
@@ -123,17 +133,37 @@ fun ExplorerScreen(
         } finally { loading = false }
     }
 
-    fun runOperation(block: suspend () -> Unit) {
+    fun runOperation(refreshAfter: Boolean = true, block: suspend () -> Unit) {
         scope.launch {
             loading = true
             try {
                 block()
-                refresh++
+                if (refreshAfter) refresh++ else loading = false
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (error: Exception) {
                 loading = false
+                if (refreshAfter) refresh++ // Some files may have completed before a batch failed.
                 snackbar.showSnackbar(error.message ?: labels.operationFailed)
             }
+        }
+    }
+
+    // Android owns the document pickers; all file I/O is delegated to the host.
+    val uploadPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        val destination = pendingUpload
+        pendingUpload = null
+        if (destination != null && uris.isNotEmpty() && onUploadFile != null) {
+            runOperation {
+                uris.forEach { uri -> onUploadFile(destination, uri) }
+            }
+        }
+    }
+    val downloadPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val item = pendingDownload
+        pendingDownload = null
+        val uri = if (result.resultCode == Activity.RESULT_OK) result.data?.data else null
+        if (item != null && uri != null && onDownloadFile != null) {
+            runOperation(refreshAfter = false) { onDownloadFile(item, uri) }
         }
     }
 
@@ -218,6 +248,15 @@ fun ExplorerScreen(
                                 Text("+", style = MaterialTheme.typography.titleLarge)
                             }
                         }
+                        if (!location.isHome && onUploadFile != null) {
+                            IconButton(onClick = {
+                                pendingUpload = location
+                                uploadPicker.launch(arrayOf("*/*"))
+                            }, modifier = Modifier.testTag("explorer-upload")
+                                .semantics { contentDescription = labels.upload }) {
+                                Text("↑", style = MaterialTheme.typography.titleLarge)
+                            }
+                        }
                         IconButton(onClick = { grid = !grid },
                             modifier = Modifier.testTag("explorer-toggle-layout")
                                 .semantics { contentDescription = labels.changeLayout }) { Text(if (grid) "☷" else "▦") }
@@ -258,7 +297,19 @@ fun ExplorerScreen(
                                 }
                             },
                             onRename = { target = item; name = item.name; action = ExplorerAction.RENAME },
-                            onDelete = { target = item; action = ExplorerAction.DELETE }
+                            onDelete = { target = item; action = ExplorerAction.DELETE },
+                            onDownload = if (!item.directory && onDownloadFile != null) ({
+                                pendingDownload = item
+                                val mime = item.name.substringAfterLast('.', "")
+                                    .takeIf { it.isNotEmpty() }
+                                    ?.let { MimeTypeMap.getSingleton().getMimeTypeFromExtension(it.lowercase()) }
+                                    ?: "application/octet-stream"
+                                downloadPicker.launch(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                                    addCategory(Intent.CATEGORY_OPENABLE)
+                                    type = mime
+                                    putExtra(Intent.EXTRA_TITLE, item.name)
+                                })
+                            }) else null
                         )
                     }
                 }
@@ -313,7 +364,8 @@ private fun ExplorerFileTile(
     labels: ExplorerLabels,
     onOpen: () -> Unit,
     onRename: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onDownload: (() -> Unit)?
 ) {
     var menu by remember { mutableStateOf(false) }
     val icon = if (item.directory) "📁" else "📄"
@@ -329,7 +381,7 @@ private fun ExplorerFileTile(
             Text(item.name, maxLines = 2, overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodySmall)
             if (item.location.path.isNotEmpty()) {
-                TileMenu({ menu = true }, menu, { menu = false }, onRename, onDelete, labels, item.name, itemKey)
+                TileMenu({ menu = true }, menu, { menu = false }, onRename, onDelete, onDownload, labels, item.name, itemKey)
             }
         } else Row(Modifier.fillMaxWidth().padding(start = 14.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -341,7 +393,7 @@ private fun ExplorerFileTile(
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (item.location.path.isNotEmpty()) {
-                TileMenu({ menu = true }, menu, { menu = false }, onRename, onDelete, labels, item.name, itemKey)
+                TileMenu({ menu = true }, menu, { menu = false }, onRename, onDelete, onDownload, labels, item.name, itemKey)
             }
         }
     }
@@ -349,11 +401,15 @@ private fun ExplorerFileTile(
 
 @Composable
 private fun TileMenu(open: () -> Unit, shown: Boolean, close: () -> Unit,
-    rename: () -> Unit, delete: () -> Unit, labels: ExplorerLabels, itemName: String, itemKey: String) {
+    rename: () -> Unit, delete: () -> Unit, download: (() -> Unit)?,
+    labels: ExplorerLabels, itemName: String, itemKey: String) {
     Box {
         TextButton(onClick = open, modifier = Modifier.testTag("explorer-menu:$itemKey")
             .semantics { contentDescription = labels.moreActions(itemName) }) { Text("⋮") }
         DropdownMenu(expanded = shown, onDismissRequest = close) {
+            if (download != null) {
+                DropdownMenuItem(text = { Text(labels.download) }, onClick = { close(); download() })
+            }
             DropdownMenuItem(text = { Text(labels.rename) }, onClick = { close(); rename() })
             DropdownMenuItem(text = { Text(labels.delete) }, onClick = { close(); delete() })
         }

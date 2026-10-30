@@ -74,12 +74,79 @@ class SpeechModelFieldTest {
         compose.onNodeWithTag("speech-model-dropdown").performClick()
         compose.waitUntil(5_000) { requests.get() == 1 }
         compose.onNodeWithText("First from catalog").assertExists()
+        compose.onNodeWithTag("speech-model-option:catalog-first").assertExists()
+        compose.onNodeWithTag("speech-model-menu").assertExists()
+        compose.onNodeWithTag("app-bottom-sheet").assertDoesNotExist()
         compose.runOnIdle { assertEquals("saved-model", modelId) }
         compose.onNodeWithText("First from catalog").performClick()
         compose.runOnIdle { assertEquals("catalog-first", modelId) }
         compose.onNodeWithTag("speech-model-dropdown").performClick()
-        compose.onNodeWithText("First from catalog").assertExists()
+        compose.onNodeWithTag("speech-model-option:catalog-first").assertExists()
+        compose.onNodeWithContentDescription("Selected").assertExists()
         compose.runOnIdle { assertEquals(1, requests.get()) }
+    }
+
+    @Test fun allDedicatedEnginesUseExposedDropdownRatherThanBottomSheet() {
+        val engine = mutableStateOf(SpeechEngine.ELEVENLABS)
+        compose.setContent {
+            MaterialTheme {
+                SpeechModelField(
+                    SpeechService("dedicated", "Voice", engine = engine.value,
+                        apiKey = "test-key", modelId = "saved-model"),
+                    onChange = {},
+                    fetchModels = { listOf(SpeechSynthesisModel("available-model", "Available")) }
+                )
+            }
+        }
+        SpeechEngine.entries.filter { it.standalone }.forEach { next ->
+            compose.runOnIdle { engine.value = next }
+            compose.onNodeWithTag("speech-model-dropdown").performClick()
+            compose.onNodeWithTag("speech-model-menu").assertExists()
+            compose.onNodeWithTag("app-bottom-sheet").assertDoesNotExist()
+        }
+    }
+
+    @Test fun editableModelFieldAlsoOpensExposedDropdown() {
+        var modelId by mutableStateOf<String?>("saved-model")
+        compose.setContent {
+            MaterialTheme {
+                SpeechModelField(
+                    SpeechService("editable", "Voice", engine = SpeechEngine.SPEECHIFY,
+                        apiKey = "test-key", modelId = modelId),
+                    onChange = { modelId = it },
+                    fetchModels = { listOf(SpeechSynthesisModel("catalog-model", "Catalog model")) }
+                )
+            }
+        }
+        compose.onNodeWithTag("speech-model-id").performClick()
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithTag("speech-model-option:catalog-model")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("speech-model-option:catalog-model").performClick()
+        compose.runOnIdle { assertEquals("catalog-model", modelId) }
+        compose.onNodeWithTag("speech-model-id").performTextReplacement("manual-model")
+        compose.runOnIdle { assertEquals("manual-model", modelId) }
+    }
+
+    @Test fun emptyKeyShowsHelpfulMessageInsteadOfAnInfiniteSpinner() {
+        var modelId by mutableStateOf<String?>(null)
+        compose.setContent {
+            MaterialTheme {
+                SpeechModelField(
+                    SpeechService("new", "Voice", engine = SpeechEngine.CARTESIA,
+                        apiKey = "", modelId = modelId),
+                    onChange = { modelId = it },
+                    fetchModels = { error("Must not fetch without an API key") }
+                )
+            }
+        }
+        compose.onNodeWithTag("speech-model-dropdown").performClick()
+        compose.onNodeWithTag("speech-model-menu").assertExists()
+        compose.onNodeWithTag("app-bottom-sheet").assertDoesNotExist()
+        compose.onNodeWithText(
+            "Required by this speech engine. Stored securely on this device."
+        ).assertExists()
     }
 
     @Test fun doesNotReplaceSavedOrManuallyEnteredModels() {

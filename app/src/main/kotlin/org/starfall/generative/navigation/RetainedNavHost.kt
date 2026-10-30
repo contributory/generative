@@ -1,5 +1,6 @@
 package org.starfall.generative.navigation
 
+import android.annotation.SuppressLint
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.snap
@@ -29,7 +30,13 @@ import org.starfall.generative.shared.ui.layout.screenSlide
 import org.starfall.generative.shared.ui.layout.screenSlideOffset
 import org.starfall.generative.shared.ui.layout.screenSlideSpec
 
-/** Keeps back-stack compositions alive; exiting entries are disposed after their slide finishes. */
+/**
+ * Keeps the full back stack composed (including nonvisible entries), which is
+ * required to retain screens across navigation transitions. The public
+ * visibleEntries stream omits hidden back-stack entries, so it cannot replace
+ * currentBackStack without losing the retained-screen behavior.
+ */
+@SuppressLint("RestrictedApi") // Navigation offers no public full-back-stack stream.
 @Composable
 internal fun RetainedNavHost(
     navController: NavHostController,

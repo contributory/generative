@@ -24,6 +24,7 @@ class LauncherItemDropPolicyTest {
     private var callbackProvided = true
     private var joinAllowed = true
     private var joinAccepted = true
+    private var reorderEntries = 0
     private var reorders = 0
     private var joins = 0
     private var outcome: LauncherDragOutcome? = null
@@ -37,6 +38,7 @@ class LauncherItemDropPolicyTest {
                     .launcherItemDropTarget(state, "target", policy = LauncherItemDropPolicy(joinHitTest = joinRegion),
                         acceptsJoin = { it.data == 7 && joinAllowed },
                         onJoinDrop = if (callbackProvided) ({ joins++; joinAccepted }) else null,
+                        onReorderEnter = { reorderEntries++ },
                         onReorderDrop = { reorders++; true })
                     .testTag("target"))
             }
@@ -56,6 +58,25 @@ class LauncherItemDropPolicyTest {
         compose.waitForIdle()
     }
     private fun release() { compose.onRoot().performTouchInput { up() }; compose.waitForIdle() }
+
+    @Test fun groupLikeTargetReordersOnEnterWhenJoinIsDenied() {
+        joinRegion = LauncherHitTest.Center()
+        joinAllowed = false
+        show(); move()
+        assertEquals("Reorder must run while the pointer remains down", 1, reorderEntries)
+        assertEquals(0, reorders)
+        assertEquals(0, joins)
+        release()
+        assertEquals(1, reorders)
+    }
+
+    @Test fun acceptedJoinNeverCallsTheReorderEnterCallback() {
+        joinRegion = LauncherHitTest.Center()
+        show(); move()
+        assertEquals(0, reorderEntries)
+        release()
+        assertEquals(1, joins)
+    }
 
     @Test fun ordinaryItemCenterHasOnlyAReorderTargetByDefault() {
         show(); move()

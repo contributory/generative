@@ -1,5 +1,6 @@
 package org.starfall.generative.features.customization.ui
 
+import org.starfall.generative.shared.ui.inputs.ControlledSlider
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -22,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -69,6 +71,7 @@ fun CustomizationScreen(
     onInputAreaBlurChange: (Float) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val scope = rememberCoroutineScope()
     var target by remember { mutableStateOf<UserProfileImageSlot?>(null) }
     var menuFor by remember { mutableStateOf<UserProfileImageSlot?>(null) }
@@ -134,7 +137,7 @@ fun CustomizationScreen(
                         checked = customizationEnabled,
                         onCheckedChange = onCustomizationEnabledChange,
                         modifier = Modifier.padding(end = 16.dp)
-                            .semantics { contentDescription = context.getString(R.string.customization_enable) }
+                            .semantics { contentDescription = localizedResources.getString(R.string.customization_enable) }
                             .testTag("customization-enabled-switch")
                     )
                 }
@@ -259,7 +262,7 @@ fun CustomizationScreen(
                                         .padding(start = 14.dp, end = 8.dp, bottom = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Slider(
+                                    ControlledSlider(
                                         value = transparency,
                                         onValueChange = { value ->
                                             previewSlot = slot

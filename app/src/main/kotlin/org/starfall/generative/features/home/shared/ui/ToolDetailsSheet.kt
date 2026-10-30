@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -334,6 +335,7 @@ private class ResponseSource(val text: String)
 @Composable
 private fun rememberResponseDownload(fileName: String, mime: String, source: () -> ResponseSource): () -> Unit {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val scope = rememberCoroutineScope()
     var pending by remember { mutableStateOf<ResponseSource?>(null) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(mime)) { uri: Uri? ->
@@ -348,7 +350,7 @@ private fun rememberResponseDownload(fileName: String, mime: String, source: () 
                     }
                 }.isSuccess
             }
-            Toast.makeText(context, context.getString(if (saved) R.string.file_download_saved else R.string.file_download_failed), Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, localizedResources.getString(if (saved) R.string.file_download_saved else R.string.file_download_failed), Toast.LENGTH_SHORT).show()
         }
     }
     return { pending = source(); launcher.launch(fileName) }

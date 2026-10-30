@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import org.starfall.generative.shared.ui.inputs.ControlledSlider
 import org.starfall.generative.shared.ui.dialogs.Dialog
 import org.starfall.generative.R
 import org.starfall.generative.extensions.launcher.Launcher
@@ -58,21 +59,21 @@ internal fun LauncherDragTestControls(options: LauncherDragTestOptions, onChange
                     modifier = Modifier.testTag("launcher_folder_join_enabled"))
             }
             Text(stringResource(R.string.launcher_drag_test_reorder_delay, options.reorderDelayMillis.toInt()))
-            Slider(value = options.reorderDelayMillis.toFloat(), valueRange = 0f..900f,
+            ControlledSlider(value = options.reorderDelayMillis.toFloat(), valueRange = 0f..900f,
                 modifier = Modifier.testTag("launcher_reorder_delay_slider"),
                 onValueChange = { onChange(options.copy(reorderDelayMillis = it.toLong())) })
             Text(stringResource(R.string.launcher_drag_test_reorder_proximity, options.reorderProximityDp.toInt()))
-            Slider(value = options.reorderProximityDp, valueRange = 0f..32f,
+            ControlledSlider(value = options.reorderProximityDp, valueRange = 0f..32f,
                 onValueChange = { onChange(options.copy(reorderProximityDp = it)) })
             Text(stringResource(R.string.launcher_drag_test_folder_delay, options.folderOpenDelayMillis.toInt()))
-            Slider(value = options.folderOpenDelayMillis.toFloat(), valueRange = 200f..1200f,
+            ControlledSlider(value = options.folderOpenDelayMillis.toFloat(), valueRange = 200f..1200f,
                 onValueChange = { onChange(options.copy(folderOpenDelayMillis = it.toLong())) })
             Text(stringResource(R.string.launcher_drag_test_folder_hit, (options.folderHitFraction * 100).toInt()))
-            Slider(value = options.folderHitFraction, valueRange = 0.3f..0.8f,
+            ControlledSlider(value = options.folderHitFraction, valueRange = 0.3f..0.8f,
                 onValueChange = { onChange(options.copy(folderHitFraction = it)) })
             if (!options.list) {
                 Text(stringResource(R.string.launcher_drag_test_columns, options.columns))
-                Slider(value = options.columns.toFloat(), valueRange = 2f..5f, steps = 2,
+                ControlledSlider(value = options.columns.toFloat(), valueRange = 2f..5f, steps = 2,
                     onValueChange = { onChange(options.copy(columns = it.toInt())) })
             }
         } }

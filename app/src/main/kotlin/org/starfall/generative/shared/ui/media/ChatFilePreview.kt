@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -155,6 +156,7 @@ fun ChatFilePreview(
 private fun FileCornerActions(reference: String, name: String, mime: String, selected: Boolean,
     onToggle: ((String) -> Unit)?, modifier: Modifier, overlayActive: Boolean) {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val scope = rememberCoroutineScope()
     var downloading by remember(reference) { mutableStateOf(false) }
     var saveError by remember(reference, overlayActive) { mutableStateOf<String?>(null) }
@@ -163,9 +165,9 @@ private fun FileCornerActions(reference: String, name: String, mime: String, sel
             downloading = true
             try {
                 withContext(Dispatchers.IO) {
-                    val input = AttachmentResolver(context).open(reference) ?: error(context.getString(R.string.attachment_file_unavailable))
+                    val input = AttachmentResolver(context).open(reference) ?: error(localizedResources.getString(R.string.attachment_file_unavailable))
                     input.use { source ->
-                        (context.contentResolver.openOutputStream(uri) ?: error(context.getString(R.string.attachment_cannot_save_file))).use { output ->
+                        (context.contentResolver.openOutputStream(uri) ?: error(localizedResources.getString(R.string.attachment_cannot_save_file))).use { output ->
                             val buffer = ByteArray(32768)
                             while (true) {
                                 ensureActive()
@@ -212,7 +214,7 @@ private fun FileCornerActions(reference: String, name: String, mime: String, sel
             confirmButton = {
                 TextButton(onClick = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.file_download_failed), error))
+                    clipboard.setPrimaryClip(ClipData.newPlainText(localizedResources.getString(R.string.file_download_failed), error))
                     saveError = null
                 }) { Text(stringResource(R.string.common_copy)) }
             },

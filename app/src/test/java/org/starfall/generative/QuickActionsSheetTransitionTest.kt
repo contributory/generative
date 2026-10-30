@@ -1,5 +1,17 @@
 package org.starfall.generative
 
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.provider.MediaStore
+import androidx.activity.compose.LocalActivityResultRegistryOwner
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.ActivityResultRegistryOwner
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.core.app.ActivityOptionsCompat
+import androidx.core.content.FileProvider
+import androidx.test.core.app.ApplicationProvider
+import android.content.Context
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -14,6 +26,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -31,13 +44,29 @@ import org.starfall.generative.shared.ui.ToolControls
 class QuickActionsSheetTransitionTest {
     @get:Rule val compose = createComposeRule()
 
+    @Before
+    fun refreshFileProviderRoots() {
+        // Robolectric changes the app directory per test; FileProvider caches roots statically.
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val info = requireNotNull(context.packageManager.resolveContentProvider(
+            "${context.packageName}.tool-files", android.content.pm.PackageManager.GET_META_DATA
+        ))
+        FileProvider().attachInfo(context, info)
+    }
+
     @Composable
-    private fun LinkedQuickActionsHost(controls: ToolControls) {
+    private fun LinkedQuickActionsHost(
+        controls: ToolControls,
+        attachments: List<String> = emptyList(),
+        temporaryChatId: String? = null,
+        onAttachmentsChange: (List<String>) -> Unit = {}
+    ) {
         MaterialTheme {
             val sheets = remember { BottomSheetsLinkState().apply { openAddMenu() } }
             CompositionLocalProvider(LocalToolControls provides controls) {
                 BottomSheetsLink(
                     sheets = sheets,
+                    temporaryChatId = temporaryChatId,
                     mediaKind = null,
                     onMediaKindChange = {},
                     onCancelEdit = {},
@@ -63,11 +92,90 @@ class QuickActionsSheetTransitionTest {
                     mediaProviderId = "",
                     mediaModelId = "",
                     onMediaModelChange = { _, _ -> },
-                    attachments = emptyList(),
-                    onAttachmentsChange = {}
+                    attachments = attachments,
+                    onAttachmentsChange = onAttachmentsChange
                 )
             }
         }
+    }
+
+    private class CameraRegistry : ActivityResultRegistry(), ActivityResultRegistryOwner {
+        override val activityResultRegistry: ActivityResultRegistry get() = this
+        var intent: Intent? = null
+        var requestCode = 0
+        var failLaunch = false
+
+        override fun <I, O> onLaunch(
+            requestCode: Int,
+            contract: ActivityResultContract<I, O>,
+            input: I,
+            options: ActivityOptionsCompat?
+        ) {
+            if (failLaunch) throw android.content.ActivityNotFoundException()
+            this.requestCode = requestCode
+            intent = contract.createIntent(ApplicationProvider.getApplicationContext(), input)
+        }
+    }
+
+    private fun capturePhoto(success: Boolean, temporary: Boolean = false) {
+        val registry = CameraRegistry()
+        var attachments = listOf("content://existing/image")
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val temporaryChatId = "camera-test".takeIf { temporary }
+        val photoDirectory = if (temporary) {
+            java.io.File(context.cacheDir, "temporary_chat_media/$temporaryChatId").apply { mkdirs() }
+        } else org.starfall.generative.shared.files.ToolFiles.appStorageDirectory(context)
+        compose.setContent {
+            CompositionLocalProvider(LocalActivityResultRegistryOwner provides registry) {
+                LinkedQuickActionsHost(ToolControls(settings = ToolSettings()), attachments, temporaryChatId) { attachments = it }
+            }
+        }
+        compose.onNodeWithText("Camera").performClick()
+        compose.waitForIdle()
+        val intent = requireNotNull(registry.intent) {
+            org.robolectric.shadows.ShadowLog.getLogs().joinToString { "${it.msg}: ${it.throwable}" }
+        }
+        assertEquals(MediaStore.ACTION_IMAGE_CAPTURE, intent.action)
+        val uri = intent.getParcelableExtra<Uri>(MediaStore.EXTRA_OUTPUT)!!
+        val resolver = ApplicationProvider.getApplicationContext<Context>().contentResolver
+        resolver.openOutputStream(uri)!!.use { it.write(byteArrayOf(1, 2, 3)) }
+        compose.runOnIdle {
+            registry.dispatchResult(registry.requestCode, if (success) Activity.RESULT_OK else Activity.RESULT_CANCELED, null)
+        }
+        compose.waitForIdle()
+        if (success) {
+            assertEquals("content://existing/image", attachments.first())
+            assertEquals(2, attachments.size)
+            val storedPhoto = java.io.File(requireNotNull(Uri.parse(attachments.last()).path))
+            assertEquals(photoDirectory, storedPhoto.parentFile)
+            assertEquals(3L, storedPhoto.length())
+            resolver.openInputStream(uri)!!.use { assertEquals(3, it.readBytes().size) }
+            resolver.delete(uri, null, null)
+        } else {
+            assertEquals(listOf("content://existing/image"), attachments)
+            assertEquals(0, resolver.delete(uri, null, null))
+        }
+    }
+
+    @Test
+    fun cameraAttachesCapturedPhotoAlongsideExistingAttachments() = capturePhoto(success = true)
+
+    @Test
+    fun canceledCameraDeletesCaptureWithoutChangingAttachments() = capturePhoto(success = false)
+
+    @Test
+    fun temporaryChatCaptureStaysInTheSessionCache() = capturePhoto(success = true, temporary = true)
+
+    @Test
+    fun missingCameraShowsUnavailableDialog() {
+        val registry = CameraRegistry().apply { failLaunch = true }
+        compose.setContent {
+            CompositionLocalProvider(LocalActivityResultRegistryOwner provides registry) {
+                LinkedQuickActionsHost(ToolControls(settings = ToolSettings()))
+            }
+        }
+        compose.onNodeWithText("Camera").performClick()
+        compose.onNodeWithText("Camera unavailable").assertIsDisplayed()
     }
 
     @Test
@@ -84,6 +192,7 @@ class QuickActionsSheetTransitionTest {
 
         // Navigate forward to MCP Connectors (shorter empty state): same sheet shrinks and slides left.
         compose.onNodeWithText("MCP Connectors").performScrollTo().performClick()
+        compose.waitForIdle()
         compose.mainClock.advanceTimeBy(100)
 
         val midShrinkNode = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode()
@@ -98,6 +207,7 @@ class QuickActionsSheetTransitionTest {
 
         // Navigate back to QuickActions: same sheet expands and slides right.
         compose.onNodeWithContentDescription("Back").performClick()
+        compose.waitForIdle()
         compose.mainClock.advanceTimeBy(100)
 
         val midExpandNode = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode()
@@ -112,10 +222,12 @@ class QuickActionsSheetTransitionTest {
 
         // Feature Tools also transitions within the same sheet instance.
         compose.onNodeWithText("Feature Tools").performScrollTo().performClick()
+        compose.waitForIdle()
         compose.mainClock.advanceTimeBy(450)
         assertEquals(sheetNodeId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
         compose.onNodeWithText("Image Generation").assertIsDisplayed()
         compose.onNodeWithContentDescription("Back").performClick()
+        compose.waitForIdle()
         compose.mainClock.advanceTimeBy(450)
         assertEquals(sheetNodeId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
         compose.onNodeWithText("Photos").assertIsDisplayed()

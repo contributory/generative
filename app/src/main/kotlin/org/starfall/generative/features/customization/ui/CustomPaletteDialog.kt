@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import org.starfall.generative.shared.ui.inputs.ControlledSlider
 import org.starfall.generative.R
 import org.starfall.generative.shared.theme.CustomPalette
 import org.starfall.generative.shared.theme.customColorScheme
@@ -142,7 +143,7 @@ internal fun CustomPaletteDialog(
                         .background(Brush.horizontalGradient((0..6).map { i ->
                             Color(AndroidColor.HSVToColor(floatArrayOf(i * 60f, 1f, 1f)))
                         })))
-                    Slider(
+                    ControlledSlider(
                         value = hsv[0], onValueChange = { updateHsv(h = it) },
                         valueRange = 0f..360f, modifier = Modifier.testTag("palette-hue")
                     )
@@ -151,12 +152,12 @@ internal fun CustomPaletteDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.settings_palette_saturation), style = MaterialTheme.typography.labelMedium)
-                        Slider(value = hsv[1], onValueChange = { updateHsv(s = it) },
+                        ControlledSlider(value = hsv[1], onValueChange = { updateHsv(s = it) },
                             modifier = Modifier.testTag("palette-saturation"))
                     }
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.settings_palette_brightness), style = MaterialTheme.typography.labelMedium)
-                        Slider(value = hsv[2], onValueChange = { updateHsv(v = it) },
+                        ControlledSlider(value = hsv[2], onValueChange = { updateHsv(v = it) },
                             modifier = Modifier.testTag("palette-brightness"))
                     }
                 }

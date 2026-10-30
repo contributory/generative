@@ -27,6 +27,7 @@ fun <T : Any> Modifier.launcherItemDropTarget(
     acceptsJoin: (LauncherDragItem<T>) -> Boolean = { true },
     joinLandingBounds: (() -> Rect?)? = null,
     onJoinDrop: ((LauncherDragSession<T>) -> Boolean)? = null,
+    onReorderEnter: (LauncherDragSession<T>) -> Unit = {},
     onReorderDrop: (LauncherDragSession<T>) -> Boolean
 ): Modifier {
     require(policy.joinHitTest == null || onJoinDrop == null || key != joinKey) {
@@ -35,7 +36,7 @@ fun <T : Any> Modifier.launcherItemDropTarget(
     val reorder = launcherDropTarget(
         state, key, enabled = enabled, priority = priority,
         hitTest = policy.reorderHitTest, hitBounds = hitBounds,
-        accepts = acceptsReorder, onDrop = onReorderDrop
+        accepts = acceptsReorder, onDragEnter = onReorderEnter, onDrop = onReorderDrop
     )
     val joinHitTest = policy.joinHitTest ?: return reorder
     val join = onJoinDrop ?: return reorder

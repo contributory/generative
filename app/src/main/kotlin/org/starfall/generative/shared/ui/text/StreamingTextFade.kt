@@ -79,7 +79,7 @@ internal fun rememberStreamingTextPresentation(text: String): StreamingTextPrese
     val modifier = Modifier.drawWithCache {
         val layout = layoutResult.value
         val layoutReady = layout?.layoutInput?.text?.text == text
-        val paths = if (layoutReady && layout != null) {
+        val paths = if (layoutReady) {
             ranges.map { range -> range to layout.getPathForRange(range.start, range.end) }
         } else emptyList()
         // A new Markdown layout can take another frame. Never show the unmasked new text in

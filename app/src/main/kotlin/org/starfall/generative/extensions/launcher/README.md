@@ -545,3 +545,16 @@ from the left or right 56dp edge strip, or a horizontal/downward swipe starting
 in the folder header, dismisses the folder. Ordinary vertical scrolling in the
 folder grid is unaffected. The gestures are feature UI behavior, not part of
 the generic launcher drag controller.
+
+### Folder-to-folder reorder on entry
+
+An item can represent a folder while simultaneously owning its own child
+container. The host decides which dragged items may reorder it versus
+join it: configure Launcher.itemDropTarget with acceptsReorder and
+acceptsJoin separately. Use the new optional onReorderEnter callback to
+move other folders in the in-memory preview as soon as the drag enters their
+slot; reserve onReorderDrop for accepting the final release. A folder
+drag must not be accepted by a folder's join target. Persist only on an
+accepted release and restore the original order on cancellation. The
+Developer Settings demo now contains separate Alpha and Beta folders with
+independent child containers and tests this folder-to-folder behavior.

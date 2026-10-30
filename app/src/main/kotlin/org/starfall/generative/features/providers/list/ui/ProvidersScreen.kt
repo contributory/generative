@@ -26,6 +26,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
@@ -66,6 +67,7 @@ fun ProvidersScreen(
     onBack: () -> Unit
 ) = with(Launcher) {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val scope = rememberCoroutineScope()
     val dialogs = rememberProviderListDialogs()
     var orderedProviders by remember { mutableStateOf(providers) }
@@ -218,7 +220,7 @@ fun ProvidersScreen(
                         rootItems = previousRoot
                         setCollapsedSections(previousCollapsed)
                     }
-                    Toast.makeText(context, context.getString(R.string.provider_drag_save_failed), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, localizedResources.getString(R.string.provider_drag_save_failed), Toast.LENGTH_SHORT).show()
                 }
             } else {
                 if (original.groupId != moved.groupId) onMoveProviderToGroup(id, moved.groupId)
@@ -478,14 +480,18 @@ fun ProvidersScreen(
                                             onDragEnd = { outcome -> finishDnd(key, outcome) }
                                         )
                                         .itemDropTarget(
-                                            state = dndState, key = key, priority = 10,
+                                            state = dndState, key = key, priority = 11,
                                             enabled = !searching && openGroupId == null,
                                             policy = Launcher.DropPolicy(
+                                                reorderHitTest = Launcher.Collision.Pointer,
                                                 joinHitTest = if (item is ProviderRootItem.GroupItem)
                                                     Launcher.Collision.Pointer else null
                                             ),
-                                            acceptsReorder = { dragged ->
-                                                item is ProviderRootItem.ProviderItem && dragged.key != key
+                                            // Folder-to-folder and folder-to-provider both reorder.
+                                            // Provider-to-folder remains a join, never a reorder.
+                                            acceptsReorder = { drag ->
+                                                drag.key != key &&
+                                                    (item is ProviderRootItem.ProviderItem || drag.data.isGroup)
                                             },
                                             acceptsJoin = { dragged -> !dragged.data.isGroup },
                                             joinKey = "folder-drop_${item.id}",
@@ -496,6 +502,15 @@ fun ProvidersScreen(
                                                 if (next != layout) applyLayout(next)
                                                 true
                                             }) else null,
+                                            onReorderEnter = { drag ->
+                                                val dragged = drag.item.data
+                                                val from = if (dragged.isGroup) "group_${dragged.id}"
+                                                    else "provider_${dragged.id}"
+                                                if (rootItems.any { it.cellKey() == from })
+                                                    moveRootItem(from, key)
+                                                else if (!dragged.isGroup)
+                                                    applyProviderPreview(dragged.id, item.toOrderItem())
+                                            },
                                             onReorderDrop = { true }
                                         )
                                         // The source's own slot must win over the grid-wide
@@ -509,22 +524,6 @@ fun ProvidersScreen(
                                             onDrop = {
                                                 dragRootSnapshot != rootItems || liveOrderChanged
                                             }
-                                        )
-                                        .dropTarget(
-                                            state = dndState, key = "root-slot:$key",
-                                            enabled = !searching && openGroupId == null &&
-                                                item is ProviderRootItem.ProviderItem,
-                                            priority = 11, accepts = { it.key != key },
-                                            onDragEnter = { drag ->
-                                                val dragged = drag.item.data
-                                                val from = if (dragged.isGroup) "group_${dragged.id}"
-                                                    else "provider_${dragged.id}"
-                                                if (dragged.isGroup) moveRootItem(from, key)
-                                                else if (rootItems.any { it.cellKey() == from })
-                                                    moveRootItem(from, key)
-                                                else applyProviderPreview(dragged.id, item.toOrderItem())
-                                            },
-                                            onDrop = { true }
                                         )
                                         .onGloballyPositioned { coordinates ->
                                             if (item is ProviderRootItem.GroupItem && gridMode == isGridView) {

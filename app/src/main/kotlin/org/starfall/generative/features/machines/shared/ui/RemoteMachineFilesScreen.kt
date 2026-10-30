@@ -14,6 +14,8 @@ import org.starfall.generative.extensions.explorer.logic.ExplorerItem
 import org.starfall.generative.extensions.explorer.ui.ExplorerScreen
 import org.starfall.generative.features.machines.shared.logic.RemoteMachineExplorerRepository
 import org.starfall.generative.integrations.remote.RemoteMachineService
+import org.starfall.generative.shared.files.explorerImport
+import org.starfall.generative.shared.files.explorerExport
 import org.starfall.generative.shared.ui.media.MediaPreviewCover
 import org.starfall.generative.shared.ui.media.isPreviewableMedia
 import org.starfall.generative.shared.ui.media.mediaMimeType
@@ -38,6 +40,16 @@ fun RemoteMachineFilesScreen(
             repository = repository,
             initialLocation = root,
             onClose = onClose,
+            onUploadFile = { parent, uri ->
+                context.contentResolver.explorerImport(uri) { name, input ->
+                    repository.upload(parent, name, input)
+                }
+            },
+            onDownloadFile = { item, uri ->
+                context.contentResolver.explorerExport(uri) { output ->
+                    repository.download(item, output)
+                }
+            },
             onOpenFile = { item ->
                 val mime = mediaMimeType(item.name)
                 if (isPreviewableMedia(mime)) {

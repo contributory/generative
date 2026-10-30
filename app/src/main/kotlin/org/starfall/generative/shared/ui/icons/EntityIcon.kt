@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextOverflow
@@ -127,6 +128,7 @@ fun IconPickerRow(
     fetchState: FaviconFetchState = rememberFaviconFetchState()
 ) {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val scope = rememberCoroutineScope()
     val store = remember(context) { IconStore(context) }
     val revision by IconStore.lookupRevision.collectAsState()
@@ -144,7 +146,7 @@ fun IconPickerRow(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
-                error = failure.message ?: context.getString(R.string.icon_import_failed)
+                error = failure.message ?: localizedResources.getString(R.string.icon_import_failed)
             } finally {
                 importing = false
                 currentBusy(false)
@@ -183,14 +185,14 @@ fun IconPickerRow(
             ) {
                 SharedIcon(
                     Icons.Outlined.AddPhotoAlternate,
-                    contentDescription = context.getString(R.string.entity_icon),
+                    contentDescription = localizedResources.getString(R.string.entity_icon),
                     modifier = Modifier.padding(3.dp).size(14.dp)
                 )
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             OutlinedButton(enabled = !busy, onClick = { fetchState.dialogOpen = true }) {
-                Text(context.getString(R.string.favicon_get_logo))
+                Text(localizedResources.getString(R.string.favicon_get_logo))
             }
             if (image != null && fileName != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -208,7 +210,7 @@ fun IconPickerRow(
         }
         if (image != null) {
             IconButton(enabled = !busy, onClick = { error = null; onChange(null) }) {
-                SharedIcon(Icons.Outlined.Close, contentDescription = context.getString(R.string.common_remove))
+                SharedIcon(Icons.Outlined.Close, contentDescription = localizedResources.getString(R.string.common_remove))
             }
         }
     }

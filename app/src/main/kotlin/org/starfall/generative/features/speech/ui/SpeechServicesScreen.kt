@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.graphicsLayer
@@ -62,6 +63,7 @@ fun SpeechServicesScreen(
     onStopPlayback: () -> Unit = {}
 ) = with(Launcher) {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     LaunchedEffect(context) { requestSpeechEngineIcons(context) }
     var editor by remember { mutableStateOf<SpeechEditorPage?>(null) }
     var deletingServiceId by remember { mutableStateOf<String?>(null) }
@@ -117,7 +119,7 @@ fun SpeechServicesScreen(
                                 onClick = {
                                     editor = SpeechEditorPage(SpeechService(
                                         id = UUID.randomUUID().toString(),
-                                        name = context.getString(R.string.speech_custom_tts),
+                                        name = localizedResources.getString(R.string.speech_custom_tts),
                                         icon = null,
                                         provider = "system",
                                         modelId = null,
@@ -194,7 +196,7 @@ fun SpeechServicesScreen(
                                     onSetTtsProvider = { onSetTtsProvider(service.id) },
                                     onTest = {
                                         if (service.id == activeTestServiceId) onStopPlayback()
-                                        else onTestVoice(service, context.getString(R.string.speech_preview_text, service.name))
+                                        else onTestVoice(service, localizedResources.getString(R.string.speech_preview_text, service.name))
                                     },
                                     onEdit = { editor = SpeechEditorPage(service, false) },
                                     onDelete = { deletingServiceId = service.id }

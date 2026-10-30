@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -21,12 +20,11 @@ import org.starfall.generative.integrations.speech.StandaloneSpeechClient
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.sheets.BottomSheet
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.text.OutlinedTextField
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SpeechModelField(
     service: SpeechService,
@@ -65,7 +63,16 @@ internal fun SpeechModelField(
                 fetchRequested = false
             }
         }
-        Box {
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { next ->
+                if (next && canFetch && !loading && !fetchedOnce && error == null) {
+                    fetchRequested = true
+                }
+                expanded = next
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
             OutlinedTextField(service.modelId.orEmpty(), onChange,
                 label = { Text(stringResource(R.string.speech_engine_model)) }, singleLine = true,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
@@ -73,52 +80,61 @@ internal fun SpeechModelField(
                 trailingIcon = {
                     Row {
                         if (loading) CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
-                        IconButton(
-                            onClick = {
-                                if (!expanded && canFetch && !loading && !fetchedOnce && error == null) {
-                                    fetchRequested = true
-                                }
-                                expanded = !expanded
-                            },
-                            modifier = Modifier.testTag("speech-model-dropdown")
-                        ) {
-                            SharedIcon(Icons.Default.KeyboardArrowDown, stringResource(R.string.speech_engine_model))
-                        }
+                        ExposedDropdownMenuDefaults.TrailingIcon(
+                            expanded = expanded,
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.SecondaryEditable)
+                                .testTag("speech-model-dropdown")
+                        )
                     }
-                }, modifier = Modifier.fillMaxWidth().testTag("speech-model-id"))
-            if (expanded) {
-                BottomSheet(onDismissRequest = { expanded = false }) {
-                    Text(stringResource(R.string.speech_engine_model), Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.titleLarge)
-                    LazyColumn(Modifier.fillMaxWidth(), contentPadding = PaddingValues(bottom = 16.dp)) {
-                        error?.let { detail ->
-                            item {
-                                Text(detail, Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
-                                TextButton(onClick = { fetchRequested = true }) {
-                                    Text(stringResource(R.string.common_retry))
+                }, modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                    .fillMaxWidth().testTag("speech-model-id"))
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.heightIn(max = 420.dp).testTag("speech-model-menu")
+            ) {
+                error?.let { detail ->
+                    Text(detail, Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall)
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.common_retry)) },
+                        onClick = { fetchRequested = true }
+                    )
+                }
+                if (loading || (fetchRequested && canFetch)) {
+                    Box(Modifier.fillMaxWidth().padding(12.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                        CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                    }
+                }
+                if (!loading && !(fetchRequested && canFetch) && error == null && models.isEmpty()) {
+                    Text(
+                        stringResource(if (canFetch) R.string.no_models_returned
+                            else R.string.speech_engine_api_key_help),
+                        Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                models.forEach { model ->
+                    DropdownMenuItem(
+                        modifier = Modifier.testTag("speech-model-option:${model.id}"),
+                        text = {
+                            Column {
+                                Text(model.name)
+                                if (model.name != model.id) {
+                                    Text(model.id, style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
-                        }
-                        if (loading || fetchRequested) item {
-                            CircularProgressIndicator(Modifier.padding(16.dp).size(24.dp), strokeWidth = 2.dp)
-                        }
-                        if (!loading && !fetchRequested && error == null && models.isEmpty()) item {
-                            Text(stringResource(R.string.no_models_returned), Modifier.padding(16.dp))
-                        }
-                        items(models, key = { it.id }) { model ->
-                            ListItem(
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                headlineContent = { Text(model.name) },
-                                supportingContent = {
-                                    if (model.name != model.id) Text(model.id)
-                                },
-                                trailingContent = {
-                                    if (model.id == service.modelId) SharedIcon(Icons.Default.Check, stringResource(R.string.common_selected))
-                                },
-                                modifier = Modifier.clickable { onChange(model.id); expanded = false }
-                            )
-                        }
-                    }
+                        },
+                        trailingIcon = {
+                            if (model.id == service.modelId) {
+                                SharedIcon(Icons.Default.Check, stringResource(R.string.common_selected))
+                            }
+                        },
+                        onClick = { onChange(model.id); expanded = false }
+                    )
                 }
             }
         }

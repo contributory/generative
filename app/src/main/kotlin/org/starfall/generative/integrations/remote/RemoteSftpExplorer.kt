@@ -3,7 +3,12 @@ package org.starfall.generative.integrations.remote
 import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
+import com.jcraft.jsch.ChannelSftp
+import com.jcraft.jsch.SftpException
 import java.io.FileNotFoundException
+import java.io.InputStream
+import java.io.OutputStream
+import java.util.UUID
 import org.starfall.generative.shared.files.AppDocumentsLocation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,7 +32,8 @@ class RemoteSftpExplorer(private val service: RemoteMachineService) {
 
     suspend fun list(machineId: String, path: String): List<Entry> = withLease(machineId, path) { lease ->
         lease.channel.ls(lease.absolute(path)).asSequence()
-            .filter { it.filename != "." && it.filename != ".." }
+            .filter { it.filename != "." && it.filename != ".." &&
+                !(it.filename.startsWith(".explorer-upload-") && it.filename.endsWith(".part")) }
             .map { file ->
                 val child = sftpJoinRelative(path, file.filename)
                 val attrs = if (file.attrs.isLink) {
@@ -37,6 +43,43 @@ class RemoteSftpExplorer(private val service: RemoteMachineService) {
             }
             .sortedWith(compareByDescending<Entry> { it.directory }.thenBy { it.name.lowercase() }).toList()
     }
+
+    /** Stage the upload remotely and rename only after the full transfer completes. */
+    suspend fun upload(machineId: String, parent: String, name: String, input: InputStream) =
+        withLease(machineId, parent) { lease ->
+            val safeName = sanitizeSftpName(name)
+            require(safeName == name && '\\' !in name) { "Invalid file name" }
+            val destination = lease.absolute(sftpJoinRelative(parent, safeName))
+            val parentAbsolute = lease.absolute(parent)
+            if (!lease.channel.stat(parentAbsolute).isDir) throw FileNotFoundException("Not a directory")
+
+            fun exists(path: String): Boolean = try {
+                lease.channel.lstat(path)
+                true
+            } catch (error: SftpException) {
+                if (error.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) false else throw error
+            }
+
+            if (exists(destination)) throw FileNotFoundException("File already exists: $safeName")
+            val temp = lease.absolute(sftpJoinRelative(parent, ".explorer-upload-${UUID.randomUUID()}.part"))
+            try {
+                lease.channel.put(input, temp)
+                if (exists(destination)) throw FileNotFoundException("File already exists: $safeName")
+                lease.channel.rename(temp, destination)
+            } catch (error: Throwable) {
+                runCatching { lease.channel.rm(temp) }
+                throw error
+            }
+        }
+
+    suspend fun download(machineId: String, path: String, output: OutputStream) =
+        withLease(machineId, path) { lease ->
+            if (path.isBlank()) throw FileNotFoundException("Not a file")
+            val source = lease.absolute(path)
+            if (lease.channel.stat(source).isDir) throw FileNotFoundException("Not a file")
+            lease.channel.get(source).use { it.copyTo(output) }
+            Unit
+        }
 
     suspend fun createFolder(machineId: String, parent: String, name: String) = withLease(machineId, parent) { lease ->
         val target = sftpJoinRelative(parent, sanitizeSftpName(name))

@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -108,6 +109,7 @@ internal fun ModelCatalogSheet(
         if (!visible && (searchExpanded || query.isNotEmpty())) collapseSearch()
     }
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val discoveryUnavailable = stringResource(R.string.model_discovery_unavailable)
     LaunchedEffect(visible, refresh, discoveryIdentity) {
         if (!visible) return@LaunchedEffect
@@ -119,7 +121,7 @@ internal fun ModelCatalogSheet(
             onCatalogLoaded(discovered)
         } catch (e: CancellationException) { throw e
         } catch (e: Exception) {
-            loadError = e.localizedMessage ?: context.getString(R.string.unable_to_load_models)
+            loadError = e.localizedMessage ?: localizedResources.getString(R.string.unable_to_load_models)
         } finally { loading = false }
     }
     val modelsById = remember(models) { models.associateBy { it.id } }

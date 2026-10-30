@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -93,6 +94,7 @@ fun AboutScreen(modifier: Modifier = Modifier, contentPadding: PaddingValues = P
 @Composable
 private fun UpdateSection() {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val currentVersion = remember(context) { context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty() }
     var refreshKey by remember { mutableIntStateOf(0) }
     var isChecking by remember { mutableStateOf(false) }
@@ -109,7 +111,7 @@ private fun UpdateSection() {
                 latestRelease = it
                 hasChecked = true
             }
-            .onFailure { error = it.localizedMessage ?: context.getString(R.string.settings_update_error) }
+            .onFailure { error = it.localizedMessage ?: localizedResources.getString(R.string.settings_update_error) }
         isChecking = false
     }
 

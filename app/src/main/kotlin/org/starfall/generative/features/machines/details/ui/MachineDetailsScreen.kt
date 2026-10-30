@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -119,6 +120,7 @@ internal fun MachineDetailsScreen(
     var authorizeJob by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val identityOAuth = remember(context) { GCloudIdentityOAuth(context) }
     var pendingAndroidOAuthClient by remember { mutableStateOf<GCloudOAuthClient?>(null) }
     val androidOAuthLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
@@ -128,7 +130,7 @@ internal fun MachineDetailsScreen(
             runCatching { identityOAuth.accessTokenFromIntent(result.data) }
                 .onSuccess { accessToken ->
                     if (accessToken.isNullOrBlank()) {
-                        error = context.getString(R.string.remote_machine_google_no_access_token)
+                        error = localizedResources.getString(R.string.remote_machine_google_no_access_token)
                         authorizing = false
                     } else scope.launch {
                         onStoreAndroidOAuthToken(client, accessToken).onFailure { error = it.message }
@@ -440,11 +442,11 @@ internal fun MachineDetailsScreen(
                                                         authorizing = false
                                                     }
                                                     GCloudIdentityAuthorization.MissingResolution -> {
-                                                        error = context.getString(R.string.remote_machine_google_missing_resolution)
+                                                        error = localizedResources.getString(R.string.remote_machine_google_missing_resolution)
                                                         authorizing = false
                                                     }
                                                     GCloudIdentityAuthorization.MissingAccessToken -> {
-                                                        error = context.getString(R.string.remote_machine_google_no_access_token)
+                                                        error = localizedResources.getString(R.string.remote_machine_google_no_access_token)
                                                         authorizing = false
                                                     }
                                                 }

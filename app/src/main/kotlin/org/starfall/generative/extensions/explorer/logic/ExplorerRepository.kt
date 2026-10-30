@@ -35,6 +35,8 @@ data class ExplorerLabels(
     val title: String = "Files",
     val back: String = "Back",
     val newFolder: String = "New folder",
+    val upload: String = "Upload",
+    val download: String = "Download",
     val changeLayout: String = "Change layout",
     val refresh: String = "Refresh",
     val search: String = "Search files",

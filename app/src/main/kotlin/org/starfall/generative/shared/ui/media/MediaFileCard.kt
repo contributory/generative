@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -101,6 +102,7 @@ internal fun MediaViewer(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val attachmentSelection = LocalChatAttachmentSelection.current
     val scope = rememberCoroutineScope()
     val mime = remember(file.name) { file.mime() }
@@ -121,7 +123,7 @@ internal fun MediaViewer(
                     truncated = count > TEXT_PREVIEW_LIMIT
                     String(buffer, 0, minOf(count, TEXT_PREVIEW_LIMIT))
                 }
-            }.getOrDefault(context.getString(R.string.file_deleted))
+            }.getOrDefault(localizedResources.getString(R.string.file_deleted))
         }
     }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -134,7 +136,7 @@ internal fun MediaViewer(
                     }
                 }
             }
-            Toast.makeText(context, context.getString(if (result.isSuccess) R.string.file_download_saved else R.string.file_download_failed), Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, localizedResources.getString(if (result.isSuccess) R.string.file_download_saved else R.string.file_download_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -147,11 +149,11 @@ internal fun MediaViewer(
                         .setType(mime)
                         .putExtra(Intent.EXTRA_STREAM, uri)
                         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
-                    context.getString(R.string.media_share_file)
+                    localizedResources.getString(R.string.media_share_file)
                 )
             )
         }.onFailure {
-            Toast.makeText(context, context.getString(R.string.media_could_not_share_file), Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, localizedResources.getString(R.string.media_could_not_share_file), Toast.LENGTH_SHORT).show()
         }
     }
     val actions = buildList {
@@ -231,7 +233,7 @@ internal fun MediaViewer(
                     } catch (cancelled: CancellationException) {
                         throw cancelled
                     } catch (error: Exception) {
-                        Toast.makeText(context, error.message ?: context.getString(R.string.file_deleted),
+                        Toast.makeText(context, error.message ?: localizedResources.getString(R.string.file_deleted),
                             Toast.LENGTH_SHORT).show()
                     }
                 }

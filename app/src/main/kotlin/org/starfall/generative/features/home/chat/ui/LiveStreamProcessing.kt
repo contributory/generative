@@ -34,7 +34,7 @@ internal fun rememberLiveStreamReasoning(
         streamStateFlow
             .map { it.forMessage(conversationId, messageId)?.reasoning }
             .distinctUntilChanged { old, new -> old?.length == new?.length }
-    }.collectAsState(initial = streamStateFlow.value.forMessage(conversationId, messageId)?.reasoning)
+    }.collectAsState(initial = null)
     val current = snapshot ?: return null
     return remember(current) { current.materialize() }
 }
@@ -60,6 +60,6 @@ internal fun rememberStreamAnswerStarted(
             ?.isNotBlank() == true
     val answerStarted by remember(streamStateFlow, conversationId, messageId, offset) {
         streamStateFlow.map { started(it) }.distinctUntilChanged()
-    }.collectAsState(initial = started(streamStateFlow.value))
+    }.collectAsState(initial = false)
     return answerStarted
 }

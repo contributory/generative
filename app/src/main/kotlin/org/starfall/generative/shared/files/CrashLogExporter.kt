@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.files
 
+import androidx.annotation.RequiresApi
 import android.content.ContentValues
 import android.content.Context
 import android.media.MediaScannerConnection
@@ -24,6 +25,7 @@ internal object CrashLogExporter {
         "${Environment.DIRECTORY_DOWNLOADS}/$FOLDER/$name"
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun saveWithMediaStore(context: Context, name: String, bytes: ByteArray) {
         val resolver = context.contentResolver
         val values = ContentValues().apply {

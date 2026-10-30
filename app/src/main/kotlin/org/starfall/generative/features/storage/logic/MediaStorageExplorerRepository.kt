@@ -5,6 +5,8 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import java.io.File
 import java.io.FileNotFoundException
+import java.io.InputStream
+import java.io.OutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.starfall.generative.extensions.explorer.logic.ExplorerItem
@@ -63,6 +65,30 @@ class MediaStorageExplorerRepository(context: Context) : ExplorerRepository {
             if (!mediaFile(item.location.path).deleteRecursively()) throw FileNotFoundException("Could not delete file")
             ToolFiles.revision.value++
         }
+    }
+
+    /** Upload into a validated directory, without overwriting an existing file. */
+    suspend fun upload(parent: ExplorerLocation, name: String, input: InputStream) {
+        requireMedia(parent)
+        val safeName = checkName(name)
+        withContext(Dispatchers.IO) {
+            val directory = mediaFile(parent.path)
+            if (!directory.isDirectory) throw FileNotFoundException("Not a directory")
+            val target = mediaFile(join(parent.path, safeName))
+            if (!target.createNewFile()) throw FileNotFoundException("File already exists: $safeName")
+            try {
+                target.outputStream().use { input.copyTo(it) }
+            } catch (error: Throwable) {
+                target.delete()
+                throw error
+            }
+            ToolFiles.revision.value++
+        }
+    }
+
+    suspend fun download(item: ExplorerItem, output: OutputStream) = withContext(Dispatchers.IO) {
+        fileFor(item).inputStream().use { it.copyTo(output) }
+        Unit
     }
 
     fun fileFor(item: ExplorerItem): File {

@@ -14,6 +14,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -287,6 +288,7 @@ fun AppNavigation(
     val importedProviderId by configurationViewModel.importedProviderId.collectAsStateWithLifecycle()
     val providerImportFailed by configurationViewModel.providerImportFailed.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     var pendingExport by rememberSaveable(stateSaver = NullableFilePathSaver) { mutableStateOf<File?>(null) }
     var exportPickerOpen by rememberSaveable { mutableStateOf(false) }
     var pendingImport by rememberSaveable { mutableStateOf(false) }
@@ -393,7 +395,7 @@ fun AppNavigation(
     }
     LaunchedEffect(providerImportFailed) {
         if (providerImportFailed) {
-            Toast.makeText(context, context.getString(R.string.provider_import_failed), Toast.LENGTH_LONG).show()
+            Toast.makeText(context, localizedResources.getString(R.string.provider_import_failed), Toast.LENGTH_LONG).show()
             configurationViewModel.clearProviderImportFailed()
         }
     }
@@ -696,7 +698,7 @@ fun AppNavigation(
                                         pendingNewProvider = ProviderEditorPage(saved, false)
                                         Toast.makeText(
                                             context,
-                                            context.getString(R.string.provider_saved),
+                                            localizedResources.getString(R.string.provider_saved),
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     },
@@ -755,7 +757,7 @@ fun AppNavigation(
                                         configurationViewModel.saveProvider(saved)
                                         Toast.makeText(
                                             context,
-                                            context.getString(R.string.provider_saved),
+                                            localizedResources.getString(R.string.provider_saved),
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     },

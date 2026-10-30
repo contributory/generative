@@ -28,6 +28,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -56,6 +57,7 @@ internal fun RemoteMachineSettings(
     var identityError by remember { mutableStateOf<String?>(null) }
     var oauthError by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val scope = rememberCoroutineScope()
     val identityLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri ?: return@rememberLauncherForActivityResult
@@ -182,14 +184,14 @@ internal fun RemoteMachineSettings(
                                 append(key.path)
                                 append("\n")
                                 append(
-                                    context.getString(
+                                    localizedResources.getString(
                                         if (key.publicKeyPath.isNotBlank()) R.string.remote_machine_public_key_uploaded
                                         else R.string.remote_machine_public_key_missing
                                     )
                                 )
                                 if (users > 0) {
                                     append("\n")
-                                    append(context.getString(R.string.remote_machine_ssh_key_used_by, users))
+                                    append(localizedResources.getString(R.string.remote_machine_ssh_key_used_by, users))
                                 }
                             },
                             subtitleMaxLines = 3,
